@@ -1,14 +1,99 @@
-      - name: Wrap Web Game & Compile Xcode Archive
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract Zip and Prepare Game Files
         run: |
-          # Extract all folders from game.zip on GitHub's server
-          unzip -q game.zip
-          rm game.zip
+          mkdir -p extracted_game www
           
-          # If your zip extracted into a single subfolder, move contents to root
-          shopt -s dotglob
-          for dir in */; do
-            if [ "$dir" != ".git/" ] && [ "$dir" != ".github/" ]; then
-              mv "$dir"* . 2>/dev/null || true
-              rmdir "$dir" 2>/dev/null || true
+          # Find and extract any .zip file anywhere in the repo
+          ZIP_FILE=$(find . -maxdepth 2 -iname "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Found zip file: $ZIP_FILE"
+            unzip -q -o "$ZIP_FILE" -d extracted_game
+          else
+            echo "No zip file found, copying repo files..."
+            rsync -a --exclude='extracted_game' --exclude='www' --exclude='.git' --exclude='.github' . extracted_game/
+          fi
+          
+          echo "=== Extracted Files ==="
+          find extracted_game -maxdepth 3
+          
+          # Locate index.html (or .html entry file)
+          INDEX_FILE=$(find extracted_game -iname "index.html" | head -n 1)
+          if [ -z "$INDEX_FILE" ]; then
+            INDEX_FILE=$(find extracted_game -iname "*.html" | head -n 1)
+          fi
+          
+          if [ -n "$INDEX_FILE" ]; then
+            echo "Found HTML entry at: $INDEX_FILE"
+            GAME_DIR=$(dirname "$INDEX_FILE")
+            cp -R "$GAME_DIR"/. www/
+            # Ensure main file is named index.html
+            if [ ! -f "www/index.html" ]; then
+              mv "www/$(basename "$INDEX_FILE")" www/index.html
             fi
-          done
+          else
+            echo "No HTML file found, copying all extracted files to www/"
+            cp -R extracted_game/. www/
+            echo "<!DOCTYPE html><html><body style='background:#000;color:#fff;font-family:sans-serif;text-align:center;padding-top:40%;'><h2>No HTML5 file found in ZIP</h2><p>Check the GitHub Actions log to see what type of game is inside your zip.</p></body></html>" > www/index.html
+          fi
+
+      - name: Wrap Game & Compile Xcode Archive
+        run: |
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/ios@7
+          npx cap init "MyGame" "com.mygame.app" --web-dir www
+          npx cap add ios
+          npx cap sync ios
+          
+          # Compile Unsigned Xcode Archive (supports both Workspace and Project)
+          if [ -d "ios/App/App.xcworkspace" ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App \
+              -configuration Release \
+              -sdk iphoneos \
+              -archivePath $RUNNER_TEMP/App.xcarchive \
+              archive \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES
+          else
+            xcodebuild -project ios/App/App.xcodeproj \
+              -scheme App \
+              -configuration Release \
+              -sdk iphoneos \
+              -archivePath $RUNNER_TEMP/App.xcarchive \
+              archive \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES
+          fi
+
+      - name: Package into .ipa
+        run: |
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -R $RUNNER_TEMP/App.xcarchive/Products/Applications/App.app $RUNNER_TEMP/Payload/
+          cd $RUNNER_TEMP
+          zip -r -q $GITHUB_WORKSPACE/Game.ipa Payload
+
+      - name: Upload Compiled IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ready-Game-IPA
+          path: Game.ipa
