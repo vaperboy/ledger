@@ -1,0 +1,98 @@
+name: Build IPA and Publish Web Game
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract Zip and Prepare Game Files
+        run: |
+          mkdir -p extracted_game www
+          ZIP_FILE=$(find . -maxdepth 2 -iname "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            unzip -q -o "$ZIP_FILE" -d extracted_game
+          else
+            rsync -a --exclude='extracted_game' --exclude='www' --exclude='.git' --exclude='.github' . extracted_game/
+          fi
+          
+          INDEX_FILE=$(find extracted_game -iname "index.html" | head -n 1)
+          if [ -z "$INDEX_FILE" ]; then
+            INDEX_FILE=$(find extracted_game -iname "*.html" | head -n 1)
+          fi
+          
+          if [ -n "$INDEX_FILE" ]; then
+            GAME_DIR=$(dirname "$INDEX_FILE")
+            cp -R "$GAME_DIR"/. www/
+            if [ ! -f "www/index.html" ]; then
+              mv "www/$(basename "$INDEX_FILE")" www/index.html
+            fi
+          else
+            cp -R extracted_game/. www/
+            echo "<!DOCTYPE html><html><body style='background:#000;color:#fff;text-align:center;padding-top:40%;'><h2>Game Ready</h2></body></html>" > www/index.html
+          fi
+
+      - name: Wrap Game & Compile Xcode Archive
+        run: |
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/ios@7
+          npx cap init "MyGame" "com.mygame.app" --web-dir www
+          npx cap add ios
+          npx cap sync ios
+          
+          if [ -d "ios/App/App.xcworkspace" ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace \
+              -scheme App -configuration Release -sdk iphoneos \
+              -archivePath $RUNNER_TEMP/App.xcarchive archive \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" AD_HOC_CODE_SIGNING_ALLOWED=YES
+          else
+            xcodebuild -project ios/App/App.xcodeproj \
+              -scheme App -configuration Release -sdk iphoneos \
+              -archivePath $RUNNER_TEMP/App.xcarchive archive \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" AD_HOC_CODE_SIGNING_ALLOWED=YES
+          fi
+
+      - name: Package into .ipa
+        run: |
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -R $RUNNER_TEMP/App.xcarchive/Products/Applications/App.app $RUNNER_TEMP/Payload/
+          cd $RUNNER_TEMP
+          zip -r -q $GITHUB_WORKSPACE/Game.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ready-Game-IPA
+          path: Game.ipa
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
