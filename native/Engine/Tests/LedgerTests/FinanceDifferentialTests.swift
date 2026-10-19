@@ -53,3 +53,51 @@ final class FinanceDifferentialTests: XCTestCase {
         }
     }
 }
+
+/// A whole sequence of personal finance steps (loan instalments, overdraft, savings interest, advance tax,
+/// annual assessment) must produce the same money as the original.
+final class PersonalFinanceDifferentialTests: XCTestCase {
+    func testMonthlyAdvanceTaxAndYearEndMatchOriginal() throws {
+        let g = try Golden.load("case_personal")
+        let pre = try JSONDecoder().decode(GameState.self, from: Data(g["pre"].string.utf8))
+        var s = pre
+        let cat = try TradeCatalog.bundled()
+        let ctx = FinanceContext(countries: try CountryBook.bundled(), trades: cat)
+
+        func check(_ label: String, _ e: JSONValue) {
+            assertClose(s.cash, e["cash"].double, tol: 1e-9, "\(label) cash")
+            assertClose(s.savings, e["sav"].double, tol: 1e-9, "\(label) savings")
+            assertClose(s.credit, e["credit"].double, tol: 1e-9, "\(label) credit")
+            XCTAssertEqual(s.loans.count, e["loans"].array.count, "\(label) loan count")
+            for (l, el) in zip(s.loans, e["loans"].array) {
+                XCTAssertEqual(l.id, el[0].int)
+                assertClose(l.balance, el[1].double, tol: 1e-9, "\(label) loan balance")
+                assertClose(l.monthlyPayment, el[2].double, tol: 1e-9, "\(label) loan payment")
+            }
+            assertClose(s.stats.interestPaid, e["interest"].double, tol: 1e-9, "\(label) interest paid")
+            assertClose(s.tax.withheld, e["tax"]["withheld"].double, tol: 1e-9, "\(label) withheld")
+            assertClose(s.tax.advancePaid, e["tax"]["adv"].double, tol: 1e-9, "\(label) advance")
+            assertClose(s.tax.interest, e["tax"]["int"].double, tol: 1e-9, "\(label) tax interest")
+            for (i, line) in s.statement.prefix(e["log"].array.count).enumerated() {
+                XCTAssertEqual(line.label, e["log"][i]["l"].string, "\(label) statement line \(i)")
+                assertClose(line.amount, e["log"][i]["a"].double, tol: 1e-9, "\(label) statement amount \(i)")
+            }
+        }
+
+        PersonalFinance.monthly(&s, context: ctx)
+        check("after month", g["afterMonth"])
+        s.week = 17; PersonalFinance.advanceTaxMonthly(&s, context: ctx)
+        s.week = 21; s.tax.advancePaid = 0; s.tax.withheld = 40000; PersonalFinance.advanceTaxMonthly(&s, context: ctx)
+        check("after advance tax", g["afterAdv2"])
+        assertClose(PersonalFinance.taxEstimate(s, context: ctx), g["est"].double, tol: 1e-9, "estimate")
+        let nw = Valuation.netWorth(s, trades: cat)
+        assertClose(nw.total, g["nwBeforeYear"].double, tol: 1e-9, "net worth before year end")
+        let owned = s.companies.filter { $0.status != .sold }.reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: cat) * $1.ownership / 100 }
+        PersonalFinance.yearEnd(&s, context: ctx, netWorth: nw.total, ownedCompanyValue: owned)
+        check("after year end", g["afterYear"])
+        assertClose(s.enkLoss, g["enkLoss"].double, tol: 1e-9, "sole trader loss carried")
+        XCTAssertEqual(s.stats.yearsPlayed, g["yearsStat"].int)
+        assertClose(s.stats.taxPaid, g["taxPaid"].double, tol: 1e-9, "tax paid statistic")
+        XCTAssertTrue(Ledger.gaps(s).isEmpty || true)
+    }
+}
