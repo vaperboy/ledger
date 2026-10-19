@@ -83,7 +83,9 @@ public enum Marketing {
         let foot = !prem.isNull && Competition.isFootTraffic(kind)
         let destinations: [String: Double] = ["skires": 38, "indoorski": 30, "fun": 24]
         let online: Set<String> = ["webshop", "webdev", "mktg", "tutor"]
-        var base = destinations[bd.id] ?? (foot ? 20 : online.contains(bd.id) ? 9 : (bd.family == "project" || bd.family == "prod") ? 10 : bd.family == "logi" ? 11 : 12)
+        // Shops people need every week (food, everyday goods) are known to the whole neighbourhood without advertising.
+        let dailyNeeds: Set<String> = ["grocery", "kiosk", "bakery", "hardware", "pharmacy", "cafe"]
+        var base = destinations[bd.id] ?? (foot ? (dailyNeeds.contains(bd.id) ? 32 : 20) : online.contains(bd.id) ? 9 : (bd.family == "project" || bd.family == "prod") ? 10 : bd.family == "logi" ? 11 : 12)
         if foot, prem["loc"].double != 0 { base *= clamp(prem["loc"].double, 0.8, 1.25) }
         let pop = w.city(co)?.population ?? 150
         base *= clamp(1.25 - log10(max(20, pop)) * 0.12, 0.85, 1.15)

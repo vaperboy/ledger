@@ -17,13 +17,21 @@ struct BankView: View {
             let s = e.state
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
+                            Text("Cash and savings").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                            Text(cur.display(s.cash + s.savings)).font(.figure(32, weight: .bold)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                            HStack(spacing: 8) {
+                                Chip(text: "Credit " + Banking.creditWord(s.credit).lowercased(), tint: Theme.gain, symbol: "checkmark.shield.fill")
+                                Chip(text: "Bank rate " + Currency.percent(s.economy.policyRate, decimals: 2), tint: Theme.ivoryMuted, symbol: "percent")
+                            }
+                        }
+                    }
                     Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
                             SectionLabel("Accounts")
-                            ValueRow(label: "Current account", value: cur.display(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory)
-                            ValueRow(label: "Savings", value: cur.display(s.savings))
-                            ValueRow(label: "Credit standing", value: Banking.creditWord(s.credit))
-                            ValueRow(label: "Central bank rate", value: Currency.percent(s.economy.policyRate, decimals: 2))
+                            ListRow(symbol: "creditcard.fill", tint: Theme.ivoryMuted, title: "Current account", subtitle: "Everyday money", trailing: cur.display(s.cash), trailingTint: s.cash < 0 ? Theme.loss : Theme.ivory)
+                            ListRow(symbol: "building.columns.fill", tint: Theme.ivoryMuted, title: "Savings", subtitle: "Earns interest, can be moved any day", trailing: cur.display(s.savings))
                         }
                     }
                     Card {
@@ -34,7 +42,7 @@ struct BankView: View {
                                 Button("Save") { move(amount) }.buttonStyle(QuietButtonStyle())
                                 Button("Withdraw") { move(-amount) }.buttonStyle(QuietButtonStyle())
                             }
-                            ForEach(e.deposits) { d in ValueRow(label: "Fixed deposit · \(d.weeksLeft) wk left", value: cur.display(d.balance)) }
+                            ForEach(e.deposits) { d in ListRow(symbol: "lock.fill", tint: Theme.gold, title: "Fixed deposit", subtitle: "\(d.weeksLeft) weeks left", trailing: cur.display(d.balance)) }
                             HStack {
                                 ForEach([13, 26, 52], id: \.self) { w in
                                     Button("Lock \(w) wk") {
@@ -51,12 +59,9 @@ struct BankView: View {
                             let loans = s.loans.filter { $0.companyID == 0 }
                             if loans.isEmpty { Text("You owe nothing personally.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                             ForEach(loans) { l in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ValueRow(label: l.name, value: cur.display(l.balance))
-                                    ValueRow(label: "Monthly payment", value: cur.display(l.monthlyPayment))
-                                    Text("Interest \(Currency.percent(Banking.rate(of: l, state: s), decimals: 2))").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                                }
-                                Divider().overlay(Theme.hairline)
+                                ListRow(symbol: "doc.text.fill", tint: Theme.loss, title: l.name,
+                                        subtitle: "Interest \(Currency.percent(Banking.rate(of: l, state: s), decimals: 2)) · \(cur.display(l.monthlyPayment)) a month",
+                                        trailing: cur.display(l.balance), trailingSub: "left to pay")
                             }
                             if !loans.isEmpty {
                                 AmountField(title: "Pay back", currency: cur, amount: $repayAmount)

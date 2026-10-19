@@ -13,6 +13,7 @@ public extension GameEngine {
         for trade in ["cafe", "gym"] {
             _ = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: trade == "cafe" ? 4_000_000 : 9_000_000)
         }
+        e.resetHistory()
         for _ in 0..<days {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }

@@ -150,18 +150,43 @@ public enum CompanySetup {
     }
 
     @discardableResult
-    public static func buyEquipment(_ s: inout GameState, companyID: Int, equipmentID: String, quantity q: Double, data: GameData) -> Bool {
+    public static func buyEquipment(_ s: inout GameState, companyID: Int, equipmentID: String, quantity q: Double, data: GameData, preferFinancing: Bool = false) -> Bool {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let e = bd.equipment.first(where: { $0.id == equipmentID }) else { return false }
         let w = World(state: s, data: data)
         let co = s.companies[i]
         if let model = e.vehicleModels?.first, let v = data.catalog.tables.vehicles[model] {
             for _ in 0..<Int(q) {
                 let price = jsRound(roundTo(v.price * w.inflationIndex, step: 1000))
-                if s.companies[i].cash < price { return false }
-                Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: v.name)
+                // Like a real firm (and the original's autoSetup): buy outright when the cash is there, otherwise finance with
+                // 20% down and a five-year loan secured on the vehicle, otherwise lease. Original: `buyVehCore`.
+                var mode = "own", loanID = 0, lease = 0.0, bookValue = price
+                if s.companies[i].cash >= price && !(preferFinancing && s.companies[i].cash < price * 3) {
+                    Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: v.name)
+                } else if s.companies[i].cash >= price * 0.2 {
+                    mode = "fin"
+                    Payments.companyPays(&s, companyID: companyID, amount: price * 0.2, category: nil, label: "Down payment: \(v.name)")
+                    var loan = Loan(raw: [:])
+                    loan.id = s.makeID()
+                    loan.kind = "biz"
+                    loan.name = "Vehicle loan: \(v.name)"
+                    loan.balance = price * 0.8
+                    loan.originalAmount = price * 0.8
+                    loan.margin = Banking.creditMargin(s.credit) + 0.015
+                    loan.termMonths = 60
+                    loan.companyID = companyID
+                    loan.startWeek = s.week
+                    loan.isGuaranteed = s.companies[i].form != .limited
+                    loan.monthlyPayment = Loans.annuity(principal: price * 0.8, yearlyRate: s.economy.policyRate + loan.margin, months: 60)
+                    s.loans.append(loan)
+                    loanID = loan.id
+                } else {
+                    mode = "lease"; lease = jsRound(price * 0.0215); bookValue = 0
+                }
                 var list = s.companies[i].value("veh").array
-                list.append(.object(["id": .number(Double(s.makeID())), "eq": .string(e.id), "model": .string(model), "cost": .number(price), "bv": .number(price), "cond": 1, "km": 0,
-                                     "mode": "own", "loan": 0, "name": .string(v.name), "rel": 1]))
+                var rec: JSONValue = .object(["id": .number(Double(s.makeID())), "eq": .string(e.id), "model": .string(model), "cost": .number(price), "bv": .number(bookValue), "cond": 1, "km": 0,
+                                              "mode": .string(mode), "loan": .number(Double(loanID)), "name": .string(v.name), "rel": 1])
+                if mode == "lease" { rec["lease"] = .number(lease) }
+                list.append(rec)
                 s.companies[i].set("veh", .array(list))
             }
             return true
@@ -220,6 +245,10 @@ public enum CompanySetup {
         co.set("ins", .object([:])); co.set("flags", .object([:])); co.set("fm", .object([:]))
         co.set("lossCarry", 0); co.set("dist", 0); co.set("capital", 0); co.set("inj", 0); co.set("ownerSalary", 0)
         co.set("unitsW", 0); co.set("mgrQ", 0); co.set("eqc", 1); co.set("books", 0.5); co.set("group", 0)
+        // What the owner's own work would cost to replace: a buyer has to pay someone to do it. Used to value the company.
+        if let role = bd.standardStaff.first?.role, let base = data.catalog.tables.roles[role]?.baseMonthlyWage, bd.ownerFTE > 0 {
+            co.set("ownWage", .number(jsRound(Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: World(state: s, data: data).rates))))
+        }
         // A brand-new name is known only to friends and family.
         co.awareness = min(co.awareness, 10)
         s.companies.append(co)
@@ -329,25 +358,26 @@ public enum CompanySetup {
             }
         }
         let need = standardEquipment(bd, size: s.companies[i].size)
-        for e in bd.equipment {
+        // Fixed equipment first, vehicles last: vehicles can be financed or leased, a counter cannot.
+        for e in bd.equipment.filter({ $0.vehicleModels == nil }) + bd.equipment.filter({ $0.vehicleModels != nil }) {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
             if q <= 0 { continue }
             var qq = q
-            var ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data)
-            while !ok && qq > 1 { qq = max(1, (qq / 2).rounded(.down)); ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data) }
+            var ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true)
+            while !ok && qq > 1 { qq = max(1, (qq / 2).rounded(.down)); ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true) }
             if !ok { log.append("equipment \(e.id): not enough cash") }
         }
         if !bd.hasTrait("noStaff") && bd.family != "rent" {
             for (idx, st) in standardStaff(bd, size: s.companies[i].size).enumerated() {
                 let have = s.companies[i].staff.filter { $0.role == st.role }.count
                 var n = st.count - have
-                if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil { n = max(0, n - 1) }
+                if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil && s.companies[i].ownerHours >= 20 { n = max(0, n - 1) }
                 var attempts = 0
                 while n > 0 && attempts < 6 {
                     attempts += 1
                     let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
                     guard !cands.isEmpty else { break }
-                    let pick = cands[cands.count / 2]
+                    let pick = Hiring.bestValue(cands)
                     let cur = w.currency(s.companies[i])
                     let offer = cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
                     if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }

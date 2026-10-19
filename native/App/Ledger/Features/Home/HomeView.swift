@@ -97,6 +97,7 @@ struct NetWorthCard: View {
                     Spacer()
                     if owed > 0 { Chip(text: "Debt " + store.short(owed), tint: Theme.loss) }
                 }
+                NetWorthChart(engine: engine)
             }
         }
     }

@@ -291,6 +291,7 @@ public struct GameEngine {
                 state.companies[i].set("trf", .array(trf))
             }
         }
+        AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }

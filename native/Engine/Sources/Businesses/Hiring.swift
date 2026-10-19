@@ -97,6 +97,13 @@ public enum Hiring {
 
     public enum HireResult: Equatable { case ok, taken, refused }
 
+    /// The candidate a sensible manager would pick: the most skill for the money, among people who can do the job.
+    public static func bestValue(_ cands: [Person]) -> Person {
+        let able = cands.filter { $0.skill >= 35 }
+        let pool = able.isEmpty ? cands : able
+        return pool.max { (0.5 + $0.skill / 100) / max(1, $0.askingMonthlyWage) < (0.5 + $1.skill / 100) / max(1, $1.askingMonthlyWage) } ?? cands[0]
+    }
+
     /// Make an offer. The lower it is against what the person asks, the likelier a refusal. Original: `hireWorkerCore`.
     public static func hire(_ personID: Int, into companyID: Int, monthlyWage wage0: Double, state s: inout GameState, data: GameData,
                             fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {

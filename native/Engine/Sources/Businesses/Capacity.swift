@@ -186,7 +186,8 @@ public enum CapacityModel {
         if bd.family == "project" && !bd.hasTrait("dev") { r.capacity *= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
         if bd.standardStaff.count >= 2 && !noWork {
             let minOld = r.parts.map { $0.capacity }.min() ?? 0
-            let mult: Double? = minOld > 0 ? r.capacity / minOld : nil
+            // When an empty support role held capacity at zero there is no ratio to keep: start from the covered capacity itself.
+            let mult: Double? = minOld > 0 ? r.capacity / minOld : 1
             var changed = false
             for (i, s) in bd.standardStaff.enumerated() where i > 0 {
                 guard let pi = r.parts.firstIndex(where: { $0.key == "role:\(s.role)" }), !co.staff.contains(where: { $0.role == s.role }) else { continue }

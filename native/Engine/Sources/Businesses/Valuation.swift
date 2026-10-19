@@ -40,7 +40,9 @@ public enum Valuation {
         }
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
         let mult: Double = bd.family == "fin" ? 1.0 : bd.family == "rent" ? 0.0 : bd.family == "energy" ? 5 : (bd.margin > 0.2 ? 5 : 4)
-        let prof = max(0, CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week))
+        // Profit that is really the owner's own pay is not goodwill: a buyer would have to hire someone to do that work.
+        let ownerLabour = co.managerID == nil ? bd.ownerFTE * co.num("ownWage") * 12 : 0
+        let prof = max(0, CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) - ownerLabour)
         // Buyers pay for a track record: goodwill counts fully after two years of accounts, a quarter after six months.
         let trust = min(1, Double(co.monthlyHistory.count) / 24)
         let goodwill = (co.status == .open && (s.week - co.foundedWeek > 12))

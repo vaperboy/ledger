@@ -61,6 +61,10 @@ extension CompanyModelDifferentialTests {
             let c = CapacityModel.compute(co, bd, w)
             let ok = abs(c.capacity - e["cap"].double) <= 1e-6 * max(1, e["cap"].double)
             if ok { matched += 1; continue }
+            // Deliberate fix (docs/BALANCE_PARITY.md): with an empty support role the original's capacity collapsed to zero even
+            // though its own step meant the team to cover it. Same parts, the original 0, ours the covered capacity: accepted.
+            let sameParts = zip(c.parts, e["cparts"].array).allSatisfy { abs($0.capacity - $1["cap"].double) <= 1e-6 * max(1, $1["cap"].double) }
+            if e["cap"].double == 0 && c.capacity > 0 && sameParts { matched += 1; continue }
             let mine = c.parts.map { "\($0.key)=\(String(format: "%.1f", $0.capacity))" }.joined(separator: ",")
             let theirs = e["cparts"].array.map { "\($0["k"].string)=\(String(format: "%.1f", $0["cap"].double))" }.joined(separator: ",")
             report.append("\(e["type"].string)#\(idStr): cap swift \(String(format: "%.2f", c.capacity)) vs \(String(format: "%.2f", e["cap"].double)) | swift [\(mine)] | orig [\(theirs)]")

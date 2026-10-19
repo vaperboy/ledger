@@ -9,6 +9,8 @@ public protocol TradeFacts: Sendable {
     var fixedWeekly: Double { get }
     /// Profit margin used to judge what the business is worth
     var margin: Double { get }
+    /// How much of a full-time job the owner does in the business when there is no manager (0 = none)
+    var ownerFTE: Double { get }
 }
 
 public protocol TradeCatalogProviding: Sendable {
