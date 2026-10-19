@@ -24,7 +24,7 @@ struct FinanceView: View {
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
                     SectionTabs(items: companyID == nil ? Section.allCases : [.overview, .taxes, .costs, .reports], title: { $0.rawValue }, selection: $section)
-                        .padding(.horizontal, -Theme.Space.l)
+                        .padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: overview(e, o)
                     case .bank: BankContent()
@@ -34,7 +34,7 @@ struct FinanceView: View {
                     case .reports: reports(e, o)
                     }
                 }
-                .padding(Theme.Space.l)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -58,7 +58,7 @@ struct FinanceView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Next 30 days")
                     HStack(alignment: .firstTextBaseline) {
-                        Text(store.money(o.dueWithin30Days)).font(.figure(30))
+                        Text(store.money(o.dueWithin30Days)).font(.hero(34))
                         Spacer()
                         Chip(text: o.shortfall > 0 ? "Short by \(store.short(o.shortfall))" : "Covered", tint: o.shortfall > 0 ? Theme.loss : Theme.gain)
                     }
@@ -70,7 +70,7 @@ struct FinanceView: View {
             if !o.taxes.isEmpty {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        HStack { Text("Tax summary").font(.bodyText.weight(.semibold)); Spacer(); Text("Owed now").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                        HStack { SectionLabel("Tax summary"); Spacer(); Text("Owed now").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                         ForEach(o.taxes.prefix(4)) { l in
                             ListRow(symbol: l.label.contains("VAT") || l.label.lowercased().contains("sales") ? "percent" : "building.columns", tint: Theme.ivoryMuted,
                                     title: l.label, subtitle: l.detail, trailing: store.short(l.amount))
@@ -80,7 +80,7 @@ struct FinanceView: View {
             }
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("Upcoming payments").font(.bodyText.weight(.semibold))
+                    SectionLabel("Upcoming payments")
                     if o.upcoming.isEmpty { Text("Nothing is due.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     ForEach(o.upcoming.prefix(8)) { u in
                         ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted,
@@ -91,7 +91,7 @@ struct FinanceView: View {
             if !o.costsThisMonth.isEmpty {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        Text("Business costs · this month").font(.bodyText.weight(.semibold))
+                        SectionLabel("Business costs · this month")
                         costDonut(o.costsThisMonth, o.costTotalThisMonth)
                     }
                 }
@@ -107,7 +107,7 @@ struct FinanceView: View {
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionLabel("Owed now")
-                    Text(store.money(o.taxesOwed)).font(.figure(30))
+                    Text(store.money(o.taxesOwed)).font(.hero(34))
                     Text("Corporate tax is worked out on taxable profit, after losses carried forward. VAT is collected for the state and is not income.").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 }
             }
@@ -206,7 +206,7 @@ struct FinanceView: View {
                     SectionLabel("Profit and loss")
                     ValueRow(label: "Revenue this month", value: store.money(o.monthRevenue))
                     ValueRow(label: "Profit this month", value: store.money(o.monthProfit), tint: Theme.change(o.monthProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.monthProfit))
-                    Divider().overlay(Theme.hairline)
+                    Hairline()
                     ValueRow(label: "Revenue this year", value: store.money(o.yearRevenue))
                     ValueRow(label: "Profit this year", value: store.money(o.yearProfit), tint: Theme.change(o.yearProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.yearProfit))
                     ValueRow(label: "Profit last year", value: store.money(o.lastYearProfit))
@@ -217,7 +217,7 @@ struct FinanceView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         SectionLabel("By company").padding(Theme.Space.l)
                         ForEach(e.state.liveCompanies.filter { $0.type != "hold" }) { co in
-                            Divider().overlay(Theme.hairline)
+                            Hairline()
                             let p = Books.profit(co.books.year)
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) { Text(co.name).font(.bodyText.weight(.medium)); Text("Revenue \(store.short(co.books.year["rev"] ?? 0, in: co))").font(.caption).foregroundStyle(Theme.ivoryMuted) }

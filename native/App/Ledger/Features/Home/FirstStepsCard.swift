@@ -10,24 +10,19 @@ struct FirstStepsCard: View {
         let steps = engine.firstSteps()
         let done = steps.filter { $0.done }.count
         if done < steps.count {
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Button { withAnimation(.snappy) { collapsed.toggle() } } label: {
-                        HStack {
-                            Text("First steps").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory)
-                            Text("· \(done) of \(steps.count)").font(.label).foregroundStyle(Theme.ivoryMuted)
-                            Spacer()
-                            Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(Theme.ivoryFaint).rotationEffect(.degrees(collapsed ? -90 : 0))
-                        }.contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                    ProgressView(value: Double(done), total: Double(steps.count)).tint(Theme.gold)
-                    if !collapsed {
+            LedgerSection(title: "First steps", trailing: {
+                Button { withAnimation(.snappy) { collapsed.toggle() } } label: {
+                    Text("\(done) of \(steps.count)  \(collapsed ? "›" : "⌄")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }.buttonStyle(.plain)
+            }) {
+                if !collapsed {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(steps) { s in
                             HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: s.done ? "checkmark.circle.fill" : "circle").foregroundStyle(s.done ? Theme.gain : Theme.ivoryFaint)
+                                Image(systemName: s.done ? "checkmark" : "circle").font(.system(size: 11, weight: .semibold)).foregroundStyle(s.done ? Theme.gain : Theme.ivoryFaint).frame(width: 16).padding(.top, 3)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(s.title).font(.bodyText.weight(.medium)).foregroundStyle(s.done ? Theme.ivoryMuted : Theme.ivory).strikethrough(s.done, color: Theme.ivoryFaint)
-                                    if !s.done { Text(s.detail).font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                                    Text(s.title).font(.system(size: 13.5)).foregroundStyle(s.done ? Theme.ivoryMuted : Theme.ivory).strikethrough(s.done, color: Theme.ivoryFaint)
+                                    if !s.done { Text(s.detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                                 }
                             }
                         }

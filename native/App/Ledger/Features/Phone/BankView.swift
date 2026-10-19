@@ -16,16 +16,15 @@ struct BankContent: View {
         if let e = store.engine {
             let cur = e.homeCurrency
             let s = e.state
-                VStack(spacing: Theme.Space.l) {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        Text("Cash and savings").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                        Text(cur.display(s.cash + s.savings)).font(.figure(32, weight: .bold)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                        HStack(spacing: 8) {
-                            Chip(text: "Credit " + Banking.creditWord(s.credit).lowercased(), tint: Theme.gain, symbol: "checkmark.shield.fill")
-                            Chip(text: "Bank rate " + Currency.percent(s.economy.policyRate, decimals: 2), tint: Theme.ivoryMuted, symbol: "percent")
-                        }
-                    }
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Cash and savings").capsLabel()
+                    Text(cur.display(s.cash + s.savings)).font(.hero(36)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    KeyFigures(items: [
+                        .init(label: "Current account", value: store.short(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory),
+                        .init(label: "Credit", value: Banking.creditWord(s.credit)),
+                        .init(label: "Bank rate", value: Currency.percent(s.economy.policyRate, decimals: 2)),
+                    ]).padding(.top, 8)
                 }
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -95,7 +94,6 @@ struct BankContent: View {
                     }
                 }
             }
-
         }
     }
 

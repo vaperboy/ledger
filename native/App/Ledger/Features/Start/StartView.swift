@@ -25,7 +25,7 @@ struct StartView: View {
         ScrollView {
             VStack(spacing: Theme.Space.xl) {
                 VStack(spacing: 6) {
-                    Text("LEDGER").font(.system(size: 40, weight: .semibold, design: .default)).tracking(8).foregroundStyle(Theme.goldGradient)
+                    Text("LEDGER").font(.serifTitle(42)).tracking(9).foregroundStyle(Theme.ivory)
                     Text("Business tycoon simulator").font(.label).tracking(1.5).foregroundStyle(Theme.ivoryFaint)
                 }.padding(.top, 48)
 
@@ -38,9 +38,8 @@ struct StartView: View {
                         SectionLabel("New game")
                         TextField("Your name", text: $name)
                             .textInputAutocapitalization(.words)
-                            .padding(.horizontal, Theme.Space.m).padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).fill(Theme.pill))
-                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 0.75))
+                            .padding(.vertical, 12)
+                            .overlay(alignment: .bottom) { Rectangle().fill(Theme.ivory.opacity(0.25)).frame(height: 0.5) }
                         Picker("Home country", selection: $countryCode) {
                             ForEach(countries) { c in Text("\(c.flag) \(c.name)").tag(c.code) }
                         }
@@ -68,7 +67,7 @@ struct StartView: View {
                     }
                 }
             }
-            .padding(Theme.Space.l)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }

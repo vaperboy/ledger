@@ -6,24 +6,26 @@ struct LedgerApp: App {
     @StateObject private var store = GameStore()
 
     init() {
+        let ivory = UIColor(red: 0.937, green: 0.914, blue: 0.875, alpha: 1)
+        let faint = UIColor(red: 0.424, green: 0.416, blue: 0.384, alpha: 1), gold = UIColor(red: 0.812, green: 0.694, blue: 0.522, alpha: 1)
         let tabs = UITabBarAppearance()
         tabs.configureWithOpaqueBackground()
-        tabs.backgroundColor = UIColor(red: 0.043, green: 0.043, blue: 0.043, alpha: 0.97)
-        tabs.shadowColor = UIColor.white.withAlphaComponent(0.08)
-        let faint = UIColor(red: 0.643, green: 0.647, blue: 0.643, alpha: 1), gold = UIColor(red: 0.985, green: 0.925, blue: 0.810, alpha: 1)
+        tabs.backgroundColor = UIColor(red: 0.051, green: 0.059, blue: 0.067, alpha: 1)
+        tabs.shadowColor = ivory.withAlphaComponent(0.09)
         for item in [tabs.stackedLayoutAppearance, tabs.inlineLayoutAppearance, tabs.compactInlineLayoutAppearance] {
             item.normal.iconColor = faint; item.normal.titleTextAttributes = [.foregroundColor: faint]
             item.selected.iconColor = gold; item.selected.titleTextAttributes = [.foregroundColor: gold]
         }
         UITabBar.appearance().standardAppearance = tabs
         UITabBar.appearance().scrollEdgeAppearance = tabs
+        let serif = UIFont.systemFont(ofSize: 18, weight: .medium).fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: 18) } ?? UIFont.systemFont(ofSize: 18)
         let bars = UINavigationBarAppearance()
         bars.configureWithTransparentBackground()
-        bars.titleTextAttributes = [.foregroundColor: UIColor(red: 0.965, green: 0.945, blue: 0.910, alpha: 1)]
-        bars.largeTitleTextAttributes = [.foregroundColor: UIColor(red: 0.965, green: 0.945, blue: 0.910, alpha: 1)]
+        bars.titleTextAttributes = [.foregroundColor: ivory, .font: serif]
+        bars.largeTitleTextAttributes = [.foregroundColor: ivory]
         UINavigationBar.appearance().standardAppearance = bars
         UINavigationBar.appearance().scrollEdgeAppearance = bars
-        UITableViewCell.appearance().backgroundColor = UIColor(red: 0.105, green: 0.112, blue: 0.120, alpha: 0.95)
+        UITableViewCell.appearance().backgroundColor = UIColor(red: 0.067, green: 0.075, blue: 0.082, alpha: 1)
     }
 
     var body: some Scene {

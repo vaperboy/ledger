@@ -18,8 +18,8 @@ struct CompanyMoney: View {
         VStack(spacing: Theme.Space.l) {
             GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Company cash").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                    Text(cur.display(company.cash)).font(.figure(30, weight: .bold)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text("Company cash").capsLabel()
+                    Text(cur.display(company.cash)).font(.hero(34)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
                     HStack(spacing: 8) {
                         Chip(text: "Your account " + store.short(engine.state.cash), tint: Theme.ivoryMuted, symbol: "person.fill")
                         if company.vatBalance > 0 { Chip(text: "VAT owed " + cur.short(company.vatBalance), tint: Theme.caution) }
@@ -73,7 +73,7 @@ struct CompanyMoney: View {
                     row("Marketing", "mkt", books, cur)
                     row("Interest", "int", books, cur)
                     HStack {
-                        Text("Profit").font(.bodyText.weight(.semibold)); Spacer()
+                        SectionLabel("Profit"); Spacer()
                         figure(Books.profit(books.week), cur); figure(Books.profit(books.month), cur); figure(Books.profit(books.year), cur)
                     }
                 }

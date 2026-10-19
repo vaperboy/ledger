@@ -12,7 +12,7 @@ import Simulation
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
     case home, companies, money, inbox, phone
     var id: String { rawValue }
-    var title: String { switch self { case .home: return "Home"; case .companies: return "Companies"; case .money: return "Money"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
+    var title: String { switch self { case .home: return "Home"; case .companies: return "Group"; case .money: return "Money"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
     var symbol: String {
         switch self { case .home: return "house"; case .companies: return "building.2"; case .money: return "banknote"; case .phone: return "iphone.gen3"; case .inbox: return "tray" }
     }

@@ -17,7 +17,7 @@ struct CompanyMarketing: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Awareness").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     HStack(alignment: .firstTextBaseline) {
-                        Text("\(Int(company.awareness.rounded()))%").font(.figure(32, weight: .bold))
+                        Text("\(Int(company.awareness.rounded()))%").font(.hero(34))
                         Spacer()
                         let spend = mkt.object.values.reduce(0) { $0 + $1["b"].double }
                         Chip(text: spend > 0 ? cur.short(spend) + " a week" : "No campaigns", tint: spend > 0 ? Theme.gold : Theme.ivoryMuted, symbol: "megaphone.fill")

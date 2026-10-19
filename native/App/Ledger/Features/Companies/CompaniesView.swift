@@ -21,27 +21,43 @@ struct CompaniesView: View {
                     let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            HStack(alignment: .lastTextBaseline) {
+                                Text("Group").font(.serifTitle(28))
+                                Spacer()
+                                if !cos.isEmpty {
+                                    Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
+                                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                            }
                             if cos.isEmpty {
-                                Card {
+                                LedgerSection("No companies yet") {
                                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                                        Text("No companies yet").font(.heading)
                                         Text("Pick a trade, see the full start-up cost, then decide.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                                         Button("Choose a trade") { path.append(.newCompany) }.buttonStyle(GoldButtonStyle())
                                     }
                                 }
                             } else {
                                 GroupSummary(engine: e, rows: rows.map { $0.h }, staff: cos.reduce(0) { $0 + $1.staff.count })
-                                HStack {
-                                    Text("Sort by").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                                    SectionTabs(items: Sort.allCases, title: { $0.rawValue }, selection: $sort).padding(.horizontal, -Theme.Space.l)
-                                }
-                                if sizeClass == .regular {
-                                    CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
-                                } else {
-                                    Card(padding: 0) {
+                                LedgerSection(title: "Companies", trailing: {
+                                    Menu {
+                                        Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                                    } label: {
+                                        Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    }
+                                }) {
+                                    if sizeClass == .regular {
+                                        CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
+                                    } else {
                                         VStack(spacing: 0) {
+                                            HStack(spacing: 8) {
+                                                Text("Company").frame(maxWidth: .infinity, alignment: .leading)
+                                                Text("Value").frame(width: 62, alignment: .trailing)
+                                                Text("Profit").frame(width: 62, alignment: .trailing)
+                                                Text("Revenue").frame(width: 50, alignment: .trailing)
+                                            }
+                                            .font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                                             ForEach(Array(rows.enumerated()), id: \.element.co.id) { i, r in
-                                                if i > 0 { Divider().overlay(Theme.hairline).padding(.leading, Theme.Space.l) }
+                                                Hairline()
                                                 NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(.plain)
                                             }
                                         }
@@ -49,14 +65,15 @@ struct CompaniesView: View {
                                 }
                             }
                         }
-                        .padding(Theme.Space.l)
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
+                    .scrollIndicators(.hidden)
                 }
             }
             .ledgerBackground()
-            .navigationTitle("Companies")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(for: CompanyRoute.self) { route in
                 switch route {
                 case .company(let id): CompanyDetailView(companyID: id)
@@ -85,7 +102,7 @@ struct CompaniesView: View {
     }
 }
 
-/// The group in one line of figures: what it is worth, what it earns, what it holds.
+/// The group as a portfolio: what it is worth, how that divides, what it earns and holds, and how it did month by month.
 struct GroupSummary: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -93,25 +110,40 @@ struct GroupSummary: View {
     var staff: Int
     var body: some View {
         let profit = rows.reduce(0) { $0 + $1.profitTTM }, revenue = rows.reduce(0) { $0 + $1.revenueTTM }
-        Card {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Group").font(.bodyText.weight(.semibold))
-                    Spacer()
-                    Text("\(rows.count) \(rows.count == 1 ? "company" : "companies") · \(staff) staff").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                }
-                HStack(alignment: .top, spacing: Theme.Space.l) {
-                    Stat(label: "Worth (your share)", value: store.short(engine.netWorth.companies))
-                    Stat(label: "Profit, 12 mo", value: store.short(profit), tint: profit < 0 ? Theme.loss : Theme.ivory)
-                    Stat(label: "Revenue, 12 mo", value: store.short(revenue))
-                }
-                HStack(alignment: .top, spacing: Theme.Space.l) {
-                    Stat(label: "Cash in companies", value: store.short(engine.state.liveCompanies.reduce(0) { $0 + max(0, $1.cash) }))
-                    Stat(label: "Debt", value: store.short(rows.reduce(0) { $0 + $1.debt }))
-                    Stat(label: "Margin", value: revenue > 0 ? String(format: "%.0f%%", profit / revenue * 100) : "–", tint: Theme.change(profit))
+        let change = DayHistory.change(engine.dayHistory.companies, days: 30)
+        let cash = engine.state.liveCompanies.reduce(0) { $0 + max(0, $1.cash) }
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Value of holdings").capsLabel()
+            HStack(alignment: .firstTextBaseline) {
+                Text(store.money(engine.netWorth.companies)).font(.hero(36)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.55).lineLimit(1)
+                Spacer(minLength: 6)
+                if let change, abs(change.amount) >= 1 {
+                    Text((change.amount > 0 ? "+" : "−") + store.short(abs(change.amount)) + " · 30 d").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.change(change.amount))
                 }
             }
+            AllocationBar(parts: rows.map { $0.value }.sorted(by: >)).padding(.top, 8)
+            KeyFigures(items: [
+                .init(label: "Revenue 12 mo", value: store.short(revenue)),
+                .init(label: "Profit 12 mo", value: store.short(profit), tint: profit < 0 ? Theme.loss : Theme.gain),
+                .init(label: "Margin", value: revenue > 0 ? String(format: "%.1f%%", profit / revenue * 100) : "–", tint: revenue > 0 ? Theme.ivory : Theme.ivoryMuted),
+                .init(label: "Cash in companies", value: store.short(cash)),
+                .init(label: "Debt", value: store.short(rows.reduce(0) { $0 + $1.debt }), tint: rows.contains { $0.debt > 0 } ? Theme.loss : Theme.ivory),
+                .init(label: "Staff", value: "\(staff)"),
+            ]).padding(.top, 10)
+            let rev = aligned(\.revenueSeries), prof = aligned(\.profitSeries)
+            if rev.count >= 2 {
+                HStack { Text("Revenue and profit by month").capsLabel(); Spacer(); ChartKey(items: [("Revenue", Theme.gold), ("Profit", Theme.gain)]) }.padding(.top, 8)
+                RevenueProfitChart(revenue: rev, profit: prof, format: { store.short($0) }).padding(.top, 2)
+            }
         }
+    }
+
+    /// The last twelve closed months of every company added together, newest at the right.
+    private func aligned(_ key: KeyPath<CompanyHealth, [Double]>) -> [Double] {
+        var out = [Double](repeating: 0, count: 12)
+        for r in rows { let s = Array(r[keyPath: key].suffix(12)); for (i, v) in s.enumerated() { out[12 - s.count + i] += v } }
+        let firstLive = rows.map { min(12, $0[keyPath: key].count) }.max() ?? 0
+        return Array(out.suffix(max(firstLive, 0)))
     }
 }
 
@@ -122,19 +154,19 @@ struct CompanyTable: View {
     var rows: [(co: Company, h: CompanyHealth)]
     var open: (Int) -> Void
     var body: some View {
-        Card(padding: 0) {
+        Card(padding: 0, rule: false) {
             Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: 0) {
                 GridRow {
                     ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Staff", "Limited by"], id: \.self) { h in
-                        Text(h).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                        Text(h).font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
                 .padding(.vertical, Theme.Space.m)
                 ForEach(rows, id: \.co.id) { r in
-                    Divider().overlay(Theme.hairline).gridCellUnsizedAxes(.horizontal)
+                    Hairline().gridCellUnsizedAxes(.horizontal)
                     GridRow {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(r.co.name).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).lineLimit(1)
+                            Text(r.co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                             Text("\(engine.tradeName(r.co)) · \(engine.cityName(r.co))").font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         }
                         HealthChip(label: r.h.label)
@@ -146,16 +178,15 @@ struct CompanyTable: View {
                         num("\(r.co.staff.count)")
                         Text(r.h.bottleneck ?? "–").font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                     }
-                    .padding(.vertical, Theme.Space.m)
+                    .padding(.vertical, 10)
                     .contentShape(Rectangle())
                     .onTapGesture { open(r.co.id) }
                 }
             }
-            .padding(.horizontal, Theme.Space.l)
         }
     }
     private func num(_ s: String, _ c: Color = Theme.ivory) -> some View {
-        Text(s).font(.subheadline.monospacedDigit()).foregroundStyle(c).lineLimit(1)
+        Text(s).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(c).lineLimit(1)
     }
 }
 
@@ -191,7 +222,7 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the list: what it earns, what it holds, and what to watch, without opening it.
+/// One company in the list: name with trade and health, value, profit and a revenue trend, without opening it.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -200,36 +231,23 @@ struct CompanyRow: View {
 
     var body: some View {
         let co = company, h = health
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(co.name).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text("\(engine.tradeName(co)) · \(engine.cityName(co))").font(.caption).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+        let growing = (h.revenueGrowth ?? 0) >= 0
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(co.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                HStack(spacing: 0) {
+                    Text(engine.tradeName(co) + " · ").foregroundStyle(Theme.ivoryFaint)
+                    if co.status == .open { Text(h.label).foregroundStyle(HealthChip.tint(h.label)) } else { Text(co.status == .setup ? "Setting up" : co.status.rawValue.capitalized).foregroundStyle(Theme.ivoryMuted) }
                 }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text((h.profitTTM >= 0 ? "" : "−") + store.short(abs(h.profitTTM), in: co)).font(.subheadline.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(h.profitTTM < 0 ? Theme.loss : Theme.ivory)
-                    Text("profit, 12 mo").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
+                .font(.system(size: 11)).lineLimit(1)
             }
-            HStack(spacing: 10) {
-                if co.status == .open { HealthChip(label: h.label) } else { StatusChip(company: co) }
-                fact("Revenue", store.short(h.revenueTTM, in: co))
-                fact("Cash", store.short(co.cash, in: co), co.cash < 0 ? Theme.loss : Theme.ivoryMuted)
-                if let w = h.runwayWeeks { fact("Lasts", w >= 104 ? "2+ yr" : "\(Int(w)) wk", w < 8 ? Theme.loss : Theme.caution) }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(store.short(h.value, in: co)).font(.system(size: 13.5).monospacedDigit()).frame(width: 62, alignment: .trailing)
+            Text((h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co)).font(.system(size: 13.5).monospacedDigit())
+                .foregroundStyle(h.profitTTM < 0 ? Theme.loss : Theme.ivory).frame(width: 62, alignment: .trailing)
+            Sparkline(values: Array(h.revenueSeries.suffix(12)), tint: growing ? Theme.gain : Theme.loss, filled: false).frame(width: 46, height: 20)
         }
-        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
+        .padding(.vertical, 9)
         .contentShape(Rectangle())
-    }
-
-    private func fact(_ label: String, _ value: String, _ tint: Color = Theme.ivoryMuted) -> some View {
-        HStack(spacing: 3) {
-            Text(label).font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            Text(value).font(.caption.monospacedDigit()).foregroundStyle(tint)
-        }
     }
 }

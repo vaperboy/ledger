@@ -34,7 +34,7 @@ final class ScreenshotTests: XCTestCase {
         let next = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Next day")).firstMatch
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }
 
-        open("Companies"); sleep(1); shot("03-companies")
+        open("Group"); sleep(1); shot("03-group")
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-overview")

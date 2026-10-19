@@ -31,7 +31,7 @@ struct NewCompanyView: View {
                         }
                     }
                 }
-                .padding(Theme.Space.l)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
@@ -70,7 +70,7 @@ struct TradeDetailView: View {
                                 }
                             }
                             Text(t.blurb).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                            if let est { Text(cur.display(est.total)).font(.figure(28, weight: .bold)); Text("to start, everything included").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                            if let est { Text(cur.display(est.total)).font(.hero(34)); Text("to start, everything included").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                             if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
                         }
                     }
@@ -102,8 +102,8 @@ struct TradeDetailView: View {
                                 line("signature", "Registration", est.registration, cur)
                                 line("shield.fill", "Working buffer", est.buffer, cur)
                                 if est.abroad > 0 { line("globe", "Abroad", est.abroad, cur) }
-                                Divider().overlay(Theme.hairline)
-                                HStack { Text("Total").font(.bodyText.weight(.semibold)); Spacer(); Text(cur.display(est.total)).font(.figure(18)) }
+                                Hairline()
+                                HStack { SectionLabel("Total"); Spacer(); Text(cur.display(est.total)).font(.figure(18)) }
                                 Text("You have \(cur.display(Payments.liquid(e.state))) available. Share capital for a limited company: \(cur.display(est.shareCapital)).").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
@@ -121,7 +121,7 @@ struct TradeDetailView: View {
                         .buttonStyle(GoldButtonStyle()).disabled(ban != nil)
                     }
                 }
-                .padding(Theme.Space.l)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()

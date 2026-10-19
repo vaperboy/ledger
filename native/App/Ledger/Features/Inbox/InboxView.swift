@@ -41,7 +41,7 @@ struct InboxView: View {
                                     }
                                     ForEach(messages.prefix(80)) { m in MessageCard(message: m, week: e.state.week).id(m.id) }
                                 }
-                                .padding(Theme.Space.l)
+                                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
                             }
                             .onChange(of: store.openMessageID) { _, id in

@@ -13,8 +13,8 @@ struct StatsView: View {
                 VStack(spacing: Theme.Space.l) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            Text("Best net worth").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                            Text(store.money(max(s.stats.peakNetWorth, nw.total))).font(.figure(32, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
+                            Text("Best net worth").capsLabel()
+                            Text(store.money(max(s.stats.peakNetWorth, nw.total))).font(.hero(34)).minimumScaleFactor(0.6).lineLimit(1)
                             HStack(spacing: Theme.Space.l) {
                                 Stat(label: "Now", value: store.short(nw.total), tint: nw.total < 0 ? Theme.loss : Theme.ivory)
                                 Stat(label: "Weeks played", value: "\(s.week)")
@@ -41,7 +41,7 @@ struct StatsView: View {
                         }
                     }
                 }
-                .padding(Theme.Space.l)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()

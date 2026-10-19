@@ -64,7 +64,7 @@ struct CompanyTeam: View {
                     let roles = engine.hireableRoles(companyID: company.id)
                     if roles.isEmpty { Text("This trade has no staff roles.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
                     else {
-                        SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.l)
+                        SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.margin)
                         HStack {
                             Button("Job ad") { search(.ads) }.buttonStyle(QuietButtonStyle())
                             Button("Network") { search(.network) }.buttonStyle(QuietButtonStyle())

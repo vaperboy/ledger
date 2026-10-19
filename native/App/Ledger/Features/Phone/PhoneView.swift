@@ -15,15 +15,15 @@ struct PhoneView: View {
                     Card {
                         VStack(spacing: Theme.Space.m) {
                             row(.news, "newspaper.fill", "News", e.news.first?.text ?? "No news yet")
-                            Divider().overlay(Theme.hairline)
+                            Hairline()
                             row(.stats, "chart.bar.fill", "Stats", "Best net worth " + store.short(max(e.state.stats.peakNetWorth, e.netWorth.total)) + " · week \(e.state.week + 1)")
-                            Divider().overlay(Theme.hairline)
+                            Hairline()
                             row(.activity, "list.bullet.rectangle.fill", "Activity", e.state.statement.first.map { $0.label + " " + (($0.amount >= 0 ? "+" : "−") + store.short(abs($0.amount))) } ?? "Nothing has moved yet")
-                            Divider().overlay(Theme.hairline)
+                            Hairline()
                             row(.settings, "gearshape.fill", "Settings", "How much you decide, saving, haptics")
                         }
                     }
-                    .padding(Theme.Space.l)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
                 }
             }

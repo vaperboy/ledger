@@ -17,23 +17,20 @@ struct InvestContent: View {
             let held = list.reduce(0) { $0 + $1.value }
                 VStack(spacing: Theme.Space.l) {
                     SectionTabs(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
-                        .padding(.horizontal, -Theme.Space.l)
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            Text(kind == .stock ? "Your shares" : kind == .crypto ? "Your crypto" : "Your funds").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                            Text(cur.display(held)).font(.figure(30, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
-                            if kind == .crypto { Chip(text: "Very volatile: you can lose most of it", tint: Theme.caution, symbol: "exclamationmark.triangle.fill") }
-                        }
+                        .padding(.horizontal, -Theme.Space.margin)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(kind == .stock ? "Your shares" : kind == .crypto ? "Your crypto" : "Your funds").capsLabel()
+                        Text(cur.display(held)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)
+                        if kind == .crypto { Chip(text: "Very volatile: you can lose most of it", tint: Theme.caution, symbol: "exclamationmark.triangle.fill").padding(.top, 2) }
                     }
                     Card {
-                        LazyVStack(spacing: Theme.Space.m) {
-                            ForEach(list) { q in
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(list.enumerated()), id: \.element.id) { i, q in
+                                if i > 0 { Hairline() }
                                 Button { selected = q } label: {
                                     HStack(spacing: Theme.Space.m) {
-                                        Text(String(q.symbol.prefix(3))).font(.caption.weight(.bold)).foregroundStyle(Theme.gold)
-                                            .frame(width: 40, height: 40)
-                                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.gold.opacity(0.13)))
-                                            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Theme.gold.opacity(0.28), lineWidth: 0.75))
+                                        Text(String(q.symbol.prefix(4))).font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.gold)
+                                            .frame(width: 40, alignment: .leading)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(q.name).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                                             Text(q.value > 0 ? "You hold \(cur.short(q.value))" : q.symbol).font(.caption).foregroundStyle(q.value > 0 ? Theme.gold : Theme.ivoryFaint)
@@ -45,6 +42,7 @@ struct InvestContent: View {
                                             if let w = q.weekChange { Text(String(format: "%+.1f%%", w * 100)).font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(w)) }
                                         }
                                     }
+                                    .padding(.vertical, 10)
                                     .contentShape(Rectangle())
                                 }.buttonStyle(.plain)
                             }
@@ -69,12 +67,10 @@ struct TradeSheet: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                                Text(live.name).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                Text(cur.display(live.price)).font(.figure(30, weight: .bold))
-                                if let w = live.weekChange { Chip(text: String(format: "%+.1f%% this week", w * 100), tint: Theme.change(w), symbol: w >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill") }
-                            }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(live.name).capsLabel()
+                            Text(cur.display(live.price)).font(.hero(36))
+                            if let w = live.weekChange { Chip(text: String(format: "%+.1f%% this week", w * 100), tint: Theme.change(w), symbol: w >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill") }
                         }
                         if live.quantity > 0 {
                             Card {
@@ -104,7 +100,7 @@ struct TradeSheet: View {
                             }
                         }
                     }
-                    .padding(Theme.Space.l)
+                    .padding(Theme.Space.margin)
                 }
                 .ledgerBackground()
                 .navigationTitle(quote.symbol).navigationBarTitleDisplayMode(.inline)

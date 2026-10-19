@@ -13,9 +13,9 @@ struct CompanyOperations: View {
         VStack(spacing: Theme.Space.l) {
             GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("Price").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("Price").capsLabel()
                     HStack {
-                        Text(priceWord(company.priceLevel)).font(.figure(26, weight: .bold))
+                        Text(priceWord(company.priceLevel)).font(.hero(34))
                         Spacer()
                         Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
@@ -45,11 +45,11 @@ struct CompanyOperations: View {
                     Text("Maintenance").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SectionTabs(items: [0, 1, 2], title: { ["Minimal", "Normal", "Thorough"][$0] },
                                 selection: Binding(get: { company.maintenance }, set: { v in store.act { $0.setMaintenance(companyID: company.id, level: v) } }))
-                        .padding(.horizontal, -Theme.Space.l)
+                        .padding(.horizontal, -Theme.Space.margin)
                     Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
                                 selection: Binding(get: { company.int("stockPol", 1) }, set: { v in store.act { $0.setStockPolicy(companyID: company.id, level: v) } }))
-                        .padding(.horizontal, -Theme.Space.l)
+                        .padding(.horizontal, -Theme.Space.margin)
                     Text("Thorough upkeep costs more but equipment breaks less; generous stock avoids running out but ties up cash.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }

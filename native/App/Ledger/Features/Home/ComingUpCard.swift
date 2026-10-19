@@ -10,27 +10,24 @@ struct ComingUpCard: View {
     var body: some View {
         let o = engine.financeOverview()
         if !o.upcoming.isEmpty {
-            Card(padding: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        SectionLabel("Coming up").padding(Theme.Space.l)
-                        Spacer()
-                        Chip(text: o.shortfall > 0 ? "Short by \(store.short(o.shortfall))" : "Covered", tint: o.shortfall > 0 ? Theme.loss : Theme.gain).padding(.trailing, Theme.Space.l)
-                    }
-                    ForEach(o.upcoming.prefix(3)) { u in
-                        Divider().overlay(Theme.hairline)
+            LedgerSection(title: "Coming up", trailing: {
+                Chip(text: o.shortfall > 0 ? "Short by \(store.short(o.shortfall))" : "Covered", tint: o.shortfall > 0 ? Theme.loss : Theme.gain)
+            }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(o.upcoming.prefix(3).enumerated()), id: \.element.id) { i, u in
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(u.title).font(.bodyText).foregroundStyle(Theme.ivory)
-                                Text(u.daysAway <= 0 ? "Due today" : u.daysAway == 1 ? "Tomorrow" : "In \(u.daysAway) days · \(u.dateText)").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                Text(u.title).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                Text(u.daysAway <= 0 ? "Due today" : u.daysAway == 1 ? "Tomorrow" : "In \(u.daysAway) days · \(u.dateText)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                             }
-                            Spacer()
-                            Text(store.short(u.amount)).font(.figure(16)).foregroundStyle(Theme.ivory)
-                        }.padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
+                            Spacer(minLength: 8)
+                            Text(store.short(u.amount)).font(.figure(14.5, weight: .regular)).foregroundStyle(Theme.ivory)
+                        }.padding(.vertical, 9)
+                        if i < min(o.upcoming.count, 3) - 1 { Hairline() }
                     }
                     NavigationLink { FinanceView() } label: {
-                        HStack { Text("Finance & taxes").font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "chevron.right") }
-                            .foregroundStyle(Theme.gold).padding(Theme.Space.l)
+                        Text("Finance and taxes  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
                     }
                 }
             }

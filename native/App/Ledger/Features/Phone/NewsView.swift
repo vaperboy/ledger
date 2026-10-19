@@ -17,7 +17,7 @@ struct NewsView: View {
                         }
                     }
                 }
-                .padding(Theme.Space.l)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
