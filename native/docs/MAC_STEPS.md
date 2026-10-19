@@ -33,3 +33,16 @@ and shows the compiler's messages.
 * Keyboard with the money fields (Done button, scrolling).
 * Haptics (Settings › Haptic feedback).
 * Import a save from the web game.
+
+## Running the engine tests on Linux (no Mac)
+
+The engine is plain Swift. Ubuntu's archive has Swift 6.0 packages that can be unpacked without installing:
+
+```
+curl -O http://archive.ubuntu.com/ubuntu/pool/universe/s/swiftlang/swiftlang_6.0.3-2build1_amd64.deb
+curl -O http://archive.ubuntu.com/ubuntu/pool/universe/s/swiftlang/libswiftlang_6.0.3-2build1_amd64.deb
+curl -O "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxml2/libxml2-16_2.15.2+dfsg-0.1_amd64.deb"
+for f in *.deb; do dpkg -x "$f" root; done
+export PATH=$PWD/root/usr/libexec/swift/bin:$PATH LD_LIBRARY_PATH=$PWD/root/usr/lib/x86_64-linux-gnu
+cd native/Engine && swift test
+```

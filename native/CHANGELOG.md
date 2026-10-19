@@ -27,6 +27,18 @@
 * Marketing is prepaid and pauses instead of running a company into debt; a limited company is never valued below zero.
 * Inbox tabs (All / Decisions / Risks / Updates), compact rows for routine news; Home "Coming up" card.
 
+### Balance and realism (balance probe, see docs/BALANCE_REPORT.md)
+* Every supported trade played for three years in three scenarios; no trade makes you rich quickly; investments return market-like rates.
+* Fixed: vehicle trades could never open (vans financed or leased now); hired teams had zero capacity when a support role was empty;
+  people who quit were never replaced; complaints went unanswered without a manager; automated hiring overpaid; owner-run companies
+  were valued as if the owner's own work were profit; everyday shops were as unknown as niche boutiques.
+* New owner policies: replace people who leave, staff answer routine complaints (Settings, both on by default).
+* Net worth chart with 1W / 1M / 3M / 1Y / All, scaled to the period; weekly history kept for the long view.
+
+### Design (concept colours, Liquid Glass)
+* Colours sampled from the design concept; title-case card headings; icon rows; pill tabs; Liquid Glass on floating controls and the
+  hero box of each screen (real `glassEffect` when built with the iOS 26 SDK, drawn glass before); every screen moved to the new style.
+
 ### Fixed while comparing with the original
 * Awareness, reputation, fines, hype, idle closure, `{eq}` placeholders, equipment breakdowns (see `docs/BALANCE_PARITY.md`).
 
