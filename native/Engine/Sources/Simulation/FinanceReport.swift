@@ -52,6 +52,8 @@ public struct FinanceOverview: Equatable, Sendable {
     public var countryName = ""
     public var rules: [RuleLine] = []
     public var basis = ""
+    /// Licences, registrations and permits the companies need, with the fee for each (amount) and what keeping it costs (detail).
+    public var licences: [FinanceLine] = []
     /// Plain-language findings about how the books look.
     public var notes: [String] = []
     public var shortfall: Double { max(0, dueWithin30Days - cashAvailable) }
@@ -169,6 +171,20 @@ public extension GameEngine {
         if o.costTotalThisMonth > 0, let top = o.costsThisMonth.first, top.share > 0.5 { o.notes.append("\(top.label) is \(Int((top.share * 100).rounded()))% of this month's costs.") }
         if o.monthRevenue > 0, o.monthProfit < 0 { o.notes.append("This month costs more than the company earns so far.") }
         let country = companyID.flatMap { state.company($0) }.map { context.country(of: $0, state) } ?? homeCountry
+        let w = World(state: s, data: data)
+        for co in cos {
+            guard let bd = data.catalog[co.type] else { continue }
+            let held = co.value("docs")
+            for id in Documents.needed(co, bd, w) {
+                guard let def = Documents.definition(id, country: w.country(co), tables: data.catalog.tables) else { continue }
+                let fee = Documents.cost(id, company: co, bd, w), renewal = Documents.renewalCost(id, company: co, w)
+                if fee <= 0 && renewal <= 0 { continue }
+                let status = held[id]["st"].string
+                var detail = localized(def.issuer, companyID: co.id) + (def.weeks > 0 ? " · \(def.weeks) week\(def.weeks == 1 ? "" : "s") to process" : "")
+                if renewal > 0 { detail += " · renewal \(Int(renewal.rounded()))" }
+                o.licences.append(FinanceLine(id: "\(co.id)-\(id)", label: (cos.count > 1 ? co.name + ": " : "") + localized(def.name, companyID: co.id) + (status == "ok" ? " ✓" : ""), amount: fee, detail: detail))
+            }
+        }
         o.countryName = country.name
         func pct(_ v: Double) -> String { let p = v * 100; return p == p.rounded() ? "\(Int(p))%" : String(format: "%.1f%%", p) }
         o.rules = [

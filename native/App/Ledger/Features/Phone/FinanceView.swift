@@ -104,6 +104,20 @@ struct FinanceView: View {
                     Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
+            if !o.licences.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        SectionLabel("Licences and registrations")
+                        ForEach(o.licences) { l in
+                            VStack(alignment: .leading, spacing: 2) {
+                                ValueRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free")
+                                if !l.detail.isEmpty { Text(l.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            }
+                        }
+                        Text("Fees are the game's estimate of typical official fees.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
+            }
             Text("Game estimates, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }
     }

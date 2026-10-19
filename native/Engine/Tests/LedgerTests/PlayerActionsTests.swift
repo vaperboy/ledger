@@ -138,6 +138,7 @@ final class FinanceOverviewTests: XCTestCase {
         XCTAssertTrue(o.notes.last?.contains("estimates") ?? false)
         XCTAssertEqual(o.countryName, e.homeCountry.name)
         XCTAssertEqual(o.rules.count, 7)
+        XCTAssertTrue(o.licences.allSatisfy { $0.amount >= 0 && !$0.label.contains("{") }, "licence lines are priced and their text tokens resolved")
         XCTAssertTrue(o.basis.hasPrefix("Estimate"), "rates are labelled as estimates until somebody has checked them")
     }
 
