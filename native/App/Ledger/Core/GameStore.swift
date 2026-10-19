@@ -41,11 +41,14 @@ final class GameStore: ObservableObject {
 
     let saves: SaveStore?
     private var cancelAdvance = false
+    /// Launched with `-showcase` (screenshots, UI tests): a prepared game, and nothing is written to disk.
+    private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Ledger/Saves", isDirectory: true)
         saves = try? SaveStore(directory: base)
-        if let saves, saves.hasSave() { loadCurrent() }
+        if isShowcase, let e = try? GameEngine.showcase() { engine = e }
+        else if let saves, saves.hasSave() { loadCurrent() }
     }
 
     var hasGame: Bool { engine != nil }
@@ -73,7 +76,7 @@ final class GameStore: ObservableObject {
     }
 
     func save(backup: Bool = false) {
-        guard let saves, let engine else { return }
+        guard !isShowcase, let saves, let engine else { return }
         do {
             let summary = saves.summary(of: engine.state, trades: engine.data.catalog)
             try saves.save(engine.state, summary: summary)

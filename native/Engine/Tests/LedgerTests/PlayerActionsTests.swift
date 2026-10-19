@@ -81,3 +81,13 @@ final class TextTokenTests: XCTestCase {
         XCTAssertEqual(uk.localized("nothing to resolve"), "nothing to resolve")
     }
 }
+
+final class ShowcaseTests: XCTestCase {
+    func testShowcaseGameIsPopulatedAndConsistent() throws {
+        let e = try GameEngine.showcase(days: 60)
+        XCTAssertEqual(e.state.liveCompanies.count, 2)
+        XCTAssertGreaterThan(e.dayHistory.netWorth.count, 50)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTAssertFalse(e.state.isGameOver)
+    }
+}
