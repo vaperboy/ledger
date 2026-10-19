@@ -3,9 +3,8 @@ import GameCore
 
 /// One country's rules, derived from its data file (`Resources/countries.json`).
 ///
-/// All money amounts here are in the game's **accounting unit** (an internal unit the player never sees; the
-/// original game calls it "base units" and uses the Norwegian krone as the reference). A country's own currency
-/// is worth `fx` accounting units per 1 local unit. To show a player a local amount, divide by the country's
+/// All money amounts here are in the game's **accounting unit** (an internal unit the player never sees and that is not any
+/// country's currency). A country's own currency is worth `fx` accounting units per 1 local unit. To show a player a local amount, divide by the country's
 /// current exchange rate (see `ExchangeRates`).
 ///
 /// To change a country's economy, edit `countries.json`; no code needs to change (see docs/ADDING_CONTENT.md).
@@ -116,13 +115,14 @@ public struct Country: Equatable, Sendable, Identifiable {
     public func city(_ id: String) -> City? { cities.first { $0.id == id } }
 }
 
-/// The reference economy every country is compared with. Original: `REF_ECONOMY`.
+/// The price level the trades' prices, wages and rents are written at, and that every country is measured against. These are
+/// tuning constants of the game, not a country: each country's own numbers come only from its data file. Original: `REF_ECONOMY`.
 public enum ReferenceEconomy {
     public static let medianWage = 56000.0
     public static let priceIndex = 137.0
     public static let officeRent = 2500.0
     public static let spendPerPerson = 330000.0
-    /// The reference country's row in the round-20 economy table (Norway: cost 110, wage 97, buying power 90).
+    /// The baseline in the round-20 economy table: cost 110, wage 97, buying power 90.
     public static let round20Reference = (costIndex: 110.0, wageIndex: 97.0, buyingPowerIndex: 90.0)
 }
 
@@ -196,7 +196,7 @@ extension Country {
         // Cities. Original: MKCITY. Demand grows with the log of the city's population.
         let rentL = rentLevel, wageL = wageLevel, mkt = marketStrength, pl = priceLevel
         let derivedCities: [City] = p["cities"].array.map { x in
-            // The reference country (NO) lists its cities fully worked out, as objects. All others use the compact list form.
+            // A city written out in full (id, name, pop, rent, wage, dem, price) or in the compact form that derives the rest.
             if !x["id"].isNull {
                 return City(id: x["id"].string, name: x["name"].string, population: x["pop"].double,
                             rent: x["rent"].double, wage: x["wage"].double, demand: x["dem"].double, price: x["price"].double)
@@ -213,7 +213,17 @@ extension Country {
         // "Round 20" economy table (original: features/world/country_economics.js). Real-world cost, wage and
         // buying-power indices (USD-based) replace the first-draft price, wage and demand levels. Applied once.
         let ei = p["economyIndex"]
-        if ei.isNull {
+        if p["citiesFinal"].bool {
+            // The cities are written out in full in the data; only the country-level levels are derived.
+            cities = derivedCities
+            if ei.isNull { buyingPower = 1 } else {
+                let ref = ReferenceEconomy.round20Reference
+                priceLevel = r2(ei["costIndex"].double / ref.costIndex)
+                wageLevel = r2(ei["wageIndex"].double / ref.wageIndex)
+                marketStrength = 1
+                buyingPower = ei["buyingPowerIndex"].double / ref.buyingPowerIndex
+            }
+        } else if ei.isNull {
             cities = derivedCities
             buyingPower = 1
         } else {

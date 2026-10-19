@@ -52,12 +52,13 @@ public enum CompanySetup {
             return "\(a) & \(b) \(end)"
         }
         let starts = country.companyNameStarts
-        if roll < 0.82 { return coined(starts, &r) + " " + end }
+        if roll < 0.82 { return coined(starts, endings: country.pack["names"]["coinEnd"].array.map { $0.string }, &r) + " " + end }
         return (starts.isEmpty ? "Nova" : r.pick(starts)) + " " + end
     }
 
-    static func coined(_ starts: [String], _ r: inout DeterministicRandom) -> String {
-        let endings = ["vik", "heim", "dal", "nes", "lund", "berg", "strand", "haug", "sund", "fjell", "field", "wood", "ford", "ley", "ton", "brook", "val", "mont", "ville", "ex", "ra"]
+    /// A coined brand word from a local root and a local ending (`names.coinEnd` in the country's data). Original: `coinName`.
+    static func coined(_ starts: [String], endings: [String], _ r: inout DeterministicRandom) -> String {
+        let endings = endings.isEmpty ? ["ia", "ex", "ora", "on", "ix"] : endings
         var root = starts.isEmpty ? "Nova" : r.pick(starts).filter { $0.isLetter }
         if root.count > 6 { root = String(root.prefix(5)) }
         var tail = r.pick(endings)
@@ -112,7 +113,7 @@ public enum CompanySetup {
         s.companies[i].set("prem", .object(["kind": .string(kind), "m2": .number(m2), "rent": .number(rent), "owned": false, "val": 0, "loan": 0, "dep": .number(deposit),
                                             "loc": .number(lst.location), "lname": .string(lst.name), "landlord": .string(lst.landlord)]))
         var docs = s.companies[i].value("docs")
-        docs["stat"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
+        docs["lease_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
         s.companies[i].set("docs", docs)
         if fit > 0 {
             Payments.companyPays(&s, companyID: companyID, amount: fit, category: nil, label: "Fit-out of premises")
@@ -248,7 +249,7 @@ public enum CompanySetup {
         guard let a = pool.first(where: { $0["id"].int == accountantID }) ?? (pool.count > 1 ? pool[1] : pool.first) else { return }
         s.companies[i].set("acc", .object(["id": a["id"], "name": a["name"], "tier": a["tier"], "fee": a["fee"], "q": a["q"], "err": a["err"], "rating": a["rating"], "w0": .number(Double(s.week))]))
         var docs = s.companies[i].value("docs")
-        docs["acctr"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
+        docs["accountant_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
         s.companies[i].set("docs", docs)
     }
 
@@ -274,7 +275,7 @@ public enum CompanySetup {
         let co = tmp.companies[i]
         let w = World(state: tmp, data: data)
         var r = Estimate()
-        for d in Documents.needed(co, bd, w) where d != "mva_na" && d != "acctr" { r.documents += Documents.cost(d, company: co, bd, w) }
+        for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" && d != "accountant_agreement" { r.documents += Documents.cost(d, company: co, bd, w) }
         let need = standardEquipment(bd, size: size)
         for e in bd.equipment {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
@@ -314,7 +315,7 @@ public enum CompanySetup {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return ["unknown company"] }
         var log: [String] = []
         let w = World(state: s, data: data)
-        for d in Documents.needed(s.companies[i], bd, w) where d != "mva_na" {
+        for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" {
             let st = s.companies[i].value("docs")[d]["st"].string
             if st == "ok" || st == "applied" { continue }
             let r = Documents.apply(d, companyID: companyID, state: &s, data: data)

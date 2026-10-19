@@ -8,7 +8,7 @@ public enum Vat {
     public static func isExempt(_ co: Company, _ w: World) -> Bool {
         let c = w.country(co)
         let threshold = c.vatThreshold
-        if threshold <= 0 || Knobs.documentOK(co, "mva") { return false }
+        if threshold <= 0 || Knobs.documentOK(co, "vat") { return false }
         let t12 = co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue }
         return t12 < threshold
     }

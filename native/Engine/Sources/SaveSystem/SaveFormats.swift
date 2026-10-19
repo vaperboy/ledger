@@ -78,6 +78,7 @@ public enum LegacyImporter {
         guard root["cos"] != nil, root["week"] != nil else { throw SaveError.notAGameSave }
         if (root["v"]?.int ?? 3) > GameState.legacyVersion { throw SaveError.newerThanThisApp(root["v"]?.int ?? 0) }
         upgrade(&root)
+        LegacyIds.migrate(&root)
         // The native game is always played day by day.
         root["dmode"] = 1
         let patched = try JSONEncoder().encode(JSONValue.object(root))

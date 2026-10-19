@@ -6,15 +6,15 @@ public struct CountryBook: Sendable {
     public let countries: [Country]
     private let byCode: [String: Country]
 
-    /// The country whose currency is the accounting unit; its exchange rate never moves. Original: `BASE_COUNTRY`.
-    public static let baseCountryCode = "NO"
-
     public init(countries: [Country]) {
         self.countries = countries
         self.byCode = Dictionary(uniqueKeysWithValues: countries.map { ($0.code, $0) })
     }
 
     public subscript(code: String) -> Country? { byCode[code] }
+
+    /// A country by code; if the code is unknown the player's home country, never a hidden default country.
+    public func resolve(_ code: String, orHome home: String) -> Country { byCode[code] ?? byCode[home] ?? countries[0] }
 
     /// Which country hosts a city id. Original: `cityOf` (searches the current country first).
     public func city(_ id: String, preferring code: String? = nil) -> (country: Country, city: Country.City)? {

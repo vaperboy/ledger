@@ -90,7 +90,7 @@ public enum DemandModel {
         }
         // 60: commodities sell all they make (farms)
         // 86: some trades fit some countries better
-        let fit = tradeCountryFit(co)
+        let fit = tradeCountryFit(co, w)
         if fit != 1 && r.customers > 0 { r.customers *= fit }
         // 90: ways to sell (platforms, memberships, peak seasons, contracts)
         applyWaysToSell(&r, co, bd, w)
@@ -180,13 +180,8 @@ public enum DemandModel {
     }
 
     /// Original: `FIT57.dem`.
-    static func tradeCountryFit(_ co: Company) -> Double {
-        let table: [String: [String: Double]] = [
-            "pcbang": ["KR": 1.6, "JP": 1.15, "SG": 1.05, "BR": 1, "MX": 0.95, "US": 0.9, "_": 0.9],
-            "vineyard": ["FR": 1.1, "IT": 1.1, "ES": 1.05, "UK": 0.85, "DE": 0.95, "CH": 0.95, "CA": 0.9, "_": 1],
-            "dental": ["DE": 1.1, "JP": 1.1, "KR": 1.05, "FR": 1.05, "_": 1],
-        ]
-        guard let t = table[co.type] else { return 1 }
+    static func tradeCountryFit(_ co: Company, _ w: World) -> Double {
+        guard let t = w.balance.tradeCountryFit.demand[co.type] else { return 1 }
         return t[co.countryCode] ?? t["_"] ?? 1
     }
 
@@ -199,7 +194,7 @@ public enum DemandModel {
     }
 
     static func touristSeason(_ co: Company, _ w: World) -> Double {
-        let table = w.balance.tourismSeasonByCountry[co.countryCode] ?? w.balance.tourismSeasonByCountry["NO"] ?? Array(repeating: 1, count: 12)
+        let table = w.balance.tourismSeasonByCountry[co.countryCode] ?? Array(repeating: 1, count: 12)
         var f = table[GameCalendar.month(week: w.week)]
         for e in w.state.rest["wx56"]?["ev"].array ?? [] {
             let wk = Double(w.week)

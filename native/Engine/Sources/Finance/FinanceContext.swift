@@ -15,10 +15,8 @@ public struct FinanceContext: Sendable {
         self.lending = lending
     }
 
-    public func country(_ code: String, fallback: String) -> Country {
-        countries[code] ?? countries[fallback] ?? countries[CountryBook.baseCountryCode]!
-    }
-    public func homeCountry(_ s: GameState) -> Country { country(s.homeCountryCode, fallback: CountryBook.baseCountryCode) }
+    public func country(_ code: String, fallback: String) -> Country { countries.resolve(code, orHome: fallback) }
+    public func homeCountry(_ s: GameState) -> Country { country(s.homeCountryCode, fallback: s.homeCountryCode) }
     public func country(of co: Company, _ s: GameState) -> Country { country(co.countryCode, fallback: s.homeCountryCode) }
     public func rates(_ s: GameState) -> ExchangeRates { ExchangeRates(drift: s.exchangeRates.values) }
     public func currency(_ code: String, _ s: GameState) -> Currency { Currency(country: country(code, fallback: s.homeCountryCode), rates: rates(s)) }

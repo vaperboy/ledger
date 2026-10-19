@@ -36,7 +36,7 @@ public enum WorldWeek {
         E.inflation = clamp(E.inflation + (0.025 + (E.demand - 1) * 0.15 - E.inflation) * 0.01 + s.random.gauss() * 0.0003, 0.0, 0.1)
         s.economy = E
         if GameCalendar.isMonthEnd(week: s.week) {
-            let home = data.countries[s.homeCountryCode] ?? data.countries[CountryBook.baseCountryCode]!
+            let home = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
             let want = clamp(home.startingPolicyRate + (E.inflation - 0.03) * 0.9 + (E.demand - 1) * 0.5, 0.0025, 0.2)
             if abs(want - s.economy.policyRate) > 0.0035 && s.random.chance(0.35) {
                 let old = s.economy.policyRate

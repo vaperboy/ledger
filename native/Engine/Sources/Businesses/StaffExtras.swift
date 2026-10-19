@@ -7,8 +7,8 @@ import Employees
 /// Originals: `ONB_BASE`, `ONB_X`, `ONB_ROLE`, `onbMissing`, `staffExtra`, `managerOnboard` (engine/people/staff_extras.js).
 public enum StaffExtras {
     public static let baseItems: [(key: String, text: String)] = [
-        ("contract", "Employment contract signed"), ("tax", "Tax deduction registered"), ("areg", "Employment reported to the authorities"),
-        ("ins", "Injury insurance and pension set up"), ("hms", "Workplace safety introduction given"),
+        ("contract", "Employment contract signed"), ("tax", "Tax deduction registered"), ("authority_report", "Employment reported to the authorities"),
+        ("ins", "Injury insurance and pension set up"), ("safety_intro", "Workplace safety introduction given"),
     ]
     static let roleItem: [String: String] = [
         "food": "Food hygiene training documented", "police": "Police certificate", "drive": "Driving licence checked", "cert": "Trade certificate verified",

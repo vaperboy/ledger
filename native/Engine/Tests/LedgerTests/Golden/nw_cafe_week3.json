@@ -1,1 +1,41 @@
-{"nw":{"personal":297958266.8861,"inv":0,"crypto":0,"funds":0,"cos":2149555,"debt":126931.09466704293,"total":299980890.791433},"cv":2149555,"assets":2149554.8764414922,"debts":0,"ebit12":0,"coAssets":519424.05073,"weekCost":16066.160573695368,"od":48198.48172108611,"eqBook":519424.05073,"offer":{"cons":{"max":459000,"margin":0.075,"band":"C","ownBank":0},"biz":{"max":75254000,"margin":0.055,"band":"C","ownBank":0},"mort":{"max":889000,"margin":0.033,"band":"C","ownBank":0}},"rate":0.08249999999999999,"tax":0}
+{
+ "nw": {
+  "personal": 297958266.8861,
+  "inv": 0,
+  "crypto": 0,
+  "funds": 0,
+  "cos": 2149555,
+  "debt": 126931.09466704293,
+  "total": 299980890.791433
+ },
+ "cv": 2149555,
+ "assets": 2149554.8764414922,
+ "debts": 0,
+ "ebit12": 0,
+ "coAssets": 519424.05073,
+ "weekCost": 16066.160573695368,
+ "od": 48198.48172108611,
+ "eqBook": 519424.05073,
+ "offer": {
+  "cons": {
+   "max": 418000,
+   "margin": 0.075,
+   "band": "C",
+   "ownBank": 0
+  },
+  "biz": {
+   "max": 75254000,
+   "margin": 0.055,
+   "band": "C",
+   "ownBank": 0
+  },
+  "mort": {
+   "max": 818000,
+   "margin": 0.033,
+   "band": "C",
+   "ownBank": 0
+  }
+ },
+ "rate": 0.08249999999999999,
+ "tax": 0
+}

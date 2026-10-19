@@ -8,8 +8,7 @@ import Businesses
 /// (tools/ref/snippets/uk17.js).
 final class CompanyModelDifferentialTests: XCTestCase {
     func world() throws -> World {
-        let url = try XCTUnwrap(Bundle.module.url(forResource: "save_uk25", withExtension: "json", subdirectory: "Golden"))
-        let s = try JSONDecoder().decode(GameState.self, from: Data(contentsOf: url))
+        let s = try Golden.state("save_uk25")
         return World(state: s, countries: try CountryBook.bundled(), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
     }
 

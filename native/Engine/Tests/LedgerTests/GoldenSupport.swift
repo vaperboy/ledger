@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import XCTest
+import SaveSystem
 
 /// Reference data produced by running the ORIGINAL HTML game (see native/tools/ref). Tests compare the Swift
 /// engine with these numbers.
@@ -10,6 +11,13 @@ enum Golden {
             throw CocoaError(.fileNoSuchFile)
         }
         return try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
+    }
+
+    /// A save made by the original game, with its old ids turned into the native ones (as the importer does).
+    static func state(_ name: String) throws -> GameState {
+        var root = try load(name).object
+        LegacyIds.migrate(&root)
+        return try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(JSONValue.object(root)))
     }
 }
 

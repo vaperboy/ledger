@@ -5,25 +5,33 @@ import Countries
 /// Stocks, crypto and funds: their prices move week by week with the market mood and the economy.
 /// Original: `initMarkets`, `marketWeek`, `fundsWeek` (engine/world/economy_markets.js, investing.js).
 public enum Markets {
-    /// symbol, neutral name, sector, price, volatility, beta, dividend yield. A country file can rename them (flavour.stocks).
+    /// symbol, neutral name, sector, price, volatility, beta, dividend yield. Every country file names its own listed companies (flavour.stocks); these names are only a fallback.
     static let stockDefinitions: [(sym: String, name: String, sector: String, price: Double, vol: Double, beta: Double, yield: Double)] = [
-        ("NRDK", "Northpower Energy", "Energy", 214, 0.034, 0.9, 0.035),
-        ("FJSF", "Bay Seafood Group", "Seafood", 168, 0.04, 1.0, 0.02),
-        ("HVBK", "Harbour Bank", "Finance", 122, 0.03, 1.1, 0.045),
-        ("STVK", "Steelworks Industries", "Industrial", 86, 0.036, 1.2, 0.03),
-        ("TLNR", "Telenet Group", "Telecom", 142, 0.022, 0.5, 0.055),
-        ("SKOG", "Forest Owners Group", "Materials", 64, 0.032, 0.9, 0.04),
-        ("RETL", "Metro Retail Holding", "Retail", 98, 0.035, 1.0, 0.03),
-        ("TECH", "Polar Software", "Tech", 310, 0.05, 1.5, 0.0),
-        ("SHIP", "Coastal Shipping", "Shipping", 76, 0.045, 1.3, 0.06),
-        ("EIEN", "City Property", "Property", 54, 0.03, 0.8, 0.04),
+        ("ENRG", "Energy company", "Energy", 214, 0.034, 0.9, 0.035),
+        ("FOOD", "Food company", "Food", 168, 0.04, 1.0, 0.02),
+        ("BANK", "Bank", "Finance", 122, 0.03, 1.1, 0.045),
+        ("INDU", "Industrial company", "Industrial", 86, 0.036, 1.2, 0.03),
+        ("TELE", "Telecom company", "Telecom", 142, 0.022, 0.5, 0.055),
+        ("MATL", "Materials company", "Materials", 64, 0.032, 0.9, 0.04),
+        ("RETL", "Retail group", "Retail", 98, 0.035, 1.0, 0.03),
+        ("TECH", "Software company", "Tech", 310, 0.05, 1.5, 0.0),
+        ("TRAN", "Transport company", "Transport", 76, 0.045, 1.3, 0.06),
+        ("PROP", "Property company", "Property", 54, 0.03, 0.8, 0.04),
     ]
     static let cryptoDefinitions: [(sym: String, name: String, price: Double, vol: Double, beta: Double)] = [
         ("BTC", "Bitcoin", 980000, 0.055, 1.0), ("ETH", "Ethereum", 36000, 0.07, 1.2), ("SOL", "Solana", 1700, 0.095, 1.5),
-        ("NRC", "NorCoin (small-cap)", 12, 0.14, 1.8), ("MEME", "MemeX (meme coin)", 0.8, 0.22, 2.0),
+        ("ALT", "AltCoin (small-cap)", 12, 0.14, 1.8), ("MEME", "MemeX (meme coin)", 0.8, 0.22, 2.0),
     ]
     public static let stockSymbols = stockDefinitions.map { $0.sym }
     public static let cryptoSymbols = cryptoDefinitions.map { $0.sym }
+
+    /// Give the listed companies the names of the player's home country (names are cosmetic; saves from older versions kept others).
+    public static func refreshNames(_ s: inout GameState, country: Country) {
+        let names = country.pack["flavour"]["stocks"]
+        guard !names.isNull, var stocks = s.rest["stocks"]?.object else { return }
+        for (sym, v) in stocks where !names[sym].isNull { var x = v; x["n"] = names[sym]; stocks[sym] = x }
+        s.rest["stocks"] = .object(stocks)
+    }
 
     /// Create the markets for a new game. Original: `initMarkets`.
     public static func initialize(_ s: inout GameState, country: Country) {
@@ -106,7 +114,7 @@ public enum Markets {
             if c.isNull || c["dead"].bool { continue }
             var r = c["beta"].double * m * 1.8 + s.random.gauss() * c["vol"].double * 0.55 + (regime == "bull" ? 0.002 : 0)
             if k == "MEME" && s.random.chance(0.012) { r += s.random.range(0.2, 1.4) }
-            if (k == "MEME" || k == "NRC") && s.random.chance(0.006) {
+            if (k == "MEME" || k == "ALT") && s.random.chance(0.006) {
                 r = -s.random.range(0.5, 0.93)
                 if s.random.chance(0.25) { c["dead"] = 1; s.news("\(c["n"].string) collapses: rug pull.", tone: "bad") }
             }

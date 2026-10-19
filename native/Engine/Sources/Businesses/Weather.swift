@@ -8,6 +8,8 @@ public struct WeatherTables: Sendable {
     /// Per country: [average °C by month], [share of days with rain or snow by month]
     var climate: [String: (temperature: [Double], wetShare: [Double])]
     var temperatureSpread: [String: Double]
+    /// Per country: the chance of a storm in a week, by month (0 = January).
+    var storm: [String: [Double]]
     /// Per trade: [sensitivity to pleasant weather, demand effect by weather kind, capacity effect by kind]
     var tradeSensitivity: [String: Sensitivity]
     var familySensitivity: [String: Sensitivity]
@@ -21,6 +23,7 @@ public struct WeatherTables: Sendable {
     init(json j: JSONValue) {
         climate = j["CL"].object.mapValues { ($0[0].array.map { $0.double }, $0[1].array.map { $0.double }) }
         temperatureSpread = j["SD"].object.mapValues { $0.double }
+        storm = j["STORM"].object.mapValues { $0.array.map { $0.double } }
         func sens(_ v: JSONValue) -> Sensitivity {
             Sensitivity(pleasantWeather: v[0].double,
                         demandByKind: v[1].object.mapValues { $0.double },
@@ -42,19 +45,9 @@ public struct WeekWeather: Equatable, Sendable {
 }
 
 public enum Weather {
-    /// The chance a week brings a storm, by country and month (0 = January). Original: `stormP`.
-    static func stormChance(_ cc: String, month m: Int) -> Double {
-        let winter = m >= 9 || m <= 1
-        if ["NO", "UK", "NL", "DE", "FR", "SE", "LT", "PL", "CA", "DK", "FI", "IE"].contains(cc) { return winter ? 0.035 : 0.006 }
-        if cc == "IT" { return m >= 9 && m <= 11 ? 0.025 : 0.006 }
-        if cc == "SG" { return m >= 10 || m <= 1 ? 0.03 : 0.012 }
-        if cc == "CH" { return winter ? 0.02 : 0.006 }
-        if cc == "US" || cc == "MX" { return m >= 7 && m <= 9 ? 0.05 : 0.008 }
-        if cc == "JP" || cc == "KR" { return m >= 6 && m <= 8 ? 0.06 : 0.006 }
-        if cc == "AU" || cc == "BR" { return m >= 11 || m <= 2 ? 0.03 : 0.006 }
-        if cc == "AE" { return m >= 2 && m <= 5 ? 0.03 : 0.004 }
-        if cc == "ES" { return m >= 8 && m <= 10 ? 0.02 : 0.005 }
-        return 0.01
+    /// The chance a week brings a storm, by country and month (0 = January). Original: `stormP`. The numbers are data (`weather.json`).
+    static func stormChance(_ cc: String, month m: Int, tables: WeatherTables) -> Double {
+        tables.storm[cc]?[m] ?? 0.01
     }
 
     static func pleasantness(_ t: Double, _ r: Double) -> Double {
@@ -63,7 +56,7 @@ public enum Weather {
 
     /// The weather of a country in a week. Original: `draw(cc, w)`.
     public static func draw(country cc: String, week: Int, seed: Int, tables: WeatherTables) -> WeekWeather {
-        let c = tables.climate[cc] ?? tables.climate["NO"]!
+        guard let c = tables.climate[cc] else { return WeekWeather(temperature: 15, rainyDays: 2, kind: "mixed", againstNormal: 0, snowIsNormal: false) }
         let m = GameCalendar.month(week: week)
         func nz(_ r: inout HashedRandom) -> Double { (r.next() + r.next() + r.next() - 1.5) * 2 }
         var a = 0.0
@@ -77,7 +70,7 @@ public enum Weather {
         let wet = clamp(c.wetShare[m] * (1 + 0.35 * nz(&R)), 0, 0.95)
         var rain = 0
         for _ in 0..<7 where R.next() < wet { rain += 1 }
-        let storm = R.next() < stormChance(cc, month: m)
+        let storm = R.next() < stormChance(cc, month: m, tables: tables)
         let avg = c.temperature[m]
         let kind = storm ? "storm"
             : (rain >= 3 && t <= 0) ? "snow"

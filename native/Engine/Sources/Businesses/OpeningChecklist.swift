@@ -24,7 +24,7 @@ public enum OpeningChecklist {
     public static func items(_ co: Company, _ bd: Trade, _ w: World) -> [Item] {
         var out: [Item] = []
         let country = w.country(co)
-        for d in Documents.needed(co, bd, w) where d != "mva_na" {
+        for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" {
             guard let dd = Documents.definition(d, country: country, tables: w.catalog.tables) else { continue }
             let st = co.value("docs")[d]
             let ok = st["st"].string == "ok"

@@ -70,7 +70,7 @@ public enum Banking {
         switch kind {
         case "cons":
             let f: Double = band == "A" ? 2 : band == "B" ? 1.4 : band == "C" ? 1 : band == "D" ? 0.4 : 0
-            maxLoan = max(0, 80000 + max(0, netWorth) * 0.15) * f
+            maxLoan = max(0, 80000 * context.homeCountry(s).wageLevel + max(0, netWorth) * 0.15) * f
         case "biz":
             let base = co.map { max(0, CompanyFigures.yearlyProfitEstimate($0, currentWeek: s.week)) * 3 + CompanyFigures.fixedAssets($0) * 0.5 } ?? 0
             maxLoan = (base + max(0, netWorth) * 0.25) * bandBiz
@@ -93,9 +93,9 @@ public enum Banking {
         let profitShare = 0.4 * s.companies.filter { $0.status == .open }.reduce(0) {
             $0 + max(0, CompanyFigures.yearlyProfitEstimate($1, currentWeek: s.week)) * $1.ownership / 100
         }
-        // AUDIT: the original reads `CC().wage0`, which no country defines, so the floor is always 380 000
-        // accounting units whatever the country. Kept as is for parity (see docs/AUDIT.md, "candidate corrections").
-        let income = max(ownerSalaries + profitShare, 380000.0)
+        // The least income a bank assumes follows the country's wage level. (The original wrote `380000 * CC().wage0`, but no country
+        // defines `wage0`, so every country got the same floor, the level of one particular country. Corrected on purpose.)
+        let income = max(ownerSalaries + profitShare, 380000.0 * context.homeCountry(s).wageLevel)
         let rate = s.economy.policyRate + margin
         func room(_ inc: Double, _ pay: Double) -> Double {
             let free = max(0, inc * 0.4 - pay)

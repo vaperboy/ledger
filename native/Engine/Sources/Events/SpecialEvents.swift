@@ -42,7 +42,7 @@ enum SpecialEvents {
             }
         case "g_inspect":
             guard let bd = data.catalog[co.type] else { return true }
-            let missing = !Knobs.documentOK(co, "hms") && bd.documents.contains("hms")
+            let missing = !Knobs.documentOK(co, "workplace_safety") && bd.documents.contains("workplace_safety")
             let mq = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.55
             let p = 0.18 + (1 - mq) * 0.25 + (1 - co.quality / 100) * 0.2 + (missing ? 0.5 : 0) + (co.value("flags")["shrinkUp"].bool ? 0.05 : 0)
             if s.random.chance(p) {
@@ -53,7 +53,7 @@ enum SpecialEvents {
             } else { s.note("Inspection at \(co.name): passed.", tone: "good", companyID: co.id) }
         case "v_health":
             guard let bd = data.catalog[co.type] else { return true }
-            let hq = co.quality / 100 + (Knobs.documentOK(co, "haccp") ? 0.12 : -0.2) + (co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) * 0.1 : 0) + (co.maintenance == 0 ? -0.08 : 0)
+            let hq = co.quality / 100 + (Knobs.documentOK(co, "food_safety_plan") ? 0.12 : -0.2) + (co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) * 0.1 : 0) + (co.maintenance == 0 ? -0.08 : 0)
             let food = fc.country(of: co, s).pack["authorities"]["food"].string
             if s.random.chance(clamp(0.5 - hq, 0.02, 0.8)) {
                 let f = jsRound(max(12000, c.wk * 0.25))

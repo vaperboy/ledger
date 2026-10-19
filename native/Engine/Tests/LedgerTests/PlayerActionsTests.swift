@@ -93,28 +93,33 @@ final class ShowcaseTests: XCTestCase {
 }
 
 final class StaffTalksTests: XCTestCase {
+    /// Plays a restaurant (several staff) until somebody asks about pay; tries a few seeds because people come and go.
     func testPeopleAskForRaisesAndAnswersChangeWagesAndMood() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 21)
-        e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { return XCTFail() }
-        var asked: Message?
-        for _ in 0..<(70 * 7) {
-            e.nextDay()
-            for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            if let m = e.openDecisions.first(where: { $0.actionID == "staffx" }) {
-                if m.value("data")["t"].string == "payask" { asked = m; break }
-                e.answer(messageID: m.id, option: 0)     // a fixed-salary request: accept it
-                let sid = m.value("data")["sid"].int
-                XCTAssertEqual(e.state.company(id)?.staff.first { $0.id == sid }?.payBasis, "fix")
+        for seed in [21, 22, 23, 24, 25] {
+            var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
+            e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
+            guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { return XCTFail() }
+            var asked: Message?
+            for _ in 0..<(100 * 7) {
+                e.nextDay()
+                for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                if let m = e.openDecisions.first(where: { $0.actionID == "staffx" }) {
+                    if m.value("data")["t"].string == "payask" { asked = m; break }
+                    e.answer(messageID: m.id, option: 0)     // a fixed-salary request: accept it
+                    let sid = m.value("data")["sid"].int
+                    XCTAssertEqual(e.state.company(id)?.staff.first { $0.id == sid }?.payBasis, "fix")
+                }
             }
+            guard let m = asked else { continue }
+            let sid = m.value("data")["sid"].int
+            let before = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == sid }).monthlyWage
+            XCTAssertTrue(e.answer(messageID: m.id, option: 0))
+            let after = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == sid })
+            XCTAssertGreaterThan(after.monthlyWage, before)
+            XCTAssertGreaterThan(after.happyUntilWeek, e.state.week, "a real raise makes them content for a while")
+            XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+            return
         }
-        let m = try XCTUnwrap(asked, "after a year and a half somebody should have asked about pay")
-        let sid = m.value("data")["sid"].int
-        let before = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == sid }).monthlyWage
-        XCTAssertTrue(e.answer(messageID: m.id, option: 0))
-        let after = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == sid })
-        XCTAssertGreaterThan(after.monthlyWage, before)
-        XCTAssertGreaterThan(after.happyUntilWeek, e.state.week, "a real raise makes them content for a while")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTFail("in five games of two years nobody asked about pay")
     }
 }

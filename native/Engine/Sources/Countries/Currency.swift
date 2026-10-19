@@ -4,7 +4,8 @@ import GameCore
 /// Exchange rates between the accounting unit and each country's currency.
 ///
 /// A country's `fx` is its starting rate. Every month the rate of every country other than the player's home
-/// country and the reference country drifts slowly around that start (`drift`, 0.8 ... 1.25 of the start).
+/// country drifts slowly around that start (`drift`, 0.8 ... 1.25 of the start); the home currency is the player's yardstick.
+/// No country is exempt: the original game left the Norwegian krone fixed, which made one country special.
 /// The drift is part of the save (`fxd` in the original).
 public struct ExchangeRates: Equatable, Sendable {
     public var drift: [String: Double]
@@ -17,7 +18,7 @@ public struct ExchangeRates: Equatable, Sendable {
     /// Monthly drift step. Original: `fxMonthCore`. Uses the shared random stream, so call order matters.
     public mutating func monthlyDrift(book: CountryBook, homeCode: String, random: inout DeterministicRandom) {
         for c in book.countries {
-            if c.code == CountryBook.baseCountryCode || c.code == homeCode { continue }
+            if c.code == homeCode { continue }
             let p = drift[c.code] ?? 1
             drift[c.code] = clamp(p * (1 + random.gauss() * 0.012 + (1 - p) * 0.06), 0.8, 1.25)
         }

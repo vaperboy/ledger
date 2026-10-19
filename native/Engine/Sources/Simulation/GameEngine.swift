@@ -29,6 +29,8 @@ public struct GameEngine {
     public let marketing: MarketingTables
 
     public init(state: GameState, data: GameData, events: EventLibrary, marketing: MarketingTables) {
+        var state = state
+        Markets.refreshNames(&state, country: data.countries.resolve(state.homeCountryCode, orHome: state.homeCountryCode))
         self.state = state
         self.data = data
         self.events = events

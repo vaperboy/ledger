@@ -8,8 +8,8 @@ public enum CompanyStatus: String, Sendable {
 
 /// Which legal form. Original: `co.form`. ENK = sole trader (the owner is personally liable), AS = limited company.
 public enum LegalForm: String, Sendable {
-    case soleTrader = "ENK"
-    case limited = "AS"
+    case soleTrader
+    case limited
 }
 
 /// Category totals for a company's books: this week, this month, this year, last year and since the start.

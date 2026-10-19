@@ -27,7 +27,7 @@ public struct World {
     public var rates: ExchangeRates { ExchangeRates(drift: state.exchangeRates.values) }
 
     public func country(_ co: Company) -> Country {
-        countries[co.countryCode] ?? countries[state.homeCountryCode] ?? countries[CountryBook.baseCountryCode]!
+        countries.resolve(co.countryCode, orHome: state.homeCountryCode)
     }
     public func currency(_ co: Company) -> Currency { Currency(country: country(co), rates: rates) }
     public func city(_ co: Company) -> Country.City? {

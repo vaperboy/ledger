@@ -150,7 +150,7 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
         eventIDs = j["ev"].array.map { $0.string }
         openingCost = j["open"].double
         blurb = j["blurb"].string
-        needsLimitedCompany = j["needAS"].bool
+        needsLimitedCompany = j["needLimited"].bool
         minSize = j["minSize"].double
         maxSize = j["maxSize"].double
         audience = j["aud"].double

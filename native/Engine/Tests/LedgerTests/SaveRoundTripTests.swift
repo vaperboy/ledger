@@ -22,7 +22,7 @@ final class SaveRoundTripTests: XCTestCase {
             XCTAssertEqual(state.homeCountryCode, "UK")
             XCTAssertEqual(state.companies.count, 1)
             XCTAssertEqual(state.companies[0].type, "cafe")
-            XCTAssertEqual(state.companies[0].form, .limited)
+            XCTAssertEqual(try Golden.state(name).companies[0].form, .limited, "an old save's form `AS` becomes the neutral `limited`")
         }
     }
 

@@ -71,15 +71,14 @@ public enum Pricing {
         } else {
             m *= w.balance.priceLevelByTrade[bd.id] ?? 1
         }
-        m *= wineCountryFactor(co)
+        m *= wineCountryFactor(co, w)
         return m
     }
 
     /// Famous wine countries sell dearer. Original: `FIT57.price`.
-    static func wineCountryFactor(_ co: Company) -> Double {
-        guard co.type == "vineyard" else { return 1 }
-        let t: [String: Double] = ["FR": 1.15, "IT": 1.15, "ES": 1.05, "UK": 1.05]
-        return t[co.countryCode] ?? 1
+    static func wineCountryFactor(_ co: Company, _ w: World) -> Double {
+        guard co.type == "vineyard", let t = w.balance.tradeCountryFit.price["vineyard"] else { return 1 }
+        return t[co.countryCode] ?? t["_"] ?? 1
     }
 
     /// What one sale costs a customer today, in accounting units. Original: `ticketEff`.

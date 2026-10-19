@@ -31,11 +31,11 @@ public enum Documents {
     /// Which documents the company needs now. Original: `docNeeds`.
     public static func needed(_ co: Company, _ bd: Trade, _ w: World) -> [String] {
         let country = w.country(co)
-        var need = bd.documents.filter { !($0 == "mva" && Vat.isExempt(co, w)) }
+        var need = bd.documents.filter { !($0 == "vat" && Vat.isExempt(co, w)) }
         for knob in bd.knobs {
             for o in Knobs.activeOptions(co, knob) { for d in o.requiredDocs where !need.contains(d) { need.append(d) } }
         }
-        if co.form == .limited && !need.contains("acctr") { need.append("acctr") }
+        if co.form == .limited && !need.contains("accountant_agreement") { need.append("accountant_agreement") }
         return need.filter { !isSkipped($0, country: country) }
     }
 
@@ -52,7 +52,7 @@ public enum Documents {
         if !local.isNull && bd.documentQuantities[id] == nil {
             c = local.double * w.rates.rate(country) * (abroad ? 1.8 : 1)
         }
-        if id == "acctr" { c = 0 }
+        if id == "accountant_agreement" { c = 0 }
         if co.form == .soleTrader, country.pack["documents"]["freeForSoleTraders"].array.contains(where: { $0.string == id }) { c = 0 }
         let fx = w.rates.rate(country)
         return jsRound(Currency.nicePrice(c / fx) * fx)
@@ -77,13 +77,13 @@ public enum Documents {
         guard let bd = w.trade(co), let dd = definition(id, country: w.country(co), tables: data.catalog.tables) else { return .alreadyHeld }
         let existing = co.value("docs")[id]["st"].string
         if !existing.isEmpty && existing != "lapsed" { return .alreadyHeld }
-        if id == "acctr" && co.value("acc").isNull { return .pickAccountant }
+        if id == "accountant_agreement" && co.value("acc").isNull { return .pickAccountant }
         let fee = cost(id, company: co, bd, w)
         if fee > 0 && co.cash < fee { return .notEnoughCash }
         let abroad = co.countryCode != s.homeCountryCode
         var weeks = Double(dd.weeks)
         if abroad { weeks = (weeks * w.country(co).bureaucracy * 1.4).rounded(.up) }
-        if id == "mva" || id == "org" || id == "mva_na" { weeks = max(1, weeks) }
+        if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
         if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
         if fee > 0 { Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Application: \(dd.name)") }
         var docs = s.companies[i].value("docs")

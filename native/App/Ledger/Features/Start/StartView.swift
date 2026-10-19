@@ -6,11 +6,18 @@ import Countries
 struct StartView: View {
     @EnvironmentObject var store: GameStore
     @State private var name = ""
-    @State private var countryCode = "NO"
+    @State private var countryCode = ""
     @State private var showImporter = false
     @State private var showPaste = false
     @State private var pasted = ""
-    private let countries: [Country] = (try? CountryBook.bundled().countries) ?? []
+    private let countries: [Country] = ((try? CountryBook.bundled().countries) ?? []).sorted { $0.name < $1.name }
+
+    /// The country of the device's region if the game has it; otherwise the first in the list. No country is the built-in default.
+    private var initialCountry: String {
+        let region = Locale.current.region?.identifier ?? ""
+        let code = region == "GB" ? "UK" : region
+        return countries.first { $0.code == code }?.code ?? countries.first?.code ?? ""
+    }
 
     private func begin() { store.newGame(name: name.trimmingCharacters(in: .whitespaces), countryCode: countryCode) }
 
@@ -64,6 +71,7 @@ struct StartView: View {
             .frame(maxWidth: .infinity)
         }
         .ledgerBackground()
+        .onAppear { if countryCode.isEmpty { countryCode = initialCountry } }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in
             guard case .success(let url) = result else { return }
             let scoped = url.startAccessingSecurityScopedResource()

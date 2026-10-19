@@ -365,3 +365,16 @@ extension SimulationSmokeTests {
         print("HIREGAP avg=\(sumGap / n) n=\(Int(n))\n" + rows.prefix(8).joined(separator: "\n"))
     }
 }
+
+extension SimulationSmokeTests {
+    func testPrintTalkDebug() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 21)
+        e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { return }
+        for d in 0..<(120 * 7) {
+            e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+            if d % (7 * 10) == 0 { let co = e.state.company(id)!; print("TALK wk=\(e.state.week) status=\(co.status) staff=\(co.staff.count) open=\(e.openDecisions.map { $0.title }.prefix(3)) cash=\(Int(co.cash))") }
+        }
+    }
+}

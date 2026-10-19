@@ -25,6 +25,8 @@ public struct Balance: Sendable {
     /// Twelve monthly tourism multipliers by country. Original: `WX56.TS`.
     public var tourismSeasonByCountry: [String: [Double]]
     public var weather: WeatherTables
+    /// How well a trade suits a country: `demand[trade][country]` and `price[trade][country]`, with `_` for every other country.
+    public var tradeCountryFit: (demand: [String: [String: Double]], price: [String: [String: Double]])
     /// How each trade sells besides the till: contracts, platforms, memberships, peak seasons ... Original: `R33.W`.
     public var salesWays: [String: [SalesWay]]
 
@@ -59,6 +61,8 @@ public struct Balance: Sendable {
         priceMultipliers = j["priceLevels"]["multipliers"].array.map { $0.double }
         priceNames = j["priceLevels"]["names"].array.map { $0.string }
         tourismShareByTrade = j["tourism"]["tradeShare"].object.mapValues { $0.double }
+        func fit(_ v: JSONValue) -> [String: [String: Double]] { v.object.mapValues { $0.object.mapValues { $0.double } } }
+        tradeCountryFit = (fit(j["tradeCountryFit"]["demand"]), fit(j["tradeCountryFit"]["price"]))
         tourismSeasonByCountry = j["tourism"]["seasonByCountry"].object.mapValues { $0.array.map { $0.double } }
     }
 

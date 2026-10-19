@@ -101,7 +101,7 @@ public enum MonthEnd {
         // VAT registration reminder
         w = World(state: s, data: data)
         let threshold = country.vatThreshold
-        if threshold > 0 && co.status == .open && !co.value("flags")["vatAsk"].bool && !Knobs.documentOK(co, "mva")
+        if threshold > 0 && co.status == .open && !co.value("flags")["vatAsk"].bool && !Knobs.documentOK(co, "vat")
             && co.monthlyHistory.suffix(12).reduce(0, { $0 + $1.revenue }) >= threshold {
             var flags = co.value("flags"); flags["vatAsk"] = 1; co.set("flags", flags)
             s.companies[i] = co
