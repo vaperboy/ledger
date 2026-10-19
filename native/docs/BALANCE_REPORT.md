@@ -36,7 +36,7 @@ losses. No safe shortcut to a fortune.
 | Reputation slid for every unmanaged business | Every customer complaint went unanswered | Policy "Staff answer routine complaints" (on by default); serious complaints still come to the owner |
 | Automated hiring overpaid | It took the median asking wage, often a senior at ~45% above market | It takes the most skill for the money among people who can do the job |
 | Owner-run companies valued at 7-8x the money put in | Goodwill counted the owner's unpaid work as profit | Company value deducts what it would cost to hire someone for the owner's work |
-| Groceries, kiosks, bakeries, cafés starved of customers | Walk-in awareness was the same as a niche boutique's | Everyday shops get a higher neighbourhood awareness (32 instead of 20) |
+| Groceries, kiosks, bakeries, cafés starved of customers | Walk-in awareness was the same as a niche boutique's | Shops on a street get a neighbourhood awareness by kind: grocery 48, kiosk and pharmacy 44, bakery 40, hardware 38, café 32 (others 20) |
 
 ## Results (with a modest ad plan: search, social and website at their lower budgets)
 
@@ -44,7 +44,7 @@ losses. No safe shortcut to a fortune.
 |---|---:|---:|---:|---:|---:|---:|
 | acctfirm | 1307 | 2083 | 159% | 8.0x | 78% | -6% |
 | airline | 1727017 | -43277 | -3% | 0.0x | -2% | -3% |
-| bakery | 9416 | 1009 | 11% | 0.2x | 12% | -1% |
+| bakery | 9986 | 1162 | 12% | 0.3x | 13% | -1% |
 | barber | 2032 | 307 | 15% | 0.1x | -9% | 7% |
 | boutique | 1831 | 79 | 4% | 0.0x | -10% | 2% |
 | brewery | 10245 | 853 | 8% | 0.5x | 2% | -13% |
@@ -66,13 +66,13 @@ losses. No safe shortcut to a fortune.
 | fun | 13858 | 3089 | 22% | 0.8x | 9% | 2% |
 | furniture | 10567 | 352 | 3% | 0.3x | -1% | -5% |
 | gamestudio | 3373 | 228 | 7% | 0.0x | -6% | 21% |
-| grocery | 57383 | -3102 | -5% | 0.0x | -6% | -5% |
+| grocery | 61930 | -189 | -0% | 0.0x | -1% | -5% |
 | gym | 11336 | 1822 | 16% | 0.6x | 16% | -0% |
 | handy | 251 | 218 | 87% | 2.6x | -13% | 7% |
 | hardware | 22751 | -676 | -3% | 0.0x | -6% | -8% |
 | hotel | 48134 | 957 | 2% | 0.3x | 0% | -4% |
 | indoorski | 976649 | -57 | -0% | 0.0x | -0% | -0% |
-| kiosk | 4541 | 194 | 4% | 0.0x | -8% | 6% |
+| kiosk | 4582 | 251 | 5% | 0.0x | -6% | 7% |
 | law | 1714 | 2124 | 124% | 5.7x | 32% | -17% |
 | mktg | 1132 | 501 | 44% | 1.7x | -29% | 10% |
 | nightclub | 11813 | 1779 | 15% | 0.5x | 9% | -1% |
@@ -95,7 +95,7 @@ losses. No safe shortcut to a fortune.
 
 ## Still not realistic (left for a balance pass with real-world figures)
 
-* Capital-heavy trades lose money in every scenario: grocery, hardware, factory, farm, vineyard, warehouse (wh3pl), car repair,
+* Capital-heavy trades lose money or just break even: grocery (about break-even, real ones make 1-3%), hardware, factory, farm, vineyard, warehouse (wh3pl), car repair,
   shipping, ski resort. Their accounts show thin margins eaten by fines, shrinkage and seasonal swings; a real grocery makes 1-3%.
 * The airline always goes bankrupt with the standard set-up; the indoor ski centre cannot be set up with the estimated budget.
 * Staffing agency and consulting run by hired staff lose money: one employee costs more than the hours clients book at first.
