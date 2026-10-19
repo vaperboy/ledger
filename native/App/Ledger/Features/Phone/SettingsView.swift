@@ -65,9 +65,10 @@ struct SettingsView: View {
     }
 
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
+        let inner = content()
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(title).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).padding(.leading, 4)
-            Card { VStack(alignment: .leading, spacing: Theme.Space.m) { content() } }
+            Card { VStack(alignment: .leading, spacing: Theme.Space.m) { inner } }
             if !footer.isEmpty { Text(footer).font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 4) }
         }
     }
