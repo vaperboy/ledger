@@ -378,3 +378,44 @@ extension SimulationSmokeTests {
         }
     }
 }
+
+extension SimulationSmokeTests {
+    /// How fast can a well-run company grow? Prints revenue per month at month 6, 12, 24 and the company value, for a normal and an
+    /// aggressive strategy (every marketing channel at its top budget, owner at the limit). Used to check growth realism.
+    func testPrintGrowthProfiles() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        for trade in ["cafe", "barber", "gym", "restaurant", "webdev", "boutique", "bakery", "cleaning", "courier"] {
+            for aggressive in [false, true] {
+                var e = try newEngine("UK", seed: 77)
+                let id = try startCompany(&e, trade: trade, fund: 6_000_000)
+                if aggressive {
+                    for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil {
+                        _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
+                    }
+                }
+                var revs: [Double] = []
+                for d in 0..<(104 * 7) {
+                    e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                    if d % 7 == 6, (d / 7 + 1) % 13 == 0 { revs.append(e.state.company(id)?.monthlyHistory.suffix(1).first?.revenue ?? 0) }
+                }
+                let co = e.state.company(id)!
+                let v = Valuation.companyValue(co, state: e.state, trades: e.data.catalog)
+                print("GROWTH \(trade) \(aggressive ? "aggr" : "norm") revenue/month by quarter: \(revs.map { Int($0 / 1000) }) k  cash=\(Int(co.cash / 1000))k value=\(Int(v / 1000))k status=\(co.status.rawValue)")
+            }
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintPayrollDebug() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
+        e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { return }
+        e.setPolicy({ var p = ManagementPolicy(); p.autoPayroll = false; return p }())
+        for d in 0..<(20 * 7) {
+            e.nextDay()
+            if d % 14 == 0 { let c = e.state.company(id)!; print("PAYDBG wk=\(e.state.week) st=\(c.status) staff=\(c.staff.count) cash=\(Int(c.cash)) msgs=\(e.state.inbox.filter { $0.actionID.hasPrefix("pay") }.map { $0.actionID + ":" + $0.status })") }
+        }
+    }
+}

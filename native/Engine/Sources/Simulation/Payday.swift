@@ -335,7 +335,8 @@ public enum Payday {
                     cfg.paidMonth = mi
                     s.companies[i].set("pr29", cfg.json)
                 } else if md == .manual {
-                    if cfg.approvedMonth == mi {
+                    // The owner's standing policy approves payroll the company can pay, even when the reminder window was missed.
+                    if cfg.approvedMonth == mi || (s.policy.autoPayroll && s.companies[i].cash >= (s.companies[i].payables["wages"] ?? 0)) {
                         let r = runPayroll(&s, i, how: .manual, today: t, data: data, context: context)
                         paidToday.append((s.companies[i].name, r.paid))
                     } else {
@@ -383,7 +384,14 @@ public enum Payday {
                 s.companies[i].set("pr29", cfg.json)
                 let country = context.country(of: s.companies[i], s)
                 let est = (s.companies[i].payables["wages"] ?? 0) + weeklyWageCost(s.companies[i], employerFactor: country.employerCostFactor) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
-                if md == .manual && cfg.approvedMonth != key { needApproval.append((i, est, np)) }
+                if md == .manual && cfg.approvedMonth != key {
+                    if s.policy.autoPayroll && s.companies[i].cash >= est {
+                        // Routine payroll the company can pay: approved by the owner's standing policy, no question asked.
+                        cfg.approvedMonth = key
+                        s.companies[i].set("pr29", cfg.json)
+                        s.note("Payroll at \(s.companies[i].name) approved automatically (\(context.homeCurrency(s).short(est))). It goes out on payday.", tone: "good", companyID: s.companies[i].id)
+                    } else { needApproval.append((i, est, np)) }
+                }
             }
             // Rent and supplier bills: last day of the month.
             let bd2 = billDate(year: c.year, month: c.month - 1)

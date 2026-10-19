@@ -192,6 +192,11 @@ public extension GameEngine {
         return ok
     }
 
+    // MARK: Policies
+
+    /// The owner's standing instructions (see `ManagementPolicy`).
+    mutating func setPolicy(_ policy: ManagementPolicy) { update { s, _, _ in s.policy = policy } }
+
     // MARK: Payroll
 
     /// Who runs payroll at a company: the owner (approves each month), the accountant, or the manager.

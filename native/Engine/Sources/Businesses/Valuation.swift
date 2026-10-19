@@ -47,6 +47,8 @@ public enum Valuation {
             ? prof * mult * (0.6 + co.reputation / 200) * (co.managerID != nil ? 0.85 : 1) * trust : 0
         let adj: Double = co.form == .soleTrader ? 0.85 : 1
         var v = jsRound(net + goodwill * adj)
+        // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
+        if co.form == .limited { v = max(0, v) }
         // A club is worth its football value plus cash, minus what it owes. Original step: 'a club is worth ...'
         if co.type == "club", !fm.isNull {
             let owed = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }

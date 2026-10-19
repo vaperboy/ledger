@@ -123,3 +123,55 @@ final class StaffTalksTests: XCTestCase {
         XCTFail("in five games of two years nobody asked about pay")
     }
 }
+
+final class FinanceOverviewTests: XCTestCase {
+    func testOverviewMatchesTheBooksAndListsWhatIsComing() throws {
+        let e = try GameEngine.showcase(days: 75)
+        let o = e.financeOverview()
+        let expenses = e.state.liveCompanies.reduce(0) { $0 + Books.expenses($1.books.year) + ($1.books.year["tax"] ?? 0) }
+        XCTAssertEqual(o.costsThisYear.reduce(0) { $0 + $1.amount }, expenses, accuracy: 1, "the yearly breakdown adds up to the books")
+        XCTAssertFalse(o.upcoming.isEmpty, "payroll, bills and loan instalments are coming")
+        XCTAssertEqual(o.upcoming.map { $0.dayNumber }, o.upcoming.map { $0.dayNumber }.sorted())
+        XCTAssertTrue(o.upcoming.allSatisfy { $0.dayNumber >= Payday.dayNumber(week: e.state.week, day: e.state.day) }, "nothing is listed that is already past")
+        let one = e.financeOverview(companyID: e.state.liveCompanies[0].id)
+        XCTAssertLessThanOrEqual(one.costTotalThisYear, o.costTotalThisYear + 1)
+        XCTAssertTrue(o.notes.last?.contains("estimates") ?? false)
+    }
+
+    func testMarketingPausesInsteadOfRunningUpDebt() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
+        e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, form: .limited, fundWith: 1_500_000) else { return XCTFail() }
+        for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0) }
+        for _ in 0..<(40 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertGreaterThan(co.cash, -200_000, "campaigns are prepaid and stop when cash runs low")
+        XCTAssertGreaterThanOrEqual(Valuation.companyValue(co, state: e.state, trades: e.data.catalog), 0, "a limited company is never worth less than nothing")
+    }
+
+    func testPayrollIsApprovedByPolicyWhenThereIsMoney() throws {
+        func asks(autoPayroll: Bool) throws -> Int {
+            var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
+            e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
+            var p = ManagementPolicy(); p.autoPayroll = autoPayroll; e.setPolicy(p)
+            guard case .success = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { XCTFail(); return 0 }
+            for _ in 0..<(16 * 7) { e.nextDay() }
+            return e.state.inbox.filter { $0.actionID.hasPrefix("pay29") }.count
+        }
+        XCTAssertEqual(try asks(autoPayroll: true), 0, "with the default policy nobody is asked about routine payroll the company can pay")
+        XCTAssertGreaterThan(try asks(autoPayroll: false), 0, "with the policy off the owner is asked")
+    }
+}
+
+final class InsightTests: XCTestCase {
+    func testHealthAndInsightsComeFromTheCompanysOwnNumbers() throws {
+        let e = try GameEngine.showcase(days: 150)
+        for co in e.state.liveCompanies {
+            let h = e.companyHealth(co)
+            XCTAssertEqual(h.revenueSeries.count, min(24, co.monthlyHistory.count))
+            XCTAssertFalse(e.insights(for: co).isEmpty)
+            XCTAssertGreaterThanOrEqual(h.rating, 1.5)
+            XCTAssertEqual(h.value, Valuation.companyValue(co, state: e.state, trades: e.data.catalog))
+        }
+    }
+}

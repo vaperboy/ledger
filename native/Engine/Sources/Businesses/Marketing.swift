@@ -121,10 +121,18 @@ public enum Marketing {
         co.set("mkt", mkt); co.set("mktEnd", mktEnd)
         var gain = 0.0, spend = 0.0
         var primeTimeActive = false
+        // Advertising is paid in advance: with too little cash (after the owner's reserve) the campaigns pause instead of running up debt.
+        let planned = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let reserve = s.policy.reserveWeeks * FinanceContext(countries: data.countries, trades: data.catalog).weeklyCost(co, s)
+        let paused = planned > 0 && co.cash - planned < reserve
+        if paused { var f = co.value("flags"); f["mktPausedWeek"] = .number(Double(s.week)); co.set("flags", f) }
+        if paused && s.week % 4 == 0 {
+            s.note("\(co.name): campaigns are paused this week, the company does not have the cash to pay for them and keep its reserve.", tone: "warn", companyID: co.id)
+        }
         let scale = max(0.5, bd.normalDemand * bd.ticket / 8000)
         let fam = tables.affinityByFamily, type = tables.affinityByTrade
         for (k, m) in co.value("mkt").object.sorted(by: { $0.key < $1.key }) {
-            guard let c = tables.channels[k] else { continue }
+            guard !paused, let c = tables.channels[k] else { continue }
             let aud = bd.audience
             let fit = (1 - aud) * (c.localShare == 0 ? 0.5 : c.localShare) + aud * (c.businessShare == 0 ? 0.5 : c.businessShare)
             let sc = c.scale * max(0.4, min(8, scale * 0.9))
