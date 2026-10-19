@@ -11,11 +11,11 @@ struct Card<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous)
-                    .fill(LinearGradient(colors: [Theme.glass.opacity(0.45), Theme.leather.opacity(0.92)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: [Theme.glass.opacity(0.92), Theme.leather.opacity(0.96)], startPoint: .top, endPoint: .bottom))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
+                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
             )
             .shadow(color: .black.opacity(0.4), radius: 10, y: 5)
     }
@@ -77,7 +77,7 @@ struct ScreenHeader<Trailing: View>: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 if !eyebrow.isEmpty { Text(eyebrow).font(.subheadline).foregroundStyle(Theme.ivoryMuted) }
-                Text(title).font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.ivory)
+                Text(title).font(.system(size: 32, weight: .bold)).foregroundStyle(Theme.cream)
             }
             Spacer()
             trailing()
@@ -90,7 +90,7 @@ struct GoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.headline, design: .default).weight(.semibold))
-            .foregroundStyle(Color(red: 0.16, green: 0.115, blue: 0.05))
+            .foregroundStyle(Color(red: 0.06, green: 0.05, blue: 0.04))
             .frame(maxWidth: .infinity, minHeight: 54)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(Theme.goldGradient)
@@ -98,7 +98,7 @@ struct GoldButtonStyle: ButtonStyle {
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(Color.white.opacity(0.35), lineWidth: 0.75)
             )
-            .shadow(color: Theme.gold.opacity(0.28), radius: 14, y: 4)
+            .shadow(color: Theme.gold.opacity(0.18), radius: 12, y: 4)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.92 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -303,8 +303,8 @@ struct SectionTabs<T: Hashable>: View {
                         }
                         .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
                         .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(Capsule().fill(on ? Color.white.opacity(0.12) : Theme.leather.opacity(0.9)))
-                        .overlay(Capsule().strokeBorder(on ? Theme.ivory.opacity(0.55) : Theme.hairline, lineWidth: 0.75))
+                        .background(Capsule().fill(on ? Theme.pillOn : Theme.pill))
+                        .overlay(Capsule().strokeBorder(on ? Theme.gold.opacity(0.45) : Theme.hairline, lineWidth: 0.75))
                     }.buttonStyle(.plain)
                 }
             }
@@ -358,7 +358,7 @@ struct SmallGoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color(red: 0.14, green: 0.10, blue: 0.05))
+            .foregroundStyle(Color(red: 0.06, green: 0.05, blue: 0.04))
             .frame(maxWidth: .infinity, minHeight: 36)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).fill(Theme.goldGradient))
             .opacity(configuration.isPressed ? 0.85 : 1)

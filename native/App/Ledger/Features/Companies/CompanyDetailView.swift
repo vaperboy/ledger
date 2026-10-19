@@ -145,7 +145,7 @@ struct CompanyOverview: View {
                         Text("Operations").font(.bodyText.weight(.semibold))
                         HStack(alignment: .top) {
                             Ring(label: "Capacity", fraction: h.capacityUse, centre: "\(Int((h.capacityUse * 100).rounded()))%", tint: h.capacityUse > 0.95 ? Theme.caution : Theme.gold)
-                            Ring(label: "Demand met", fraction: h.demandCoverage > 0 ? min(1, 1 / h.demandCoverage) : 0, centre: h.demandCoverage > 0 ? "\(Int((min(1, 1 / h.demandCoverage) * 100).rounded()))%" : "–", tint: h.demandCoverage > 1.05 ? Theme.caution : Theme.gain)
+                            Ring(label: "Demand met", fraction: h.demandCoverage > 0 ? min(1, 1 / h.demandCoverage) : 0, centre: h.demandCoverage > 0 ? "\(Int((min(1, 1 / h.demandCoverage) * 100).rounded()))%" : "–", tint: Theme.roseGold)
                             Ring(label: "Rating", fraction: h.rating / 5, centre: String(format: "%.1f", h.rating), tint: Theme.gain)
                         }
                     }

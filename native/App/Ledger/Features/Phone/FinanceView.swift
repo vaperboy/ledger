@@ -56,7 +56,7 @@ struct FinanceView: View {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         HStack { Text("Tax summary").font(.bodyText.weight(.semibold)); Spacer(); Text("Owed now").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                         ForEach(o.taxes.prefix(4)) { l in
-                            ListRow(symbol: l.label.contains("VAT") || l.label.lowercased().contains("sales") ? "percent" : "building.columns", tint: Theme.gold,
+                            ListRow(symbol: l.label.contains("VAT") || l.label.lowercased().contains("sales") ? "percent" : "building.columns", tint: Theme.ivoryMuted,
                                     title: l.label, subtitle: l.detail, trailing: store.short(l.amount))
                         }
                     }
@@ -67,7 +67,7 @@ struct FinanceView: View {
                     Text("Upcoming payments").font(.bodyText.weight(.semibold))
                     if o.upcoming.isEmpty { Text("Nothing is due.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     ForEach(o.upcoming.prefix(8)) { u in
-                        ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: u.essential ? Theme.roseGold : Theme.ivoryMuted,
+                        ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted,
                                 title: u.title, subtitle: u.detail, trailing: store.short(u.amount), trailingSub: u.dateText)
                     }
                 }
@@ -149,7 +149,7 @@ struct FinanceView: View {
         }
     }
 
-    private static let palette: [Color] = [Theme.gold, Color(red: 0.36, green: 0.62, blue: 0.86), Theme.gain, Theme.caution, Theme.roseGold, Color(red: 0.62, green: 0.50, blue: 0.80), Theme.loss, Theme.goldDeep, Theme.ivoryMuted, Color(red: 0.30, green: 0.70, blue: 0.70), Theme.ivoryFaint, Theme.glass]
+    private static let palette: [Color] = [Theme.slateBlue, Theme.caution, Theme.gain, Theme.gold, Theme.loss, Color(red: 0.36, green: 0.70, blue: 0.74), Color(red: 0.62, green: 0.50, blue: 0.80), Theme.goldDeep, Theme.ivoryFaint, Theme.ivoryMuted, Theme.glass, Theme.goldLight]
 
     /// A donut with the total in the middle and a coloured legend: label, share, amount.
     private func costDonut(_ lines: [FinanceLine], _ total: Double) -> some View {

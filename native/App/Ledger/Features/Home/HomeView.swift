@@ -53,7 +53,7 @@ struct HomeHeader: View {
                 Text(engine.homeCountry.name).font(.label).foregroundStyle(Theme.ivoryMuted)
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Capsule().fill(Theme.leather.opacity(0.9)))
+            .background(Capsule().fill(Theme.pill))
             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
         }
         .padding(.top, Theme.Space.s)
@@ -98,7 +98,6 @@ struct NetWorthCard: View {
                     Spacer()
                     if owed > 0 { Chip(text: "Debt " + store.short(owed), tint: Theme.loss) }
                 }
-                Sparkline(values: hist.netWorth, tint: Theme.gold).frame(height: 44)
             }
         }
     }
@@ -122,11 +121,11 @@ struct SummaryRow: View {
         let h = engine.dayHistory
         Card(padding: 0) {
             HStack(spacing: 0) {
-                SummaryTile(title: "Cash", value: store.short(nw.personal), series: h.cash, change: DayHistory.change(h.cash, days: 7))
+                SummaryTile(title: "Cash", value: store.short(nw.personal), series: h.cash, tint: Theme.gold)
                 Divider().overlay(Theme.hairline)
-                SummaryTile(title: "Investments", value: store.short(nw.investments), series: h.invested, change: DayHistory.change(h.invested, days: 7))
+                SummaryTile(title: "Investments", value: store.short(nw.investments), series: h.invested, tint: Theme.gain)
                 Divider().overlay(Theme.hairline)
-                SummaryTile(title: "In companies", value: store.short(nw.companies), series: h.companies, change: DayHistory.change(h.companies, days: 7))
+                SummaryTile(title: "In companies", value: store.short(nw.companies), series: h.companies, tint: Theme.gold)
             }
         }
     }
@@ -137,9 +136,8 @@ struct SummaryTile: View {
     var title: String
     var value: String
     var series: [Double]
-    var change: (amount: Double, share: Double?)?
+    var tint: Color
     var body: some View {
-        let tint = Theme.change(change?.amount ?? 0) == Theme.ivoryMuted ? Theme.gold : Theme.change(change?.amount ?? 0)
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
             Text(value).font(.figure(17, weight: .bold)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
@@ -197,7 +195,7 @@ struct AdvanceBar: View {
             }
             HStack(spacing: Theme.Space.m) {
                 Button { store.isAdvancing ? store.stopAdvancing() : store.nextDay() } label: {
-                    Text(store.isAdvancing ? "Stop" : engine.state.isGameOver ? "Game over" : "Next day")
+                    Text(store.isAdvancing ? "Stop" : engine.state.isGameOver ? "Game over" : "Next day  ›")
                 }
                 .buttonStyle(GoldButtonStyle())
                 .disabled(engine.state.isGameOver)
