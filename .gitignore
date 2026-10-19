@@ -1,0 +1,10 @@
+# Swift / Xcode build output
+native/Engine/.build/
+native/App/*.xcodeproj/xcuserdata/
+native/App/build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+.DS_Store
+# stray downloads
+*.whl
