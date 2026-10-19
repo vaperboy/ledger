@@ -97,6 +97,17 @@ public struct Currency: Sendable {
         return (neg ? "\u{2212}" : "") + (plain ? "" : country.currencyCode + " ") + Currency.grouped(v)
     }
 
+    /// Full amount for screens: the currency symbol, then the number ("£3,482,600", "1 234 kr"). Not part of the original.
+    public func display(_ n: Double) -> String {
+        let v = n / rate
+        let neg = jsRound(v) < 0 && abs(v) >= 0.5
+        let sy = country.currencySymbol
+        let behind = sy.count == 3 && sy.allSatisfy { $0.isUppercase && $0.isASCII } || sy == "kr" || sy == "zł"
+        let digits = Currency.grouped(abs(v))
+        if behind { return (neg ? "\u{2212}" : "") + digits + " " + sy }
+        return (neg ? "\u{2212}" : "") + sy + digits.replacingOccurrences(of: "\u{00A0}", with: ",")
+    }
+
     /// Compact amount: "£12.5 k", "£3.4 M". Original: `mshort`.
     public func short(_ n: Double) -> String {
         let v = short0(n)

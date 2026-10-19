@@ -20,8 +20,8 @@ struct BankView: View {
                     Card {
                         VStack(alignment: .leading, spacing: Theme.Space.s) {
                             SectionLabel("Accounts")
-                            ValueRow(label: "Current account", value: cur.format(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory)
-                            ValueRow(label: "Savings", value: cur.format(s.savings))
+                            ValueRow(label: "Current account", value: cur.display(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory)
+                            ValueRow(label: "Savings", value: cur.display(s.savings))
                             ValueRow(label: "Credit standing", value: Banking.creditWord(s.credit))
                             ValueRow(label: "Central bank rate", value: Currency.percent(s.economy.policyRate, decimals: 2))
                         }
@@ -34,7 +34,7 @@ struct BankView: View {
                                 Button("Save") { move(amount) }.buttonStyle(QuietButtonStyle())
                                 Button("Withdraw") { move(-amount) }.buttonStyle(QuietButtonStyle())
                             }
-                            ForEach(e.deposits) { d in ValueRow(label: "Fixed deposit · \(d.weeksLeft) wk left", value: cur.format(d.balance)) }
+                            ForEach(e.deposits) { d in ValueRow(label: "Fixed deposit · \(d.weeksLeft) wk left", value: cur.display(d.balance)) }
                             HStack {
                                 ForEach([13, 26, 52], id: \.self) { w in
                                     Button("Lock \(w) wk") {
@@ -52,8 +52,8 @@ struct BankView: View {
                             if loans.isEmpty { Text("You owe nothing personally.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                             ForEach(loans) { l in
                                 VStack(alignment: .leading, spacing: 4) {
-                                    ValueRow(label: l.name, value: cur.format(l.balance))
-                                    ValueRow(label: "Monthly payment", value: cur.format(l.monthlyPayment))
+                                    ValueRow(label: l.name, value: cur.display(l.balance))
+                                    ValueRow(label: "Monthly payment", value: cur.display(l.monthlyPayment))
                                     Text("Interest \(Currency.percent(Banking.rate(of: l, state: s), decimals: 2))").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Divider().overlay(Theme.hairline)
@@ -78,7 +78,7 @@ struct BankView: View {
                             SectionLabel("Borrow")
                             AmountField(title: "Amount", currency: cur, amount: $borrow)
                             let offer = e.loanOffer(kind: "cons", amount: borrow, companyID: nil)
-                            Text("The bank would lend up to \(cur.format(offer.maximum)) at about \(Currency.percent(s.economy.policyRate + offer.margin, decimals: 1)) (\(offer.creditBand)).")
+                            Text("The bank would lend up to \(cur.display(offer.maximum)) at about \(Currency.percent(s.economy.policyRate + offer.margin, decimals: 1)) (\(offer.creditBand)).")
                                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             Button("Take a 5-year personal loan") {
                                 switch store.act({ $0.takeLoan(kind: "cons", amount: borrow, termMonths: 60, companyID: nil) }) {

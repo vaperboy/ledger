@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import GameCore
 import Countries
 import Finance
@@ -64,62 +65,88 @@ struct CompanyOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var chartKind = 0
+    @State private var months = 12
 
     private func tint(_ label: String) -> Color {
         switch label { case "Thriving", "Healthy": return Theme.gain; case "Tight": return Theme.caution; case "Struggling": return Theme.loss; default: return Theme.ivoryMuted }
     }
 
+    private struct Point: Identifiable { var id: Int; var series: String; var value: Double }
+
     var body: some View {
         let co = company
         let h = engine.companyHealth(co)
-        let wk = Books.profit(co.books.week), mo = Books.profit(co.books.month)
         VStack(spacing: Theme.Space.l) {
             Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack(alignment: .firstTextBaseline) {
-                        SectionLabel("Company value")
+                        Text("Company value").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                         Spacer()
-                        Chip(text: h.label, tint: tint(h.label))
+                        Chip(text: h.label, tint: tint(h.label), symbol: h.label == "Struggling" ? "exclamationmark.triangle.fill" : "leaf.fill")
                     }
-                    Text(store.money(h.value, in: co)).font(.figure(32))
+                    Text(store.money(h.value, in: co)).font(.figure(32, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
                     if let g = h.revenueGrowth {
-                        Chip(text: String(format: "Revenue %@%.0f%% over 3 months", g >= 0 ? "+" : "−", abs(g) * 100), tint: Theme.change(g))
-                    }
-                    HStack(alignment: .top, spacing: Theme.Space.l) {
-                        Stat(label: "Revenue, 12 mo", value: store.short(h.revenueTTM, in: co))
-                        Stat(label: "Profit, 12 mo", value: store.short(h.profitTTM, in: co), tint: Theme.change(h.profitTTM))
-                    }
-                    HStack(alignment: .top, spacing: Theme.Space.l) {
-                        Stat(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory)
-                        Stat(label: "Debt", value: store.short(h.debt, in: co))
-                        Stat(label: "Team", value: String(co.staff.count))
+                        Chip(text: String(format: "%@%.1f%% revenue, 3 months", g >= 0 ? "+" : "−", abs(g) * 100), tint: Theme.change(g), symbol: g >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                     }
                 }
             }
+            HStack(spacing: Theme.Space.m) {
+                tile("Revenue (12 mo)", store.short(h.revenueTTM, in: co), sub: h.revenueGrowth.map { String(format: "%+.1f%%", $0 * 100) }, subTint: Theme.change(h.revenueGrowth ?? 0))
+                tile("Net profit (12 mo)", store.short(h.profitTTM, in: co), sub: h.revenueTTM > 0 ? String(format: "%.0f%% margin", h.profitTTM / h.revenueTTM * 100) : nil, subTint: Theme.change(h.profitTTM), tint: h.profitTTM < 0 ? Theme.loss : Theme.ivory)
+            }
+            HStack(spacing: Theme.Space.m) {
+                tile("Cash", store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory)
+                tile("Debt", store.short(h.debt, in: co))
+                tile("Employees", String(co.staff.count))
+            }
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Picker("", selection: $chartKind) {
-                        Text("Revenue").tag(0); Text("Profit").tag(1); Text("Cash").tag(2)
-                    }.pickerStyle(.segmented)
-                    let series = chartKind == 0 ? h.revenueSeries : chartKind == 1 ? h.profitSeries : h.cashSeries
-                    if chartKind == 1 { MiniBars(values: series).frame(height: 90) } else { Sparkline(values: series).frame(height: 90) }
                     HStack {
-                        Text(series.count < 2 ? "History builds up month by month." : "Last \(series.count) months").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                        Text("Performance").font(.bodyText.weight(.semibold))
                         Spacer()
-                        DeltaPill(title: "Week", amount: wk, share: nil, format: { store.short($0, in: co) })
-                        DeltaPill(title: "Month", amount: mo, share: nil, format: { store.short($0, in: co) })
+                        ForEach([6, 12, 24], id: \.self) { m in
+                            Button { months = m; Haptics.choose() } label: {
+                                Text(m == 6 ? "6M" : m == 12 ? "1Y" : "2Y").font(.caption2.weight(.semibold))
+                                    .foregroundStyle(months == m ? Color(red: 0.14, green: 0.10, blue: 0.05) : Theme.ivoryMuted)
+                                    .padding(.horizontal, 9).padding(.vertical, 4)
+                                    .background(Capsule().fill(months == m ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Color.clear)))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                    let rev = Array(h.revenueSeries.suffix(months)), prof = Array(h.profitSeries.suffix(months))
+                    if rev.count < 2 {
+                        Text("History builds up month by month.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: 90)
+                    } else {
+                        let revPoints: [Point] = rev.enumerated().map { (i, v) in Point(id: i, series: "Revenue", value: v) }
+                        let profPoints: [Point] = prof.enumerated().map { (i, v) in Point(id: 1000 + i, series: "Profit", value: v) }
+                        let points: [Point] = revPoints + profPoints
+                        Chart(points) { p in
+                            LineMark(x: .value("Month", p.id % 1000), y: .value("Amount", p.value), series: .value("Series", p.series))
+                                .foregroundStyle(by: .value("Series", p.series))
+                                .interpolationMethod(.monotone)
+                        }
+                        .chartForegroundStyleScale(["Revenue": Theme.gold, "Profit": Theme.gain])
+                        .chartLegend(.hidden)
+                        .chartXAxis(.hidden)
+                        .chartYAxis { AxisMarks(position: .leading) { _ in AxisGridLine().foregroundStyle(Theme.hairline) } }
+                        .frame(height: 130)
+                        HStack(spacing: Theme.Space.l) {
+                            HStack(spacing: 5) { Circle().fill(Theme.gold).frame(width: 7, height: 7); Text("Revenue").font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                            HStack(spacing: 5) { Circle().fill(Theme.gain).frame(width: 7, height: 7); Text("Profit").font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                            Spacer()
+                            Text("Last \(rev.count) months").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        }
                     }
                 }
             }
             if co.status == .open {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        SectionLabel("Operations")
+                        Text("Operations").font(.bodyText.weight(.semibold))
                         HStack(alignment: .top) {
-                            Ring(label: "Capacity used", fraction: h.capacityUse, centre: "\(Int((h.capacityUse * 100).rounded()))%", tint: h.capacityUse > 0.95 ? Theme.caution : Theme.gold)
+                            Ring(label: "Capacity", fraction: h.capacityUse, centre: "\(Int((h.capacityUse * 100).rounded()))%", tint: h.capacityUse > 0.95 ? Theme.caution : Theme.gold)
                             Ring(label: "Demand met", fraction: h.demandCoverage > 0 ? min(1, 1 / h.demandCoverage) : 0, centre: h.demandCoverage > 0 ? "\(Int((min(1, 1 / h.demandCoverage) * 100).rounded()))%" : "–", tint: h.demandCoverage > 1.05 ? Theme.caution : Theme.gain)
-                            Ring(label: "Rating", fraction: h.rating / 5, centre: String(format: "%.1f", h.rating), tint: Theme.roseGold)
+                            Ring(label: "Rating", fraction: h.rating / 5, centre: String(format: "%.1f", h.rating), tint: Theme.gain)
                         }
                     }
                 }
@@ -128,12 +155,9 @@ struct CompanyOverview: View {
             if !insights.isEmpty {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        SectionLabel("Key insights")
+                        Text("Key insights").font(.bodyText.weight(.semibold))
                         ForEach(insights) { i in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: i.symbol).foregroundStyle(Theme.tone(i.tone.rawValue)).frame(width: 22)
-                                Text(i.text).font(.bodyText).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                            }
+                            ListRow(symbol: i.symbol, tint: Theme.tone(i.tone.rawValue) == Theme.ivoryMuted ? Theme.gold : Theme.tone(i.tone.rawValue), title: i.text)
                         }
                     }
                 }
@@ -146,7 +170,7 @@ struct CompanyOverview: View {
                 }
             }
             NavigationLink { FinanceView(companyID: co.id) } label: {
-                Card { HStack { Label("Finance & taxes", systemImage: "chart.pie").foregroundStyle(Theme.ivory); Spacer(); Image(systemName: "chevron.right").foregroundStyle(Theme.ivoryFaint) } }
+                Card { ListRow(symbol: "chart.pie", title: "Finance & taxes", subtitle: "Payments, taxes, costs and reports", chevron: true) }
             }.buttonStyle(.plain)
             if co.cash < 0 || co.weeksNegative > 0 || co.unpaidMonths > 0 {
                 Card {
@@ -157,6 +181,16 @@ struct CompanyOverview: View {
                         if co.unpaidMonths > 0 { Text("\(co.unpaidMonths) month\(co.unpaidMonths == 1 ? "" : "s") of wages unpaid. Staff will start leaving.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
                     }
                 }
+            }
+        }
+    }
+
+    private func tile(_ title: String, _ value: String, sub: String? = nil, subTint: Color = Theme.ivoryMuted, tint: Color = Theme.ivory) -> some View {
+        Card(padding: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
+                Text(value).font(.figure(18, weight: .bold)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
+                if let sub { Text(sub).font(.caption2.weight(.semibold)).foregroundStyle(subTint) }
             }
         }
     }

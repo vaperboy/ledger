@@ -51,22 +51,32 @@ struct FinanceView: View {
                     ForEach(o.notes, id: \.self) { n in Text(n).font(.caption).foregroundStyle(Theme.ivoryMuted) }
                 }
             }
-            Card(padding: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    SectionLabel("Upcoming payments").padding(Theme.Space.l)
-                    if o.upcoming.isEmpty { Text("Nothing is due.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.l) }
-                    ForEach(o.upcoming.prefix(8)) { u in
-                        Divider().overlay(Theme.hairline)
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: u.essential ? "lock.fill" : "calendar").font(.caption).foregroundStyle(u.essential ? Theme.roseGold : Theme.ivoryFaint).frame(width: 18).padding(.top, 3)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(u.title).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory)
-                                Text("\(u.dateText) · \(u.detail)").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                            }
-                            Spacer(minLength: 8)
-                            Text(store.short(u.amount)).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory)
+            if !o.taxes.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack { Text("Tax summary").font(.bodyText.weight(.semibold)); Spacer(); Text("Owed now").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                        ForEach(o.taxes.prefix(4)) { l in
+                            ListRow(symbol: l.label.contains("VAT") || l.label.lowercased().contains("sales") ? "percent" : "building.columns", tint: Theme.gold,
+                                    title: l.label, subtitle: l.detail, trailing: store.short(l.amount))
                         }
-                        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
+                    }
+                }
+            }
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    Text("Upcoming payments").font(.bodyText.weight(.semibold))
+                    if o.upcoming.isEmpty { Text("Nothing is due.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                    ForEach(o.upcoming.prefix(8)) { u in
+                        ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: u.essential ? Theme.roseGold : Theme.ivoryMuted,
+                                title: u.title, subtitle: u.detail, trailing: store.short(u.amount), trailingSub: u.dateText)
+                    }
+                }
+            }
+            if !o.costsThisMonth.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        Text("Business costs · this month").font(.bodyText.weight(.semibold))
+                        costDonut(o.costsThisMonth, o.costTotalThisMonth)
                     }
                 }
             }
@@ -133,29 +143,41 @@ struct FinanceView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Where the money goes")
                     if lines.isEmpty { Text("No costs booked yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-                    else {
-                        ZStack {
-                            Chart(lines) { l in
-                                SectorMark(angle: .value("Amount", l.amount), innerRadius: .ratio(0.62), angularInset: 1.5)
-                                    .foregroundStyle(by: .value("Cost", l.label))
-                                    .cornerRadius(3)
-                            }
-                            .chartLegend(.hidden)
-                            .chartForegroundStyleScale(range: [Theme.gold, Theme.roseGold, Theme.gain, Theme.caution, Color(red: 0.55, green: 0.65, blue: 0.80), Theme.ivoryMuted, Theme.goldDeep, Theme.loss, Theme.ivoryFaint, Color(red: 0.70, green: 0.55, blue: 0.75), Theme.leather, Theme.glass])
-                            .frame(height: 190)
-                            VStack(spacing: 2) { Text(store.short(total)).font(.figure(22)); Text("total").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                        }
-                        ForEach(lines) { l in
-                            HStack {
-                                Text(l.label).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                Spacer()
-                                Text("\(Int((l.share * 100).rounded()))%").font(.caption.monospacedDigit()).foregroundStyle(Theme.ivoryFaint).frame(width: 44, alignment: .trailing)
-                                Text(store.short(l.amount)).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 90, alignment: .trailing)
-                            }
+                    else { costDonut(lines, total) }
+                }
+            }
+        }
+    }
+
+    private static let palette: [Color] = [Theme.gold, Color(red: 0.36, green: 0.62, blue: 0.86), Theme.gain, Theme.caution, Theme.roseGold, Color(red: 0.62, green: 0.50, blue: 0.80), Theme.loss, Theme.goldDeep, Theme.ivoryMuted, Color(red: 0.30, green: 0.70, blue: 0.70), Theme.ivoryFaint, Theme.glass]
+
+    /// A donut with the total in the middle and a coloured legend: label, share, amount.
+    private func costDonut(_ lines: [FinanceLine], _ total: Double) -> some View {
+        VStack(spacing: Theme.Space.m) {
+            HStack(spacing: Theme.Space.l) {
+                ZStack {
+                    Chart(lines) { l in
+                        SectorMark(angle: .value("Amount", l.amount), innerRadius: .ratio(0.64), angularInset: 1.5)
+                            .foregroundStyle(by: .value("Cost", l.label))
+                            .cornerRadius(3)
+                    }
+                    .chartLegend(.hidden)
+                    .chartForegroundStyleScale(range: Self.palette)
+                    VStack(spacing: 1) { Text(store.short(total)).font(.figure(16, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1); Text("Total").font(.caption2).foregroundStyle(Theme.ivoryFaint) }.padding(18)
+                }
+                .frame(width: 132, height: 132)
+                VStack(spacing: 7) {
+                    ForEach(Array(lines.prefix(6).enumerated()), id: \.offset) { i, l in
+                        HStack(spacing: 6) {
+                            Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
+                            Text(l.label).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text("\(Int((l.share * 100).rounded()))%").font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
                 }
             }
+            ForEach(lines) { l in ValueRow(label: l.label, value: store.short(l.amount)) }
         }
     }
 
@@ -184,7 +206,7 @@ struct FinanceView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) { Text(co.name).font(.bodyText.weight(.medium)); Text("Revenue \(store.short(co.books.year["rev"] ?? 0, in: co))").font(.caption).foregroundStyle(Theme.ivoryMuted) }
                                 Spacer()
-                                Text((p >= 0 ? "+" : "−") + store.short(abs(p), in: co)).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.change(p))
+                                Text((p >= 0 ? "+" : "−") + store.short(abs(p), in: co)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.change(p))
                             }.padding(Theme.Space.l)
                         }
                     }

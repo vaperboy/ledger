@@ -24,8 +24,8 @@ struct PhoneView: View {
                         Button { Haptics.tap(); path.append(dest) } label: {
                             Card {
                                 VStack(spacing: 10) {
-                                    Image(systemName: symbol).font(.system(size: 28, weight: .light)).foregroundStyle(Theme.goldGradient)
-                                    Text(title).font(.system(.subheadline, design: .serif).weight(.semibold)).foregroundStyle(Theme.ivory)
+                                    IconBadge(symbol: symbol, tint: Theme.gold, size: 48)
+                                    Text(title).font(.system(.subheadline, design: .default).weight(.semibold)).foregroundStyle(Theme.ivory)
                                 }
                                 .frame(maxWidth: .infinity, minHeight: 70)
                             }

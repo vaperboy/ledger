@@ -16,7 +16,7 @@ struct ActivityView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text((line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount))).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.change(line.amount))
+                            Text((line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount))).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.change(line.amount))
                             Text(store.short(line.balanceAfter)).font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                         }
                     }

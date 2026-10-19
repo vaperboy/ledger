@@ -82,6 +82,17 @@ final class TextTokenTests: XCTestCase {
     }
 }
 
+final class DisplayMoneyTests: XCTestCase {
+    func testScreenAmountsUseTheSymbol() throws {
+        let uk = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1)
+        let s = uk.homeCurrency.display(3_482_600 * uk.homeCurrency.rate)
+        XCTAssertEqual(s, "£3,482,600")
+        XCTAssertTrue(uk.homeCurrency.display(-1500 * uk.homeCurrency.rate).hasPrefix("\u{2212}£"))
+        let no = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 1)
+        XCTAssertTrue(no.homeCurrency.display(1234 * no.homeCurrency.rate).hasSuffix(" kr"))
+    }
+}
+
 final class ShowcaseTests: XCTestCase {
     func testShowcaseGameIsPopulatedAndConsistent() throws {
         let e = try GameEngine.showcase(days: 60)

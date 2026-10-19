@@ -24,14 +24,14 @@ struct InvestView: View {
                             Card(padding: Theme.Space.m) {
                                 HStack(spacing: Theme.Space.m) {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(q.symbol).font(.system(.headline, design: .serif)).foregroundStyle(Theme.ivory)
+                                        Text(q.symbol).font(.system(.headline, design: .default)).foregroundStyle(Theme.ivory)
                                         Text(q.name).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                                         if q.value > 0 { Text("You hold \(cur.short(q.value))").font(.caption2).foregroundStyle(Theme.gold) }
                                     }
                                     Spacer()
                                     if !q.history.isEmpty { Sparkline(values: Array(q.history.suffix(26)), tint: Theme.change((q.weekChange ?? 0))).frame(width: 70, height: 30) }
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text(cur.format(q.price)).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                        Text(cur.display(q.price)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivory)
                                         if let w = q.weekChange { Text(String(format: "%+.1f%%", w * 100)).font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(w)) }
                                     }
                                 }
@@ -63,11 +63,11 @@ struct TradeSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         Text(live.name).font(.heading)
-                        ValueRow(label: "Price", value: cur.format(live.price))
+                        ValueRow(label: "Price", value: cur.display(live.price))
                         if live.quantity > 0 {
-                            ValueRow(label: "You hold", value: cur.format(live.value))
-                            ValueRow(label: "You paid", value: cur.format(live.costBasis))
-                            ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.format(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
+                            ValueRow(label: "You hold", value: cur.display(live.value))
+                            ValueRow(label: "You paid", value: cur.display(live.costBasis))
+                            ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.display(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
                         }
                         AmountField(title: "Amount to buy", currency: cur, amount: $amount)
                         Button("Buy") {

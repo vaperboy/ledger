@@ -10,6 +10,8 @@ struct InboxView: View {
     @EnvironmentObject var store: GameStore
     @State private var tab: Tab = .all
 
+    private var waitingCount: Int { store.engine?.state.inbox.filter { msg in msg.status == "open" }.count ?? 0 }
+
     private func matches(_ m: Message) -> Bool {
         switch tab {
         case .all: return true
@@ -50,7 +52,7 @@ struct InboxView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab).padding(.vertical, Theme.Space.xs).background(Theme.walnut.opacity(0.9))
+                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 }).padding(.vertical, Theme.Space.xs).background(Theme.walnut.opacity(0.9))
             }
             .ledgerBackground()
             .navigationTitle("Inbox")
@@ -78,52 +80,87 @@ struct MessageCard: View {
         return EffectPreview.lines(option["fx"], currency: cur)
     }
 
+    private var symbol: String {
+        if message.actionID.hasPrefix("pay29") { return "banknote" }
+        if message.actionID == "staffx" { return "person.fill" }
+        if message.status == "open" { return message.tone == "bad" ? "exclamationmark.triangle.fill" : "briefcase.fill" }
+        switch message.tone { case "bad": return "exclamationmark.triangle.fill"; case "good": return "checkmark.circle.fill"; default: return "newspaper.fill" }
+    }
+    private var tint: Color {
+        if message.status == "open" { return message.tone == "bad" ? Theme.loss : Theme.gold }
+        return Theme.tone(message.tone == "n" ? "" : message.tone)
+    }
+    private var age: String {
+        let d = week - message.week
+        return d <= 0 ? "This week" : d == 1 ? "1 week ago" : "\(d) weeks ago"
+    }
+
     var body: some View {
         let open = message.status == "open"
         if !open && message.tone != "bad" && message.isRead {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Circle().fill(Theme.tone(message.tone == "n" ? "" : message.tone)).frame(width: 6, height: 6)
+            HStack(alignment: .center, spacing: 10) {
+                IconBadge(symbol: symbol, tint: tint, size: 28)
                 Text(text(message.title)).font(.subheadline).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
                 Spacer()
-                Text(message.from).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text(message.from).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
             }
             .padding(.horizontal, Theme.Space.s).padding(.vertical, 2)
         } else {
-        Card {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .firstTextBaseline) {
-                    if !message.isRead || open { Circle().fill(open ? Theme.caution : Theme.gold).frame(width: 7, height: 7) }
-                    Text(text(message.title)).font(.system(.headline, design: .serif)).foregroundStyle(Theme.ivory)
-                    Spacer()
-                    Text(message.from).font(.caption).foregroundStyle(Theme.ivoryFaint)
-                }
-                Text(text(message.body)).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                if open {
-                    if let exp = message.expiresWeek {
-                        let left = exp - week
-                        Chip(text: left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week", tint: left <= 1 ? Theme.loss : Theme.caution)
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(alignment: .top, spacing: Theme.Space.m) {
+                        IconBadge(symbol: symbol, tint: tint, size: 44)
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(message.from).font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                                Spacer()
+                                Text(age).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                if !message.isRead || open { Circle().fill(open ? Theme.caution : Theme.gold).frame(width: 7, height: 7) }
+                            }
+                            Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            Text(text(message.body)).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    VStack(spacing: 8) {
-                        ForEach(Array(message.options.enumerated()), id: \.offset) { idx, opt in
-                            Button { store.answer(message, option: idx) } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(text(opt["l"].string)).font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.ivory)
-                                    if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
-                                    ForEach(preview(opt), id: \.self) { line in
-                                        Text("• " + line).font(.caption2).foregroundStyle(Theme.gold.opacity(0.9))
+                    if open {
+                        if let exp = message.expiresWeek {
+                            let left = exp - week
+                            Chip(text: left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week", tint: left <= 1 ? Theme.loss : Theme.caution, symbol: "clock")
+                        }
+                        let opts = Array(message.options.enumerated())
+                        let detailed = message.options.contains { !$0["d"].string.isEmpty || !preview($0).isEmpty }
+                        if !detailed && opts.count <= 3 {
+                            HStack(spacing: 8) {
+                                ForEach(opts, id: \.offset) { idx, opt in
+                                    if idx == 0 {
+                                        Button(text(opt["l"].string)) { store.answer(message, option: idx) }.buttonStyle(SmallGoldButtonStyle())
+                                    } else {
+                                        Button(text(opt["l"].string)) { store.answer(message, option: idx) }.buttonStyle(SmallOutlineButtonStyle())
                                     }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(Theme.Space.m)
-                                .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Theme.walnut.opacity(0.6)))
-                                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s).strokeBorder(Theme.gold.opacity(0.35), lineWidth: 0.75))
-                            }.buttonStyle(.plain)
+                            }
+                        } else {
+                            VStack(spacing: 8) {
+                                ForEach(opts, id: \.offset) { idx, opt in
+                                    Button { store.answer(message, option: idx) } label: {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(text(opt["l"].string)).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivory)
+                                            if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
+                                            ForEach(preview(opt), id: \.self) { line in
+                                                Text("• " + line).font(.caption2).foregroundStyle(Theme.gold.opacity(0.9))
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(Theme.Space.m)
+                                        .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.04)))
+                                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s).strokeBorder(idx == 0 ? Theme.gold.opacity(0.55) : Theme.hairline, lineWidth: 0.75))
+                                    }.buttonStyle(.plain)
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-        .onAppear { if !open { store.markRead(message.id) } }
+            .onAppear { if !open { store.markRead(message.id) } }
         }
     }
 }

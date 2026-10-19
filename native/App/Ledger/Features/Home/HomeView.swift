@@ -16,12 +16,13 @@ struct HomeView: View {
                         if sizeClass == .regular {
                             HStack(alignment: .top, spacing: Theme.Space.l) {
                                 VStack(spacing: Theme.Space.l) { NetWorthCard(engine: e); SummaryRow(engine: e) }
-                                VStack(spacing: Theme.Space.l) { SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e) }
+                                VStack(spacing: Theme.Space.l) { SuggestionCard(engine: e); EmpireCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e) }
                             }
                         } else {
                             NetWorthCard(engine: e)
-                            SuggestionCard(engine: e)
                             SummaryRow(engine: e)
+                            SuggestionCard(engine: e)
+                            EmpireCard(engine: e)
                             ComingUpCard(engine: e)
                             FirstStepsCard(engine: e)
                         }
@@ -46,24 +47,20 @@ struct HomeView: View {
 struct HomeHeader: View {
     var engine: GameEngine
     var body: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting).font(.system(.title2, design: .serif).weight(.semibold)).foregroundStyle(Theme.ivory)
-                Text("\(engine.date) · Week \(engine.state.week + 1)").font(.label).foregroundStyle(Theme.ivoryMuted)
-            }
-            Spacer()
+        ScreenHeader(eyebrow: "Week \(engine.state.week + 1) · \(engine.date)", title: title) {
             HStack(spacing: 6) {
                 Text(engine.homeCountry.flag)
                 Text(engine.homeCountry.name).font(.label).foregroundStyle(Theme.ivoryMuted)
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Capsule().fill(Theme.leather.opacity(0.8)))
+            .background(Capsule().fill(Theme.leather.opacity(0.9)))
+            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
         }
         .padding(.top, Theme.Space.s)
     }
-    private var greeting: String {
+    private var title: String {
         let name = engine.state.player.name
-        return name.isEmpty ? "Welcome" : "Good day, \(name)"
+        return name.isEmpty ? "You" : name
     }
 }
 
@@ -76,72 +73,61 @@ struct NetWorthCard: View {
     var body: some View {
         let nw = engine.netWorth
         let hist = engine.dayHistory
-        let day = DayHistory.change(hist.netWorth, days: 1)
         let week = DayHistory.change(hist.netWorth, days: 7)
+        let owed = nw.debt + nw.pendingTax
+        let rise = week?.share ?? 0
         Card {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                SectionLabel("Net worth")
-                Text(store.money(nw.total))
-                    .font(.figure(40, weight: .semibold))
-                    .foregroundStyle(nw.total < 0 ? Theme.loss : Theme.ivory)
-                    .minimumScaleFactor(0.6).lineLimit(1)
-                HStack(spacing: 8) {
-                    if let day { DeltaPill(title: "Today", amount: day.amount, share: day.share, format: store.short) }
-                    if let week { DeltaPill(title: "Week", amount: week.amount, share: week.share, format: store.short) }
+                Text("Net worth").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(store.money(nw.total))
+                        .font(.figure(34, weight: .bold))
+                        .foregroundStyle(nw.total < 0 ? Theme.loss : Theme.ivory)
+                        .minimumScaleFactor(0.55).lineLimit(1)
+                    Spacer(minLength: 6)
+                    if let week, abs(week.amount) > 0 {
+                        Chip(text: weekText(week), tint: Theme.change(week.amount), symbol: week.amount >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Sparkline(values: hist.netWorth, tint: Theme.gold).frame(height: 56)
-                Divider().overlay(Theme.hairline)
-                DebtBreakdown(nw: nw)
+                HStack(spacing: 8) {
+                    if week != nil {
+                        Chip(text: rise > 0.003 ? "Growing wealth" : rise < -0.003 ? "Losing ground" : "Holding steady",
+                             tint: rise > 0.003 ? Theme.gain : rise < -0.003 ? Theme.loss : Theme.ivoryMuted,
+                             symbol: rise > 0.003 ? "checkmark.seal.fill" : rise < -0.003 ? "arrow.down.right.circle.fill" : "equal.circle.fill")
+                    }
+                    Spacer()
+                    if owed > 0 { Chip(text: "Debt " + store.short(owed), tint: Theme.loss) }
+                }
+                Sparkline(values: hist.netWorth, tint: Theme.gold).frame(height: 44)
             }
         }
     }
 }
 
-/// Assets, debts and the result, always from the same `NetWorth` parts as the big figure, so they cannot disagree.
-struct DebtBreakdown: View {
-    @EnvironmentObject var store: GameStore
-    var nw: NetWorth
-    var body: some View {
-        let owed = nw.debt + nw.pendingTax
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Stat(label: "Assets", value: store.short(nw.totalAssets))
-                Spacer()
-                Stat(label: nw.pendingTax > 0 ? "Debt and tax" : "Debt", value: owed > 0 ? "−" + store.short(owed) : store.short(0), tint: owed > 0 ? Theme.loss : Theme.ivoryMuted)
-                Spacer()
-                Stat(label: "Net", value: store.short(nw.total), tint: nw.total < 0 ? Theme.loss : Theme.ivory)
-            }
-            if nw.totalAssets > 0 {
-                let share = min(1, owed / nw.totalAssets)
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.hairline)
-                        Capsule().fill(share > 0.7 ? Theme.loss : share > 0.4 ? Theme.caution : Theme.roseGold).frame(width: max(4, g.size.width * share))
-                    }
-                }
-                .frame(height: 5)
-                Text(owed > 0 ? "Debt is \(Int((owed / nw.totalAssets * 100).rounded()))% of what you own" : "No debt")
-                    .font(.label).foregroundStyle(Theme.ivoryFaint)
-            } else if owed > 0 {
-                Text("You owe more than you own right now").font(.label).foregroundStyle(Theme.ivoryFaint)
-            }
-        }
+extension NetWorthCard {
+    fileprivate func weekText(_ week: (amount: Double, share: Double?)) -> String {
+        if let share = week.share { return String(format: "%+.1f%% (7d)", share * 100) }
+        return (week.amount >= 0 ? "+" : "−") + store.short(abs(week.amount)) + " (7d)"
     }
 }
 
 // MARK: Summary tiles
 
+/// Cash, investments and companies side by side in one card, each with its own small history.
 struct SummaryRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var body: some View {
         let nw = engine.netWorth
         let h = engine.dayHistory
-        HStack(spacing: Theme.Space.m) {
-            SummaryTile(title: "Cash", value: store.short(nw.personal), series: h.cash, change: DayHistory.change(h.cash, days: 7))
-            SummaryTile(title: "Invested", value: store.short(nw.investments), series: h.invested, change: DayHistory.change(h.invested, days: 7))
-            SummaryTile(title: "Companies", value: store.short(nw.companies), series: h.companies, change: DayHistory.change(h.companies, days: 7))
+        Card(padding: 0) {
+            HStack(spacing: 0) {
+                SummaryTile(title: "Cash", value: store.short(nw.personal), series: h.cash, change: DayHistory.change(h.cash, days: 7))
+                Divider().overlay(Theme.hairline)
+                SummaryTile(title: "Investments", value: store.short(nw.investments), series: h.invested, change: DayHistory.change(h.invested, days: 7))
+                Divider().overlay(Theme.hairline)
+                SummaryTile(title: "In companies", value: store.short(nw.companies), series: h.companies, change: DayHistory.change(h.companies, days: 7))
+            }
         }
     }
 }
@@ -153,18 +139,45 @@ struct SummaryTile: View {
     var series: [Double]
     var change: (amount: Double, share: Double?)?
     var body: some View {
-        Card(padding: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: 6) {
-                SectionLabel(title)
-                Text(value).font(.figure(18)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                Sparkline(values: series, tint: Theme.change(change?.amount ?? 0) == Theme.ivoryMuted ? Theme.gold : Theme.change(change?.amount ?? 0)).frame(height: 28)
-                if let change {
-                    Text((change.amount >= 0 ? "▲ " : "▼ ") + store.short(abs(change.amount)) + " wk")
-                        .font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(change.amount))
-                } else {
-                    Text("—").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+        let tint = Theme.change(change?.amount ?? 0) == Theme.ivoryMuted ? Theme.gold : Theme.change(change?.amount ?? 0)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+            Text(value).font(.figure(17, weight: .bold)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+            Sparkline(values: series, tint: tint).frame(height: 26)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: Your empire
+
+/// Companies, countries and yearly revenue in one line, opening the Group.
+struct EmpireCard: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var body: some View {
+        let cos = engine.state.liveCompanies.filter { $0.type != "hold" }
+        if !cos.isEmpty {
+            let countries = Set(cos.map { $0.countryCode }).count
+            let revenue = cos.reduce(0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } }
+            Button { Haptics.tap(); store.tab = .group } label: {
+                Card {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack { Text("Your empire").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory); Spacer(); Text("Group").font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                        HStack(spacing: Theme.Space.m) {
+                            IconBadge(symbol: "building.2.fill", tint: Theme.gold, size: 52)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("\(cos.count) \(cos.count == 1 ? "company" : "companies")").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory)
+                                Text("\(countries) \(countries == 1 ? "country" : "countries")").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                                Text(revenue > 0 ? store.short(revenue) + " revenue (12 months)" : "No yearly figures yet").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
+                        }
+                    }
                 }
-            }
+            }.buttonStyle(.plain)
         }
     }
 }

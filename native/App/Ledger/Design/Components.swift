@@ -1,7 +1,7 @@
 import SwiftUI
 import Countries
 
-/// A smoked-glass card on the walnut background.
+/// A dark glass card with a fine light edge.
 struct Card<Content: View>: View {
     var padding: CGFloat = Theme.Space.l
     @ViewBuilder var content: () -> Content
@@ -11,13 +11,77 @@ struct Card<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous)
-                    .fill(LinearGradient(colors: [Theme.glass.opacity(0.55), Theme.leather.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: [Theme.glass.opacity(0.45), Theme.leather.opacity(0.92)], startPoint: .topLeading, endPoint: .bottomTrailing))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
+                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
             )
-            .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+            .shadow(color: .black.opacity(0.4), radius: 10, y: 5)
+    }
+}
+
+/// An icon in a small rounded square, the lead of every list row.
+struct IconBadge: View {
+    var symbol: String
+    var tint: Color = Theme.gold
+    var size: CGFloat = 38
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.42, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(tint.opacity(0.13)))
+            .overlay(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).strokeBorder(tint.opacity(0.28), lineWidth: 0.75))
+            .accessibilityHidden(true)
+    }
+}
+
+/// A list row: icon, title and subtitle, a figure and a small line under it, optional chevron.
+struct ListRow: View {
+    var symbol: String
+    var tint: Color = Theme.gold
+    var title: String
+    var subtitle: String = ""
+    var trailing: String = ""
+    var trailingSub: String = ""
+    var trailingTint: Color = Theme.ivory
+    var chevron = false
+    var body: some View {
+        HStack(spacing: Theme.Space.m) {
+            IconBadge(symbol: symbol, tint: tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(2)
+                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+            }
+            Spacer(minLength: 8)
+            if !trailing.isEmpty || !trailingSub.isEmpty {
+                VStack(alignment: .trailing, spacing: 2) {
+                    if !trailing.isEmpty { Text(trailing).font(.system(.subheadline).weight(.semibold).monospacedDigit()).foregroundStyle(trailingTint) }
+                    if !trailingSub.isEmpty { Text(trailingSub).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                }
+            }
+            if chevron { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The top of a main screen: a small line (date, place), then the big title.
+struct ScreenHeader<Trailing: View>: View {
+    var eyebrow: String
+    var title: String
+    @ViewBuilder var trailing: () -> Trailing
+    var body: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                if !eyebrow.isEmpty { Text(eyebrow).font(.subheadline).foregroundStyle(Theme.ivoryMuted) }
+                Text(title).font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.ivory)
+            }
+            Spacer()
+            trailing()
+        }
     }
 }
 
@@ -25,7 +89,7 @@ struct Card<Content: View>: View {
 struct GoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.headline, design: .serif).weight(.semibold))
+            .font(.system(.headline, design: .default).weight(.semibold))
             .foregroundStyle(Color(red: 0.16, green: 0.115, blue: 0.05))
             .frame(maxWidth: .infinity, minHeight: 54)
             .background(
@@ -76,7 +140,7 @@ struct DeltaPill: View {
         HStack(spacing: 5) {
             Image(systemName: amount > 0 ? "arrow.up.right" : amount < 0 ? "arrow.down.right" : "minus").font(.caption2.weight(.bold))
             Text(title).font(.label).foregroundStyle(Theme.ivoryMuted)
-            Text(amount == 0 ? format(0) : (amount > 0 ? "+" : "−") + format(abs(amount))).font(.system(.caption, design: .serif).weight(.semibold).monospacedDigit())
+            Text(amount == 0 ? format(0) : (amount > 0 ? "+" : "−") + format(abs(amount))).font(.system(.caption, design: .default).weight(.semibold).monospacedDigit())
             if let share, abs(share) >= 0.001, abs(share) < 10 {
                 Text(String(format: "%+.1f%%", share * 100)).font(.caption2.monospacedDigit()).opacity(0.85)
             }
@@ -137,14 +201,20 @@ struct MiniBars: View {
     }
 }
 
-/// Small status capsule.
+/// Small status capsule, optionally with an icon.
 struct Chip: View {
     var text: String
     var tint: Color = Theme.ivoryMuted
+    var symbol: String? = nil
     var body: some View {
-        Text(text).font(.caption2.weight(.semibold)).foregroundStyle(tint)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(Capsule().fill(tint.opacity(0.14)))
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol).font(.system(size: 10, weight: .bold)) }
+            Text(text).font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 9).padding(.vertical, 4)
+        .background(Capsule().fill(tint.opacity(0.14)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.3), lineWidth: 0.5))
     }
 }
 
@@ -179,7 +249,7 @@ struct ValueRow: View {
         HStack {
             Text(label).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             Spacer()
-            Text(value).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(tint)
+            Text(value).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(tint)
         }
     }
 }
@@ -198,7 +268,7 @@ struct AmountField: View {
             TextField(title, text: $text)
                 .keyboardType(.decimalPad)
                 .focused($focused)
-                .font(.system(.body, design: .serif).monospacedDigit())
+                .font(.system(.body, design: .default).monospacedDigit())
                 .multilineTextAlignment(.trailing)
                 .onChange(of: text) { _, new in
                     let cleaned = new.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." }
@@ -212,20 +282,29 @@ struct AmountField: View {
     }
 }
 
-/// Horizontal section switcher used on detail screens.
+/// Horizontal section switcher: dark pills, the chosen one lit with a light edge. A small red count may sit on a pill.
 struct SectionTabs<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
+    var badge: (T) -> Int = { _ in 0 }
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(items, id: \.self) { item in
+                    let on = selection == item
                     Button { selection = item; Haptics.choose() } label: {
-                        Text(title(item)).font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selection == item ? Color(red: 0.16, green: 0.115, blue: 0.05) : Theme.ivoryMuted)
-                            .padding(.horizontal, 14).padding(.vertical, 8)
-                            .background(Capsule().fill(selection == item ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Theme.leather.opacity(0.8))))
+                        HStack(spacing: 5) {
+                            Text(title(item)).font(.subheadline.weight(.medium))
+                            if badge(item) > 0 {
+                                Text("\(badge(item))").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                                    .padding(.horizontal, 5).padding(.vertical, 1).background(Capsule().fill(Theme.loss))
+                            }
+                        }
+                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(Capsule().fill(on ? Color.white.opacity(0.12) : Theme.leather.opacity(0.9)))
+                        .overlay(Capsule().strokeBorder(on ? Theme.ivory.opacity(0.55) : Theme.hairline, lineWidth: 0.75))
                     }.buttonStyle(.plain)
                 }
             }
@@ -263,7 +342,7 @@ struct Ring: View {
                 Circle().stroke(Theme.hairline, lineWidth: 6)
                 Circle().trim(from: 0, to: CGFloat(min(1, max(0.005, fraction))))
                     .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round)).rotationEffect(.degrees(-90))
-                Text(centre).font(.system(.subheadline, design: .serif).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(centre).font(.system(.subheadline, design: .default).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
                     .minimumScaleFactor(0.6).lineLimit(1).padding(6)
             }
             .frame(width: 66, height: 66)
@@ -271,5 +350,29 @@ struct Ring: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Compact bronze button for the main answer on a card.
+struct SmallGoldButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color(red: 0.14, green: 0.10, blue: 0.05))
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).fill(Theme.goldGradient))
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+
+/// Compact outlined button for the other answers.
+struct SmallOutlineButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Theme.ivory)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).fill(Color.white.opacity(configuration.isPressed ? 0.10 : 0.04)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 0.75))
     }
 }

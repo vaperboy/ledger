@@ -24,7 +24,7 @@ struct CompanyTeam: View {
                             HStack {
                                 Text(roleName(m.role)).font(.bodyText.weight(.semibold))
                                 Spacer()
-                                Text(cur.format(m.monthlyWage) + " / mo").font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                Text(cur.display(m.monthlyWage) + " / mo").font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                             }
                             if m.tiredness > 60 { Chip(text: "Tired", tint: Theme.caution) }
                             let missing = StaffExtras.missing(m)
@@ -77,7 +77,7 @@ struct CompanyTeam: View {
         .confirmationDialog("Let this person go?", isPresented: Binding(get: { confirmFire != nil }, set: { if !$0 { confirmFire = nil } }), presenting: confirmFire) { m in
             Button("Let go", role: .destructive) {
                 let severance = store.act { $0.fire(personID: m.id, companyID: company.id) } ?? 0
-                store.show(severance > 0 ? "Severance paid: \(cur.format(severance))" : "Done.", tone: "n")
+                store.show(severance > 0 ? "Severance paid: \(cur.display(severance))" : "Done.", tone: "n")
                 Haptics.warning()
             }
         } message: { _ in Text("Notice periods and severance may apply.") }

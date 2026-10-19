@@ -56,9 +56,9 @@ final class GameStore: ObservableObject {
 
     // MARK: Formatting (home currency)
 
-    func money(_ v: Double) -> String { engine?.homeCurrency.format(v) ?? String(Int(v)) }
+    func money(_ v: Double) -> String { engine?.homeCurrency.display(v) ?? String(Int(v)) }
     func short(_ v: Double) -> String { engine?.homeCurrency.short(v) ?? String(Int(v)) }
-    func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).format(v) ?? String(Int(v)) }
+    func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).display(v) ?? String(Int(v)) }
     func short(_ v: Double, in co: Company) -> String { engine?.currency(for: co).short(v) ?? String(Int(v)) }
 
     // MARK: Saving and loading

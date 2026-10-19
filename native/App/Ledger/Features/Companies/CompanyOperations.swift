@@ -17,7 +17,7 @@ struct CompanyOperations: View {
                     HStack {
                         Text(priceWord(company.priceLevel)).font(.heading)
                         Spacer()
-                        Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                        Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
                     Slider(value: Binding(get: { company.priceLevel }, set: { v in store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) } }), in: -3...3, step: 0.5)
                         .tint(Theme.gold)

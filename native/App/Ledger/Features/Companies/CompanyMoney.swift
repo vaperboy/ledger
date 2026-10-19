@@ -31,7 +31,7 @@ struct CompanyMoney: View {
                     }
                     if company.form == .limited {
                         let maxDiv = engine.maximumDividend(companyID: company.id)
-                        Text("Most you can pay out now: \(cur.format(maxDiv)). Dividends are taxed on your return.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Text("Most you can pay out now: \(cur.display(maxDiv)). Dividends are taxed on your return.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }
@@ -56,11 +56,11 @@ struct CompanyMoney: View {
                     SectionLabel("Borrow for this company")
                     AmountField(title: "Loan amount", currency: cur, amount: $loanAmount)
                     let offer = engine.loanOffer(kind: "biz", amount: loanAmount, companyID: company.id)
-                    Text("The bank would lend up to \(cur.format(offer.maximum)) at about \(Currency.percent(engine.state.economy.policyRate + offer.margin, decimals: 1)).")
+                    Text("The bank would lend up to \(cur.display(offer.maximum)) at about \(Currency.percent(engine.state.economy.policyRate + offer.margin, decimals: 1)).")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     Button("Take a 5-year loan") { borrow() }.buttonStyle(QuietButtonStyle())
                     ForEach(engine.state.loans.filter { $0.companyID == company.id }) { l in
-                        ValueRow(label: l.name, value: cur.format(l.balance))
+                        ValueRow(label: l.name, value: cur.display(l.balance))
                     }
                 }
             }
@@ -69,13 +69,13 @@ struct CompanyMoney: View {
 
     private func header(_ s: String) -> some View { Text(s).font(.label).foregroundStyle(Theme.ivoryFaint).frame(width: 70, alignment: .trailing) }
     private func figure(_ v: Double, _ cur: Currency) -> some View {
-        Text(cur.short(v)).font(.system(.caption, design: .serif).monospacedDigit()).foregroundStyle(Theme.change(v) == Theme.ivoryMuted ? Theme.ivory : Theme.change(v)).frame(width: 70, alignment: .trailing)
+        Text(cur.short(v)).font(.system(.caption, design: .default).monospacedDigit()).foregroundStyle(Theme.change(v) == Theme.ivoryMuted ? Theme.ivory : Theme.change(v)).frame(width: 70, alignment: .trailing)
     }
     private func row(_ title: String, _ key: String, _ b: Books, _ cur: Currency) -> some View {
         HStack {
             Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer()
             ForEach([b.week, b.month, b.year], id: \.self) { dict in
-                Text(cur.short(dict[key] ?? 0)).font(.system(.caption, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 70, alignment: .trailing)
+                Text(cur.short(dict[key] ?? 0)).font(.system(.caption, design: .default).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 70, alignment: .trailing)
             }
         }
     }

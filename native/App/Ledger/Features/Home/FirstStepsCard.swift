@@ -14,9 +14,9 @@ struct FirstStepsCard: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Button { withAnimation(.snappy) { collapsed.toggle() } } label: {
                         HStack {
-                            SectionLabel("First steps")
+                            Text("First steps").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory)
+                            Text("· \(done) of \(steps.count)").font(.label).foregroundStyle(Theme.ivoryMuted)
                             Spacer()
-                            Text("\(done) of \(steps.count)").font(.label).foregroundStyle(Theme.ivoryMuted)
                             Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(Theme.ivoryFaint).rotationEffect(.degrees(collapsed ? -90 : 0))
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain)

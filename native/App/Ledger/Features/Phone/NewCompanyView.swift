@@ -25,7 +25,7 @@ struct NewCompanyView: View {
                             Card(padding: Theme.Space.m) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(t.name).font(.system(.headline, design: .serif)).foregroundStyle(ban == nil ? Theme.ivory : Theme.ivoryFaint)
+                                        Text(t.name).font(.system(.headline, design: .default)).foregroundStyle(ban == nil ? Theme.ivory : Theme.ivoryFaint)
                                         Text(ban ?? t.blurb).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(2).multilineTextAlignment(.leading)
                                     }
                                     Spacer()
@@ -100,8 +100,8 @@ struct TradeDetailView: View {
                                 line("Working buffer", est.buffer, cur)
                                 if est.abroad > 0 { line("Abroad", est.abroad, cur) }
                                 Divider().overlay(Theme.hairline)
-                                HStack { Text("Total").font(.bodyText.weight(.semibold)); Spacer(); Text(cur.format(est.total)).font(.figure(18)) }
-                                Text("You have \(cur.format(Payments.liquid(e.state))) available. Share capital for a limited company: \(cur.format(est.shareCapital)).").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                HStack { Text("Total").font(.bodyText.weight(.semibold)); Spacer(); Text(cur.display(est.total)).font(.figure(18)) }
+                                Text("You have \(cur.display(Payments.liquid(e.state))) available. Share capital for a limited company: \(cur.display(est.shareCapital)).").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
                         Button("Start this business") {
@@ -129,6 +129,6 @@ struct TradeDetailView: View {
     }
 
     private func line(_ label: String, _ v: Double, _ cur: Currency) -> some View {
-        Group { if v > 0 { ValueRow(label: label, value: cur.format(v)) } }
+        Group { if v > 0 { ValueRow(label: label, value: cur.display(v)) } }
     }
 }

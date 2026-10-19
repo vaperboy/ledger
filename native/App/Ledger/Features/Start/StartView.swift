@@ -25,7 +25,7 @@ struct StartView: View {
         ScrollView {
             VStack(spacing: Theme.Space.xl) {
                 VStack(spacing: 6) {
-                    Text("LEDGER").font(.system(size: 40, weight: .semibold, design: .serif)).tracking(8).foregroundStyle(Theme.gold)
+                    Text("LEDGER").font(.system(size: 40, weight: .semibold, design: .default)).tracking(8).foregroundStyle(Theme.gold)
                     Text("Business tycoon simulator").font(.label).tracking(1.5).foregroundStyle(Theme.ivoryFaint)
                 }.padding(.top, 48)
 

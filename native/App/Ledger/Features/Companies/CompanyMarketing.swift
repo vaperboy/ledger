@@ -26,7 +26,7 @@ struct CompanyMarketing: View {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         HStack {
-                            Text(ch.name).font(.system(.headline, design: .serif))
+                            Text(ch.name).font(.system(.headline, design: .default))
                             Spacer()
                             if budget > 0 { Chip(text: "Running", tint: Theme.gain) }
                             if ch.isHighVariance { Chip(text: "Hit or miss", tint: Theme.caution) }

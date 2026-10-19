@@ -29,7 +29,7 @@ struct GroupView: View {
                             Button { store.openCompanyID = co.id; store.tab = .companies } label: {
                                 Card {
                                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                                        HStack { Text(co.name).font(.heading); Spacer(); StatusChip(company: co) }
+                                        HStack(spacing: Theme.Space.m) { IconBadge(symbol: "building.2.fill", tint: co.cash < 0 ? Theme.loss : Theme.gold, size: 38); Text(co.name).font(.heading); Spacer(); StatusChip(company: co) }
                                         MiniBars(values: e.monthlyProfitSeries(co)).frame(height: 36)
                                         HStack {
                                             Stat(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory)
