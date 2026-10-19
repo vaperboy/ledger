@@ -111,8 +111,9 @@ struct QuietButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.subheadline).weight(.semibold))
+            .lineLimit(1)
             .foregroundStyle(tint)
-            .padding(.horizontal, Theme.Space.l).padding(.vertical, 10)
+            .padding(.horizontal, 14).padding(.vertical, 8)
             .liquidGlassCapsule(interactive: true)
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

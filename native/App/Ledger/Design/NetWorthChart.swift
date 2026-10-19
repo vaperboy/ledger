@@ -16,7 +16,8 @@ struct NetWorthChart: View {
         let series = engine.netWorthSeries(days: days)
         let points: [Point] = series.enumerated().map { (i, v) in Point(id: i, value: v) }
         let lo = series.min() ?? 0, hi = series.max() ?? 0
-        let pad = max((hi - lo) * 0.15, abs(hi) * 0.002, 1)
+        // Never zoom in so far that a fraction of a percent looks like a crash: the scale spans at least ±3% of the level.
+        let pad = max((hi - lo) * 0.15, (abs(hi) * 0.06 - (hi - lo)) / 2, 1)
         let rising = (series.last ?? 0) >= (series.first ?? 0)
         let tint = rising ? Theme.gold : Theme.loss
         VStack(alignment: .leading, spacing: Theme.Space.s) {

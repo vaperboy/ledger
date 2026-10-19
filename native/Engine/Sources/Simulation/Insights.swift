@@ -128,7 +128,7 @@ public extension GameEngine {
         let open = co.value("compl").array.filter { $0["st"].string == "open" }.count
         if open > 0 { out.append(Insight(id: "compl", symbol: "text.bubble", text: "\(open) customer complaint\(open == 1 ? "" : "s") waiting. Unanswered ones turn into bad reviews.", tone: .bad)) }
         let paperwork = co.staff.reduce(0) { $0 + StaffExtras.missing($1).count }
-        if paperwork > 0 { out.append(Insight(id: "paper", symbol: "doc.badge.exclamationmark", text: "\(paperwork) staff paperwork item\(paperwork == 1 ? "" : "s") missing; an inspection can fine you.", tone: .warn)) }
+        if paperwork > 0 { out.append(Insight(id: "paper", symbol: "doc.text", text: "\(paperwork) staff paperwork item\(paperwork == 1 ? "" : "s") missing; an inspection can fine you.", tone: .warn)) }
         if co.value("flags")["mktPausedWeek"].double >= Double(state.week - 4), co.value("flags")["mktPausedWeek"].double > 0 {
             out.append(Insight(id: "mkt", symbol: "pause.circle", text: "Campaigns are paused because paying for them would break your cash reserve.", tone: .warn))
         }

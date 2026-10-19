@@ -36,7 +36,7 @@ struct CompanyDetailView: View {
                     }
                 }
                 .padding(Theme.Space.l)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
@@ -61,17 +61,26 @@ struct CompanyOverview: View {
     var company: Company
     @Binding var section: CompanySection
     @State private var months = 12
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private struct Point: Identifiable { var id: Int; var series: String; var value: Double }
 
     var body: some View {
         let co = company
         let h = engine.companyHealth(co)
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            keyFigures(co, h)
-            diagnosis(co)
-            if co.status == .open { operations(co, h) }
-            performance(co, h)
+        if sizeClass == .regular {
+            // iPad: what and why on the left, how it runs and the trend on the right, all on one screen
+            HStack(alignment: .top, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) { keyFigures(co, h); diagnosis(co) }
+                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open { operations(co, h) }; performance(co, h) }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                keyFigures(co, h)
+                diagnosis(co)
+                if co.status == .open { operations(co, h) }
+                performance(co, h)
+            }
         }
     }
 
