@@ -4,9 +4,15 @@ import GameCore
 import Finance
 import Simulation
 
+/// The Money tab: what is owed and coming, the bank, investments, taxes, where the money goes, and the books.
+struct MoneyView: View {
+    var body: some View { NavigationStack { FinanceView() } }
+}
+
 /// Finance & taxes: what is owed, what is coming, where the money goes, and the books. Everything comes from `FinanceOverview`.
+/// For the whole empire (the Money tab) it also holds the bank and investments; for one company only that company's money.
 struct FinanceView: View {
-    enum Section: String, CaseIterable, Hashable { case overview = "Overview", taxes = "Taxes", expenses = "Expenses", reports = "Reports" }
+    typealias Section = MoneySection
     @EnvironmentObject var store: GameStore
     var companyID: Int? = nil
     @State private var section: Section = .overview
@@ -17,21 +23,31 @@ struct FinanceView: View {
             let o = e.financeOverview(companyID: companyID)
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
-                    SectionTabs(items: Section.allCases, title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.l)
+                    SectionTabs(items: companyID == nil ? Section.allCases : [.overview, .taxes, .costs, .reports], title: { $0.rawValue }, selection: $section)
+                        .padding(.horizontal, -Theme.Space.l)
                     switch section {
                     case .overview: overview(e, o)
+                    case .bank: BankContent()
+                    case .invest: InvestContent()
                     case .taxes: taxes(o)
-                    case .expenses: expenses(o)
+                    case .costs: expenses(o)
                     case .reports: reports(e, o)
                     }
                 }
                 .padding(Theme.Space.l)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
-            .navigationTitle("Finance & taxes")
+            .navigationTitle(companyID == nil ? "Money" : "Finance & taxes")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { takeRequestedSection() }
+            .onChange(of: store.moneySection) { _, _ in takeRequestedSection() }
         }
+    }
+
+    private func takeRequestedSection() {
+        if companyID == nil, let s = store.moneySection { section = s; store.moneySection = nil }
     }
 
     // MARK: Overview

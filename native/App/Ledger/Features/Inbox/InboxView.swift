@@ -56,6 +56,7 @@ struct InboxView: View {
             }
             .ledgerBackground()
             .navigationTitle("Inbox")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Mark all read") {

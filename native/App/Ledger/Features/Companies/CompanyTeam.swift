@@ -22,29 +22,39 @@ struct CompanyTeam: View {
                         Spacer()
                         Chip(text: "\(company.staff.count) \(company.staff.count == 1 ? "person" : "people") · \(cur.short(company.staff.reduce(0) { $0 + $1.monthlyWage })) a month", tint: Theme.ivoryMuted)
                     }
-                    if company.staff.isEmpty { Text("No one works here but you.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                    if company.staff.isEmpty { Text(company.ownerHours > 0 ? "No one works here but you." : "No one works here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     ForEach(company.staff) { m in
-                        VStack(alignment: .leading, spacing: 6) {
-                            ListRow(symbol: "person.fill", tint: m.sickUntilWeek != nil ? Theme.loss : Theme.gold,
-                                    title: engine.state.people[m.id]?.name ?? roleName(m.role), subtitle: roleName(m.role),
-                                    trailing: cur.display(m.monthlyWage), trailingSub: "a month")
-                            if m.tiredness > 60 { Chip(text: "Tired", tint: Theme.caution) }
-                            let missing = StaffExtras.missing(m)
-                            if !missing.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Chip(text: "\(missing.count) paperwork item\(missing.count == 1 ? "" : "s") missing", tint: Theme.loss)
-                                    Text(missing.map { $0.text }.joined(separator: " · ")).font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                                    Button("Mark all done") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() }.buttonStyle(QuietButtonStyle(tint: Theme.caution))
-                                    Text("Missing papers can be fined in an inspection.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        let missing = StaffExtras.missing(m)
+                        HStack(alignment: .center, spacing: Theme.Space.m) {
+                            IconBadge(symbol: "person.fill", tint: m.sickUntilWeek != nil ? Theme.loss : Theme.ivoryMuted, size: 34)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(engine.state.people[m.id]?.name ?? roleName(m.role)).font(.subheadline.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                HStack(spacing: 6) {
+                                    Text(roleName(m.role)).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                    if m.sickUntilWeek != nil { Text("· off sick").font(.caption).foregroundStyle(Theme.loss) }
+                                    if m.tiredness > 60 { Text("· tired").font(.caption).foregroundStyle(Theme.caution) }
+                                    if !missing.isEmpty { Text("· \(missing.count) papers missing").font(.caption).foregroundStyle(Theme.caution) }
                                 }
                             }
-                            if m.sickUntilWeek != nil { Chip(text: "Off sick", tint: Theme.loss) }
-                            HStack(spacing: Theme.Space.s) {
-                                Button("Raise 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
-                                Button("Let go") { confirmFire = m }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                            Spacer(minLength: 6)
+                            Text(cur.short(m.monthlyWage)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Menu {
+                                Button("Raise pay 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }
+                                if !missing.isEmpty { Button("Paperwork done (\(missing.count))") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() } }
+                                Button("Let go…", role: .destructive) { confirmFire = m }
+                            } label: {
+                                Image(systemName: "ellipsis").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
                             }
                         }
-                        Divider().overlay(Theme.hairline)
+                    }
+                    let papers = company.staff.reduce(0) { $0 + StaffExtras.missing($1).count }
+                    if papers > 0 {
+                        HStack {
+                            Text("\(papers) paperwork item\(papers == 1 ? "" : "s") missing. An inspection can fine you.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            Spacer()
+                            Button("Do all") { for m in company.staff { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) } }; Haptics.success() }
+                                .font(.caption.weight(.semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                        }
                     }
                 }
             }

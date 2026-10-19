@@ -68,7 +68,7 @@ struct TabContent: View {
         switch tab {
         case .home: HomeView()
         case .companies: CompaniesView()
-        case .group: GroupView()
+        case .money: MoneyView()
         case .phone: PhoneView()
         case .inbox: InboxView()
         }

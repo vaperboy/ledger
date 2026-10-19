@@ -111,7 +111,7 @@ struct TradeDetailView: View {
                             let fund = min(est.total * 1.15, Payments.liquid(e.state))
                             let r = store.act { $0.startCompany(tradeID: t.id, cityID: city, form: form, size: size, fundWith: fund) }
                             switch r {
-                            case .success?: Haptics.success(); store.show("Started.", tone: "good"); store.tab = .companies; dismiss()
+                            case .success(let id)?: Haptics.success(); store.show("Started. Set it up, then open for business.", tone: "good"); store.tab = .companies; store.openCompanyID = id
                             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
                             case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
                             case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")

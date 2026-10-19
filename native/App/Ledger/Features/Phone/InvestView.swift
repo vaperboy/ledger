@@ -4,7 +4,8 @@ import Countries
 import Investments
 import Simulation
 
-struct InvestView: View {
+/// Shares, crypto and funds: a section of the Money tab.
+struct InvestContent: View {
     @EnvironmentObject var store: GameStore
     @State private var kind: Brokerage.Kind = .stock
     @State private var selected: Quote?
@@ -14,7 +15,6 @@ struct InvestView: View {
             let cur = e.homeCurrency
             let list = e.quotes(kind)
             let held = list.reduce(0) { $0 + $1.value }
-            ScrollView {
                 VStack(spacing: Theme.Space.l) {
                     SectionTabs(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
                         .padding(.horizontal, -Theme.Space.l)
@@ -51,12 +51,7 @@ struct InvestView: View {
                         }
                     }
                 }
-                .padding(Theme.Space.l)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .ledgerBackground()
-            .navigationTitle("Invest")
-            .sheet(item: $selected) { q in TradeSheet(quote: q).presentationDetents([.medium, .large]) }
+                .sheet(item: $selected) { q in TradeSheet(quote: q).presentationDetents([.medium, .large]) }
         }
     }
 }

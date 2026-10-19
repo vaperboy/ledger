@@ -203,6 +203,11 @@ final class InsightTests: XCTestCase {
             XCTAssertFalse(e.insights(for: co).isEmpty)
             XCTAssertGreaterThanOrEqual(h.rating, 1.5)
             XCTAssertEqual(h.value, Valuation.companyValue(co, state: e.state, trades: e.data.catalog))
+            XCTAssertGreaterThan(h.weeklyCost, 0)
+            XCTAssertEqual(h.weeksOfCash, max(0, co.cash) / h.weeklyCost, accuracy: 0.001)
+            XCTAssertGreaterThan(h.capacityLastWeek, 0, "an open company reports what it could serve")
+            XCTAssertNotNil(h.bottleneck)
+            XCTAssertTrue(e.insights(for: co, limit: 10).allSatisfy { $0.section == nil || ["operations", "marketing", "staff", "finances", "setup"].contains($0.section!) })
         }
     }
 }

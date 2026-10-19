@@ -26,6 +26,24 @@ struct CompanyMoney: View {
                     }
                 }
             }
+            let o = engine.financeOverview(companyID: company.id)
+            if !o.upcoming.isEmpty || o.taxesOwed > 0 {
+                Card {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack(alignment: .firstTextBaseline) {
+                            SectionLabel("Coming up")
+                            Spacer()
+                            if o.taxesOwed > 0 { Text("Tax and VAT owed " + cur.short(o.taxesOwed)).font(.caption).foregroundStyle(Theme.caution) }
+                        }
+                        ForEach(o.upcoming.prefix(4)) { u in
+                            ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted, title: u.title, subtitle: u.detail, trailing: cur.short(u.amount), trailingSub: u.dateText)
+                        }
+                        NavigationLink { FinanceView(companyID: company.id) } label: {
+                            Text("Taxes, costs and reports").font(.caption.weight(.semibold)).foregroundStyle(Theme.gold)
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Move money")

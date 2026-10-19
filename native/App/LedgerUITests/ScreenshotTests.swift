@@ -38,21 +38,22 @@ final class ScreenshotTests: XCTestCase {
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-overview")
-            for section in ["Team", "Money", "Operations", "Marketing"] {
+            for section in ["Staff", "Finances", "Operations", "Marketing"] {
                 let b = app.buttons[section]
                 if b.exists { b.tap(); sleep(1); shot("05-company-" + section.lowercased()) }
             }
             if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }
         }
-        open("Group"); sleep(1); shot("06-group")
+        open("Money"); sleep(1); shot("06-money")
+        for section in ["Bank", "Invest", "Taxes", "Costs"] {
+            let b = app.buttons[section]
+            if b.exists { b.tap(); sleep(1); shot("06-money-" + section.lowercased()) }
+        }
         open("Phone"); sleep(1); shot("07-phone")
-        for app_ in ["Bank", "Invest", "Finance", "Settings", "New company"] {
-            let b = app.buttons[app_].firstMatch
+        for item in ["Settings", "Stats"] {
+            let b = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", item)).firstMatch
             if b.exists {
-                b.tap(); sleep(1); shot("08-phone-" + app_.lowercased().replacingOccurrences(of: " ", with: "-"))
-                if app_ == "Finance" {
-                    for tab in ["Taxes", "Expenses"] where app.buttons[tab].exists { app.buttons[tab].tap(); sleep(1); shot("08-finance-" + tab.lowercased()) }
-                }
+                b.tap(); sleep(1); shot("08-phone-" + item.lowercased())
                 if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }
             }
         }

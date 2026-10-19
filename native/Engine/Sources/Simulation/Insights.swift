@@ -11,6 +11,18 @@ public struct Insight: Identifiable, Equatable, Sendable {
     public var symbol: String
     public var text: String
     public var tone: Tone
+
+    /// The part of the company screen where the player can act on it ("operations", "staff", "finances", "marketing", "setup"), if any.
+    public var section: String? {
+        switch id {
+        case "cap", "rivals": return "operations"
+        case "slack", "mkt": return "marketing"
+        case "wages", "paper": return "staff"
+        case "rent", "cash", "overdrawn", "bigpay", "cashprofit", "margin": return "finances"
+        case "setup": return "setup"
+        default: return nil
+        }
+    }
 }
 
 /// What the Company dashboard shows besides the figures: value, growth, health, and the operating measures of this kind of business.
@@ -25,6 +37,17 @@ public struct CompanyHealth: Equatable, Sendable {
     public var demandCoverage = 0.0       // customers wanted per customer that can be served
     public var rating = 0.0               // 1...5
     public var label = "New"              // Thriving, Healthy, Tight, Struggling
+    /// What the company spends in a normal week, and how many such weeks its cash covers.
+    public var weeklyCost = 0.0
+    public var weeksOfCash = 0.0
+    /// Weeks until the cash is gone at the last three months' rate of loss; nil when the company is not losing money.
+    public var runwayWeeks: Double?
+    /// Customers served and the most it could serve last week, and what limits it.
+    public var servedLastWeek = 0.0
+    public var capacityLastWeek = 0.0
+    public var bottleneck: String?
+    /// Profit as a share of revenue over the last twelve months.
+    public var marginTTM: Double? { revenueTTM > 0 ? profitTTM / revenueTTM : nil }
     public var revenueSeries: [Double] = []
     public var profitSeries: [Double] = []
     public var cashSeries: [Double] = []
@@ -51,6 +74,15 @@ public extension GameEngine {
             h.demandCoverage = lw["cap"].double > 0 ? lw["D"].double / lw["cap"].double : 0
         }
         h.rating = Pricing.rating(co)
+        h.weeklyCost = weeklyCost(co)
+        h.weeksOfCash = h.weeklyCost > 0 ? max(0, co.cash) / h.weeklyCost : 0
+        let recent = hist.suffix(3)
+        let monthlyProfit = recent.isEmpty ? 0 : recent.reduce(0) { $0 + $1.profit } / Double(recent.count)
+        if monthlyProfit < 0 { h.runwayWeeks = max(0, co.cash) / (-monthlyProfit * 12 / 52) }
+        if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
+        if co.status == .open, let bd = data.catalog[co.type] {
+            h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
+        }
         let months = hist.count
         if months < 3 { h.label = co.status == .open ? "New" : "Setting up" }
         else if co.cash < 0 || h.profitTTM < 0 && co.cash < weeklyCost(co) * 4 { h.label = "Struggling" }
@@ -99,6 +131,25 @@ public extension GameEngine {
         if paperwork > 0 { out.append(Insight(id: "paper", symbol: "doc.badge.exclamationmark", text: "\(paperwork) staff paperwork item\(paperwork == 1 ? "" : "s") missing; an inspection can fine you.", tone: .warn)) }
         if co.value("flags")["mktPausedWeek"].double >= Double(state.week - 4), co.value("flags")["mktPausedWeek"].double > 0 {
             out.append(Insight(id: "mkt", symbol: "pause.circle", text: "Campaigns are paused because paying for them would break your cash reserve.", tone: .warn))
+        }
+        // Revenue up while the margin shrinks: costs are growing faster than sales
+        if hist.count >= 6 {
+            let a = Array(hist.suffix(3)), b = Array(hist.suffix(6).prefix(3))
+            let ra = a.reduce(0) { $0 + $1.revenue }, rb = b.reduce(0) { $0 + $1.revenue }
+            let ma = ra > 0 ? a.reduce(0) { $0 + $1.profit } / ra : 0, mb = rb > 0 ? b.reduce(0) { $0 + $1.profit } / rb : 0
+            if ra > rb * 1.05, mb - ma > 0.04 {
+                out.append(Insight(id: "margin", symbol: "arrow.down.forward.and.arrow.up.backward", text: "Revenue is growing, but the profit margin fell from \(Int(jsRound(mb * 100)))% to \(Int(jsRound(ma * 100)))%: costs are rising faster than sales.", tone: .warn))
+            }
+            // Profitable, yet cash keeps falling: money leaves through loan repayments, purchases or payouts
+            let profit3 = a.reduce(0) { $0 + $1.profit }
+            if profit3 > 0, let c0 = b.last?.cash, co.cash < c0 * 0.85 {
+                out.append(Insight(id: "cashprofit", symbol: "arrow.left.arrow.right", text: "The company made \(cur.short(profit3)) in three months, yet its cash fell from \(cur.short(c0)) to \(cur.short(co.cash)): repayments, purchases or payouts are taking more than it earns.", tone: .warn))
+            }
+        }
+        // A large payment soon that the account cannot comfortably carry
+        if co.status.isLive, let big = financeOverview(companyID: co.id).upcoming.filter({ $0.daysAway <= 31 && $0.essential }).max(by: { $0.amount < $1.amount }),
+           big.amount > max(0, co.cash) * 0.6, big.amount > weeklyCost(co) {
+            out.append(Insight(id: "bigpay", symbol: "calendar.badge.exclamationmark", text: "\(big.title) of \(cur.short(big.amount)) is due \(big.daysAway <= 0 ? "today" : "in \(big.daysAway) days"); the account holds \(cur.short(max(0, co.cash))).", tone: big.amount > co.cash ? .bad : .warn))
         }
         if out.isEmpty, co.status == .open { out.append(Insight(id: "ok", symbol: "checkmark.seal", text: "Nothing unusual. The business is running as expected.", tone: .good)) }
         let order: [Insight.Tone: Int] = [.bad: 0, .warn: 1, .neutral: 2, .good: 3]

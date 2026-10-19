@@ -8,16 +8,20 @@ import Events
 import SaveSystem
 import Simulation
 
+/// Five flat destinations: today, the companies (with the group's totals), money (finance, bank, investments), decisions, and the rest.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case home, companies, group, phone, inbox
+    case home, companies, money, inbox, phone
     var id: String { rawValue }
-    var title: String { switch self { case .home: return "Home"; case .companies: return "Companies"; case .group: return "Group"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
+    var title: String { switch self { case .home: return "Home"; case .companies: return "Companies"; case .money: return "Money"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
     var symbol: String {
-        switch self { case .home: return "house"; case .companies: return "building.2"; case .group: return "square.stack.3d.up"; case .phone: return "iphone.gen3"; case .inbox: return "tray" }
+        switch self { case .home: return "house"; case .companies: return "building.2"; case .money: return "banknote"; case .phone: return "iphone.gen3"; case .inbox: return "tray" }
     }
 }
 
-enum PhoneDestination: Hashable { case bank, invest, tax, news, stats, activity, settings, newCompany }
+enum PhoneDestination: Hashable { case news, stats, activity, settings }
+
+/// The sections of the Money tab.
+enum MoneySection: String, CaseIterable, Hashable { case overview = "Overview", bank = "Bank", invest = "Invest", taxes = "Taxes", costs = "Costs", reports = "Reports" }
 
 struct Toast: Identifiable, Equatable {
     let id = UUID()
@@ -37,6 +41,8 @@ final class GameStore: ObservableObject {
     @Published var tab: AppTab = .home
     @Published var openCompanyID: Int?
     @Published var phoneDestination: PhoneDestination?
+    @Published var moneySection: MoneySection?
+    @Published var showNewCompany = false
     @Published var openMessageID: Int?
 
     let saves: SaveStore?
@@ -183,10 +189,10 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessageID = id; tab = .inbox
         case .openCompany(let id): openCompanyID = id; tab = .companies
-        case .openLoans: phoneDestination = .bank; tab = .phone
-        case .openInvest: phoneDestination = .invest; tab = .phone
-        case .openTax: phoneDestination = .tax; tab = .phone
-        case .newCompany: phoneDestination = .newCompany; tab = .phone
+        case .openLoans: moneySection = .bank; tab = .money
+        case .openInvest: moneySection = .invest; tab = .money
+        case .openTax: moneySection = .taxes; tab = .money
+        case .newCompany: showNewCompany = true; tab = .companies
         }
     }
 

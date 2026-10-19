@@ -17,7 +17,7 @@ struct Card<Content: View>: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous)
                     .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75)
             )
-            .shadow(color: .black.opacity(0.4), radius: 10, y: 5)
+            .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
     }
 }
 
@@ -77,7 +77,7 @@ struct ScreenHeader<Trailing: View>: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 if !eyebrow.isEmpty { Text(eyebrow).font(.subheadline).foregroundStyle(Theme.ivoryMuted) }
-                Text(title).font(.system(size: 32, weight: .bold)).foregroundStyle(Theme.cream)
+                Text(title).font(.system(size: 26, weight: .bold)).foregroundStyle(Theme.cream)
             }
             Spacer()
             trailing()

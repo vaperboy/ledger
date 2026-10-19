@@ -15,15 +15,15 @@ struct HomeView: View {
                         HomeHeader(engine: e)
                         if sizeClass == .regular {
                             HStack(alignment: .top, spacing: Theme.Space.l) {
-                                VStack(spacing: Theme.Space.l) { NetWorthCard(engine: e); SummaryRow(engine: e) }
-                                VStack(spacing: Theme.Space.l) { SuggestionCard(engine: e); EmpireCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e) }
+                                VStack(spacing: Theme.Space.l) { NetWorthCard(engine: e); EmpireCard(engine: e); SummaryRow(engine: e) }
+                                VStack(spacing: Theme.Space.l) { SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e) }
                             }
                         } else {
                             NetWorthCard(engine: e)
-                            SummaryRow(engine: e)
                             SuggestionCard(engine: e)
                             EmpireCard(engine: e)
                             ComingUpCard(engine: e)
+                            SummaryRow(engine: e)
                             FirstStepsCard(engine: e)
                         }
                     }
@@ -148,34 +148,43 @@ struct SummaryTile: View {
     }
 }
 
-// MARK: Your empire
+// MARK: Your companies
 
-/// Companies, countries and yearly revenue in one line, opening the Group.
+/// The companies at a glance, best earners first: health, profit and cash on one line each; a tap opens the company.
 struct EmpireCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var body: some View {
         let cos = engine.state.liveCompanies.filter { $0.type != "hold" }
         if !cos.isEmpty {
-            let countries = Set(cos.map { $0.countryCode }).count
-            let revenue = cos.reduce(0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } }
-            Button { Haptics.tap(); store.tab = .group } label: {
-                Card {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        HStack { Text("Your empire").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory); Spacer(); Text("Group").font(.caption).foregroundStyle(Theme.ivoryMuted) }
-                        HStack(spacing: Theme.Space.m) {
-                            IconBadge(symbol: "building.2.fill", tint: Theme.gold, size: 52)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("\(cos.count) \(cos.count == 1 ? "company" : "companies")").font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory)
-                                Text("\(countries) \(countries == 1 ? "country" : "countries")").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                Text(revenue > 0 ? store.short(revenue) + " revenue (12 months)" : "No yearly figures yet").font(.caption).foregroundStyle(Theme.ivoryFaint)
+            let rows = cos.map { (co: $0, h: engine.companyHealth($0)) }.sorted { $0.h.profitTTM > $1.h.profitTTM }
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Your companies").font(.bodyText.weight(.semibold))
+                        Spacer()
+                        Text("Profit 12 mo · Cash").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    ForEach(rows.prefix(4), id: \.co.id) { r in
+                        Button { store.go(.openCompany(r.co.id)) } label: {
+                            HStack(spacing: 10) {
+                                Circle().fill(HealthChip.tint(r.h.label)).frame(width: 7, height: 7)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(r.co.name).font(.subheadline.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    Text(r.h.label + (r.h.bottleneck.map { " · limited by " + $0.lowercased() } ?? "")).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                Text(store.short(r.h.profitTTM, in: r.co)).font(.subheadline.monospacedDigit()).foregroundStyle(r.h.profitTTM < 0 ? Theme.loss : Theme.ivory)
+                                Text(store.short(r.co.cash, in: r.co)).font(.caption.monospacedDigit()).foregroundStyle(r.co.cash < 0 ? Theme.loss : Theme.ivoryMuted).frame(minWidth: 56, alignment: .trailing)
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
-                        }
+                            .contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                    if rows.count > 4 {
+                        Button { store.tab = .companies } label: { Text("All \(rows.count) companies").font(.caption.weight(.semibold)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
                     }
                 }
-            }.buttonStyle(.plain)
+            }
         }
     }
 }

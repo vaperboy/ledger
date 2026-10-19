@@ -71,16 +71,14 @@ extension View {
     }
 }
 
-/// A hero box in glass: the same layout as `Card`, for the one or two figures a screen is about.
+/// The main box of a screen. It used to be glass; content boxes now share the calm card surface so that glass is kept for
+/// controls that float above the content (the Next day bar, toasts, tab pills). Kept as a type so the hero boxes stay marked.
 struct GlassCard<Content: View>: View {
     var padding: CGFloat = Theme.Space.l
     var tint: Color? = nil
     @ViewBuilder var content: () -> Content
     var body: some View {
-        content()
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .liquidGlass(cornerRadius: Theme.Radius.l, tint: tint)
+        Card(padding: padding, content: content)
     }
 }
 
@@ -90,9 +88,9 @@ struct AmbientLight: View {
     var body: some View {
         GeometryReader { g in
             ZStack {
-                RadialGradient(colors: [Theme.gold.opacity(0.16), .clear], center: .topTrailing, startRadius: 0, endRadius: g.size.width * 0.9)
-                RadialGradient(colors: [Theme.slateBlue.opacity(0.10), .clear], center: UnitPoint(x: 0, y: 0.55), startRadius: 0, endRadius: g.size.width * 0.8)
-                RadialGradient(colors: [Theme.roseGold.opacity(0.07), .clear], center: .bottom, startRadius: 0, endRadius: g.size.width * 0.7)
+                RadialGradient(colors: [Theme.gold.opacity(0.09), .clear], center: .topTrailing, startRadius: 0, endRadius: g.size.width * 0.9)
+                RadialGradient(colors: [Theme.slateBlue.opacity(0.06), .clear], center: UnitPoint(x: 0, y: 0.55), startRadius: 0, endRadius: g.size.width * 0.8)
+                RadialGradient(colors: [Theme.roseGold.opacity(0.04), .clear], center: .bottom, startRadius: 0, endRadius: g.size.width * 0.7)
             }
         }
         .allowsHitTesting(false)
