@@ -1,5 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import GameCore
+import Simulation
 
 struct SettingsView: View {
     @EnvironmentObject var store: GameStore
