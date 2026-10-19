@@ -163,7 +163,7 @@ public enum Marketing {
         }
     }
 
-    static func removing(_ v: JSONValue, _ key: String) -> JSONValue {
+    public static func removing(_ v: JSONValue, _ key: String) -> JSONValue {
         var o = v.object
         o.removeValue(forKey: key)
         return .object(o)

@@ -19,7 +19,7 @@ public enum Payday {
 
     // MARK: Dates
 
-    static func dayNumber(week: Int, day: Int) -> Int { GameCalendar.startDay + week * 7 + day }
+    public static func dayNumber(week: Int, day: Int) -> Int { GameCalendar.startDay + week * 7 + day }
     static func civil(_ n: Int) -> (year: Int, month: Int, day: Int) { GameCalendar.civilFromDays(n) }
     /// 0 = Monday ... 6 = Sunday (1970-01-01 was a Thursday).
     static func weekday(_ n: Int) -> Int { ((n % 7) + 7 + 3) % 7 }
@@ -84,7 +84,7 @@ public enum Payday {
                 lateDays = late["n"].int
             }
         }
-        var json: JSONValue {
+        public var json: JSONValue {
             var o: [String: JSONValue] = ["day": .number(Double(day)), "pm": .number(Double(paidMonth)), "ok": .number(Double(approvedMonth)),
                                           "rem": .number(Double(reminderMonth)), "bm": .number(Double(billsMonth)), "om": .number(Double(ownerPaidMonth)),
                                           "bs": .number(Double(billShortMonths))]
@@ -96,7 +96,7 @@ public enum Payday {
         }
     }
 
-    static func config(_ co: Company, today: Int) -> PayrollConfig {
+    public static func config(_ co: Company, today: Int) -> PayrollConfig {
         let j = co.value("pr29")
         if !j.isNull { return PayrollConfig(json: j) }
         let c = civil(today)
