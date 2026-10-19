@@ -203,6 +203,7 @@ struct AdvanceBar: View {
             Button { store.isAdvancing ? store.stopAdvancing() : store.nextDay() } label: {
                 Text(store.isAdvancing ? "Stop" : engine.state.isGameOver ? "Game over" : "Next day  ›")
                     .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+                    .lineLimit(1).fixedSize()
                     .padding(.horizontal, 24).frame(height: 44)
                     .background(Capsule().fill(Theme.gold))
             }

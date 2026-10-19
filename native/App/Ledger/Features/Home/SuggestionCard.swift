@@ -39,8 +39,8 @@ struct SuggestionRow: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: item.symbol).font(.system(size: 14)).foregroundStyle(color).frame(width: 18).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                    Text(item.detail).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(3).multilineTextAlignment(.leading)
+                    Text(item.title.tidyMoney).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
+                    Text(item.detail.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(3).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {

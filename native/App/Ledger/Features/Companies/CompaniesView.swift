@@ -53,7 +53,7 @@ struct CompaniesView: View {
                                                 Text("Company").frame(maxWidth: .infinity, alignment: .leading)
                                                 Text("Value").frame(width: 62, alignment: .trailing)
                                                 Text("Profit").frame(width: 62, alignment: .trailing)
-                                                Text("Revenue").frame(width: 50, alignment: .trailing)
+                                                Text("Rev.").frame(width: 50, alignment: .trailing)
                                             }
                                             .font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                                             ForEach(Array(rows.enumerated()), id: \.element.co.id) { i, r in

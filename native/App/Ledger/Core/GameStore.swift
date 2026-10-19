@@ -63,9 +63,9 @@ final class GameStore: ObservableObject {
     // MARK: Formatting (home currency)
 
     func money(_ v: Double) -> String { engine?.homeCurrency.display(v) ?? String(Int(v)) }
-    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).replacingOccurrences(of: "\u{00A0}", with: ",") }
+    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
     func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).display(v) ?? String(Int(v)) }
-    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).replacingOccurrences(of: "\u{00A0}", with: ",") }
+    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
 
     // MARK: Saving and loading
 
@@ -197,4 +197,13 @@ final class GameStore: ObservableObject {
     }
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
+}
+
+extension String {
+    /// "£220 k" and "2\u{00A0}751" as the player should read them: "£220k", "2,751".
+    var tidyMoney: String {
+        var t = replacingOccurrences(of: "\u{00A0}", with: ",")
+        for unit in ["k", "M", "bn"] { t = t.replacingOccurrences(of: " \(unit)", with: unit) }
+        return t
+    }
 }

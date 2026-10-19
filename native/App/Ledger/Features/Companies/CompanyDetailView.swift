@@ -120,7 +120,7 @@ struct CompanyOverview: View {
                 ForEach(Array(items.enumerated()), id: \.element.id) { n, i in
                     HStack(alignment: .top, spacing: 11) {
                         Image(systemName: i.symbol).font(.system(size: 13)).foregroundStyle(Theme.tone(i.tone.rawValue) == Theme.ivoryMuted ? Theme.gold : Theme.tone(i.tone.rawValue)).frame(width: 18).padding(.top, 2)
-                        Text(i.text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        Text(i.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
                         if let target = i.section.flatMap({ CompanySection(rawValue: $0.capitalized) }) {
                             Button { withAnimation(.snappy(duration: 0.2)) { section = target }; Haptics.choose() } label: {
