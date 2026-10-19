@@ -14,5 +14,9 @@ no currency exempt from drift, no fallbacks to a default country, no brand names
 5. Norway: the price baseline constants still equal the original's authoring level (they are tuning constants, not a country); a rebase to a
    world average needs a rebalance. Country-specific numbers in `Demand.swift`/`Pricing.swift` are now data. A few accounting-unit money
    constants (loan base, small thresholds) are still unscaled per country.
-6. The big "premium upgrade" brief (new Finance & Taxes screen, expense/tax templates per country with verified rates, growth-realism rebalance,
-   automation policies, executive inbox redesign, company dashboard with operational measures) has **not been started**.
+6. Premium upgrade brief: **partly done** (see CHANGELOG "Premium upgrade"). Done: Finance & taxes screen, company dashboard, policies,
+   inbox tabs, Home "Coming up", estimate labelling. Not done: verified tax/fee data per country (everything is labelled *Estimate*),
+   registration and licence cost lists per country in the UI, acquisition integration costs, competitor behaviour, economic cycles,
+   personal-asset running costs, further growth-realism tuning (marketing already saturates, valuation is profit-based, capacity and hiring
+   delays exist; manager effect not re-examined). The UI of this round was written without a Swift toolchain in the authoring sandbox
+   and is only checked by CI; read the CI result before trusting it.

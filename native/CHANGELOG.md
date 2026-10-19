@@ -17,6 +17,16 @@
 * Tests: 45, including exact comparisons with numbers produced by the original game.
 * `tools/ref`, `tools/gen_parity.py`, CI workflow `native-ios.yml`, documentation.
 
+### Premium upgrade (this round)
+* Finance & taxes screen (Overview / Taxes / Expenses / Reports): upcoming payments with a covered/short check, taxes owed, cost breakdown
+  as a chart, country rule card labelled "Estimate" (`dataBasis` in country data), per company or for the whole empire.
+* Company dashboard: value, 12-month revenue and profit, growth, cash, debt, team, health label, revenue / profit / cash charts, operation rings
+  (capacity used, demand met, rating), plain-language insights worked out from the company's own numbers.
+* Owner policies (Settings, "How much I decide"): routine payroll approved automatically when the company can pay, cash reserve before
+  marketing, automatic dividends. Big decisions still come to the inbox.
+* Marketing is prepaid and pauses instead of running a company into debt; a limited company is never valued below zero.
+* Inbox tabs (All / Decisions / Risks / Updates), compact rows for routine news; Home "Coming up" card.
+
 ### Fixed while comparing with the original
 * Awareness, reputation, fines, hype, idle closure, `{eq}` placeholders, equipment breakdowns (see `docs/BALANCE_PARITY.md`).
 
