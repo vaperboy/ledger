@@ -202,3 +202,40 @@ public extension GameEngine {
 public extension Banking {
     enum LoanOfferResult: Equatable { case ok, declined, tooSmall }
 }
+
+// MARK: Reading for screens, and setup
+
+public extension GameEngine {
+    func openingChecklist(companyID: Int) -> [OpeningChecklist.Item] {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
+        return OpeningChecklist.items(co, bd, World(state: state, data: data))
+    }
+
+    /// Fill in whatever is missing with standard choices (documents, premises, equipment). Returns what was bought.
+    @discardableResult
+    mutating func quickSetup(companyID: Int) -> [String] {
+        var bought: [String] = []
+        update { s, data, _ in bought = CompanySetup.quickSetup(&s, companyID: companyID, data: data) }
+        return bought
+    }
+
+    @discardableResult
+    mutating func openCompany(companyID: Int) -> OpeningChecklist.OpenResult {
+        var r = OpeningChecklist.OpenResult.missing
+        update { s, data, _ in if let i = s.companyIndex(companyID) { r = OpeningChecklist.open(&s, companyIndex: i, data: data) } }
+        return r
+    }
+
+    func maximumDividend(companyID: Int) -> Double {
+        state.company(companyID).map { Payments.maximumDividend($0, state: state, context: context) } ?? 0
+    }
+
+    /// Roles this company can hire for, from its trade's standard staff.
+    func hireableRoles(companyID: Int) -> [String] {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
+        return bd.standardStaff.map { $0.role }
+    }
+
+    /// The trade definition behind a company.
+    func tradeInfo(companyID: Int) -> Trade? { state.company(companyID).flatMap { data.catalog[$0.type] } }
+}

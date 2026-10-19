@@ -5,6 +5,7 @@ import Finance
 import Businesses
 import Simulation
 import Investments
+import Events
 
 /// Every player action goes through one function on the engine; these check they change the game and keep the books.
 final class PlayerActionsTests: XCTestCase {
@@ -37,5 +38,31 @@ final class PlayerActionsTests: XCTestCase {
         XCTAssertTrue(e.repayLoan(id: loan.id, amount: 50_000))
         XCTAssertEqual(e.state.loans.first?.balance ?? 0, loan.balance - 50_000, accuracy: 1)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+}
+
+final class PreviewAndAdvisorTests: XCTestCase {
+    func testEffectPreviewDescribesOnlyWhatTheDataDoes() throws {
+        let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 3)
+        let fx: JSONValue = .object(["cash": -5000, "rep": 3, "dem": .array([0.9, 4])])
+        let lines = EffectPreview.lines(fx, currency: e.homeCurrency)
+        XCTAssertEqual(lines.count, 3)
+        XCTAssertTrue(lines[0].hasPrefix("Costs"))
+        XCTAssertTrue(lines.contains("+3 reputation"))
+        XCTAssertTrue(lines.contains("Demand −10% for 4 weeks"))
+        XCTAssertTrue(EffectPreview.lines(.null, currency: e.homeCurrency).isEmpty)
+    }
+
+    func testFirstStepsAndSuggestionsFollowTheGame() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
+        XCTAssertEqual(e.firstSteps().filter { $0.done }.count, 0)
+        XCTAssertTrue(e.suggestions().contains { $0.action == .newCompany })
+        e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
+        guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 10_000_000) else { return XCTFail() }
+        XCTAssertTrue(e.firstSteps().first { $0.id == "start" }!.done)
+        for _ in 0..<10 { e.nextDay() }
+        let h = e.dayHistory
+        XCTAssertEqual(h.netWorth.count, 11, "one history entry for the start and one per day")
+        XCTAssertEqual(h.netWorth.last ?? 0, e.netWorth.total.rounded(), accuracy: 1)
     }
 }

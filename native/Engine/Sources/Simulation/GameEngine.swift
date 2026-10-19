@@ -89,6 +89,7 @@ public struct GameEngine {
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
         var engine = GameEngine(state: state, data: data, events: events, marketing: marketing)
         engine.snapshot()
+        engine.recordDay()
         return engine
     }
 
@@ -156,6 +157,7 @@ public struct GameEngine {
             }
             completed = true
         }
+        recordDay()
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }

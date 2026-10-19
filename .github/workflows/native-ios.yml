@@ -1,0 +1,42 @@
+name: Native iOS (SwiftUI) build and test
+
+# Separate from the web/Capacitor workflows. Runs only when the native project changes.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ native-swiftui ]
+    paths: [ 'native/**', '.github/workflows/native-ios.yml' ]
+  pull_request:
+    paths: [ 'native/**', '.github/workflows/native-ios.yml' ]
+
+permissions:
+  contents: read
+
+jobs:
+  engine-tests:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Test the game engine
+        working-directory: native/Engine
+        run: swift test 2>&1 | tail -n 40
+
+  app-build:
+    runs-on: macos-14
+    needs: engine-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: xcodegen generate
+      - name: Build for the iOS simulator (iPhone and iPad)
+        working-directory: native/App
+        run: |
+          set -o pipefail
+          xcodebuild build -project Ledger.xcodeproj -scheme Ledger \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tail -n 60
