@@ -4,6 +4,7 @@ import Countries
 import Finance
 import Businesses
 import Simulation
+import Investments
 
 /// How fast does each trade make its owner rich? Plays every supported trade for three years with the standard set-up and
 /// prints return on the money put in. Run with LEDGER_BALANCE=1 (slow); the regular suite only checks the ceiling below.
@@ -165,5 +166,27 @@ final class BalanceGuardTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertGreaterThan(co.lastWeekUnits, 0)
         XCTAssertFalse(co.staff.isEmpty)
+    }
+}
+
+extension BalanceProbeTests {
+    /// LEDGER_INVEST=1: what each share, coin and fund does to money left in it for three years.
+    func testPrintInvestmentOutcomes() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_INVEST"] != nil else { return }
+        for kind in [Brokerage.Kind.stock, .crypto, .fund] {
+            var multiples: [Double] = []
+            for seed in [31, 32, 33, 34, 35] {
+                var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
+                e.update { s, _, _ in Ledger.move(&s, .me, 100_000_000, why: "Test funds") }
+                let syms = e.quotes(kind).map { $0.symbol }
+                for sym in syms { _ = e.buyInvestment(kind, symbol: sym, amount: 1_000_000) }
+                let start = Dictionary(uniqueKeysWithValues: e.quotes(kind).map { ($0.symbol, $0.value) })
+                for _ in 0..<(156 * 7) { e.nextDay() }
+                for q in e.quotes(kind) { if let v0 = start[q.symbol], v0 > 0 { multiples.append(q.value / v0) } }
+            }
+            let sorted = multiples.sorted()
+            let mean = sorted.reduce(0, +) / Double(max(1, sorted.count))
+            print(String(format: "INV %@ n=%d mean=%.2fx median=%.2fx best=%.2fx worst=%.2fx", "\(kind)", sorted.count, mean, sorted[sorted.count / 2], sorted.last ?? 0, sorted.first ?? 0))
+        }
     }
 }
