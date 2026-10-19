@@ -13,13 +13,15 @@ struct GroupView: View {
                 ScrollView {
                     VStack(spacing: Theme.Space.l) {
                         let nw = e.netWorth
-                        Card {
+                        GlassCard {
                             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                                SectionLabel("Group value")
-                                Text(store.money(nw.companies)).font(.figure(32)).foregroundStyle(Theme.ivory)
-                                ValueRow(label: "Cash held by companies", value: store.short(cos.reduce(0) { $0 + max(0, $1.cash) }))
-                                ValueRow(label: "Companies", value: "\(cos.count)")
-                                ValueRow(label: "Staff", value: "\(cos.reduce(0) { $0 + $1.staff.count })")
+                                Text("Group value").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                                Text(store.money(nw.companies)).font(.figure(32, weight: .bold)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                                HStack(alignment: .top, spacing: Theme.Space.l) {
+                                    Stat(label: "Cash in companies", value: store.short(cos.reduce(0) { $0 + max(0, $1.cash) }))
+                                    Stat(label: "Companies", value: "\(cos.count)")
+                                    Stat(label: "Staff", value: "\(cos.reduce(0) { $0 + $1.staff.count })")
+                                }
                             }
                         }
                         if cos.isEmpty {
@@ -29,7 +31,7 @@ struct GroupView: View {
                             Button { store.openCompanyID = co.id; store.tab = .companies } label: {
                                 Card {
                                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                                        HStack(spacing: Theme.Space.m) { IconBadge(symbol: "building.2.fill", tint: co.cash < 0 ? Theme.loss : Theme.gold, size: 38); Text(co.name).font(.heading); Spacer(); StatusChip(company: co) }
+                                        HStack(spacing: Theme.Space.m) { IconBadge(symbol: TradeSymbol.of(family: e.data.catalog[co.type]?.family ?? ""), tint: co.cash < 0 ? Theme.loss : Theme.gold, size: 38); Text(co.name).font(.heading); Spacer(); StatusChip(company: co) }
                                         MiniBars(values: e.monthlyProfitSeries(co)).frame(height: 36)
                                         HStack {
                                             Stat(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory)

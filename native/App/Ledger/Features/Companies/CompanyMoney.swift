@@ -16,10 +16,19 @@ struct CompanyMoney: View {
         let cur = engine.currency(for: company)
         let books = company.books
         VStack(spacing: Theme.Space.l) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Company cash").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text(cur.display(company.cash)).font(.figure(30, weight: .bold)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    HStack(spacing: 8) {
+                        Chip(text: "Your account " + store.short(engine.state.cash), tint: Theme.ivoryMuted, symbol: "person.fill")
+                        if company.vatBalance > 0 { Chip(text: "VAT owed " + cur.short(company.vatBalance), tint: Theme.caution) }
+                    }
+                }
+            }
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Move money")
-                    Text("Your account: \(store.money(engine.state.cash))").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     AmountField(title: "Amount", currency: cur, amount: $amount)
                     HStack {
                         Button("Put in") { putIn() }.buttonStyle(QuietButtonStyle())
@@ -60,7 +69,7 @@ struct CompanyMoney: View {
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     Button("Take a 5-year loan") { borrow() }.buttonStyle(QuietButtonStyle())
                     ForEach(engine.state.loans.filter { $0.companyID == company.id }) { l in
-                        ValueRow(label: l.name, value: cur.display(l.balance))
+                        ListRow(symbol: "doc.text.fill", tint: Theme.loss, title: l.name, subtitle: "\(cur.display(l.monthlyPayment)) a month", trailing: cur.display(l.balance), trailingSub: "left to pay")
                     }
                 }
             }

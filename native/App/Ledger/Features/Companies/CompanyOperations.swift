@@ -11,11 +11,11 @@ struct CompanyOperations: View {
     var body: some View {
         let trade = engine.tradeInfo(companyID: company.id)
         VStack(spacing: Theme.Space.l) {
-            Card {
+            GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Price")
+                    Text("Price").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     HStack {
-                        Text(priceWord(company.priceLevel)).font(.heading)
+                        Text(priceWord(company.priceLevel)).font(.figure(26, weight: .bold))
                         Spacer()
                         Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
@@ -27,8 +27,14 @@ struct CompanyOperations: View {
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Your time")
-                    Stepper(value: Binding(get: { company.ownerHours }, set: { v in store.act { $0.setOwnerHours(companyID: company.id, hours: v) } }), in: 0...80, step: 5) {
-                        Text("\(Int(company.ownerHours.rounded())) hours a week here").font(.bodyText)
+                    HStack(spacing: Theme.Space.m) {
+                        IconBadge(symbol: "clock.fill", tint: Theme.ivoryMuted)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(Int(company.ownerHours.rounded())) hours a week").font(.bodyText.weight(.medium))
+                            Text(company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        Spacer()
+                        StepperPill(value: Binding(get: { company.ownerHours }, set: { v in store.act { $0.setOwnerHours(companyID: company.id, hours: v) } }), range: 0...80, step: 5)
                     }
                     Text("Your hours across all companies cannot exceed 80.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
@@ -36,12 +42,14 @@ struct CompanyOperations: View {
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Upkeep")
-                    Picker("Maintenance", selection: Binding(get: { company.maintenance }, set: { v in store.act { $0.setMaintenance(companyID: company.id, level: v) } })) {
-                        Text("Minimal").tag(0); Text("Normal").tag(1); Text("Thorough").tag(2)
-                    }.pickerStyle(.segmented)
-                    Picker("Stock", selection: Binding(get: { company.int("stockPol", 1) }, set: { v in store.act { $0.setStockPolicy(companyID: company.id, level: v) } })) {
-                        Text("Lean").tag(0); Text("Balanced").tag(1); Text("Generous").tag(2)
-                    }.pickerStyle(.segmented)
+                    Text("Maintenance").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    SectionTabs(items: [0, 1, 2], title: { ["Minimal", "Normal", "Thorough"][$0] },
+                                selection: Binding(get: { company.maintenance }, set: { v in store.act { $0.setMaintenance(companyID: company.id, level: v) } }))
+                        .padding(.horizontal, -Theme.Space.l)
+                    Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
+                                selection: Binding(get: { company.int("stockPol", 1) }, set: { v in store.act { $0.setStockPolicy(companyID: company.id, level: v) } }))
+                        .padding(.horizontal, -Theme.Space.l)
                     Text("Thorough upkeep costs more but equipment breaks less; generous stock avoids running out but ties up cash.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }

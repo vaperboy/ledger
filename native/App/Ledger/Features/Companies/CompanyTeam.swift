@@ -17,15 +17,17 @@ struct CompanyTeam: View {
         VStack(spacing: Theme.Space.l) {
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Team · \(company.staff.count)")
+                    HStack {
+                        SectionLabel("Team")
+                        Spacer()
+                        Chip(text: "\(company.staff.count) \(company.staff.count == 1 ? "person" : "people") · \(cur.short(company.staff.reduce(0) { $0 + $1.monthlyWage })) a month", tint: Theme.ivoryMuted)
+                    }
                     if company.staff.isEmpty { Text("No one works here but you.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     ForEach(company.staff) { m in
                         VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(roleName(m.role)).font(.bodyText.weight(.semibold))
-                                Spacer()
-                                Text(cur.display(m.monthlyWage) + " / mo").font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                            }
+                            ListRow(symbol: "person.fill", tint: m.sickUntilWeek != nil ? Theme.loss : Theme.gold,
+                                    title: engine.state.people[m.id]?.name ?? roleName(m.role), subtitle: roleName(m.role),
+                                    trailing: cur.display(m.monthlyWage), trailingSub: "a month")
                             if m.tiredness > 60 { Chip(text: "Tired", tint: Theme.caution) }
                             let missing = StaffExtras.missing(m)
                             if !missing.isEmpty {
@@ -37,7 +39,7 @@ struct CompanyTeam: View {
                                 }
                             }
                             if m.sickUntilWeek != nil { Chip(text: "Off sick", tint: Theme.loss) }
-                            HStack {
+                            HStack(spacing: Theme.Space.s) {
                                 Button("Raise 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
                                 Button("Let go") { confirmFire = m }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                             }
@@ -52,7 +54,7 @@ struct CompanyTeam: View {
                     let roles = engine.hireableRoles(companyID: company.id)
                     if roles.isEmpty { Text("This trade has no staff roles.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
                     else {
-                        Picker("Role", selection: $role) { ForEach(roles, id: \.self) { Text(roleName($0)).tag($0) } }.pickerStyle(.menu)
+                        SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.l)
                         HStack {
                             Button("Job ad") { search(.ads) }.buttonStyle(QuietButtonStyle())
                             Button("Network") { search(.network) }.buttonStyle(QuietButtonStyle())
@@ -61,10 +63,11 @@ struct CompanyTeam: View {
                         Text("Ads are cheap and slow, the agency is quick and expensive; better people take better searches.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                     ForEach(candidates) { p in
-                        HStack {
+                        HStack(spacing: Theme.Space.m) {
+                            IconBadge(symbol: "person.crop.circle.badge.plus", tint: Theme.ivoryMuted)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(p.name).font(.bodyText.weight(.semibold))
-                                Text("Says \(Int(p.claimedSkill.rounded())) skill · \(p.age)").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                                Text(p.name).font(.bodyText.weight(.medium))
+                                Text("Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)").font(.caption).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
                             Button(cur.short(p.askingMonthlyWage) + " / mo") { hire(p) }.buttonStyle(QuietButtonStyle())

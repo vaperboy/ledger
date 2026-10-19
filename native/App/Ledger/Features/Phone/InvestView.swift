@@ -13,30 +13,42 @@ struct InvestView: View {
         if let e = store.engine {
             let cur = e.homeCurrency
             let list = e.quotes(kind)
+            let held = list.reduce(0) { $0 + $1.value }
             ScrollView {
-                VStack(spacing: Theme.Space.m) {
-                    Picker("Kind", selection: $kind) {
-                        Text("Shares").tag(Brokerage.Kind.stock); Text("Crypto").tag(Brokerage.Kind.crypto); Text("Funds").tag(Brokerage.Kind.fund)
-                    }.pickerStyle(.segmented)
-                    if kind == .crypto { Text("Crypto is very volatile. You can lose most of what you put in.").font(.caption).foregroundStyle(Theme.caution).frame(maxWidth: .infinity, alignment: .leading) }
-                    ForEach(list) { q in
-                        Button { selected = q } label: {
-                            Card(padding: Theme.Space.m) {
-                                HStack(spacing: Theme.Space.m) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(q.symbol).font(.system(.headline, design: .default)).foregroundStyle(Theme.ivory)
-                                        Text(q.name).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                                        if q.value > 0 { Text("You hold \(cur.short(q.value))").font(.caption2).foregroundStyle(Theme.gold) }
+                VStack(spacing: Theme.Space.l) {
+                    SectionTabs(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
+                        .padding(.horizontal, -Theme.Space.l)
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            Text(kind == .stock ? "Your shares" : kind == .crypto ? "Your crypto" : "Your funds").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                            Text(cur.display(held)).font(.figure(30, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
+                            if kind == .crypto { Chip(text: "Very volatile: you can lose most of it", tint: Theme.caution, symbol: "exclamationmark.triangle.fill") }
+                        }
+                    }
+                    Card {
+                        LazyVStack(spacing: Theme.Space.m) {
+                            ForEach(list) { q in
+                                Button { selected = q } label: {
+                                    HStack(spacing: Theme.Space.m) {
+                                        Text(String(q.symbol.prefix(3))).font(.caption.weight(.bold)).foregroundStyle(Theme.gold)
+                                            .frame(width: 40, height: 40)
+                                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.gold.opacity(0.13)))
+                                            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Theme.gold.opacity(0.28), lineWidth: 0.75))
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(q.name).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                            Text(q.value > 0 ? "You hold \(cur.short(q.value))" : q.symbol).font(.caption).foregroundStyle(q.value > 0 ? Theme.gold : Theme.ivoryFaint)
+                                        }
+                                        Spacer(minLength: 6)
+                                        if !q.history.isEmpty { Sparkline(values: Array(q.history.suffix(26)), tint: (q.weekChange ?? 0) >= 0 ? Theme.gain : Theme.loss).frame(width: 60, height: 26) }
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(cur.display(q.price)).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                            if let w = q.weekChange { Text(String(format: "%+.1f%%", w * 100)).font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(w)) }
+                                        }
                                     }
-                                    Spacer()
-                                    if !q.history.isEmpty { Sparkline(values: Array(q.history.suffix(26)), tint: Theme.change((q.weekChange ?? 0))).frame(width: 70, height: 30) }
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text(cur.display(q.price)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                        if let w = q.weekChange { Text(String(format: "%+.1f%%", w * 100)).font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(w)) }
-                                    }
-                                }
+                                    .contentShape(Rectangle())
+                                }.buttonStyle(.plain)
                             }
-                        }.buttonStyle(.plain)
+                        }
                     }
                 }
                 .padding(Theme.Space.l)
@@ -62,12 +74,21 @@ struct TradeSheet: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        Text(live.name).font(.heading)
-                        ValueRow(label: "Price", value: cur.display(live.price))
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                                Text(live.name).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                                Text(cur.display(live.price)).font(.figure(30, weight: .bold))
+                                if let w = live.weekChange { Chip(text: String(format: "%+.1f%% this week", w * 100), tint: Theme.change(w), symbol: w >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill") }
+                            }
+                        }
                         if live.quantity > 0 {
-                            ValueRow(label: "You hold", value: cur.display(live.value))
-                            ValueRow(label: "You paid", value: cur.display(live.costBasis))
-                            ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.display(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
+                            Card {
+                                VStack(spacing: Theme.Space.s) {
+                                    ValueRow(label: "You hold", value: cur.display(live.value))
+                                    ValueRow(label: "You paid", value: cur.display(live.costBasis))
+                                    ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.display(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
+                                }
+                            }
                         }
                         AmountField(title: "Amount to buy", currency: cur, amount: $amount)
                         Button("Buy") {

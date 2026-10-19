@@ -7,23 +7,23 @@ struct ActivityView: View {
     @EnvironmentObject var store: GameStore
     var body: some View {
         if let e = store.engine {
-            List {
-                ForEach(Array(e.state.statement.prefix(300).enumerated()), id: \.offset) { _, line in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(line.label).font(.bodyText).foregroundStyle(Theme.ivory)
-                            Text("Week \(line.week + 1) · \(GameCalendar.dateString(week: line.week, dayOffset: line.day))").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text((line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount))).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.change(line.amount))
-                            Text(store.short(line.balanceAfter)).font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+            ScrollView {
+                Card {
+                    LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
+                        if e.state.statement.isEmpty { Text("Nothing has moved yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                        ForEach(Array(e.state.statement.prefix(300).enumerated()), id: \.offset) { _, line in
+                            ListRow(symbol: line.amount >= 0 ? "arrow.down.left" : "arrow.up.right", tint: line.amount >= 0 ? Theme.gain : Theme.ivoryMuted,
+                                    title: line.label,
+                                    subtitle: "Week \(line.week + 1) · \(GameCalendar.dateString(week: line.week, dayOffset: line.day))",
+                                    trailing: (line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount)),
+                                    trailingSub: "Balance " + store.short(line.balanceAfter),
+                                    trailingTint: line.amount >= 0 ? Theme.gain : Theme.ivory)
                         }
                     }
-                    .listRowBackground(Theme.leather.opacity(0.5))
                 }
+                .padding(Theme.Space.l)
+                .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollContentBackground(.hidden)
             .ledgerBackground()
             .navigationTitle("Activity")
         }

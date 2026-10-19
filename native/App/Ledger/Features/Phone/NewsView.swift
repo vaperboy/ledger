@@ -7,13 +7,13 @@ struct NewsView: View {
     var body: some View {
         if let e = store.engine {
             ScrollView {
-                LazyVStack(spacing: Theme.Space.s) {
-                    ForEach(e.news) { n in
-                        Card(padding: Theme.Space.m) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Week \(n.week + 1)").font(.label).foregroundStyle(Theme.ivoryFaint)
-                                Text(n.text).font(.bodyText).foregroundStyle(n.tone == "bad" ? Theme.loss : Theme.ivory)
-                            }
+                Card {
+                    LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
+                        if e.news.isEmpty { Text("No news yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                        ForEach(e.news) { n in
+                            ListRow(symbol: n.tone == "bad" ? "exclamationmark.triangle.fill" : n.tone == "good" ? "arrow.up.right.circle.fill" : "newspaper.fill",
+                                    tint: n.tone == "bad" ? Theme.loss : n.tone == "good" ? Theme.gain : Theme.ivoryMuted,
+                                    title: n.text, subtitle: "Week \(n.week + 1)")
                         }
                     }
                 }

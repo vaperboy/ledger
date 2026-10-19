@@ -11,27 +11,33 @@ struct StatsView: View {
             let nw = e.netWorth
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
-                    Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            SectionLabel("You")
-                            ValueRow(label: "Net worth", value: store.money(nw.total))
-                            ValueRow(label: "Best net worth", value: store.money(max(s.stats.peakNetWorth, nw.total)))
-                            ValueRow(label: "Weeks played", value: "\(s.week)")
-                            ValueRow(label: "Companies sold", value: "\(s.stats.companiesSold)")
-                            ValueRow(label: "Bankruptcies", value: "\(s.stats.bankruptcies)")
-                            ValueRow(label: "Tax paid", value: store.money(s.stats.taxPaid))
-                            ValueRow(label: "Wages paid", value: store.money(s.stats.wagesPaid))
-                            ValueRow(label: "Interest paid", value: store.money(s.stats.interestPaid))
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
+                            Text("Best net worth").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                            Text(store.money(max(s.stats.peakNetWorth, nw.total))).font(.figure(32, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
+                            HStack(spacing: Theme.Space.l) {
+                                Stat(label: "Now", value: store.short(nw.total), tint: nw.total < 0 ? Theme.loss : Theme.ivory)
+                                Stat(label: "Weeks played", value: "\(s.week)")
+                                Stat(label: "Companies sold", value: "\(s.stats.companiesSold)")
+                            }
                         }
                     }
                     Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            SectionLabel("The economy")
-                            ValueRow(label: "Phase", value: s.economy.phase.capitalized)
-                            ValueRow(label: "Customer demand", value: String(format: "%+.0f%%", (s.economy.demand - 1) * 100))
-                            ValueRow(label: "Inflation", value: pct(s.economy.inflation))
-                            ValueRow(label: "Central bank rate", value: pct(s.economy.policyRate))
-                            ValueRow(label: "Fuel price", value: String(format: "%+.0f%%", (s.economy.fuel - 1) * 100))
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
+                            SectionLabel("What it cost")
+                            ListRow(symbol: "building.columns.fill", tint: Theme.ivoryMuted, title: "Tax paid", trailing: store.short(s.stats.taxPaid))
+                            ListRow(symbol: "person.2.fill", tint: Theme.ivoryMuted, title: "Wages paid", trailing: store.short(s.stats.wagesPaid))
+                            ListRow(symbol: "percent", tint: Theme.ivoryMuted, title: "Interest paid", trailing: store.short(s.stats.interestPaid))
+                            ListRow(symbol: "xmark.octagon.fill", tint: s.stats.bankruptcies > 0 ? Theme.loss : Theme.ivoryMuted, title: "Bankruptcies", trailing: "\(s.stats.bankruptcies)")
+                        }
+                    }
+                    Card {
+                        VStack(alignment: .leading, spacing: Theme.Space.m) {
+                            HStack { SectionLabel("The economy"); Spacer(); Chip(text: s.economy.phase.capitalized, tint: phaseTint(s.economy.phase)) }
+                            ListRow(symbol: "cart.fill", tint: Theme.ivoryMuted, title: "Customer demand", trailing: String(format: "%+.0f%%", (s.economy.demand - 1) * 100), trailingTint: Theme.change(s.economy.demand - 1))
+                            ListRow(symbol: "chart.line.uptrend.xyaxis", tint: Theme.ivoryMuted, title: "Inflation", trailing: pct(s.economy.inflation))
+                            ListRow(symbol: "building.columns", tint: Theme.ivoryMuted, title: "Central bank rate", trailing: pct(s.economy.policyRate))
+                            ListRow(symbol: "fuelpump.fill", tint: Theme.ivoryMuted, title: "Fuel price", trailing: String(format: "%+.0f%%", (s.economy.fuel - 1) * 100), trailingTint: Theme.change(1 - s.economy.fuel))
                         }
                     }
                 }
@@ -43,4 +49,5 @@ struct StatsView: View {
         }
     }
     private func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }
+    private func phaseTint(_ p: String) -> Color { p == "boom" ? Theme.gain : p == "recession" ? Theme.loss : p == "slowdown" ? Theme.caution : Theme.ivoryMuted }
 }

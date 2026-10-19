@@ -379,3 +379,22 @@ struct SmallOutlineButtonStyle: ButtonStyle {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 0.75))
     }
 }
+
+/// One symbol per kind of business, used wherever a company or trade is listed.
+enum TradeSymbol {
+    static func of(family: String) -> String {
+        switch family {
+        case "svc": return "briefcase.fill"
+        case "venue": return "fork.knife"
+        case "retail": return "bag.fill"
+        case "prod": return "gearshape.2.fill"
+        case "logi": return "truck.box.fill"
+        case "project": return "hammer.fill"
+        case "rent": return "house.fill"
+        case "fin": return "banknote.fill"
+        case "energy": return "bolt.fill"
+        case "club": return "sportscourt.fill"
+        default: return "building.2.fill"
+        }
+    }
+}

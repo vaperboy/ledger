@@ -69,7 +69,7 @@ struct CompanyRow: View {
         Card {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(alignment: .center, spacing: Theme.Space.m) {
-                    IconBadge(symbol: "building.2.fill", tint: company.cash < 0 ? Theme.loss : Theme.gold, size: 42)
+                    IconBadge(symbol: TradeSymbol.of(family: engine.data.catalog[company.type]?.family ?? ""), tint: company.cash < 0 ? Theme.loss : Theme.gold, size: 42)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(company.name).font(.heading).foregroundStyle(Theme.ivory)
                         Text("\(engine.tradeName(company)) · \(engine.cityName(company))").font(.caption).foregroundStyle(Theme.ivoryMuted)

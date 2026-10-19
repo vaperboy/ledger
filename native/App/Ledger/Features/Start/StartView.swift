@@ -25,7 +25,7 @@ struct StartView: View {
         ScrollView {
             VStack(spacing: Theme.Space.xl) {
                 VStack(spacing: 6) {
-                    Text("LEDGER").font(.system(size: 40, weight: .semibold, design: .default)).tracking(8).foregroundStyle(Theme.gold)
+                    Text("LEDGER").font(.system(size: 40, weight: .semibold, design: .default)).tracking(8).foregroundStyle(Theme.goldGradient)
                     Text("Business tycoon simulator").font(.label).tracking(1.5).foregroundStyle(Theme.ivoryFaint)
                 }.padding(.top, 48)
 
@@ -33,12 +33,14 @@ struct StartView: View {
                     Button { store.loadCurrent() } label: { Text("Continue") }.buttonStyle(GoldButtonStyle())
                 }
 
-                Card {
+                GlassCard {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         SectionLabel("New game")
                         TextField("Your name", text: $name)
-                            .textFieldStyle(.roundedBorder)
                             .textInputAutocapitalization(.words)
+                            .padding(.horizontal, Theme.Space.m).padding(.vertical, 12)
+                            .background(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).fill(Theme.pill))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 0.75))
                         Picker("Home country", selection: $countryCode) {
                             ForEach(countries) { c in Text("\(c.flag) \(c.name)").tag(c.code) }
                         }
