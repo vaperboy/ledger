@@ -41,10 +41,15 @@ jobs:
       - name: Build for the iOS simulator (iPhone and iPad)
         working-directory: native/App
         run: |
-          set -o pipefail
-          xcodebuild build -project Ledger.xcodeproj -scheme Ledger \
+          # Only the compiler's own messages are printed: the full log is mostly very long command lines.
+          if ! xcodebuild build -project Ledger.xcodeproj -scheme Ledger \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO | tail -n 60
+            CODE_SIGNING_ALLOWED=NO > build.log 2>&1; then
+            grep -E "error:" build.log | sort -u | head -80
+            exit 1
+          fi
+          grep -E "warning:" build.log | grep "/native/App/" | sort -u | head -30 || true
+          tail -n 3 build.log
 
   screenshots:
     runs-on: ${{ matrix.runner }}
