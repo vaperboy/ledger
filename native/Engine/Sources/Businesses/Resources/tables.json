@@ -1,0 +1,1935 @@
+{
+"ROLES": {
+"helper": [
+"General helper",
+34000
+],
+"cleaner": [
+"Cleaner",
+34000
+],
+"cashier": [
+"Shop assistant",
+34500
+],
+"waiter": [
+"Waiter / server",
+33500
+],
+"cook": [
+"Cook",
+42000
+],
+"chef": [
+"Head chef",
+56000
+],
+"barista": [
+"Barista",
+34000
+],
+"baker": [
+"Baker",
+41000
+],
+"bartender": [
+"Bartender",
+37000
+],
+"guard": [
+"Security guard",
+39000
+],
+"recept": [
+"Receptionist",
+37000
+],
+"housek": [
+"Housekeeper",
+34000
+],
+"trainer": [
+"Personal trainer",
+41000
+],
+"physio": [
+"Physiotherapist",
+57000
+],
+"lawyer": [
+"Lawyer",
+88000
+],
+"paralegal": [
+"Paralegal",
+52000
+],
+"acct": [
+"Accountant",
+60000
+],
+"dev": [
+"Developer",
+76000
+],
+"designer": [
+"Designer",
+62000
+],
+"marketer": [
+"Marketer",
+58000
+],
+"sales": [
+"Salesperson",
+46000
+],
+"consult": [
+"Consultant",
+79000
+],
+"carp": [
+"Carpenter",
+50000
+],
+"elec": [
+"Electrician",
+55000
+],
+"plumb": [
+"Plumber",
+53000
+],
+"labour": [
+"Construction worker",
+43000
+],
+"foreman": [
+"Site foreman",
+66000
+],
+"engineer": [
+"Engineer",
+76000
+],
+"architect": [
+"Architect",
+69000
+],
+"operator": [
+"Machine operator",
+47000
+],
+"fworker": [
+"Factory worker",
+41000
+],
+"farmh": [
+"Farm hand",
+38000
+],
+"fishtech": [
+"Fish-farm technician",
+53000
+],
+"dealer": [
+"Casino dealer",
+41000
+],
+"cardealer": [
+"Car salesperson",
+52000
+],
+"mech": [
+"Mechanic",
+51000
+],
+"underw": [
+"Underwriter",
+82000
+],
+"claims": [
+"Claims handler",
+59000
+],
+"banker": [
+"Bank advisor",
+67000
+],
+"credit": [
+"Credit analyst",
+73000
+],
+"analyst": [
+"Fund analyst",
+92000
+],
+"propm": [
+"Property manager",
+56000
+],
+"caretaker": [
+"Caretaker",
+40000
+],
+"windtech": [
+"Energy technician",
+63000
+],
+"geo": [
+"Geologist",
+96000
+],
+"offshore": [
+"Offshore operator",
+88000
+],
+"instr": [
+"Driving instructor",
+52000
+],
+"estate": [
+"Estate agent",
+56000
+],
+"ittech": [
+"IT technician",
+63000
+],
+"hr": [
+"HR advisor",
+61000
+],
+"analyst2": [
+"Data analyst",
+71000
+],
+"av": [
+"AV / sound tech",
+46000
+],
+"event": [
+"Event coordinator",
+51000
+],
+"driver": [
+"Taxi driver",
+39000
+],
+"truckd": [
+"Truck driver",
+49000
+],
+"courier": [
+"Courier",
+37000
+],
+"pilot": [
+"Pilot",
+135000
+],
+"fo": [
+"First officer",
+95000
+],
+"cabin": [
+"Cabin crew",
+43000
+],
+"deckh": [
+"Deck officer",
+72000
+],
+"seaman": [
+"Seaman",
+46000
+],
+"groom": [
+"Groomer / carer",
+36000
+],
+"barber": [
+"Hair stylist",
+38000
+],
+"tutor": [
+"Tutor",
+45000
+],
+"photog": [
+"Photographer",
+52000
+],
+"handy": [
+"Handyman",
+44000
+],
+"carwash": [
+"Car detailer",
+38000
+],
+"hm": [
+"Hotel manager",
+82000
+],
+"pm": [
+"Project manager",
+78000
+],
+"buyer": [
+"Buyer / purchaser",
+58000
+],
+"driverB": [
+"Bus driver",
+46000
+],
+"teller": [
+"Bank teller",
+48000
+],
+"compl": [
+"Compliance officer",
+85000
+],
+"agent": [
+"Insurance agent",
+55000
+],
+"broker": [
+"Broker / trader",
+80000
+],
+"dispatch": [
+"Dispatcher",
+47000
+],
+"tech": [
+"Technician",
+54000
+],
+"waiterB": [
+"Bar staff",
+35000
+],
+"dj": [
+"Booker / DJ",
+42000
+],
+"usher": [
+"Usher / floor staff",
+33000
+],
+"projc": [
+"Project coordinator",
+62000
+],
+"safety": [
+"Safety officer (workplace safety)",
+62000
+],
+"lab": [
+"Quality / lab tech",
+56000
+],
+"shipm": [
+"Ship captain",
+105000
+],
+"eng": [
+"Ship / plant engineer",
+85000
+],
+"chefP": [
+"Pastry / production lead",
+52000
+],
+"butcher": [
+"Butcher / fish cutter",
+42000
+],
+"whw": [
+"Warehouse worker",
+40000
+],
+"liftop": [
+"Lift operator",
+36000
+],
+"skiinst": [
+"Ski instructor",
+39000
+],
+"snowtech": [
+"Snowmaker and groomer driver",
+50000
+],
+"dentist": [
+"Dentist",
+82000
+],
+"dentnurse": [
+"Dental nurse",
+43000
+],
+"vintner": [
+"Winemaker",
+52000
+],
+"rentag": [
+"Rental agent",
+38000
+],
+"lead": [
+"Shift lead",
+47000
+],
+"mktan": [
+"Market analyst",
+62000
+]
+},
+"PREM": {
+"home": [
+"Home office",
+0,
+0,
+"Works from home. No rent."
+],
+"office": [
+"Office",
+2500,
+48000,
+"Standard office space."
+],
+"shop": [
+"Shop / retail unit",
+3600,
+52000,
+"Street-level retail."
+],
+"kitchen": [
+"Restaurant / food premises",
+3900,
+56000,
+"Ventilation, grease trap and approved kitchen."
+],
+"industrial": [
+"Industrial hall",
+950,
+13000,
+"Workshop or production hall."
+],
+"warehouse": [
+"Warehouse",
+850,
+11000,
+"Storage and logistics hall."
+],
+"hotel": [
+"Hotel building",
+1700,
+36000,
+"Per m2 of gross area; large building."
+],
+"clinic": [
+"Clinic space",
+2900,
+46000,
+"Treatment rooms."
+],
+"yard": [
+"Yard / lot",
+480,
+6500,
+"Open storage or sales yard."
+],
+"gym": [
+"Large open hall (gym/leisure)",
+1700,
+26000,
+"High ceilings, floor loads."
+],
+"none": [
+"No premises",
+0,
+0,
+""
+],
+"slope": [
+"Mountain land (lease)",
+6,
+0,
+"Lease of slopes, lift lines and car parks. Per m² a year."
+]
+},
+"VEH": {
+"van_s": [
+"Small van (Berlingo class)",
+330000,
+"van",
+300000,
+0.9,
+1
+],
+"van_l": [
+"Large van (Sprinter class)",
+560000,
+"van",
+350000,
+1.5,
+1.6
+],
+"ev_van": [
+"Electric van",
+590000,
+"van",
+300000,
+0.5,
+1.4
+],
+"pickup": [
+"Pickup (Hilux class)",
+520000,
+"van",
+300000,
+1.3,
+1.3
+],
+"car_s": [
+"Small car (Golf class)",
+340000,
+"car",
+250000,
+0.8,
+1
+],
+"car_ev": [
+"Electric car",
+460000,
+"car",
+280000,
+0.4,
+1
+],
+"car_lux": [
+"Luxury sedan",
+880000,
+"car",
+280000,
+1,
+1.2
+],
+"taxi_ev": [
+"Taxi (electric estate)",
+540000,
+"car",
+400000,
+0.4,
+1.2
+],
+"minibus": [
+"Minibus (16 seats)",
+1100000,
+"bus",
+450000,
+2.2,
+3
+],
+"bus": [
+"City bus",
+3200000,
+"bus",
+800000,
+3.4,
+8
+],
+"truck_s": [
+"Distribution truck 12 t",
+950000,
+"truck",
+700000,
+2.8,
+2.2
+],
+"truck_h": [
+"Tractor unit + trailer 40 t",
+2150000,
+"truck",
+1200000,
+4.3,
+4
+],
+"truck_ev": [
+"Electric truck",
+3300000,
+"truck",
+700000,
+1.8,
+4
+],
+"bike": [
+"Cargo e-bike",
+65000,
+"bike",
+60000,
+0.05,
+0.4
+],
+"scooter": [
+"Delivery scooter",
+38000,
+"bike",
+80000,
+0.15,
+0.3
+],
+"excav": [
+"Excavator 14 t",
+1250000,
+"plant",
+12000,
+0,
+2
+],
+"crane": [
+"Mobile crane",
+2900000,
+"plant",
+15000,
+0,
+3
+],
+"foodtruck": [
+"Food truck (fitted)",
+520000,
+"truck",
+400000,
+1.4,
+1
+],
+"ship_s": [
+"Small coaster",
+42000000,
+"ship",
+900000,
+12,
+1.2
+],
+"ship_l": [
+"Medium bulk carrier",
+180000000,
+"ship",
+1000000,
+25,
+3.5
+],
+"ferry": [
+"Passenger ferry",
+140000000,
+"ship",
+900000,
+20,
+2.2
+],
+"plane_s": [
+"Turboprop 70 seats",
+180000000,
+"plane",
+90000,
+200,
+1
+],
+"van_box": [
+"Box van, 20 m³ (moving van)",
+640000,
+"van",
+300000,
+1.8,
+2.1
+],
+"taxi_cmf": [
+"Comfort sedan (hybrid)",
+640000,
+"car",
+380000,
+0.6,
+1.2
+],
+"taxi_prm": [
+"Premium executive sedan",
+990000,
+"car",
+320000,
+0.9,
+1.2
+],
+"taxi_xl": [
+"People carrier, 7 seats",
+720000,
+"van",
+360000,
+1,
+1.3
+]
+},
+"SEAS": {
+"flat": [
+1,
+1,
+1,
+1,
+1,
+1,
+1,
+1,
+1,
+1,
+1,
+1
+],
+"summer": [
+0.6050420168067226,
+0.6050420168067226,
+0.7058823529411764,
+0.907563025210084,
+1.2100840336134453,
+1.5126050420168067,
+1.7142857142857142,
+1.5126050420168067,
+1.0084033613445378,
+0.8067226890756303,
+0.6050420168067226,
+0.8067226890756303
+],
+"xmas": [
+0.793388429752066,
+0.6942148760330576,
+0.793388429752066,
+0.8925619834710742,
+0.8925619834710742,
+0.8925619834710742,
+0.793388429752066,
+0.8925619834710742,
+0.9917355371900825,
+1.0909090909090908,
+1.3884297520661153,
+1.8842975206611565
+],
+"build": [
+0.7058823529411765,
+0.7058823529411765,
+0.9075630252100841,
+1.1092436974789919,
+1.2100840336134455,
+1.2100840336134455,
+0.9075630252100841,
+1.1092436974789919,
+1.2100840336134455,
+1.2100840336134455,
+1.008403361344538,
+0.7058823529411765
+],
+"winter": [
+1.4876033057851241,
+1.3884297520661157,
+1.1900826446280992,
+0.8925619834710744,
+0.6942148760330579,
+0.5950413223140496,
+0.5950413223140496,
+0.6942148760330579,
+0.8925619834710744,
+0.9917355371900827,
+1.1900826446280992,
+1.3884297520661157
+],
+"hosp": [
+0.8395061728395062,
+0.8395061728395062,
+0.9382716049382716,
+0.9876543209876544,
+0.9876543209876544,
+1.08641975308642,
+1.08641975308642,
+1.08641975308642,
+0.9876543209876544,
+0.9876543209876544,
+0.9876543209876544,
+1.1851851851851851
+],
+"study": [
+1.3448275862068964,
+1.0344827586206895,
+1.0344827586206895,
+0.9310344827586206,
+0.8275862068965517,
+0.5172413793103448,
+0.41379310344827586,
+1.4482758620689653,
+1.3448275862068964,
+1.1379310344827587,
+1.1379310344827587,
+0.8275862068965517
+],
+"newyear": [
+1.5319148936170213,
+1.123404255319149,
+1.0723404255319149,
+0.9702127659574468,
+0.9191489361702129,
+0.8680851063829788,
+0.8170212765957447,
+0.8680851063829788,
+1.021276595744681,
+1.021276595744681,
+0.9702127659574468,
+0.8170212765957447
+],
+"spring": [
+0.8170212765957447,
+0.8680851063829788,
+1.123404255319149,
+1.3276595744680852,
+1.3276595744680852,
+1.123404255319149,
+0.8170212765957447,
+0.8170212765957447,
+1.021276595744681,
+1.021276595744681,
+0.9191489361702129,
+0.8170212765957447
+],
+"fish": [
+0.8925619834710744,
+0.8925619834710744,
+0.9421487603305785,
+0.9917355371900827,
+0.9917355371900827,
+1.0413223140495869,
+1.0413223140495869,
+1.090909090909091,
+1.090909090909091,
+1.0413223140495869,
+0.9917355371900827,
+0.9917355371900827
+],
+"wedding": [
+0.384,
+0.48,
+0.576,
+0.864,
+1.248,
+1.728,
+1.8239999999999998,
+1.536,
+1.248,
+0.768,
+0.576,
+0.768
+],
+"tyres": [
+0.8,
+0.8,
+1,
+1.45,
+1.1,
+0.85,
+0.7,
+0.8,
+0.95,
+1.45,
+1.3,
+0.8
+],
+"ski": [
+2.488151658767772,
+2.7725118483412317,
+2.6303317535545023,
+1.5639810426540284,
+0.056872037914691934,
+0.056872037914691934,
+0.056872037914691934,
+0.056872037914691934,
+0.056872037914691934,
+0.056872037914691934,
+0.4265402843601895,
+1.777251184834123
+],
+"skiS": [
+0.06241872561768531,
+0.06241872561768531,
+0.06241872561768531,
+0.06241872561768531,
+0.4681404421326398,
+1.950585175552666,
+3.0429128738621585,
+3.0429128738621585,
+2.1846553966189854,
+0.9362808842652796,
+0.06241872561768531,
+0.06241872561768531
+],
+"wine": [
+0.8,
+0.7,
+0.8,
+0.85,
+0.9,
+1,
+1,
+0.95,
+0.95,
+1.05,
+1.3,
+1.7
+],
+"harvest": [
+0.2,
+0.2,
+0.2,
+0.4,
+0.6,
+0.8,
+1.2,
+2.4,
+2.4,
+1.6,
+0.5,
+0.3
+]
+},
+"DOCS": {
+"org": [
+"Business registration",
+"{auth:reg}",
+0,
+1,
+0,
+"Gives you the organisation number."
+],
+"mva": [
+"VAT registration",
+"{auth:tax}",
+0,
+1,
+0,
+""
+],
+"hms": [
+"Workplace health and safety system",
+"{auth:lab}",
+3500,
+1,
+0,
+"Written safety and working-environment routines. Inspectors ask for it."
+],
+"acctr": [
+"Accountant agreement",
+"Accountant",
+0,
+1,
+0,
+"Required for limited companies."
+],
+"gdpr": [
+"Privacy policy and data processing records",
+"{auth:data}",
+4000,
+1,
+0,
+"Needed when you hold customer data."
+],
+"mattil": [
+"Food business registration",
+"{auth:food}",
+1500,
+3,
+0,
+"Register before you handle food."
+],
+"haccp": [
+"Food safety plan (HACCP)",
+"{auth:food}",
+6000,
+2,
+0,
+"Written plan for hygiene, temperatures and traceability."
+],
+"skjenk": [
+"Alcohol serving licence",
+"Municipality",
+22000,
+10,
+9000,
+"Annual fee based on sales. Needs a responsible manager and a knowledge test."
+],
+"salg": [
+"Alcohol sales licence",
+"Municipality",
+14000,
+8,
+6000,
+"For shops selling beer and wine."
+],
+"tobak": [
+"Tobacco sales licence",
+"Municipality",
+6000,
+3,
+3000,
+"Annual fee. Strict display rules."
+],
+"taxi": [
+"Taxi licence",
+"County authority",
+160000,
+12,
+0,
+"Licence needed to run paid rides. The fee and any quota depend on the city."
+],
+"ysk": [
+"Professional driver certificate",
+"{auth:road}",
+9500,
+6,
+0,
+"For paid driving of trucks and buses."
+],
+"goods": [
+"Goods transport licence",
+"{auth:road}",
+32000,
+8,
+4000,
+"Needed for commercial freight over 3.5 t."
+],
+"buslic": [
+"Passenger transport licence (bus)",
+"{auth:road}",
+45000,
+10,
+5000,
+""
+],
+"tgodk": [
+"Building contractor approval",
+"Building Authority",
+15000,
+6,
+5000,
+"Needed to take responsibility for building work."
+],
+"elvirk": [
+"Electrical contractor registration",
+"Electrical Safety Authority",
+11500,
+6,
+3000,
+"Needs a qualified electrician as responsible person."
+],
+"vvs": [
+"Plumbing central approval",
+"Building Authority",
+9500,
+6,
+2500,
+""
+],
+"bygg": [
+"Building permit process",
+"Municipality",
+45000,
+12,
+0,
+"Fees, drawings, neighbour notice. Needed to build."
+],
+"regplan": [
+"Zoning plan work",
+"Municipality",
+160000,
+26,
+0,
+"Zoning plan: slow, costly and uncertain, but the land is worth more after."
+],
+"lawyer": [
+"Lawyer licence",
+"Legal Profession Supervisory Council",
+12000,
+8,
+4000,
+"Needs a qualified lawyer with practice experience."
+],
+"rev": [
+"Accounting firm approval",
+"{auth:fin}",
+14000,
+8,
+3500,
+""
+],
+"megler": [
+"Estate agency licence",
+"{auth:fin}",
+25000,
+10,
+6000,
+"Needs a licensed estate agent in charge."
+],
+"helse": [
+"Health personnel authorisation",
+"Health Directorate",
+4000,
+4,
+0,
+"For physiotherapists and similar."
+],
+"hpr": [
+"Clinic approval",
+"Municipality / {auth:health}",
+12000,
+6,
+0,
+""
+],
+"trafikk": [
+"Driving school approval",
+"{auth:road}",
+35000,
+14,
+6000,
+"Approved premises, vehicles and instructors."
+],
+"forsik": [
+"Insurance licence",
+"{auth:fin}",
+450000,
+40,
+80000,
+"Strict capital requirements. Needs a fit and proper board."
+],
+"bank": [
+"Banking licence",
+"{auth:fin}",
+900000,
+52,
+150000,
+"High capital requirements. Ongoing supervision."
+],
+"aif": [
+"Fund manager authorisation",
+"{auth:fin}",
+350000,
+30,
+60000,
+"Alternative investment fund manager authorisation."
+],
+"casino": [
+"Casino licence",
+"Gaming Authority",
+2500000,
+40,
+600000,
+"Private casinos are tightly restricted or banned in many countries. This game uses an invented licence."
+],
+"aml": [
+"Anti-money-laundering programme",
+"{auth:fin}",
+25000,
+4,
+12000,
+"Know your customer, reporting, training."
+],
+"brygg": [
+"Brewery licence and excise registration",
+"Customs Authority",
+18000,
+8,
+6000,
+"Excise duty on every litre."
+],
+"vinm": [
+"Alcohol wholesale licence",
+"Health Directorate",
+30000,
+10,
+8000,
+""
+],
+"aqua": [
+"Aquaculture licence",
+"{auth:fish}",
+52000000,
+40,
+0,
+"Salmon licences are limited. The price reflects the auction level."
+],
+"fishq": [
+"Fish health and welfare approval",
+"{auth:food}",
+28000,
+8,
+6000,
+""
+],
+"skog": [
+"Forestry management plan",
+"Municipality / Agriculture Directorate",
+9000,
+6,
+0,
+""
+],
+"landb": [
+"Agricultural production grant registration",
+"Agriculture Directorate",
+2500,
+4,
+0,
+""
+],
+"fabrik": [
+"Environmental permit (emissions)",
+"Environment Agency",
+85000,
+16,
+7000,
+"Emissions to air and water."
+],
+"ce": [
+"Product certification (CE)",
+"Notified body",
+60000,
+10,
+8000,
+"Needed to sell machinery and electrical products in the EU and EEA."
+],
+"nve": [
+"Power generation licence",
+"Energy Regulator",
+650000,
+40,
+0,
+"Concession for hydro, wind or solar."
+],
+"nveLite": [
+"Solar installation notification",
+"Energy Regulator",
+25000,
+6,
+0,
+""
+],
+"grid": [
+"Grid connection agreement",
+"National grid operator / local grid",
+400000,
+20,
+0,
+""
+],
+"oil": [
+"Production licence",
+"Ministry of Energy",
+75000000,
+52,
+0,
+"Awarded in licensing rounds. Needs proof of technical and financial capacity."
+],
+"oilsafe": [
+"Safety management consent",
+"Petroleum Safety Authority",
+450000,
+26,
+150000,
+""
+],
+"aoc": [
+"Air operator certificate",
+"Civil Aviation Authority",
+4500000,
+52,
+800000,
+"Strict safety management, trained crews, approved aircraft."
+],
+"skip": [
+"Ship registration and safety certificates",
+"Maritime Authority",
+180000,
+14,
+40000,
+""
+],
+"vinn": [
+"Handling of used goods / car trade",
+"{auth:road}",
+12000,
+4,
+3000,
+"Registration for motor-vehicle trade."
+],
+"garanti": [
+"Warranty and returns policy",
+"{auth:cons}",
+3000,
+1,
+0,
+"Clear returns and warranty terms, as consumer law requires."
+],
+"eh": [
+"E-commerce consumer terms",
+"{auth:cons}",
+5000,
+1,
+0,
+"Distance selling: a 14-day right to withdraw."
+],
+"child": [
+"Police certificate",
+"Police",
+0,
+1,
+0,
+"Staff who work with children."
+],
+"ped": [
+"Pet business registration",
+"{auth:food}",
+3500,
+3,
+0,
+""
+],
+"drone": [
+"Drone operator registration",
+"Civil Aviation Authority",
+1500,
+1,
+0,
+""
+],
+"forb": [
+"Mandatory liability insurance",
+"Insurer",
+0,
+1,
+0,
+"Covered under Insurance in Phone."
+],
+"vik": [
+"Fire safety approval of premises",
+"Fire service",
+6500,
+3,
+0,
+""
+],
+"kunnsk": [
+"Competence certificate",
+"Municipality",
+3500,
+3,
+0,
+"Responsible manager takes the alcohol knowledge test."
+],
+"stat": [
+"Commercial lease agreement",
+"Landlord",
+0,
+1,
+0,
+"Signed lease. Deposit of 3 months."
+],
+"event": [
+"Event permit",
+"Municipality / police",
+7500,
+3,
+0,
+""
+],
+"mfinans": [
+"Credit provider notification",
+"{auth:fin}",
+40000,
+8,
+8000,
+""
+],
+"renhold": [
+"Cleaning-company approval",
+"{auth:lab}",
+2000,
+3,
+0,
+"Approved cleaning business register."
+],
+"bemanning": [
+"Staffing-agency registration",
+"{auth:lab}",
+4500,
+4,
+0,
+"Register to hire out labour. Strict rules on equal pay and duration."
+],
+"torg": [
+"Street-trading permit",
+"Municipality",
+4500,
+3,
+2500,
+"For selling from a truck on public ground."
+],
+"safety": [
+"Site safety plan (SHA)",
+"{auth:lab}",
+8500,
+2,
+0,
+"Safety, health and working-environment plan for construction."
+],
+"mva_na": [
+"VAT: not applicable (exempt letting)",
+"-",
+0,
+0,
+0,
+"Letting of property is generally exempt from VAT unless registered voluntarily."
+],
+"verk": [
+"Workshop approval",
+"{auth:road}",
+8500,
+6,
+2500,
+"Approval to repair vehicles; periodic inspections need their own approval and an inspection lane."
+],
+"lift": [
+"Ski lift approval",
+"Lift and cableway authority",
+65000,
+12,
+18000,
+"Every lift is inspected and approved before the season."
+],
+"zone": [
+"Zoning and land lease for the slopes",
+"Municipality",
+45000,
+16,
+0,
+"The slopes, lift lines and parking need a zoning plan and land agreements."
+],
+"xray": [
+"X-ray equipment registration",
+"Radiation authority",
+3500,
+4,
+0,
+"Dental X-ray units are registered before they are used."
+],
+"vakt": [
+"Security company licence",
+"The police",
+6000,
+8,
+0,
+"Guards need approved training and a clean record."
+],
+"ins_life": [
+"Product approval: life insurance",
+"{auth:fin}",
+180000,
+12,
+25000,
+"Needs extra capital and actuarial sign-off."
+],
+"ins_skade": [
+"Product approval: property and casualty",
+"{auth:fin}",
+120000,
+10,
+15000,
+"Terms and reinsurance must be documented."
+],
+"ins_bil": [
+"Product approval: car insurance",
+"{auth:fin}",
+90000,
+8,
+12000,
+"Includes the traffic-injury scheme membership."
+],
+"ins_hjem": [
+"Product approval: home insurance",
+"{auth:fin}",
+80000,
+8,
+10000,
+"Standard terms and claims routines."
+],
+"ins_reise": [
+"Product approval: travel insurance",
+"{auth:fin}",
+40000,
+4,
+5000,
+"Needs an assistance partner."
+],
+"ins_naring": [
+"Product approval: business insurance",
+"{auth:fin}",
+150000,
+10,
+20000,
+"Needs commercial underwriting rules."
+],
+"fran": [
+"Franchise disclosure document and concept manual",
+"Franchise lawyer",
+25000,
+6,
+0,
+"Describes the concept, fees, support and obligations."
+],
+"forreg": [
+"Foreign entity registration and tax representative",
+"Local registry and tax office",
+30000,
+3,
+0,
+"Needed to trade through a subsidiary in another country. Takes longer without an HQ country desk."
+],
+"fran_op": [
+"Franchise operating agreement",
+"Franchisor",
+0,
+0,
+0,
+"Your signed agreement with the brand."
+],
+"chain": [
+"Chain registration and operations manual",
+"Business lawyer",
+18000,
+4,
+0,
+"Registers the brand for more stores and writes the manual every store follows."
+]
+},
+"SALES_ROLES": {
+"sales": 1,
+"cardealer": 1,
+"estate": 1,
+"agent": 1,
+"broker": 1
+},
+"FIT": {
+"shop": 2500,
+"kitchen": 6000,
+"hotel": 9000,
+"industrial": 800,
+"office": 1800,
+"gym": 3000,
+"clinic": 4000,
+"warehouse": 300,
+"yard": 100,
+"home": 0,
+"none": 0
+},
+"PL_TIERS": [
+[
+"Back street unit",
+0.7,
+0.75,
+0.93
+],
+[
+"Small neighbourhood unit",
+0.9,
+0.9,
+0.98
+],
+[
+"Standard commercial unit",
+1,
+1,
+1
+],
+[
+"Good high-street unit",
+1.15,
+1.25,
+1.06
+],
+[
+"Prime central location",
+1.3,
+1.7,
+1.13
+]
+],
+"PL_TIERS_B": [
+"Far out of town",
+"On the outskirts",
+"Standard commercial area",
+"Close to the city centre",
+"Central location"
+],
+"MGR_TYPES": {
+"gen": "General manager",
+"ops": "Operations manager",
+"host": "Hospitality manager",
+"site": "Site / construction manager",
+"sales": "Sales-driven manager",
+"tech": "Technical manager",
+"fin": "Financial / compliance manager",
+"ind": "Industrial plant manager",
+"fleet": "Fleet and logistics manager",
+"prop": "Property manager",
+"fund": "Investment manager",
+"energy": "Energy / asset manager",
+"pro": "Professional-services partner",
+"retail": "Retail manager",
+"game": "Gaming and licence manager",
+"clin": "Clinical lead"
+},
+"INS_PRODS": {
+"life": [
+"Life insurance",
+{
+"vol": 0.5,
+"prem": 1.5,
+"lr": 0.55,
+"doc": "ins_life",
+"ver": 9000
+}
+],
+"skade": [
+"Property and casualty",
+{
+"vol": 0.9,
+"prem": 1,
+"lr": 1,
+"doc": "ins_skade",
+"ver": 5000
+}
+],
+"bil": [
+"Car insurance",
+{
+"vol": 1,
+"prem": 0.9,
+"lr": 1.05,
+"doc": "ins_bil",
+"ver": 4000
+}
+],
+"hjem": [
+"Home and contents",
+{
+"vol": 0.9,
+"prem": 0.8,
+"lr": 0.8,
+"doc": "ins_hjem",
+"ver": 4000
+}
+],
+"reise": [
+"Travel insurance",
+{
+"vol": 0.4,
+"prem": 0.25,
+"lr": 0.7,
+"doc": "ins_reise",
+"ver": 2500
+}
+],
+"naring": [
+"Business insurance",
+{
+"vol": 0.7,
+"prem": 2.2,
+"lr": 1.15,
+"doc": "ins_naring",
+"ver": 8000
+}
+]
+},
+"TENURE_Y": {
+"venue": 2.1,
+"retail": 3.1,
+"svc": 3.5,
+"logi": 3.7,
+"project": 4.2,
+"fin": 4.7,
+"prod": 4.9,
+"energy": 5.7,
+"rent": 4.2,
+"club": 3,
+"hold": 4.7
+},
+"TIERS": {
+"young": {
+"age": [
+18,
+24
+],
+"skill": [
+12,
+48
+],
+"exp": [
+0,
+1.5
+],
+"ask": 0.82,
+"lie": 0.3
+},
+"mid": {
+"age": [
+25,
+40
+],
+"skill": [
+35,
+78
+],
+"exp": [
+2,
+12
+],
+"ask": 1,
+"lie": 0.22
+},
+"senior": {
+"age": [
+41,
+63
+],
+"skill": [
+42,
+90
+],
+"exp": [
+10,
+35
+],
+"ask": 1.2,
+"lie": 0.15
+}
+},
+"CAT_TIER": [
+[
+"Value",
+0.62
+],
+[
+"Standard",
+0.85
+],
+[
+"Plus",
+1
+],
+[
+"Premium",
+1.3
+],
+[
+"Pro",
+1.65
+]
+],
+"PRICE_PM": [
+0.7,
+0.8,
+0.9,
+1,
+1.15,
+1.4,
+1.9
+],
+"PRICE_NAMES": [
+"Budget",
+"Low-cost",
+"Below average",
+"Average",
+"Above average",
+"Premium",
+"Luxury"
+],
+"SENS": {
+"svc": 0.7,
+"venue": 1,
+"retail": 0.9,
+"project": 1.1,
+"prod": 0.8,
+"logi": 0.8,
+"rent": 0.5,
+"fin": 0.4,
+"energy": 0
+},
+"DK": 1.25,
+"FULL_H": 37.5,
+"HCAP": 80,
+"OFFICE_T": [
+{
+"id": "home",
+"n": "Home office",
+"rentM": 0,
+"desks": 1,
+"rooms": 0,
+"note": "Free. You, a laptop, and room for an assistant."
+},
+{
+"id": "cow",
+"n": "Coworking space",
+"rentM": 14000,
+"desks": 6,
+"rooms": 0,
+"note": "Six flexible desks. Month-to-month."
+},
+{
+"id": "small",
+"n": "Small office",
+"rentM": 38000,
+"desks": 12,
+"rooms": 1,
+"note": "Twelve desks and one meeting room."
+},
+{
+"id": "floor",
+"n": "Office floor",
+"rentM": 110000,
+"desks": 40,
+"rooms": 3,
+"note": "A full floor in a business centre."
+},
+{
+"id": "hq",
+"n": "Headquarters",
+"rentM": 320000,
+"desks": 120,
+"rooms": 8,
+"note": "A proper HQ. Costs a lot, looks the part."
+}
+],
+"HQ_ROLES": {
+"pa": [
+"Personal assistant",
+36000,
+"Your right hand: one extra week on every decision, a seat on every board, briefings, and decisions for you when you do not answer."
+],
+"hr": [
+"HR manager",
+52000,
+"Fewer quits and fewer problem workers across all your companies."
+],
+"acc": [
+"Group accountant",
+62000,
+"Cuts external accountant fees by 20% in all companies."
+],
+"law": [
+"In-house lawyer",
+78000,
+"Cuts fines and outside legal fees by about 15%."
+],
+"ana": [
+"Data analyst",
+64000,
+"Unlocks detailed analytics: demand drivers and capacity limits for every company."
+],
+"perf": [
+"Performance analyst",
+68000,
+"Tracks every manager. Monthly scorecards, and reviews whenever you ask."
+],
+"mkt": [
+"Marketing director",
+66000,
+"Campaigns across your companies work about 10% better."
+],
+"proc": [
+"Procurement manager",
+58000,
+"Finds the best supplier deals for every manager and keeps supplier relationships warm."
+],
+"strat": [
+"Strategy analyst",
+70000,
+"A quarterly memo with 2 to 3 concrete suggestions per company."
+],
+"fin": [
+"Finance manager",
+82000,
+"Runs your holding companies: invests spare cash, raises money when you ask, and negotiates share sales."
+]
+},
+"FAM_NOUN": {
+"svc": [
+"Supplies",
+"Systems",
+"Tools",
+"Services"
+],
+"venue": [
+"Foods",
+"Wholesale",
+"Beverages",
+"Catering Supply"
+],
+"retail": [
+"Wholesale",
+"Trading",
+"Distribution",
+"Imports"
+],
+"prod": [
+"Materials",
+"Components",
+"Industries",
+"Works"
+],
+"logi": [
+"Fleet",
+"Motors",
+"Vehicles",
+"Trucks"
+],
+"project": [
+"Building Supply",
+"Tools",
+"Materials",
+"Machinery"
+],
+"rent": [
+"Supplies",
+"Maintenance",
+"Systems"
+],
+"fin": [
+"Systems",
+"Software",
+"Services"
+],
+"energy": [
+"Energy Systems",
+"Technology",
+"Components"
+],
+"club": [
+"Sports",
+"Equipment",
+"Supplies"
+]
+},
+"EXPRO": [
+"Held a similar role for {y} years.",
+"Worked in the industry for {y} years.",
+"{y} years at a competitor.",
+"Short stints at several firms, {y} years in total.",
+"Ran a small operation of their own for {y} years."
+]
+}
