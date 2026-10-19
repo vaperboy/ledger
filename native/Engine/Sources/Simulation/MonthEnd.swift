@@ -133,7 +133,7 @@ public enum MonthEnd {
             s.companies[i] = co
             if co.unpaidMonths == 1 {
                 s.addMessage(from: co.name, title: "Could not pay all bills at \(co.name)",
-                             body: "Missing \(w.currency(co).format(unpaidTax)) this month. Put money in or cut costs.", companyID: co.id, tone: "bad")
+                             body: "Missing \(w.currency(co).display(unpaidTax)) this month. Put money in or cut costs.", companyID: co.id, tone: "bad")
             }
         } else { co.unpaidMonths = 0; s.companies[i] = co }
         co = s.companies[i]

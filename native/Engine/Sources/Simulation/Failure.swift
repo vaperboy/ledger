@@ -63,7 +63,7 @@ public enum Failure {
         s.credit = clamp(s.credit - (co.form == .soleTrader ? 22 : 14), 0, 100)
         let why = reason == "unpaid" ? "Bills went unpaid for months. " : "Cash ran out. "
         let liability = personalHit > 0
-            ? "About \(cur.format(personalHit)) lands on you personally (\(co.form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
+            ? "About \(cur.display(personalHit)) lands on you personally (\(co.form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
             : "As a limited company, your loss is limited to what you put in. "
         s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why + liability + "Credit score hit.", companyID: co.id, tone: "bad")
         s.news("\(co.name) files for bankruptcy.", tone: "bad")
@@ -82,7 +82,7 @@ public enum Failure {
         s.companies[i].status = .sold
         s.stats.companiesSold += 1
         s.addMessage(from: "Bank", title: "\(co.name) was sold by creditors",
-                     body: "You could not cover your overdraft. The bank forced a sale at a discount: \(context.homeCurrency(s).format(v)).",
+                     body: "You could not cover your overdraft. The bank forced a sale at a discount: \(context.homeCurrency(s).display(v)).",
                      companyID: co.id, tone: "bad")
     }
 
@@ -103,7 +103,7 @@ public enum Failure {
             if Payments.withdrawCash(&s, companyID: s.companies[i].id, amount: take) == .ok { moved += take; names.append(s.companies[i].name) }
         }
         if moved > 0 {
-            s.note("Moved \(context.homeCurrency(s).format(moved)) from \(names.joined(separator: ", ")) to your private account to cover a negative balance. As a sole trader it is the same money.", tone: "n")
+            s.note("Moved \(context.homeCurrency(s).display(moved)) from \(names.joined(separator: ", ")) to your private account to cover a negative balance. As a sole trader it is the same money.", tone: "n")
         }
     }
 

@@ -107,7 +107,7 @@ public extension GameEngine {
                 let rate = bd.map { MonthEnd.taxRate(co, $0, country) } ?? country.corporateTax
                 let owed = co.payables["tax"] ?? 0
                 o.taxes.append(FinanceLine(id: "ct\(co.id)", label: "Corporate tax · \(co.name)", amount: owed,
-                                           detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).format(co.taxAccrued)) set aside for this year"))
+                                           detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).display(co.taxAccrued)) set aside for this year"))
                 o.taxesOwed += owed
             }
             if abs(co.vatBalance) > 1 {

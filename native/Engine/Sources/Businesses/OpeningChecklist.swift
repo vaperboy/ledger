@@ -30,7 +30,7 @@ public enum OpeningChecklist {
             let ok = st["st"].string == "ok"
             let fee = Documents.cost(d, company: co, bd, w)
             out.append(Item(id: "doc:\(d)", title: dd.name, isDone: ok,
-                            detail: st["st"].string == "applied" ? "In progress" : (fee > 0 ? "Fee \(w.currency(co).format(fee))" : "Free")))
+                            detail: st["st"].string == "applied" ? "In progress" : (fee > 0 ? "Fee \(w.currency(co).display(fee))" : "Free")))
         }
         if !["rent", "fin", "energy"].contains(bd.family) {
             if let kind = bd.premisesKind, kind != "none", kind != "home" {
@@ -45,7 +45,7 @@ public enum OpeningChecklist {
         if stock > 0 {
             let ok = co.cash >= stock
             out.append(Item(id: "stockcash", title: "Cash for opening stock", isDone: ok,
-                            detail: ok ? "Ready" : "Needs \(w.currency(co).format(stock)) in the company"))
+                            detail: ok ? "Ready" : "Needs \(w.currency(co).display(stock)) in the company"))
         }
         return out
     }

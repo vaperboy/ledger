@@ -212,7 +212,7 @@ public enum EquipmentUnits {
         let cost = max(cur.scaledPrice(400), jsRound(price * s.random.range(0.05, 0.2)))
         let down = max(1, Int(jsRound(Double(days) * 0.6)))
         u["down"] = .number(Double(down))
-        return ("\(name) broke down. No warranty, so the repair cost \(cur.format(cost)). Back in about \(down) days.", cost)
+        return ("\(name) broke down. No warranty, so the repair cost \(cur.display(cost)). Back in about \(down) days.", cost)
     }
 
     static func breakVehicle(_ s: inout GameState, _ v: inout JSONValue, name: String, tables: TradeTables, currency cur: Currency) -> (String, Double) {
@@ -226,7 +226,7 @@ public enum EquipmentUnits {
         let cost = max(cur.scaledPrice(400), jsRound(v["cost"].double * s.random.range(0.05, 0.2)))
         let down = max(1, Int(jsRound(Double(days) * 0.6)))
         v["down"] = .number(Double(down))
-        return ("\(name) broke down. No warranty, so the repair cost \(cur.format(cost)). Back in about \(down) days.", cost)
+        return ("\(name) broke down. No warranty, so the repair cost \(cur.display(cost)). Back in about \(down) days.", cost)
     }
 
     /// Whole days out of use, between the table's low and high. Original: `rint(W[0], W[1])`.

@@ -57,9 +57,9 @@ final class GameStore: ObservableObject {
     // MARK: Formatting (home currency)
 
     func money(_ v: Double) -> String { engine?.homeCurrency.display(v) ?? String(Int(v)) }
-    func short(_ v: Double) -> String { engine?.homeCurrency.short(v) ?? String(Int(v)) }
+    func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).replacingOccurrences(of: "\u{00A0}", with: ",") }
     func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).display(v) ?? String(Int(v)) }
-    func short(_ v: Double, in co: Company) -> String { engine?.currency(for: co).short(v) ?? String(Int(v)) }
+    func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).replacingOccurrences(of: "\u{00A0}", with: ",") }
 
     // MARK: Saving and loading
 

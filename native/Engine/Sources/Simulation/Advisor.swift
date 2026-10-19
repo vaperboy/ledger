@@ -48,7 +48,7 @@ public extension GameEngine {
         }
         if s.cash < 0 {
             out.append(Suggestion(id: "overdraft", symbol: "exclamationmark.triangle", title: "Your account is overdrawn",
-                                  detail: "\(cur.format(-s.cash)) overdrawn. Move savings in, borrow, or take money from a company.", tone: .bad, action: .openLoans, actionLabel: "Open bank"))
+                                  detail: "\(cur.display(-s.cash)) overdrawn. Move savings in, borrow, or take money from a company.", tone: .bad, action: .openLoans, actionLabel: "Open bank"))
         }
         for co in s.liveCompanies {
             if co.cash < 0 {
@@ -61,9 +61,9 @@ public extension GameEngine {
         }
         let est = PersonalFinance.taxEstimate(s, context: context)
         if s.tax.pending > 0 {
-            out.append(Suggestion(id: "tax", symbol: "doc.text", title: "Tax to pay", detail: "\(cur.format(s.tax.pending)) will fall due. Keep cash for it.", tone: .warn, action: .openTax, actionLabel: "See tax"))
+            out.append(Suggestion(id: "tax", symbol: "doc.text", title: "Tax to pay", detail: "\(cur.display(s.tax.pending)) will fall due. Keep cash for it.", tone: .warn, action: .openTax, actionLabel: "See tax"))
         } else if est > 0, s.week % 13 == 0 {
-            out.append(Suggestion(id: "taxest", symbol: "doc.text", title: "Tax estimate", detail: "About \(cur.format(est)) so far this year.", tone: .neutral, action: .openTax, actionLabel: "See tax"))
+            out.append(Suggestion(id: "taxest", symbol: "doc.text", title: "Tax estimate", detail: "About \(cur.display(est)) so far this year.", tone: .neutral, action: .openTax, actionLabel: "See tax"))
         }
         if s.companies.isEmpty {
             out.append(Suggestion(id: "first", symbol: "building.2", title: "Start your first business",

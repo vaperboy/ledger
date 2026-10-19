@@ -191,7 +191,7 @@ public enum Payday {
             cfg.lateWhy = "cash"; cfg.lateMonth = payMonth; cfg.lateOwed = short
             s.companies[i] = co
             s.addMessage(kind: "ask", from: co.name, title: "Payroll short at \(co.name)",
-                         body: "Only \(cur.format(p)) of \(cur.format(due)) could be paid. \(cur.format(short)) is still owed to staff. Put money in and they are paid back automatically.",
+                         body: "Only \(cur.display(p)) of \(cur.display(due)) could be paid. \(cur.display(short)) is still owed to staff. Put money in and they are paid back automatically.",
                          companyID: co.id, tone: "bad", status: "open", options: [.option("Understood")], action: "pay29", data: .object(["k": "late"]))
         } else {
             cfg.lateSince = nil; cfg.lateWhy = ""
@@ -268,7 +268,7 @@ public enum Payday {
             if cfg.billShortMonths == 1 {
                 let cur = context.currency(co.countryCode, s)
                 s.addMessage(from: co.name, title: "Could not pay all bills at \(co.name)",
-                             body: "Missing \(cur.format(short)) for rent and suppliers this month. Put money in or cut costs, or suppliers will stop delivering.", companyID: co.id, tone: "bad")
+                             body: "Missing \(cur.display(short)) for rent and suppliers this month. Put money in or cut costs, or suppliers will stop delivering.", companyID: co.id, tone: "bad")
             }
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
@@ -310,7 +310,7 @@ public enum Payday {
             let f = cur.scaledPrice(5000) + cfg.lateOwed * 0.02
             Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Wage claim and late interest")
             s.addMessage(from: "Lawyer for the staff", title: "Wage claim against \(co.name)",
-                         body: "Staff took the unpaid wages to a lawyer. Legal costs and late interest: \(cur.format(f)). The wages are still owed.", companyID: co.id, tone: "bad")
+                         body: "Staff took the unpaid wages to a lawyer. Legal costs and late interest: \(cur.display(f)). The wages are still owed.", companyID: co.id, tone: "bad")
         }
     }
 
@@ -412,7 +412,7 @@ public enum Payday {
         if !needApproval.isEmpty {
             let cur = context.homeCurrency(s)
             let total = needApproval.reduce(0) { $0 + $1.1 }
-            let lines = needApproval.map { "\(s.companies[$0.0].name): about \(cur.format($0.1))" }.joined(separator: "\n")
+            let lines = needApproval.map { "\(s.companies[$0.0].name): about \(cur.display($0.1))" }.joined(separator: "\n")
             let ids = needApproval.map { s.companies[$0.0].id }
             s.addMessage(kind: "ask", from: "Payroll", title: "Approve payroll: \(cur.short(total))", body: lines + "\nIf you do not approve it, staff are not paid on payday.",
                          tone: "n", status: "open", options: [.option("Approve", "Payroll goes out on payday"), .option("Not now", "Staff will not be paid")],
@@ -422,8 +422,8 @@ public enum Payday {
             let cur = context.homeCurrency(s)
             let total = paidToday.reduce(0) { $0 + $1.1 }
             if total > 0 {
-                let id = s.addMessage(from: "Payroll", title: "Payday: \(cur.format(total)) paid",
-                                      body: paidToday.map { "\($0.0): \(cur.format($0.1))" }.joined(separator: " · "))
+                let id = s.addMessage(from: "Payroll", title: "Payday: \(cur.display(total)) paid",
+                                      body: paidToday.map { "\($0.0): \(cur.display($0.1))" }.joined(separator: " · "))
                 if let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].isRead = true }
             }
         }
@@ -456,7 +456,7 @@ public enum Payday {
             if cfg.lateSince != nil {
                 let r = runPayroll(&s, i, how: .manual, today: t, data: gd, context: context)
                 let cur = context.currency(s.companies[i].countryCode, s)
-                s.note("Payroll run at \(s.companies[i].name): \(cur.format(r.paid)) paid" + (r.short > 0 ? ", short by \(cur.format(r.short))" : "") + ".", tone: r.short > 0 ? "bad" : "good", companyID: companyID)
+                s.note("Payroll run at \(s.companies[i].name): \(cur.display(r.paid)) paid" + (r.short > 0 ? ", short by \(cur.display(r.short))" : "") + ".", tone: r.short > 0 ? "bad" : "good", companyID: companyID)
             }
         }
     }

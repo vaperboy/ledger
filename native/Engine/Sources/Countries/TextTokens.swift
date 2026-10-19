@@ -13,7 +13,7 @@ public enum TextTokens {
             return name.isEmpty ? key : name
         }
         out = replace(out, pattern: #"\{m:(-?[\d.]+)\}"#) { number in
-            currency.format(currency.scaledPrice(Double(number) ?? 0))
+            currency.display(currency.scaledPrice(Double(number) ?? 0))
         }
         return out
     }

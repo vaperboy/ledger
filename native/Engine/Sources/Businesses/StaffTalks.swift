@@ -52,7 +52,7 @@ public enum StaffTalks {
             s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a fixed salary at \(co.name)",
                          body: "I have been here \(Int(jsRound(Double(s.week - m.hiredWeek) / 4.35))) months and the work goes well. I would like a fixed monthly salary instead of being paid by the hour, so I know what comes in each month.",
                          companyID: co.id, tone: "n", status: "open",
-                         options: [.option("Fixed salary", "\(cur.format(cur.roundedStep(m.monthlyWage, about: 100)))/month, a full week"), .option("Keep it hourly", "Disappointed")],
+                         options: [.option("Fixed salary", "\(cur.display(cur.roundedStep(m.monthlyWage, about: 100)))/month, a full week"), .option("Keep it hourly", "Disappointed")],
                          action: "staffx", data: .object(["t": "fixask", "sid": .number(Double(staffID))]), expiresWeek: s.week + 3)
             return
         }
@@ -67,8 +67,8 @@ public enum StaffTalks {
         s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks about pay at \(co.name)",
                      body: "\(why) I like it here and would like to stay. Could we look at my pay? (\(roleName))",
                      companyID: co.id, tone: "n", status: "open",
-                     options: [.option("+\(Int(jsRound(big * 100)))%", "+\(cur.format(m.monthlyWage * big))/month"),
-                               .option("+\(Int(jsRound(small * 100)))%", "+\(cur.format(m.monthlyWage * small))/month"),
+                     options: [.option("+\(Int(jsRound(big * 100)))%", "+\(cur.display(m.monthlyWage * big))/month"),
+                               .option("+\(Int(jsRound(small * 100)))%", "+\(cur.display(m.monthlyWage * small))/month"),
                                .option("Not now", "Disappointed. They may start looking around.")],
                      action: "staffx", data: .object(["t": "payask", "sid": .number(Double(staffID)), "big": .number(big), "small": .number(small)]), expiresWeek: s.week + 3)
     }

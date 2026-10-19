@@ -34,8 +34,8 @@ enum SpecialEvents {
             if s.random.chance(err * 1.8 + (1 - aq) * 0.25) {
                 let pen = jsRound(max(6000, yearProfit * 0.04) * (1.3 - aq))
                 Payments.companyPays(&s, companyID: co.id, amount: pen, category: "fine", label: "Tax audit adjustment")
-                s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "The auditors found errors. Adjustment and penalty: \(cur.format(pen)).", companyID: co.id, tone: "bad")
-                s.note("Tax audit at \(co.name): errors found, \(cur.format(pen)) to pay.", tone: "bad", companyID: co.id)
+                s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "The auditors found errors. Adjustment and penalty: \(cur.display(pen)).", companyID: co.id, tone: "bad")
+                s.note("Tax audit at \(co.name): errors found, \(cur.display(pen)) to pay.", tone: "bad", companyID: co.id)
             } else {
                 s.addMessage(from: authority, title: "Audit finished for \(co.name)", body: "No issues. " + (co.value("acc").isNull ? "" : co.value("acc")["name"].string + " kept the books clean."), companyID: co.id, tone: "good")
                 s.note("Tax audit at \(co.name): all clear.", tone: "good", companyID: co.id)
@@ -48,8 +48,8 @@ enum SpecialEvents {
             if s.random.chance(p) {
                 let f = jsRound(max(8000, c.wk * 0.2))
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Inspection fine")
-                s.note("Inspectors found issues at \(co.name): fine \(cur.format(f)).", tone: "bad", companyID: co.id)
-                s.addMessage(from: fc.country(of: co, s).pack["authorities"]["lab"].string, title: "Inspection at \(co.name)", body: "Deviations were found. Fine \(cur.format(f)). Improve routines and training.", companyID: co.id, tone: "bad")
+                s.note("Inspectors found issues at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                s.addMessage(from: fc.country(of: co, s).pack["authorities"]["lab"].string, title: "Inspection at \(co.name)", body: "Deviations were found. Fine \(cur.display(f)). Improve routines and training.", companyID: co.id, tone: "bad")
             } else { s.note("Inspection at \(co.name): passed.", tone: "good", companyID: co.id) }
         case "v_health":
             guard let bd = data.catalog[co.type] else { return true }
@@ -59,8 +59,8 @@ enum SpecialEvents {
                 let f = jsRound(max(12000, c.wk * 0.25))
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Food safety fine")
                 s.companies[i].reputation = clamp(co.reputation - 3, 0, 100)
-                s.note("\(food) found hygiene deviations at \(co.name): fine \(cur.format(f)).", tone: "bad", companyID: co.id)
-                s.addMessage(from: food, title: "Inspection at \(co.name)", body: "Deviations in hygiene routines. Fine \(cur.format(f)).", companyID: co.id, tone: "bad")
+                s.note("\(food) found hygiene deviations at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                s.addMessage(from: food, title: "Inspection at \(co.name)", body: "Deviations in hygiene routines. Fine \(cur.display(f)).", companyID: co.id, tone: "bad")
             } else {
                 s.companies[i].reputation = clamp(co.reputation + 0.5, 0, 100)
                 s.note("\(food) visits \(co.name): passed.", tone: "good", companyID: co.id)
@@ -72,7 +72,7 @@ enum SpecialEvents {
             let m = s.random.range(0.25, 1.4) * (hi == 0 ? 1 : hi) * (co.value("fm")["vol"].isNull ? 1 : co.value("fm")["vol"].double)
             let amt = jsRound(c.wk * m)
             Payments.companyPays(&s, companyID: co.id, amount: amt, category: "loss", label: "Big payout")
-            s.note("A lucky player wins big at \(co.name): \(cur.format(amt)) paid out.", tone: "bad", companyID: co.id)
+            s.note("A lucky player wins big at \(co.name): \(cur.display(amt)) paid out.", tone: "bad", companyID: co.id)
         case "c_market":
             let h = s.economy.housing
             if h < 0.98 { EventEngine.addModifier(&s, i, key: "dem", multiplier: clamp(0.8 + (h - 0.9) * 1.2, 0.6, 1), weeks: 12) }

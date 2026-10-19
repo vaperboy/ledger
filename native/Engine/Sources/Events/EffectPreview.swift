@@ -14,7 +14,7 @@ public enum EffectPreview {
             out += lines(g["ok"], currency: currency).map { "If it works: " + $0 }
             out += lines(g["bad"], currency: currency).map { "If not: " + $0 }
         }
-        func money(_ v: Double) -> String { currency.format(whole(v, currency)) }
+        func money(_ v: Double) -> String { currency.display(whole(v, currency)) }
         let cash = fx["cash"].double
         if cash < 0 { out.append("Costs \(money(-cash))") } else if cash > 0 { out.append("Brings in \(money(cash))") }
         if fx["loss"].double != 0 { out.append("Risk of a loss up to \(money(abs(fx["loss"].double)))") }

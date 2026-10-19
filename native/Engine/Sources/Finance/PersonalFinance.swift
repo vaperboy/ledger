@@ -85,7 +85,7 @@ public enum PersonalFinance {
         Payments.playerPays(&s, due, label: "Annual tax assessment (income, gains, wealth)")
         s.stats.taxPaid += due + withheld
         let cur = context.homeCurrency(s)
-        s.note("Annual personal tax: \(cur.format(due))" + (withheld != 0 ? " (after \(cur.format(withheld)) withheld)" : "") + (wealth != 0 ? ", including wealth tax \(cur.format(wealth))" : "") + ".", tone: "n")
+        s.note("Annual personal tax: \(cur.display(due))" + (withheld != 0 ? " (after \(cur.display(withheld)) withheld)" : "") + (wealth != 0 ? ", including wealth tax \(cur.display(wealth))" : "") + ".", tone: "n")
         s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
         s.stats.yearsPlayed += 1
     }

@@ -86,7 +86,7 @@ public struct GameEngine {
         state.economy.set("rate0", state.economy.policyRate)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
-        state.note("Welcome to Ledger. You have a start-up loan of \(currency.format(loan)). Open your first business from the Phone.", tone: "good")
+        state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
         let bank = country.pack["authorities"]["cb"].string
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
         var engine = GameEngine(state: state, data: data, events: events, marketing: marketing)

@@ -192,6 +192,7 @@ struct CompanyOverview: View {
                 Text(value).font(.figure(18, weight: .bold)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
                 if let sub { Text(sub).font(.caption2.weight(.semibold)).foregroundStyle(subTint) }
             }
+            .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
         }
     }
 }

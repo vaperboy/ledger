@@ -83,7 +83,7 @@ public enum StaffRoutine {
             for f in x.fines {
                 let label = f.note.hasPrefix("Inspectors") ? "Paperwork fine" : "Mis-selling complaint"
                 Payments.companyPays(&s, companyID: co.id, amount: f.amount, category: "fine", label: label)
-                s.note(f.note.replacingOccurrences(of: "{co}", with: co.name).replacingOccurrences(of: "{fine}", with: cur.format(f.amount)), tone: "bad", companyID: co.id)
+                s.note(f.note.replacingOccurrences(of: "{co}", with: co.name).replacingOccurrences(of: "{fine}", with: cur.display(f.amount)), tone: "bad", companyID: co.id)
             }
             if x.reputationLoss > 0 { s.companies[i].reputation = clamp(s.companies[i].reputation - x.reputationLoss, 0, 100) }
             if x.managerLearnsPaperwork {

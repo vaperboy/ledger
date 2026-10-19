@@ -75,8 +75,8 @@ final class TextTokenTests: XCTestCase {
         let a = uk.localized(text), b = no.localized(text)
         XCTAssertNotEqual(a, b)
         XCTAssertFalse(a.contains("{auth:food}") || a.contains("{m:"))
-        XCTAssertTrue(a.contains("GBP"), a)
-        XCTAssertTrue(b.contains("NOK"), b)
+        XCTAssertTrue(a.contains("£"), a)
+        XCTAssertTrue(b.contains("kr"), b)
         XCTAssertTrue(a.contains("Unknown nope."), "an unknown body falls back to its key")
         XCTAssertEqual(uk.localized("nothing to resolve"), "nothing to resolve")
     }
