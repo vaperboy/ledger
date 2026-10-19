@@ -40,7 +40,7 @@ The full inventory is `docs/data/original_inventory.json` (made by `tools/ref/sn
 2. Trades as data, demand, capacity, price — **done, verified on the original's states**
 3. Finance: payments, loans, credit, personal tax, net worth — **done, verified**
 4. Company week and daily trade for service, venue, retail, production, logistics — **done, statistical parity, gaps listed**
-5. People: hiring, wages, payday, quitting, paperwork — **partly** (no pay talks, poaching, promotions)
+5. People: hiring, wages, payday, quitting, paperwork — **partly** (no poaching, promotions, assistants)
 6. Marketing, quality, complaints, word of mouth, equipment wear — **done in a simplified form**
 7. Events and inbox decisions with previews — **133 of the library done; strategic decisions not**
 8. Investments — **done**

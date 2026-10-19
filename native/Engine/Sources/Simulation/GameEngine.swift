@@ -120,6 +120,7 @@ public struct GameEngine {
     public mutating func answer(messageID: Int, option: Int) -> Bool {
         let d = data, c = context
         return EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
+            if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
             return true
         }

@@ -3,7 +3,7 @@
 A native iPhone and iPad version of the Ledger business tycoon game, replacing the HTML + Capacitor wrapper. The game rules were
 re-implemented in Swift (not a web view) and compared with the original game, which is kept untouched at the repository root.
 
-**Status, honestly:** the engine is built and tested (43 tests, on Linux and on macOS in CI). The SwiftUI app is written but has not yet
+**Status, honestly:** the engine is built and tested (45 tests, on Linux and on macOS in CI). The SwiftUI app is written but has not yet
 been seen running by its author; it is built by CI on macOS. The native game is a *subset* of the original (50 of 67 trades; see
 [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md) and [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md)). Read those two before trusting anything.
 
@@ -34,7 +34,7 @@ xcodebuild build -project Ledger.xcodeproj -scheme Ledger -destination 'generic/
 
 More: [docs/MAC_STEPS.md](docs/MAC_STEPS.md) (device, signing, TestFlight).
 
-CI: `.github/workflows/native-ios.yml` runs the engine tests on macOS and builds the app for the simulator on every push to
+CI: `.github/workflows/native-ios.yml` runs the engine tests on macOS, builds the app for the simulator on every push to
 `native-swiftui` that touches `native/`. It does not touch the existing web / IPA workflows.
 
 ## Playing

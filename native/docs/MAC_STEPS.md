@@ -6,7 +6,7 @@ Everything in `native/Engine` runs anywhere Swift runs. The app needs Xcode (15.
 
 ```sh
 brew install xcodegen
-cd native/Engine && swift test            # the engine: 43+ tests
+cd native/Engine && swift test            # the engine: all tests
 cd ../App && xcodegen generate
 open Ledger.xcodeproj
 ```

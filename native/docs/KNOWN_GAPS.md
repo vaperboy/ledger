@@ -21,7 +21,7 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   keeps their data untouched, they just do not run.
 * **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
   holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
-* **People:** pay talks (raises, fixed salary), poaching, promotions, onboarding of managers' own staff, assistant managers.
+* **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
 * **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.

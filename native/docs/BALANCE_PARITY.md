@@ -48,7 +48,7 @@ Each of these was a real difference between the engines, found by comparing aver
 
 | Difference | Cause | Effect |
 |---|---|---|
-| Gym revenue +28 % | Likely cause (seen, not yet proven by an experiment): at week 26 the original gyms have about one team member fewer, because the original has poaching offers, pay talks and other staff events that the native game does not have yet. With the same state, demand and capacity are equal (golden tests). | More staff, more members |
+| Gym revenue +28 % | Likely cause (seen, not yet proven by an experiment): at week 26 the original gyms have about one team member fewer, because the original has poaching offers and other staff events that the native game does not have yet (pay talks have since been added; the gym row was measured before that). Native staff are also hired about 5 % above the market rate on average, so they ask for raises later than in the original; cause not found. With the same state, demand and capacity are equal (golden tests). | More staff, more members |
 | Restaurant revenue −21 %, cash −38 % | Not yet explained. Demand parts match on the golden state; the difference is in how the state evolves. | |
 | Bakery revenue +24 % | Not yet explained. | |
 | Lower cash everywhere | Not yet explained; partly more costs in the native books (wages for staff that stay), partly timing of VAT and payables at the moment of measuring. | |

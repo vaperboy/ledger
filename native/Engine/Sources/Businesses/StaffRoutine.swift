@@ -8,7 +8,7 @@ import Finance
 /// Original: `staffWeek` and `handleStaffEvent` (engine/people/people.js, engine/company/model.js).
 public enum StaffRoutine {
     /// Test hook: called with (pay gap, quit odds, tiredness, fit) for every person every week.
-    nonisolated(unsafe) public static var probe: ((Double, Double, Double, Double) -> Void)? = nil
+    nonisolated(unsafe) public static var probe: ((Double, Double, Double, Double, Double) -> Void)? = nil
 
     public static func weekly(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, utilisation util: Double) {
         let w = World(state: s, data: data)
@@ -57,7 +57,8 @@ public enum StaffRoutine {
             let tenure = Double(s.week - (m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week))
             let odds = StaffWeek.quitOdds(family: bd.family, tradeID: co.type, staff: m, person: n, payGap: gap, tenure: tenure,
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
-            probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type))
+            if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
+            probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
             if s.random.chance(odds) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }
             if let trait = n.trait, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
                s.random.chance((s.hasHeadOffice("hr") ? 0.012 : 0.02) * (hasLead ? 0.6 : 1)) {
@@ -71,7 +72,7 @@ public enum StaffRoutine {
         s.companies[i] = co
         for (id, p) in changedPeople { s.people[id] = p }
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
-        for e in events { handle(&s, companyIndex: i, e) }
+        for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }
 
@@ -95,7 +96,7 @@ public enum StaffRoutine {
         }
     }
 
-    static func handle(_ s: inout GameState, companyIndex i: Int, _ e: StaffEvent) {
+    static func handle(_ s: inout GameState, companyIndex i: Int, _ e: StaffEvent, data: GameData) {
         var co = s.companies[i]
         func name(_ id: Int) -> String { s.people[id]?.name ?? "A team member" }
         func role(_ m: StaffMember) -> String { m.role }
@@ -121,8 +122,10 @@ public enum StaffRoutine {
                 var flags = co.value("flags"); flags["shrinkUp"] = .number(flags["shrinkUp"].double + 0.4)
                 co.set("flags", flags); s.companies[i] = co
             }
-        case .payAsk, .fixedSalaryAsk:
-            break  // pay talks arrive with the events module
+        case .payAsk(let id):
+            StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: false, data: data)
+        case .fixedSalaryAsk(let id):
+            StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: true, data: data)
         }
     }
 

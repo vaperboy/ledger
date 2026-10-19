@@ -15,7 +15,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 16 Ported, 16 Not ported, 13 Verified, 2 Statistical
+- Systems: 17 Ported, 16 Not ported, 13 Verified, 2 Statistical
 - Trades: 50 Statistical, 17 Not ported
 - Screens: 79 Not ported, 26 Engine + screen
 - Company tabs: 33 Not ported, 10 Engine + screen
@@ -62,7 +62,8 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Energy: oil and gas (2 trades) | - | Not ported |  |
 | Holding companies | - | Not ported |  |
 | Football clubs | - | Not ported |  |
-| Pay talks (people ask for raises, fixed salary), poaching of the best worker, other 'strategic' decisions (50 in the original) | - | Not ported | listed in KNOWN_GAPS |
+| Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood | Businesses/StaffTalks | Ported | StaffTalksTests |
+| Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
 | Key accounts (business customers), assistant managers | - | Not ported |  |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |

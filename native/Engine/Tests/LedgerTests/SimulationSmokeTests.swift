@@ -264,13 +264,15 @@ extension SimulationSmokeTests {
     func testPrintQuitProbe() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         var n = 0.0, odds = 0.0, gap = 0.0, fit = 0.0, tired = 0.0
-        StaffRoutine.probe = { g, o, t, f in n += 1; odds += o; gap += g; tired += t; fit += f }
+        var gapNew = 0.0, nNew = 0.0
+        StaffRoutine.probe = { g, o, t, f, ten in n += 1; odds += o; gap += g; tired += t; fit += f; if ten < 6 { gapNew += g; nNew += 1 } }
         defer { StaffRoutine.probe = nil }
         for k in 0..<12 {
             var e = try newEngine("UK", seed: 1000 + k * 37)
             _ = try startCompany(&e, trade: "gym")
             for _ in 0..<(26 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
         }
+        print("QUITPROBE newhires n=\(nNew) gap=\(gapNew / max(1, nNew))")
         print("QUITPROBE n=\(n) odds=\(odds / n) gap=\(gap / n) fit=\(fit / n) tired=\(tired / n)")
     }
 }
@@ -313,5 +315,53 @@ extension SimulationSmokeTests {
             acc["D", default: 0] += r.customers; n += 1
         }
         print("GYMPARTS " + acc.sorted { $0.key < $1.key }.map { "\($0.key)=\(String(format: "%.3f", $0.value / n))" }.joined(separator: " "))
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintAskRatio() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var e = try newEngine("UK", seed: 5)
+        var id = 0
+        e.update { s, data, ctx in
+            Ledger.move(&s, .me, 50_000_000, why: "Test funds")
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "gym", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+        }
+        for role in ["trainer", "recept"] {
+            var ratios: [Double] = [], skills: [Double] = [], asks: [Double] = [], mkt = 0.0
+            for _ in 0..<60 {
+                let cs = e.searchWorkers(companyID: id, role: role, mode: .network)
+                let co = e.state.company(id)!
+                let w = World(state: e.state, data: e.data)
+                let base = e.data.catalog.tables.roles[role]!.baseMonthlyWage
+                mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, week: e.state.week, rates: w.rates)
+                for c in cs { ratios.append(c.askingMonthlyWage / (mkt * (0.7 + c.skill / 160))); skills.append(c.skill); asks.append(c.askingMonthlyWage) }
+            }
+            let n = Double(ratios.count)
+            print("ASK \(role) n=\(Int(n)) ratio=\(ratios.reduce(0, +) / n) skill=\(skills.reduce(0, +) / n) ask=\(asks.reduce(0, +) / n) mkt=\(mkt)")
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintHireGap() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var rows: [String] = []
+        var sumGap = 0.0, n = 0.0
+        for k in 0..<6 {
+            var e = try newEngine("UK", seed: 1000 + k * 37)
+            let id = try startCompany(&e, trade: "gym")
+            let co = e.state.company(id)!
+            let w = World(state: e.state, data: e.data)
+            for m in co.staff {
+                let p = e.state.people[m.id]!
+                let base = e.data.catalog.tables.roles[m.role]!.baseMonthlyWage
+                let mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, week: e.state.week, rates: w.rates)
+                let gap = (mkt * (0.7 + p.skill / 160) - m.monthlyWage) / mkt
+                sumGap += gap; n += 1
+                rows.append("role=\(m.role) wage=\(Int(m.monthlyWage)) ask=\(Int(p.askingMonthlyWage)) mkt=\(Int(mkt)) skill=\(Int(p.skill)) gap=\(String(format: "%.3f", gap)) pt=\(m.partTimeShare)")
+            }
+        }
+        print("HIREGAP avg=\(sumGap / n) n=\(Int(n))\n" + rows.prefix(8).joined(separator: "\n"))
     }
 }

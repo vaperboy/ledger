@@ -114,14 +114,9 @@ public extension GameEngine {
     }
 
     mutating func raise(personID: Int, companyID: Int, percent: Double) {
-        update { s, data, ctx in
-            guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == personID }) else { return }
-            var staff = s.companies[i].staff
-            let cur = ctx.currency(s.companies[i].countryCode, s)
-            staff[k].monthlyWage = cur.roundedStep(staff[k].monthlyWage * (1 + percent), about: 100)
-            staff[k].lastRaiseWeek = s.week
-            staff[k].happyUntilWeek = s.week + (percent >= 0.06 ? 30 : 0)
-            s.companies[i].staff = staff
+        update { s, data, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            StaffTalks.raise(&s, companyIndex: i, staffID: personID, percent: percent, data: data)
         }
     }
 

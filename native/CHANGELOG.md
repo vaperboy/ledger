@@ -14,7 +14,7 @@
 * `native/App`: SwiftUI app — design system, Home (net worth, change indicators, quick actions, summaries with real histories, first
   steps, Next day), Companies (overview, team, money, operations, marketing, setup), Group, Phone (new company with full cost, bank, invest,
   tax, news, stats, activity, settings), Inbox with decisions, start screen with import, iPad sidebar layout, haptics.
-* Tests: 43, including exact comparisons with numbers produced by the original game.
+* Tests: 45, including exact comparisons with numbers produced by the original game.
 * `tools/ref`, `tools/gen_parity.py`, CI workflow `native-ios.yml`, documentation.
 
 ### Fixed while comparing with the original
