@@ -46,10 +46,13 @@ final class ScreenshotTests: XCTestCase {
         }
         open("Group"); sleep(1); shot("06-group")
         open("Phone"); sleep(1); shot("07-phone")
-        for app_ in ["Bank", "Invest", "Tax", "New company"] {
+        for app_ in ["Bank", "Invest", "Finance", "Settings", "New company"] {
             let b = app.buttons[app_].firstMatch
             if b.exists {
                 b.tap(); sleep(1); shot("08-phone-" + app_.lowercased().replacingOccurrences(of: " ", with: "-"))
+                if app_ == "Finance" {
+                    for tab in ["Taxes", "Expenses"] where app.buttons[tab].exists { app.buttons[tab].tap(); sleep(1); shot("08-finance-" + tab.lowercased()) }
+                }
                 if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }
             }
         }
