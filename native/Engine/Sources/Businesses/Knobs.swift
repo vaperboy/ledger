@@ -5,7 +5,7 @@ import GameCore
 /// capacity (k), costs (c, w), quality (q) and so on. Original: `knobFx`, `knobOpts` in engine/company/company.js.
 public enum Knobs {
     /// The options that are switched on for a knob.
-    static func activeOptions(_ co: Company, _ knob: Knob) -> [KnobOption] {
+    public static func activeOptions(_ co: Company, _ knob: Knob) -> [KnobOption] {
         let selected = co.value("knob")[knob.id].int
         if knob.isMulti {
             return knob.options.enumerated().filter { selected & (1 << $0.offset) != 0 }.map { $0.element }
@@ -13,7 +13,7 @@ public enum Knobs {
         return knob.options.indices.contains(selected) ? [knob.options[selected]] : []
     }
 
-    static func documentOK(_ co: Company, _ id: String) -> Bool {
+    public static func documentOK(_ co: Company, _ id: String) -> Bool {
         co.value("docs")[id]["st"].string == "ok"
     }
 

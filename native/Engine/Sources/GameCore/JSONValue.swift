@@ -97,3 +97,10 @@ extension JSONValue: ExpressibleByStringLiteral, ExpressibleByIntegerLiteral, Ex
     public init(booleanLiteral value: Bool) { self = .bool(value) }
     public init(nilLiteral: ()) { self = .null }
 }
+
+extension JSONValue {
+    /// One answer to an inbox decision: a short label, a line of explanation, and the effects it has.
+    public static func option(_ label: String, _ detail: String = "", effects: [String: JSONValue] = [:]) -> JSONValue {
+        .object(["l": .string(label), "d": .string(detail), "fx": .object(effects)])
+    }
+}

@@ -11,6 +11,10 @@ public struct World {
     public let catalog: TradeCatalog
     public let balance: Balance
 
+    public init(state: GameState, data: GameData) {
+        self.init(state: state, countries: data.countries, catalog: data.catalog, balance: data.balance)
+    }
+
     public init(state: GameState, countries: CountryBook, catalog: TradeCatalog, balance: Balance) {
         self.state = state
         self.countries = countries

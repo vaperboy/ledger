@@ -52,7 +52,7 @@ public enum GameCalendar {
     }
 
     // Howard Hinnant's civil-date algorithms (public domain), integer only.
-    static func daysFromCivil(year: Int, month: Int, day: Int) -> Int {
+    public static func daysFromCivil(year: Int, month: Int, day: Int) -> Int {
         let y = month <= 2 ? year - 1 : year
         let era = (y >= 0 ? y : y - 399) / 400
         let yoe = y - era * 400
@@ -62,7 +62,7 @@ public enum GameCalendar {
         return era * 146097 + doe - 719468
     }
 
-    static func civilFromDays(_ z0: Int) -> (year: Int, month: Int, day: Int) {
+    public static func civilFromDays(_ z0: Int) -> (year: Int, month: Int, day: Int) {
         let z = z0 + 719468
         let era = (z >= 0 ? z : z - 146096) / 146097
         let doe = z - era * 146097
