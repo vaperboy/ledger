@@ -36,6 +36,7 @@ public enum Ledger {
     public static func move(_ s: inout GameState, _ holder: CashHolder, _ amount: Double, why: String? = nil, companyID: Int = 0) {
         moveRaw(&s, holder, amount)
         guard holder == .me, amount != 0 else { return }
+        ReportCounters.recordPersonal(&s, label: why, amount: amount)
         // While a week is being worked out, the player's lines wait and later land whole on one day of the week.
         if s.transient.stagedPlayerLines != nil {
             s.transient.stagedPlayerLines?.append(StatementLine(week: s.week, day: s.day, amount: amount, label: why ?? "Other", companyID: companyID, balanceAfter: 0))

@@ -90,6 +90,7 @@ public struct GameEngine {
         let bank = country.pack["authorities"]["cb"].string
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
         var engine = GameEngine(state: state, data: data, events: events, marketing: marketing)
+        engine.openReportBaselines()
         engine.snapshot()
         engine.recordDay()
         return engine
@@ -121,11 +122,13 @@ public struct GameEngine {
     @discardableResult
     public mutating func answer(messageID: Int, option: Int) -> Bool {
         let d = data, c = context
-        return EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
+        let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
             return true
         }
+        if ok { ReportCounters.add(&state, ReportCounters.Key.answered, 1) }
+        return ok
     }
 
     /// Open messages waiting for an answer, newest first.
@@ -151,6 +154,8 @@ public struct GameEngine {
             tradeAndPay(day: state.day)
             releaseDay(state.day)
         } else {
+            // The seventh day is over: the week's money has all been released, so the week (and a month or year that ends with it) can be reported.
+            closeReportPeriods()
             state.rest["pend"] = .null
             state.day = 0
             stageWeek()

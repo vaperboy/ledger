@@ -11,7 +11,7 @@ import GameCore
 /// discarded: only a save from a NEWER app than this one is refused.
 public enum NativeSaveFormat {
     public static let formatName = "ledger-native"
-    public static let currentVersion = 1
+    public static let currentVersion = 2
 }
 
 /// A line about a save, shown in the save list without loading the whole game.
@@ -32,7 +32,16 @@ public enum SaveError: Error, Equatable {
 
 /// Changes to the envelope between app versions. Step n turns a version-n envelope into version n+1.
 public enum NativeMigrations {
-    static let steps: [Int: (inout [String: JSONValue]) -> Void] = [:]
+    static let steps: [Int: (inout [String: JSONValue]) -> Void] = [
+        // 1 -> 2: weekly, monthly and yearly reports. Older saves get empty lists; the first period is started by the game on the
+        // next week end (there is no earlier snapshot to compare with), so no report is invented for the time before.
+        1: { env in
+            var state = env["state"]?.object ?? [:]
+            if state["reports"] == nil { state["reports"] = .object(["w": .array([]), "m": .array([]), "y": .array([])]) }
+            if state["rptCum"] == nil { state["rptCum"] = .object([:]) }
+            env["state"] = .object(state)
+        },
+    ]
 
     public static func upgrade(_ envelope: inout [String: JSONValue]) throws {
         var v = envelope["version"]?.int ?? 1
