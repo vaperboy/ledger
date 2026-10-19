@@ -119,12 +119,12 @@ struct QuietButtonStyle: ButtonStyle {
     }
 }
 
-/// Small uppercase label above a section.
+/// The heading of a card ("Upcoming payments").
 struct SectionLabel: View {
     var text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text.uppercased()).font(.label).tracking(1.2).foregroundStyle(Theme.ivoryFaint)
+        Text(text).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory)
     }
 }
 
@@ -225,8 +225,8 @@ struct Stat: View {
     var tint: Color = Theme.ivory
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            SectionLabel(label)
-            Text(value).font(.figure(18)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
+            Text(label).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+            Text(value).font(.figure(18, weight: .bold)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
         }
     }
 }
