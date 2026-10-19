@@ -250,3 +250,26 @@ struct Meter: View {
         }
     }
 }
+
+/// A circular gauge with a figure in the middle (capacity use, demand coverage, rating).
+struct Ring: View {
+    var label: String
+    var fraction: Double
+    var centre: String
+    var tint: Color = Theme.gold
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle().stroke(Theme.hairline, lineWidth: 6)
+                Circle().trim(from: 0, to: CGFloat(min(1, max(0.005, fraction))))
+                    .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round)).rotationEffect(.degrees(-90))
+                Text(centre).font(.system(.subheadline, design: .serif).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    .minimumScaleFactor(0.6).lineLimit(1).padding(6)
+            }
+            .frame(width: 66, height: 66)
+            Text(label).font(.caption2).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
