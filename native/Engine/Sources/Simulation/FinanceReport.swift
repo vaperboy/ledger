@@ -14,6 +14,13 @@ public struct FinanceLine: Identifiable, Equatable, Sendable {
     public var share: Double = 0
 }
 
+/// One rule of the country a company works in, as a label and a value ("Corporate tax", "25%").
+public struct RuleLine: Identifiable, Equatable, Sendable {
+    public var id: String { label }
+    public var label: String
+    public var value: String
+}
+
 /// A payment that is coming. `essential` ones (wages, tax, loans, rent) cannot be skipped without consequences.
 public struct Obligation: Identifiable, Equatable, Sendable {
     public var id: String
@@ -41,6 +48,10 @@ public struct FinanceOverview: Equatable, Sendable {
     public var costTotalThisMonth = 0.0
     public var costsThisYear: [FinanceLine] = []
     public var costTotalThisYear = 0.0
+    /// The tax rules of the country (the company's, or the home country's), and how far to trust them.
+    public var countryName = ""
+    public var rules: [RuleLine] = []
+    public var basis = ""
     /// Plain-language findings about how the books look.
     public var notes: [String] = []
     public var shortfall: Double { max(0, dueWithin30Days - cashAvailable) }
@@ -157,6 +168,20 @@ public extension GameEngine {
         if o.shortfall > 0 { o.notes.append("The next 30 days of payments are larger than the cash in your companies and accounts. Move money in, borrow, or delay what can wait.") }
         if o.costTotalThisMonth > 0, let top = o.costsThisMonth.first, top.share > 0.5 { o.notes.append("\(top.label) is \(Int((top.share * 100).rounded()))% of this month's costs.") }
         if o.monthRevenue > 0, o.monthProfit < 0 { o.notes.append("This month costs more than the company earns so far.") }
+        let country = companyID.flatMap { state.company($0) }.map { context.country(of: $0, state) } ?? homeCountry
+        o.countryName = country.name
+        func pct(_ v: Double) -> String { let p = v * 100; return p == p.rounded() ? "\(Int(p))%" : String(format: "%.1f%%", p) }
+        o.rules = [
+            RuleLine(label: "Company profit tax", value: pct(country.corporateTax)),
+            RuleLine(label: "Tax on dividends", value: pct(country.dividendTax)),
+            RuleLine(label: "Employer contributions", value: pct(country.employerSocial + country.employerPension + country.employerInjury)),
+            RuleLine(label: "Employee contributions", value: pct(country.employeeSocial)),
+            RuleLine(label: country.usesSalesTax ? "Sales tax" : "VAT, standard rate", value: pct(country.vat.standard)),
+            RuleLine(label: "VAT, reduced rate", value: pct(country.vat.low)),
+            RuleLine(label: "VAT return", value: country.vatFilingMonths == 1 ? "every month" : "every \(country.vatFilingMonths) months"),
+        ]
+        let b = country.pack["dataBasis"]
+        o.basis = b["status"].string == "verified" ? (b["taxes"].string) : "Estimate. " + (b["taxes"].isNull ? "Rates are rounded for play and not checked against current law." : b["taxes"].string)
         o.notes.append("Tax rates and fees are game estimates for each country, not legal advice.")
         return o
     }

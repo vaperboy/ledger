@@ -136,6 +136,9 @@ final class FinanceOverviewTests: XCTestCase {
         let one = e.financeOverview(companyID: e.state.liveCompanies[0].id)
         XCTAssertLessThanOrEqual(one.costTotalThisYear, o.costTotalThisYear + 1)
         XCTAssertTrue(o.notes.last?.contains("estimates") ?? false)
+        XCTAssertEqual(o.countryName, e.homeCountry.name)
+        XCTAssertEqual(o.rules.count, 7)
+        XCTAssertTrue(o.basis.hasPrefix("Estimate"), "rates are labelled as estimates until somebody has checked them")
     }
 
     func testMarketingPausesInsteadOfRunningUpDebt() throws {

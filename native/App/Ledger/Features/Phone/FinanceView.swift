@@ -97,7 +97,14 @@ struct FinanceView: View {
                     }
                 }
             }
-            Text("Rates are the game's estimates for each country, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    HStack { SectionLabel("Rules in \(o.countryName)"); Spacer(); Chip(text: o.basis.hasPrefix("Estimate") ? "Estimate" : "Checked", tint: o.basis.hasPrefix("Estimate") ? Theme.caution : Theme.gain) }
+                    ForEach(o.rules) { r in ValueRow(label: r.label, value: r.value) }
+                    Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+            Text("Game estimates, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }
     }
 
