@@ -38,7 +38,7 @@ struct FinanceView: View {
 
     private func overview(_ e: GameEngine, _ o: FinanceOverview) -> some View {
         VStack(spacing: Theme.Space.l) {
-            Card {
+            GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Next 30 days")
                     HStack(alignment: .firstTextBaseline) {

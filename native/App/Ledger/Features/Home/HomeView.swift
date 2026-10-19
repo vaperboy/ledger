@@ -53,8 +53,7 @@ struct HomeHeader: View {
                 Text(engine.homeCountry.name).font(.label).foregroundStyle(Theme.ivoryMuted)
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Capsule().fill(Theme.pill))
-            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
+            .liquidGlassCapsule()
         }
         .padding(.top, Theme.Space.s)
     }
@@ -76,7 +75,7 @@ struct NetWorthCard: View {
         let week = DayHistory.change(hist.netWorth, days: 7)
         let owed = nw.debt + nw.pendingTax
         let rise = week?.share ?? 0
-        Card {
+        GlassCard {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("Net worth").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                 HStack(alignment: .firstTextBaseline) {
@@ -205,8 +204,8 @@ struct AdvanceBar: View {
                     .accessibilityLabel("Skip ahead until something needs you")
             }
         }
-        .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
-        .background(.ultraThinMaterial.opacity(0.9))
-        .background(Theme.walnut.opacity(0.7))
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
+        .liquidGlass(cornerRadius: 28)
+        .padding(.horizontal, Theme.Space.m).padding(.bottom, Theme.Space.s)
     }
 }

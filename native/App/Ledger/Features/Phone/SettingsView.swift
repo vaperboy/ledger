@@ -97,7 +97,6 @@ struct StepperPill: View {
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(Theme.ivory)
         .buttonStyle(.plain)
-        .background(Capsule().fill(Theme.pill))
-        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
+        .liquidGlassCapsule(interactive: true)
     }
 }

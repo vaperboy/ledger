@@ -77,7 +77,7 @@ struct CompanyOverview: View {
         let co = company
         let h = engine.companyHealth(co)
         VStack(spacing: Theme.Space.l) {
-            Card {
+            GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack(alignment: .firstTextBaseline) {
                         Text("Company value").font(.bodyText).foregroundStyle(Theme.ivoryMuted)

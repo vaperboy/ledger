@@ -47,18 +47,24 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tail -n 60
 
   screenshots:
-    runs-on: macos-15
+    runs-on: ${{ matrix.runner }}
     needs: app-build
+    # The iOS 26 run shows the real Liquid Glass; it depends on the runner image having Xcode 26, so it may not block.
+    continue-on-error: ${{ matrix.device == 'iphone-ios26' }}
     strategy:
       fail-fast: false
       matrix:
-        device: [iphone, ipad]
+        include:
+          - { device: iphone, runner: macos-15, xcode: '16', sim: 'iPhone 16 Pro ' }
+          - { device: ipad, runner: macos-15, xcode: '16', sim: 'iPad Pro 13' }
+          - { device: iphone-ios26, runner: macos-26, xcode: '26', sim: 'iPhone 17 Pro ' }
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode
         run: |
-          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          X=$(ls -d /Applications/Xcode_${{ matrix.xcode }}*.app | sort -V | tail -n 1)
           sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate the Xcode project
@@ -68,8 +74,9 @@ jobs:
         id: sim
         run: |
           xcrun simctl list devices available | grep -E "iPhone|iPad" | head -30
-          if [ "${{ matrix.device }}" = "ipad" ]; then PAT='iPad Pro 13'; else PAT='iPhone 16 Pro '; fi
+          PAT='${{ matrix.sim }}'
           NAME=$(xcrun simctl list devices available | grep -E "^ +$PAT" | head -1 | sed -E 's/^ +//; s/ \([0-9A-F-]+\).*//')
+          if [ -z "$NAME" ]; then NAME=$(xcrun simctl list devices available | grep -E "^ +iPhone" | head -1 | sed -E 's/^ +//; s/ \([0-9A-F-]+\).*//'); fi
           echo "Using: $NAME"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
       - name: Run the UI tour and keep screenshots

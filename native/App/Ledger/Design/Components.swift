@@ -113,8 +113,8 @@ struct QuietButtonStyle: ButtonStyle {
             .font(.system(.subheadline).weight(.semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, Theme.Space.l).padding(.vertical, 10)
-            .background(Capsule().fill(tint.opacity(configuration.isPressed ? 0.18 : 0.09)))
-            .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.75))
+            .liquidGlassCapsule(interactive: true)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -233,7 +233,9 @@ struct Stat: View {
 
 struct LedgerBackground: ViewModifier {
     func body(content: Content) -> some View {
-        content.background(Theme.background.ignoresSafeArea()).foregroundStyle(Theme.ivory)
+        content
+            .background(ZStack { Theme.background; AmbientLight() }.ignoresSafeArea())
+            .foregroundStyle(Theme.ivory)
     }
 }
 extension View {
@@ -303,12 +305,13 @@ struct SectionTabs<T: Hashable>: View {
                         }
                         .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
                         .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(Capsule().fill(on ? Theme.pillOn : Theme.pill))
-                        .overlay(Capsule().strokeBorder(on ? Theme.gold.opacity(0.45) : Theme.hairline, lineWidth: 0.75))
+                        .liquidGlassCapsule(tint: on ? Theme.pillOn : nil, interactive: true)
+                        .overlay(Capsule().strokeBorder(on ? Theme.gold.opacity(0.45) : Color.clear, lineWidth: 0.75))
                     }.buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, Theme.Space.l)
+            .padding(.vertical, 6)
         }
     }
 }

@@ -83,7 +83,7 @@ struct ToastView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.ivory)
                 .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(Capsule().fill(Theme.leather).overlay(Capsule().strokeBorder(Theme.tone(t.tone).opacity(0.6), lineWidth: 1)))
+                .liquidGlassCapsule(tint: Theme.tone(t.tone).opacity(0.5))
                 .shadow(radius: 10)
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
