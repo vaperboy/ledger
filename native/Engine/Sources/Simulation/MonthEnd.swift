@@ -154,8 +154,21 @@ public enum MonthEnd {
     }
 
     /// All month-end processing. Original: `monthEnd`.
+    /// The owner's standing instruction (`ManagementPolicy.autoDividendWeeks`): a limited company with more spare cash than
+    /// that many weeks of costs pays out the surplus, keeping that buffer.
+    static func autoDividends(_ s: inout GameState, context: FinanceContext) {
+        let weeks = s.policy.autoDividendWeeks
+        guard weeks > 0 else { return }
+        for co in s.companies where co.status == .open && co.form == .limited {
+            let buffer = context.weeklyCost(co, s) * weeks
+            let surplus = (Payments.maximumDividend(co, state: s, context: context) - buffer).rounded(.down)
+            if surplus > 0 { _ = Payments.payDividend(&s, companyID: co.id, amount: surplus, context: context) }
+        }
+    }
+
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
+        autoDividends(&s, context: context)
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.advanceTaxMonthly(&s, context: context)
         var rates = ExchangeRates(drift: s.exchangeRates.values)

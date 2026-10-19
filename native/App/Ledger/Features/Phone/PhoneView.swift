@@ -9,7 +9,7 @@ struct PhoneView: View {
         (.newCompany, "New company", "plus.square.on.square"),
         (.bank, "Bank", "banknote"),
         (.invest, "Invest", "chart.line.uptrend.xyaxis"),
-        (.tax, "Tax", "doc.text"),
+        (.tax, "Finance", "chart.pie"),
         (.news, "News", "newspaper"),
         (.stats, "Stats", "chart.bar"),
         (.activity, "Activity", "list.bullet.rectangle"),
@@ -43,7 +43,7 @@ struct PhoneView: View {
                     case .newCompany: NewCompanyView()
                     case .bank: BankView()
                     case .invest: InvestView()
-                    case .tax: TaxView()
+                    case .tax: FinanceView()
                     case .news: NewsView()
                     case .stats: StatsView()
                     case .activity: ActivityView()
