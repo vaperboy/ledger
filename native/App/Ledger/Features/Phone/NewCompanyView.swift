@@ -18,7 +18,7 @@ struct NewCompanyView: View {
             ScrollView {
                 LazyVStack(spacing: Theme.Space.s) {
                     ForEach(list) { t in
-                        let ban = CompanySetup.banReason(t.id, country: country)
+                        let ban = CompanySetup.banReason(t.id, country: country) ?? (CompanyWeek.isSupported(t) ? nil : "Coming in a later update")
                         NavigationLink {
                             TradeDetailView(tradeID: t.id)
                         } label: {
@@ -61,7 +61,7 @@ struct TradeDetailView: View {
             let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
             let city = cityID.isEmpty ? e.state.player.cityID : cityID
             let est = CompanySetup.estimate(tradeID: t.id, cityID: city, form: form, size: size, state: e.state, data: e.data)
-            let ban = CompanySetup.banReason(t.id, country: country)
+            let ban = CompanySetup.banReason(t.id, country: country) ?? (CompanyWeek.isSupported(t) ? nil : "This kind of business is coming in a later update.")
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
                     Card {
@@ -110,6 +110,7 @@ struct TradeDetailView: View {
                             switch r {
                             case .success?: Haptics.success(); store.show("Started.", tone: "good"); store.tab = .companies; dismiss()
                             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
+                            case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
                             case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
                             default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
                             }

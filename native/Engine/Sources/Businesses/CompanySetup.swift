@@ -18,7 +18,7 @@ public enum CompanySetup {
         public var landlord: String
     }
 
-    public enum StartError: Error, Equatable { case banned(String), notEnoughCash, notAllowedHere }
+    public enum StartError: Error, Equatable { case banned(String), notEnoughCash, notAllowedHere, notYetAvailable }
 
     /// Size a new company starts at, between the trade's minimum and the city's natural size. Original: `startSize`.
     public static func recommendedSize(_ bd: Trade, city: Country.City, brandStrength: Double = 0) -> Double {

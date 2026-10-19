@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Generate docs/PARITY_CHECKLIST.md from the inventory of the original game (docs/data/original_inventory.json).
+
+The inventory was dumped from the live HTML game by tools/ref/snippets/inventory.js. The *status* of each item is the
+dictionary below: edit it when something gets ported. Items not listed are "not ported". Run:  python3 tools/gen_parity.py
+"""
+import json, pathlib, collections
+
+root = pathlib.Path(__file__).resolve().parent.parent
+inv = json.load(open(root / "docs/data/original_inventory.json"))
+trades_json = json.load(open(root / "Engine/Sources/Businesses/Resources/trades.json"))
+trade_items = list(trades_json["trades"].values())
+
+# Status vocabulary
+V = "Verified"      # compared with the original by a differential test (same inputs, same outputs)
+S = "Statistical"   # ported and compared with the original on average results over many seeds
+P = "Ported"        # ported in the engine, covered by tests that check the books, but not compared number for number
+E = "Engine only"   # logic exists in the engine and is tested; no screen yet
+U = "Engine + screen"  # ported and reachable in the native app (screen not run on a device yet)
+N = "Not ported"
+
+# ---- screens of the original -> native screen
+screens = {
+ "home": ("Home", U), "title": ("StartView", U), "start": ("StartView (new game)", U), "menu": ("StartView", U),
+ "bank": ("Phone > Bank", U), "invest": ("Phone > Invest", U), "tax": ("Phone > Tax", U), "news": ("Phone > News", U),
+ "stats": ("Phone > Stats", U), "settings": ("Phone > Settings", U), "msgs": ("Inbox", U), "mail": ("Inbox", U),
+ "co": ("Companies > company", U), "cos": ("Companies", U), "pickco": ("Companies", U), "group": ("Group", U),
+ "newco": ("Phone > New company", U), "newbiz": ("Phone > New company", U), "hire": ("Company > Team", U),
+ "payself": ("Company > Money", U), "mkt36": ("Company > Marketing", U), "mktdetail": ("Company > Marketing", U),
+ "payroll29": ("Inbox decision (payroll approval)", U), "phonehome": ("Phone", U), "over": ("not yet: game-over screen", N),
+ "weekreport": ("Home + Inbox + Activity (no single report screen yet)", N), "reports": ("Home + Inbox", N),
+ "pricemoves": ("Company > Operations (price slider)", U),
+}
+screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
+
+# ---- company tabs of the original
+tabs = {
+ "ov": ("Company > Overview", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
+ "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
+ "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
+}
+tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
+
+# ---- actions of the original -> engine function
+actions = {
+ "nextday": ("GameEngine.nextDay", U), "untilneeded": ("GameEngine.advanceUntilNeeded", U),
+ "startgame": ("GameEngine.newGame", U), "newgame": ("GameEngine.newGame", U), "newgame2": ("GameEngine.newGame", U), "menunew": ("GameEngine.newGame", U),
+ "loadfile": ("LegacyImporter", U), "loadpaste": ("LegacyImporter", U), "menuload": ("SaveStore.load / LegacyImporter", U), "savefile": ("SaveStore.save", U),
+ "found": ("PlayerActions.startCompany", U), "ns13go": ("PlayerActions.startCompany", U), "ns13city": ("PlayerActions.startCompany(cityID:)", U), "ns13size": ("PlayerActions.startCompany(size:)", U),
+ "hsearch": ("PlayerActions.searchWorkers", U), "hirego": ("PlayerActions.hire", U), "firestaff": ("PlayerActions.fire", U), "doraise": ("PlayerActions.raise", U),
+ "setmkt": ("PlayerActions.setCampaign", U), "ownhrs": ("PlayerActions.setOwnerHours", U), "maint": ("PlayerActions.setMaintenance", U),
+ "stockpol": ("PlayerActions.setStockPolicy", U), "setknob": ("PlayerActions.setKnob", U), "pricestep": ("PlayerActions.setPriceLevel", U),
+ "cinject": ("PlayerActions.putMoneyInto", U), "cdraw": ("PlayerActions.takeMoneyOut", U), "cdiv": ("PlayerActions.payDividend", U),
+ "perloango": ("PlayerActions.takeLoan(kind: cons)", U), "loango": ("PlayerActions.takeLoan", U), "repaygo": ("PlayerActions.repayLoan", U),
+ "opendep": ("PlayerActions.openDeposit", U), "invsheet": ("PlayerActions.buyInvestment", U), "sellinv": ("PlayerActions.sellInvestment", U),
+ "openmsg": ("Inbox", U), "msgpick": ("GameEngine.answer", U), "opendec": ("GameEngine.answer", U),
+ "pr29ok": ("Payday.answer", U), "pr29mode": ("PlayerActions.setPayrollMode", E), "pr29day": ("Payday", E), "pr29run": ("Payday", E),
+ "premset": ("CompanySetup.setPremises", E), "premsheet": ("CompanySetup.listings", E), "buyeq": ("CompanySetup.buyEquipment", E),
+ "applydoc": ("Documents", E), "applydoc2": ("Documents", E), "estlog": ("", N),
+ "salary": ("PlayerActions.setOwnerSalary", E), "tcAS": ("CompanySetup.create(accountantID:)", E),
+ "reopen": ("", N),
+}
+action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
+
+# ---- systems (the pipelines of the original, grouped by what they do)
+systems = [
+ ("Seeded random numbers (Z, hrng)", "GameCore/DeterministicRandom, HashedRandom", V, "FoundationTests, golden currency_tax_rng"),
+ ("Calendar, month/year ends", "GameCore/GameCalendar", V, "FoundationTests"),
+ ("Currency, exchange rates, euro drift, price rounding", "Countries/Currency", V, "golden currency_tax_rng"),
+ ("23 countries: taxes, VAT, wages, rent, cities, names", "Countries/Country, countries.json", V, "golden countries_derived"),
+ ("Income tax, wealth tax, dividend tax", "Countries/Taxes, Finance/PersonalFinance", V, "PersonalFinanceDifferentialTests"),
+ ("67 trade definitions and calibration", "Businesses/TradeCatalog, trades.json", V, "golden trades_calibrated"),
+ ("Annuity loans, credit score, loan offers, repayment", "Finance/Annuity, Banking", V, "FinanceDifferentialTests"),
+ ("Cash ledger (every movement booked, gaps detectable)", "Finance/Ledger", P, "SimulationSmokeTests (no gaps after months)"),
+ ("Company payments, monthly-bill accrual, VAT, dividends", "Finance/Payments, Businesses/Vat", V, "FinanceDifferentialTests"),
+ ("Demand: local market, fit, price, affordability, ways to sell, weather, tourists, premises, owner attention", "Businesses/Demand", V, "oracle_demand_cap, CompanyModelDifferentialTests"),
+ ("Capacity and equipment limits", "Businesses/Capacity", V, "oracle_demand_cap"),
+ ("Daily retail trade (real days, stock, shelf)", "Businesses/DailyTrade, Shelf, StockHandling", S, "cafe_weeks golden; docs/BALANCE_PARITY.md"),
+ ("Company valuation and net worth", "Businesses/Valuation", V, "nw_cafe_week* goldens"),
+ ("Marketing channels, awareness, campaign customers", "Businesses/Marketing", P, "unit tests; not compared number for number"),
+ ("Quality, reputation, complaints", "Businesses/QualityModel", P, "smoke"),
+ ("Staff: skill, learning, tiredness, sickness, quitting, seasonal staff", "Employees, Businesses/StaffRoutine", P, "smoke"),
+ ("Hiring and firing, candidate generation", "Businesses/Hiring", P, "PlayerActionsTests"),
+ ("Payday on the real date, payroll approval, month-end bills", "Simulation/Payday", P, "SimulationSmokeTests (staffing)"),
+ ("Month-end and year-end tax settlement for companies", "Simulation/MonthEnd", P, "SimulationSmokeTests"),
+ ("Bankruptcy, forced sale, overdraft rules", "Simulation/Failure", P, "smoke"),
+ ("World economy, interest rate, competitors, disruptions", "Simulation/WorldWeek", P, "smoke"),
+ ("Stocks, crypto, funds, savings, fixed deposits", "Investments", P, "PlayerActionsTests"),
+ ("133 random events with weighted choices and expiry", "Events", P, "data equals the original; firing is smoke-tested"),
+ ("Event consequence previews", "Events/EffectPreview", P, "PreviewAndAdvisorTests"),
+ ("Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write", "SaveSystem", V, "LZStringTests, SaveRoundTripTests, SaveStoreTests"),
+ ("Service, venue, retail, production, logistics families (50 of 67 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
+ ("Project businesses (6 trades)", "-", N, "own model in the original"),
+ ("Rental businesses (3 trades)", "-", N, "own model in the original"),
+ ("Finance businesses (3 trades)", "-", N, ""),
+ ("Energy: oil and gas (2 trades)", "-", N, ""),
+ ("Holding companies", "-", N, ""),
+ ("Football clubs", "-", N, ""),
+ ("Managers and boards (managers who manage, board votes, CEO)", "partial: ManagerModel", N, "manager drift in demand only"),
+ ("Chains, franchises, branches, intercompany supply", "-", N, ""),
+ ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
+ ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
+ ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
+ ("Tenders, software/IT products, cyber attacks", "-", N, ""),
+ ("Achievements, trophies, rich list, awards", "-", N, ""),
+]
+
+# ---- trades
+fam_supported = {"svc", "venue", "retail", "prod", "logi"}
+trade_rows = []
+for t in trade_items:
+    pass
+for tid, name, fam, *_ in inv["trades"]:
+    ok = fam in fam_supported and tid != "salmon"
+    trade_rows.append((tid, name, fam, S if ok else N))
+
+def table(rows, header):
+    out = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
+    for r in rows:
+        out.append("| " + " | ".join(str(c) for c in r) + " |")
+    return "\n".join(out)
+
+def count(rows, idx):
+    c = collections.Counter(r[idx] for r in rows)
+    return ", ".join(f"{v} {k}" for k, v in sorted(c.items(), key=lambda kv: -kv[1]))
+
+md = []
+md += ["# Feature parity checklist", "",
+       "Generated by `tools/gen_parity.py` from `docs/data/original_inventory.json` (a dump of the original HTML game: "
+       f"{len(inv['countries'])} countries, {len(inv['trades'])} trades, {inv['events']} events, {len(inv['screens'])} screens, "
+       f"{len(inv['actions'])} actions, {len(inv['companyTabs'])} company tabs, {len(inv['pipelines'])} extension pipelines).", "",
+       "An item is only marked beyond *Not ported* when code for it exists **and** the status describes what was actually checked.", "",
+       "| Status | Meaning |", "|---|---|",
+       f"| {V} | compared with the original game on identical inputs by an automated test, results equal |",
+       f"| {S} | compared with the original on average results over many seeds (random parts cannot match exactly) |",
+       f"| {P} | ported; automated tests check it runs and keeps the books balanced; not compared number for number |",
+       f"| {E} | logic ported and tested, no native screen yet |",
+       f"| {U} | ported and reachable from a native screen. **The screens have not been run on a device or simulator by the author** (no Mac available); see KNOWN_GAPS |",
+       f"| {N} | not in the native game yet |", "",
+       "## Summary", "",
+       f"- Systems: {count(systems, 2)}", f"- Trades: {count(trade_rows, 3)}",
+       f"- Screens: {count(screen_rows, 2)}", f"- Company tabs: {count(tab_rows, 2)}", f"- Actions: {count(action_rows, 2)}", "",
+       "## Systems", "", table(systems, ["System", "Where", "Status", "Evidence"]), "",
+       "## Countries", "", "All 23 countries are data in `Countries/Resources/countries.json` (verified by golden `countries_derived`):", "",
+       ", ".join(c[1] for c in inv["countries"]), "",
+       "## Trades", "", table(trade_rows, ["Id", "Name", "Family", "Status"]), "",
+       "## Events", "", f"All {inv['events']} events are in `Events/Resources/events.json` (formulas as `{{expr}}`). "
+       "Event ids and count match the original; firing, deciders and answers are covered by smoke tests only, status: Ported.", "",
+       "## Screens", "", table(screen_rows, ["Original screen", "Native", "Status"]), "",
+       "## Company tabs", "", table(tab_rows, ["Original tab", "Native", "Status"]), "",
+       "## Actions", "", table(action_rows, ["Original action", "Native / engine", "Status"]), "",
+       "## Extension pipelines of the original", "",
+       "The original game is built from `addStep` pipelines. The systems table above is the reliable summary; "
+       "anything in the list below that is not named there as ported should be treated as **not ported**.", ""]
+for k, steps in inv["pipelines"].items():
+    md.append(f"<details><summary><code>{k}</code> ({len(steps)})</summary>\n")
+    md += [f"- {s}" for s in steps]
+    md.append("\n</details>\n")
+(root / "docs/PARITY_CHECKLIST.md").write_text("\n".join(md))
+print("written", len(md), "lines;", "screens", count(screen_rows, 2), "| actions", count(action_rows, 2))

@@ -24,10 +24,15 @@ jobs:
         run: swift test 2>&1 | tail -n 40
 
   app-build:
-    runs-on: macos-14
+    runs-on: macos-15
     needs: engine-tests
     steps:
       - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate the Xcode project
