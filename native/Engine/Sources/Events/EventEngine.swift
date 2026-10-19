@@ -98,10 +98,22 @@ public enum EventEngine {
 
     // MARK: Firing
 
+    /// A machine the company owns, for texts like "{eq} has broken down". Original: `pickEqName`.
+    static func pickEquipmentName(_ s: inout GameState, companyIndex i: Int, data: GameData) -> String {
+        let co = s.companies[i]
+        guard let bd = data.catalog[co.type] else { return "A key machine" }
+        let vehicles = co.value("veh").array.map { $0["eq"].string }
+        let names = bd.equipment.filter { $0.vehicleModels != nil ? vehicles.contains($0.id) : !co.value("eq")[$0.id].isNull }.map { $0.name }
+        return names.isEmpty ? "A key machine" : s.random.pick(names)
+    }
+
     static func fire(_ s: inout GameState, companyIndex i: Int, _ e: GameEvent, ctx: Context, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         if SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) { return }
         var title = e.text.replacingOccurrences(of: "{n}", with: co.name)
+        // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
+        let machine = pickEquipmentName(&s, companyIndex: i, data: data)
+        title = title.replacingOccurrences(of: "{eq}", with: machine)
         if e.automatic {
             apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx), ctx: ctx, event: e, data: data, context: fc)
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)

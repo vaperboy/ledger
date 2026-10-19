@@ -63,13 +63,20 @@ public extension GameEngine {
     }
 
     var news: [NewsItem] {
-        (state.rest["news"]?.array ?? []).enumerated().map { NewsItem(id: $0.offset, week: $0.element["w"].int, text: $0.element["t"].string, tone: $0.element["tone"].string) }
+        (state.rest["news"]?.array ?? []).enumerated().map { NewsItem(id: $0.offset, week: $0.element["w"].int, text: localized($0.element["t"].string), tone: $0.element["tone"].string) }
     }
 
     var deposits: [DepositInfo] {
         (state.rest["inv"]?["deposits"].array ?? []).enumerated().map {
             DepositInfo(id: $0.offset, balance: $0.element["bal"].double, rate: $0.element["rate"].double, weeksLeft: max(0, $0.element["wEnd"].int - state.week))
         }
+    }
+
+    /// Text as the player should read it: `{auth:..}` and `{m:..}` tokens resolved for the company's country (or the home country).
+    func localized(_ text: String, companyID: Int = 0) -> String {
+        let co = state.company(companyID)
+        let cur = co.map { currency(for: $0) } ?? homeCurrency
+        return TextTokens.resolve(text, country: cur.country, currency: cur)
     }
 
     /// Display name of a company's trade ("Café"), falling back to the raw id.

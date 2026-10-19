@@ -15,9 +15,9 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 13 Not ported, 12 Verified, 12 Ported, 2 Statistical
+- Systems: 16 Ported, 16 Not ported, 13 Verified, 2 Statistical
 - Trades: 50 Statistical, 17 Not ported
-- Screens: 80 Not ported, 25 Engine + screen
+- Screens: 79 Not ported, 26 Engine + screen
 - Company tabs: 33 Not ported, 10 Engine + screen
 - Actions: 511 Not ported, 37 Engine + screen, 9 Engine only
 
@@ -39,7 +39,12 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Daily retail trade (real days, stock, shelf) | Businesses/DailyTrade, Shelf, StockHandling | Statistical | cafe_weeks golden; docs/BALANCE_PARITY.md |
 | Company valuation and net worth | Businesses/Valuation | Verified | nw_cafe_week* goldens |
 | Marketing channels, awareness, campaign customers | Businesses/Marketing | Ported | unit tests; not compared number for number |
-| Quality, reputation, complaints | Businesses/QualityModel | Ported | smoke |
+| Quality and reputation | Businesses/QualityModel | Ported | smoke |
+| Customer complaints (arrive, managers answer, unanswered become bad reviews) | Businesses/Satisfaction | Ported | SimulationSmokeTests; effect on reputation compared in BALANCE_PARITY |
+| Word of mouth, buzz, limit of a local name, closing when nobody works | Businesses/Satisfaction | Ported | awareness and reputation track the original (BALANCE_PARITY) |
+| Paperwork for new people and inspection fines; commission mishaps; hidden talent | Businesses/StaffExtras | Ported | fine totals compared in BALANCE_PARITY |
+| Equipment units: wear per unit, breakdowns, warranty, repair cost, downtime | Businesses/EquipmentUnits | Ported | brand catalogue (reliability, class) not ported |
+| Text tokens {auth:..} {m:..} resolved per country | Countries/TextTokens | Verified | TextTokenTests |
 | Staff: skill, learning, tiredness, sickness, quitting, seasonal staff | Employees, Businesses/StaffRoutine | Ported | smoke |
 | Hiring and firing, candidate generation | Businesses/Hiring | Ported | PlayerActionsTests |
 | Payday on the real date, payroll approval, month-end bills | Simulation/Payday | Ported | SimulationSmokeTests (staffing) |
@@ -57,6 +62,9 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Energy: oil and gas (2 trades) | - | Not ported |  |
 | Holding companies | - | Not ported |  |
 | Football clubs | - | Not ported |  |
+| Pay talks (people ask for raises, fixed salary), poaching of the best worker, other 'strategic' decisions (50 in the original) | - | Not ported | listed in KNOWN_GAPS |
+| Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
+| Key accounts (business customers), assistant managers | - | Not ported |  |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
 | Chains, franchises, branches, intercompany supply | - | Not ported |  |
 | Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
@@ -212,7 +220,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | news | Phone > News | Engine + screen |
 | office |  | Not ported |
 | org56 |  | Not ported |
-| over | not yet: game-over screen | Not ported |
+| over | GameOverView | Engine + screen |
 | own27 |  | Not ported |
 | p11talk |  | Not ported |
 | pacct |  | Not ported |

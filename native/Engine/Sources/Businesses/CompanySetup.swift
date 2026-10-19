@@ -179,6 +179,7 @@ public enum CompanySetup {
         rec["life"] = .number(e.lifeYears)
         eq[e.id] = rec
         s.companies[i].set("eq", eq)
+        EquipmentUnits.recordPurchase(&s, companyIndex: i, e, tradeID: bd.id, quantity: Int(q), unitPrice: unit, data: data)
         return true
     }
 

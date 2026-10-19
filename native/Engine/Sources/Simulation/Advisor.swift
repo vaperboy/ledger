@@ -41,9 +41,9 @@ public extension GameEngine {
         let s = state
 
         for m in openDecisions.prefix(3) {
-            var detail = m.body
+            var detail = localized(m.body, companyID: m.companyID)
             if let exp = m.expiresWeek { let left = exp - s.week; detail += left > 0 ? " · expires in \(left) wk" : " · expires this week" }
-            out.append(Suggestion(id: "msg\(m.id)", symbol: "envelope.badge", title: m.title, detail: detail, tone: m.tone == "bad" ? .bad : .warn,
+            out.append(Suggestion(id: "msg\(m.id)", symbol: "envelope.badge", title: localized(m.title, companyID: m.companyID), detail: detail, tone: m.tone == "bad" ? .bad : .warn,
                                   action: .openMessage(m.id), actionLabel: "Decide"))
         }
         if s.cash < 0 {

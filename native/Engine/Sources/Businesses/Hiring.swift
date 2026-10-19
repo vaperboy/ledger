@@ -116,10 +116,24 @@ public enum Hiring {
         m.id = personID; m.set("role", n.role); m.monthlyWage = wage0
         m.hiredWeek = s.week; m.payBasis = basis; m.lastRaiseWeek = s.week
         m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0); m.set("onb", .object([:]))
+        onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)
         s.companies[ci].staff = staff
         return .ok
+    }
+
+    /// A manager does the new person's paperwork. Experienced managers (5+ years), or ones who have been fined before, do all of it;
+    /// newer ones sometimes forget one or two items. Original: `managerOnboard`.
+    static func onboardByManager(_ m: inout StaffMember, company co: Company, state s: inout GameState) {
+        guard let mid = co.managerID, let mgr = s.people[mid] else { return }
+        let items = StaffExtras.items(role: m.role)
+        let experience = mgr.num("exp")
+        if co.value("flags")["onbAll"].bool || experience >= 5 { items.forEach { StaffExtras.tick(&m, key: $0.key) }; return }
+        var missed = 0
+        for it in items {
+            if missed < 2 && !s.random.chance(0.78 + experience * 0.03) { missed += 1 } else { StaffExtras.tick(&m, key: it.key) }
+        }
     }
 
     /// Roles where a fixed salary is the custom from the start. Original: `FIX_NORM`.

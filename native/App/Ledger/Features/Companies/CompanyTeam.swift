@@ -26,7 +26,16 @@ struct CompanyTeam: View {
                                 Spacer()
                                 Text(cur.format(m.monthlyWage) + " / mo").font(.system(.subheadline, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                             }
-                            if m.tiredness > 0.6 { Chip(text: "Tired", tint: Theme.caution) }
+                            if m.tiredness > 60 { Chip(text: "Tired", tint: Theme.caution) }
+                            let missing = StaffExtras.missing(m)
+                            if !missing.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Chip(text: "\(missing.count) paperwork item\(missing.count == 1 ? "" : "s") missing", tint: Theme.loss)
+                                    Text(missing.map { $0.text }.joined(separator: " · ")).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                    Button("Mark all done") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() }.buttonStyle(QuietButtonStyle(tint: Theme.caution))
+                                    Text("Missing papers can be fined in an inspection.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                }
+                            }
                             if m.sickUntilWeek != nil { Chip(text: "Off sick", tint: Theme.loss) }
                             HStack {
                                 Button("Raise 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }.buttonStyle(QuietButtonStyle())

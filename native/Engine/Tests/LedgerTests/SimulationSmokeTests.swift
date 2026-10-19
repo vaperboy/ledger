@@ -18,7 +18,8 @@ final class SimulationSmokeTests: XCTestCase {
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
             let r = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: form, data: data, context: ctx)
             if case .success(let i) = r { id = i }
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: form, size: s.company(id)?.size ?? 1, state: s, data: data)
+            // The reference script (tools/ref/snippets/stats_run.js) asks for the estimate at size 1, whatever size the company has.
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: form, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + fund)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -77,7 +78,8 @@ extension SimulationSmokeTests {
     /// (tools/ref/snippets/stats_run.js). The numbers feed docs/BALANCE_PARITY.md.
     func testPrintStatisticsForComparison() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
-        let seeds = (0..<12).map { 1000 + $0 * 37 }
+        let base = Int(ProcessInfo.processInfo.environment["LEDGER_SEED0"] ?? "1000")!, step = Int(ProcessInfo.processInfo.environment["LEDGER_STEP"] ?? "37")!
+        let seeds = (0..<12).map { base + $0 * step }
         for trade in ["cafe", "barber", "gym", "restaurant", "courier", "boutique", "webdev", "bakery"] {
             var rev = 0.0, n = 0.0, cashEnd = 0.0, opened = 0, bust = 0
             for sd in seeds {
@@ -98,7 +100,7 @@ extension SimulationSmokeTests {
 extension SimulationSmokeTests {
     func testPrintDetail() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
-        for trade in ["restaurant", "courier", "barber", "cafe"] {
+        for trade in ["restaurant", "gym", "bakery", "cafe"] {
             for sd in [1000, 1037, 1074, 1111] {
                 var e = try newEngine("UK", seed: sd)
                 let id = try startCompany(&e, trade: trade)
@@ -163,5 +165,153 @@ extension SimulationSmokeTests {
             if !(e.state.company(id)?.staff.isEmpty ?? true) { kept += 1 }
         }
         print("STAFFRATE kept=\(kept) of \(n) causes=\(causes.sorted { $0.value > $1.value }.prefix(6))")
+    }
+}
+
+extension SimulationSmokeTests {
+    /// Prints the books after 26 weeks, for comparison with tools/ref/snippets/books_cafe.js.
+    func testPrintBooks() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        for trade in ["cafe", "gym", "restaurant"] {
+            var e = try newEngine("UK", seed: 1000)
+            let id = try startCompany(&e, trade: trade)
+            let afterSetup = e.state.company(id)!.cash
+            for _ in 0..<(26 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+            let co = e.state.company(id)!
+            print("BOOKS \(trade) cashAfterSetup=\(Int(afterSetup)) cashEnd=\(Int(co.cash)) staff=\(co.staff.count) books=\(co.books.total.mapValues { Int($0) }.sorted { $0.key < $1.key })")
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintSetup() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        for trade in ["cafe", "gym"] {
+            var e = try newEngine("UK", seed: 1000)
+            var id = 0
+            e.update { s, data, ctx in
+                Ledger.move(&s, .me, 50_000_000, why: "Test funds")
+                if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+                let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: s.company(id)!.size, state: s, data: data)!
+                print("SETUP \(trade) size=\(s.company(id)!.size) est=\(est)")
+                Payments.injectCash(&s, companyID: id, amount: est.total * 1.6)
+                let before = s.company(id)!.cash
+                let log = CompanySetup.quickSetup(&s, companyID: id, data: data)
+                let co = s.company(id)!
+                print("SETUP \(trade) before=\(Int(before)) after=\(Int(co.cash)) log=\(log) eq=\(co.value("eq").object.mapValues { $0["n"].double * 0 + $0["cost"].double }.mapValues { Int($0) }) prem=\(co.value("prem")) inv=\(co.inventory)")
+            }
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintAwareness() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var e = try newEngine("UK", seed: 1000)
+        let id = try startCompany(&e, trade: "cafe")
+        for d in 0..<(26 * 7) {
+            e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+            if d % 7 == 6, (d / 7) % 5 == 0 || d / 7 == 25 {
+                let co = e.state.company(id)!
+                print("AWARE week=\(e.state.week) aware=\(String(format: "%.1f", co.awareness)) aw23=\(co.num("aw23")) rating=\(Pricing.rating(co)) rep=\(Int(co.reputation)) q=\(Int(co.quality)) opened=\(String(describing: co.openedWeek))")
+            }
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    /// Averages of demand, capacity, units, staff and mood over weeks 13-26, for tools/ref/snippets/stats_parts.js.
+    func testPrintParts() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        let seeds = (0..<12).map { 1000 + $0 * 37 }
+        for trade in ["cafe", "gym", "restaurant", "bakery"] {
+            var acc: [String: Double] = [:]; var n = 0.0
+            for sd in seeds {
+                var e = try newEngine("UK", seed: sd)
+                let id = try startCompany(&e, trade: trade)
+                for d in 0..<(26 * 7) {
+                    e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                    if d % 7 == 6, d / 7 >= 12 {
+                        let co = e.state.company(id)!; let lw = co.value("lastW")
+                        acc["D", default: 0] += lw["D"].double; acc["cap", default: 0] += lw["cap"].double; acc["units", default: 0] += lw["units"].double
+                        acc["rev", default: 0] += lw["rev"].double; acc["staff", default: 0] += Double(co.staff.count); acc["rep", default: 0] += co.reputation
+                        acc["q", default: 0] += co.quality; acc["aware", default: 0] += co.awareness; n += 1
+                    }
+                }
+            }
+            print("PARTS \(trade) " + acc.sorted { $0.key < $1.key }.map { "\($0.key)=\(String(format: "%.1f", $0.value / n))" }.joined(separator: " "))
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintGymStaff() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        for k in 0..<8 {
+            var e = try newEngine("UK", seed: 1000 + k * 37)
+            let id = try startCompany(&e, trade: "gym")
+            var row = [e.state.company(id)!.staff.map { String($0.role.prefix(1)) }.joined()]
+            for d in 0..<(26 * 7) {
+                e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                if d % 7 == 6, [3, 12, 25].contains(d / 7) { row.append(e.state.company(id)!.staff.map { String($0.role.prefix(1)) }.joined()) }
+            }
+            print("GYMSTAFF " + row.joined(separator: " | "))
+        }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintQuitProbe() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var n = 0.0, odds = 0.0, gap = 0.0, fit = 0.0, tired = 0.0
+        StaffRoutine.probe = { g, o, t, f in n += 1; odds += o; gap += g; tired += t; fit += f }
+        defer { StaffRoutine.probe = nil }
+        for k in 0..<12 {
+            var e = try newEngine("UK", seed: 1000 + k * 37)
+            _ = try startCompany(&e, trade: "gym")
+            for _ in 0..<(26 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+        }
+        print("QUITPROBE n=\(n) odds=\(odds / n) gap=\(gap / n) fit=\(fit / n) tired=\(tired / n)")
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintMessageTally() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var tally: [String: Int] = [:]
+        for k in 0..<12 {
+            var e = try newEngine("UK", seed: 1000 + k * 37)
+            _ = try startCompany(&e, trade: "gym")
+            var seen = Set<Int>()
+            for _ in 0..<(26 * 7) {
+                e.nextDay()
+                for m in e.state.inbox where !seen.contains(m.id) {
+                    seen.insert(m.id)
+                    let key = m.title.replacingOccurrences(of: #"[A-Z][a-z]+ [A-Z][a-z]+"#, with: "NAME", options: .regularExpression)
+                        .replacingOccurrences(of: #"[0-9][0-9 ,.]*"#, with: "N", options: .regularExpression)
+                    tally[String(key.prefix(60)), default: 0] += 1
+                }
+                for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+            }
+        }
+        for (k, v) in tally.sorted(by: { $0.value > $1.value }).prefix(24) { print("MSG \(v) \(k)") }
+    }
+}
+
+extension SimulationSmokeTests {
+    func testPrintDemandParts() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        var acc: [String: Double] = [:]; var n = 0.0
+        for k in 0..<12 {
+            var e = try newEngine("UK", seed: 1000 + k * 37)
+            let id = try startCompany(&e, trade: "gym")
+            for _ in 0..<(26 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+            let co = e.state.company(id)!
+            let w = World(state: e.state, data: e.data)
+            let r = DemandModel.compute(co, e.data.catalog["gym"]!, w)
+            for p in r.parts { acc[p.name, default: 0] += p.value }
+            acc["D", default: 0] += r.customers; n += 1
+        }
+        print("GYMPARTS " + acc.sorted { $0.key < $1.key }.map { "\($0.key)=\(String(format: "%.3f", $0.value / n))" }.joined(separator: " "))
     }
 }

@@ -38,7 +38,7 @@ public enum OpeningChecklist {
                 out.append(Item(id: "prem", title: "Premises", isDone: m2 > 0, detail: m2 > 0 ? "\(Int(m2)) m²" : "Not chosen"))
             }
             for e in bd.equipment where e.isRequired {
-                out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: CapacityModel.equipmentCount(co, e) >= 1, detail: ""))
+                out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: CapacityModel.equipmentAvailable(co, e) >= 1, detail: ""))
             }
         }
         let stock = initialStockCost(co, bd, w)

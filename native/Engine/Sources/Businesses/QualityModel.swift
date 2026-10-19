@@ -14,7 +14,7 @@ public enum QualityModel {
         var tq = 0.0, hq = 0.0
         for e in bd.equipment where e.affectsQuality {
             tq += 1
-            if CapacityModel.equipmentCount(co, e) > 0 { hq += CapacityModel.equipmentCondition(co, e) * 0.8 + 0.2 }
+            if CapacityModel.equipmentAvailable(co, e) > 0 { hq += CapacityModel.equipmentCondition(co, e) * 0.8 + 0.2 }
         }
         let eqQ = tq != 0 ? 16 * hq / tq : 8
         var q = 28 + 0.3 * sk + eqQ + Knobs.effect(co, bd, "q", w, sum: true)

@@ -103,6 +103,16 @@ public extension GameEngine {
         return sev
     }
 
+    /// Mark a paperwork item as done for a team member. It is free; missing items can be fined in an inspection.
+    mutating func completePaperwork(companyID: Int, personID: Int, key: String? = nil) {
+        update { s, _, _ in
+            guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == personID }) else { return }
+            var staff = s.companies[i].staff
+            for it in StaffExtras.items(role: staff[k].role) where key == nil || it.key == key { StaffExtras.tick(&staff[k], key: it.key) }
+            s.companies[i].staff = staff
+        }
+    }
+
     mutating func raise(personID: Int, companyID: Int, percent: Double) {
         update { s, data, ctx in
             guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == personID }) else { return }

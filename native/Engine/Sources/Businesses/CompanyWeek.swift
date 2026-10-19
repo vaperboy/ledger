@@ -27,12 +27,20 @@ public enum CompanyWeek {
             var m = $0; m["w"] = .number($0["w"].double - 1); return m["w"].double > 0 ? m : nil
         }))
         Documents.weekly(&s, companyIndex: i, data: data)
+        Satisfaction.closeIfNobodyWorks(&s, i, bd)
 
         switch s.companies[i].status {
         case .setup: setupWeek(&s, i, bd, data)
         case .closed: closedWeek(&s, i, bd, data)
         case .open: openWeek(&s, i, bd, data, marketing)
         default: break
+        }
+        // After the week: complaints, word of mouth (weekCo.after), then buzz and the limit of a local name (chainWeek).
+        Satisfaction.complaintsWeek(&s, i, bd, data: data)
+        Satisfaction.wordOfMouth(&s, i, bd)
+        if s.companies[i].status == .open {
+            Satisfaction.buzzWeek(&s, i)
+            Satisfaction.reachCap(&s, i, data: data)
         }
     }
 
@@ -346,7 +354,9 @@ public enum CompanyWeek {
         }
         CompanyCosts.premisesValue(&s, companyIndex: i)
         Marketing.weekly(&s, companyIndex: i, bd, data: data, tables: marketing)
+        EquipmentUnits.before(&s, companyIndex: i, bd, data: data)
         CompanyCosts.equipmentWeek(&s, companyIndex: i, utilisation: ctx.util == 0 ? 0.6 : ctx.util, bd, data: data)
+        EquipmentUnits.after(&s, companyIndex: i, bd, utilisation: ctx.util == 0 ? 0.6 : ctx.util, data: data)
 
         // Quality and reputation follow how well the company does its job.
         co = s.companies[i]

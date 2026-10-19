@@ -7,7 +7,9 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if store.hasGame { GameShell() } else { StartView() }
+            if let e = store.engine {
+                if e.state.isGameOver { GameOverView(engine: e) } else { GameShell() }
+            } else { StartView() }
         }
         .overlay(alignment: .top) { ToastView() }
         .alert("Something went wrong", isPresented: Binding(get: { store.errorText != nil }, set: { if !$0 { store.errorText = nil } })) {

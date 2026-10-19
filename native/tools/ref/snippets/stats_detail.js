@@ -1,6 +1,6 @@
 (() => {
   const out = {};
-  for (const t of ['restaurant', 'courier', 'barber', 'cafe']) {
+  for (const t of ['restaurant', 'gym', 'bakery', 'cafe']) {
     const rows = [];
     for (const sd of [1000, 1037, 1074, 1111]) {
       newGame({ seed: sd, country: 'UK', name: 'S' });

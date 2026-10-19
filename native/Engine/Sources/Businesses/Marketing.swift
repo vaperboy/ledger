@@ -67,9 +67,12 @@ public struct MarketingTables: Sendable {
 }
 
 public enum Marketing {
-    /// How the weekly awareness fades. Original: `awareDecayCore`.
+    /// How the weekly awareness fades. Original: `awareDecayCore`, then the step 'local_prices awareDecay':
+    /// a company that spends nothing on marketing is forgotten 4% faster.
     public static func decay(_ co: Company) -> Double {
-        clamp(0.955 - max(0, 55 - co.reputation) * 0.0015 - max(0, 55 - co.quality) * 0.001 + clamp((co.reputation - 60) * 0.0004, 0, 0.012), 0.9, 0.968)
+        let core = clamp(0.955 - max(0, 55 - co.reputation) * 0.0015 - max(0, 55 - co.quality) * 0.001 + clamp((co.reputation - 60) * 0.0004, 0, 0.012), 0.9, 0.968)
+        let spend = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        return spend > 0 ? core : core * 0.96
     }
 
     /// Awareness people have without any advertising: a shop on a street is seen, a good name spreads. Original: `organic`.

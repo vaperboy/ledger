@@ -70,6 +70,11 @@ public enum CapacityModel {
         return own + leased
     }
 
+    /// How many can be used right now: units in for repair do not count. Original: `eqN` (the core plus the step).
+    static func equipmentAvailable(_ co: Company, _ e: EquipmentSpec) -> Double {
+        EquipmentUnits.availableCount(co, equipmentID: e.id, vehicle: e.vehicleModels != nil, count: equipmentCount(co, e))
+    }
+
     static func equipmentCondition(_ co: Company, _ e: EquipmentSpec) -> Double {
         if e.vehicleModels != nil {
             let vs = co.value("veh").array.filter { $0["eq"].string == e.id }
@@ -141,7 +146,7 @@ public enum CapacityModel {
         }
         var availability = 1.0   // a required machine in repair for part of the week: the business works the rest
         for e in bd.equipment {
-            let n = equipmentCount(co, e)
+            let n = equipmentAvailable(co, e)
             let cond = equipmentCondition(co, e)
             if e.isRequired && n < 1 && n > 0.01 && equipmentCount(co, e) >= 1 {
                 availability = min(availability, n)

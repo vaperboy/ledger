@@ -1,6 +1,6 @@
 (() => {
   const trades = ['cafe', 'barber', 'gym', 'restaurant', 'courier', 'boutique', 'webdev', 'bakery'];
-  const seeds = Array.from({ length: 12 }, (_, i) => 1000 + i * 37);
+  const SEED0 = 1000, STEP = 37; const seeds = Array.from({ length: 12 }, (_, i) => SEED0 + i * STEP);
   const out = {};
   for (const t of trades) {
     let rev = 0, cogs = 0, wages = 0, n = 0, cashEnd = 0, opened = 0, bust = 0;

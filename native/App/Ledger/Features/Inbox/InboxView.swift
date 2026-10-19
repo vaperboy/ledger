@@ -52,6 +52,8 @@ struct MessageCard: View {
     var message: Message
     var week: Int
 
+    private func text(_ s: String) -> String { store.engine?.localized(s, companyID: message.companyID) ?? s }
+
     private func preview(_ option: JSONValue) -> [String] {
         guard let e = store.engine else { return [] }
         let cur = message.companyID != 0 ? (e.state.company(message.companyID).map { e.currency(for: $0) } ?? e.homeCurrency) : e.homeCurrency
@@ -64,11 +66,11 @@ struct MessageCard: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(alignment: .firstTextBaseline) {
                     if !message.isRead || open { Circle().fill(open ? Theme.caution : Theme.gold).frame(width: 7, height: 7) }
-                    Text(message.title).font(.system(.headline, design: .serif)).foregroundStyle(Theme.ivory)
+                    Text(text(message.title)).font(.system(.headline, design: .serif)).foregroundStyle(Theme.ivory)
                     Spacer()
                     Text(message.from).font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }
-                Text(message.body).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text(text(message.body)).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                 if open {
                     if let exp = message.expiresWeek {
                         let left = exp - week
@@ -78,8 +80,8 @@ struct MessageCard: View {
                         ForEach(Array(message.options.enumerated()), id: \.offset) { idx, opt in
                             Button { store.answer(message, option: idx) } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(opt["l"].string).font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.ivory)
-                                    if !opt["d"].string.isEmpty { Text(opt["d"].string).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
+                                    Text(text(opt["l"].string)).font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.ivory)
+                                    if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
                                     ForEach(preview(opt), id: \.self) { line in
                                         Text("• " + line).font(.caption2).foregroundStyle(Theme.gold.opacity(0.9))
                                     }

@@ -66,3 +66,18 @@ final class PreviewAndAdvisorTests: XCTestCase {
         XCTAssertEqual(h.netWorth.last ?? 0, e.netWorth.total.rounded(), accuracy: 1)
     }
 }
+
+final class TextTokenTests: XCTestCase {
+    func testAuthorityAndAmountTokensAreResolvedPerCountry() throws {
+        let uk = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1)
+        let no = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 1)
+        let text = "{auth:food} says: fine of {m:10000}. Unknown {auth:nope}."
+        let a = uk.localized(text), b = no.localized(text)
+        XCTAssertNotEqual(a, b)
+        XCTAssertFalse(a.contains("{auth:food}") || a.contains("{m:"))
+        XCTAssertTrue(a.contains("GBP"), a)
+        XCTAssertTrue(b.contains("NOK"), b)
+        XCTAssertTrue(a.contains("Unknown nope."), "an unknown body falls back to its key")
+        XCTAssertEqual(uk.localized("nothing to resolve"), "nothing to resolve")
+    }
+}
