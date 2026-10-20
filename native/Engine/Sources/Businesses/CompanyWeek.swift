@@ -8,12 +8,13 @@ import Finance
 /// `book`, `weekEnd` (engine/company/model.js) and the standard family models (family_basic.js).
 ///
 /// Supported here: service, venue, retail, production, logistics and project businesses (the project model is in
-/// `ProjectWeek` / `ProjectDeveloper`). Rental, finance, energy, holding and football businesses have their own models in
-/// the original and are not yet part of the native engine (see docs/KNOWN_GAPS.md): `isSupported` says which.
+/// `ProjectWeek` / `ProjectDeveloper`), rental and finance businesses (`RentalModel`, `FinanceModel`), and the ones with a
+/// model of their own (energy, the salmon farm, the holding company and the football club: see `SpecialFamilies`).
+/// `isSupported` says which.
 public enum CompanyWeek {
     public static func isSupported(_ bd: Trade) -> Bool {
         if RentalFinance.handles(bd) { return true }   // property and finance families: RentalModel, FinanceModel
-        return ["svc", "venue", "retail", "prod", "logi", "project"].contains(bd.family) && bd.id != "salmon"
+        return ["svc", "venue", "retail", "prod", "logi", "project", "energy", "hold", "club"].contains(bd.family)
     }
 
     /// Run the week for the company at `index`. Called once per company per week, after the week counter moved on.
@@ -88,9 +89,11 @@ public enum CompanyWeek {
             weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
             return
         }
-        // Project businesses: the week's figures come from what happened on the days (jobs) or from the developments.
-        if bd.family == "project" {
-            let ctx = ProjectModel.isDeveloper(bd)
+        // Project businesses (the week's figures come from what happened on the days, or from the developments), and energy, the
+        // salmon farm, a holding company and a football club (SpecialFamilies) work out their own week.
+        if bd.family == "project" || SpecialFamilies.handles(bd) {
+            let ctx = bd.family != "project" ? SpecialFamilies.week(&s, i, bd, data)
+                : ProjectModel.isDeveloper(bd)
                 ? ProjectDeveloper.week(&s, i, bd, data: data, context: FinanceContext(countries: data.countries, trades: data.catalog))
                 : ProjectWeek.closeWeek(&s, i, bd, data: data)
             let vat = Vat.rate(s.companies[i], bd, World(state: s, data: data))

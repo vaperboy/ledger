@@ -42,6 +42,7 @@ public enum OpeningChecklist {
             }
         }
         out += RentalFinance.checklist(co, bd, w)
+        out += SpecialFamilies.checklist(co, bd, w)
         let stock = initialStockCost(co, bd, w)
         if stock > 0 {
             let ok = co.cash >= stock

@@ -18,7 +18,7 @@ public extension GameEngine {
                                accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
         // Trades whose weekly model is not ported yet would sit inert, so they cannot be started (see docs/KNOWN_GAPS.md).
-        guard let trade = data.catalog[tradeID], CompanyWeek.isSupported(trade) else { return .failure(.notYetAvailable) }
+        guard let trade = data.catalog[tradeID], SpecialFamilies.isStartable(trade) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
             result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
             if case .success(let id) = result {

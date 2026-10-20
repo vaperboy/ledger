@@ -82,7 +82,7 @@ public extension GameEngine {
         let monthlyProfit = recent.isEmpty ? 0 : recent.reduce(0) { $0 + $1.profit } / Double(recent.count)
         if monthlyProfit < 0 { h.runwayWeeks = max(0, co.cash) / (-monthlyProfit * 12 / 52) }
         if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
-        if co.status == .open, let bd = data.catalog[co.type] {
+        if co.status == .open, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) {
             h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
         }
         let months = hist.count
@@ -106,7 +106,9 @@ public extension GameEngine {
             let missing = openingChecklist(companyID: co.id).filter { !$0.isDone }
             out.append(Insight(id: "setup", symbol: "checklist", text: missing.isEmpty ? "Everything is ready; the company opens as soon as the first stock can be paid for." : "Not open yet: \(missing.prefix(3).map { $0.title }.joined(separator: ", ")) still to do.", tone: .warn))
         }
-        if co.status == .open, !lw.isNull {
+        let special = data.catalog[co.type].map { SpecialFamilies.handles($0) } ?? false
+        if special { out += specialInsights(for: co) }
+        if co.status == .open, !lw.isNull, !special {
             let cap = lw["cap"].double, D = lw["D"].double, util = lw["util"].double
             if cap > 0, D > cap * 1.12, util > 0.93 { out.append(Insight(id: "cap", symbol: "gauge.with.dots.needle.100percent", text: "Capacity is limiting sales: about \(Int(jsRound(D - cap))) customers a week are turned away. More staff or equipment would add revenue.", tone: .warn)) }
             else if cap > 0, util < 0.5 { out.append(Insight(id: "slack", symbol: "person.3", text: "Only \(Int(jsRound(util * 100)))% of capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
@@ -122,7 +124,7 @@ public extension GameEngine {
         if let g = companyHealth(co).revenueGrowth, abs(g) > 0.08 {
             out.append(Insight(id: "growth", symbol: g > 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis", text: "Revenue is \(g > 0 ? "up" : "down") \(Int(jsRound(abs(g) * 100)))% on the previous three months.", tone: g > 0 ? .good : .warn))
         }
-        if let bd = data.catalog[co.type], co.status == .open {
+        if let bd = data.catalog[co.type], co.status == .open, !special {
             let rival = Competition.rivalFactor(co, w)
             if rival < 0.8 { out.append(Insight(id: "rivals", symbol: "person.2", text: "Competitors are taking about \(Int(jsRound((1 - rival) * 100)))% of the customers you would otherwise have. Their prices and number matter here.", tone: .warn)) }
             _ = bd

@@ -31,6 +31,7 @@ screens = {
  "weekreport": ("Home + Inbox + Activity (no single report screen yet)", N), "reports": ("Home + Inbox", N),
  "pricemoves": ("Company > Operations (price slider)", U),
  "tnd56": ("Company > Projects (tenders)", U),
+ "clubs": ("Phone > New company > Football club", U), "holdings": ("Companies > Holding companies", U), "newhold": ("Phone > New company > Holding company", U),
 }
 screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 
@@ -40,6 +41,8 @@ tabs = {
  "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
  "famOv": ("Company > Projects / Properties / Book (figures)", U), "famAssets": ("Company > Properties", U), "famOps": ("Company > Book (insurance products)", U),
  "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
+ "famOv": ("Company > Plant / Fish (energy, salmon)", U), "famAssets": ("Company > Plant (turbines, fields, stakes)", U),
+ "clubPeople": ("Company > Club > Staff", U), "clubSp": ("Company > Club > Sponsors", U), "clubTable": ("Company > Club > Table", U),
 }
 tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
 
@@ -59,6 +62,11 @@ actions = {
  "pr29ok": ("Payday.answer", U), "pr29mode": ("PlayerActions.setPayrollMode", E), "pr29day": ("Payday", E), "pr29run": ("Payday", E),
  "premset": ("CompanySetup.setPremises", E), "premsheet": ("CompanySetup.listings", E), "buyeq": ("CompanySetup.buyEquipment", E),
  "applydoc": ("Documents", E), "applydoc2": ("Documents", E), "estlog": ("", N),
+ "club24buy": ("GameEngine.signPlayer", U), "clubbuy": ("GameEngine.offerForClub", U), "clubclose": ("GameEngine.buyClub", U), "clubfound": ("GameEngine.foundClub", U),
+ "clubfind": ("GameEngine.clubCandidates", U), "clubhire": ("GameEngine.hireCoach", U), "clubfire": ("GameEngine.dismissCoach", U), "clubspon": ("GameEngine.signSponsor", U),
+ "clubtix": ("GameEngine.setClubTicketLevel", U), "clubwage": ("GameEngine.setClubWageShare", U), "clubofferx": ("GameEngine.offerForClub", U),
+ "holdin": ("GameEngine.holdingInvest", U), "holdout": ("GameEngine.holdingDivest", U), "injhold": ("PlayerActions.putMoneyInto", U), "newhold": ("GameEngine.createHolding", U), "tohold": ("GameEngine.moveToHolding", U),
+ "oilacq": ("GameEngine.buyOilStake", U), "oilbuy": ("GameEngine.buyOilStake", U), "oilexp": ("GameEngine.exploreForOil", U),
  "salary": ("PlayerActions.setOwnerSalary", E), "tcAS": ("CompanySetup.create(accountantID:)", E),
  "reopen": ("", N),
  "propsheet": ("GameEngine.propertyListings", U), "buyprop": ("GameEngine.buyProperty", U), "sellprop": ("GameEngine.sellProperty", U), "renprop": ("GameEngine.renovateProperty", U),
@@ -108,13 +116,15 @@ systems = [
  ("Investment fund: assets under management, flows, fees, performance fee at year end", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, year-end fee, redemptions)"),
  ("Regulator closes a bank or insurer whose capital is gone (not in the original)", "Businesses/FinanceModel.insolventCompanies", P, "RentalFinanceTests"),
 
- ("Service, venue, retail, production, logistics families (50 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
  ("Project businesses: jobs in hours, milestone payments, receivables, overruns, defects (plumber, electrician, construction, engineering office, event agency)", "Businesses/ProjectModel, ProjectWeek", V, "ProjectDifferentialTests (demand, hour value, hours a week, mix against the original); balance probe in BALANCE_PARITY. Price and demand carry a native calibration"),
  ("Real-estate development: land, zoning, building, units sold, construction loan, housing market", "Businesses/ProjectDeveloper", V, "ProjectDifferentialTests (land, build, units, price, cash); statistical balance probe"),
  ("Tenders for building, design and event work (bids, scoring, awards, managers who bid)", "Businesses/ProjectTenders", P, "ProjectTradeTests; the volume contracts the original also tenders for are not ported"),
- ("Energy: oil and gas (2 trades)", "-", N, ""),
- ("Holding companies", "-", N, ""),
- ("Football clubs", "-", N, ""),
+
+ ("Service, venue, retail, production, logistics families (50 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
+ ("Energy: renewable power producer (turbine build time, source, hedging) and oil and gas (fields, stakes, exploration, development loans, discoveries)", "Businesses/EnergyModel", P, "SpecialTradesDifferentialTests: weekly arithmetic equals the original with fixed random draws; SpecialTradesTests: books balance, balance probe"),
+ ("Salmon farm (cohorts, growth, disease, harvest at the market price)", "Businesses/SalmonModel", P, "SpecialTradesDifferentialTests: 90 weeks of cohorts equal the original; random disease and events smoke-tested"),
+ ("Holding companies (stakes, index fund, dividends up and down, net worth, tax group, failure)", "Businesses/HoldingModel", P, "SpecialTradesTests; listing on the exchange and raising money by selling shares not ported"),
+ ("Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding)", "Businesses/FootballModel", P, "SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort"),
  ("Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood", "Businesses/StaffTalks", P, "StaffTalksTests"),
  ("Poaching of the best worker and the other 50 'strategic' decisions (ev27)", "-", N, "listed in KNOWN_GAPS"),
  ("Realistic equipment buying: brands and models, used market, leasing, subscriptions", "-", N, "quickSetup buys standard equipment at the standard price"),
@@ -131,12 +141,13 @@ systems = [
 # ---- trades
 fam_supported = {"svc", "venue", "retail", "prod", "logi", "project"}
 rental_finance = {"resrent", "comrent", "parking", "insco", "bank", "fund"}   # RentalModel, FinanceModel: ported, family models verified
+own_model = {"power", "oilgas", "salmon", "hold", "club"}
 trade_rows = []
 for t in trade_items:
     pass
 for tid, name, fam, *_ in inv["trades"]:
     ok = fam in fam_supported and tid != "salmon"
-    trade_rows.append((tid, name, fam, P if tid in rental_finance else S if ok else N))
+    trade_rows.append((tid, name, fam, P if (tid in rental_finance or tid in own_model) else S if ok else N))
 
 def table(rows, header):
     out = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]

@@ -57,7 +57,7 @@ final class BalanceProbeTests: XCTestCase {
     func testPrintWealthSpeedOfEveryTrade() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_BALANCE"] != nil else { return }
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1)
-        let trades = e.data.catalog.all.filter { CompanyWeek.isSupported($0) }.map { $0.id }.sorted()
+        let trades = e.data.catalog.all.filter { SpecialFamilies.isStartable($0) }.map { $0.id }.sorted()
         let only = ProcessInfo.processInfo.environment["LEDGER_TRADES"]?.split(separator: ",").map(String.init)
         let country = ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK"
         let aggressive = ProcessInfo.processInfo.environment["LEDGER_AGGR"] != nil

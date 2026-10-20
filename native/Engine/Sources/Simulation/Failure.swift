@@ -67,7 +67,7 @@ public enum Failure {
             : "As a limited company, your loss is limited to what you put in. "
         s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why + liability + "Credit score hit.", companyID: co.id, tone: "bad")
         s.news("\(co.name) files for bankruptcy.", tone: "bad")
-        for j in s.companies.indices where s.companies[j].holdingID == co.id { s.companies[j].holdingID = 0 }
+        HoldingModel.holdingFailed(&s, holdingID: co.id)
     }
 
     /// The bank sells a company at a discount to cover an overdraft. Original: `forcedSale`.

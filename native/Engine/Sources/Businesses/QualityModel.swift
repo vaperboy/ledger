@@ -6,6 +6,7 @@ import Employees
 /// Quality moves 18% of the way to this target each week; reputation then follows quality slowly.
 public enum QualityModel {
     public static func target(_ co: Company, _ bd: Trade, utilisation util: Double, _ w: World, goods: (m: Double, q: Double)) -> Double {
+        if let q = SpecialFamilies.qualityTarget(co, bd) { return q }
         let tables = w.catalog.tables
         var ss = 0.0, ns = 0.0
         for m in co.staff { ss += StaffModel.skill(m, person: w.state.people[m.id], salesRoles: tables.salesRoles); ns += 1 }

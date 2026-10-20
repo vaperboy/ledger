@@ -36,7 +36,9 @@ public enum Valuation {
         guard let bd = trades.facts(for: co.type) else { return 0 }
         let fm = co.value("fm")
         if bd.family == "club", !fm.isNull, !fm["val"].isNull, fm["val"].double != 0 {
-            return jsRound(fm["val"].double + co.cash)
+            // A club is worth its football value plus cash, minus what it owes, plus 80% of what it paid for players still under contract.
+            let owed = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
+            return jsRound(jsRound(fm["val"].double + co.cash) - owed + fm["book"].double * 0.8)
         }
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
         let mult: Double = bd.family == "fin" ? 1.0 : bd.family == "rent" ? 0.0 : bd.family == "energy" ? 5 : (bd.margin > 0.2 ? 5 : 4)
@@ -51,11 +53,6 @@ public enum Valuation {
         var v = jsRound(net + goodwill * adj)
         // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
         if co.form == .limited { v = max(0, v) }
-        // A club is worth its football value plus cash, minus what it owes. Original step: 'a club is worth ...'
-        if co.type == "club", !fm.isNull {
-            let owed = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
-            v = jsRound(v - owed + fm["book"].double * 0.8)
-        }
         return v
     }
 
@@ -79,7 +76,8 @@ public enum Valuation {
         // Startups you founded (live ones, by your share) and shares you hold in other people's startups
         for f in s.rest["founded"]?.array ?? [] where f["st"].string == "live" { companies += f["val"].double * f["pct"].double / 100 }
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }
-        for co in s.companies where co.status.isLive && co.holdingID == 0 && co.type != "hold" {
+        // A company held through a holding is counted inside the holding's value (its `fm.assets`), so only the holding is added here.
+        for co in s.companies where co.status.isLive && co.holdingID == 0 {
             companies += companyValue(co, state: s, trades: trades) * co.ownership / 100
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }

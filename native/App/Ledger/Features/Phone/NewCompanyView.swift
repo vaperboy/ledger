@@ -18,8 +18,16 @@ struct NewCompanyView: View {
             ScrollView {
                 Card {
                     LazyVStack(spacing: Theme.Space.m) {
+                        if search.isEmpty {
+                            NavigationLink { NewHoldingView() } label: {
+                                ListRow(symbol: TradeSymbol.of(family: "hold"), tint: Theme.gold, title: "Holding company", subtitle: "Owns your other companies; dividends into it are taxed far lower", chevron: true).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                            NavigationLink { ClubMarketView() } label: {
+                                ListRow(symbol: TradeSymbol.of(family: "club"), tint: Theme.gold, title: "Football club", subtitle: "Buy a club in a top league, or found one", chevron: true).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                        }
                         ForEach(list) { t in
-                            let ban = CompanySetup.banReason(t.id, country: country) ?? (CompanyWeek.isSupported(t) ? nil : "Coming in a later update")
+                            let ban = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
                             NavigationLink {
                                 TradeDetailView(tradeID: t.id)
                             } label: {
@@ -57,7 +65,7 @@ struct TradeDetailView: View {
             let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
             let city = cityID.isEmpty ? e.state.player.cityID : cityID
             let est = CompanySetup.estimate(tradeID: t.id, cityID: city, form: form, size: size, state: e.state, data: e.data)
-            let ban = CompanySetup.banReason(t.id, country: country) ?? (CompanyWeek.isSupported(t) ? nil : "This kind of business is coming in a later update.")
+            let ban = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "This kind of business is coming in a later update.")
             ScrollView {
                 VStack(spacing: Theme.Space.l) {
                     GlassCard {
