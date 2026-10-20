@@ -7,7 +7,7 @@ import Businesses
 import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
-    case overview = "Overview", projects = "Projects", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
+    case overview = "Overview", projects = "Projects", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
     // Shown only for the trades that have them (energy, salmon farm, holding company, football club)
@@ -39,6 +39,8 @@ struct CompanyDetailView: View {
                     case .finances: CompanyMoney(engine: e, company: co)
                     case .operations: CompanyOperations(engine: e, company: co)
                     case .marketing: CompanyMarketing(engine: e, company: co)
+                    case .customers: CompanyCustomers(engine: e, company: co)
+                    case .market: CompanyMarket(engine: e, company: co)
                     case .setup: CompanySetupSection(engine: e, company: co)
                     case .properties: CompanyProperties(engine: e, company: co)
                     case .book: CompanyFinanceBook(engine: e, company: co)

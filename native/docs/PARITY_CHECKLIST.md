@@ -15,9 +15,9 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 27 Ported, 19 Verified, 13 Not ported, 5 Engine + screen, 2 Statistical
+- Systems: 27 Ported, 19 Verified, 10 Not ported, 9 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
-- Screens: 73 Not ported, 32 Engine + screen
+- Screens: 64 Not ported, 41 Engine + screen
 - Company tabs: 27 Not ported, 16 Engine + screen
 - Actions: 417 Not ported, 134 Engine + screen, 6 Engine only
 
@@ -72,7 +72,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported | Events/StrategicDecisions | Engine + screen | DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout |
 | Poaching of the best worker (g_poach: match, bonus or let go) and of the manager (match or let go); the other 50 'strategic' decisions (ev27) | Events/EventEffects, Businesses/ManagerPeople | Ported | ManagementTests for the manager side; the ev27 decisions are in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
-| Key accounts (business customers) | - | Not ported |  |
+| Key accounts (business customers) | Businesses/KeyAccounts | Engine + screen | CustomersCompetitionTests; they buy from the capacity walk-ins leave over, not from a shared demand; their own trade profile is not ported |
 | Assistant managers (two jobs: complaints, paperwork, equipment; pay; let go) | Businesses/ManagerPeople | Ported | ManagementTests; the monthly suggestion and basic insurance are not ported |
 | Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings | Businesses/ManagerModel, ManagerPeople, ManagerWeek | Ported | ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported |
 | Promotions: a worker to a higher role or to manager, with the pay talk and patience | Businesses/ManagerPeople | Ported | ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported |
@@ -83,13 +83,14 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Luxury and estates, family office | net worth counts imported values only | Not ported |  |
 | Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | Businesses/EquipmentMarket + data equipment_brands.json | Engine + screen | catalogue, used listings, lease, finance, plans, licences, sell; supplier relationship discounts and per-person equipment rules not ported |
-| Key accounts (business customers), assistant managers | - | Not ported |  |
+| Reviews, one system for all trades (stars, texts, rating, rivals' ratings, reviews screen) | Businesses/Reviews | Engine + screen | CustomersCompetitionTests; tourists from abroad do not write reviews from their own country |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
 | Chains, franchises, branches, intercompany supply | - | Not ported |  |
 | Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
 | Luxury and estates: cars, watches, art, yachts, jets, homes, estates; charter, rent, museum; company cars and jets | Businesses/Luxury + data luxury.json | Engine + screen | fame, rest and abroad-fee perks, the tax-office check and margin call are not ported; the original has no family office |
-| Rivals as businesses, price wars, acquisitions | - | Not ported | Competition affects demand only |
-| Software/IT products, cyber attacks, tenders for other trades | - | Not ported |  |
+| Rivals as businesses (named rivals, own prices, discounts, marketing, mood and memory), rival groups, price wars, buying a rival, market map and shares, price moves and discount campaigns, lawsuits | Businesses/Rivals, RivalGroups, RivalDeals, MarketMap, PriceMoves, Lawsuits | Engine + screen | CustomersCompetitionTests; group bids for your companies, poaching and supplier buying by groups are not ported |
+| Cyber attacks and IT security (levels, backups, training, fraud, ransomware, leak, outage) | Businesses/Cyber | Engine + screen | CustomersCompetitionTests |
+| Software products of your own startup, tenders for other trades | - | Not ported | listed in KNOWN_GAPS |
 | Achievements (trophy wall, 60 of the original's 90 or so), yearly business awards, rich list of the home country | Events/Trophies, Events/RichList | Engine + screen | DecisionsTests.testTrophiesAwardsAndTheRichList; trophies that need chains, luxury, startups, rivals or rankings not ported; awards rank by net worth place |
 
 ## Countries
@@ -198,7 +199,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | co | Companies > company | Engine + screen |
 | cos | Companies | Engine + screen |
 | crisis |  | Not ported |
-| cy56 |  | Not ported |
+| cy56 | Company > Customers (IT security) | Engine + screen |
 | dealroom |  | Not ported |
 | found36 |  | Not ported |
 | fr56 |  | Not ported |
@@ -207,7 +208,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | fs58 |  | Not ported |
 | give28 |  | Not ported |
 | group | Group | Engine + screen |
-| grp27 |  | Not ported |
+| grp27 | Group > Market > Groups | Engine + screen |
 | heads |  | Not ported |
 | hire | Company > Team | Engine + screen |
 | holdings | Companies > Holding companies | Engine + screen |
@@ -221,14 +222,14 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | mail | Inbox | Engine + screen |
 | managers |  | Not ported |
 | map31 |  | Not ported |
-| market |  | Not ported |
+| market | Group > Market | Engine + screen |
 | meet |  | Not ported |
 | meetings |  | Not ported |
 | menu | StartView | Engine + screen |
 | mgmt56 |  | Not ported |
 | mgrhire |  | Not ported |
 | mkt36 | Company > Marketing | Engine + screen |
-| mktdetail | Company > Marketing | Engine + screen |
+| mktdetail | Group > Market > one market | Engine + screen |
 | month30 |  | Not ported |
 | msgs | Inbox | Engine + screen |
 | nem28 |  | Not ported |
@@ -251,18 +252,18 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | pickco | Companies | Engine + screen |
 | pk58 |  | Not ported |
 | pr11 |  | Not ported |
-| pricemoves | Company > Operations (price slider) | Engine + screen |
-| pricewar |  | Not ported |
+| pricemoves | Company > Market (price moves, discount, price war) | Engine + screen |
+| pricewar | Company > Market > price war | Engine + screen |
 | pro59 |  | Not ported |
 | registry |  | Not ported |
 | reports | Home + Inbox | Not ported |
 | res36 |  | Not ported |
-| reviews |  | Not ported |
-| riv31 |  | Not ported |
-| rival |  | Not ported |
-| rivals |  | Not ported |
+| reviews | Group > Market > Reviews | Engine + screen |
+| riv31 | Company > Market > rival | Engine + screen |
+| rival | Company > Market > rival | Engine + screen |
+| rivals | Company > Market | Engine + screen |
 | rivmoves |  | Not ported |
-| rvdetail |  | Not ported |
+| rvdetail | Company > Customers | Engine + screen |
 | sale |  | Not ported |
 | saletalk |  | Not ported |
 | settings | Phone > Settings | Engine + screen |

@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 import Simulation
 
-enum CompanyRoute: Hashable { case company(Int), newCompany }
+enum CompanyRoute: Hashable { case company(Int), newCompany, market }
 
 /// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
 /// Replaces the former separate Group tab, which listed the same companies again.
@@ -29,6 +29,15 @@ struct CompaniesView: View {
                                     Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
                                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 }
+                            }
+                            if cos.contains(where: { $0.status == .open }) {
+                                NavigationLink(value: CompanyRoute.market) {
+                                    HStack {
+                                        Text("Market, reviews and rivals").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    }.padding(.vertical, 6).contentShape(Rectangle())
+                                }.buttonStyle(.plain)
                             }
                             if !e.holdingCompanies.isEmpty {
                                 LedgerSection("Holding companies") {
@@ -98,6 +107,7 @@ struct CompaniesView: View {
                 switch route {
                 case .company(let id): CompanyDetailView(companyID: id)
                 case .newCompany: NewCompanyView()
+                case .market: MarketView()
                 }
             }
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
