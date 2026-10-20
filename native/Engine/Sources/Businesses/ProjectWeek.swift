@@ -52,7 +52,7 @@ public enum ProjectWeek {
         let workShare: Double = wd < 5 ? 0.2 : 0
         let reqShare: Double = wd < 5 ? 0.18 : wd == 5 ? 0.07 : 0.03
         let js = Pricing.jobScale(co0)
-        let Dh = dm.customers * js * bd.ticket * tKnob * ttKnob / spec.hv
+        let Dh = dm.customers * js * bd.ticket * tKnob * ttKnob / spec.hv * spec.demandFactor
         L.requestedHours += Dh * reqShare
         L.hoursPerWeekSum += Hw / 7
         L.hoursAvailableToday += Hw * workShare

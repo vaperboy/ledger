@@ -53,7 +53,7 @@ public enum ProjectDeveloper {
         public var totalCost: Double { land + build }
     }
 
-    static func projects(_ co: Company) -> [Project] { co.value("fm")["proj"].array.map { Project(raw: $0.object) } }
+    public static func projects(_ co: Company) -> [Project] { co.value("fm")["proj"].array.map { Project(raw: $0.object) } }
     static func setProjects(_ s: inout GameState, _ i: Int, _ list: [Project]) {
         var fm = s.companies[i].value("fm")
         fm["proj"] = .array(list.map { .object($0.raw) })

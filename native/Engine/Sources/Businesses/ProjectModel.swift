@@ -35,6 +35,11 @@ public enum ProjectModel {
         public let premium: [String: Double]
         /// An event agency: jobs have a fixed day.
         public let isEvent: Bool
+        /// Native calibration (not in the original): what the work is priced at relative to the original's hour value, and how many
+        /// requests a firm of this trade gets relative to the original's formula. They keep margins in the range real firms of the
+        /// trade have (see docs/BALANCE_PARITY.md, "Project businesses").
+        public let priceFactor: Double
+        public let demandFactor: Double
     }
 
     public static let specs: [String: HoursSpec] = [
@@ -43,30 +48,30 @@ public enum ProjectModel {
             what: [["Leaking tap", "Blocked drain", "New toilet", "Water heater swap", "Pipe repair", "Radiator fix"],
                    ["Kitchen plumbing", "Heat pump connection", "Underfloor heating", "New water pipes"], ["Bathroom renovation"]],
             mix: ["em": [0.9, 0.1, 0], "mix": [0.55, 0.3, 0.15], "bath": [0.1, 0.2, 0.7]], mixOrder: ["em", "mix", "bath"],
-            premium: ["em": 1.3], isEvent: false),
+            premium: ["em": 1.3], isEvent: false, priceFactor: 1.15, demandFactor: 1.0),
         "electrician": HoursSpec(
             hv: 1650, classes: [(3, 8), (8, 16), (28, 45)],
             what: [["Fuse box check", "New sockets", "Light fittings", "Fault finding", "EV charger install"],
                    ["Kitchen rewiring", "Solar panels", "Smart home setup"], ["Full house rewiring", "Commercial installation"]],
             mix: ["home": [0.85, 0.15, 0], "mix": [0.55, 0.3, 0.15], "ind": [0.1, 0.3, 0.6]], mixOrder: ["home", "mix", "ind"],
-            premium: [:], isEvent: false),
+            premium: [:], isEvent: false, priceFactor: 1.1, demandFactor: 1.0),
         "construction": HoursSpec(
             hv: 1500, classes: [(40, 120), (300, 700), (2000, 5000)],
             what: [["Terrace", "Garage", "Small extension", "Facade repair"], ["House extension", "Loft conversion", "Detached house"],
                    ["Apartment block", "Office building", "School building"]],
             mix: ["house": [0.55, 0.4, 0.05], "comm": [0.25, 0.5, 0.25], "pub": [0.05, 0.35, 0.6]], mixOrder: ["house", "comm", "pub"],
-            premium: [:], isEvent: false),
+            premium: [:], isEvent: false, priceFactor: 1.27, demandFactor: 3.2),
         "engcons": HoursSpec(
             hv: 1700, classes: [(12, 40), (60, 160), (400, 1000)],
             what: [["Structural check", "Survey report", "Permit drawings", "Energy assessment"], ["House design", "Renovation project", "Extension drawings"],
                    ["Office building design", "Bridge study", "Housing project design"]],
             mix: ["res": [0.85, 0.15, 0], "bld": [0.6, 0.35, 0.05], "inf": [0.2, 0.5, 0.3]], mixOrder: ["res", "bld", "inf"],
-            premium: [:], isEvent: false),
+            premium: [:], isEvent: false, priceFactor: 1.1, demandFactor: 1.25),
         "event": HoursSpec(
             hv: 2000, classes: [(12, 30), (40, 90), (150, 300)],
             what: [["party"], ["conference"], ["festival"]],
             mix: ["corp": [0.5, 0.4, 0.1], "conc": [0.1, 0.4, 0.5], "wed": [0.75, 0.25, 0]], mixOrder: ["corp", "conc", "wed"],
-            premium: [:], isEvent: true),
+            premium: [:], isEvent: true, priceFactor: 0.82, demandFactor: 1.0),
     ]
 
     /// Trades that sell whole jobs in hours. Original: `R41.isHT`.
@@ -108,7 +113,7 @@ public enum ProjectModel {
         let t = specs[bd.id]!
         let tk = Knobs.effect(co, bd, "t", w)
         let pl = Pricing.ticketMultiplier(co, bd, w) / max(0.01, Pricing.jobScale(co) * tk)
-        return t.hv * pl * (1 + (co.reputation - 50) / 500) * (t.premium[segment(co, bd)] ?? 1)
+        return t.hv * pl * (1 + (co.reputation - 50) / 500) * (t.premium[segment(co, bd)] ?? 1) * t.priceFactor
     }
 
     /// Hours the firm can bill in a week: what its people and equipment can deliver. Original: `hoursWeek`.
