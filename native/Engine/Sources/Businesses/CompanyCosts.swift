@@ -106,10 +106,10 @@ public enum CompanyCosts {
         let base: Double
         if k == "prop" {
             let prem = co.value("prem")
-            base = max(100000, CompanyFigures.equipmentBookValue(co) + co.inventory + (prem["owned"].bool ? prem["val"].double * 0.5 : 0))
+            base = max(w.currency(co).scaledPrice(100000), CompanyFigures.equipmentBookValue(co) + co.inventory + (prem["owned"].bool ? prem["val"].double * 0.5 : 0))
         } else {
             let yearRev = co.books.year["rev"] ?? 0
-            base = max(120000, yearRev != 0 ? yearRev : (co.value("lastW")["rev"].double * 52))
+            base = max(w.currency(co).scaledPrice(120000), yearRev != 0 ? yearRev : (co.value("lastW")["rev"].double * 52))
         }
         let riskUp = co.value("flags")["riskUp"].bool ? 0.4 : 0
         return jsRound(base * rate / 52 * (1 + riskUp))

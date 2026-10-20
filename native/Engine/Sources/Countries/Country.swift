@@ -109,6 +109,10 @@ public struct Country: Equatable, Sendable, Identifiable {
     /// Employer's total payroll multiplier: wages cost this much more than the gross pay. Original: `OC()`.
     public var employerCostFactor: Double { 1 + employerSocial + employerPension + employerInjury }
 
+    /// Median monthly gross wage in accounting units: the reference economy's median times this country's wage level.
+    /// Every money limit that is really "a number of months of an ordinary wage" (loan floors, income assumptions) derives from this.
+    public var medianMonthlyWage: Double { ReferenceEconomy.medianWage * wageLevel }
+
     /// Cost level used to scale fixed prices from the reference economy. Original: `costIdx`.
     public var costIndex: Double { 0.5 + 0.5 * priceLevel }
 

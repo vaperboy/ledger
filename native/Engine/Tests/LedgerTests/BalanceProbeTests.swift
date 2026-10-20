@@ -15,11 +15,11 @@ final class BalanceProbeTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
         var id = 0, invested = 0.0
         e.update { s, data, ctx in
-            Ledger.move(&s, .me, 200_000_000, why: "Test funds")
+            Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
             guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
             id = i
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
-            invested = (est?.total ?? 1_000_000) * 1.3
+            invested = (est?.total ?? 1_000_000) * (Double(ProcessInfo.processInfo.environment["LEDGER_CASHX"] ?? "") ?? 1.3)
             Payments.injectCash(&s, companyID: id, amount: invested)
             // An owner who does not work in the business: the standard team does everything (how an empire scales)
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
@@ -81,11 +81,11 @@ extension BalanceProbeTests {
         var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: 11)
         var id = 0
         e.update { s, data, ctx in
-            Ledger.move(&s, .me, 200_000_000, why: "Test funds")
+            Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
             guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
             id = i
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
-            Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.3)
+            Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * (Double(ProcessInfo.processInfo.environment["LEDGER_CASHX"] ?? "") ?? 1.3))
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
             print("TRACE setup log:", CompanySetup.quickSetup(&s, companyID: id, data: data))
         }
@@ -128,6 +128,39 @@ final class BalanceGuardTests: XCTestCase {
             guard let o = try BalanceProbeTests.play(trade: t, seed: 21, years: 2) else { return XCTFail("\(t) did not start") }
             XCTAssertLessThan(o.profitY3, max(o.invested * 1.6, 1_500_000), "\(t): yearly profit \(Int(o.profitY3)) on \(Int(o.invested)) invested")
             XCTAssertLessThan(o.value, o.invested * 6 + 2_000_000, "\(t): worth \(Int(o.value)) after two years on \(Int(o.invested))")
+        }
+    }
+
+    /// Capital-heavy trades earn a realistic, modest return on the money put in (docs/BALANCE_REPORT.md, "Capital-heavy trades"):
+    /// a competently run shop, workshop, hotel or plant makes a few percent to the low teens a year after the first year. Not a
+    /// get-rich path (nothing above ~50%), not a certain loss (the median is positive and the best-run set stays in a 2-20% band).
+    func testCapitalHeavyTradesEarnModestReturns() throws {
+        let trades = ["grocery", "hardware", "cardealer", "carrepair", "hotel", "factory", "vineyard", "wh3pl", "courier", "brewery", "casino", "skires", "farm", "kiosk", "boutique", "furniture"]
+        var rois: [Double] = []
+        for t in trades {
+            var roi = 0.0, ratio = 0.0
+            for seed in [11, 12] {
+                guard let o = try BalanceProbeTests.play(trade: t, seed: seed, years: 3) else { return XCTFail("\(t) did not start") }
+                roi += o.profitY3 / o.invested / 2
+                ratio += o.value / o.invested / 2
+            }
+            XCTAssertGreaterThan(roi, -0.20, "\(t): a yearly return of \(Int(roi * 100))% is a structural loss")
+            XCTAssertLessThan(roi, 0.50, "\(t): a yearly return of \(Int(roi * 100))% is a get-rich-quick path")
+            XCTAssertLessThan(ratio, 3, "\(t): worth \(ratio)x the money put in after three years")
+            rois.append(roi)
+        }
+        let median = rois.sorted()[rois.count / 2]
+        XCTAssertGreaterThan(median, 0.02, "median return of capital-heavy trades \(median)")
+        XCTAssertLessThan(median, 0.20, "median return of capital-heavy trades \(median)")
+        XCTAssertLessThanOrEqual(rois.filter { $0 < 0 }.count, 3, "too many capital-heavy trades lose money: \(rois)")
+    }
+
+    /// The airline and the shipping company are lumpy (two aircraft or ships) but must survive three years with the standard set-up.
+    func testAirlineAndShippingSurvive() throws {
+        for t in ["airline", "shipping"] {
+            guard let o = try BalanceProbeTests.play(trade: t, seed: 12, years: 3) else { return XCTFail("\(t) did not start") }
+            XCTAssertEqual(o.status, "open", "\(t) ended \(o.status)")
+            XCTAssertGreaterThan(o.profitY3 / o.invested, -0.25, "\(t) loses \(Int(o.profitY3 / o.invested * 100))% a year")
         }
     }
 

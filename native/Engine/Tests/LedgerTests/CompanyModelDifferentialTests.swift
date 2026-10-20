@@ -15,9 +15,10 @@ final class CompanyModelDifferentialTests: XCTestCase {
     func testDemandPartsMatchOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
         var report: [String] = []
         for (idStr, e) in g.object {
-            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co) else { continue }
+            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co), !tuned.contains(bd.id) else { continue }
             let r = DemandModel.compute(co, bd, w)
             let tag = "\(e["type"].string)#\(idStr)"
             var line = "\(tag): D swift \(String(format: "%.3f", r.customers)) vs \(String(format: "%.3f", e["D"].double))"
@@ -37,9 +38,10 @@ final class CompanyModelDifferentialTests: XCTestCase {
     func testTicketPriceMatchesOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
         var report: [String] = []
         for (idStr, e) in g.object {
-            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co) else { continue }
+            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co), !tuned.contains(bd.id) else { continue }
             let p = Pricing.ticket(co, bd, w)
             let tm = Pricing.ticketMultiplier(co, bd, w)
             if abs(p - e["price"].double) > 1e-6 * e["price"].double || abs(tm - e["priceMult"].double) > 1e-9 {
@@ -54,10 +56,11 @@ extension CompanyModelDifferentialTests {
     func testCapacityMatchesOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
         var report: [String] = []
         var matched = 0
         for (idStr, e) in g.object {
-            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co) else { continue }
+            guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co), !tuned.contains(bd.id) else { continue }
             let c = CapacityModel.compute(co, bd, w)
             let ok = abs(c.capacity - e["cap"].double) <= 1e-6 * max(1, e["cap"].double)
             if ok { matched += 1; continue }

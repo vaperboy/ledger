@@ -72,7 +72,7 @@ public struct GameEngine {
         json["tax"] = .object(["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "bank": 0])
         json["office"] = .object(["tier": "home", "city": .string(cityID ?? country.cities[0].id), "since": 0, "staff": .array([]),
                                   "rep": .object(["freq": 4, "detail": "short", "only": "managed"])])
-        json["group"] = .object(["ceo": .null, "regional": .array([]), "big": 5000000])
+        json["group"] = .object(["ceo": .null, "regional": .array([]), "big": .number(currency.scaledPrice(5_000_000))])
         json["deals"] = .array([]); json["startups"] = .array([]); json["fundHold"] = .array([]); json["wealthPaid"] = 0
         json["stats"] = .object(["peak": 0, "bankrupt": 0, "firstWeek": 0, "years": 0, "sold": 0, "dividends": 0, "taxPaid": 0, "wagesPaid": 0])
         json["over"] = .null; json["settings"] = .object(["adv": 1, "confirm": 1]); json["flags"] = .object([:])

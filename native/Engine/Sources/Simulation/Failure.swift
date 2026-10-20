@@ -144,7 +144,7 @@ public enum Failure {
         if s.cash < -s.overdraftLimit * 3 && live.isEmpty {
             s.gameOver = .object(["reason": "insolvent", "week": .number(Double(s.week)), "nw": .number(nw)]); return
         }
-        if live.isEmpty && nw < 10000 && s.week > 2 {
+        if live.isEmpty && nw < context.homeCurrency(s).scaledPrice(10000) && s.week > 2 {
             s.gameOver = .object(["reason": "broke", "week": .number(Double(s.week)), "nw": .number(nw)])
         }
     }

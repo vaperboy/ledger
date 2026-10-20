@@ -28,6 +28,11 @@ public enum LoanResult: Equatable, Sendable {
 
 /// Lending: rates, offers, drawing, repaying and the monthly instalments. Original: `engine/money/money.js`.
 public enum Banking {
+    /// A bank lends a consumer at least this many months of the country's median wage (80 000 at the reference economy's 56 000).
+    public static let consumerBaseMonths = 80_000 / ReferenceEconomy.medianWage
+    /// A bank assumes a borrower earns at least this many months of the median wage a year (380 000 at the reference economy).
+    public static let assumedIncomeMonths = 380_000 / ReferenceEconomy.medianWage
+
     // MARK: Credit
 
     /// Original: `creditBand`.
@@ -70,7 +75,7 @@ public enum Banking {
         switch kind {
         case "cons":
             let f: Double = band == "A" ? 2 : band == "B" ? 1.4 : band == "C" ? 1 : band == "D" ? 0.4 : 0
-            maxLoan = max(0, 80000 * context.homeCountry(s).wageLevel + max(0, netWorth) * 0.15) * f
+            maxLoan = max(0, consumerBaseMonths * context.homeCountry(s).medianMonthlyWage + max(0, netWorth) * 0.15) * f
         case "biz":
             let base = co.map { max(0, CompanyFigures.yearlyProfitEstimate($0, currentWeek: s.week)) * 3 + CompanyFigures.fixedAssets($0) * 0.5 } ?? 0
             maxLoan = (base + max(0, netWorth) * 0.25) * bandBiz
@@ -93,9 +98,10 @@ public enum Banking {
         let profitShare = 0.4 * s.companies.filter { $0.status == .open }.reduce(0) {
             $0 + max(0, CompanyFigures.yearlyProfitEstimate($1, currentWeek: s.week)) * $1.ownership / 100
         }
-        // The least income a bank assumes follows the country's wage level. (The original wrote `380000 * CC().wage0`, but no country
-        // defines `wage0`, so every country got the same floor, the level of one particular country. Corrected on purpose.)
-        let income = max(ownerSalaries + profitShare, 380000.0 * context.homeCountry(s).wageLevel)
+        // The least income a bank assumes: a fixed number of months of the country's median wage. (The original wrote
+        // `380000 * CC().wage0`, but no country defines `wage0`, so every country got the same floor, the level of one particular
+        // country. Corrected on purpose; docs/MONEY_SCALING.md.)
+        let income = max(ownerSalaries + profitShare, assumedIncomeMonths * context.homeCountry(s).medianMonthlyWage)
         let rate = s.economy.policyRate + margin
         func room(_ inc: Double, _ pay: Double) -> Double {
             let free = max(0, inc * 0.4 - pay)

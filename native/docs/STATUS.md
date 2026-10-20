@@ -12,10 +12,11 @@ no currency exempt from drift, no fallbacks to a default country, no brand names
 4. Not ported: 17 of 67 trades (project, rental, finance, energy, holding, club, salmon), key accounts, assistants, poaching, the 50 strategic
    decisions, brand catalogue and used market for equipment, managers/boards/chains/franchises, most of the original's 105 screens and 557 actions (`PARITY_CHECKLIST.md`).
 5. Norway: the price baseline constants still equal the original's authoring level (they are tuning constants, not a country); a rebase to a
-   world average needs a rebalance. Country-specific numbers in `Demand.swift`/`Pricing.swift` are now data. A few accounting-unit money
-   constants (loan base, small thresholds) are still unscaled per country.
+   world average needs a rebalance. Country-specific numbers in `Demand.swift`/`Pricing.swift` are now data. The accounting-unit money
+   constants (loan base and floor, fines, thresholds) are scaled per country (`MONEY_SCALING.md`), with a lint test against new ones.
 6. Premium upgrade brief: done for the screens in the concept and every other screen (new design, Liquid Glass, policies,
    finance screen, company dashboard, inbox, net worth chart). Balance: see `BALANCE_REPORT.md` (no get-rich-quick path; capital-heavy
-   trades still lose money and need a pass with real-world figures). Tax data is labelled as estimates.
+   trades now return 2 to 15% a year). Tax data was checked against 2025/26 law in October 2026 (`TAX_SOURCES.md`); it stays a
+   simplification and is still labelled "Estimate" in the app.
 7. A Swift 6.0 toolchain for Linux can be unpacked from Ubuntu's `swiftlang` package (see MAC_STEPS.md) to run the engine tests
    without a Mac; the SwiftUI app still only builds on macOS (CI).

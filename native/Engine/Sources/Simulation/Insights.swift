@@ -68,7 +68,7 @@ public extension GameEngine {
         h.cashSeries = hist.suffix(24).map { $0.cash }
         if hist.count >= 6 {
             let a = hist.suffix(3).reduce(0) { $0 + $1.revenue }, b = hist.suffix(6).prefix(3).reduce(0) { $0 + $1.revenue }
-            if b > 1000 { h.revenueGrowth = a / b - 1 }
+            if b > homeCurrency.scaledPrice(1000) { h.revenueGrowth = a / b - 1 }
         }
         let lw = co.value("lastW")
         if !lw.isNull {

@@ -109,9 +109,11 @@ the developer (zoning, building, sales, construction loan repaid from 70% of sal
 ## Behaviour that differs from the original on purpose
 
 * **Native is always played day by day** (the original's "day mode"). The old week-at-a-time mode is not offered.
-* The original's `wage0` variable in the consumer and mortgage loan limit is undefined; the original therefore uses a fixed floor of
-  380 000 base units for income. This is kept (and documented in `Banking.swift`) so loan offers match; it should be fixed
-  deliberately when the loan model is tuned.
+* The original's `wage0` variable in the consumer and mortgage loan limit is undefined; the original therefore used a fixed floor of
+  380 000 base units for income for every country. Fixed on purpose: the floor is 6.8 months of the country's median wage
+  (`Country.medianMonthlyWage`), see `MONEY_SCALING.md`. Other fixed money amounts were scaled in the same pass and a lint test bans new ones.
+* Capital-heavy trades, the 2026 tax figures and the start-up loan follow the real world, not the original: see `BALANCE_REPORT.md`
+  (trade tuning in `trade_tuning.json`; the parity tests skip those trades) and `TAX_SOURCES.md` (every changed figure).
 * Some numbers in the original were frozen before later balance patches (trade demand, capacity, fixed costs). The native game
   stores the final numbers as data (`trades.json`) and uses the formula (`TradeCatalog.calibrate`) only for new trades.
 

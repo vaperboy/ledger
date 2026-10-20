@@ -71,7 +71,10 @@ public struct Balance: Sendable {
             guard let url = Bundle.module.url(forResource: n, withExtension: "json", subdirectory: "Resources") else { throw CocoaError(.fileNoSuchFile) }
             return try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
         }
-        return Balance(json: try load("balance"), weatherJSON: try load("weather"), waysJSON: try load("sales_ways"))
+        var json = try load("balance")
+        // Corrections of the demand levels live in trade_tuning.json (see TradeTuning)
+        for (id, k) in TradeTuning.bundled()["demandLevel"].object { json["demand"]["demandLevelByTrade"][id] = k }
+        return Balance(json: json, weatherJSON: try load("weather"), waysJSON: try load("sales_ways"))
     }
 
     /// Price multiplier for a (possibly fractional) price level -3 ... +3. Original: `pmOf` (price_moves_and_lawsuits.js).
