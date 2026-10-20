@@ -107,6 +107,11 @@ public enum DemandModel {
         // 100: own premises: business clients trust you more
         let homeKind = bd.premisesKind == "home"
         if homeKind && (co.value("prem")["m2"].double > 0) && bd.businessShare >= 0.4 && r.customers != 0 { r.customers *= 1.06 }
+        // 130: your own startup's product, used by this company (startup_sectors.js)
+        if r.customers != 0, !w.state.rest["founded"].isNullOrEmpty {
+            let x = StartupProducts.effectNow(co, w.state, trade: bd)
+            if x.d != 0 { r.customers *= 1 + x.d; r.parts.append(("own product", 1 + x.d)) }
+        }
         // 110: from home, clients come slowly
         if homeKind && !(co.value("prem")["m2"].double > 0) && r.customers != 0 {
             r.customers *= max(0.72, min(0.95, 0.72 + co.awareness * 0.005))

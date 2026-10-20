@@ -76,6 +76,7 @@ public enum Valuation {
         // Startups you founded (live ones, by your share) and shares you hold in other people's startups
         for f in s.rest["founded"]?.array ?? [] where f["st"].string == "live" { companies += f["val"].double * f["pct"].double / 100 }
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }
+        companies += GroupStakes.stakesValue(s)
         // A company held through a holding is counted inside the holding's value (its `fm.assets`), so only the holding is added here.
         for co in s.companies where co.status.isLive && co.holdingID == 0 {
             companies += companyValue(co, state: s, trades: trades) * co.ownership / 100

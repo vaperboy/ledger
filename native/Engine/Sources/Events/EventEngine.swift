@@ -231,6 +231,9 @@ public enum EventEngine {
                 let pick = StrategicDecisions.expired(&s, message: m, data: data, context: fc)
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("auto", 1)
                 s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options.indices.contains(pick) ? m.options[pick]["l"].string : "").", tone: "bad", companyID: m.companyID)
+            } else if m.actionID == Shareholders.action {
+                Shareholders.expired(&s, message: m, data: data, context: fc)   // no answer = you refused
+                s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             } else if !m.actionID.isEmpty {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             }

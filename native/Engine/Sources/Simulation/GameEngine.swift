@@ -129,6 +129,7 @@ public struct GameEngine {
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
+            if Ventures.handlesAnswer(m.actionID) { return Ventures.answer(&s, message: m, option: idx, data: d, context: c) }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
             return true
         }
@@ -308,6 +309,7 @@ public struct GameEngine {
         AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)
         StrategicDecisions.weekly(&state, data: data, context: context)
+        Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
         Awards.weekly(&state, data: data, context: context)
         SpecialFamilies.weeklyAfter(&state, data: data, context: context)
         Chains.weekly(&state, data: data, context: context, marketing: marketing)   // chains, franchises, supply between your companies
