@@ -72,6 +72,9 @@ public enum Competition {
                 for m in fr["masters"].array where Double(w.week) >= m["ready"].double { n += m["n"].int }
             }
         }
+        // A franchisee belongs to a brand with many units. Original: `chainOutlets`, `co.franchise.brandId`.
+        let brandID = co.value("franchise")["brandId"]
+        if !brandID.isNull, let b = FranchiseBrands.brand(brandID.string, w) { n = max(n, b.units + 1) }
         return max(1, n)
     }
 

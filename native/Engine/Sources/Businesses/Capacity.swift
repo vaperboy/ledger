@@ -168,7 +168,8 @@ public enum CapacityModel {
         for p in parts where p.capacity < cap { cap = p.capacity; bot = p }
         if !cap.isFinite { cap = capD }
         cap *= Knobs.effect(co, bd, "k", w, sum: false) * DemandModel.modifier(co, "cap") * (over > 0 ? 1 + over * 0.2 : 1) * availability
-        return CapacityResult(capacity: max(0, cap), parts: parts, bottleneck: bot, ownerFTE: ownerTotal)
+        // Capacity held back for your other companies (IntercompanySupply): original step 'capacity' 30, `co.int27u`.
+        return CapacityResult(capacity: max(0, cap - (cap.isFinite ? IntercompanySupply.heldBack(co) : 0)), parts: parts, bottleneck: bot, ownerFTE: ownerTotal)
     }
 
     // MARK: Steps (original `addStep('capacity', ...)`)

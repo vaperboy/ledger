@@ -17,7 +17,8 @@ public enum Documents {
     }
 
     public static func definition(_ id: String, country: Country, tables: TradeTables) -> Definition? {
-        let base = tables.raw["DOCS"][id]
+        var base = tables.raw["DOCS"][id]
+        if base.isNull { base = Chains.extraDocuments[id] ?? .null }   // chain registration and franchise papers (Chains.swift)
         if base.isNull { return nil }
         let override = country.pack["documents"]["overrides"][id]
         func v(_ i: Int) -> JSONValue { (!override.isNull && !override[i].isNull) ? override[i] : base[i] }
