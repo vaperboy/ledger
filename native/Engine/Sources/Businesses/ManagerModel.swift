@@ -1,5 +1,8 @@
 import Foundation
 import GameCore
+import Countries
+import Employees
+import Finance
 
 /// How good the company's manager is. Original: `mgrQualCore` (engine/people/people.js), 0 ... 1.
 public enum ManagerModel {

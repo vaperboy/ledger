@@ -11,10 +11,12 @@ struct CompanyTeam: View {
     @State private var role = ""
     @State private var candidates: [Person] = []
     @State private var confirmFire: StaffMember?
+    @State private var promoting: StaffMember?
 
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(spacing: Theme.Space.l) {
+            CompanyManagement(engine: engine, company: company)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {
@@ -41,6 +43,7 @@ struct CompanyTeam: View {
                             Menu {
                                 Button("Raise pay 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }
                                 if !missing.isEmpty { Button("Paperwork done (\(missing.count))") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() } }
+                                Button("Promote…") { promoting = m }
                                 Button("Let go…", role: .destructive) { confirmFire = m }
                             } label: {
                                 Image(systemName: "ellipsis").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
@@ -86,6 +89,7 @@ struct CompanyTeam: View {
                 }
             }
         }
+        .sheet(item: $promoting) { m in PromotionSheet(engine: engine, company: company, member: m).environmentObject(store) }
         .onAppear { if role.isEmpty { role = engine.hireableRoles(companyID: company.id).first ?? "" } }
         .confirmationDialog("Let this person go?", isPresented: Binding(get: { confirmFire != nil }, set: { if !$0 { confirmFire = nil } }), presenting: confirmFire) { m in
             Button("Let go", role: .destructive) {

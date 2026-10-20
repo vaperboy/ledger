@@ -83,7 +83,7 @@ struct MessageCard: View {
 
     private var symbol: String {
         if message.actionID.hasPrefix("pay29") { return "banknote" }
-        if message.actionID == "staffx" { return "person.fill" }
+        if message.actionID == "staffx" || message.actionID == "mgrraise" || message.actionID == "mgrpoach" { return "person.fill" }
         if message.status == "open" { return message.tone == "bad" ? "exclamationmark.triangle.fill" : "briefcase.fill" }
         switch message.tone { case "bad": return "exclamationmark.triangle.fill"; case "good": return "checkmark.circle.fill"; default: return "newspaper.fill" }
     }

@@ -40,9 +40,12 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
     with less disease. That looks like an inverted rule in the original; kept for parity (see Candidate corrections);
   * the knob effects `k` and `t` of the power plant's source and price choices are not used by the original's weekly model either;
   * events not ported keep their absence: the 50 strategic decisions (ev27), rival-run energy firms, oil and salmon trade fairs and tenders.
-* **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
+* **Groups and ownership:** boards and votes, the CEO and managing director, regional and chain managers (they need chains and shareholders), chains, franchises, branches, intercompany supply,
   holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
-* **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
+* **People:** pay talks, paperwork, managers (search, hire, authority, pay review, proposals, resignation, rival offers, move), assistant managers,
+  promotions and the poaching of the best worker are in. Not ported: a manager's proposals to buy equipment, vehicles and premises; the profit bonus
+  and shares, duties/authority/report choices and analyst report in the promotion talk; promoting a manager to a chief post; poaching after a course;
+  the manager's own promotions-from-within and the assistant's monthly suggestion and basic insurance; owner-attention drift is read in demand only (not in the manager's quality).
 * **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
