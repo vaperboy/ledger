@@ -182,3 +182,9 @@ untouched next to the converted save.
 * **Price moves:** percent price change, discount campaigns (with the fine for a fake discount) and price wars are ported; the forecast boxes (customers and margin) and managers moving prices in small steps are not.
 * **Lawsuits** (settle or court, court dates for big cases, lost by default) and **cyber attacks** (IT security levels, backups, training, fraud, ransomware, leak, outage) are ported; a manager does not pick the IT level.
 * **World around you:** rivals remember you (mood, temperament, grudges, lunch). Public image, the network of contacts and favours, and the maps screen are not ported. Software products of your own startup are not ported.
+
+## Boards, executives, head office, meetings, academy (ManagerTeam, ManagerBoards, ManagerMeetings, ManagerPromotions, ManagerProposals, ChainHierarchy, Headquarters, Academy)
+
+* Ported: see `MASTER_CHECKLIST.md`. Effects of the team are cached on the company (`tm`, `mgrLift`, `mdCoach`, `drift56`, `boss56`, `brdLaw`, `brdMkt`) each week and read by demand, capacity, marketing, quits, fines and manager quality.
+* Not faithful: fame is a simplified formula (no foreign countries); head office candidates come from the manager generator with the role's pay, not worker search; holders (co-owners) exist only when given as shares in a promotion, since funding rounds are not ported, so owner votes and director elections are rare; the "loan" vote is not forced on the loan action (use `boardVote` first); manager duties `sec`/`ins` are stored but do nothing; a dividend policy is stored but no quarterly dividend is paid; the finance manager does not lower loan margins; course prices use the country cost index only.
+* Not ported: `grp27` (profile of a rival group, depends on rival groups' UI), supply-from-inside protection against outside supplier events, board pack report preference of a promoted manager.

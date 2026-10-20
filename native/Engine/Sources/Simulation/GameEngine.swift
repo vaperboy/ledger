@@ -121,9 +121,10 @@ public struct GameEngine {
     /// The player picks one of the options of an open message (a decision, a payroll approval ...).
     @discardableResult
     public mutating func answer(messageID: Int, option: Int) -> Bool {
-        let d = data, c = context
+        let d = data, c = context, mk = marketing
         let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
             if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
+            if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }

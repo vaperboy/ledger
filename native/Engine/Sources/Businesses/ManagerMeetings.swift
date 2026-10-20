@@ -172,7 +172,9 @@ extension ManagerModel {
                 }
             }
         }
-        mts[k]["items"][idx]["st"] = .string(approve ? "yes" : "no")
+        var itemList = mts[k]["items"].array
+        itemList[idx]["st"] = .string(approve ? "yes" : "no")
+        mts[k]["items"] = .array(itemList)
         b["mts"] = .array(mts); b["seats"] = .array(seatsJSON)
         writeBoard(&s, key: key, b)
         guard approve else { return .declined }

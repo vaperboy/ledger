@@ -20,7 +20,7 @@ extension ManagerModel {
     }
 
     /// Move money from the sister store that can spare the most, as a group loan the store pays back when it can. Original: `sisterCash`.
-    static func sisterCash(_ s: inout GameState, to co: Company, need: Double, data: GameData) -> Company? {
+    public static func sisterCash(_ s: inout GameState, to co: Company, need: Double, data: GameData) -> Company? {
         let cur = World(state: s, data: data).currency(co)
         guard let from = sisters(s, co).max(by: { spareCash(s, $0, data: data) < spareCash(s, $1, data: data) }), spareCash(s, from, data: data) >= need else { return nil }
         let amt = cur.roundedStep(need, about: 1000)
@@ -319,6 +319,7 @@ extension ManagerModel {
         openingWait(&s, data: data)
         boardsWeekly(&s, data: data)
         executivesWeekly(&s, data: data)
+        bigWeekly(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) {
             profitBonus(&s, data: data)
             groupMonthly(&s, data: data)

@@ -37,7 +37,7 @@ extension ManagerModel {
 
     static func playerCurrency(_ s: GameState, _ data: GameData) -> Currency {
         let w = World(state: s, data: data)
-        return Currency(country: w.countries[s.homeCountryCode] ?? w.countries.values.first!, rates: w.rates)
+        return Currency(country: w.countries[s.homeCountryCode]!, rates: w.rates)
     }
     static func firstName(_ n: String) -> String { n.split(separator: " ").first.map(String.init) ?? n }
     /// Average of the five leadership numbers, 0 to 1. Original: `qOf`.
@@ -57,7 +57,7 @@ extension ManagerModel {
         f(&g)
         s.rest["group"] = g
     }
-    static func regionals(_ s: GameState) -> [JSONValue] { (s.rest["group"]?["regional"].array ?? []).filter { s.people[$0["npc"].int] != nil } }
+    public static func regionals(_ s: GameState) -> [JSONValue] { (s.rest["group"]?["regional"].array ?? []).filter { s.people[$0["npc"].int] != nil } }
     static func headCount(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) }
     static func underHolding(_ s: GameState, _ co: Company) -> [Company] {
         co.type == "hold" ? s.companies.filter { $0.holdingID == co.id && $0.status.isLive } : []
@@ -375,7 +375,7 @@ extension ManagerModel {
                                          "buy": .number(cur.scaledPrice(level.buy)), "payCo": "chain", "w0": .number(Double(s.week))])
             updateGroup(&s) { g in var l = g["regional"].array; l.append(rg); g["regional"] = .array(l) }
             assignRegions(&s, chainID: chainID)
-            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": level.title])
+            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": .string(level.title)])
             n.set("k11", .object(["post": .string(scope), "t": .string(level.title), "wage": .number(w), "bonus": 0, "duties": .array(["quality", "coach"]), "auth": 1, "rep": "month", "w0": .number(Double(s.week))]))
         }
         s.people[personID] = n
