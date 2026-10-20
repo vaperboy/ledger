@@ -96,8 +96,8 @@ struct CompanyEnergy: View {
                         .init(label: "Oil price", value: cur.short(price), sub: "per barrel"),
                     ])
                     FlatRow(label: "Market index", value: String(format: "%.0f%% of normal", engine.state.economy.oil * 100),
-                            tint: engine.state.economy.oil < 0.85 ? Theme.loss : engine.state.economy.oil > 1.15 ? Theme.gain : Theme.ivory,
-                            sub: "Taxes on oil are very high. Term contracts take part of the swing out.").padding(.top, 8)
+                            sub: "Taxes on oil are very high. Term contracts take part of the swing out.",
+                            tint: engine.state.economy.oil < 0.85 ? Theme.loss : engine.state.economy.oil > 1.15 ? Theme.gain : Theme.ivory).padding(.top, 8)
                 }
             }
             LedgerSection("Fields") {

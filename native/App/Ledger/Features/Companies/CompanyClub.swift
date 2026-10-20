@@ -51,7 +51,7 @@ struct CompanyClub: View {
                 ])
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
                 if !c.form.isEmpty { HStack(spacing: 2) { ForEach(Array(c.form.suffix(8).enumerated()), id: \.offset) { _, r in form(r) } }.padding(.bottom, 6) }
-                if c.debt > 0 { FlatRow(label: "Club debt", value: cur.short(c.debt), tint: Theme.loss, sub: "taken over when you bought the club") }
+                if c.debt > 0 { FlatRow(label: "Club debt", value: cur.short(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
                 if !c.seasons.isEmpty {
                     Text("Past seasons").capsLabel().padding(.top, Theme.Space.m)
                     ForEach(Array(c.seasons.enumerated()), id: \.offset) { n, s in
