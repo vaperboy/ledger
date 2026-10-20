@@ -29,6 +29,33 @@ Amounts are in the game's accounting unit. The spread between seed sets A and B 
 below about 10 % cannot be told from chance. **Not within chance:** gym, restaurant and bakery, and the lower cash at week 26
 in all trades (3 % to 38 %).
 
+## Project businesses (plumber, electrician, construction, engineering office, event agency, real-estate development)
+
+Deterministic parts are compared number for number with the original on a saved game (`ProjectDifferentialTests`, golden
+`oracle_projects.json` made by `tools/ref/snippets/projects_oracle.js`): demand, ticket multiplier, job scale, the value of an hour,
+hours a week, hours asked for per day, the average size of a request, and a developer's land, building cost, units, unit price and
+cash needed. All equal. Capacity matches within 5 %; an engineering office whose support role is empty differs on purpose
+(the original's capacity falls to zero).
+
+Averages (three seeds, three years, UK, modest ad plan for the job trades; `LEDGER_PROJECTS=1 swift test --filter ProjectTradeTests`):
+
+| Trade | Year-3 margin | Return on money put in | Value / money in | Utilisation |
+|---|---:|---:|---:|---:|
+| construction | 5.7 % | 14 % | 1.6x | 0.72 |
+| electrician | 12.0 % | 21 % | 1.9x | 0.81 |
+| plumber | 11.8 % | 18 % | 1.6x | 0.80 |
+| engineering office | 10.0 % | 10 % | 1.5x | 0.64 |
+| event agency | 11.8 % | 22 % | 1.3x | 0.76 |
+| real-estate development | 17 % on revenue, about 20 % on capital, one seed in three goes bankrupt | | 1.1x | |
+
+The original, run with no advertising at all (same three seeds, year-3 profit as a share of revenue): construction -50 % to +17 %
+(22 to 31 contracts in three years), electrician 25 to 51 %, plumber 29 to 49 %, engineering office -9 to 26 %, event agency 3 to
+22 %, and a developer that earns nothing unless a project is started by hand. The original's job trades therefore earn more than the
+brief's target bands once they are busy, and the small construction and design firms lose money. The native calibration moves every
+trade into the target bands (construction 5-10 %, electrician and plumber 10-20 %, engineering office 10-20 %, event agency 8-15 %).
+Without the `priceFactor` / `demandFactor` calibration (1.0 / 1.0) the native construction firm lost 118 % of
+its revenue and the engineering office broke even: the original's own numbers need a bigger firm than a small starting one can fill.
+
 ## What was found and fixed along the way
 
 Each of these was a real difference between the engines, found by comparing averages and then comparing parts:

@@ -7,7 +7,7 @@ import Businesses
 import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
-    case overview = "Overview", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
+    case overview = "Overview", projects = "Projects", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
 }
 
 /// One company. Overview answers "how is it doing, why, and what to change"; the other sections are where the changes are made.
@@ -30,6 +30,7 @@ struct CompanyDetailView: View {
                     SectionTabs(items: sections(co), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section)
+                    case .projects: CompanyProjects(engine: e, company: co)
                     case .staff: CompanyTeam(engine: e, company: co)
                     case .finances: CompanyMoney(engine: e, company: co)
                     case .operations: CompanyOperations(engine: e, company: co)
@@ -52,7 +53,8 @@ struct CompanyDetailView: View {
     }
 
     private func sections(_ co: Company) -> [CompanySection] {
-        co.status == .setup ? [.setup, .overview, .finances] : CompanySection.allCases.filter { $0 != .setup }
+        let projectFirm = store.engine?.data.catalog[co.type]?.family == "project"
+        return co.status == .setup ? [.setup, .overview, .finances] : CompanySection.allCases.filter { $0 != .setup && ($0 != .projects || projectFirm) }
     }
 }
 

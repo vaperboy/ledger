@@ -30,6 +30,7 @@ screens = {
  "payroll29": ("Inbox decision (payroll approval)", U), "phonehome": ("Phone", U), "over": ("GameOverView", U),
  "weekreport": ("Home + Inbox + Activity (no single report screen yet)", N), "reports": ("Home + Inbox", N),
  "pricemoves": ("Company > Operations (price slider)", U),
+ "tnd56": ("Company > Projects (tenders)", U),
 }
 screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 
@@ -37,7 +38,7 @@ screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 tabs = {
  "ov": ("Company > Overview", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
  "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
- "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
+ "famOv": ("Company > Projects (order book, developments)", U), "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
 }
 tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
 
@@ -59,6 +60,9 @@ actions = {
  "applydoc": ("Documents", E), "applydoc2": ("Documents", E), "estlog": ("", N),
  "salary": ("PlayerActions.setOwnerSalary", E), "tcAS": ("CompanySetup.create(accountantID:)", E),
  "reopen": ("", N),
+ "devgo": ("GameEngine.startDevelopment (Company > Projects)", U), "devprice": ("GameEngine.setDevelopmentPrice (Company > Projects)", U), "devsheet": ("GameEngine.developmentQuote (Company > Projects)", U),
+ "tnd56go": ("GameEngine.bidOnTender (Company > Projects)", U), "tnd56re": ("GameEngine.withdrawBid (Company > Projects)", U), "tnd56auto": ("GameEngine.setManagerBids (Company > Projects)", U),
+ "tnd56set": ("Company > Projects (bid price and quality choice)", U),
 }
 action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
 
@@ -94,8 +98,10 @@ systems = [
  ("133 random events with weighted choices and expiry", "Events", P, "data equals the original; firing is smoke-tested"),
  ("Event consequence previews", "Events/EffectPreview", P, "PreviewAndAdvisorTests"),
  ("Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write", "SaveSystem", V, "LZStringTests, SaveRoundTripTests, SaveStoreTests"),
- ("Service, venue, retail, production, logistics families (50 of 67 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
- ("Project businesses (6 trades)", "-", N, "own model in the original"),
+ ("Service, venue, retail, production, logistics families (50 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
+ ("Project businesses: jobs in hours, milestone payments, receivables, overruns, defects (plumber, electrician, construction, engineering office, event agency)", "Businesses/ProjectModel, ProjectWeek", V, "ProjectDifferentialTests (demand, hour value, hours a week, mix against the original); balance probe in BALANCE_PARITY. Price and demand carry a native calibration"),
+ ("Real-estate development: land, zoning, building, units sold, construction loan, housing market", "Businesses/ProjectDeveloper", V, "ProjectDifferentialTests (land, build, units, price, cash); statistical balance probe"),
+ ("Tenders for building, design and event work (bids, scoring, awards, managers who bid)", "Businesses/ProjectTenders", P, "ProjectTradeTests; the volume contracts the original also tenders for are not ported"),
  ("Rental businesses (3 trades)", "-", N, "own model in the original"),
  ("Finance businesses (3 trades)", "-", N, ""),
  ("Energy: oil and gas (2 trades)", "-", N, ""),
@@ -110,12 +116,12 @@ systems = [
  ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
  ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
  ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
- ("Tenders, software/IT products, cyber attacks", "-", N, ""),
+ ("Software/IT products, cyber attacks, tenders for other trades", "-", N, ""),
  ("Achievements, trophies, rich list, awards", "-", N, ""),
 ]
 
 # ---- trades
-fam_supported = {"svc", "venue", "retail", "prod", "logi"}
+fam_supported = {"svc", "venue", "retail", "prod", "logi", "project"}
 trade_rows = []
 for t in trade_items:
     pass

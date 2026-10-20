@@ -16,8 +16,9 @@ Honest list. Nothing here is hidden behind a "done".
 The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179 extension pipelines. See
 `PARITY_CHECKLIST.md` for every item. In short:
 
-* **Trades:** 50 of 67 can be started. Not started yet: project businesses (6), rental (3), finance (3), energy (2), the holding
-  company, football clubs, and the salmon farm. The menu says "Coming in a later update". A legacy save that contains them
+* **Trades:** 56 of 67 can be started. Not started yet: rental (3), finance (3), energy (2), the holding
+  company, football clubs, and the salmon farm. (The six project trades are in: plumber, electrician, construction, engineering
+  office, event agency, real-estate development; see the next section.) The menu says "Coming in a later update". A legacy save that contains them
   keeps their data untouched, they just do not run.
 * **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
   holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
@@ -27,6 +28,24 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
 * **Screens:** see the checklist; there is no week report screen, no marketing analytics screen, no map, no rich list, no achievements.
 * **Premises:** choosing a listing and buying equipment item by item exist in the engine but have no screen; "Fill in what is missing" does it.
+
+## Project businesses: what is and is not faithful
+
+Ported: the hours model of `trades_in_hours.js` (requests by day, oldest job first, 30/40/30 milestones, receivables with the
+usual chance of non-payment, overruns, delay and defect events), the event agency's dated bookings, referrals and rebookings,
+the developer (zoning, building, sales, construction loan repaid from 70% of sales, work in progress as an asset), tenders for jobs.
+
+* **Calibration (deliberate):** each job trade has a `priceFactor` and `demandFactor` in `ProjectModel.specs`. Without them the
+  original's own numbers lose money for a small construction firm and an engineering office (see BALANCE_PARITY). They are the
+  only knobs; everything else is the original's formula.
+* Reviews are a counter and a star sum (no texts, no review screen); the tender "needs N stars" rule uses them after 5 reviews.
+* Tenders: only job tenders for the six trades. The original's volume contracts (business customers) are not ported.
+* The old contract-backlog model (`FAM.project.custom` before hours) is dead code in the original for every job trade, so it is
+  not ported; jobs from tenders enter the hours model, as in the original.
+* Developer: no "other assets" screen line; `fm.assets` (work in progress) counts in the company's value as in the original.
+  The auto-start by a manager is ported; the player starts projects from Company > Projects.
+* Capacity of an engineering office with an empty support role differs from the original on purpose (see the parity test).
+* A tender's winner is decided from a seed made of the tender, as in the original; the rivals are not businesses.
 
 ## Behaviour that differs from the original on purpose
 

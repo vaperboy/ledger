@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 17 Ported, 16 Not ported, 13 Verified, 2 Statistical
-- Trades: 50 Statistical, 17 Not ported
-- Screens: 79 Not ported, 26 Engine + screen
-- Company tabs: 33 Not ported, 10 Engine + screen
-- Actions: 511 Not ported, 37 Engine + screen, 9 Engine only
+- Systems: 18 Ported, 15 Verified, 15 Not ported, 2 Statistical
+- Trades: 56 Statistical, 11 Not ported
+- Screens: 78 Not ported, 27 Engine + screen
+- Company tabs: 32 Not ported, 11 Engine + screen
+- Actions: 504 Not ported, 44 Engine + screen, 9 Engine only
 
 ## Systems
 
@@ -55,8 +55,10 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | 133 random events with weighted choices and expiry | Events | Ported | data equals the original; firing is smoke-tested |
 | Event consequence previews | Events/EffectPreview | Ported | PreviewAndAdvisorTests |
 | Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write | SaveSystem | Verified | LZStringTests, SaveRoundTripTests, SaveStoreTests |
-| Service, venue, retail, production, logistics families (50 of 67 trades) | Businesses/CompanyWeek | Statistical | statistical comparison; gym is +31% (open) |
-| Project businesses (6 trades) | - | Not ported | own model in the original |
+| Service, venue, retail, production, logistics families (50 trades) | Businesses/CompanyWeek | Statistical | statistical comparison; gym is +31% (open) |
+| Project businesses: jobs in hours, milestone payments, receivables, overruns, defects (plumber, electrician, construction, engineering office, event agency) | Businesses/ProjectModel, ProjectWeek | Verified | ProjectDifferentialTests (demand, hour value, hours a week, mix against the original); balance probe in BALANCE_PARITY. Price and demand carry a native calibration |
+| Real-estate development: land, zoning, building, units sold, construction loan, housing market | Businesses/ProjectDeveloper | Verified | ProjectDifferentialTests (land, build, units, price, cash); statistical balance probe |
+| Tenders for building, design and event work (bids, scoring, awards, managers who bid) | Businesses/ProjectTenders | Ported | ProjectTradeTests; the volume contracts the original also tenders for are not ported |
 | Rental businesses (3 trades) | - | Not ported | own model in the original |
 | Finance businesses (3 trades) | - | Not ported |  |
 | Energy: oil and gas (2 trades) | - | Not ported |  |
@@ -71,7 +73,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
 | Luxury and estates, family office | net worth counts imported values only | Not ported |  |
 | Rivals as businesses, price wars, acquisitions | - | Not ported | Competition affects demand only |
-| Tenders, software/IT products, cyber attacks | - | Not ported |  |
+| Software/IT products, cyber attacks, tenders for other trades | - | Not ported |  |
 | Achievements, trophies, rich list, awards | - | Not ported |  |
 
 ## Countries
@@ -117,12 +119,12 @@ Norway, Sweden, Poland, Lithuania, Germany, United Kingdom, France, Spain, Nethe
 | grocery | Supermarket | retail | Statistical |
 | hardware | Building-supplies store | retail | Statistical |
 | cardealer | Vehicle dealership | retail | Statistical |
-| construction | Construction firm | project | Not ported |
-| electrician | Electrical contractor | project | Not ported |
-| plumber | Plumbing firm | project | Not ported |
-| realdev | Real-estate development | project | Not ported |
-| event | Event and production agency | project | Not ported |
-| engcons | Engineering and architecture office | project | Not ported |
+| construction | Construction firm | project | Statistical |
+| electrician | Electrical contractor | project | Statistical |
+| plumber | Plumbing firm | project | Statistical |
+| realdev | Real-estate development | project | Statistical |
+| event | Event and production agency | project | Statistical |
+| engcons | Engineering and architecture office | project | Statistical |
 | bakery | Bakery and pastry | prod | Statistical |
 | brewery | Craft brewery | prod | Statistical |
 | furniture | Furniture workshop | prod | Statistical |
@@ -259,7 +261,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | tg58 |  | Not ported |
 | title | StartView | Engine + screen |
 | titles |  | Not ported |
-| tnd56 |  | Not ported |
+| tnd56 | Company > Projects (tenders) | Engine + screen |
 | top28 |  | Not ported |
 | trophies28 |  | Not ported |
 | weekreport | Home + Inbox + Activity (no single report screen yet) | Not ported |
@@ -289,7 +291,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | eq | Company > Setup (equipment via quick setup) | Engine + screen |
 | famAssets |  | Not ported |
 | famOps |  | Not ported |
-| famOv |  | Not ported |
+| famOv | Company > Projects (order book, developments) | Engine + screen |
 | finPart |  | Not ported |
 | finSummary | Company > Money | Engine + screen |
 | franchisor |  | Not ported |
@@ -457,9 +459,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ddset |  | Not ported |
 | depgo |  | Not ported |
 | depsheet |  | Not ported |
-| devgo |  | Not ported |
-| devprice |  | Not ported |
-| devsheet |  | Not ported |
+| devgo | GameEngine.startDevelopment (Company > Projects) | Engine + screen |
+| devprice | GameEngine.setDevelopmentPrice (Company > Projects) | Engine + screen |
+| devsheet | GameEngine.developmentQuote (Company > Projects) | Engine + screen |
 | docourse |  | Not ported |
 | docsall |  | Not ported |
 | doraise | PlayerActions.raise | Engine + screen |
@@ -846,10 +848,10 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | tm56fire |  | Not ported |
 | tmgo |  | Not ported |
 | tmset |  | Not ported |
-| tnd56auto |  | Not ported |
-| tnd56go |  | Not ported |
-| tnd56re |  | Not ported |
-| tnd56set |  | Not ported |
+| tnd56auto | GameEngine.setManagerBids (Company > Projects) | Engine + screen |
+| tnd56go | GameEngine.bidOnTender (Company > Projects) | Engine + screen |
+| tnd56re | GameEngine.withdrawBid (Company > Projects) | Engine + screen |
+| tnd56set | Company > Projects (bid price and quality choice) | Engine + screen |
 | toggleins |  | Not ported |
 | tohold |  | Not ported |
 | trade |  | Not ported |
