@@ -41,6 +41,12 @@ final class FoundationTests: XCTestCase {
         }
     }
 
+    /// Tax figures deliberately corrected to the 2025/26 law (docs/TAX_SOURCES.md lists every change). The original's numbers are
+    /// kept in Golden/countries_derived.json; for these (country, field) pairs the test checks the corrected values instead
+    /// (`testCorrectedTaxFiguresArePinned`).
+    static let correctedBrackets: Set<String> = ["SE", "LT", "DE", "FR", "NL", "US", "CA", "BR", "DK"]
+    static let correctedEmployerCost: Set<String> = ["DE"]
+
     func testCountryDerivedValuesMatchOriginal() throws {
         let book = try CountryBook.bundled()
         XCTAssertEqual(book.countries.count, 23)
@@ -57,7 +63,7 @@ final class FoundationTests: XCTestCase {
             assertClose(c.registrationFee, e["asFee"].double, tol: 1e-12)
             assertClose(c.conversionFee, e["asConvFee"].double, tol: 1e-12)
             assertClose(c.vatThreshold, e["vatThr"].double, tol: 1e-12)
-            assertClose(c.employerCostFactor, 1 + e["empNI"].double + e["otp"].double + e["injury"].double, tol: 1e-12)
+            if !Self.correctedEmployerCost.contains(c.code) { assertClose(c.employerCostFactor, 1 + e["empNI"].double + e["otp"].double + e["injury"].double, tol: 1e-12) }
             assertClose(c.inheritanceFree, e["inhFree"].double, tol: 1e-12)
             XCTAssertEqual(c.cities.count, e["cities"].array.count)
             for (city, ec) in zip(c.cities, e["cities"].array) {
@@ -67,10 +73,36 @@ final class FoundationTests: XCTestCase {
                 assertClose(city.wage, ec["wage"].double, tol: 1e-12)
                 assertClose(city.price, ec["price"].double, tol: 1e-12)
             }
-            for (a, b) in zip(c.income.brackets, e["income"]["brackets"].array) {
+            for (a, b) in zip(c.income.brackets, e["income"]["brackets"].array) where !Self.correctedBrackets.contains(c.code) {
                 assertClose(a.from, b[0].double, tol: 1e-9, "\(c.code) bracket")
                 assertClose(a.rate, b[1].double)
             }
+        }
+    }
+
+    func testCorrectedTaxFiguresArePinned() throws {
+        let book = try CountryBook.bundled()
+        func c(_ code: String) -> Country { book.countries.first { $0.code == code }! }
+        // Local-currency figures x the country's fx give accounting units
+        func local(_ code: String, _ v: Double) -> Double { v * c(code).fx }
+        XCTAssertEqual(c("UK").dividendTax, 0.3575, accuracy: 1e-12)          // upper dividend rate from April 2026
+        XCTAssertEqual(c("FR").dividendTax, 0.314, accuracy: 1e-12)           // PFU 31.4% from 2026
+        XCTAssertEqual(c("LT").corporateTax, 0.17, accuracy: 1e-12)           // 17% from 2026
+        XCTAssertEqual(c("AE").corporateTax, 0.09, accuracy: 1e-12)           // federal 9%
+        XCTAssertEqual(c("DE").employeeSocial, 0.2115, accuracy: 1e-12)
+        XCTAssertEqual(c("DE").employerSocial, 0.2115, accuracy: 1e-12)
+        XCTAssertEqual(c("US").income.brackets[1].from, local("US", 16100), accuracy: 1e-6)   // 2026 standard deduction
+        XCTAssertEqual(c("DE").income.brackets[1].from, local("DE", 12348), accuracy: 1e-6)   // 2026 basic allowance
+        XCTAssertEqual(c("FR").income.brackets[1].from, local("FR", 11600), accuracy: 1e-6)
+        XCTAssertEqual(c("NL").income.brackets.map { $0.rate }, [0.3575, 0.3756, 0.495])
+        XCTAssertEqual(c("LT").income.brackets.map { $0.rate }, [0.2, 0.25, 0.32])
+        XCTAssertEqual(c("DK").income.brackets.map { $0.rate }, [0, 0.3706, 0.4456, 0.5206, 0.5706])
+        XCTAssertEqual(c("NO").wealthThreshold, local("NO", 1_900_000), accuracy: 1e-6)
+        XCTAssertEqual(c("BR").income.brackets[1].from, local("BR", 60000), accuracy: 1e-6)    // exempt up to BRL 5,000 a month
+        // Every country says when and how its figures were checked
+        for country in book.countries {
+            XCTAssertEqual(country.pack["dataBasis"]["checked"].string, "2026-10", country.code)
+            XCTAssertFalse(country.pack["dataBasis"]["note"].string.isEmpty, country.code)
         }
     }
 
@@ -100,15 +132,22 @@ final class FoundationTests: XCTestCase {
     func testTaxesMatchOriginal() throws {
         let book = try CountryBook.bundled()
         let g = try Golden.load("currency_tax_rng")
+        // Deliberately corrected to the 2025/26 law (docs/TAX_SOURCES.md): income tax, dividend tax and wealth tax of these countries
+        // no longer equal the original's numbers; `testCorrectedTaxFiguresArePinned` pins the new values.
+        let incomeCorrected = Self.correctedBrackets.union(["NO"])
+        let dividendCorrected: Set<String> = ["UK", "FR"]
+        let wealthCorrected: Set<String> = ["NO"]
         for c in book.countries {
             let t = g["tax"][c.code]
             for (i, inc) in t["inc"].array.enumerated() {
                 let v = inc.double
-                assertClose(Taxes.personalIncomeTax(v, kind: .selfEmployed, in: c), t["self"][i].double, tol: 1e-9, "\(c.code) self \(v)")
-                assertClose(Taxes.personalIncomeTax(v, kind: .wage, in: c), t["wage"][i].double, tol: 1e-9, "\(c.code) wage \(v)")
-                assertClose(Taxes.dividendTax(v, shield: 50000, in: c), t["div"][i].double, tol: 1e-9)
-                assertClose(Taxes.wealthTax(netWorth: v * 10, in: c), t["wealth"][i].double, tol: 1e-9)
-                assertClose(Taxes.bracketTax(v, brackets: c.income.brackets), t["br"][i].double, tol: 1e-9)
+                if !incomeCorrected.contains(c.code) {
+                    assertClose(Taxes.personalIncomeTax(v, kind: .selfEmployed, in: c), t["self"][i].double, tol: 1e-9, "\(c.code) self \(v)")
+                    assertClose(Taxes.personalIncomeTax(v, kind: .wage, in: c), t["wage"][i].double, tol: 1e-9, "\(c.code) wage \(v)")
+                    assertClose(Taxes.bracketTax(v, brackets: c.income.brackets), t["br"][i].double, tol: 1e-9)
+                }
+                if !dividendCorrected.contains(c.code) { assertClose(Taxes.dividendTax(v, shield: 50000, in: c), t["div"][i].double, tol: 1e-9) }
+                if !wealthCorrected.contains(c.code) { assertClose(Taxes.wealthTax(netWorth: v * 10, in: c), t["wealth"][i].double, tol: 1e-9) }
             }
         }
     }
