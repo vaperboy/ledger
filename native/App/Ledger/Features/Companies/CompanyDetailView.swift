@@ -12,6 +12,8 @@ enum CompanySection: String, CaseIterable, Hashable {
     case properties = "Properties", book = "Book"
     // Shown only for the trades that have them (energy, salmon farm, holding company, football club)
     case energy = "Plant", salmon = "Fish", holding = "Holding", club = "Club"
+    /// Chain, franchise and supply between your own companies (CompanyChain.swift)
+    case chain = "Chain"
 }
 
 /// One company. Overview answers "how is it doing, why, and what to change"; the other sections are where the changes are made.
@@ -46,6 +48,7 @@ struct CompanyDetailView: View {
                     case .salmon: CompanySalmon(engine: e, company: co)
                     case .holding: CompanyHolding(engine: e, company: co)
                     case .club: CompanyClub(engine: e, company: co)
+                    case .chain: CompanyChain(engine: e, company: co)
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
@@ -76,9 +79,10 @@ struct CompanyDetailView: View {
         if co.status == .setup { return own + [.setup, .overview, .finances] }
         // A holding and a football club have no shop floor: no staff list, price, marketing or opening hours.
         if co.type == "hold" || co.type == "club" { return [.overview] + own + [.finances] }
-        let extra: Set<CompanySection> = [.projects, .properties, .book, .energy, .salmon, .holding, .club]
+        let extra: Set<CompanySection> = [.projects, .properties, .book, .energy, .salmon, .holding, .club, .chain]
         var list = CompanySection.allCases.filter { $0 != .setup && !extra.contains($0) }
         if !own.isEmpty { list.insert(contentsOf: own, at: 1) }
+        if CompanyChain.isRelevant(co, e) { list.append(.chain) }
         return list
     }
 }

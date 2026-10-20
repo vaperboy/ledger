@@ -107,6 +107,8 @@ public enum Franchising {
     }
 
     static let patience: [String: Double] = ["eager": 4, "careful": 3, "tough": 2]
+    /// How many offers an applicant sits through, by character.
+    public static func patienceDots(for personality: String) -> Int { Int(patience[personality] ?? 3) }
 
     public enum AcceptResult: Equatable, Sendable { case ok, gone, poor, cash }
 

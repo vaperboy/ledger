@@ -22,6 +22,9 @@ struct NewCompanyView: View {
                             NavigationLink { NewHoldingView() } label: {
                                 ListRow(symbol: TradeSymbol.of(family: "hold"), tint: Theme.gold, title: "Holding company", subtitle: "Owns your other companies; dividends into it are taxed far lower", chevron: true).contentShape(Rectangle())
                             }.buttonStyle(.plain)
+                            NavigationLink { FranchisesView() } label: {
+                                ListRow(symbol: "storefront", tint: Theme.gold, title: "Join a franchise", subtitle: "A known brand, their rules and a fee", chevron: true).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
                             NavigationLink { ClubMarketView() } label: {
                                 ListRow(symbol: TradeSymbol.of(family: "club"), tint: Theme.gold, title: "Football club", subtitle: "Buy a club in a top league, or found one", chevron: true).contentShape(Rectangle())
                             }.buttonStyle(.plain)

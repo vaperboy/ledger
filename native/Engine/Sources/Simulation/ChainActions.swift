@@ -24,6 +24,17 @@ public extension GameEngine {
         return state.companies.filter { $0.status.isLive && $0.type == ch["type"].string && $0.value("chain").isNull }
     }
 
+    /// "ok", "applied", "lapsed" or "" (not applied), and the weeks left for an application in progress.
+    func documentState(companyID: Int, document: String) -> (status: String, weeksLeft: Int) {
+        guard let co = state.company(companyID) else { return ("", 0) }
+        let d = co.value("docs")[document]
+        return (d["st"].string, max(0, d["done"].int - state.week))
+    }
+    func documentFee(companyID: Int, document: String) -> Double {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return 0 }
+        return Documents.cost(document, company: co, bd, World(state: state, data: data))
+    }
+
     @discardableResult
     mutating func applyForChainDocument(companyID: Int, document: String) -> Chains.ChainDocResult {
         var r = Chains.ChainDocResult.notFound

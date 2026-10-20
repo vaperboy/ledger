@@ -49,6 +49,7 @@ struct CompaniesView: View {
                                     }
                                 }
                             }
+                            ChainsGroupSection(engine: e)
                             if cos.isEmpty {
                                 LedgerSection("No companies yet") {
                                     VStack(alignment: .leading, spacing: Theme.Space.m) {
