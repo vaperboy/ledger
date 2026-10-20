@@ -248,7 +248,7 @@ public enum ProjectDeveloper {
         s.companies[i].set("fm", fm)
         list = list.filter { $0.stage != "done" }
         setProjects(&s, i, list)
-        var ctx = CompanyWeek.WeekContext(units: sold, rev: rev, cogs: cogs, D: 0, cap: 0, util: list.isEmpty ? 0 : 0.7, price: bd.traits["land"] != nil ? 4_800_000 : 0, paidDuringWeek: 0)
+        var ctx = CompanyWeek.WeekContext(units: sold, rev: rev, cogs: cogs, D: 0, cap: 0, util: list.isEmpty ? 0 : 0.7, price: bd.traits["land"] != nil ? w.currency(s.companies[i]).scaledPrice(4_800_000) : 0, paidDuringWeek: 0)
         ctx.cogsIsAccounting = true
         return ctx
     }

@@ -336,6 +336,8 @@ struct ReportsContent: View {
                     Hairline()
                     ReportLine(label: "Salary and drawings", value: f.short(g.ownerPay))
                     Hairline()
+                    ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))
+                    Hairline()
                     ReportLine(label: "Wealth change", value: f.signed(r.netWorthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? ""),
                                tint: Theme.change(r.netWorthChange), strong: true)
                 }

@@ -364,6 +364,21 @@ public extension GameEngine {
 
     func latestReport(_ kind: ReportKind) -> PeriodReport? { reports(kind).last }
 
+    /// What the year in progress looks like so far for the player's own tax: the income tax that would be due if the year ended now,
+    /// on sole-trader profit, salary, dividends and interest, minus what was already withheld. Original: `personalTaxEstimate`.
+    struct YearInProgress: Equatable, Sendable {
+        public var year: Int
+        public var weeksIn: Int
+        public var personalTaxEstimate: Double
+        public var taxWithheld: Double
+    }
+    var yearInProgress: YearInProgress {
+        let s = state
+        let start = (0...53).first { GameCalendar.year(week: s.week - $0 - 1) != GameCalendar.year(week: s.week) } ?? 0
+        return YearInProgress(year: GameCalendar.year(week: s.week), weeksIn: start + 1,
+                              personalTaxEstimate: PersonalFinance.taxEstimate(s, context: context), taxWithheld: s.tax.withheld)
+    }
+
     /// Start the periods from now. Called when a new game begins.
     mutating func openReportBaselines() {
         let data = self.data

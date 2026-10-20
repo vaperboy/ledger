@@ -416,7 +416,7 @@ public enum CompanySetup {
             r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: w.rates) * country.employerCostFactor
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
-        RentalFinance.addEstimate(&r, bd, size: size, city: city, tmp, w)
+        RentalFinance.addEstimate(&r, bd, size: size, city: city, currency: w.currency(co), tmp, w)
         // Contractors wait weeks for the first jobs and the first payments: a bigger cash buffer. Original: `setupEstimate` step.
         if bd.family == "project" && !bd.hasTrait("dev") { r.buffer *= 3.5 }
         // Months spent waiting for a licence cost wages and rent too (a wait of more than 8 weeks). Original: `r.wait`.

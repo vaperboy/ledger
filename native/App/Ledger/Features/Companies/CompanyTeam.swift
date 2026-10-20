@@ -43,6 +43,7 @@ struct CompanyTeam: View {
                             Menu {
                                 Button("Raise pay 5%") { store.act { $0.raise(personID: m.id, companyID: company.id, percent: 0.05) }; Haptics.tap() }
                                 if !missing.isEmpty { Button("Paperwork done (\(missing.count))") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() } }
+                                StaffContractMenu(engine: engine, company: company, member: m)
                                 Button("Promote…") { promoting = m }
                                 Button("Let go…", role: .destructive) { confirmFire = m }
                             } label: {
@@ -84,6 +85,7 @@ struct CompanyTeam: View {
                             }
                             Spacer()
                             Button(cur.short(p.askingMonthlyWage) + " / mo") { hire(p) }.buttonStyle(QuietButtonStyle())
+                            HireOptionsMenu(engine: engine, company: company, person: p) { candidates.removeAll { $0.id == p.id } }
                         }
                     }
                 }

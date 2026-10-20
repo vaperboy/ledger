@@ -14,7 +14,7 @@ No deep tests, no balancing and no screen design before their stage.
 | 50 service / venue / retail / production / logistics trades | DONE | Balance → stage 4 |
 | Project trades (6), rental (3), finance (3) | DONE | Balance → stage 4. Reviews now shared system |
 | Energy (2), salmon, holding company, football club | DONE | Holding: exchange listing and selling shares not ported (see Startups) |
-| Reports: weekly, monthly, yearly | DONE | Personal income tax estimate for the year in progress |
+| Reports: weekly, monthly, yearly | DONE | Year view also shows the personal income tax estimate for the year in progress (`GameEngine.yearInProgress`) |
 | Managers, assistant managers, promotions, poaching | PARTIAL | Boards/CEO/MD/regional managers, profit bonus, manager proposals for equipment/vehicles/premises, promotion duties/authority/bonus/shares, assistant monthly suggestion and insurance, "no team from home" check, poaching after a course |
 | Strategic decisions, trophies, awards, rich list, selling a company | PARTIAL | 13 decisions (s_acqoffer, g_location, g_franinq, e_merger, e_distress, t_ipo, t_pe, t_hostile, t_antitrust, t_activist, t_auction, c_JP_succ, c_US_vc); trophies that need missing systems; awards by revenue vs rivals; selling part of your shares; funding rounds |
 | Equipment market, premises choice, luxury, estates | PARTIAL | Supplier discounts (vdisc), per-person equipment rules, fleet extras (mileage, fuel by van size, taxi class demand, work-car choice), premises extras (home workshop, franchise rent discount, landlord income, carallow), luxury perks/risk checks |
@@ -25,17 +25,17 @@ No deep tests, no balancing and no screen design before their stage.
 | Boards, CEO, head office, meetings, academy, manager and chain gaps above | NOT MERGED (WIP saved, branch `worktree-agent-a63b07bec1d9760c6`, 65 actions) | Finish, build-check, merge |
 | Advisers, abroad, company insurance, suppliers, gifts, complaints, staff profile, weather/world, fleet/luxury leftovers | NOT MERGED (WIP saved, branch `worktree-agent-a62df16577d42dde6`, 28 actions) | Finish, build-check, merge |
 | Real-life population, income and demand by city (luxury in LA vs small town) | NOT MERGED (WIP saved, branch `worktree-agent-a6c6bbcca8ea1d325`) | Finish, build-check, merge; golden changes must be listed |
-| 27 unowned actions: part-time/seasonal/hours staff types, discount campaigns, trial week, complaint handling, goals, development projects, lending a worker between chain stores | NOT STARTED | Assign to an agent |
+| 27 "other" actions: part-time/seasonal/hours staff types and pay model, discount campaigns, trial week, complaint handling, daily goal / first-step rewards / ambitions, development projects, lending a worker between chain stores, own-car allowance, give up premises, change accountant | DONE (engine + flat app rows) | Ambition perks are not yet applied to loan margin, abroad fees, quality and rival prices; ambition facts that need missing systems (market share rank, world rank) count as 0; pay plan chosen at hire for sellers; screens month30, paper40, wx56, pacct, registry and tabs demandLevel, route stay open; real screen design → stage 3 |
 | World around you: public image, contacts and favours network, maps screen; software products from your own startup | NOT STARTED | After Startups merges |
 | Remaining trophies (need acquisitions, chains, startups, PE, luxury, R&D, listed holdings) | NOT STARTED | After the systems above |
 
-Counts (original has 557 actions): 209 done and used by a screen, 16 engine only, 130 presentation-only (no gameplay), 202 not ported, of which 175 are owned by the four unmerged branches above and 27 unowned. Screens: 63 done, 39 not ported, 3 presentation. Company tabs: 23 done, 10 not ported, 10 presentation.
+Counts (original has 557 actions): 235 done and used by a screen, 17 engine only, 130 presentation-only (no gameplay), 175 not ported, all owned by the four unmerged branches above. Screens: 64 done, 38 not ported, 3 presentation. Company tabs: 24 done, 9 not ported, 10 presentation.
 
 ## Stage 2 — Connect all features (NOT STARTED)
 
 - Wiring audit: every engine action is reachable from the game (engine API or Inbox decision); every weekly/monthly model is called from the turn; no orphan code; new weekly random streams do not disturb the main stream.
 - Save format: version migration for all new state (reports, rivals, reviews, chains, luxury, equipment, decisions queue); old saves still load.
-- Scale the remaining reference-level money amounts per country (bank/insurer capital, premiums, developer land price, default rental price, loss bookings) — allow-listed in `MoneyScalingTests`.
+- ~~Scale the remaining reference-level money amounts per country (bank/insurer capital, premium bases, developer land price, default rental price, rental loss bookings, caretaker wage)~~ DONE: scaled with `Currency.scaledPrice` / the wage level, removed from the `MoneyLiteralLintTests` allow-list; RentalFinance, Project and SpecialTrades differential tests still pass. Trade-catalog traits (`capital`, `premium`, `price`) are still written at the reference level.
 - Engine text formatting (no "£220 k", no NBSP) at the source.
 - Refresh `PARITY_CHECKLIST.md` and `MISSING_ACTIONS.md` after each merge; refresh STATUS/KNOWN_GAPS.
 - Full CI compile of everything merged since the last passing app build (CI last saw commit e7dc1b0: engine tests passed, app build had 2 errors that are fixed in later commits, later merges unbuilt on CI).

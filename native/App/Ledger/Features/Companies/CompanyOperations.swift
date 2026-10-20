@@ -69,6 +69,7 @@ struct CompanyOperations: View {
                 }
             }
             EquipmentEntryRow(company: company)
+            CompanyOtherSections(engine: engine, company: company)
         }
     }
 

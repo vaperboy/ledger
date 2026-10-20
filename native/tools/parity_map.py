@@ -33,6 +33,13 @@ MAP_ACTIONS = {
  "rn56go": "renameCompany", "rb56go": "renameChain", "clgo": "closeCompany", "reopen": "reopenCompany",
  "winduo": "windUpCompany", "convgo": "convertToLimited", "ccheck": "setCreditCheck", "autostock": "setAutoStock",
  "inflset": "setInflationHold",
+ # ported in the "other" pass (Businesses/StaffContracts, Development, PlayerGoals; Simulation/MiscActions)
+ "ch12lend": "lendWorker", "trial": "startTrialWeek", "carallow": "toggleOwnCar", "carc": "Hiring.Terms", "car7": "Hiring.Terms",
+ "pickacc": "changeAccountant", "pm16camp": "startDiscount", "pm16end": "endDiscount", "home37": "giveUpPremises", "complres": "answerComplaint",
+ "stseas": "toggleSeason", "stpart": "offerPartTime", "stfix": "offerFixedSalary", "sthrs": "setStaffHours", "stfull": "offerFullTime",
+ "setpay": "setPayModel", "setrate": "setCommissionRate", "pt48": "Hiring.Terms", "hk54k": "Hiring.Terms", "hk54b": "Hiring.Terms",
+ "hk54h": "Hiring.Terms", "hk54s": "seasonMonths", "rd56go": "startDevelopment", "amb27pick": "chooseAmbition", "dy59claim": "claimDailyGoal",
+ "fs58claim": "claimFirstStep", "fs58off": "setFirstStepsHidden",
 }
 
 # screen-only items that need no engine call (navigation, choosing, filtering, showing)
@@ -228,33 +235,6 @@ lx56din Host a dinner on the yacht
 """
 
 MISSING["other"] = """
-ch12lend Lend a worker from one chain store to another
-trial Hire a candidate for a paid trial week
-carallow Let a worker use their own car for work
-carc Choose the car allowance for a candidate
-car7 Choose the car allowance in a salary talk
-pickacc Change the accountant of a company
-pm16camp Run a discount campaign
-pm16end End a discount campaign
-home37 Give up the premises and work from home again
-complres Resolve a customer complaint yourself
-stseas Staff member works seasonally
-stpart Staff member works part time
-stfix Staff member on a fixed salary
-sthrs Staff member's hours
-stfull Staff member works full time
-setpay Set a staff member's pay basis
-setrate Set a staff member's hourly rate
-pt48 Part-time switch for hours-based staff
-hk54k Hours-based staff kind
-hk54b Hours-based staff pay basis
-hk54h Hours-based staff hours
-hk54s Hours-based staff busy season months
-rd56go Start a development project in a company
-amb27pick Choose an ambition path
-dy59claim Claim the daily goal reward
-fs58claim Claim a first-steps reward
-fs58off Switch the first steps off
 """
 
 MISSING["presentation"] = """
@@ -405,12 +385,12 @@ AREA_NAMES = {
 SCREEN_MAP = {
  "weekreport": "Reports (ReportsView, ReportPrompt)", "reports": "Reports (ReportsView, ReportPrompt)",
  "awards56": "Phone > Achievements", "trophies28": "Phone > Achievements", "titles": "Phone > Achievements", "top28": "Phone > Rich list",
- "fs58": "Home > First steps", "sale": "Company > Sell (CompanySaleSection)", "saletalk": "Company > Sell (CompanySaleSection)",
+ "fs58": "Home > First steps", "amb27": "Home > Goals (GoalsCard)", "sale": "Company > Sell (CompanySaleSection)", "saletalk": "Company > Sell (CompanySaleSection)",
  "mgrhire": "Company > Team (manager search)", "managers": "Company > Team", "mgmt56": "Company > Team", "p11talk": "Company > Team > Promote", "pr11": "Company > Team > Promote",
  "store13": "Company > Chain (new store)", "brand56": "Group > Join a franchise", "fr56": "Company > Chain > Franchise talk",
 }
 TAB_MAP = {
- "franchisor": "Company > Chain > Franchise", "supply": "Company > Chain > Supply", "mgrBanner": "Company > Team", "mgrCard": "Company > Team", "staffProfile": "Company > Team",
+ "franchisor": "Company > Chain > Franchise", "supply": "Company > Chain > Supply", "mgrBanner": "Company > Team", "mgrCard": "Company > Team", "staffProfile": "Company > Team", "complaints": "Company > Operations > Complaints",
 }
 # the rest, by area (one id per word)
 MISSING_SCREENS = {
@@ -418,13 +398,13 @@ MISSING_SCREENS = {
  "startups": "found36 startups crisis pe56 own27 dealroom",
  "rivals": "rival rivals riv31 rivmoves rvdetail reviews pricewar market map31 world cy56 branch nem28 grp27",
  "advisers": "suppliers give28 anrep11 pk58 net31",
- "other": "amb27 month30 paper40 wx56 pacct registry",
+ "other": "month30 paper40 wx56 pacct registry",
  "presentation": "img31 res36 pro59",
 }
 MISSING_TABS = {
  "advisers": "abroad advisers insurance ana",
  "rivals": "rivalsCard",
  "startups": "invSale ownersRow",
- "other": "complaints demandLevel route",
+ "other": "demandLevel route",
  "presentation": "DEAL_SUB FIN_SUB OPS_SUB clRows dealKeys dealPart finPart lrow marketRow opsPart",
 }

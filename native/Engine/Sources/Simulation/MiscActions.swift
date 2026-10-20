@@ -285,6 +285,8 @@ public extension GameEngine {
         update { s, _, _ in r = StaffTalks.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
         return r
     }
+    /// Roles that sell and can be paid by commission.
+    var salesRoles: Set<String> { data.catalog.tables.salesRoles }
     /// Why a person turned down an offer, in words.
     func refusalReason(companyID: Int, staffID: Int, want: String) -> String {
         guard let m = state.company(companyID)?.staff.first(where: { $0.id == staffID }) else { return "" }
@@ -317,6 +319,14 @@ public extension GameEngine {
         var r = false
         update { s, d, _ in r = CompanySetup.changeAccountant(&s, companyID: companyID, accountantID: accountantID, data: d) }
         return r
+    }
+
+    /// The accountants on offer in the company's country: id, name, fee a month, rating (1 to 5), and whether it is the current one.
+    func accountantChoices(companyID: Int) -> [(id: Int, name: String, fee: Double, rating: Double, current: Bool)] {
+        guard let co = state.company(companyID) else { return [] }
+        var tmp = state
+        let pool = Providers.pool(for: co.countryCode, state: &tmp, countries: data.countries).accountants
+        return pool.map { ($0["id"].int, $0["name"].string, $0["fee"].double, $0["rating"].double, $0["id"].int == co.value("acc")["id"].int) }
     }
 
     func developmentProjects(companyID: Int) -> [(project: Development.Project, cost: Double)] {

@@ -94,7 +94,7 @@ public enum RentalModel {
         let k = kind(bd)
         let seedKey = (w.week >> 2) * 131 + co.id
         var r = DeterministicRandom(state: Int32(truncatingIfNeeded: seedKey &* 2654435761))
-        let tUnits = bd.trait("units") ?? 10, tPrice = bd.trait("price") ?? 1_000_000
+        let tUnits = bd.trait("units") ?? 10, tPrice = bd.trait("price") ?? w.currency(co).scaledPrice(1_000_000)
         let home = homeCurrency(w)
         var out: [PropertyListing] = []
         for (i, f) in [0.35, 0.6, 1, 1.7].enumerated() {
@@ -357,10 +357,9 @@ public enum RentalModel {
                 var mods = s.companies[i].value("mods").array
                 mods.append(.object(["k": "dem", "m": 0.97, "w": 6]))
                 s.companies[i].set("mods", .array(mods))
-            } else if tenant == "plan" {
-                Payments.book(&s, companyID: id, category: "loss", amount: 4000)
             } else {
-                Payments.book(&s, companyID: id, category: "loss", amount: 9000)
+                let cur = Currency(country: data.countries.resolve(s.companies[i].countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
+                Payments.book(&s, companyID: id, category: "loss", amount: tenant == "plan" ? cur.scaledPrice(4000) : cur.scaledPrice(9000))
             }
         }
     }

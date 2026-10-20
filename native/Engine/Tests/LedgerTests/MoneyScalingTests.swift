@@ -97,16 +97,18 @@ final class MoneyLiteralLintTests: XCTestCase {
         "WorldWeek.swift": ["10000": "rounding of a rate to basis points"], "Demo.swift#seed": ["2026": "demo seed"],
         // Models ported from the original after the first scaling pass. Counts, physical quantities, ids and hashes are not money; the
         // amounts below are the original's reference-level design numbers (the differential tests against the original pass with
-        // them) and are listed in docs/KNOWN_GAPS.md as still to be scaled per country: bank/insurer capital, insurer premium and
-        // policy bases, developer land price, default rental unit price, rental loss bookings.
+        // them) and are scaled per country now (bank/insurer capital, insurer premium base, developer land price, default rental unit price, rental loss
+        // bookings, caretaker wage).
         "SalmonModel.swift": ["1000": "kilograms per tonne / price per tonne in the market's own unit", "3500": "tonnes of a farm (quantity)"],
         "EnergyModel.swift": ["1000": "barrels per thousand barrels; per-barrel prices follow the global oil price", "10000": "stake size in thousand barrels (quantity)", "5000": "stake size (quantity)", "2000": "stake size (quantity)"],
-        "FootballModel.swift": ["4294967296": "hash arithmetic", "2654435761": "hash arithmetic", "100000": "rounding step", "2000": "club value threshold in USD millions (converted by rate)", "1000": "hash buckets; caretaker wage (reference level, TODO scale)"],
-        "RentalModel.swift": ["2654435761": "hash arithmetic", "1_000_000": "default unit price at the reference level (TODO scale)", "4000": "unit counts per commercial building / loss booking (TODO scale)", "9000": "loss booking (TODO scale)"],
-        "FinanceModel.swift": ["30000": "policies (count)", "5200": "premium at the reference level (TODO scale)", "1000": "policies per noise step (count)", "400_000_000": "bank capital at the reference level (TODO scale)", "50000": "premium fallback (TODO scale)"],
-        "RentalFinanceSetup.swift": ["180_000_000": "bank capital at the reference level (TODO scale)", "45_000_000": "insurer capital at the reference level (TODO scale)"],
+        "FootballModel.swift": ["4294967296": "hash arithmetic", "2654435761": "hash arithmetic", "100000": "rounding step", "2000": "club value threshold in USD millions (converted by rate)", "1000": "hash buckets (the caretaker wage is scaled by the wage level)"],
+        "RentalModel.swift": ["2654435761": "hash arithmetic", "4000": "square metres per commercial building (quantity)"],
+        "FinanceModel.swift": ["30000": "policies (count)", "1000": "policies per noise step (count)"],
         "ProjectModel.swift": ["1500": "hour value at the reference level, multiplied by the wage level in use (differential-tested)", "1650": "hour value (same)", "1700": "hour value (same)", "2000": "job size class / hour value (hours, same)", "5000": "job size class (hours)", "1000": "job size class (hours) / default hour value"],
-        "ProjectDeveloper.swift": ["4_800_000": "reference land price (differential-tested)"],
+        // Goals: reference-level rewards and milestone targets, scaled by the helper (cash, K, m) with the player's currency.
+        "PlayerGoals.swift": ["25000": "reward, scaled by cash()", "6000": "reward, scaled by cash()", "3000": "reward, scaled by cash()", "2500": "reward, scaled by cash()",
+                              "15000": "reward, scaled by cash()", "1500": "people (count)", "300000": "milestone target, scaled by K()/m()", "700000": "milestone target, scaled by K()/m()"],
+        "MiscActions.swift": ["86400": "seconds in a day"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
     /// Files with technical number tables only (calendar arithmetic, hashing, encoding)
