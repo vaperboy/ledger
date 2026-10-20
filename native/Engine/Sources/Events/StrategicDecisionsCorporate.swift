@@ -317,7 +317,7 @@ extension StrategicDecisions {
                             Opt(label: "Walk away", detail: "") { _, _ in }]))
 
         // Japan: a rival with no successor.
-        L.append(Def(id: "c_JP_succ", cls: "cty", cc: "JP", w: 2, tone: "good",
+        L.append(Def(id: "c_JP_succ", cls: "cty", cc: CountryEvents.country(ofDecision: "JP_succ"), w: 2, tone: "good",
                      cond: { s, co, data in isLocalTrade(co, data) && rivals(s, co).contains { independent($0) && !$0["listed"].bool } },
                      make: { s, i, _, _ in
                          guard let r = rivals(s, s.companies[i]).first(where: { independent($0) && !$0["listed"].bool }) else { return nil }
@@ -329,7 +329,7 @@ extension StrategicDecisions {
                          editRival(&s, key, x.d["r"].int) { $0["listed"] = true; $0["dist27"] = .number(wk); $0["succ27"] = 1 } }))
 
         // USA: venture capital wants in.
-        L.append(Def(id: "c_US_vc", cls: "cty", cc: "US", w: 2, def: 2,
+        L.append(Def(id: "c_US_vc", cls: "cty", cc: CountryEvents.country(ofDecision: "US_vc"), w: 2, def: 2,
                      cond: { s, co, data in
                          let k = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
                          let c = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode)

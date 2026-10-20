@@ -9,32 +9,13 @@ import Finance
 public enum Press {
     public static let interviewAction = "pr28int"
 
-    static let papers: [String: String] = ["NO": "Kvartalsposten", "SE": "Kvartalet", "DK": "Kvartalet", "PL": "Bilans Tygodnia", "LT": "Savaites Balansas", "DE": "Wirtschaftsbote",
-        "UK": "The Counting House", "FR": "Le Bilan du Lundi", "ES": "El Balance", "NL": "De Weekbalans", "US": "The Weekly Ticker", "CA": "The Northern Ledger",
-        "AU": "The Weekly Bottom Line", "JP": "The Tokyo Ledger", "KR": "The Seoul Ledger", "BR": "O Balanco Semanal", "CH": "Die Wochenbilanz", "MX": "El Balance Semanal",
-        "AE": "The Gulf Ledger", "IT": "Il Bilancio", "FI": "Viikon Tase", "IE": "The Monday Ledger", "SG": "The Straits Ledger"]
 
     /// The paper is named after your city. Original: `R31.paperName` (falls back to the business weekly of the country).
     public static func paperName(_ s: GameState, data: GameData) -> String {
         let cc = s.homeCountryCode
-        guard let c = data.countries[cc], let city = c.city(s.player.cityID) ?? c.cities.first else { return papers[cc] ?? "The Weekly Ledger" }
+        guard let c = data.countries[cc], let city = c.city(s.player.cityID) ?? c.cities.first else { return CountryTraits.text(cc, "paper") ?? "The Weekly Ledger" }
         let n = city.name
-        switch cc {
-        case "NO": return n + "posten"
-        case "SE": return n + (n.hasSuffix("s") ? "" : "s") + "-Kuriren"
-        case "DK": return n + "s Dagblad"
-        case "PL": return "Kurier " + n
-        case "DE": return n + "er Tageblatt"
-        case "FR": return "Le Courrier de " + n
-        case "ES": return "El Diario de " + n
-        case "NL": return "Dagblad van " + n
-        case "BR": return "Diario de " + n
-        case "KR": return n + " Ilbo"
-        case "JP": return "The " + n + " Shimbun"
-        case "UK": return "The " + n + " Courier"
-        case "AU": return "The " + n + " Chronicle"
-        default: return "The " + n + " Ledger"
-        }
+        return CountryTraits.cityPaperName(cc, city: n) ?? "The " + n + " Ledger"
     }
 
     // MARK: State

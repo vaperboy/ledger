@@ -22,8 +22,6 @@ public enum RivalGroups {
                               weights: [("campaign", 2), ("raise", 2), ("buyrival", 1)])),
     ]
     static func strategy(_ id: String) -> Strategy { strategies.first { $0.0 == id }?.1 ?? strategies[0].1 }
-    static let groupWord: [String: String] = ["NO": "Gruppen", "SE": "Gruppen", "DE": "Gruppe", "FR": "Groupe", "ES": "Grupo", "BR": "Grupo", "PL": "Grupa", "NL": "Groep",
-                                              "CH": "Gruppe", "MX": "Grupo", "IT": "Gruppo", "DK": "Gruppen", "FI": "Konserni"]
     static let localFamilies: Set<String> = ["svc", "venue", "retail", "project", "prod", "logi"]
 
     public struct Group: Identifiable, Equatable {
@@ -90,8 +88,8 @@ public enum RivalGroups {
             var r = DeterministicRandom(seed: Int(h.next() * 1_000_000_000))
             let brand = brandRoot(c, family: fam, &r)
             let existing = Set((root["g"].object.values).map { $0["name"].string })
-            var name = brand + " " + (groupWord[cc] ?? "Group")
-            if existing.contains(name) { name = brand + " " + c.coreCities[i % c.coreCities.count].name + " " + (groupWord[cc] ?? "Group") }
+            var name = brand + " " + (CountryTraits.text(cc, "groupWord") ?? "Group")
+            if existing.contains(name) { name = brand + " " + c.coreCities[i % c.coreCities.count].name + " " + (CountryTraits.text(cc, "groupWord") ?? "Group") }
             let owner = (c.firstNames.isEmpty ? "Alex" : c.firstNames[Int(h.next() * Double(c.firstNames.count)) % c.firstNames.count]) + " "
                 + (c.lastNames.isEmpty ? "Smith" : c.lastNames[Int(h.next() * Double(c.lastNames.count)) % c.lastNames.count])
             let tradeName = data.catalog[t0]?.name.lowercased() ?? "business"

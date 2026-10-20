@@ -75,7 +75,7 @@ extension ManagerModel {
         case "ceo56": return "CEO"
         case "md": return "Managing director"
         case "region": return "Regional manager"
-        case "mdir": return ["US": "CEO", "CA": "CEO", "KR": "CEO", "JP": "President"][code] ?? "Managing director"
+        case "mdir": return CountryTraits.text(code, "mdirTitle") ?? "Managing director"
         case "ceo": return "CEO"
         case "mgr": return co.flatMap { data.catalog[$0.type] }.map { title($0) } ?? "General manager"
         default: return kind

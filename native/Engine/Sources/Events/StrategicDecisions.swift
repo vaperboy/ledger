@@ -487,44 +487,10 @@ public enum StrategicDecisions {
 
     // MARK: Country events
 
-    enum Eff { case dem(Double), cost(Double, Double), cap(Double, Double) }
-    /// [country, headline, text, effects by trade or family or "all", wage factor, loan margin add]
-    struct CountryEvent { let cc: String, head: String, text: String, fx: [String: Eff]; var wage: Double = 0; var rate: Double = 0 }
-    static let countryTable: [CountryEvent] = [
-        .init(cc: "NO", head: "Offshore investment slows", text: "Oil companies cut back. Offshore suppliers lose contracts; the rest of the economy barely notices.", fx: ["energy": .dem(0.85), "logi": .dem(0.95), "project": .dem(0.95)]),
-        .init(cc: "NO", head: "Fish-farming rules tighten", text: "New environmental and licence rules raise costs for fish farms.", fx: ["salmon": .cost(1.08, 52)]),
-        .init(cc: "SE", head: "Housing and building slow down", text: "Fewer new homes are started. Builders and building suppliers must plan for less work.", fx: ["project": .dem(0.85), "hardware": .dem(0.9), "furniture": .dem(0.93)]),
-        .init(cc: "SE", head: "A weak krona helps exporters", text: "Swedish goods are cheaper abroad; imported equipment and parts cost more.", fx: ["prod": .dem(1.06), "retail": .cost(1.04, 26)]),
-        .init(cc: "LT", head: "Baltic freight booms", text: "Cross-border freight is in demand. Transport firms can fill more trucks if they have drivers.", fx: ["trucking": .dem(1.15), "courier": .dem(1.06)]),
-        .init(cc: "LT", head: "Young workers leave for the West", text: "Some trades struggle to fill jobs. Expect higher wage demands.", fx: [:], wage: 1.03),
-        .init(cc: "BR", head: "The real falls sharply", text: "Imported machinery and foreign debt get more expensive; exporters may gain.", fx: ["all": .cost(1.05, 26), "prod": .dem(1.03)]),
-        .init(cc: "BR", head: "Credit gets tighter", text: "Banks charge more and lend less. Heavily indebted firms feel it; cash-rich buyers find bargains.", fx: [:], rate: 0.015),
-        .init(cc: "BR", head: "A crop shock", text: "A poor harvest raises food prices. Farms gain; restaurants and grocers pay more.", fx: ["farm": .dem(1.1), "restaurant": .cost(1.05, 26), "grocery": .cost(1.04, 26), "bakery": .cost(1.05, 26)]),
-        .init(cc: "DE", head: "Industrial exports weaken", text: "Foreign customers order less from German factories and their suppliers.", fx: ["factory": .dem(0.88), "trucking": .dem(0.94), "engcons": .dem(0.94)]),
-        .init(cc: "DE", head: "Energy prices squeeze factories", text: "Electricity and gas cost more. Energy-heavy production is hit hardest.", fx: ["prod": .cost(1.06, 26)]),
-        .init(cc: "FR", head: "Strikes disrupt transport", text: "A transport strike delays deliveries and keeps customers at home in some cities.", fx: ["logi": .cap(0.8, 2), "venue": .dem(0.92), "retail": .dem(0.95)]),
-        .init(cc: "FR", head: "Tourists shift destinations", text: "Visitor numbers swing between regions. Hotels and restaurants adjust staff and prices.", fx: ["hotel": .dem(0.92), "restaurant": .dem(0.96), "fun": .dem(0.94)]),
-        .init(cc: "PL", head: "Wages catch up", text: "Employers compete for skilled workers. Labour costs rise.", fx: [:], wage: 1.04),
-        .init(cc: "PL", head: "A currency move raises import costs", text: "Imported equipment costs more; local suppliers gain an edge.", fx: ["all": .cost(1.03, 26)]),
-        .init(cc: "KR", head: "Electronics parts run short", text: "A component shortage delays production and deliveries.", fx: ["prod": .cap(0.85, 6), "retail": .cost(1.04, 13)]),
-        .init(cc: "KR", head: "Export demand swings", text: "Global orders for Korean goods change. Exporters adjust capacity.", fx: ["prod": .dem(0.92)]),
-        .init(cc: "JP", head: "An older customer base", text: "Demand shifts towards services for older people; youth-oriented businesses lose ground.", fx: ["physio": .dem(1.08), "nightclub": .dem(0.92), "gym": .dem(0.97)]),
-        .init(cc: "JP", head: "The yen moves", text: "Imports, foreign debt, tourism and exports all feel the exchange rate.", fx: ["hotel": .dem(1.06), "retail": .cost(1.04, 26)]),
-        .init(cc: "AU", head: "Mining slows", text: "Commodity prices fall. Mining services, transport and regional hotels lose work.", fx: ["energy": .dem(0.9), "trucking": .dem(0.92), "hotel": .dem(0.96)]),
-        .init(cc: "AU", head: "Bushfire season", text: "Heat and fires disrupt operations and raise insurance and safety costs.", fx: ["all": .cost(1.02, 13), "project": .cap(0.85, 3), "farm": .cap(0.8, 3)]),
-        .init(cc: "CA", head: "The housing market corrects", text: "Less building and fewer home sales: developers, builders and furniture shops feel it.", fx: ["project": .dem(0.85), "furniture": .dem(0.9), "estate": .dem(0.85)]),
-        .init(cc: "CA", head: "Border delays with the US", text: "Trade with the US slows at the border. Exporters and their transport partners are hit.", fx: ["prod": .dem(0.94), "trucking": .dem(0.92)]),
-        .init(cc: "NL", head: "Port congestion", text: "Delays at the big ports mean longer deliveries and more stock to hold.", fx: ["retail": .cost(1.03, 13), "logi": .cap(0.9, 4)]),
-        .init(cc: "NL", head: "Warehouse space runs short", text: "Warehouse rents rise as everyone wants space near the ports.", fx: ["logi": .cost(1.04, 52), "webshop": .cost(1.03, 52)]),
-        .init(cc: "ES", head: "A strong tourist season", text: "Visitors flood in. Hotels, restaurants and leisure fill up; prices can rise.", fx: ["hotel": .dem(1.15), "restaurant": .dem(1.08), "fun": .dem(1.1), "cafe": .dem(1.05)]),
-        .init(cc: "ES", head: "Property markets split", text: "Rents and prices rise in some cities and fall in others.", fx: ["estate": .dem(0.95), "realdev": .dem(0.95)]),
-        .init(cc: "UK", head: "The pound swings", text: "Importers, exporters and anyone with foreign debt feel the move.", fx: ["retail": .cost(1.03, 26), "prod": .dem(1.03)]),
-        .init(cc: "US", head: "Insurance costs spike in exposed regions", text: "Premiums jump after a run of disasters.", fx: ["all": .cost(1.015, 52)])
-    ]
 
     static func countryEvents() -> [Def] {
         var L: [Def] = []
-        for (n, e) in countryTable.enumerated() {
+        for (n, e) in CountryEvents.table.enumerated() {
             L.append(Def(id: "c_\(e.cc)\(n)", cls: "cty", cc: e.cc, w: 2, from: "Economy",
                          title: { _, _, _ in e.head }, body: { _, _, _ in e.text },
                          auto: { s, x in
@@ -545,69 +511,69 @@ public enum StrategicDecisions {
                                  }
                              } }))
         }
-        func choice(_ cc: String, _ id: String, w: Double = 2, def: Int, cond: @escaping (GameState, Company, GameData) -> Bool, make: ((inout GameState, Int, GameData, FinanceContext) -> JSONValue?)? = nil, title: @escaping Txt, body: @escaping Txt, opts: [Opt], from: String? = nil) {
-            L.append(Def(id: "c_\(id)", cls: "cty", cc: cc, w: w, from: from, def: def, cond: cond, make: make, title: title, body: body, opts: opts))
+        func choice(_ id: String, w: Double = 2, def: Int, cond: @escaping (GameState, Company, GameData) -> Bool, make: ((inout GameState, Int, GameData, FinanceContext) -> JSONValue?)? = nil, title: @escaping Txt, body: @escaping Txt, opts: [Opt], from: String? = nil) {
+            L.append(Def(id: "c_\(id)", cls: "cty", cc: CountryEvents.country(ofDecision: id), w: w, from: from, def: def, cond: cond, make: make, title: title, body: body, opts: opts))
         }
-        choice("NO", "NO_wage", def: 2, cond: { _, co, _ in co.staff.count >= 4 }, title: { co, _, _ in "A tight labour market squeezes \(co.name)" },
+        choice("NO_wage", def: 2, cond: { _, co, _ in co.staff.count >= 4 }, title: { co, _, _ in "A tight labour market squeezes \(co.name)" },
                body: { _, _, _ in "Norwegian employers compete hard for people. Your staff hear about better offers every week." },
                opts: [Opt(label: "Raise pay 4%", detail: "") { s, x in raiseAll(&s, x.i, 1.04); mood(&s, x.i, 5) },
                       Opt(label: "Invest in productivity", detail: "Better tools so fewer people do more.") { s, x in pay(&s, x, x.payroll(s) * 1.5, nil, "Productivity tools"); cap(&s, x, 1.06, 52) },
                       Opt(label: "Hire less and accept vacancies", detail: "Slower growth.") { s, x in
                           mood(&s, x.i, -6)
                           if s.random.chance(0.3), s.companies[x.i].staff.count > 1, let last = s.companies[x.i].staff.last { removeStaff(&s, x.i, id: last.id) } }])
-        choice("LT", "LT_eu", def: 2, cond: { _, co, _ in co.form == .limited }, title: { co, _, _ in "EU money for modernising \(co.name)" },
+        choice("LT_eu", def: 2, cond: { _, co, _ in co.form == .limited }, title: { co, _, _ in "EU money for modernising \(co.name)" },
                body: { _, _, _ in "An EU programme co-finances new equipment and technology. Applying takes work and there is no guarantee." },
                opts: [Opt(label: "Apply", detail: "Paperwork costs now; about half of applicants get support.") { s, x in pay(&s, x, x.kc(8000), "oth", "EU application"); later(&s, 10, "c_LT_eu_res", x.i, .null) },
                       Opt(label: "Invest without support", detail: "Faster, full price.") { s, x in pay(&s, x, x.yr(s) * 0.03, nil, "Modernisation"); cost(&s, x, 0.96, 104) },
                       Opt(label: "Skip it", detail: "") { _, _ in }])
-        choice("PL", "PL_contract", def: 2, cond: { _, co, data in ["prod", "logi"].contains(data.catalog[co.type]?.family ?? "") }, title: { co, _, _ in "A foreign manufacturer wants \(co.name) as a supplier" },
+        choice("PL_contract", def: 2, cond: { _, co, data in ["prod", "logi"].contains(data.catalog[co.type]?.family ?? "") }, title: { co, _, _ in "A foreign manufacturer wants \(co.name) as a supplier" },
                body: { _, _, _ in "A big contract, but one customer would be a large part of your business." },
                opts: [Opt(label: "Take it all", detail: "") { s, x in dem(&s, x, 1.35, 104); later(&s, 60, "c_dep_risk", x.i, .null) },
                       Opt(label: "Take part, subcontract the rest", detail: "Less risk, less margin.") { s, x in dem(&s, x, 1.15, 104); cost(&s, x, 1.02, 104) },
                       Opt(label: "Decline", detail: "Too much eggs in one basket.") { _, _ in }])
-        choice("KR", "KR_cust", def: 0, cond: { _, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.2 }, title: { co, _, _ in "A large corporate customer squeezes \(co.name)" },
+        choice("KR_cust", def: 0, cond: { _, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.2 }, title: { co, _, _ in "A large corporate customer squeezes \(co.name)" },
                body: { _, _, _ in "They want 8% lower prices and stricter delivery terms, or they will take their business elsewhere." },
                opts: [Opt(label: "Accept for the volume", detail: "") { s, x in cost(&s, x, 1.05, 52) },
                       Opt(label: "Negotiate service levels", detail: "") { s, x in if s.random.chance(0.5) { cost(&s, x, 1.02, 52) } else { dem(&s, x, 0.9, 26) } },
                       Opt(label: "Diversify to smaller customers", detail: "") { s, x in dem(&s, x, 0.88, 26); pay(&s, x, x.wk(s) * 0.4, "mkt", "Finding new customers") }])
-        choice("UK", "UK_rent", def: 2, cond: { _, co, data in data.catalog[co.type]?.premisesKind != nil && !co.value("prem")["owned"].bool }, title: { co, _, _ in "The landlord of \(co.name) wants 20% more rent" },
+        choice("UK_rent", def: 2, cond: { _, co, data in data.catalog[co.type]?.premisesKind != nil && !co.value("prem")["owned"].bool }, title: { co, _, _ in "The landlord of \(co.name) wants 20% more rent" },
                body: { _, _, _ in "The lease is up for renewal." },
                opts: [Opt(label: "Negotiate", detail: "You may get 8%.") { s, x in cost(&s, x, s.random.chance(0.6) ? 1.02 : 1.05, 260) },
                       Opt(label: "Move somewhere cheaper", detail: "A month of disruption, and some regulars lose track of you.") { s, x in cap(&s, x, 0.75, 3); dem(&s, x, 0.95, 26) },
                       Opt(label: "Accept", detail: "The location is worth it.") { s, x in cost(&s, x, 1.05, 260) }])
-        choice("US", "US_fed", def: 2, cond: { _, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.2 && co.staff.count >= 5 }, title: { co, _, _ in "A federal contract that fits \(co.name)" },
+        choice("US_fed", def: 2, cond: { _, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.2 && co.staff.count >= 5 }, title: { co, _, _ in "A federal contract that fits \(co.name)" },
                body: { _, _, _ in "Steady work for years, with heavy compliance requirements." },
                opts: [Opt(label: "Bid", detail: "") { s, x in
                           pay(&s, x, x.kc(20000), "oth", "Federal bid")
                           if s.random.chance(0.3) { dem(&s, x, 1.25, 156); cost(&s, x, 1.03, 156); s.note("\(s.companies[x.i].name) won the federal contract.", tone: "good", companyID: s.companies[x.i].id) } },
                       Opt(label: "Partner with an established contractor", detail: "") { s, x in if s.random.chance(0.5) { dem(&s, x, 1.1, 156) } },
                       Opt(label: "Pass", detail: "") { _, _ in }])
-        choice("ES", "ES_tax", w: 1, def: 2, cond: { _, _, _ in true }, make: { s, _, data, fc in Valuation.netWorth(s, trades: data.catalog).total > fc.homeCurrency(s).scaledPrice(10e6) ? .object([:]) : nil }, title: { _, _, _ in "The tax office asks you to review your tax position" },
+        choice("ES_tax", w: 1, def: 2, cond: { _, _, _ in true }, make: { s, _, data, fc in Valuation.netWorth(s, trades: data.catalog).total > fc.homeCurrency(s).scaledPrice(10e6) ? .object([:]) : nil }, title: { _, _, _ in "The tax office asks you to review your tax position" },
                body: { _, _, _ in "A notice asks you to review your personal and company tax affairs." },
                opts: [Opt(label: "Pay for proper advice", detail: "") { s, x in Payments.playerPays(&s, x.kc(25000), label: "Tax advisor") },
                       Opt(label: "Reorganise where it is legal", detail: "Advice now, and a structure that may save tax later.") { s, x in Payments.playerPays(&s, x.kc(60000), label: "Tax restructuring") },
                       Opt(label: "Carry on as you are", detail: "") { s, x in if s.random.chance(0.2) { Payments.playerPays(&s, x.kc(40000), label: "Back taxes and interest") } }], from: "Tax office")
-        choice("NL", "NL_wh", def: 1, cond: { _, co, _ in co.type == "webshop" || co.type == "grocery" || co.type == "wh3pl" || co.type == "courier" || co.type == "trucking" }, title: { co, _, _ in "Warehouse space for \(co.name) is getting scarce" },
+        choice("NL_wh", def: 1, cond: { _, co, _ in co.type == "webshop" || co.type == "grocery" || co.type == "wh3pl" || co.type == "courier" || co.type == "trucking" }, title: { co, _, _ in "Warehouse space for \(co.name) is getting scarce" },
                body: { _, _, _ in "Rents for storage near the ports are rising fast." },
                opts: [Opt(label: "Sign a long lease now", detail: "Lock in today's price for five years.") { s, x in pay(&s, x, x.wk(s) * 0.3, "rent", "Lease deposit"); cost(&s, x, 0.99, 260) },
                       Opt(label: "Use a logistics provider", detail: "Flexible, a bit dearer.") { s, x in cost(&s, x, 1.02, 104) },
                       Opt(label: "Hold less stock", detail: "Cheaper, but more stock-outs.") { s, x in cap(&s, x, 0.95, 52) }])
-        choice("AU", "AU_freight", def: 2, cond: { _, co, data in data.catalog[co.type].map(hasGoods) ?? false }, title: { co, _, _ in "Long-distance freight costs hit \(co.name)" },
+        choice("AU_freight", def: 2, cond: { _, co, data in data.catalog[co.type].map(hasGoods) ?? false }, title: { co, _, _ in "Long-distance freight costs hit \(co.name)" },
                body: { _, _, _ in "Moving goods across the country costs more this year." },
                opts: [Opt(label: "Consolidate deliveries", detail: "Fewer, bigger loads; sometimes slower.") { s, x in cost(&s, x, 1.01, 26); dem(&s, x, 0.98, 13) },
                       Opt(label: "Buy more locally", detail: "") { s, x in cost(&s, x, 1.015, 26) },
                       Opt(label: "Raise prices", detail: "") { s, x in cost(&s, x, 1.03, 26); dem(&s, x, 0.97, 26) }])
-        choice("SE", "SE_wage", def: 0, cond: { _, co, _ in co.staff.count >= 5 }, title: { _, _, _ in "Industry-wide wage talks in Sweden" },
+        choice("SE_wage", def: 0, cond: { _, co, _ in co.staff.count >= 5 }, title: { _, _, _ in "Industry-wide wage talks in Sweden" },
                body: { _, _, _ in "The unions and employers negotiate a new collective agreement. Labour costs will rise; how much is uncertain." },
                opts: [Opt(label: "Plan for a 4% rise", detail: "") { s, x in raiseAll(&s, x.i, 1.04) },
                       Opt(label: "Plan productivity gains", detail: "Training and tools, then a smaller rise.") { s, x in pay(&s, x, x.payroll(s) * 0.8, "oth", "Training"); raiseAll(&s, x.i, 1.025) },
                       Opt(label: "Hire less this year", detail: "") { s, x in raiseAll(&s, x.i, 1.03) }])
-        choice("CA", "CA_proj", def: 1, cond: { _, co, data in ["project", "logi", "venue"].contains(data.catalog[co.type]?.family ?? "") }, title: { _, _, _ in "A big resource project nearby" },
+        choice("CA_proj", def: 1, cond: { _, co, data in ["project", "logi", "venue"].contains(data.catalog[co.type]?.family ?? "") }, title: { _, _, _ in "A big resource project nearby" },
                body: { _, _, _ in "A mine and pipeline project needs builders, trucks, rooms and meals for two years. It will end, though." },
                opts: [Opt(label: "Go after the work", detail: "More business, travel costs, and it ends.") { s, x in dem(&s, x, 1.25, 104); cost(&s, x, 1.03, 104) },
                       Opt(label: "Take some, keep your regulars first", detail: "") { s, x in dem(&s, x, 1.1, 104) },
                       Opt(label: "Stay out", detail: "") { _, _ in }])
-        choice("DE", "DE_quality", def: 2, cond: { _, co, data in data.catalog[co.type]?.family == "prod" }, title: { co, _, _ in "A key part for \(co.name) fails quality checks" },
+        choice("DE_quality", def: 2, cond: { _, co, data in data.catalog[co.type]?.family == "prod" }, title: { co, _, _ in "A key part for \(co.name) fails quality checks" },
                body: { _, _, _ in "A batch from your main parts supplier does not meet spec." },
                opts: [Opt(label: "Stop production to inspect", detail: "A week lost; no faulty goods ship.") { s, x in cap(&s, x, 0.3, 1) },
                       Opt(label: "Switch supplier", detail: "Dearer, but safe.") { s, x in cost(&s, x, 1.04, 26) },

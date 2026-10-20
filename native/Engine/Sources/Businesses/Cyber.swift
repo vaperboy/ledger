@@ -21,7 +21,6 @@ public enum Cyber {
                                                     "barber": 0.6, "farm": 0.5, "salmon": 0.7, "kiosk": 0.6]
     static let exposureByFamily: [String: Double] = ["fin": 1.6, "energy": 1.3, "svc": 1, "retail": 1, "venue": 0.8, "project": 0.8, "prod": 0.9, "logi": 1.1, "rent": 0.6]
     static let online: Set<String> = ["webshop", "hotel", "airline", "wh3pl", "webdev", "mktg", "courier", "fun", "indoorski", "skires"]
-    static let gdpr: Set<String> = ["NO", "SE", "DE", "UK", "FR", "ES", "NL", "PL", "LT", "CH", "IT", "DK", "FI", "IE"]
 
     public struct Status: Equatable {
         public var level: Int, backups: Bool, trainedUntil: Int?, blocked: Int, log: [(week: Int, text: String)]
@@ -108,7 +107,7 @@ public enum Cyber {
 
     static func leak(_ s: inout GameState, _ i: Int, _ h: inout HashedRandom, cur: Currency, bd: Trade?) {
         let co = s.companies[i]
-        let f = gdpr.contains(co.countryCode) ? 1.0 : 0.5
+        let f = CountryTraits.hasDataProtectionLaw(co.countryCode) ? 1.0 : 0.5
         let fine = (cur.scaledPrice(25000) * sizeFactor(co) * (0.6 + h.next()) * f * exposure(co, bd) / 1000).rounded() * 1000
         log(&s, i, "Customer data leaked")
         s.addMessage(kind: "ask", from: co.managerID.flatMap { s.people[$0]?.name } ?? co.name, title: "Customer data has leaked from \(co.name)",

@@ -16,7 +16,6 @@ public enum FranchiseBrands {
 
     static let globalNames = ["Everest", "Nova", "Atlas", "Orbit", "Zenith", "Vertex", "Aurora", "Meridian", "Pulse", "Horizon", "Quantum", "Apex", "Lumen", "Titan",
                               "Spark", "Cosmos", "Vanguard", "Elevate", "Unity", "Crest", "Fusion", "Stellar", "Axis", "Radiant", "Polaris"]
-    static let globalOrigins = ["US", "US", "US", "UK", "DE", "FR", "SE", "NL", "JP", "ES", "CA", "AU", "KR"]
 
     /// The word a brand name uses for each trade ("Nordic Plumbing"). Original: `FB_NOUNS`.
     static let nouns: [String: String] = ["cons": "Consulting", "tutor": "Tutoring", "carclean": "Car Care", "carrepair": "Auto Service", "photo": "Photo", "handy": "Handyman",
@@ -199,7 +198,7 @@ public enum FranchiseBrands {
         var r = BrandRandom("fb:\(w.state.seed):\(tradeID):GL")
         guard r.chance(0.7) else { return [] }
         let a = r.pick(globalNames)
-        let origin = r.pick(globalOrigins)
+        let origin = r.pick(CountryTraits.globalBrandOrigins)
         return [make(&r, bd: bd, tier: 4, name: a + " " + noun(tradeID, bd), origin: origin, id: "\(tradeID):GL:\(a)", w: w)]
     }
 

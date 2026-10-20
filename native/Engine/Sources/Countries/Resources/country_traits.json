@@ -1,0 +1,27 @@
+{
+"globalBrandOrigins": ["US", "US", "US", "UK", "DE", "FR", "SE", "NL", "JP", "ES", "CA", "AU", "KR"],
+"countries": {
+"NO": {"gdpr": true, "paper": "Kvartalsposten", "cityPaper": "{city}posten", "groupWord": "Gruppen"},
+"SE": {"gdpr": true, "paper": "Kvartalet", "cityPaper": "{city}{s}-Kuriren", "groupWord": "Gruppen"},
+"DE": {"gdpr": true, "paper": "Wirtschaftsbote", "cityPaper": "{city}er Tageblatt", "groupWord": "Gruppe"},
+"UK": {"gdpr": true, "paper": "The Counting House", "cityPaper": "The {city} Courier"},
+"FR": {"gdpr": true, "paper": "Le Bilan du Lundi", "cityPaper": "Le Courrier de {city}", "groupWord": "Groupe"},
+"ES": {"gdpr": true, "stormName": "a severe storm", "paper": "El Balance", "cityPaper": "El Diario de {city}", "groupWord": "Grupo"},
+"NL": {"gdpr": true, "paper": "De Weekbalans", "cityPaper": "Dagblad van {city}", "groupWord": "Groep"},
+"PL": {"gdpr": true, "paper": "Bilans Tygodnia", "cityPaper": "Kurier {city}", "groupWord": "Grupa"},
+"LT": {"gdpr": true, "paper": "Savaites Balansas"},
+"CH": {"gdpr": true, "paper": "Die Wochenbilanz", "groupWord": "Gruppe"},
+"IT": {"gdpr": true, "stormName": "a severe storm", "paper": "Il Bilancio", "groupWord": "Gruppo"},
+"DK": {"gdpr": true, "paper": "Kvartalet", "cityPaper": "{city}s Dagblad", "groupWord": "Gruppen"},
+"FI": {"gdpr": true, "paper": "Viikon Tase", "groupWord": "Konserni"},
+"IE": {"gdpr": true, "paper": "The Monday Ledger"},
+"AU": {"southernHemisphere": true, "stormName": "a severe storm", "paper": "The Weekly Bottom Line", "cityPaper": "The {city} Chronicle"},
+"BR": {"southernHemisphere": true, "stormName": "a severe storm", "paper": "O Balanco Semanal", "cityPaper": "Diario de {city}", "groupWord": "Grupo"},
+"SG": {"stormName": "a monsoon storm", "paper": "The Straits Ledger"},
+"US": {"stormName": "a hurricane", "mdirTitle": "CEO", "paper": "The Weekly Ticker"},
+"MX": {"stormName": "a hurricane", "paper": "El Balance Semanal", "groupWord": "Grupo"},
+"JP": {"stormName": "a typhoon", "mdirTitle": "President", "paper": "The Tokyo Ledger", "cityPaper": "The {city} Shimbun"},
+"KR": {"stormName": "a typhoon", "mdirTitle": "CEO", "paper": "The Seoul Ledger", "cityPaper": "{city} Ilbo"},
+"AE": {"stormName": "a sandstorm", "paper": "The Gulf Ledger"},
+"CA": {"mdirTitle": "CEO", "paper": "The Northern Ledger"}
+}}

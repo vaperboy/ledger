@@ -177,12 +177,12 @@ public enum Luxury {
 
     static func month(_ s: GameState) -> Int {
         let m = GameCalendar.monthIndex(week: s.week) % 12
-        return ["AU", "BR"].contains(s.homeCountryCode) ? (m + 6) % 12 : m
+        return CountryTraits.isSouthernHemisphere(s.homeCountryCode) ? (m + 6) % 12 : m
     }
 
     static func inSeason(_ s: GameState) -> Bool {
         let m = GameCalendar.monthIndex(week: s.week) % 12
-        return ["AU", "BR"].contains(s.homeCountryCode) ? (m >= 10 || m <= 2) : (m >= 4 && m <= 8)
+        return CountryTraits.isSouthernHemisphere(s.homeCountryCode) ? (m >= 10 || m <= 2) : (m >= 4 && m <= 8)
     }
 
     /// What a piece earns this week: chartered jets and yachts, rented homes, and estates by season. Originals: `weekIncome` (both files).

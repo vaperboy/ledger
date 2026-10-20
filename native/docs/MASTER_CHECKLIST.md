@@ -35,6 +35,8 @@ Counts (original has 557 actions): 209 done and used by a screen, 16 engine only
 
 - **De-duplicate systems ported twice by parallel agents** (keep one, delete the other, repoint callers): big meeting and co-owner buy-back (`ManagerStakes.swift` vs `Events/BigMeeting` + `Events/Shareholders`; dividend policy key `dp27` is now only set via `Shareholders.setPolicy`, its quarterly payout must be checked); promotion talk (`ManagerPeople` vs boards agent version); any second review/market/rival code paths.
 
+- DONE: country codes moved out of code into data (lint `CountryNeutralityTests` passes): `Countries/Resources/country_traits.json` (hemisphere, data-protection law, storm names, manager titles, paper names, group words, franchise brand origins; read via `CountryTraits` / `Country.traits`) and `Events/Resources/country_events.json` (country news items and which country each hand-written country decision belongs to; `CountryEvents`). Keep new country-specific content in these files, never in Swift.
+
 - Wiring audit: every engine action is reachable from the game (engine API or Inbox decision); every weekly/monthly model is called from the turn; no orphan code; new weekly random streams do not disturb the main stream.
 - Save format: version migration for all new state (reports, rivals, reviews, chains, luxury, equipment, decisions queue); old saves still load.
 - Scale the remaining reference-level money amounts per country (bank/insurer capital, premiums, developer land price, default rental price, loss bookings) — allow-listed in `MoneyScalingTests`.

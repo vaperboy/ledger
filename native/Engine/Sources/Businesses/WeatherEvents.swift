@@ -9,8 +9,7 @@ import Finance
 /// (features/world/weather_and_tourism.js).
 public enum WeatherEvents {
     public static let prepareAction = "wx56prep"
-    static let stormNames: [String: String] = ["SG": "a monsoon storm", "IT": "a severe storm", "US": "a hurricane", "MX": "a hurricane", "JP": "a typhoon", "KR": "a typhoon", "AE": "a sandstorm", "AU": "a severe storm", "BR": "a severe storm", "ES": "a severe storm"]
-    public static func stormName(_ cc: String) -> String { stormNames[cc] ?? "a storm" }
+    public static func stormName(_ cc: String) -> String { CountryTraits.text(cc, "stormName") ?? "a storm" }
     static func cap(_ t: String) -> String { t.prefix(1).uppercased() + t.dropFirst() }
     public static let kindWords = ["sun": "Sunny", "mixed": "Mixed", "rain": "Rainy", "snow": "Snow", "heat": "Heatwave", "cold": "Cold snap", "storm": "Storm"]
 
