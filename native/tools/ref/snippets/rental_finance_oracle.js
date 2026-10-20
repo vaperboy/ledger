@@ -55,6 +55,7 @@
   for (const key of ['resrent', 'comrent', 'parking']) {
     fresh();
     const co = getCo(ids[key]);
+    moveCash(co, 500000000);
     const o = {};
     o.listings = propListings(co);
     o.listings2 = (S.week += 4, propListings(co));

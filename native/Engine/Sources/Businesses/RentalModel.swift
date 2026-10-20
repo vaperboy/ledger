@@ -125,7 +125,7 @@ public enum RentalModel {
     public static func buy(_ s: inout GameState, companyID: Int, listing L: PropertyListing, loanToValue ltv: Double, reserve: Double = 0, data: GameData) -> BuyResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.family == "rent" else { return .unknown }
         let price = L.price, fee = price * 0.025
-        let loan = roundTo(price * ltv, step: 1000)
+        let loan = homeCurrency(World(state: s, data: data)).roundedStep(price * ltv, about: 1000)
         let down = price - loan + fee
         if s.companies[i].cash < down + reserve { return .notEnoughCash }
         var loanID = 0
