@@ -22,6 +22,18 @@ public extension GameEngine {
         return r
     }
 
+    /// Price of one more MW of turbines today, and ordering them (they produce when built). Original: buying 'turb' + `FAM.energy.afterBuy`.
+    func turbinePrice(companyID: Int) -> Double {
+        guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == "turb" }) else { return 0 }
+        return CompanySetup.equipmentPrice(e, company: co, World(state: state, data: data))
+    }
+    @discardableResult
+    mutating func orderTurbines(companyID: Int, megawatts: Double) -> Bool {
+        var ok = false
+        update { s, d, _ in ok = CompanySetup.buyEquipment(&s, companyID: companyID, equipmentID: "turb", quantity: megawatts, data: d) }
+        return ok
+    }
+
     func oilStakePrice(thousandBarrels: Double) -> Double { EnergyModel.stakePrice(kbbl: thousandBarrels, economyOil: state.economy.oil) }
     func explorationCost() -> Double { EnergyModel.explorationCost(inflation: state.economy.inflation, week: state.week) }
     func oilPricePerBarrel(companyID: Int) -> Double {

@@ -44,6 +44,22 @@ final class SpecialTradesTests: XCTestCase {
         }
     }
 
+    func testOilDiscoveryIsADecisionAndCanBeSold() throws {
+        var e = try Self.engine()
+        e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000_000, why: "More test funds") }
+        let id = Self.start(&e, "oilgas", extra: 100_000_000_000)
+        e.setKnob(companyID: id, knob: "risk", option: 2)
+        var hit = false
+        for _ in 0..<40 where !hit { hit = e.exploreForOil(companyID: id) == .hit }
+        XCTAssertTrue(hit, "a frontier strategy should find something in 60 wells")
+        let m = try XCTUnwrap(e.openDecisions.first { $0.actionID == "oil24" })
+        let before = try XCTUnwrap(e.state.company(id)).cash
+        XCTAssertTrue(e.answer(messageID: m.id, option: 2))
+        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, before)
+        XCTAssertTrue(e.oilFields(companyID: id).filter { $0.state == "dev" }.count < 60)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
     func testHoldingOwnsCompaniesAndShowsInNetWorth() throws {
         var e = try Self.engine("UK")
         let cafe = Self.start(&e, "cafe")
@@ -81,6 +97,11 @@ final class SpecialTradesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         let sum = try XCTUnwrap(e.clubSummary(companyID: bought))
         XCTAssertGreaterThan(sum.table.count, 10)
+        // Legacy value rule: football value plus cash, minus what it owes, plus 80% of what was paid for players.
+        let co = try XCTUnwrap(e.state.company(bought))
+        let owed = e.state.loans.filter { $0.companyID == bought }.reduce(0) { $0 + $1.balance }
+        let expected = (co.value("fm")["val"].double + co.cash).rounded() - owed + co.value("fm")["book"].double * 0.8
+        XCTAssertEqual(Valuation.companyValue(co, state: e.state, trades: e.data.catalog), expected.rounded(), accuracy: 1)
         XCTAssertGreaterThanOrEqual(e.state.company(bought)?.value("fm")["hist"].array.count ?? 0, 1, "a season should have finished")
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import GameCore
+import Businesses
 import Simulation
 
 enum CompanyRoute: Hashable { case company(Int), newCompany }
@@ -27,6 +28,25 @@ struct CompaniesView: View {
                                 if !cos.isEmpty {
                                     Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
                                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                            }
+                            if !e.holdingCompanies.isEmpty {
+                                LedgerSection("Holding companies") {
+                                    VStack(spacing: 0) {
+                                        ForEach(Array(e.holdingCompanies.enumerated()), id: \.element.id) { n, h in
+                                            if n > 0 { Hairline() }
+                                            NavigationLink(value: CompanyRoute.company(h.id)) {
+                                                HStack {
+                                                    VStack(alignment: .leading, spacing: 2) {
+                                                        Text(h.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                                        Text("\(e.state.companies.filter { $0.holdingID == h.id && $0.status.isLive }.count) companies under it").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                                    }
+                                                    Spacer()
+                                                    Text(store.short(Valuation.companyValue(h, state: e.state, trades: e.data.catalog), in: h)).font(.system(size: 13.5).monospacedDigit())
+                                                }.padding(.vertical, 9).contentShape(Rectangle())
+                                            }.buttonStyle(.plain)
+                                        }
+                                    }
                                 }
                             }
                             if cos.isEmpty {

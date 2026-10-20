@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 17 Ported, 16 Not ported, 13 Verified, 2 Statistical
-- Trades: 50 Statistical, 17 Not ported
-- Screens: 79 Not ported, 26 Engine + screen
-- Company tabs: 33 Not ported, 10 Engine + screen
-- Actions: 511 Not ported, 37 Engine + screen, 9 Engine only
+- Systems: 21 Ported, 13 Verified, 13 Not ported, 2 Statistical
+- Trades: 50 Statistical, 12 Not ported, 5 Ported
+- Screens: 76 Not ported, 29 Engine + screen
+- Company tabs: 28 Not ported, 15 Engine + screen
+- Actions: 492 Not ported, 56 Engine + screen, 9 Engine only
 
 ## Systems
 
@@ -59,9 +59,10 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Project businesses (6 trades) | - | Not ported | own model in the original |
 | Rental businesses (3 trades) | - | Not ported | own model in the original |
 | Finance businesses (3 trades) | - | Not ported |  |
-| Energy: oil and gas (2 trades) | - | Not ported |  |
-| Holding companies | - | Not ported |  |
-| Football clubs | - | Not ported |  |
+| Energy: renewable power producer (turbine build time, source, hedging) and oil and gas (fields, stakes, exploration, development loans, discoveries) | Businesses/EnergyModel | Ported | SpecialTradesDifferentialTests: weekly arithmetic equals the original with fixed random draws; SpecialTradesTests: books balance, balance probe |
+| Salmon farm (cohorts, growth, disease, harvest at the market price) | Businesses/SalmonModel | Ported | SpecialTradesDifferentialTests: 90 weeks of cohorts equal the original; random disease and events smoke-tested |
+| Holding companies (stakes, index fund, dividends up and down, net worth, tax group, failure) | Businesses/HoldingModel | Ported | SpecialTradesTests; listing on the exchange and raising money by selling shares not ported |
+| Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding) | Businesses/FootballModel | Ported | SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort |
 | Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood | Businesses/StaffTalks | Ported | StaffTalksTests |
 | Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
@@ -126,7 +127,7 @@ Norway, Sweden, Poland, Lithuania, Germany, United Kingdom, France, Spain, Nethe
 | bakery | Bakery and pastry | prod | Statistical |
 | brewery | Craft brewery | prod | Statistical |
 | furniture | Furniture workshop | prod | Statistical |
-| salmon | Salmon farm | prod | Not ported |
+| salmon | Salmon farm | prod | Ported |
 | factory | Manufacturing factory | prod | Statistical |
 | farm | Farm and forestry | prod | Statistical |
 | taxi | Taxi service | logi | Statistical |
@@ -141,16 +142,16 @@ Norway, Sweden, Poland, Lithuania, Germany, United Kingdom, France, Spain, Nethe
 | insco | Insurance company | fin | Not ported |
 | bank | Bank | fin | Not ported |
 | fund | Investment fund | fin | Not ported |
-| power | Renewable power producer | energy | Not ported |
-| oilgas | Oil and gas company | energy | Not ported |
+| power | Renewable power producer | energy | Ported |
+| oilgas | Oil and gas company | energy | Ported |
 | dental | Dental clinic | svc | Statistical |
 | gamestudio | Game studio | svc | Statistical |
 | security | Private security | svc | Statistical |
 | vineyard | Vineyard and winery | prod | Statistical |
 | pcbang | PC gaming café | venue | Statistical |
 | carrental | Car rental | logi | Statistical |
-| hold | Holding company | hold | Not ported |
-| club | Football club | club | Not ported |
+| hold | Holding company | hold | Ported |
+| club | Football club | club | Ported |
 
 ## Events
 
@@ -176,7 +177,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | brandneg |  | Not ported |
 | chain12 |  | Not ported |
 | chain27 |  | Not ported |
-| clubs |  | Not ported |
+| clubs | Phone > New company > Football club | Engine + screen |
 | co | Companies > company | Engine + screen |
 | cos | Companies | Engine + screen |
 | crisis |  | Not ported |
@@ -192,7 +193,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | grp27 |  | Not ported |
 | heads |  | Not ported |
 | hire | Company > Team | Engine + screen |
-| holdings |  | Not ported |
+| holdings | Companies > Holding companies | Engine + screen |
 | home | Home | Engine + screen |
 | hq |  | Not ported |
 | hqhire |  | Not ported |
@@ -217,7 +218,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | net31 |  | Not ported |
 | newbiz | Phone > New company | Engine + screen |
 | newco | Phone > New company | Engine + screen |
-| newhold |  | Not ported |
+| newhold | Phone > New company > Holding company | Engine + screen |
 | news | Phone > News | Engine + screen |
 | office |  | Not ported |
 | org56 |  | Not ported |
@@ -278,18 +279,18 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ana |  | Not ported |
 | chainGrow |  | Not ported |
 | clRows |  | Not ported |
-| clubPeople |  | Not ported |
-| clubSp |  | Not ported |
-| clubTable |  | Not ported |
+| clubPeople | Company > Club > Staff | Engine + screen |
+| clubSp | Company > Club > Sponsors | Engine + screen |
+| clubTable | Company > Club > Table | Engine + screen |
 | complaints |  | Not ported |
 | dealKeys |  | Not ported |
 | dealPart |  | Not ported |
 | demandLevel |  | Not ported |
 | doc | Company > Setup (documents via quick setup) | Engine + screen |
 | eq | Company > Setup (equipment via quick setup) | Engine + screen |
-| famAssets |  | Not ported |
+| famAssets | Company > Plant (turbines, fields, stakes) | Engine + screen |
 | famOps |  | Not ported |
-| famOv |  | Not ported |
+| famOv | Company > Plant / Fish (energy, salmon) | Engine + screen |
 | finPart |  | Not ported |
 | finSummary | Company > Money | Engine + screen |
 | franchisor |  | Not ported |
@@ -424,17 +425,17 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | clgo |  | Not ported |
 | closepop |  | Not ported |
 | clset |  | Not ported |
-| club24buy |  | Not ported |
-| clubbuy |  | Not ported |
-| clubclose |  | Not ported |
-| clubfind |  | Not ported |
-| clubfire |  | Not ported |
-| clubfound |  | Not ported |
-| clubhire |  | Not ported |
-| clubofferx |  | Not ported |
-| clubspon |  | Not ported |
-| clubtix |  | Not ported |
-| clubwage |  | Not ported |
+| club24buy | GameEngine.signPlayer | Engine + screen |
+| clubbuy | GameEngine.offerForClub | Engine + screen |
+| clubclose | GameEngine.buyClub | Engine + screen |
+| clubfind | GameEngine.clubCandidates | Engine + screen |
+| clubfire | GameEngine.dismissCoach | Engine + screen |
+| clubfound | GameEngine.foundClub | Engine + screen |
+| clubhire | GameEngine.hireCoach | Engine + screen |
+| clubofferx | GameEngine.offerForClub | Engine + screen |
+| clubspon | GameEngine.signSponsor | Engine + screen |
+| clubtix | GameEngine.setClubTicketLevel | Engine + screen |
+| clubwage | GameEngine.setClubWageShare | Engine + screen |
 | codeal |  | Not ported |
 | cofilter |  | Not ported |
 | cofin |  | Not ported |
@@ -536,8 +537,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hlist |  | Not ported |
 | hmode |  | Not ported |
 | hmode7 |  | Not ported |
-| holdin |  | Not ported |
-| holdout |  | Not ported |
+| holdin | GameEngine.holdingInvest | Engine + screen |
+| holdout | GameEngine.holdingDivest | Engine + screen |
 | home37 |  | Not ported |
 | hq56t |  | Not ported |
 | hqas |  | Not ported |
@@ -559,7 +560,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hysPick |  | Not ported |
 | hysTog |  | Not ported |
 | inflset |  | Not ported |
-| injhold |  | Not ported |
+| injhold | PlayerActions.putMoneyInto | Engine + screen |
 | invsheet | PlayerActions.buyInvestment | Engine + screen |
 | itab |  | Not ported |
 | leaseprop |  | Not ported |
@@ -626,7 +627,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | net31p |  | Not ported |
 | newgame | GameEngine.newGame | Engine + screen |
 | newgame2 | GameEngine.newGame | Engine + screen |
-| newhold |  | Not ported |
+| newhold | GameEngine.createHolding | Engine + screen |
 | nextday | GameEngine.nextDay | Engine + screen |
 | nhacc |  | Not ported |
 | nhco |  | Not ported |
@@ -643,9 +644,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | offer |  | Not ported |
 | offer7 |  | Not ported |
 | officepop |  | Not ported |
-| oilacq |  | Not ported |
-| oilbuy |  | Not ported |
-| oilexp |  | Not ported |
+| oilacq | GameEngine.buyOilStake | Engine + screen |
+| oilbuy | GameEngine.buyOilStake | Engine + screen |
+| oilexp | GameEngine.exploreForOil | Engine + screen |
 | onbtick |  | Not ported |
 | opendec | GameEngine.answer | Engine + screen |
 | opendep | PlayerActions.openDeposit | Engine + screen |
@@ -851,7 +852,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | tnd56re |  | Not ported |
 | tnd56set |  | Not ported |
 | toggleins |  | Not ported |
-| tohold |  | Not ported |
+| tohold | GameEngine.moveToHolding | Engine + screen |
 | trade |  | Not ported |
 | trgo |  | Not ported |
 | trial |  | Not ported |

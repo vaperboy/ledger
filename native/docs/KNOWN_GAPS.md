@@ -16,9 +16,24 @@ Honest list. Nothing here is hidden behind a "done".
 The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179 extension pipelines. See
 `PARITY_CHECKLIST.md` for every item. In short:
 
-* **Trades:** 50 of 67 can be started. Not started yet: project businesses (6), rental (3), finance (3), energy (2), the holding
-  company, football clubs, and the salmon farm. The menu says "Coming in a later update". A legacy save that contains them
+* **Trades:** 53 of 67 can be started from the trade menu (the salmon farm and the two energy trades are in), and the holding
+  company and football clubs have their own entry points (New company > Holding company / Football club). Not started yet:
+  project businesses (6), rental (3), finance (3). The menu says "Coming in a later update". A legacy save that contains them
   keeps their data untouched, they just do not run.
+* **Energy, salmon, holding, football (new):** ported from engine/company/family_energy.js, family_basic.js (salmon), world/deals.js,
+  world/football.js and the round-24 files. Not faithful or not ported:
+  * the match draw of a league round shuffles the clubs (the original sorts with a random comparison, which cannot be copied);
+  * the bundled UK and US surname lists are one name shorter than the original's, so generated club names after the city names differ there
+    (clubs, values and ranks are identical; checked by `SpecialTradesDifferentialTests`);
+  * holding: listing on the exchange, selling shares to investors, the finance manager of the head office and the management team (CEO) are not ported;
+  * football: the original's "PRO" gating, club investors, and the rival owners buying clubs are not ported; transfers are the three tiers of
+    round 24 (no individual players);
+  * oil and gas: a manager buys stakes by itself only when the company has a manager (as in the original); the player buys stakes and drills from the
+    Plant section; the fictional 78% oil tax is the country data, the exploration refund is the data key `oilRefund` (Norway);
+  * the salmon "Stocking density" choice divides the number of smolt by its capacity effect (as the original does), so low density stocks MORE fish
+    with less disease. That looks like an inverted rule in the original; kept for parity (see Candidate corrections);
+  * the knob effects `k` and `t` of the power plant's source and price choices are not used by the original's weekly model either;
+  * events not ported keep their absence: the 50 strategic decisions (ev27), rival-run energy firms, oil and salmon trade fairs and tenders.
 * **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
   holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
 * **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
@@ -38,6 +53,9 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   stores the final numbers as data (`trades.json`) and uses the formula (`TradeCatalog.calibrate`) only for new trades.
 
 ## Candidate corrections (not changed, to keep parity)
+
+* Salmon: low stocking density gives more fish and less disease (see above); the 15-month wait without income is covered by the start-up estimate, as in the original.
+* The oil-and-gas start-up estimate has no working-capital buffer (the original has none either), so a new company needs cash put in before it can buy a field.
 
 * The gym earns about 28 % more than in the original in the statistical test (see `BALANCE_PARITY.md`).
 * Cash at week 26 is lower than the original in every trade tested; cause not yet found.

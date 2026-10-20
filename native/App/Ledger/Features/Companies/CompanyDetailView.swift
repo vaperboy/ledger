@@ -8,6 +8,8 @@ import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
     case overview = "Overview", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
+    // Shown only for the trades that have them (energy, salmon farm, holding company, football club)
+    case energy = "Plant", salmon = "Fish", holding = "Holding", club = "Club"
 }
 
 /// One company. Overview answers "how is it doing, why, and what to change"; the other sections are where the changes are made.
@@ -35,6 +37,10 @@ struct CompanyDetailView: View {
                     case .operations: CompanyOperations(engine: e, company: co)
                     case .marketing: CompanyMarketing(engine: e, company: co)
                     case .setup: CompanySetupSection(engine: e, company: co)
+                    case .energy: CompanyEnergy(engine: e, company: co)
+                    case .salmon: CompanySalmon(engine: e, company: co)
+                    case .holding: CompanyHolding(engine: e, company: co)
+                    case .club: CompanyClub(engine: e, company: co)
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
@@ -52,7 +58,18 @@ struct CompanyDetailView: View {
     }
 
     private func sections(_ co: Company) -> [CompanySection] {
-        co.status == .setup ? [.setup, .overview, .finances] : CompanySection.allCases.filter { $0 != .setup }
+        if co.status == .setup { return [.setup, .overview, .finances] }
+        var own: [CompanySection] = []
+        switch co.type {
+        case "power", "oilgas": own = [.energy]
+        case "salmon": own = [.salmon]
+        case "hold": own = [.holding]
+        case "club": own = [.club]
+        default: break
+        }
+        // A holding and a football club have no shop floor: no staff list, price, marketing or opening hours.
+        if co.type == "hold" || co.type == "club" { return [.overview] + own + [.finances] }
+        return [.overview] + own + [.staff, .finances, .operations, .marketing]
     }
 }
 
@@ -65,6 +82,8 @@ struct CompanyOverview: View {
     @Binding var section: CompanySection
     @State private var months = 12
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Energy, fish, holding and club have their own section instead of the customers-and-capacity picture.
+    private var isSpecial: Bool { engine.tradeInfo(companyID: company.id).map { SpecialFamilies.handles($0) } ?? false }
 
     var body: some View {
         let co = company
@@ -73,13 +92,13 @@ struct CompanyOverview: View {
             // iPad: what and why on the left, how it runs and the trend on the right, all on one screen
             HStack(alignment: .top, spacing: Theme.Space.l) {
                 VStack(alignment: .leading, spacing: Theme.Space.l) { keyFigures(co, h); diagnosis(co) }
-                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open { operations(co, h) }; performance(co, h) }
+                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open && !isSpecial { operations(co, h) }; performance(co, h) }
             }
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 keyFigures(co, h)
                 diagnosis(co)
-                if co.status == .open { operations(co, h) }
+                if co.status == .open && !isSpecial { operations(co, h) }
                 performance(co, h)
             }
         }
