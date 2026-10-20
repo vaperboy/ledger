@@ -11,7 +11,7 @@ public enum Ventures {
     /// Called once a week from the weekly turn.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         Startups.weekly(&s, data: data, context: fc)
-        PrivateEquity.weekly(&s)
+        PrivateEquity.weekly(&s, context: fc)
         BigMeeting.weekly(&s, data: data, context: fc)
         Shareholders.weekly(&s, data: data, context: fc)
     }

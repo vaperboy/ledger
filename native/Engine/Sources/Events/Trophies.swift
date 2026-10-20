@@ -102,6 +102,11 @@ public enum Trophies {
                     test: { f, v in f.years >= v }, text: { _, v in "\(Int(v)) years since you started your first company." })
         L += ladder("aw", "legacy", [("1", "An award", 1), ("5", "Five awards", 5), ("20", "Twenty awards", 20)],
                     test: { f, v in Double(Awards.wonCount(f.s)) >= v }, text: { _, v in "You have won \(Int(v)) business \(v == 1 ? "award" : "awards")." })
+        one("listed", "Listed on the stock exchange", "trades") { f in f.live.contains { Funding.isListed($0) } ? "Anyone can now buy shares in your group." : nil }
+        one("su1", "Founder", "legacy") { f in (f.s.rest["founded"]?.array.count ?? 0) >= 1 ? "You founded a startup." : nil }
+        one("sux", "An exit", "legacy") { f in Funding.record(f.s).exits >= 1 ? "You sold a startup you founded." : nil }
+        one("pe1", "Private equity", "legacy") { f in (f.s.rest["pe56"]?["mine"].array.count ?? 0) >= 1 ? "You committed money to a private equity fund." : nil }
+        one("pe2", "Twice your money", "legacy") { f in (f.s.rest["pe56"]?["mine"].array ?? []).contains { $0["paid"].double > 0 && $0["dist"].double >= $0["paid"].double * 2 } ? "A fund paid you back twice what you put in." : nil }
         one("boty", "Business of the year", "legacy") { f in Awards.wonCount(f.s, kind: "boty") >= 1 ? "One of your companies was named business of the year." : nil }
         return L
     }()

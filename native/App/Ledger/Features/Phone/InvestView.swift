@@ -48,6 +48,7 @@ struct InvestContent: View {
                             }
                         }
                     }
+                    VenturesContent()
                 }
                 .sheet(item: $selected) { q in TradeSheet(quote: q).presentationDetents([.medium, .large]) }
         }

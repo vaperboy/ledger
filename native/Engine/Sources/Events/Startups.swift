@@ -300,6 +300,7 @@ public enum Startups {
 
     /// Cash burns, milestones come (valuation up or down), products progress, customers and revenue arrive. Original: `foundedWeek` + startup_sectors `weekly`.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
+        _ = pitches(&s, data: data)
         guard var list = s.rest["founded"]?.array, !list.isEmpty else { weeklyStakes(&s); return }
         for k in list.indices where list[k]["st"].string == "live" {
             var f = list[k]
@@ -444,6 +445,13 @@ public enum Startups {
             s.rest["deals_suW"] = .number(Double(s.week))
         }
         return (s.rest["deals_su"]?.array ?? []).map {
+            Pitch(id: $0["id"].int, name: $0["name"].string, sector: $0["sec"].string, blurb: $0["blurb"].string, raise: $0["raise"].double, preMoney: $0["pre"].double, postMoney: $0["post"].double,
+                  team: $0["sig"]["team"].int, market: $0["sig"]["market"].int, traction: $0["sig"]["traction"].int)
+        }
+    }
+    /// The pitches already drawn (read only; `weekly` keeps them fresh).
+    public static func pitchesOnOffer(_ s: GameState) -> [Pitch] {
+        (s.rest["deals_su"]?.array ?? []).map {
             Pitch(id: $0["id"].int, name: $0["name"].string, sector: $0["sec"].string, blurb: $0["blurb"].string, raise: $0["raise"].double, preMoney: $0["pre"].double, postMoney: $0["post"].double,
                   team: $0["sig"]["team"].int, market: $0["sig"]["market"].int, traction: $0["sig"]["traction"].int)
         }

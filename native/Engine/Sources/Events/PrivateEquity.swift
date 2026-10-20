@@ -75,6 +75,10 @@ public enum PrivateEquity {
         refresh(&s, context: fc)
         return (s.rest["pe56"]?["offers"].array ?? []).map { Offer(id: $0["id"].string, style: $0["k"].string, name: $0["n"].string, seenQuality: $0["seen"].double, minimum: $0["min"].double) }
     }
+    /// This year's funds already drawn (read only; `weekly` keeps them current).
+    public static func offersOnTable(_ s: GameState) -> [Offer] {
+        (s.rest["pe56"]?["offers"].array ?? []).map { Offer(id: $0["id"].string, style: $0["k"].string, name: $0["n"].string, seenQuality: $0["seen"].double, minimum: $0["min"].double) }
+    }
     public static func funds(_ s: GameState) -> [Fund] {
         (s.rest["pe56"]?["mine"].array ?? []).map {
             Fund(id: $0["id"].int, style: $0["k"].string, name: $0["n"].string, startWeek: $0["w0"].int, committed: $0["com"].double, called: $0["called"].double, nav: $0["nav"].double,
@@ -134,7 +138,8 @@ public enum PrivateEquity {
     // MARK: The week
 
     /// Value moves every week; every quarter: fees, capital calls, money back, and winding up after ten years. Original: 'private equity funds' step.
-    public static func weekly(_ s: inout GameState) {
+    public static func weekly(_ s: inout GameState, context fc: FinanceContext) {
+        refresh(&s, context: fc)
         guard var pe = s.rest["pe56"], var mine = Optional(pe["mine"].array), !mine.isEmpty else { return }
         for k in mine.indices where mine[k]["st"].string == "live" {
             var f = mine[k]

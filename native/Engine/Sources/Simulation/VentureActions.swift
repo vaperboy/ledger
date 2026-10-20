@@ -133,6 +133,10 @@ public extension GameEngine {
     @discardableResult
     mutating func sellStartupStake(stakeID: Int, fraction: Double) -> Double { var v = 0.0; update { s, _, _ in v = Startups.sellStake(&s, stakeID: stakeID, fraction: fraction) }; return v }
 
+    /// Read-only lists for screens.
+    var startupPitchesOnOffer: [Startups.Pitch] { Startups.pitchesOnOffer(state) }
+    var privateEquityOffersOnTable: [PrivateEquity.Offer] { PrivateEquity.offersOnTable(state) }
+
     // MARK: Private equity
 
     /// This year's funds (a new set each calendar year).
