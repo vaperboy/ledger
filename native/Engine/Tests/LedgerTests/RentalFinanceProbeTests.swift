@@ -62,13 +62,71 @@ final class RentalFinanceProbeTests: XCTestCase {
         let only = ProcessInfo.processInfo.environment["LEDGER_TRADES"]?.split(separator: ",").map(String.init)
         for t in ["resrent", "comrent", "parking", "insco", "bank", "fund"] where only == nil || only!.contains(t) {
             for seed in [11, 12, 13] {
-                let r = try Self.play(t, seed: seed)
+                let mkt = ProcessInfo.processInfo.environment["LEDGER_MKT"] != nil
+                let r = try Self.play(t, seed: seed, tweak: mkt ? { e, id in
+                    for (k, n) in [("google", 2), ("meta", 2), ("seo", 2), ("tv", 1), ("radio", 1)] {
+                        if let ch = e.marketing.channels[k], ch.budgetOptions.count > n { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[n]) }
+                    }
+                } : nil)
                 print("RF \(t) seed \(seed) invested \(Int(r.invested / 1000))k status \(r.status) opened w\(r.openedWeek) staff \(r.staff) gaps \(r.gaps) props \(Int(r.propertyValue / 1000))k loan \(Int(r.loanBalance / 1000))k")
                 for (n, y) in r.years.enumerated() {
                     print("RF    y\(n + 1) rev \(Int(y.revenue / 1000))k profit \(Int(y.profit / 1000))k cash \(Int(y.cash / 1000))k value \(Int(y.value / 1000))k")
                 }
                 if let b = r.book { print("RF    book \(b)") }
             }
+        }
+    }
+
+    /// A finance company that has already grown: what a year of it earns. The ramp-up takes years (awareness, trust, staff), so the
+    /// steady state is set up directly and played for one year.
+    static func mature(_ trade: String, seed: Int, setup: (inout Company) -> Void) throws -> (revenue: Double, expenses: Double, profit: Double, equity0: Double, equity1: Double, company: Company) {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
+        var id = 0
+        e.update { s, data, ctx in
+            Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            id = i
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
+            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+        }
+        for _ in 0..<(60 * 7) { e.nextDay() }   // open, staff settled
+        e.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var co = s.companies[i]
+            setup(&co)
+            s.companies[i] = co
+        }
+        let eq0: Double = { let co = e.state.company(id)!; return CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans) }()
+        for _ in 0..<(26 * 7) { e.nextDay() }   // settle
+        let eqMid: Double = { let co = e.state.company(id)!; return CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans) }()
+        for _ in 0..<(52 * 7) { e.nextDay() }
+        let co = e.state.company(id)!
+        let h = Array(co.monthlyHistory.suffix(12))
+        let rev = h.reduce(0) { $0 + $1.revenue }, profit = h.reduce(0) { $0 + $1.profit }
+        let eq1 = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans)
+        return (rev, rev - profit, profit, eqMid, eq1, co)
+    }
+
+    func testPrintMature() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_RF"] != nil else { return }
+        for seed in [11, 12, 13] {
+            let ins = try Self.mature("insco", seed: seed) { co in
+                co.awareness = 80; co.reputation = 70
+                var fm = co.value("fm"); fm["pol"] = 22000; co.set("fm", fm); co.cash += 150_000_000
+            }
+            print("RF mature insco seed \(seed): revenue \(Int(ins.revenue / 1e6))M expenses \(Int(ins.expenses / 1e6))M combined \(String(format: "%.0f", ins.expenses / ins.revenue * 100))% profit \(Int(ins.profit / 1e6))M policies \(Int(ins.company.value("fm")["pol"].double)) sol \(String(format: "%.2f", ins.company.value("fm")["sol"].double))")
+            let bank = try Self.mature("bank", seed: seed) { co in
+                co.awareness = 80; co.reputation = 70
+                var fm = co.value("fm"); fm["dep"] = 1_450_000_000; fm["depPrev"] = 1_450_000_000; fm["book"] = 1_500_000_000; co.set("fm", fm)
+                co.cash += 0
+            }
+            print("RF mature bank seed \(seed): revenue \(Int(bank.revenue / 1e6))M profit \(Int(bank.profit / 1e6))M equity \(Int(bank.equity0 / 1e6))M -> \(Int(bank.equity1 / 1e6))M ROE \(String(format: "%.1f", bank.profit / max(1, bank.equity0) * 100))% cr \(String(format: "%.2f", bank.company.value("fm")["cr"].double)) book \(Int(bank.company.value("fm")["book"].double / 1e6))M")
+            let fund = try Self.mature("fund", seed: seed) { co in
+                co.awareness = 80; co.reputation = 70
+                var fm = co.value("fm"); fm["aum"] = 500_000_000; co.set("fm", fm)
+            }
+            print("RF mature fund seed \(seed): revenue \(Int(fund.revenue / 1e6))M profit \(Int(fund.profit / 1e6))M aum \(Int(fund.company.value("fm")["aum"].double / 1e6))M fee/aum \(String(format: "%.2f", fund.revenue / max(1, fund.company.value("fm")["aum"].double) * 100))%")
         }
     }
 }

@@ -20,6 +20,8 @@ public struct Insight: Identifiable, Equatable, Sendable {
         case "wages", "paper": return "staff"
         case "rent", "cash", "overdrawn", "bigpay", "cashprofit", "margin": return "finances"
         case "setup": return "setup"
+        case "prop", "vacancy", "cover", "worn", "carry": return "properties"
+        case "regulator", "solvency", "claims", "products", "capital", "cbfacility", "hwm": return "financebook"
         default: return nil
         }
     }
@@ -151,6 +153,7 @@ public extension GameEngine {
            big.amount > max(0, co.cash) * 0.6, big.amount > weeklyCost(co) {
             out.append(Insight(id: "bigpay", symbol: "calendar.badge.exclamationmark", text: "\(big.title) of \(cur.short(big.amount)) is due \(big.daysAway <= 0 ? "today" : "in \(big.daysAway) days"); the account holds \(cur.short(max(0, co.cash))).", tone: big.amount > co.cash ? .bad : .warn))
         }
+        out += rentalFinanceInsights(for: co)
         if out.isEmpty, co.status == .open { out.append(Insight(id: "ok", symbol: "checkmark.seal", text: "Nothing unusual. The business is running as expected.", tone: .good)) }
         let order: [Insight.Tone: Int] = [.bad: 0, .warn: 1, .neutral: 2, .good: 3]
         return Array(out.sorted { (order[$0.tone] ?? 9) < (order[$1.tone] ?? 9) }.prefix(limit))
