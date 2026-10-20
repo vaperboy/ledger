@@ -41,7 +41,7 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   * the knob effects `k` and `t` of the power plant's source and price choices are not used by the original's weekly model either;
   * events not ported keep their absence: rival-run energy firms, oil and salmon trade fairs and tenders.
 * **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
-  holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
+  holding companies, startups, private equity (their values still count in net worth when imported). Luxury and estates are in (see Equipment market and luxury).
 * **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
 * **Events:** the 133 events of the event library are in, and 66 of the 79 strategic decisions of round 27e (`ev27`, `Events/StrategicDecisions.swift`) with the country events. Not ported because they need rivals as businesses, listings or private equity:
   `s_acqoffer`, `g_location`, `g_franinq`, `e_merger`, `e_distress`, `t_ipo`, `t_pe`, `t_hostile`, `t_antitrust`, `t_activist`, `t_auction`, `c_JP_succ`, `c_US_vc`. Approximations: `e_execleave` changes the manager's pay and capacity instead of hiring a named replacement;
@@ -58,7 +58,7 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   the manager's own promotions-from-within and the assistant's monthly suggestion and basic insurance; owner-attention drift is read in demand only (not in the manager's quality).
 * **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
-* **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
+* **Equipment:** the market is in (see Equipment market and luxury). Quick setup still buys the standard class at the standard price, as before.
 * **Reports (weekly, monthly, yearly):**
   * A report closes when the seventh day of the last week of the period is over, just before the weekly turn, so the staged week money has all been released. Month and year end follow the engine's own `isMonthEnd` / `isYearEnd`, not the calendar day.
   * Saves from before reports have no earlier snapshot: the first week after loading only starts the books, and the first month or year report is marked "partial". Nothing is invented for earlier time. Save envelope version is now 2 (the migration adds empty report lists).
@@ -69,6 +69,8 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   * The app screens (Reports, Home prompt, Company > Finances) were only syntax-checked (`swiftc -parse`); they have not been compiled or run.
 * **Screens:** see the checklist; no marketing analytics screen, no map, the rich list, achievements and company sale screens were only syntax-checked (`swiftc -parse`).
 * **Premises:** choosing a listing and buying equipment item by item exist in the engine but have no screen; "Fill in what is missing" does it.
+* **Screens:** see the checklist; no marketing analytics screen, no map, no rich list, no achievements.
+* **Premises:** the listing choice (rent, or buy with a mortgage) and item-by-item buying have a screen (Company > Equipment, fleet and premises). Not yet: the home-trade workshop listings (R37), franchise building terms, a landlord company receiving the rent.
 
 ## Rental and finance trades (RentalModel, FinanceModel)
 
@@ -134,7 +136,7 @@ the developer (zoning, building, sales, construction loan repaid from 70% of sal
 
 * The gym and the restaurant are generous or slow compared with real life (see `BALANCE_PARITY.md`, "Which is closer to real life");
   both engines agree, so they were left for a deliberate balance pass.
-* The vendor system (goods quality and cost per supplier), vehicle and equipment brands, and poaching are not ported; they explain
+* The vendor system (goods quality and cost per supplier) and poaching are not ported (equipment and vehicle brands are); they explain
   small differences in quality, staff and courier cash.
 
 * Salmon: low stocking density gives more fish and less disease (see above); the 15-month wait without income is covered by the start-up estimate, as in the original.
@@ -153,3 +155,13 @@ screenshots, run the unit tests in Xcode, archive and upload to TestFlight.
 The old Capacitor app kept its saves in the web view's storage, inside that app. A new app cannot read them. In the old game use
 its save-to-file or copy function, then "Bring a save from the web game" on the new start screen. The original text is kept
 untouched next to the converted save.
+
+## Equipment market and luxury (EquipmentMarket, Luxury)
+
+* **Brands:** `Resources/equipment_brands.json` holds the maker names and rules; the catalogue (3 classes per brand, price factor, rating, output, reliability) follows `eqCat`/`vehCat` with the same seeded draws. Output (`perf`) and reliability (`rel`) of the brands bought feed the existing capacity and breakdown models.
+* **Not ported from the buying file:** supplier relationship discounts (`vdisc`: price is always the list price), the equipment each person needs (`PER` rules: a car per estate agent, a van per three cleaners; the screen shows the trade's standard count instead), own-car mileage for agents, courier/trucking fuel by van size, taxi class demand, the hiring screen's work-car choice, picture drawings.
+* **Quick setup** still buys the standard item at the standard price (the original's `mgrCat` picks the best standard-class brand); it was left alone so the balance does not move.
+* **Leasing** is for vehicles and machines of 100 000 or more (as the original); returning leased equipment is a plain end of the lease.
+* **Luxury:** items, rates, uses, risks and estate yields are data (`Resources/luxury.json`). Pieces live in `rest["lux"]` like the original's `S.lux`, so imported saves keep working. Company cars and jets sit in the company's assets as `luxBV`.
+* **Not ported from lifestyle/estates:** the fame and rest perks of homes and jets, the lower fee for starting abroad with a jet, serious car/watch offers, the yacht dinner, the tax-office check on an oversized company car, the margin call on a loan against the collection (the loan itself is offered against `Luxury.collateral`), the vineyard's effect on demand in your restaurants, the castle's fame, museum lending provenance, Ledger Pro gating of estates, and the photographs. The original has no "family office"; none is invented.
+* **Tests:** `MarketTests` (catalogue is stable, premises, buy new/used/lease/finance/subscribe, sell, luxury buy/charter/sell, company car, books balance). Not run: the full suite, and the app screens (only `swiftc -parse`).
