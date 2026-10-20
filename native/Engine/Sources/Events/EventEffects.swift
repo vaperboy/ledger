@@ -133,6 +133,7 @@ extension EventEngine {
         if fx["memb"].double != 0, !s.companies[i].value("fm")["memb"].isNull {
             var fm = s.companies[i].value("fm"); fm["memb"] = .number(fm["memb"].double * fx["memb"].double); s.companies[i].set("fm", fm)
         }
+        if fx["ill"].double != 0, let bd = data.catalog[s.companies[i].type] { SpecialFamilies.applyEventEffect(&s, companyIndex: i, bd, fx: fx) }
         if fx["sell"].bool {
             s.addMessage(from: s.companies[i].name, title: "You may consider selling \(s.companies[i].name).",
                          body: "Selling is under the company's Ownership and value section.", companyID: id)

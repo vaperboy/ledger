@@ -19,7 +19,7 @@ public enum MonthEnd {
     public static func taxRate(_ co: Company, _ bd: Trade, _ country: Country) -> Double {
         if bd.hasTrait("oil") { return Taxes.specialRate("oil", in: country, fallback: min(0.5, country.corporateTax + 0.2)) }
         if bd.id == "salmon" { return Taxes.specialRate("salmon", in: country, fallback: country.corporateTax) }
-        if bd.hasTrait("power") { return co.value("srcKind").string == "hydro" ? Taxes.specialRate("hydro", in: country, fallback: country.corporateTax) : country.corporateTax }
+        if bd.hasTrait("power") { return EnergyModel.sourceIndex(co) == 1 ? Taxes.specialRate("hydro", in: country, fallback: country.corporateTax) : country.corporateTax }
         return country.corporateTax
     }
 
@@ -29,10 +29,13 @@ public enum MonthEnd {
         let w = World(state: s, data: data)
         let rate = taxRate(co, bd, w.country(co))
         let lc0 = co.lossCarryAtYearStart ?? 0
-        let target = max(0, co.yearProfitSoFar - lc0) * rate
+        // In a tax group (a holding and the companies it owns 90% or more of) profit covers a sister company's loss.
+        let gc = HoldingModel.groupContribution(co, in: s)
+        let target = max(0, co.yearProfitSoFar - lc0 - gc.out) * rate
         let delta = target - co.taxAccrued
         co.taxAccrued = target
-        co.lossCarryForward = max(0, lc0 - co.yearProfitSoFar)
+        co.lossCarryForward = max(0, lc0 - co.yearProfitSoFar - gc.in)
+        co.set("gc", gc.out > 0 || gc.in > 0 ? .object(["out": .number(gc.out), "in": .number(gc.in)]) : .null)
         s.companies[i] = co
         if delta > 0 {
             s.companies[i].addPayable("tax", delta)
@@ -168,6 +171,12 @@ public enum MonthEnd {
 
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
+        // A tax group is settled once every member's month is in. Original: 'a tax group is settled once every member's month is in'.
+        for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].form == .limited && s.companies[i].status != .setup
+            && s.companies[i].lossCarryAtYearStart != nil && HoldingModel.taxGroup(of: s.companies[i], in: s) != nil {
+            if let bd = data.catalog[s.companies[i].type] { accrueTax(&s, companyIndex: i, bd, data: data) }
+        }
+        FootballModel.monthly(&s)
         autoDividends(&s, context: context)
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.advanceTaxMonthly(&s, context: context)
@@ -190,6 +199,7 @@ public enum MonthEnd {
                 co.taxDue = true
                 co.taxPrevYear = co.payables["tax"] ?? 0
                 co.taxDueWeek = s.week + 26
+                co.set("gcLy", co.value("gc")); co.set("gc", .null)
                 co.lossCarryAtYearStart = co.lossCarryForward
                 co.yearProfitSoFar = 0
                 co.taxAccrued = 0

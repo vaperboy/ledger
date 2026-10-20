@@ -33,6 +33,7 @@ public enum EffectPreview {
         if fx["pr"].double != 0 { out.append("Price level \(fx["pr"].double > 0 ? "up" : "down")") }
         if fx["quit"].bool { out.append("An employee may leave") }
         if fx["brk"].bool { out.append("Equipment may break") }
+        if fx["ill"].double != 0 { out.append("Disease risk in the pens rises for a few weeks") }
         if fx["fixeq"].double != 0 { out.append("Repairs your worst equipment") }
         if fx["warn"].bool { out.append("A warning on record: demand −7% for 6 weeks") }
         return out

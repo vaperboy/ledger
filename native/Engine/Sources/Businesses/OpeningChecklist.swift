@@ -41,6 +41,7 @@ public enum OpeningChecklist {
                 out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: CapacityModel.equipmentAvailable(co, e) >= 1, detail: ""))
             }
         }
+        out += SpecialFamilies.checklist(co, bd, w)
         let stock = initialStockCost(co, bd, w)
         if stock > 0 {
             let ok = co.cash >= stock

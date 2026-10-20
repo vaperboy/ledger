@@ -206,6 +206,7 @@ public enum CompanySetup {
         eq[e.id] = rec
         s.companies[i].set("eq", eq)
         EquipmentUnits.recordPurchase(&s, companyIndex: i, e, tradeID: bd.id, quantity: Int(q), unitPrice: unit, data: data)
+        SpecialFamilies.afterBuy(&s, companyIndex: i, bd, equipmentID: e.id, quantity: q)
         return true
     }
 
@@ -325,7 +326,7 @@ public enum CompanySetup {
             let base = data.catalog.tables.roles[st.role]?.baseMonthlyWage ?? 40000
             r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: w.rates) * country.employerCostFactor
         }
-        r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5
+        r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
