@@ -3,6 +3,7 @@
 ## Unreleased — native migration (branch `native-swiftui`)
 
 ### Added
+* Rental and finance trades: residential rentals, commercial property, parking and self-storage (`RentalModel`), insurance company, bank and investment fund (`FinanceModel`), with Properties and Book sections in the company screen; compared with the original on a saved game.
 * `native/Engine`: the game engine in Swift — seeded randomness identical to the original's, calendar, 23 countries as data, taxes,
   currency and exchange rates, 67 trade definitions as data, demand / capacity / price models, daily retail trade, payroll on real
   dates, VAT, month and year end, loans and credit, personal tax and net worth, marketing and awareness, hiring and staff dynamics,

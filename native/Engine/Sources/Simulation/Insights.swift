@@ -21,7 +21,7 @@ public struct Insight: Identifiable, Equatable, Sendable {
         case "rent", "cash", "overdrawn", "bigpay", "cashprofit", "margin": return "finances"
         case "setup": return "setup"
         case "prop", "vacancy", "cover", "worn", "carry": return "properties"
-        case "regulator", "solvency", "claims", "products", "capital", "cbfacility", "hwm": return "financebook"
+        case "regulator", "solvency", "claims", "products", "capital", "cbfacility", "hwm": return "book"
         default: return nil
         }
     }

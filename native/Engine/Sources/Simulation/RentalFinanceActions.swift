@@ -54,6 +54,13 @@ public struct ProductRow: Identifiable, Equatable, Sendable {
     public var verifiedSellers: Double
 }
 
+/// An insurance salesperson and the weeks (as game weeks) at which each product verification is done.
+public struct SalespersonRow: Identifiable, Equatable, Sendable {
+    public var id: Int
+    public var name: String
+    public var verified: [String: Int]
+}
+
 public extension GameEngine {
     // MARK: Reading
 
@@ -109,12 +116,12 @@ public extension GameEngine {
     }
 
     /// Salespeople of an insurer and for which products each is verified (or waiting).
-    func salespeople(companyID: Int) -> [(id: Int, name: String, verified: [String: Int])] {
+    func salespeople(companyID: Int) -> [SalespersonRow] {
         guard let co = state.company(companyID) else { return [] }
         return co.staff.filter { $0.role == "agent" }.map { m in
             var v: [String: Int] = [:]
             for (k, x) in m.value("ver").object { v[k] = x["done"].int }
-            return (m.id, state.people[m.id]?.name ?? "Salesperson", v)
+            return SalespersonRow(id: m.id, name: state.people[m.id]?.name ?? "Salesperson", verified: v)
         }
     }
 

@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 17 Ported, 16 Not ported, 13 Verified, 2 Statistical
-- Trades: 50 Statistical, 17 Not ported
+- Systems: 18 Ported, 17 Verified, 14 Not ported, 2 Statistical
+- Trades: 50 Statistical, 11 Not ported, 6 Ported
 - Screens: 79 Not ported, 26 Engine + screen
-- Company tabs: 33 Not ported, 10 Engine + screen
-- Actions: 511 Not ported, 37 Engine + screen, 9 Engine only
+- Company tabs: 30 Not ported, 13 Engine + screen
+- Actions: 502 Not ported, 46 Engine + screen, 9 Engine only
 
 ## Systems
 
@@ -57,8 +57,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write | SaveSystem | Verified | LZStringTests, SaveRoundTripTests, SaveStoreTests |
 | Service, venue, retail, production, logistics families (50 of 67 trades) | Businesses/CompanyWeek | Statistical | statistical comparison; gym is +31% (open) |
 | Project businesses (6 trades) | - | Not ported | own model in the original |
-| Rental businesses (3 trades) | - | Not ported | own model in the original |
-| Finance businesses (3 trades) | - | Not ported |  |
+| Rental businesses (3 trades): properties, tenants, vacancy, rent policy, maintenance, mortgages, valuation with the housing market | Businesses/RentalModel | Verified | RentalFinanceDifferentialTests (weekly model, listings, buy/renovate/sell, leases, valuation against the original) |
+| Insurance company: products and approvals, verified salespeople, premiums, claims, storms, solvency and regulator | Businesses/FinanceModel | Verified | RentalFinanceDifferentialTests (weekly model, products, f_storm); balance bands in RentalFinanceBalanceTests |
+| Bank: deposits, loan book, spread, loan losses, runs, capital ratio, central bank liquidity facility | Businesses/FinanceModel | Verified | RentalFinanceDifferentialTests (weekly model, f_run, f_default); bank run and regulator closure in RentalFinanceTests |
+| Investment fund: assets under management, flows, fees, performance fee at year end | Businesses/FinanceModel | Verified | RentalFinanceDifferentialTests (weekly model, year-end fee, redemptions) |
+| Regulator closes a bank or insurer whose capital is gone (not in the original) | Businesses/FinanceModel.insolventCompanies | Ported | RentalFinanceTests |
 | Energy: oil and gas (2 trades) | - | Not ported |  |
 | Holding companies | - | Not ported |  |
 | Football clubs | - | Not ported |  |
@@ -135,12 +138,12 @@ Norway, Sweden, Poland, Lithuania, Germany, United Kingdom, France, Spain, Nethe
 | shipping | Shipping company | logi | Statistical |
 | airline | Regional airline | logi | Statistical |
 | wh3pl | Warehouse and fulfilment | logi | Statistical |
-| resrent | Residential rentals | rent | Not ported |
-| comrent | Commercial property | rent | Not ported |
-| parking | Parking and self-storage | rent | Not ported |
-| insco | Insurance company | fin | Not ported |
-| bank | Bank | fin | Not ported |
-| fund | Investment fund | fin | Not ported |
+| resrent | Residential rentals | rent | Ported |
+| comrent | Commercial property | rent | Ported |
+| parking | Parking and self-storage | rent | Ported |
+| insco | Insurance company | fin | Ported |
+| bank | Bank | fin | Ported |
+| fund | Investment fund | fin | Ported |
 | power | Renewable power producer | energy | Not ported |
 | oilgas | Oil and gas company | energy | Not ported |
 | dental | Dental clinic | svc | Statistical |
@@ -287,9 +290,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | demandLevel |  | Not ported |
 | doc | Company > Setup (documents via quick setup) | Engine + screen |
 | eq | Company > Setup (equipment via quick setup) | Engine + screen |
-| famAssets |  | Not ported |
-| famOps |  | Not ported |
-| famOv |  | Not ported |
+| famAssets | Company > Properties | Engine + screen |
+| famOps | Company > Book (insurance products) | Engine + screen |
+| famOv | Company > Properties / Book (figures) | Engine + screen |
 | finPart |  | Not ported |
 | finSummary | Company > Money | Engine + screen |
 | franchisor |  | Not ported |
@@ -384,7 +387,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | btab |  | Not ported |
 | buyasset |  | Not ported |
 | buyeq | CompanySetup.buyEquipment | Engine only |
-| buyprop |  | Not ported |
+| buyprop | GameEngine.buyProperty | Engine + screen |
 | buyveh |  | Not ported |
 | candback |  | Not ported |
 | candinfo |  | Not ported |
@@ -478,7 +481,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | est56ret |  | Not ported |
 | f17go |  | Not ported |
 | f17model |  | Not ported |
-| f17prod |  | Not ported |
+| f17prod | GameEngine.verifySalesperson | Engine + screen |
 | f17sec |  | Not ported |
 | f17seed |  | Not ported |
 | f17who |  | Not ported |
@@ -562,7 +565,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | injhold |  | Not ported |
 | invsheet | PlayerActions.buyInvestment | Engine + screen |
 | itab |  | Not ported |
-| leaseprop |  | Not ported |
+| leaseprop | GameEngine.leaseSpace | Engine + screen |
 | lh12fire |  | Not ported |
 | lh12set |  | Not ported |
 | loadfile | LegacyImporter | Engine + screen |
@@ -585,7 +588,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | mailf |  | Not ported |
 | mailopen |  | Not ported |
 | maint | PlayerActions.setMaintenance | Engine + screen |
-| marketprop |  | Not ported |
+| marketprop | GameEngine.tenantOffers | Engine + screen |
 | mb56 |  | Not ported |
 | mcandback |  | Not ported |
 | mcandopen |  | Not ported |
@@ -705,7 +708,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | pro57 |  | Not ported |
 | proask |  | Not ported |
 | probuy |  | Not ported |
-| prodtog |  | Not ported |
+| prodtog | GameEngine.setInsuranceProduct | Engine + screen |
 | prolink |  | Not ported |
 | promanage |  | Not ported |
 | promoboss |  | Not ported |
@@ -714,7 +717,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | promosheet |  | Not ported |
 | promoteact |  | Not ported |
 | proplan |  | Not ported |
-| propsheet |  | Not ported |
+| propsheet | GameEngine.propertyListings | Engine + screen |
 | prorestore |  | Not ported |
 | proskin |  | Not ported |
 | proskinc |  | Not ported |
@@ -734,7 +737,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | refcheck |  | Not ported |
 | regbuy |  | Not ported |
 | reglvl |  | Not ported |
-| renprop |  | Not ported |
+| renprop | GameEngine.renovateProperty | Engine + screen |
 | rentoffice |  | Not ported |
 | reopen |  | Not ported |
 | repaireq |  | Not ported |
@@ -781,9 +784,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | sellco |  | Not ported |
 | selleq |  | Not ported |
 | sellinv | PlayerActions.sellInvestment | Engine + screen |
-| sellprop |  | Not ported |
+| sellprop | GameEngine.sellProperty | Engine + screen |
 | sellsh |  | Not ported |
-| sellto |  | Not ported |
+| sellto | GameEngine.sellBuilding | Engine + screen |
 | sellunit |  | Not ported |
 | sellveh |  | Not ported |
 | setbig |  | Not ported |

@@ -8,6 +8,8 @@ import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
     case overview = "Overview", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
+    /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
+    case properties = "Properties", book = "Book"
 }
 
 /// One company. Overview answers "how is it doing, why, and what to change"; the other sections are where the changes are made.
@@ -27,7 +29,7 @@ struct CompanyDetailView: View {
                             if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
                         }
                     }
-                    SectionTabs(items: sections(co), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
+                    SectionTabs(items: sections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section)
                     case .staff: CompanyTeam(engine: e, company: co)
@@ -35,6 +37,8 @@ struct CompanyDetailView: View {
                     case .operations: CompanyOperations(engine: e, company: co)
                     case .marketing: CompanyMarketing(engine: e, company: co)
                     case .setup: CompanySetupSection(engine: e, company: co)
+                    case .properties: CompanyProperties(engine: e, company: co)
+                    case .book: CompanyFinanceBook(engine: e, company: co)
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
@@ -51,8 +55,14 @@ struct CompanyDetailView: View {
         }
     }
 
-    private func sections(_ co: Company) -> [CompanySection] {
-        co.status == .setup ? [.setup, .overview, .finances] : CompanySection.allCases.filter { $0 != .setup }
+    private func sections(_ co: Company, _ e: GameEngine) -> [CompanySection] {
+        let family = e.tradeInfo(companyID: co.id)?.family
+        // Property and finance companies have a section of their own (property portfolio; policies, loans or fund).
+        let own: [CompanySection] = family == "rent" ? [.properties] : family == "fin" ? [.book] : []
+        if co.status == .setup { return own + [.setup, .overview, .finances] }
+        var list = CompanySection.allCases.filter { $0 != .setup && $0 != .properties && $0 != .book }
+        if !own.isEmpty { list.insert(contentsOf: own, at: 1) }
+        return list
     }
 }
 

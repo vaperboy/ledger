@@ -37,6 +37,7 @@ screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 tabs = {
  "ov": ("Company > Overview", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
  "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
+ "famOv": ("Company > Properties / Book (figures)", U), "famAssets": ("Company > Properties", U), "famOps": ("Company > Book (insurance products)", U),
  "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
 }
 tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
@@ -59,6 +60,9 @@ actions = {
  "applydoc": ("Documents", E), "applydoc2": ("Documents", E), "estlog": ("", N),
  "salary": ("PlayerActions.setOwnerSalary", E), "tcAS": ("CompanySetup.create(accountantID:)", E),
  "reopen": ("", N),
+ "propsheet": ("GameEngine.propertyListings", U), "buyprop": ("GameEngine.buyProperty", U), "sellprop": ("GameEngine.sellProperty", U), "renprop": ("GameEngine.renovateProperty", U),
+ "marketprop": ("GameEngine.tenantOffers", U), "leaseprop": ("GameEngine.leaseSpace", U), "sellto": ("GameEngine.sellBuilding", U),
+ "prodtog": ("GameEngine.setInsuranceProduct", U), "f17prod": ("GameEngine.verifySalesperson", U),
 }
 action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
 
@@ -96,8 +100,11 @@ systems = [
  ("Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write", "SaveSystem", V, "LZStringTests, SaveRoundTripTests, SaveStoreTests"),
  ("Service, venue, retail, production, logistics families (50 of 67 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
  ("Project businesses (6 trades)", "-", N, "own model in the original"),
- ("Rental businesses (3 trades)", "-", N, "own model in the original"),
- ("Finance businesses (3 trades)", "-", N, ""),
+ ("Rental businesses (3 trades): properties, tenants, vacancy, rent policy, maintenance, mortgages, valuation with the housing market", "Businesses/RentalModel", V, "RentalFinanceDifferentialTests (weekly model, listings, buy/renovate/sell, leases, valuation against the original)"),
+ ("Insurance company: products and approvals, verified salespeople, premiums, claims, storms, solvency and regulator", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, products, f_storm); balance bands in RentalFinanceBalanceTests"),
+ ("Bank: deposits, loan book, spread, loan losses, runs, capital ratio, central bank liquidity facility", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, f_run, f_default); bank run and regulator closure in RentalFinanceTests"),
+ ("Investment fund: assets under management, flows, fees, performance fee at year end", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, year-end fee, redemptions)"),
+ ("Regulator closes a bank or insurer whose capital is gone (not in the original)", "Businesses/FinanceModel.insolventCompanies", P, "RentalFinanceTests"),
  ("Energy: oil and gas (2 trades)", "-", N, ""),
  ("Holding companies", "-", N, ""),
  ("Football clubs", "-", N, ""),
@@ -116,12 +123,13 @@ systems = [
 
 # ---- trades
 fam_supported = {"svc", "venue", "retail", "prod", "logi"}
+rental_finance = {"resrent", "comrent", "parking", "insco", "bank", "fund"}   # RentalModel, FinanceModel: ported, family models verified
 trade_rows = []
 for t in trade_items:
     pass
 for tid, name, fam, *_ in inv["trades"]:
     ok = fam in fam_supported and tid != "salmon"
-    trade_rows.append((tid, name, fam, S if ok else N))
+    trade_rows.append((tid, name, fam, P if tid in rental_finance else S if ok else N))
 
 def table(rows, header):
     out = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]

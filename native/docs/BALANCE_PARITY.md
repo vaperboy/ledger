@@ -57,3 +57,20 @@ Each of these was a real difference between the engines, found by comparing aver
 
 Because the native game does not yet reproduce every system, **balance numbers should not be trusted until the open
 items above are closed**. They are listed in `KNOWN_GAPS.md`. The harness above is how to check each step.
+
+## Rental and finance trades (UK, three seeds, three years, standard set-up, funded at 1.6x the estimate)
+
+Original (a run of the HTML game with the same set-up) against native (`LEDGER_RF=1 swift test --filter RentalFinanceProbeTests`), year 1 / 2 / 3, millions:
+
+| Trade | Original revenue | Native revenue | Original profit (after mortgage interest) | Native profit |
+|---|---|---|---|---|
+| resrent | 1.2 / 1.2 / 1.2 | 1.2 / 1.2 / 1.2 | 0.2 / 0.2 / 0.3 | -0.3 / 0.3 / 0.4 |
+| comrent | 9.3 / 9.7 / 9.6 | 8.5 / 9.4 / 9.3 | 4.3 / 4.7 / 5.0 | 1.8 / 4.9 / 5.7 |
+| parking | 3.6 / 3.7 / 3.8 | 3.5 / 3.7 / 3.6 | 1.3 / 1.5 / 1.6 | 0.4 / 1.6 / 1.7 |
+| insco (no marketing) | 6.4 / 6.8 / 5.5 | 0.7 / 7.6 / 1.8 (bust in year 3) | -23 / -18 / -16 | -7 / -23 / -5 |
+| bank (no marketing) | 7.9 / 9.2 / 9.4 | 0 / 6.9 / 6.1 | -27 / -21 / -13 | -3 / -26 / -27 |
+| fund (no marketing) | 1.5 / 2.5 / 2.1 | 0.5 / 2.8 / 1.8 | -1.8 / -0.4 / -1.0 | -1.3 / 0.2 / -0.7 |
+
+The first native year is shorter (the company opens after paperwork; the insurer waits about 40 weeks for product approvals).
+The weekly models give the same numbers as the original to ten digits on a saved game (differential tests), so the differences
+are the random draws and the opening weeks. See KNOWN_GAPS.md for what a mature finance company earns.
