@@ -90,9 +90,13 @@ public extension GameEngine {
         return out
     }
 
-    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double) -> Hiring.HireResult {
+    /// `ownCar`: the person uses their own car and you pay mileage instead of providing a company car (estate agents). Original: `ACT.offer` + `carc`.
+    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, ownCar: Bool = false) -> Hiring.HireResult {
         var r = Hiring.HireResult.refused
-        update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data) }
+        update { s, data, _ in
+            r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data)
+            if r == .ok && ownCar { PersonalEquipment.toggleOwnCar(&s, companyID: companyID, staffID: personID, set: true) }
+        }
         return r
     }
 

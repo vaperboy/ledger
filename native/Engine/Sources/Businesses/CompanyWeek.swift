@@ -54,6 +54,7 @@ public enum CompanyWeek {
         let w = World(state: s, data: data)
         let amt = CompanyCosts.accountant(s.companies[i], w)
         Payments.companyPays(&s, companyID: s.companies[i].id, amount: amt, category: "oth")
+        Advisers.weekly(&s, i, accountantFee: amt)
     }
 
     static func setupWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) {
@@ -107,7 +108,7 @@ public enum CompanyWeek {
             let w = World(state: s, data: data)
             let co = s.companies[i]
             return (DemandModel.compute(co, bd, w), CapacityModel.compute(co, bd, w), Pricing.ticket(co, bd, w), Vat.rate(co, bd, w),
-                    goodsEffect(co, bd, marketing))
+                    goodsEffect(co, bd, marketing, w.state, data))
         }()
         var D = dm.customers
         let cap = cp.capacity
@@ -155,6 +156,7 @@ public enum CompanyWeek {
         rev = ctx.rev; cogs = ctx.cogs
         co = s.companies[i]
         book(&s, i, bd, ctx, vat: vat, data: data)
+        Suppliers.recordGoods(&s, companyIndex: i, cogs: ctx.cogs, data: data)
         weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
     }
 
@@ -166,11 +168,9 @@ public enum CompanyWeek {
     }
 
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
-    static func goodsEffect(_ co: Company, _ bd: Trade, _ m: MarketingTables) -> (m: Double, q: Double) {
-        if bd.costOfSales < 0.03 || ["fin", "energy", "rent", "club", "svc"].contains(bd.family) || bd.id.hasPrefix("engcons") || bd.id.hasPrefix("event") { return (1, 0) }
-        let cls = co.value("src")["c"].isNull ? 1 : co.value("src")["c"].int
-        let c = m.goodsClasses.indices.contains(cls) ? m.goodsClasses[cls] : m.goodsClasses[1]
-        return (c.cost, c.quality)
+    static func goodsEffect(_ co: Company, _ bd: Trade, _ m: MarketingTables, _ s: GameState, _ data: GameData) -> (m: Double, q: Double) {
+        let r = Suppliers.goodsEffect(s, company: co, bd, data: data, classes: m.goodsClasses)
+        return (r.m, r.q)
     }
 
     /// Membership clubs (gyms) work with members, not walk-ins. Original: `FAM.venue.units`.
@@ -375,7 +375,7 @@ public enum CompanyWeek {
         for (k, on) in co2.value("ins").object.sorted(by: { $0.key < $1.key }) where on.bool {
             if let p = marketing.insuranceProducts[k], p.count > 3 { premium += CompanyCosts.insurancePremium(co2, product: k, rate: p[3].double, w2) }
         }
-        if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins") }
+        if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins"); Advisers.premiumsPaid(&s, i, total: premium) }
         // Leased vehicles
         for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {
             Payments.companyPays(&s, companyID: id, amount: v["lease"].double * 12 / 52, category: "oth")
@@ -385,11 +385,12 @@ public enum CompanyWeek {
         EquipmentUnits.before(&s, companyIndex: i, bd, data: data)
         CompanyCosts.equipmentWeek(&s, companyIndex: i, utilisation: ctx.util == 0 ? 0.6 : ctx.util, bd, data: data)
         EquipmentUnits.after(&s, companyIndex: i, bd, utilisation: ctx.util == 0 ? 0.6 : ctx.util, data: data)
+        PersonalEquipment.weeklyCosts(&s, companyIndex: i, bd, data: data)
 
         // Quality and reputation follow how well the company does its job.
         co = s.companies[i]
         let w3 = World(state: s, data: data)
-        let target = QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing))
+        let target = QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing, w3.state, data))
         co.quality += (target - co.quality) * 0.18
         co.reputation = clamp(co.reputation + (co.quality - co.reputation) * 0.025 - ((ctx.D > ctx.cap * 1.25 && ctx.cap > 0) ? 0.08 : 0), 0, 100)
         if co.managerID == nil && co.ownerHours >= 20 { co.ownerSkill = clamp(co.ownerSkill + 0.035 * (1 - co.ownerSkill / 120), 0, 100) }

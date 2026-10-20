@@ -79,6 +79,7 @@ public enum CompanyCosts {
         co.addPayable("rent", r)
         var b = co.books; b.add("rent", r); co.books = b
         s.companies[i] = co
+        PremisesExtras.rentToLandlord(&s, tenantIndex: i, rent: r)
     }
 
     // MARK: Fixed costs, accountant, insurance, leases
@@ -112,7 +113,7 @@ public enum CompanyCosts {
             base = max(w.currency(co).scaledPrice(120000), yearRev != 0 ? yearRev : (co.value("lastW")["rev"].double * 52))
         }
         let riskUp = co.value("flags")["riskUp"].bool ? 0.4 : 0
-        return jsRound(base * rate / 52 * (1 + riskUp))
+        return jsRound(base * rate / 52 * (1 + riskUp) * Advisers.premiumFactor(co))
     }
 
     // MARK: Depreciation and wear

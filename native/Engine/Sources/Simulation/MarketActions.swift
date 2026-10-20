@@ -42,9 +42,9 @@ public extension GameEngine {
     func equipmentHealth(companyID: Int) -> Double? { state.company(companyID).flatMap { EquipmentMarket.health($0) } }
 
     /// Price of one item of the offer, today (a vehicle: of the make and model).
-    func equipmentPrice(companyID: Int, equipmentID: String, factor: Double) -> Double {
+    func equipmentPrice(companyID: Int, equipmentID: String, factor: Double, vendorID: String? = nil) -> Double {
         guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == equipmentID }) else { return 0 }
-        return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor)
+        return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor, vendor: vendorID)
     }
     func vehiclePrice(modelID: String, factor: Double) -> Double {
         data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehiclePrice($0, factor: factor, World(state: state, data: data)) } ?? 0

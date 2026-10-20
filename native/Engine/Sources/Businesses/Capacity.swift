@@ -163,6 +163,8 @@ public enum CapacityModel {
             parts.append(CapacityPart(key: "prem", label: "Space (\(Int(m2)) m2)", kind: .space, have: m2,
                                       need: jsRound(bd.premisesM2 * co.size), capacity: capD * m2 / bd.premisesM2, capacityPerUnit: 0))
         }
+        // The equipment each person needs (a car per agent, a van per three cleaners ...). Original: step 'capacity.core' of realistic_buying.js.
+        _ = PersonalEquipment.adjustCapacity(&parts, co, bd, w)
         var cap = Double.infinity
         var bot: CapacityPart? = nil
         for p in parts where p.capacity < cap { cap = p.capacity; bot = p }

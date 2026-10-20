@@ -72,6 +72,7 @@ public enum CompanySetup {
 
     /// Six places to rent, from a back street unit to a central location; a new list every half year. Original: `premListings`.
     public static func listings(for co: Company, _ bd: Trade, _ w: World) -> [Listing] {
+        if PremisesExtras.isHomeTrade(bd) { return PremisesExtras.listings(co, bd, w) }   // a trade that started at home looks for a workshop or office
         guard let kind = bd.premisesKind, kind != "none", kind != "home" else { return [] }
         var r = HashedRandom("\(w.state.seed):pl:\(co.type):\(co.cityID):\(w.week / 26)")
         let country = w.country(co)
@@ -103,7 +104,8 @@ public enum CompanySetup {
 
     /// Terms of renting or buying a listing. Rent is per m² per year, adjusted for the city, the listing and inflation since the start.
     public static func premisesTerms(_ co: Company, _ listing: Listing, data: GameData, world w: World) -> PremisesTerms? {
-        guard let bd = data.catalog[co.type], let kind = bd.premisesKind, let P = data.catalog.tables.premises[kind], let city = w.city(co) else { return nil }
+        guard let bd = data.catalog[co.type], let kind0 = bd.premisesKind, case let kind = PremisesExtras.isHomeTrade(bd) ? PremisesExtras.placeKind(bd) : kind0,
+              let P = data.catalog.tables.premises[kind], let city = w.city(co) else { return nil }
         let m2 = listing.squareMetres
         let rent0 = P.rentPerM2Year * listing.rentFactor * city.rent * w.inflationIndex
         let rent = m2 > 0 ? w.currency(co).tidy(rent0 * m2 / 12) * 12 / m2 : w.currency(co).tidy(rent0)
@@ -115,18 +117,23 @@ public enum CompanySetup {
     /// Rent (or buy, with a commercial mortgage: 35% down, 15 years) premises. A deposit on the place being left is returned.
     /// Original: `setPrem`.
     public static func setPremises(_ s: inout GameState, companyID: Int, listing lst: Listing?, buy: Bool = false, data: GameData) -> PremisesResult {
-        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let kind = bd.premisesKind,
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let kind0 = bd.premisesKind,
+              case let kind = (PremisesExtras.isHomeTrade(bd) && lst != nil) ? PremisesExtras.placeKind(bd) : kind0,
               data.catalog.tables.premises[kind] != nil else { return .bad }
         if kind == "home" || kind == "none" {
             s.companies[i].set("prem", .object(["kind": .string(kind), "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
             return .ok
         }
         let w = World(state: s, data: data)
-        guard let lst = lst, let t = premisesTerms(s.companies[i], lst, data: data, world: w) else { return .bad }
+        guard let lst = lst, let t0 = premisesTerms(s.companies[i], lst, data: data, world: w) else { return .bad }
         // The deposit of the place being left comes back first.
         let old = s.companies[i].value("prem")
         let refund = old["dep"].double > 0 && !old["owned"].bool ? old["dep"].double : 0
         let co = s.companies[i]
+        // A franchise unit with the franchisor's building: 15 % off the rent and no deposit. Original: `setPrem` (`franchise.bld`).
+        let franchiseBuilding = !buy && co.value("franchise")["bld"].bool
+        var t = t0
+        if franchiseBuilding { t.rentPerM2Year *= 0.85; t.monthlyRent *= 0.85; t.deposit = 0 }
         if co.cash + refund < (buy ? t.downPayment : t.deposit) + t.fitOut { return .notEnoughCash }
         if refund > 0 { Payments.companyReceives(&s, companyID: companyID, amount: refund, category: nil, label: "Lease deposit returned") }
         let m2 = lst.squareMetres

@@ -311,6 +311,7 @@ public struct GameEngine {
         Awards.weekly(&state, data: data, context: context)
         SpecialFamilies.weeklyAfter(&state, data: data, context: context)
         Chains.weekly(&state, data: data, context: context, marketing: marketing)   // chains, franchises, supply between your companies
+        MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
         for i in state.companies.indices {
