@@ -287,6 +287,7 @@ public struct GameEngine {
         FootballModel.leaguesWeek(&state, data: data)
         Markets.fundsWeekly(&state)
         Brokerage.weekly(&state)
+        Luxury.weekly(&state)
         for i in state.companies.indices {
             guard state.companies[i].status.isLive else { continue }
             CompanyWeek.run(&state, companyIndex: i, data: data, marketing: marketing)

@@ -236,6 +236,7 @@ struct CompanySetupSection: View {
                     }
                 }
             }
+            EquipmentEntryRow(company: company)
             if company.status == .setup {
                 Button("Fill in what is missing") {
                     let bought = store.act { $0.quickSetup(companyID: company.id) } ?? []

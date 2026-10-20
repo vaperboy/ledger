@@ -7,8 +7,8 @@ import Finance
 /// the repair is free only while the warranty lasts. Originals: `unitsOf`, `newUnit`, `breakUnit`, `postWeek`, the
 /// 'eqWeek.before' / 'eqWeek.after' steps and 'eqN' (engine/company/equipment_realism.js).
 ///
-/// Simplification: the brand catalogue of the original (brand, model, class, reliability) is not ported, so every unit has
-/// reliability 1 and class 1; see docs/KNOWN_GAPS.md.
+/// Units bought through `EquipmentMarket` carry their brand, class, reliability and (used) true wear; units bought by the
+/// standard purchase (quick setup) have reliability 1 and class 1.
 public enum EquipmentUnits {
     public static func kind(tradeID: String, equipmentID: String, tables: TradeTables) -> String {
         tables.raw["EQ_KINDS"][tradeID][equipmentID].string.isEmpty ? "mach" : tables.raw["EQ_KINDS"][tradeID][equipmentID].string
@@ -33,9 +33,16 @@ public enum EquipmentUnits {
     }
 
     /// A new unit, as bought. Original: `newUnit(.., 'new')`.
-    static func newUnit(_ s: inout GameState, kind k: String, name: String, price: Double, years: Double) -> JSONValue {
-        .object(["u": .number(Double(s.makeID())), "src": "new", "nm": .string(name), "yr": .number(Double(gameYear(s.week))), "tc": 1, "vis": 1, "c0": 1,
-                 "warr": .number(Double(s.week) + years * 52), "price": .number(price), "down": 0, "rel": 1, "cls": 1])
+    static func newUnit(_ s: inout GameState, kind k: String, name: String, price: Double, years: Double,
+                        brand: EquipmentMarket.Brand? = nil, used: EquipmentMarket.UsedOffer? = nil) -> JSONValue {
+        if let u = used {
+            // A second-hand unit: no warranty, and its true wear may differ from what the seller showed.
+            return .object(["u": .number(Double(s.makeID())), "src": "used", "nm": .string(u.name), "yr": .number(Double(u.year)), "tc": .number(u.trueCondition),
+                            "vis": .number(u.visibleCondition), "c0": .number(u.trueCondition), "warr": 0, "price": .number(u.price), "down": 0,
+                            "rel": .number(u.reliability), "kr": .bool(u.knownToLast), "cls": .number(Double(u.cls))])
+        }
+        return .object(["u": .number(Double(s.makeID())), "src": "new", "nm": .string(brand?.name ?? name), "yr": .number(Double(gameYear(s.week))), "tc": 1, "vis": 1, "c0": 1,
+                        "warr": .number(Double(s.week) + years * 52), "price": .number(price), "down": 0, "rel": .number(brand?.reliability ?? 1), "cls": .number(Double(brand?.cls ?? 1))])
     }
 
     /// Bring the list of units in line with the count in the equipment record. Original: `unitsOf`.
@@ -59,7 +66,8 @@ public enum EquipmentUnits {
     static func removing(_ v: JSONValue, _ key: String) -> JSONValue { var o = v.object; o.removeValue(forKey: key); return .object(o) }
 
     /// Record units for equipment just bought. Called by `CompanySetup.buyEquipment`.
-    static func recordPurchase(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, tradeID: String, quantity q: Int, unitPrice: Double, data: GameData) {
+    static func recordPurchase(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, tradeID: String, quantity q: Int, unitPrice: Double,
+                               brand: EquipmentMarket.Brand? = nil, used: EquipmentMarket.UsedOffer? = nil, data: GameData) {
         let k = kind(tradeID: tradeID, equipmentID: e.id, tables: data.catalog.tables)
         guard k != "soft", k != "svc" else { return }
         // Units that existed before the purchase are listed first (they keep their own wear).
@@ -70,10 +78,10 @@ public enum EquipmentUnits {
         let saved = s.companies[i]; s.companies[i] = sc
         ensureUnits(&s, companyIndex: i, equipmentID: e.id)
         s.companies[i].set("eq", saved.value("eq"))
-        let years = warrantyYears(kind: k, vehicleModel: nil, class: 1, price: unitPrice, tables: data.catalog.tables, currency: World(state: s, data: data).currency(s.companies[i]))
+        let years = warrantyYears(kind: k, vehicleModel: nil, class: Double(brand?.cls ?? 1), price: unitPrice, tables: data.catalog.tables, currency: World(state: s, data: data).currency(s.companies[i]))
         var units = s.companies[i].value("units")
         var list = units[e.id].array
-        for _ in 0..<q { list.append(newUnit(&s, kind: k, name: e.name, price: unitPrice, years: years)) }
+        for _ in 0..<q { list.append(newUnit(&s, kind: k, name: e.name, price: unitPrice, years: years, brand: brand, used: used)) }
         units[e.id] = .array(list)
         s.companies[i].set("units", units)
         syncCondition(&s, companyIndex: i, equipmentID: e.id)
@@ -145,8 +153,19 @@ public enum EquipmentUnits {
         for id in s.companies[i].value("eq").object.keys.sorted() where id != "fit" {
             guard let spec = bd.equipment.first(where: { $0.id == id }) else { continue }
             var rec = s.companies[i].value("eq")[id]
-            if !rec["sub"].isNull { continue }
+            if !rec["sub"].isNull {
+                // A subscription is paid every month; a plan with too few seats slows the work down.
+                Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["sub"]["fee"].double * 12 / 52, category: "oth")
+                let plan = EquipmentMarket.book["plans"][rec["sub"]["tier"].int]
+                rec["perf"] = .number(Double(EquipmentMarket.users(s.companies[i])) > plan["users"].double ? 0.85 : plan["perf"].double)
+                rec["cond"] = 1; rec["_c"] = 1
+                var eq = s.companies[i].value("eq"); eq[id] = rec; s.companies[i].set("eq", eq)
+                continue
+            }
             if !rec["soft"].isNull {
+                // Yearly updates of a licence are paid weekly; an old one-time licence loses some of its output.
+                if rec["upd"].double > 0 { Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["upd"].double / 52, category: "oth") }
+                if rec["soft"].string == "once", Double(s.week) - (rec["ver"].isNull ? Double(s.week) : rec["ver"].double) > spec.lifeYears * 52 { rec["perf"] = .number(min(rec["perf"].isNull ? 1 : rec["perf"].double, 0.92)) }
                 rec["cond"] = 1; rec["_c"] = 1
                 var eq = s.companies[i].value("eq"); eq[id] = rec; s.companies[i].set("eq", eq)
                 continue
@@ -173,6 +192,10 @@ public enum EquipmentUnits {
             var units = s.companies[i].value("units"); units[id] = .array(list); s.companies[i].set("units", units)
             for r in repairs { Payments.companyPays(&s, companyID: s.companies[i].id, amount: r.0, category: "oth", label: r.1) }
             syncCondition(&s, companyIndex: i, equipmentID: id)
+        }
+        // Leased equipment: the monthly instalment, service included
+        for (_, monthly) in s.companies[i].value("eqL").object.sorted(by: { $0.key < $1.key }) where monthly.double > 0 {
+            Payments.companyPays(&s, companyID: s.companies[i].id, amount: monthly.double / 4.33, category: "oth")
         }
         // Vehicles
         var vehicles = s.companies[i].value("veh").array

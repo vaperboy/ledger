@@ -20,6 +20,8 @@ struct PhoneView: View {
                             Hairline()
                             row(.activity, "list.bullet.rectangle.fill", "Activity", e.state.statement.first.map { $0.label + " " + (($0.amount >= 0 ? "+" : "−") + store.short(abs($0.amount))) } ?? "Nothing has moved yet")
                             Hairline()
+                            row(.luxury, "sparkles", "Luxury", e.luxuryPieces.isEmpty ? "Cars, watches, art, yachts, jets, homes and estates" : "\(e.luxuryPieces.count) pieces · worth " + store.short(e.luxuryValue))
+                            Hairline()
                             row(.settings, "gearshape.fill", "Settings", "How much you decide, saving, haptics")
                         }
                     }
@@ -35,6 +37,7 @@ struct PhoneView: View {
                 case .news: NewsView()
                 case .stats: StatsView()
                 case .activity: ActivityView()
+                case .luxury: LuxuryView()
                 case .settings: SettingsView()
                 }
             }

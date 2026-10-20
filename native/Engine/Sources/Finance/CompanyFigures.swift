@@ -34,6 +34,7 @@ public enum CompanyFigures {
             + equipmentBookValue(co)
             + owned
             + propertyValue(co)
+            + co.num("luxBV")
             + (fm["assets"].isNull ? 0 : fm["assets"].double)
     }
 
