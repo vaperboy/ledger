@@ -25,7 +25,15 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
 * **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
-* **Screens:** see the checklist; there is no week report screen, no marketing analytics screen, no map, no rich list, no achievements.
+* **Reports (weekly, monthly, yearly):**
+  * A report closes when the seventh day of the last week of the period is over, just before the weekly turn, so the staged week money has all been released. Month and year end follow the engine's own `isMonthEnd` / `isYearEnd`, not the calendar day.
+  * Saves from before reports have no earlier snapshot: the first week after loading only starts the books, and the first month or year report is marked "partial". Nothing is invented for earlier time. Save envelope version is now 2 (the migration adds empty report lists).
+  * The player's account is classified by statement label (`ReportCounters`); anything unlabelled shows as "Everything else". Company cash is split into owner money, loans and a remainder; it is not a full cash-flow statement.
+  * A company created during a period has no starting reputation or value, so its change shows as zero for that period.
+  * Customers and capacity come from each company's weekly figures; trade types the native engine does not model yet report only what their books hold.
+  * The engine sums some floats in dictionary order, so two runs of one seed agree to about 1e-9, not bit for bit. A report is an exact function of the state.
+  * The app screens (Reports, Home prompt, Company > Finances) were only syntax-checked (`swiftc -parse`); they have not been compiled or run.
+* **Screens:** see the checklist; no marketing analytics screen, no map, no rich list, no achievements.
 * **Premises:** choosing a listing and buying equipment item by item exist in the engine but have no screen; "Fill in what is missing" does it.
 
 ## Behaviour that differs from the original on purpose
