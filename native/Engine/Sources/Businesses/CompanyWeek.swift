@@ -44,7 +44,7 @@ public enum CompanyWeek {
         if s.companies[i].status == .open {
             Satisfaction.buzzWeek(&s, i)
             Satisfaction.reachCap(&s, i, data: data)
-            Reviews.weekly(&s, i, bd)                              // customers write reviews (all trades share one system)
+            Reviews.weekly(&s, i, bd, data: data)                              // customers write reviews (all trades share one system)
             KeyAccounts.weekly(&s, i, bd, data: data)              // business customers: relationships, offers
             if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
         }

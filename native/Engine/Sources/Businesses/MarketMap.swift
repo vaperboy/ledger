@@ -140,11 +140,14 @@ public enum MarketMap {
                 return Knowledge(level: .marketAnalyst, skill: clamp((p?.value("skill").double ?? 55) / 100, 0.2, 0.98), name: p?.name ?? "Your market analyst", id: String(st.id))
             }
         }
-        if let st = (s.rest["office"]?["staff"].array ?? []).first(where: { $0["role"].string == "ana" }) {
-            let p = s.people[st["id"].int]
-            return Knowledge(level: .dataAnalyst, skill: clamp((p?.value("skill").double ?? 55) / 100 + (p?.value("exp").double ?? 0) * 0.01, 0.2, 0.98), name: p?.name ?? "Your data analyst", id: String(st["id"].int))
-        }
-        return .nobody
+        return dataAnalyst(s) ?? .nobody
+    }
+
+    /// The head office's data analyst, if there is one. Original: `anaInfo`.
+    public static func dataAnalyst(_ s: GameState) -> Knowledge? {
+        guard let st = (s.rest["office"]?["staff"].array ?? []).first(where: { $0["role"].string == "ana" }) else { return nil }
+        let p = s.people[st["id"].int]
+        return Knowledge(level: .dataAnalyst, skill: clamp((p?.value("skill").double ?? 55) / 100 + (p?.value("exp").double ?? 0) * 0.01, 0.2, 0.98), name: p?.name ?? "Your data analyst", id: String(st["id"].int))
     }
 
     public struct Estimate: Equatable {

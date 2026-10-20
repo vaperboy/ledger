@@ -13,6 +13,8 @@ public struct ReviewLine: Identifiable, Equatable {
     public var text: String
     public var age: Int
     public var weeksAgo: Int
+    /// Flag of the country a tourist writes from; empty for locals.
+    public var flag: String = ""
 }
 
 public struct ReviewSummary: Equatable {
@@ -140,7 +142,7 @@ public extension GameEngine {
         let country = data.countries.resolve(co.countryCode, orHome: state.homeCountryCode)
         let r = Reviews.rating(co), n = Reviews.count(co)
         return ReviewSummary(rating: r, count: n, histogram: Reviews.histogram(co),
-                             lines: Reviews.latest(co, limit: limit).map { ReviewLine(id: $0.id, who: Reviews.reviewerName($0, country: country), stars: $0.stars, text: $0.text, age: $0.age, weeksAgo: max(0, state.week - $0.week)) },
+                             lines: Reviews.latest(co, limit: limit).map { ReviewLine(id: $0.id, who: Reviews.reviewerName($0, country: $0.isTourist ? data.countries.resolve($0.origin, orHome: co.countryCode) : country), stars: $0.stars, text: $0.text, age: $0.age, weeksAgo: max(0, state.week - $0.week), flag: $0.isTourist ? data.countries[$0.origin]?.flag ?? "" : "") },
                              word: n < Reviews.minimumShown ? "No rating yet" : Reviews.word(r), enough: n >= Reviews.minimumShown)
     }
 
