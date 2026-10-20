@@ -263,7 +263,7 @@ public enum Payday {
         if (co.payables["other"] ?? 0) < 1 { co.set("f30", .object([:])) }
         var cfg = config(co, today: t)
         s.companies[i] = co
-        if short > 1500 {
+        if short > context.currency(co.countryCode, s).scaledPrice(1500) {
             cfg.billShortMonths += 1
             if cfg.billShortMonths == 1 {
                 let cur = context.currency(co.countryCode, s)

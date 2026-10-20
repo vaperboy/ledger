@@ -92,7 +92,7 @@ public enum CapacityModel {
         let hist = Array(co.monthlyHistory.suffix(3))
         let monthProfit = hist.isEmpty ? 0 : hist.reduce(0) { $0 + $1.profit } / Double(hist.count)
         let m = co.managerID.flatMap { w.state.people[$0] }
-        if n >= 10, m != nil, monthProfit > (co.managerMonthlyWage != 0 ? co.managerMonthlyWage : (m?.askingMonthlyWage ?? 50000)) * 4 { base = 0 }
+        if n >= 10, m != nil, monthProfit > (co.managerMonthlyWage != 0 ? co.managerMonthlyWage : (m?.askingMonthlyWage ?? 50000 * w.country(co).wageLevel)) * 4 { base = 0 }
         // How hard the business pushes against its capacity: demand above capacity makes the manager pitch in.
         let h = co.value("wh22").array.suffix(3).filter { !$0["d"].isNull }
         var pressure: Double

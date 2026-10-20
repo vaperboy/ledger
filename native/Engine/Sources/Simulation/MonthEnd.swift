@@ -128,7 +128,7 @@ public enum MonthEnd {
         }
         co = s.companies[i]
         // Unpaid tax counts as unpaid bills
-        if unpaidTax > 1500 {
+        if unpaidTax > w.currency(co).scaledPrice(1500) {
             co.unpaidMonths += 1
             s.companies[i] = co
             if co.unpaidMonths == 1 {
