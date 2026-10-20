@@ -6,7 +6,8 @@ import Countries
 /// review now and then (more often for big tickets); the average of the stored reviews is the rating everyone sees (tenders,
 /// the reviews screen, the market map). Rivals have a rating of their own.
 /// Originals: `rvRate`, `ratingOf`, `rvWeek`, `starDist`, `reviewsOf` (engine/company/reviews.js) and `addReviews`/`avgRv`
-/// (features/sales/trades_in_hours.js). Not ported: tourists writing from their own country (flag, "heard about you at home").
+/// (features/sales/trades_in_hours.js). Tourists: where a trade has foreign visitors (country share x trade share) some reviews are
+/// written from another country, with its flag and a line about being on holiday.
 public enum Reviews {
     static let positive = ["Friendly staff and good quality.", "Fast service, will come back.", "Fair price for what you get.", "Exactly what we hoped for.",
                            "Clean, well run and professional.", "Staff really went the extra mile.", "Great value, easy to recommend."]
@@ -28,6 +29,26 @@ public enum Reviews {
         public var age: Int
         public var female: Bool
         public var nameSeed: Int
+        /// Country code of a tourist writing from abroad; empty for locals.
+        public var origin: String = ""
+        public var isTourist: Bool { !origin.isEmpty }
+    }
+
+    static let holidayLines = ["On holiday here. ", "Found it while travelling. "]
+
+    /// Where visitors to a country come from: "SE:25,DE:22 ...". Original: `ORIG`.
+    static func origins(_ c: Country) -> [(String, Double)] {
+        c.pack["tourism"]["origins"].string.split(separator: ",").compactMap { p in
+            let x = p.split(separator: ":"); guard x.count == 2, let w = Double(x[1]) else { return nil }
+            return (String(x[0]), w)
+        }
+    }
+
+    /// The share of reviews written by visitors from abroad. Original: `tourShare`.
+    public static func touristShare(_ co: Company, data: GameData) -> Double {
+        let country = data.countries.resolve(co.countryCode, orHome: co.countryCode)
+        let c = country.pack["tourism"]["share"].isNull ? 0.1 : country.pack["tourism"]["share"].double
+        return min(0.5, c * (data.balance.tourismShareByTrade[co.type] ?? 0.05))
     }
 
     // MARK: Rate
@@ -43,18 +64,18 @@ public enum Reviews {
     // MARK: Writing reviews
 
     /// A week's reviews for trades that do not review job by job. Original: `rvWeek`.
-    static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade) {
+    static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData? = nil) {
         guard s.companies[i].status == .open, bd.family != "project", s.companies[i].value("lastW")["units"].double > 0 else { return }
         let u = s.companies[i].value("lastW")["units"].double
         let acc = s.companies[i].num("rvF") + min(u * rate(bd), 30 + 3 * u.squareRoot())
         let n = Int(acc.rounded(.down))
         s.companies[i].set("rvF", acc - Double(max(0, n)))
-        if n > 0 { for _ in 0..<min(n, 60) { add(&s, i, bias: 0) } }
+        if n > 0 { for _ in 0..<min(n, 60) { add(&s, i, bias: 0, data: data) } }
     }
 
     /// One more review. Stars follow the company's rating (plus `bias` for a job gone wrong); the text fits the stars and the price.
     /// Original: `addReviews` / `reviewsOf`.
-    public static func add(_ s: inout GameState, _ i: Int, bias: Double) {
+    public static func add(_ s: inout GameState, _ i: Int, bias: Double, data: GameData? = nil) {
         let co = s.companies[i]
         let n = co.int("rvN") + 1
         let mu = clamp(Pricing.rating(co) + bias, 1.2, 4.95)
@@ -64,6 +85,17 @@ public enum Reviews {
         let price = co.priceLevel
         if price > 0, st <= 4, h.next() < 0.5 { tx = pick(&h, pricey) }
         else if price < 0, st >= 4, h.next() < 0.5 { tx = pick(&h, cheap) }
+        var origin = ""
+        if let d = data, let c = d.countries[co.countryCode], h.next() < touristShare(co, data: d) {
+            let list = origins(c).filter { $0.0 != co.countryCode && d.countries[$0.0] != nil }
+            let tot = list.reduce(0) { $0 + $1.1 }
+            if tot > 0 {
+                var x = h.next() * tot
+                for e in list { if x < e.1 { origin = e.0; break }; x -= e.1 }
+                if origin.isEmpty { origin = list[0].0 }
+                tx = pick(&h, holidayLines) + tx
+            }
+        }
         let sweet = 24 + Double(abs(co.type.hashValueStable) % 28) + (price > 0 ? 6 : price < 0 ? -4 : 0)
         let gz = (h.next() + h.next() + h.next() - 1.5) * 2
         var age = st >= 4 ? sweet + gz * 9 : st <= 2 ? sweet + (h.next() < 0.5 ? -1 : 1) * (10 + h.next() * 10) + gz * 6 : sweet + gz * 14
@@ -71,7 +103,7 @@ public enum Reviews {
         let sum0 = co.value("rvS").isNull ? Pricing.rating(co) * Double(co.int("rvN")) : co.num("rvS")
         var list = co.value("rv41").array
         list.append(.object(["c": .number(Double(n)), "w": .number(Double(s.week)), "st": .number(Double(st)), "tx": .string(tx), "a": .number(age),
-                             "f": .bool(h.next() < 0.5), "k": .number(Double(Int(h.next() * 1_000_000)))]))
+                             "f": .bool(h.next() < 0.5), "k": .number(Double(Int(h.next() * 1_000_000))), "o": .string(origin)]))
         if list.count > 200 { list.removeFirst(list.count - 200) }
         s.companies[i].set("rvN", n)
         s.companies[i].set("rvS", sum0 + Double(st))
@@ -109,7 +141,7 @@ public enum Reviews {
     /// The latest reviews of a company, newest first.
     public static func latest(_ co: Company, limit: Int = 30) -> [Entry] {
         co.value("rv41").array.suffix(limit).reversed().map {
-            Entry(id: $0["c"].int, week: $0["w"].int, stars: $0["st"].int, text: $0["tx"].string, age: $0["a"].int, female: $0["f"].bool, nameSeed: $0["k"].int)
+            Entry(id: $0["c"].int, week: $0["w"].int, stars: $0["st"].int, text: $0["tx"].string, age: $0["a"].int, female: $0["f"].bool, nameSeed: $0["k"].int, origin: $0["o"].string)
         }
     }
 

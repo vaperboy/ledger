@@ -46,7 +46,7 @@ extension ManagerModel {
         keepTeam(&s, ci, bd, data: data, quality: q)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
-        if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util) }
+        if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
     }
 
     static func weekCost(_ s: GameState, _ co: Company, data: GameData) -> Double {
@@ -162,15 +162,15 @@ extension ManagerModel {
     }
 
     /// Small adjustments a manager with authority makes alone. Original: `tuneCore`.
-    static func tune(_ s: inout GameState, _ ci: Int, _ n: Person, _ q: Double, utilisation util: Double) {
+    static func tune(_ s: inout GameState, _ ci: Int, _ n: Person, _ q: Double, utilisation util: Double, balance: Balance) {
         let co = s.companies[ci]
         var fl = co.value("flags")
         guard Double(s.week) - (fl["priceAt"].isNull ? -99 : fl["priceAt"].double) >= 10 else { return }
         if util > 0.97 && co.priceLevel < 2 && s.random.chance(0.25 * q) {
-            fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); s.companies[ci].priceLevel = co.priceLevel + 1
+            fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); PriceMoves.managerStep(&s, ci, up: true, balance: balance)
             s.note("\(n.name) raised prices at \(co.name).", tone: "n", companyID: co.id)
         } else if util < 0.55 && util > 0 && co.priceLevel > -1 && s.random.chance(0.2 * q) {
-            fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); s.companies[ci].priceLevel = co.priceLevel - 1
+            fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); PriceMoves.managerStep(&s, ci, up: false, balance: balance)
             s.note("\(n.name) lowered prices at \(co.name) to fill capacity.", tone: "n", companyID: co.id)
         }
     }
@@ -346,10 +346,10 @@ extension ManagerModel {
             switch key {
             case "price_up":
                 if co.priceLevel >= 2 { say = "We are already at the top of what the market accepts." }
-                else { s.companies[ci].priceLevel = co.priceLevel + 1; say = util < 0.6 ? "Done, but demand is soft, so we may lose some customers." : "Done. We have room for it." }
+                else { PriceMoves.managerStep(&s, ci, up: true, balance: data.balance); say = util < 0.6 ? "Done, but demand is soft, so we may lose some customers." : "Done. We have room for it." }
             case "price_down":
                 if co.priceLevel <= -3 { say = "We are already the cheapest around. Going lower only eats the margin." }
-                else { s.companies[ci].priceLevel = co.priceLevel - 1; say = "Done. We should see more customers." }
+                else { PriceMoves.managerStep(&s, ci, up: false, balance: data.balance); say = "Done. We should see more customers." }
             case "hire":
                 var role: String?
                 for st in CompanySetup.standardStaff(bd, size: co.size) where role == nil {

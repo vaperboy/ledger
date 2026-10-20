@@ -24,6 +24,8 @@ public enum Payments {
             if let q = s.companies[i].value("law")["q"].isNull ? nil : s.companies[i].value("law")["q"].double { amt *= 1.1 - 0.45 * q }
             if s.hasHeadOffice("law") { amt *= 0.85 }
             if s.companies[i].flag("brdLaw") { amt *= 0.9 }   // a legal adviser on the board
+            // A lawyer you know gets the next fine halved (world around you: favours).
+            if amt > 0, s.rest["net31"]?["fineCut"].double ?? 0 != 0 { amt *= 0.5; s.rest["net31"]?["fineCut"] = 0 }
         }
         // A finance manager in the management team: cheaper books and fines.
         if category == "fine" || category == "acc", s.companies[i].value("tm")["fin"].double > 0 { amt *= 1 - 0.15 * s.companies[i].value("tm")["fin"].double }

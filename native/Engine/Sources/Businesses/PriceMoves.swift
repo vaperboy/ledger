@@ -6,7 +6,9 @@ import Finance
 /// Price moves: prices change in percent, customers get used to a price, discount campaigns (and the fine for a fake discount),
 /// and the history that tells a rival you cut. Originals: `priceWeek`, `ACT.pm16go`, `ACT.pm16camp`, `ACT.pm16end`, `cutRise`,
 /// `DISC` (features/sales/price_moves_and_lawsuits.js). The demand side (`priceDem`) is `Pricing.demandEffect`.
-/// Not ported: the forecast boxes (customers and margin), managers moving prices in small steps, rival calls about matched cuts.
+/// Forecast boxes (`forecast`, `Forecast.text`): what a change does to customers (at first, and once they are used to it) and to the margin;
+/// the owner only has a feeling, a data analyst in the head office gives a range as sharp as their skill (`est`, `fcBoxes`, `guess`).
+/// Managers move prices in small steps (6% of the price, not a whole level; `managerStep`). Rival calls about matched cuts: `Rivals.rivalCall`.
 public enum PriceMoves {
     /// How deep each trade can discount (0 or absent = not done in that trade). Original: `DISC`.
     static let discountMax: [String: Int] = [
@@ -113,5 +115,85 @@ public enum PriceMoves {
     public static func endCampaign(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID) else { return }
         s.companies[i].set("camp16", .null)
+    }
+
+    // MARK: Managers move prices in small steps
+
+    /// A manager raises or lowers the price by 6%, not by a whole level. Original: `step` ('tune.after', 'askManager.after').
+    public static func managerStep(_ s: inout GameState, _ ci: Int, up: Bool, balance b: Balance) {
+        let old = b.priceMultiplier(level: s.companies[ci].priceLevel)
+        let nb = clamp(old * (up ? 1.06 : 0.94), b.priceMultipliers[0], b.priceMultipliers[6])
+        s.companies[ci].priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
+    }
+
+    // MARK: Forecast
+
+    public struct Forecast: Equatable {
+        /// Change in customers in the first weeks, and once customers are used to the new price (0.05 = 5% more).
+        public var customersAtFirst: Double, customersLater: Double
+        /// Margin now and after the change (nil when there are no figures yet).
+        public var marginNow: Double?, marginAfter: Double?
+        /// Demand already above what the shop can serve: more demand would not turn into sales.
+        public var full: Bool
+    }
+
+    /// What a price change (`byShare`) or a campaign (`campaignPercent`) would do. Original: `est`.
+    public static func forecast(_ s: GameState, companyID: Int, byShare d: Double, campaignPercent cp: Int = 0, data: GameData) -> Forecast? {
+        guard let co0 = s.company(companyID), let bd = data.catalog[co0.type], bd.normalDemand > 0 else { return nil }
+        let w = World(state: s, data: data), b = data.balance
+        var co = co0
+        if co.value("pref16").isNull { co.set("pref16", b.priceMultiplier(level: co.priceLevel)) }
+        let isGoods = ["retail", "prod"].contains(bd.family)
+        let cap = isGoods ? Double.infinity : CapacityModel.compute(co, bd, w).capacity * (bd.family == "svc" ? 1.1 : 1)
+        let e0 = Pricing.priceIndex(co, w), D0 = DemandModel.compute(co, bd, w).customers
+        let old = b.priceMultiplier(level: co.priceLevel)
+        let nb = clamp(old * (1 + d), b.priceMultipliers[0], b.priceMultipliers[6])
+        co.priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
+        if cp > 0 { co.set("camp16", .object(["pct": .number(Double(cp)), "end": .number(Double(s.week + 9)), "w0": .number(Double(s.week))])) }
+        let e1 = Pricing.priceIndex(co, w), D1 = DemandModel.compute(co, bd, w).customers
+        if cp == 0 { co.set("pref16", nb) }
+        let D2 = DemandModel.compute(co, bd, w).customers
+        let u0 = min(D0, cap), u1 = min(D1, cap), u2 = min(D2, cap)
+        var m0: Double? = nil, m1: Double? = nil
+        if let h = co0.monthlyHistory.last, h.revenue > 0, u0 > 0 {
+            let lw = co0.value("lastW")
+            let v = lw["rev"].double > 0 ? clamp(lw["cogs"].double / lw["rev"].double, 0, 0.95) : bd.costOfSales
+            let ur = (cp > 0 ? u1 : u2) / u0, pr = e1 / max(0.0001, e0)
+            let rev1 = h.revenue * ur * pr, varC = h.revenue * v, fix = h.revenue - h.profit - varC
+            m0 = h.profit / h.revenue
+            m1 = rev1 > 0 ? (rev1 - varC * ur - fix) / rev1 : nil
+        }
+        return Forecast(customersAtFirst: u0 > 0 ? D1 / D0 - 1 : 0, customersLater: u0 > 0 ? D2 / D0 - 1 : 0, marginNow: m0, marginAfter: m1, full: D0 > cap * 1.02)
+    }
+
+    static func gutWord(_ c: Double) -> String {
+        c < -0.25 ? "Many fewer" : c < -0.08 ? "Fewer" : c < -0.02 ? "A few fewer" : c <= 0.02 ? "Same" : c < 0.08 ? "A few more" : c < 0.25 ? "More" : "Many more"
+    }
+
+    /// A range around the true value, as wide as the analyst is unsure. Original: `guess`.
+    static func guess(_ v: Double, key: String, analyst k: MarketMap.Knowledge, unit: Double, sign: Bool, seed: Int, week: Int) -> String {
+        var h = HashedRandom("\(seed):g16:\(key):\(k.id):\(week / 4)")
+        let a = h.next(), b = h.next()
+        let off = (a - 0.5) * 2 * (1 - k.skill) * unit * 2.2 * (b < k.skill ? 0.4 : 1), w = unit * (0.35 + (1 - k.skill) * 2)
+        func f(_ x: Double) -> String { (sign && x > 0 ? "+" : x < 0 ? "−" : "") + "\(Int(jsRound(abs(x) * 100)))%" }
+        return f(v + off - w / 2) + " to " + f(v + off + w / 2)
+    }
+
+    public struct ForecastText: Equatable { public var customers: String, margin: String, byAnalyst: Bool }
+
+    /// The two boxes: customers and margin, as the owner or the data analyst sees them. Original: `fcBoxes`.
+    public static func forecastText(_ f: Forecast, _ s: GameState, key: String, campaign: Bool = false) -> ForecastText {
+        let cv = campaign ? f.customersAtFirst : f.customersLater
+        if let an = MarketMap.dataAnalyst(s) {
+            return ForecastText(customers: guess(cv, key: key + "c", analyst: an, unit: 0.08, sign: true, seed: s.seed, week: s.week),
+                                margin: f.marginAfter.map { guess($0, key: key + "m", analyst: an, unit: 0.06, sign: false, seed: s.seed, week: s.week) } ?? "?", byAnalyst: true)
+        }
+        var m = "?"
+        if let m1 = f.marginAfter, let m0 = f.marginNow {
+            var h = HashedRandom("\(s.seed):gm16:\(key):\(s.week / 4)")
+            let dm = m1 - m0 + (h.next() - 0.5) * 0.12
+            m = abs(dm) < 0.02 ? "Hard to say" : dm > 0 ? "Better?" : "Worse?"
+        }
+        return ForecastText(customers: gutWord(cv), margin: m, byAnalyst: false)
     }
 }

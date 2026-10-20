@@ -199,8 +199,10 @@ public enum Rivals {
             remember(&s, key: k, idx: idx, data: data)
         }
         for i in s.companies.indices { priceWarWeek(&s, i, data: data) }
+        collusionWeek(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
         RivalGroups.weekly(&s, data: data)
+        WorldAround.weekly(&s, data: data)
     }
 
     static func behave(_ s: inout GameState, key k: String, idx: [Int], bd: Trade, data: GameData) {
@@ -296,6 +298,73 @@ public enum Rivals {
         mk[k] = m
         s.rest["mk"] = mk
         for n in notes { s.note(n.0, tone: n.1, companyID: co0.id) }
+        rivalCalls(&s, cos: idx, market: m, riv: riv, bd: bd, data: data)
+    }
+
+    // MARK: Calls from rival owners (price matching, price fixing)
+
+    /// A rival owner calls when your price has fallen clearly under the market's ("match") or now and then to ask what is up ("chat").
+    /// Only a real cut makes them call. The illegal answers set the company's collusion flag: the market price index rises, and each week
+    /// there is a small chance the authority finds out (`collusionWeek`). Original: `rivalCall` (economy_markets.js), 'rivalCall.before/after'.
+    static func rivalCalls(_ s: inout GameState, cos idx: [Int], market m: JSONValue, riv: [JSONValue], bd: Trade, data: GameData) {
+        guard !riv.isEmpty else { return }
+        let w = World(state: s, data: data)
+        let aggr = m["aggr"].isNull ? 1 : m["aggr"].double
+        var h = HashedRandom("\(s.seed):rcall:\(s.week):\(idx.first ?? 0)")
+        for i in idx where s.companies[i].status == .open {
+            let co = s.companies[i]
+            let p = Pricing.priceIndex(co, w) / max(0.01, co.num("ig", 1))
+            let match = p < m["pi"].double - 0.035 && h.next() < 0.12 * aggr
+            let chat = !match && h.next() < 0.01 * aggr / Double(max(1, idx.count))
+            guard match || chat else { continue }
+            let cut = PriceMoves.recentCut(co, week: s.week, balance: data.balance)
+            if match && cut < 0.06 && co.value("flags")["pw"].isNull { continue }
+            call(&s, i, kind: match ? "match" : "chat", cut: cut, rival: riv[Int(h.next() * Double(riv.count)) % riv.count], bd: bd)
+        }
+    }
+
+    static func call(_ s: inout GameState, _ i: Int, kind: String, cut: Double, rival r: JSONValue, bd: Trade) {
+        let co = s.companies[i]
+        var flags = co.value("flags")
+        if !flags["lastCall"].isNull, s.week - flags["lastCall"].int < 6 { return }
+        flags["lastCall"] = .number(Double(s.week)); s.companies[i].set("flags", flags)
+        let rname = "\(r["owner"].string.isEmpty ? "A rival" : r["owner"].string) (owner, rival \(bd.name.lowercased()))"
+        let title: String, body: String, opts: [JSONValue]
+        if kind == "match" {
+            title = "\(rname) calls about your prices"
+            body = "\"You cut your prices \(Int(jsRound(cut * 100)))% in a few weeks and our customers noticed. We have matched you. If you keep going down, we both bleed.\""
+            opts = [.option("Hold your prices", "Stay aggressive."), .option("Raise prices back a step", "Cool things down.", effects: ["pr": 1]),
+                    .option("Propose to \"coordinate\" prices", "Illegal. If caught: fine of 8% of turnover.", effects: ["coord": 1])]
+        } else {
+            title = "\(rname) calls to ask what's up"
+            body = "\"Heard you are expanding. Just checking where you stand on prices and customers.\""
+            opts = [.option("Be friendly, say nothing"), .option("Warn them off", "They may react aggressively.", effects: ["dem": .array([1, 1]), "warn": true]),
+                    .option("Hint at a price understanding", "Illegal collusion.", effects: ["coord": true])]
+        }
+        let level = co.value("auth")["lvl"].int
+        if co.managerID != nil, let mgr = s.people[co.managerID!], level >= 1 {
+            // A manager with authority takes the call and holds the line (the original's manager never agrees to collude).
+            s.addMessage(from: co.name, title: "Rival call handled by \(mgr.name)", body: title, companyID: co.id)
+            return
+        }
+        let id = s.addMessage(kind: "decision", from: rname, title: title, body: body, companyID: co.id, tone: "n", status: "open", options: opts, expiresWeek: s.week + 2)
+        if let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].set("ev", "rival_call"); s.inbox[k].set("cat", "none") }
+    }
+
+    /// The authority finds out about a price understanding: a fine of 8% of turnover, reputation down. Original: the 'coll' check in `weekCore`.
+    static func collusionWeek(_ s: inout GameState, data: GameData) {
+        for i in s.companies.indices where s.companies[i].status == .open || s.companies[i].status == .closed {
+            guard s.companies[i].value("flags")["coll"].double != 0, s.random.chance(0.02) else { continue }
+            let co = s.companies[i]
+            let cur = World(state: s, data: data).currency(co)
+            let fine = jsRound(max(cur.scaledPrice(50000), (MarketMap.annualRevenue(co) + co.lastWeekRevenue * 20) * 0.08))
+            var f = co.value("flags"); f["coll"] = 0; s.companies[i].set("flags", f)
+            Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Competition fine")
+            if let j = s.companyIndex(co.id) { s.companies[j].reputation = clamp(s.companies[j].reputation - 6, 0, 100) }
+            s.addMessage(from: "Competition authority", title: "Price collusion uncovered at \(co.name)",
+                         body: "The authority fined \(co.name) \(cur.display(fine)). Reputation took a hit.", companyID: co.id, tone: "bad")
+            s.news("Competition authority fines a local company for price fixing.", tone: "bad")
+        }
     }
 
     /// What rivals notice and remember. Original: `rivalWeek` (world_around_you.js).

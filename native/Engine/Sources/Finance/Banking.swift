@@ -53,7 +53,9 @@ public enum Banking {
 
     /// Yearly interest rate of a loan today. Original: `loanRate`.
     public static func rate(of loan: Loan, state: GameState, modifiers: LendingModifiers = .init()) -> Double {
-        let core = max(0.005, state.economy.policyRate + loan.margin)
+        var core = max(0.005, state.economy.policyRate + loan.margin)
+        // A banker you know cuts the rate for a while (world around you: favours). Original: 'loanRate' step.
+        if let cut = state.rest["net31"]?["loanCut"], !cut.isNull, Double(state.week) < cut["until"].double { core = max(0.005, core - cut["cut"].double) }
         return core + modifiers.rateAdjustment(loan, state)
     }
 

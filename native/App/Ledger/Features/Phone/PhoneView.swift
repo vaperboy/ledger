@@ -21,6 +21,8 @@ struct PhoneView: View {
                             Hairline()
                             row(.achievements, "rosette", "Achievements", achievementsLine(e)); Hairline()
                             row(.richList, "list.number", "Rich list", richLine(e)); Hairline()
+                            row(.ranking, "building.2.fill", "Biggest companies", rankingLine(e)); Hairline()
+                            row(.worldAround, "person.2.wave.2.fill", "World around you", "Public image, people you know, favours and maps"); Hairline()
                             row(.activity, "list.bullet.rectangle.fill", "Activity", e.state.statement.first.map { $0.label + " " + (($0.amount >= 0 ? "+" : "−") + store.short(abs($0.amount))) } ?? "Nothing has moved yet")
                             Hairline()
                             row(.luxury, "sparkles", "Luxury", e.luxuryPieces.isEmpty ? "Cars, watches, art, yachts, jets, homes and estates" : "\(e.luxuryPieces.count) pieces · worth " + store.short(e.luxuryValue))
@@ -44,6 +46,8 @@ struct PhoneView: View {
                 case .settings: SettingsView()
                 case .achievements: AchievementsView()
                 case .richList: RichListView()
+                case .ranking: RankingView()
+                case .worldAround: WorldAroundView()
                 }
             }
             .onAppear { openRequested() }
@@ -64,6 +68,11 @@ struct PhoneView: View {
     private func richLine(_ e: GameEngine) -> String {
         let st = RichList.standing(e.state, data: e.data, context: e.context)
         return st.rank.map { "You are number \($0) in \(e.homeCountry.name)" } ?? "Not on the list yet"
+    }
+
+    private func rankingLine(_ e: GameEngine) -> String {
+        guard let r = e.yourRanking() else { return "Appears once you run a business" }
+        return "You are number \(r.rank) of \(r.of) in \(e.homeCountry.name) by sales"
     }
 
     private func openRequested() {

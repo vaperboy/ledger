@@ -103,7 +103,7 @@ public enum RichList {
 public enum Awards {
     public static let categories: [(id: String, name: String)] = [
         ("boty", "Business of the year"), ("emp", "Employer of the year"), ("rated", "Best rated business"),
-        ("new", "Newcomer of the year"), ("ent", "Entrepreneur of the year")]
+        ("new", "Newcomer of the year"), ("grow", "Fastest growing"), ("ent", "Entrepreneur of the year")]
 
     public struct Result: Equatable { public var kind: String; public var won: Bool; public var company: String; public var why: String; public var other: String }
     public struct Year: Equatable { public var year: Int; public var results: [Result]; public var rank: Int?; public var netWorth: Double }
@@ -133,7 +133,9 @@ public enum Awards {
         let st = RichList.standing(s, data: data, context: fc)
         let cur = fc.homeCurrency(s), country = fc.homeCountry(s)
         let nw = st.netWorth
-        let rk = st.rank ?? 1_000_000
+        // Where the companies rank in the country by sales and by growth (the list of the biggest companies), not the rich list.
+        let rk = CompanyRanking.yourRank(s, data: data, scope: .country, metric: .revenue)?.rank ?? 1_000_000
+        let growRank = CompanyRanking.yourRank(s, data: data, scope: .country, metric: .growth)?.rank ?? 1_000_000
         func otherName() -> String {
             let f = country.firstNames.isEmpty ? ["A"] : country.firstNames, l = country.lastNames.isEmpty ? ["Rival"] : country.lastNames
             return s.random.pick(f) + " " + s.random.pick(l) + " & Co"
@@ -154,6 +156,9 @@ public enum Awards {
             if let fresh = live.filter({ s.week - $0.foundedWeek < 60 }).max(by: { $0.lastWeekRevenue < $1.lastWeekRevenue }) {
                 add("new", fresh.name, "\(cur.short(fresh.lastWeekRevenue * 52)) a year in its first year", clamp(fresh.lastWeekRevenue * 52 / cur.scaledPrice(20e6), 0, 0.5))
             }
+        }
+        if let best = live.max(by: { $0.lastWeekRevenue < $1.lastWeekRevenue }) {
+            add("grow", best.name, "grew faster than almost anyone", growRank <= 20 ? 0.45 : growRank <= 100 ? 0.12 : 0)
         }
         let prev = aw["years"].array.last?["nw"].double ?? s.openingCash
         let g = prev > 0 ? nw / prev - 1 : 0
@@ -176,6 +181,7 @@ public enum Awards {
     /// Everything that happens once a week for trophies, awards, the rich list and company sales.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         CompanySale.weekly(&s, data: data, context: fc)
+        RivalBids.weekly(&s, data: data, context: fc)
         yearly(&s, data: data, context: fc)
         RichList.monthly(&s, data: data, context: fc)
         Trophies.check(&s, data: data, context: fc)

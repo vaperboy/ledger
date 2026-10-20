@@ -1,23 +1,25 @@
 import Foundation
 import GameCore
 import Countries
+import Finance
 
 /// Rival groups: about ten named groups per country with an owner, a strategy, cash, debt and an ambition. They own many of the local
 /// rivals you meet, and every month some of them make a move: cut prices beside you, open next door, buy an independent rival, push
 /// marketing, raise prices or go abroad. Groups that overreach get into trouble and sell cheaply; some go bankrupt.
 /// Original: features/world/rival_groups.js (`STRAT`, `ensureCC`, `assign`, `groupMonth`, `MOVES`, `onDistress`, `onCollapse`, `cutsWeek`, `monthTick`).
-/// Not ported: bids for your companies (needs selling a company), poaching your manager, buying your suppliers, the ranking of the biggest companies.
+/// Bids for your companies (`bid`, answered in Events/RivalBids), poaching your manager (`poach`), buying your suppliers (`buysup`: dearer goods for
+/// everyone who buys there) and the ranking of the biggest companies (`CompanyRanking`) are in.
 public enum RivalGroups {
     struct Strategy { var name: String, text: String, margin: Double, growth: Double, leverage: Double, weights: [(String, Double)] }
     static let strategies: [(String, Strategy)] = [
         ("cost", Strategy(name: "Cost leader", text: "Low prices and thin margins. Wins on volume.", margin: 0.055, growth: 0.006, leverage: 0.5,
-                          weights: [("undercut", 6), ("beside", 2), ("buyrival", 1), ("abroad", 1), ("campaign", 1)])),
+                          weights: [("undercut", 6), ("beside", 2), ("buyrival", 1), ("buysup", 2), ("poach", 1), ("abroad", 1), ("bid", 1), ("campaign", 1)])),
         ("premium", Strategy(name: "Premium", text: "Higher prices, better quality, a strong brand.", margin: 0.14, growth: 0.005, leverage: 0.3,
-                             weights: [("campaign", 4), ("beside", 1), ("buyrival", 1), ("abroad", 2), ("raise", 3)])),
+                             weights: [("campaign", 4), ("poach", 1.5), ("beside", 1), ("buyrival", 1), ("abroad", 2), ("bid", 1), ("raise", 3)])),
         ("acq", Strategy(name: "Acquirer", text: "Grows by buying others, often with borrowed money.", margin: 0.08, growth: 0.004, leverage: 0.9,
-                         weights: [("buyrival", 6), ("abroad", 1)])),
+                         weights: [("buyrival", 6), ("buysup", 3), ("bid", 5), ("abroad", 1), ("poach", 0.5)])),
         ("expand", Strategy(name: "Aggressive expander", text: "Opens new sites fast and takes risks.", margin: 0.07, growth: 0.011, leverage: 0.8,
-                            weights: [("beside", 6), ("undercut", 2), ("abroad", 3), ("campaign", 2)])),
+                            weights: [("beside", 6), ("undercut", 2), ("abroad", 3), ("campaign", 2), ("poach", 1)])),
         ("cautious", Strategy(name: "Cautious", text: "Slow and steady, with a strong balance sheet.", margin: 0.11, growth: 0.003, leverage: 0.15,
                               weights: [("campaign", 2), ("raise", 2), ("buyrival", 1)])),
     ]
@@ -191,6 +193,7 @@ public enum RivalGroups {
     }
 
     static func monthTick(_ s: inout GameState, data: GameData) {
+        CompanyRanking.snapshot(&s, data: data)
         let mine = myCountries(s)
         for cc in mine { ensureCountry(&s, cc, data: data) }
         guard var root = s.rest["g27"] else { return }
@@ -241,8 +244,8 @@ public enum RivalGroups {
             var x = h.next() * tot
             var kindName = st.weights[0].0
             for w in st.weights { if x < w.1 { kindName = w.0; break }; x -= w.1 }
-            if ["undercut", "beside"].contains(kindName), sent >= 3 { continue }
-            if move(&s, id, kindName, &h, data: data), ["undercut", "beside"].contains(kindName) { sent += 1 }
+            if ["undercut", "beside", "buysup", "poach", "bid"].contains(kindName), sent >= 3 { continue }
+            if move(&s, id, kindName, &h, data: data), ["undercut", "beside", "buysup", "poach", "bid"].contains(kindName) { sent += 1 }
         }
     }
 
@@ -365,8 +368,155 @@ public enum RivalGroups {
             logMove(&g, week: week, "Entered \(cn)"); save()
             s.news("\(name) expands into \(cn).", tone: myCountries(s).contains(cc) ? "bad" : "n")
             return true
+        case "poach":
+            // Try to hire your best manager away: they ask you to match, pay a bonus or let them go.
+            let types = g["types"].array.map { $0.string }
+            let fam0 = types.first.flatMap { data.catalog[$0]?.family }
+            let cands = s.companies.indices.filter { i in
+                let c = s.companies[i]
+                guard c.status == .open, let mid = c.managerID, c.value("mgrNotice").isNull, let p = s.people[mid], let bd = data.catalog[c.type],
+                      g["cs"].array.contains(where: { $0.string == c.countryCode }), p.num("ret27") <= Double(week) else { return false }
+                return types.contains(c.type) || bd.family == fam0
+            }
+            func q(_ i: Int) -> Double { ManagerModel.quality(s.companies[i], data.catalog[s.companies[i].type]!, people: s.people) }
+            guard let ci = cands.max(by: { q($0) < q($1) }), q(ci) >= 0.45, cooldown("po:\(s.companies[ci].id)", 78), cooldown("po:all", 26),
+                  let n = s.people[s.companies[ci].managerID ?? 0] else { return false }
+            let co = s.companies[ci]
+            let cur = World(state: s, data: data).currency(co)
+            let offer = cur.roundedStep((co.managerMonthlyWage > 0 ? co.managerMonthlyWage : n.askingMonthlyWage) * (1.18 + h.next() * 0.17), about: 500)
+            logMove(&g, week: week, "Tried to hire \(n.name) from \(co.name)"); save()
+            s.addMessage(kind: "ask", from: n.name, title: "\(name) wants to hire your manager",
+                         body: "\(n.name), who runs \(co.name), has an offer from \(name): \(cur.display(offer)) a month, against \(cur.display(co.managerMonthlyWage)) now. \(n.name.split(separator: " ").first.map(String.init) ?? n.name) likes it here, but the money is good.",
+                         companyID: co.id, tone: "bad", status: "open",
+                         options: [.option("Match it", "Pay \(cur.display(offer)) a month from now on."),
+                                   .option("A retention bonus", "Three months' pay now. Most stay for at least a year; some still go."),
+                                   .option("Let them go", "They leave in two weeks. You need a new manager.")],
+                         action: "g27poach", data: .object(["co": .number(Double(co.id)), "n": .number(Double(n.id)), "g": .string(id), "offer": .number(offer)]), expiresWeek: week + 2)
+            return true
+        case "buysup":
+            let T = targets(s, g, data: data)
+            guard !T.isEmpty, !troubled else { return false }
+            let co = s.companies[T[Int(h.next() * Double(T.count)) % T.count]]
+            guard let v = goodsSupplier(s, co, data: data), s.rest["g27"]?["vown"][v.id].isNull ?? true, cooldown("sup:" + v.id, 80) else { return false }
+            s.rest["g27"]?["vown"][v.id] = .string(id)
+            pay(&g, g["rev"].double * 0.08)
+            logMove(&g, week: week, "Bought the supplier \(v.name)"); save()
+            var hit: [String] = []
+            for j in s.companies.indices where s.companies[j].status == .open {
+                if let w = goodsSupplier(s, s.companies[j], data: data), w.id == v.id {
+                    hit.append(s.companies[j].name)
+                    PriceMoves.addModifier(&s, j, key: "cogsup", multiplier: 1.06, weeks: 520)
+                }
+            }
+            s.addMessage(from: "Market", title: "\(name) bought your supplier \(v.name)",
+                         body: "\(v.name), which supplies \(hit.joined(separator: ", ")), now belongs to \(name), a competitor. Prices to you go up about 6% and deliveries come second to their own shops.",
+                         companyID: co.id, tone: "bad")
+            return true
+        case "bid":
+            guard !troubled else { return false }
+            let acq = g["strat"].string == "acq"
+            let types = g["types"].array.map { $0.string }
+            let T = s.companies.indices.filter { i in
+                let c = s.companies[i]
+                return c.status == .open && c.type != "hold" && g["cs"].array.contains(where: { $0.string == c.countryCode }) && (types.contains(c.type) || acq)
+                    && Valuation.companyValue(c, state: s, trades: data.catalog) > 0 && CompanyFigures.yearlyProfitEstimate(c, currentWeek: week) > 0
+                    && week - (c.openedWeek ?? c.foundedWeek) > 78 && !(c.num("bid27") > Double(week))
+            }
+            guard let ti = T.max(by: { Valuation.companyValue(s.companies[$0], state: s, trades: data.catalog) < Valuation.companyValue(s.companies[$1], state: s, trades: data.catalog) }) else { return false }
+            let co = s.companies[ti]
+            let V0 = Valuation.companyValue(co, state: s, trades: data.catalog)
+            let price = ((V0 * (acq ? 1.1 + h.next() * 0.3 : 1.0 + h.next() * 0.25)) / 1000).rounded() * 1000
+            guard g["cash"].double + g["rev"].double * 0.6 - g["debt"].double * 0.3 >= price, cooldown("bid:all", 26) else { return false }
+            s.companies[ti].set("bid27", Double(week + 104))
+            let cur = World(state: s, data: data).currency(co)
+            logMove(&g, week: week, "Bid \(cur.short(price)) for \(co.name)"); save()
+            let out = 100 - co.ownership
+            let pct = Int(jsRound((price / max(1, V0) - 1) * 100))
+            let mine = price * co.ownership / 100
+            s.addMessage(kind: "ask", from: "\(g["owner"].string), \(name)", title: "\(name) wants to buy \(co.name)",
+                         body: "\(name) offers \(cur.display(price)) for all of \(co.name) (about \(abs(pct))% \(price >= V0 ? "above" : "below") what it is worth today). "
+                            + (co.ownership < 100 ? "You own \(Int(jsRound(co.ownership)))%, so you would get \(cur.display(mine)). " : "")
+                            + (out > 50 ? "Outside owners hold \(Int(jsRound(out)))%. If the price is good they can accept without you." : out >= 33.4 ? "Outside owners hold \(Int(jsRound(out)))% and will want a say." : ""),
+                         companyID: co.id, tone: "n", status: "open",
+                         options: [.option("Accept", "Sell now for \(cur.display(mine)) to you."), .option("Ask for more", "They may raise their offer, or walk away."),
+                                   .option("Refuse", "Keep it. They may come back, or compete harder.")],
+                         action: "g27bid", data: .object(["co": .number(Double(co.id)), "g": .string(id), "price": .number(price), "V0": .number(V0), "round": 0]), expiresWeek: week + 3)
+            return true
         default: return false
         }
+    }
+
+    // MARK: Poaching, supplier purchases and bids: the follow-ups
+
+    /// The goods supplier a company buys from (the first of its vendor list while vendor choice is not ported). Original: `goodsPick`.
+    static func goodsSupplier(_ s: GameState, _ co: Company, data: GameData) -> (id: String, name: String)? {
+        guard let bd = data.catalog[co.type], bd.costOfSales >= 0.03, !["fin", "energy", "rent", "club", "svc"].contains(bd.family),
+              !bd.id.hasPrefix("engcons"), !bd.id.hasPrefix("event") else { return nil }
+        let list = EquipmentMarket.vendors(for: "goods:" + co.type, count: EquipmentMarket.brandCount(co, state: s), family: bd.family, seed: s.seed,
+                                           countryCode: co.countryCode, countries: data.countries, nouns: data.catalog.tables.raw["FAM_NOUN"])
+        return list.first.map { ($0.id, $0.name) }
+    }
+
+    /// Is this supplier owned by a competitor?
+    public static func supplierOwner(_ s: GameState, vendorID: String) -> String? {
+        let o = s.rest["g27"]?["vown"][vendorID] ?? .null
+        return o.isNull ? nil : o.string
+    }
+
+    /// The owner answers a call about the manager. Original: `ACTS.g27poach`.
+    public static func answerPoach(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
+        let d = m.value("data")
+        guard let ci = s.companyIndex(d["co"].int), let mid = s.companies[ci].managerID, mid == d["n"].int, var n = s.people[mid] else { return }
+        let co = s.companies[ci]
+        let gid = d["g"].string
+        switch idx {
+        case 0:
+            s.companies[ci].managerMonthlyWage = d["offer"].double
+            n.set("ret27", Double(s.week + 78)); s.people[mid] = n
+            s.companies[ci].set("mood", min(100, ManagerModel.mood(co) + 6))
+            s.note("\(n.name) stays at \(co.name) on the new pay.", tone: "good", companyID: co.id)
+        case 1:
+            Payments.companyPays(&s, companyID: co.id, amount: co.managerMonthlyWage * 3, category: "wages", label: "Retention bonus for \(n.name)")
+            if s.random.chance(0.72) {
+                n.set("ret27", Double(s.week + 52)); s.people[mid] = n
+                s.note("\(n.name) takes the bonus and stays.", tone: "good", companyID: co.id)
+            } else { poachGo(&s, ci, groupID: gid) }
+        default: poachGo(&s, ci, groupID: gid)
+        }
+    }
+
+    /// They accept the offer and work out their notice. Original: `poachGo`.
+    public static func poachGo(_ s: inout GameState, _ ci: Int, groupID gid: String) {
+        let co = s.companies[ci]
+        let g = s.rest["g27"]?["g"][gid] ?? .null
+        let who = co.managerID.flatMap { s.people[$0]?.name } ?? "The manager"
+        ManagerModel.resign(&s, companyIndex: ci, why: "I have accepted the offer", to: g.isNull ? "a competitor" : g["name"].string)
+        guard !g.isNull else { return }
+        s.rest["g27"]?["g"][gid]["mg"] = .number(g["mg"].double + 1)
+        s.rest["g27"]?["g"][gid]["m"] = .number(min(0.3, g["m"].double + 0.004))
+        var gg = s.rest["g27"]?["g"][gid] ?? g
+        logMove(&gg, week: s.week, "Hired \(who) from \(co.name)")
+        s.rest["g27"]?["g"][gid] = gg
+    }
+
+    /// After you sold a company to a group: it becomes one of the group's sites in the market; the group pays. Original: `sellToGroup` (after `acceptSale`).
+    public static func completeSale(_ s: inout GameState, groupID gid: String, company co: Company, price: Double, data: GameData) {
+        guard var g = s.rest["g27"]?["g"][gid], !g.isNull else { return }
+        let k = Rivals.key(co)
+        if var mk = s.rest["mk"], !mk[k].isNull, localFamilies.contains(data.catalog[co.type]?.family ?? "") {
+            let rid = Rivals.nextID(&s)
+            mk = s.rest["mk"]!
+            let r: JSONValue = .object(["id": .number(Double(rid)), "name": .string(co.name), "owner": g["owner"], "size": .number(jsRound(clamp(co.size, 0.5, 2) * 100) / 100),
+                                        "rel": 50, "listed": false, "ign": 0, "lock": 0, "meet": -99, "g27": .string(gid), "pm16": .number(Rivals.initialPrice(seed: s.seed, id: rid)), "ig16": 1,
+                                        "nx16": .number(Double(s.week + 6))])
+            mk[k]["riv"] = .array(mk[k]["riv"].array + [r]); mk[k]["n"] = .number(mk[k]["n"].double + 1)
+            s.rest["mk"] = mk
+        }
+        pay(&g, price)
+        g["br"] = .number(g["br"].double + 1)
+        logMove(&g, week: s.week, "Bought \(co.name) from you")
+        s.rest["g27"]?["g"][gid] = g
+        s.news("\(g["name"].string) buys \(co.name).")
     }
 
     // MARK: Trouble

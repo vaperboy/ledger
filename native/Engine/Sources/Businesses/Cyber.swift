@@ -7,7 +7,10 @@ import Finance
 /// and staff training; they cost a monthly fee. Attacks follow the UK Cyber Security Breaches Survey: a fake invoice, ransomware, a data
 /// leak, a website knocked offline. Losses go through `Incidents.loss` with category "cyber", so cyber insurance pays them.
 /// Original: features/world/cyber_attacks.js (`LV`, `ODDS`, `yearOdds`, `fraud`, `ransom`, `leak`, `down`, `ACTS.cy56r`, `ACTS.cy56l`, weekly step, screen).
-/// Not ported: the chain and manager overrides (the manager does not pick the level), the data-protection authority's local name.
+/// A manager looks after the level: at each month end, unless you picked one yourself (then yours stands until you hand it back),
+/// they choose the level that fits the size and the risk, keep offline backups on and book the yearly training (`managerKeeps`,
+/// original `secNeed`/`doSec` in features/people/manager_duties.js).
+/// Not ported: the chain override, the data-protection authority's local name.
 public enum Cyber {
     public static let levels: [(name: String, monthly: Double, text: String)] = [
         ("None", 0, "Only what came with the computers."),
@@ -23,14 +26,14 @@ public enum Cyber {
     static let online: Set<String> = ["webshop", "hotel", "airline", "wh3pl", "webdev", "mktg", "courier", "fun", "indoorski", "skires"]
 
     public struct Status: Equatable {
-        public var level: Int, backups: Bool, trainedUntil: Int?, blocked: Int, log: [(week: Int, text: String)]
+        public var level: Int, backups: Bool, trainedUntil: Int?, blocked: Int, log: [(week: Int, text: String)], managerPicks: Bool = false
         public static func == (a: Status, b: Status) -> Bool { a.level == b.level && a.backups == b.backups && a.trainedUntil == b.trainedUntil && a.blocked == b.blocked }
     }
 
     public static func status(_ co: Company) -> Status {
         let c = co.value("cy56")
         return Status(level: c["lvl"].int, backups: c["bk"].bool, trainedUntil: c["tr"].isNull ? nil : c["tr"].int + 52, blocked: c["blocked"].int,
-                      log: c["log"].array.map { ($0["w"].int, $0["t"].string) })
+                      log: c["log"].array.map { ($0["w"].int, $0["t"].string) }, managerPicks: managerPicks(co))
     }
 
     public static func heads(_ co: Company) -> Int { co.staff.filter { !$0.isOffSeason }.count + (co.managerID != nil ? 1 : 0) }
@@ -197,12 +200,56 @@ public enum Cyber {
 
     public static func setLevel(_ s: inout GameState, companyID: Int, level: Int) {
         guard let i = s.companyIndex(companyID) else { return }
-        var c = s.companies[i].value("cy56"); c["lvl"] = .number(Double(min(3, max(0, level)))); s.companies[i].set("cy56", c)
+        var c = s.companies[i].value("cy56"); c["lvl"] = .number(Double(min(3, max(0, level))))
+        if s.companies[i].managerID != nil { c["own"] = 1 }
+        s.companies[i].set("cy56", c)
     }
 
     public static func toggleBackups(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID) else { return }
-        var c = s.companies[i].value("cy56"); c["bk"] = .bool(!c["bk"].bool); s.companies[i].set("cy56", c)
+        var c = s.companies[i].value("cy56"); c["bk"] = .bool(!c["bk"].bool)
+        if s.companies[i].managerID != nil { c["own"] = 1 }
+        s.companies[i].set("cy56", c)
+    }
+
+    /// Does the manager pick the level here (no choice of yours standing)?
+    public static func managerPicks(_ co: Company) -> Bool { co.managerID != nil && !co.value("cy56")["own"].bool }
+
+    /// Give the choice back to the manager. Original: `md56` switch.
+    public static func leaveToManager(_ s: inout GameState, companyID: Int) {
+        guard let i = s.companyIndex(companyID) else { return }
+        var c = s.companies[i].value("cy56"); c["own"] = 0; s.companies[i].set("cy56", c)
+    }
+
+    /// The level a manager would pick: 3 for 40+ heads or a high risk, 2 from 8 heads, else 1; never more than 3% of the month's sales. Original: `secNeed`.
+    public static func levelNeeded(_ co: Company, week: Int, trade bd: Trade?, cur: Currency) -> Int {
+        let o0 = yearOdds(co, week: week, trade: bd) / odds[min(3, max(0, co.value("cy56")["lvl"].int))]
+        let hd = heads(co)
+        var lvl = hd >= 40 || o0 >= 0.3 ? 3 : hd >= 8 || o0 >= 0.12 ? 2 : 1
+        let revM = co.value("lastW")["rev"].double * 4.33
+        while lvl > 1 && monthly(co, level: lvl, backups: true, cur: cur) > revM * 0.03 { lvl -= 1 }
+        return lvl
+    }
+
+    /// The manager's month: level, backups and training. Original: `doSec`.
+    static func managerKeeps(_ s: inout GameState, _ i: Int, trade bd: Trade, data: GameData) {
+        let co = s.companies[i]
+        guard co.managerID != nil, let mgr = s.people[co.managerID!] else { return }
+        let cur = World(state: s, data: data).currency(co)
+        var c = co.value("cy56"), notes: [String] = []
+        if !c["own"].bool {
+            let lvl = levelNeeded(co, week: s.week, trade: bd, cur: cur)
+            if lvl != c["lvl"].int { notes.append("\(lvl > c["lvl"].int ? "raised" : "lowered") IT security to \(levels[lvl].name.lowercased())"); c["lvl"] = .number(Double(lvl)) }
+            if lvl >= 1 && !c["bk"].bool { c["bk"] = true; notes.append("turned on offline backups") }
+        }
+        s.companies[i].set("cy56", c)
+        let tc = trainingCost(co, cur: cur)
+        if !trained(co, week: s.week), heads(co) >= 3, co.cash > tc * 3 + co.lastWeekRevenue * 0.5 * 4 {
+            Payments.companyPays(&s, companyID: co.id, amount: tc, category: "oth", label: "Security training")
+            if let j = s.companyIndex(co.id) { var cc = s.companies[j].value("cy56"); cc["tr"] = .number(Double(s.week)); s.companies[j].set("cy56", cc) }
+            notes.append("booked security training for the team")
+        }
+        if !notes.isEmpty { s.note("\(mgr.name) \(notes.joined(separator: ", ")) at \(co.name).", tone: "n", companyID: co.id) }
     }
 
     public static func train(_ s: inout GameState, companyID: Int, data: GameData) -> String? {
@@ -227,6 +274,7 @@ public enum Cyber {
             let c = co.value("cy56")
             let mo = monthly(co, level: c["lvl"].int, backups: c["bk"].bool, cur: cur)
             if mo > 0 { Payments.companyPays(&s, companyID: co.id, amount: mo * 12 / 52, category: "oth", label: "IT security") }
+            if GameCalendar.isMonthEnd(week: s.week) { managerKeeps(&s, i, trade: bd, data: data) }
             // An unanswered attack: the safe choice.
             for k in s.inbox.indices {
                 let m = s.inbox[k]

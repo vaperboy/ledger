@@ -8,9 +8,9 @@ import Finance
 /// `acctMeet`, `acctDrop` (engine/company/key_accounts.js) and `acctPm`, the discount a key account gets and the weekly warming
 /// (features/company/small_team_and_rewards.js).
 ///
-/// Not faithful: the original adds the accounts to the demand and shares a full shop between walk-ins and accounts; here the
-/// accounts buy from the capacity the walk-ins leave over (the day-by-day trade has no account volume). The account's own
-/// trade profile (what it sells, so you could buy from it) is not ported.
+/// A full shop is shared: the accounts' orders are added to the walk-ins' demand and everyone gets the same share of what the
+/// capacity allows (`orders`), as in the original. The day-by-day trade has no account volume: accounts are added to the week's
+/// total. Each account has a trade profile (what it sells; once you know them you can buy from them: `profile`, `Profile.canBuy`).
 public enum KeyAccounts {
     static let families: Set<String> = ["svc", "venue", "retail", "prod"]
     public static let discounts = [0, 5, 10, 15, 20, 30, 40]
@@ -34,13 +34,42 @@ public enum KeyAccounts {
         public var lastUnits: Double
         public var totalUnits: Double
         public var totalPaid: Double
+        /// The trade it runs (a cleaner, a bakery, a web agency ...). Original: `acc39`, `a.t`.
+        public var tradeID: String
+    }
+
+    /// What the account sells, and whether you know them well enough to buy from them in your supply chain.
+    public struct Profile: Equatable {
+        public var tradeID: String
+        public var tradeName: String
+        /// The supply-chain input their trade provides (`IntercompanySupply.kinds`), if any.
+        public var inputName: String?
+        public var canBuy: Bool
+    }
+
+    static let supplierTrades = ["cleaning", "hardware", "trucking", "courier", "bakery", "brewery", "farm", "furniture", "webdev", "mktg", "staffing"]
+    static let otherTrades = ["law", "acctfirm", "engcons", "hotel", "factory", "construction", "realdev", "gym", "insco", "shipping"]
+
+    /// The same trade for the same account every time: six in ten run a trade that supplies others, the rest anything. Original: `acc39`.
+    static func tradeFor(id: Int, known: (String) -> Bool) -> String {
+        var h = 7
+        for u in "\(id):t".unicodeScalars { h = (h &* 31 &+ Int(u.value)) & 0x7fffffff }
+        let list = (h % 10 < 6 ? supplierTrades : otherTrades).filter(known)
+        return list.isEmpty ? "cleaning" : list[h % list.count]
+    }
+
+    /// Original: `relIdx(rel) >= 2` (Familiar and better).
+    public static func profile(_ a: Account, data: GameData) -> Profile {
+        let kind = IntercompanySupply.kinds.first { $0.suppliers.contains(a.tradeID) }
+        return Profile(tradeID: a.tradeID, tradeName: data.catalog[a.tradeID]?.name ?? "Business", inputName: kind?.name, canBuy: a.relationship >= 22)
     }
 
     public static func accounts(_ co: Company) -> [Account] {
         co.value("accts").array.map {
             Account(id: $0["id"].int, name: $0["name"].string, share: $0["f"].double, relationship: $0["rel"].double, sinceWeek: $0["w0"].int,
                     discount: $0["disc"].int, lastMeeting: $0["meet"].isNull ? nil : $0["meet"].int, lastUnits: $0["lastU"].double,
-                    totalUnits: $0["tu"].double, totalPaid: $0["tr"].double)
+                    totalUnits: $0["tu"].double, totalPaid: $0["tr"].double,
+                    tradeID: $0["t"].isNull ? tradeFor(id: $0["id"].int, known: { _ in true }) : $0["t"].string)
         }
     }
 
@@ -52,7 +81,8 @@ public enum KeyAccounts {
         dp * a["f"].double * (1 + a["rel"].double / 150) * (1 + a["disc"].double / 100 * 0.8)
     }
 
-    struct Orders { var demand = 0.0, units = 0.0, revenue = 0.0, perAccount: [(id: Int, units: Double, pm: Double)] = [] }
+    /// `walkInUnits` is what the walk-ins get after sharing a full shop with the accounts.
+    struct Orders { var demand = 0.0, units = 0.0, revenue = 0.0, walkInUnits = 0.0, perAccount: [(id: Int, units: Double, pm: Double)] = [] }
 
     /// The orders for the week: what the accounts want, and what the capacity left by walk-ins lets them have. Original: `acctDemand`, `acctRev`.
     static func orders(_ co: Company, _ bd: Trade, privateDemand dp: Double, capacity cap: Double, units: Double, price: Double, costRate cr: Double) -> Orders {
@@ -60,8 +90,13 @@ public enum KeyAccounts {
         guard !list.isEmpty, allowed(co, bd) else { return Orders() }
         var o = Orders()
         o.demand = list.reduce(0) { $0 + volume($1, privateDemand: dp) }
-        let room = max(0, cap - units)
-        let f = o.demand > 0 ? min(1, room / o.demand) : 0
+        // Accounts and walk-ins want more than the shop can serve: everyone gets the same share of the capacity (acctRevCore: f = units / D).
+        var f = 1.0
+        o.walkInUnits = units
+        if units + o.demand > cap, dp + o.demand > 0 {
+            f = clamp(cap / (dp + o.demand), 0, 1)
+            o.walkInUnits = min(units, f * dp)
+        }
         for a in list {
             let u = jsRound(f * volume(a, privateDemand: dp) * 10) / 10
             let pm = priceFactor(a, costRate: cr)
@@ -128,7 +163,8 @@ public enum KeyAccounts {
         var r = DeterministicRandom(seed: Int(h.next() * 1_000_000_000))
         let name = CompanySetup.generateName(country: country, family: "svc", &r)
         let id = s.makeID()
-        let acct: JSONValue = .object(["id": .number(Double(id)), "name": .string(name), "f": .number(share), "rel": 0, "w0": .number(Double(s.week)), "disc": 0])
+        let acct: JSONValue = .object(["id": .number(Double(id)), "name": .string(name), "f": .number(share), "rel": 0, "w0": .number(Double(s.week)), "disc": 0,
+                                       "t": .string(tradeFor(id: id, known: { data.catalog[$0] != nil && data.countries[co.countryCode].map { _ in true } ?? true }))])
         if let mid = co.managerID, let mgr = s.people[mid] {
             var list = co.value("accts").array; list.append(acct); s.companies[i].set("accts", .array(list))
             s.note("\(mgr.name) signed \(name) as a business customer for \(co.name).", tone: "good", companyID: co.id)
