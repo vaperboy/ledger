@@ -66,7 +66,8 @@ public enum FootballModel {
         let n = L.clubs, lo = L.low * usd * 1e6, hi = L.high * usd * 1e6
         var out: [JSONValue] = []
         var used = Set<String>()
-        let cityNames = c.cities.map { $0.name }
+        let core = c.coreCities
+        let cityNames = core.map { $0.name }
         for i in 0..<n {
             var name = ""
             var g = 0
@@ -80,7 +81,7 @@ public enum FootballModel {
             used.insert(name)
             let val = round100k(lo * pow(hi / lo, pow(Double(n - 1 - i) / Double(max(1, n - 1)), 1.6)))
             let fixed = Double(i) < max(2, jsRound(Double(n) / 6)) && val > 2000 * usd * 1e6
-            out.append(.object(["id": .string("\(c.code):\(i)"), "name": .string(name), "country": .string(c.code), "city": .string(c.cities[i % c.cities.count].id),
+            out.append(.object(["id": .string("\(c.code):\(i)"), "name": .string(name), "country": .string(c.code), "city": .string(core[i % core.count].id),
                                 "rank0": .number(Double(i)), "val": .number(val), "owner": "ai", "fixed": .bool(fixed), "listed": false, "rel": 40, "ign": 0, "lock": 0]))
         }
         return out

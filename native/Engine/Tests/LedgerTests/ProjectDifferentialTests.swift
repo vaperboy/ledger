@@ -12,7 +12,7 @@ import Finance
 /// the trade's `priceFactor` and the requests by its `demandFactor`; the test divides them out.
 final class ProjectDifferentialTests: XCTestCase {
     func world() throws -> World {
-        World(state: try Golden.state("save_projects"), countries: try CountryBook.bundled(), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
+        World(state: try Golden.state("save_projects"), countries: try CountryBook.bundled(realCityMarket: false), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
     }
 
     func testHoursModelMatchesOriginal() throws {

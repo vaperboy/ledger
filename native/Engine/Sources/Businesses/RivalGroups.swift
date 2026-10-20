@@ -61,7 +61,8 @@ public enum RivalGroups {
     // MARK: Making the groups
 
     static func tradeRevenue(_ bd: Trade, _ c: Country) -> Double {
-        let dem = c.cities.isEmpty ? 1 : c.cities.reduce(0) { $0 + $1.demand } / Double(c.cities.count)
+        let core = c.coreCities
+        let dem = core.isEmpty ? 1 : core.reduce(0) { $0 + $1.demand } / Double(core.count)
         return (bd.normalDemand == 0 ? 1 : bd.normalDemand) * bd.ticket * dem * 0.9 * 52 * c.priceLevel
     }
 
@@ -90,7 +91,7 @@ public enum RivalGroups {
             let brand = brandRoot(c, family: fam, &r)
             let existing = Set((root["g"].object.values).map { $0["name"].string })
             var name = brand + " " + (groupWord[cc] ?? "Group")
-            if existing.contains(name) { name = brand + " " + c.cities[i % c.cities.count].name + " " + (groupWord[cc] ?? "Group") }
+            if existing.contains(name) { name = brand + " " + c.coreCities[i % c.coreCities.count].name + " " + (groupWord[cc] ?? "Group") }
             let owner = (c.firstNames.isEmpty ? "Alex" : c.firstNames[Int(h.next() * Double(c.firstNames.count)) % c.firstNames.count]) + " "
                 + (c.lastNames.isEmpty ? "Smith" : c.lastNames[Int(h.next() * Double(c.lastNames.count)) % c.lastNames.count])
             let tradeName = data.catalog[t0]?.name.lowercased() ?? "business"

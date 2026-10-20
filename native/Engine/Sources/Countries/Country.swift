@@ -25,7 +25,13 @@ public struct Country: Equatable, Sendable, Identifiable {
         public var inequality: Double = 0.33
         /// How many visitors the city draws against the country's tourism share (1 = as the country; hubs and resorts more, industrial towns less).
         public var touristIndex: Double = 1
+        /// Added by the real-life city data (`city_market.json`), not one of the original game's cities.
+        public var isExtra: Bool = false
     }
+
+    /// The original game's cities, in order. Things that were generated from the city list (league clubs, group names, average demand)
+    /// keep using these, so adding real-life places does not reshuffle them.
+    public var coreCities: [City] { cities.filter { !$0.isExtra } }
 
     public struct IncomeTax: Equatable, Sendable {
         public var flat: Double

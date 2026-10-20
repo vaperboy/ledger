@@ -97,7 +97,7 @@ public enum CityMarketData {
             for (k, v) in patch.object { cities[i][k] = v }
         }
         let have = Set(cities.map { $0["id"].string })
-        for c in o["add"].array where !have.contains(c["id"].string) { cities.append(c) }
+        for c in o["add"].array where !have.contains(c["id"].string) { var e = c; e["extra"] = .bool(true); cities.append(e) }
         p["cities"] = .array(cities)
         return p
     }
@@ -108,10 +108,11 @@ extension Country.City {
     static func withPlaceData(_ city: Country.City, entry x: JSONValue, countryGini: Double, wageLevel: Double) -> Country.City {
         var c = city
         let pop = max(1, c.population)
-        c.metro = x["metro"].isNull ? pop * (1 + 0.35 * clamp(log10(pop / 100), 0, 2)) : x["metro"].double
+        c.metro = max(pop, x["metro"].isNull ? pop * (1 + 0.35 * clamp(log10(pop / 100), 0, 2)) : x["metro"].double)
         c.affluence = x["inc"].isNull ? clamp(c.wage / max(0.01, wageLevel), 0.55, 1.6) : x["inc"].double
         c.inequality = clamp(x["gini"].isNull ? countryGini + 0.04 * clamp(log10(pop / 200), -0.7, 1.6) : x["gini"].double, 0.2, 0.65)
         c.touristIndex = x["tour"].isNull ? 1 : x["tour"].double
+        c.isExtra = x["extra"].bool
         return c
     }
 }

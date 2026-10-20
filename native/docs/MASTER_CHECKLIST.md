@@ -24,7 +24,7 @@ No deep tests, no balancing and no screen design before their stage.
 | Startups, private equity, stakes in other groups, IPO/listing, crisis centre, 13 decisions above | NOT MERGED (WIP saved, branch `worktree-agent-ad8655a07a9bc6da6`, 43 actions) | Finish, build-check, merge |
 | Boards, CEO, head office, meetings, academy, manager and chain gaps above | NOT MERGED (WIP saved, branch `worktree-agent-a63b07bec1d9760c6`, 65 actions) | Finish, build-check, merge |
 | Advisers, abroad, company insurance, suppliers, gifts, complaints, staff profile, weather/world, fleet/luxury leftovers | NOT MERGED (WIP saved, branch `worktree-agent-a62df16577d42dde6`, 28 actions) | Finish, build-check, merge |
-| Real-life population, income and demand by city (luxury in LA vs small town) | NOT MERGED (WIP saved, branch `worktree-agent-a6c6bbcca8ea1d325`) | Finish, build-check, merge; golden changes must be listed |
+| Real-life population, income and demand by city (luxury in LA vs small town) | DONE on branch `worktree-agent-a6c6bbcca8ea1d325` (merged with native-swiftui, builds, targeted tests pass); ready to merge | See docs/CITY_DATA.md; goldens unchanged, parity tests use `realCityMarket: false`; balance not probed |
 | 27 unowned actions: part-time/seasonal/hours staff types, discount campaigns, trial week, complaint handling, goals, development projects, lending a worker between chain stores | NOT STARTED | Assign to an agent |
 | World around you: public image, contacts and favours network, maps screen; software products from your own startup | NOT STARTED | After Startups merges |
 | Remaining trophies (need acquisitions, chains, startups, PE, luxury, R&D, listed holdings) | NOT STARTED | After the systems above |
