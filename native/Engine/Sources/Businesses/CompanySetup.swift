@@ -382,9 +382,9 @@ public enum CompanySetup {
                 let have = s.companies[i].staff.filter { $0.role == st.role }.count
                 var n = st.count - have
                 if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil && s.companies[i].ownerHours >= 20 { n = max(0, n - 1) }
-                var attempts = 0
+                var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
                 // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
-                while n > 0 && attempts < (faithfulHiring ? 1 : 6) {
+                while n > 0 && attempts < allowed {
                     attempts += 1
                     let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
                     guard !cands.isEmpty else { break }

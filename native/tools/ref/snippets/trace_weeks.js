@@ -30,7 +30,7 @@
       nb++; inv += co.inv || 0; if (co.wOpen != null) { openW += co.wOpen; no++; }
     }
     for (const k in books) books[k] = Math.round(books[k] / nb);
-    out[t] = { weeks: W.map(w => { const r = {}; for (const k in w) if (k !== 'n') r[k] = Math.round(w[k] / Math.max(1, w.n)); return r; }), books, inv: Math.round(inv / nb), openWeek: no ? openW / no : null };
+    out[t] = { weeks: W.map(w => { const r = {}; for (const k in w) if (k !== 'n') r[k] = Math.round(w[k] / Math.max(1, w.n) * 100) / 100; return r; }), books, inv: Math.round(inv / nb), openWeek: no ? openW / no : null };
   }
   return JSON.stringify(out);
 })()

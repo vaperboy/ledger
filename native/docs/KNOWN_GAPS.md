@@ -39,8 +39,10 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
 
 ## Candidate corrections (not changed, to keep parity)
 
-* The gym earns about 28 % more than in the original in the statistical test (see `BALANCE_PARITY.md`).
-* Cash at week 26 is lower than the original in every trade tested; cause not yet found.
+* The gym and the restaurant are generous or slow compared with real life (see `BALANCE_PARITY.md`, "Which is closer to real life");
+  both engines agree, so they were left for a deliberate balance pass.
+* The vendor system (goods quality and cost per supplier), vehicle and equipment brands, and poaching are not ported; they explain
+  small differences in quality, staff and courier cash.
 
 ## Needs a Mac / Xcode / an Apple account
 

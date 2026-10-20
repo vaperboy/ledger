@@ -99,3 +99,25 @@ losses. No safe shortcut to a fortune.
   shipping, ski resort. Their accounts show thin margins eaten by fines, shrinkage and seasonal swings; a real grocery makes 1-3%.
 * The airline always goes bankrupt with the standard set-up; the indoor ski centre cannot be set up with the estimated budget.
 * Staffing agency and consulting run by hired staff lose money: one employee costs more than the hours clients book at first.
+
+## Addendum: after the rent fix (see `BALANCE_PARITY.md`)
+
+The tables above were produced while the native game paid every company's rent again, and in growing amounts, each month
+(`Payday.payBills`). That is fixed, so every cash and return figure above is too low for any trade with premises. A fresh run of
+the same probe (`LEDGER_BALANCE=1 LEDGER_MKT=1`, one seed, three years; money in is now larger because the start-up estimate includes
+the licence wait) gives, for the trades compared with the original:
+
+| Trade | Return a year before | after |
+|---|---:|---:|
+| bakery | 12% | 30% |
+| barber | 15% | 36% |
+| boutique | 4% | 15% |
+| cafe | 29% | 42% |
+| courier | 4% | 4% |
+| gym | 16% | 22% |
+| restaurant | 6% | 28% |
+| webdev | 51% | 51% |
+
+Most trades with premises moved up by 5 to 25 points, so the verdict "no trade makes you rich quickly" still stands in money
+terms but the capital-heavy trades listed as losing money (grocery, hardware, car repair) are much closer to break-even. The
+full table was not regenerated; run the probe to refresh it.

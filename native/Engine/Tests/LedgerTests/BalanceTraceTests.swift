@@ -2,7 +2,7 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-import Businesses
+@testable import Businesses
 import Simulation
 import Employees
 
@@ -31,7 +31,7 @@ final class BalanceTraceTests: XCTestCase {
                     Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
                 }
-                if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; return p }()) }
+                if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
                 for d in 0..<(26 * 7) {
                     e.nextDay()
                     for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
@@ -48,7 +48,7 @@ final class BalanceTraceTests: XCTestCase {
                 for (k, v) in co.books.total { books[k, default: 0] += v }
                 nb += 1; inv += co.inventory
             }
-            let weeks: [[String: Int]] = (0..<26).map { k in W[k].mapValues { Int(($0 / max(1, cnt[k])).rounded()) } }
+            let weeks: [[String: Double]] = (0..<26).map { k in W[k].mapValues { ($0 / max(1, cnt[k]) * 100).rounded() / 100 } }
             out[t] = ["weeks": weeks, "books": books.mapValues { Int(($0 / nb).rounded()) }, "inv": Int(inv / nb)] as [String: Any]
         }
         let data = try JSONSerialization.data(withJSONObject: out, options: [.sortedKeys])
@@ -71,8 +71,34 @@ final class BalanceTraceTests: XCTestCase {
             }
             let c = e2.state.company(id)!
             let eqc = c.value("eq").object.values.reduce(0) { $0 + $1["cost"].double }
-            print("SETUPC \(t) size=\(c.size) before=\(Int(before)) after=\(Int(c.cash)) spent=\(Int(before - c.cash)) eqc=\(Int(eqc)) veh=\(c.value("veh").array.count) prem=\(c.value("prem")["m2"].double)/\(Int(c.value("prem")["rent"].double)) staff=\(c.staff.map { $0.role + ":" + String(Int($0.monthlyWage)) })")
+            print("SETUPC \(t) size=\(c.size) before=\(Int(before)) after=\(Int(c.cash)) spent=\(Int(before - c.cash)) eqc=\(Int(eqc)) veh=\(c.value("veh").array.map { $0["model"].string + ":" + $0["mode"].string + ":" + String(Int($0["cost"].double)) }) eq=\(c.value("eq").object.mapValues { Int($0["cost"].double) }) prem=\(c.value("prem")["m2"].double)/\(Int(c.value("prem")["rent"].double)) staff=\(c.staff.map { $0.role + ":" + String(Int($0.monthlyWage)) })")
             print("INJ \(t) total=\(Int(est.total)) x1.6=\(Int(est.total * 1.6)) \(est)")
+        }
+    }
+
+    /// Parts of the quality target at week 20 for four seeds (twin of snippets/quality_parts.js): LEDGER_TRADE.
+    func testPrintQualityParts() throws {
+        guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
+        let t = ProcessInfo.processInfo.environment["LEDGER_TRADE"] ?? "gym"
+        for seed in [1000, 1037, 1074, 1111] {
+            var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
+            var id = 0
+            e.update { s, data, ctx in
+                Ledger.move(&s, .me, 50_000_000, why: "Test funds")
+                if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
+                _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
+            }
+            if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
+            for _ in 0..<(20 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+            let co = e.state.company(id)!
+            let bd = e.data.catalog[t]!
+            let w = World(state: e.state, data: e.data)
+            let sk = co.staff.map { (StaffModel.skill($0, person: e.state.people[$0.id], salesRoles: e.data.catalog.tables.salesRoles) * 10).rounded() / 10 }
+            let eq = bd.equipment.filter { $0.affectsQuality }.map { "\($0.id):\(String(format: "%.3f", CapacityModel.equipmentCondition(co, $0)))" }
+            let qt = QualityModel.target(co, bd, utilisation: 0.7, w, goods: (1, 0))
+            print("QPARTS seed=\(seed) week=\(e.state.week) q=\(String(format: "%.1f", co.quality)) rep=\(String(format: "%.1f", co.reputation)) oskill=\(String(format: "%.1f", co.ownerSkill)) ohrs=\(co.ownerHours) maint=\(co.maintenance) sk=\(sk) eq=\(eq) qt=\(String(format: "%.1f", qt)) staff=\(co.staff.count)")
         }
     }
 
@@ -90,7 +116,7 @@ final class BalanceTraceTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
-        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; return p }()) }
+        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
         for d in 0..<(26 * 7) {
             e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             if d % 7 == 6 {

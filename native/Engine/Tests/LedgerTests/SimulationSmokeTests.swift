@@ -24,7 +24,7 @@ final class SimulationSmokeTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
         // LEDGER_FAITHFUL=1: play like the original does in the comparison script (no automatic replacement of people who leave).
-        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; return p }()) }
+        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
         XCTAssertNotEqual(id, 0)
         return id
     }
