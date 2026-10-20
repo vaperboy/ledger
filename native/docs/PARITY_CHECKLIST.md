@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 27 Ported, 19 Verified, 13 Not ported, 5 Engine + screen, 2 Statistical
+- Systems: 29 Ported, 19 Verified, 11 Not ported, 5 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
-- Screens: 73 Not ported, 32 Engine + screen
-- Company tabs: 27 Not ported, 16 Engine + screen
-- Actions: 417 Not ported, 134 Engine + screen, 6 Engine only
+- Screens: 68 Not ported, 37 Engine + screen
+- Company tabs: 25 Not ported, 18 Engine + screen
+- Actions: 399 Not ported, 152 Engine + screen, 6 Engine only
 
 ## Systems
 
@@ -77,7 +77,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings | Businesses/ManagerModel, ManagerPeople, ManagerWeek | Ported | ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported |
 | Promotions: a worker to a higher role or to manager, with the pay talk and patience | Businesses/ManagerPeople | Ported | ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported |
 | Boards, votes, CEO and managing director, regional and chain managers, group executives | - | Not ported | needs chains and shareholders first; listed in KNOWN_GAPS |
-| Chains, franchises, branches, intercompany supply | - | Not ported |  |
+| Chains (registration, new stores, shared rules, reach, buying discounts, brand marketing), franchising out (units, applicants and talks, royalties, arrears, renewals, master franchise), being a franchisee (brands, application, terms talk, royalties, quality standard, buyout), supply between your own companies | Businesses/Chains, Franchising, FranchiseBrands, IntercompanySupply | Ported | ChainsTests (books balance); no differential test; see KNOWN_GAPS |
 | Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain | Events/CompanySale | Engine + screen | DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported |
 | Startups you found, private equity funds, stakes in other groups | net worth counts imported values only | Not ported |  |
 | Luxury and estates, family office | net worth counts imported values only | Not ported |  |
@@ -85,7 +85,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | Businesses/EquipmentMarket + data equipment_brands.json | Engine + screen | catalogue, used listings, lease, finance, plans, licences, sell; supplier relationship discounts and per-person equipment rules not ported |
 | Key accounts (business customers), assistant managers | - | Not ported |  |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
-| Chains, franchises, branches, intercompany supply | - | Not ported |  |
+| Chains (registration, new stores, shared rules, reach, buying discounts, brand marketing), franchising out (units, applicants and talks, royalties, arrears, renewals, master franchise), being a franchisee (brands, application, terms talk, royalties, quality standard, buyout), supply between your own companies | Businesses/Chains, Franchising, FranchiseBrands, IntercompanySupply | Ported | ChainsTests (books balance); no differential test; see KNOWN_GAPS |
 | Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
 | Luxury and estates: cars, watches, art, yachts, jets, homes, estates; charter, rent, museum; company cars and jets | Businesses/Luxury + data luxury.json | Engine + screen | fame, rest and abroad-fee perks, the tax-office check and margin call are not ported; the original has no family office |
 | Rivals as businesses, price wars, acquisitions | - | Not ported | Competition affects demand only |
@@ -191,9 +191,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | boards12 |  | Not ported |
 | branch |  | Not ported |
 | brand56 |  | Not ported |
-| brandneg |  | Not ported |
-| chain12 |  | Not ported |
-| chain27 |  | Not ported |
+| brandneg | Group > Join a franchise > meeting | Engine + screen |
+| chain12 | Company > Chain | Engine + screen |
+| chain27 | Company > Chain > Supply | Engine + screen |
 | clubs | Phone > New company > Football club | Engine + screen |
 | co | Companies > company | Engine + screen |
 | cos | Companies | Engine + screen |
@@ -202,8 +202,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | dealroom |  | Not ported |
 | found36 |  | Not ported |
 | fr56 |  | Not ported |
-| franchises |  | Not ported |
-| frtalk56 |  | Not ported |
+| franchises | Group > Join a franchise | Engine + screen |
+| frtalk56 | Company > Chain > Franchise talk | Engine + screen |
 | fs58 |  | Not ported |
 | give28 |  | Not ported |
 | group | Group | Engine + screen |
@@ -294,7 +294,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | abroad |  | Not ported |
 | advisers |  | Not ported |
 | ana |  | Not ported |
-| chainGrow |  | Not ported |
+| chainGrow | Company > Chain | Engine + screen |
 | clRows |  | Not ported |
 | clubPeople | Company > Club > Staff | Engine + screen |
 | clubSp | Company > Club > Sponsors | Engine + screen |
@@ -330,7 +330,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | setupOv | Company > Setup | Engine + screen |
 | staffProfile |  | Not ported |
 | supply |  | Not ported |
-| supplyChainRow |  | Not ported |
+| supplyChainRow | Company > Chain > Supply | Engine + screen |
 
 ## Actions
 
@@ -393,11 +393,11 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | boarddeal |  | Not ported |
 | books |  | Not ported |
 | branchgo |  | Not ported |
-| brandapply |  | Not ported |
-| brandfacts |  | Not ported |
-| brandopen |  | Not ported |
+| brandapply | GameEngine.applyToFranchiseBrand | Engine + screen |
+| brandfacts | Franchise meeting > Facts | Engine + screen |
+| brandopen | Franchise meeting | Engine + screen |
 | brandpick |  | Not ported |
-| brandstart |  | Not ported |
+| brandstart | GameEngine.startFranchisedCompany | Engine + screen |
 | branduse |  | Not ported |
 | btab |  | Not ported |
 | buyasset |  | Not ported |
@@ -421,18 +421,18 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ceobuy |  | Not ported |
 | ceolvl |  | Not ported |
 | ch12fire |  | Not ported |
-| ch12join |  | Not ported |
+| ch12join | GameEngine.joinChain | Engine + screen |
 | ch12lend |  | Not ported |
-| ch12make |  | Not ported |
-| ch12new |  | Not ported |
-| ch12off |  | Not ported |
-| ch12rule |  | Not ported |
+| ch12make | GameEngine.makeChain | Engine + screen |
+| ch12new | GameEngine.openChainStore | Engine + screen |
+| ch12off | GameEngine.setStoreRule | Engine + screen |
+| ch12rule | GameEngine.setChainRule | Engine + screen |
 | ch12store |  | Not ported |
 | ch12tab |  | Not ported |
 | ch16rp |  | Not ported |
 | ch27k |  | Not ported |
-| ch27off |  | Not ported |
-| ch27set |  | Not ported |
+| ch27off | GameEngine.clearSupplier | Engine + screen |
+| ch27set | GameEngine.setSupplier | Engine + screen |
 | ch39off |  | Not ported |
 | ch39set |  | Not ported |
 | cinject | PlayerActions.putMoneyInto | Engine + screen |
@@ -504,7 +504,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | fav31ask |  | Not ported |
 | fav31call |  | Not ported |
 | fav31keep |  | Not ported |
-| fb24leave |  | Not ported |
+| fb24leave | GameEngine.leaveFranchise | Engine + screen |
 | fdec |  | Not ported |
 | fin31 |  | Not ported |
 | fireceo |  | Not ported |
@@ -521,13 +521,13 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | found | PlayerActions.startCompany | Engine + screen |
 | found28 |  | Not ported |
 | fpitch |  | Not ported |
-| fr24term |  | Not ported |
-| frlaunch |  | Not ported |
-| frmast |  | Not ported |
+| fr24term | GameEngine.terminateFranchiseUnit | Engine + screen |
+| frlaunch | GameEngine.launchFranchise | Engine + screen |
+| frmast | GameEngine.sellMasterFranchise | Engine + screen |
 | frset |  | Not ported |
 | frt56 |  | Not ported |
 | frt56ed |  | Not ported |
-| frt56go |  | Not ported |
+| frt56go | GameEngine.offerToApplicant | Engine + screen |
 | fs58claim |  | Not ported |
 | fs58off |  | Not ported |
 | fshut |  | Not ported |
@@ -638,8 +638,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | mtypeset |  | Not ported |
 | ncgo |  | Not ported |
 | ncset |  | Not ported |
-| negsend |  | Not ported |
-| negsign |  | Not ported |
+| negsend | GameEngine.negotiateFranchise | Engine + screen |
+| negsign | GameEngine.signFranchiseTerms | Engine + screen |
 | negstep |  | Not ported |
 | net31p |  | Not ported |
 | newgame | GameEngine.newGame | Engine + screen |
@@ -653,7 +653,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | none |  | Not ported |
 | noop |  | Not ported |
 | ns13city | PlayerActions.startCompany(cityID:) | Engine + screen |
-| ns13go | PlayerActions.startCompany | Engine + screen |
+| ns13go | GameEngine.openChainStore | Engine + screen |
 | ns13size | PlayerActions.startCompany(size:) | Engine + screen |
 | nx59all |  | Not ported |
 | nx59do |  | Not ported |

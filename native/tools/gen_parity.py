@@ -24,7 +24,7 @@ screens = {
  "home": ("Home", U), "lux": ("Phone > Luxury", U), "shop": ("Company > Equipment, fleet and premises > shop", U), "title": ("StartView", U), "start": ("StartView (new game)", U), "menu": ("StartView", U),
  "bank": ("Phone > Bank", U), "invest": ("Phone > Invest", U), "tax": ("Phone > Tax", U), "news": ("Phone > News", U),
  "stats": ("Phone > Stats", U), "settings": ("Phone > Settings", U), "msgs": ("Inbox", U), "mail": ("Inbox", U),
- "co": ("Companies > company", U), "cos": ("Companies", U), "pickco": ("Companies", U), "group": ("Group", U),
+ "co": ("Companies > company", U), "chain12": ("Company > Chain", U), "chain27": ("Company > Chain > Supply", U), "franchises": ("Group > Join a franchise", U), "brandneg": ("Group > Join a franchise > meeting", U), "frtalk56": ("Company > Chain > Franchise talk", U), "cos": ("Companies", U), "pickco": ("Companies", U), "group": ("Group", U),
  "newco": ("Phone > New company", U), "newbiz": ("Phone > New company", U), "hire": ("Company > Team", U),
  "payself": ("Company > Money", U), "mkt36": ("Company > Marketing", U), "mktdetail": ("Company > Marketing", U),
  "payroll29": ("Inbox decision (payroll approval)", U), "phonehome": ("Phone", U), "over": ("GameOverView", U),
@@ -37,7 +37,7 @@ screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 
 # ---- company tabs of the original
 tabs = {
- "ov": ("Company > Overview", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
+ "ov": ("Company > Overview", U), "chainGrow": ("Company > Chain", U), "supplyChainRow": ("Company > Chain > Supply", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
  "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
  "famOv": ("Company > Projects / Properties / Book (figures)", U), "famAssets": ("Company > Properties", U), "famOps": ("Company > Book (insurance products)", U),
  "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Equipment, fleet and premises (Setup and Operations)", U),
@@ -93,6 +93,10 @@ actions = {
  "prodtog": ("GameEngine.setInsuranceProduct", U), "f17prod": ("GameEngine.verifySalesperson", U),
  "devgo": ("GameEngine.startDevelopment (Company > Projects)", U), "devprice": ("GameEngine.setDevelopmentPrice (Company > Projects)", U), "devsheet": ("GameEngine.developmentQuote (Company > Projects)", U),
  "tnd56go": ("GameEngine.bidOnTender (Company > Projects)", U), "tnd56re": ("GameEngine.withdrawBid (Company > Projects)", U), "tnd56auto": ("GameEngine.setManagerBids (Company > Projects)", U),
+ "ch12make": ("GameEngine.makeChain", U), "ch12new": ("GameEngine.openChainStore", U), "ns13go": ("GameEngine.openChainStore", U), "ch12rule": ("GameEngine.setChainRule", U), "ch12off": ("GameEngine.setStoreRule", U), "ch12join": ("GameEngine.joinChain", U),
+ "brandapply": ("GameEngine.applyToFranchiseBrand", U), "brandopen": ("Franchise meeting", U), "negsend": ("GameEngine.negotiateFranchise", U), "negsign": ("GameEngine.signFranchiseTerms", U), "brandstart": ("GameEngine.startFranchisedCompany", U), "brandfacts": ("Franchise meeting > Facts", U),
+ "frlaunch": ("GameEngine.launchFranchise", U), "frt56go": ("GameEngine.offerToApplicant", U), "fr24term": ("GameEngine.terminateFranchiseUnit", U), "frmast": ("GameEngine.sellMasterFranchise", U), "fb24leave": ("GameEngine.leaveFranchise", U),
+ "ch27set": ("GameEngine.setSupplier", U), "ch27off": ("GameEngine.clearSupplier", U),
  "tnd56set": ("Company > Projects (bid price and quality choice)", U),
 }
 action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
@@ -153,7 +157,7 @@ systems = [
  ("Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings", "Businesses/ManagerModel, ManagerPeople, ManagerWeek", P, "ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported"),
  ("Promotions: a worker to a higher role or to manager, with the pay talk and patience", "Businesses/ManagerPeople", P, "ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported"),
  ("Boards, votes, CEO and managing director, regional and chain managers, group executives", "-", N, "needs chains and shareholders first; listed in KNOWN_GAPS"),
- ("Chains, franchises, branches, intercompany supply", "-", N, ""),
+ ("Chains (registration, new stores, shared rules, reach, buying discounts, brand marketing), franchising out (units, applicants and talks, royalties, arrears, renewals, master franchise), being a franchisee (brands, application, terms talk, royalties, quality standard, buyout), supply between your own companies", "Businesses/Chains, Franchising, FranchiseBrands, IntercompanySupply", P, "ChainsTests (books balance); no differential test; see KNOWN_GAPS"),
  ("Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain", "Events/CompanySale", U, "DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported"),
  ("Startups you found, private equity funds, stakes in other groups", "net worth counts imported values only", N, ""),
  ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
@@ -161,7 +165,7 @@ systems = [
  ("Realistic equipment buying: brands and models, used market, leasing, subscriptions", "Businesses/EquipmentMarket + data equipment_brands.json", U, "catalogue, used listings, lease, finance, plans, licences, sell; supplier relationship discounts and per-person equipment rules not ported"),
  ("Key accounts (business customers), assistant managers", "-", N, ""),
  ("Managers and boards (managers who manage, board votes, CEO)", "partial: ManagerModel", N, "manager drift in demand only"),
- ("Chains, franchises, branches, intercompany supply", "-", N, ""),
+ ("Chains (registration, new stores, shared rules, reach, buying discounts, brand marketing), franchising out (units, applicants and talks, royalties, arrears, renewals, master franchise), being a franchisee (brands, application, terms talk, royalties, quality standard, buyout), supply between your own companies", "Businesses/Chains, Franchising, FranchiseBrands, IntercompanySupply", P, "ChainsTests (books balance); no differential test; see KNOWN_GAPS"),
  ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
  ("Luxury and estates: cars, watches, art, yachts, jets, homes, estates; charter, rent, museum; company cars and jets", "Businesses/Luxury + data luxury.json", U, "fame, rest and abroad-fee perks, the tax-office check and margin call are not ported; the original has no family office"),
  ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
