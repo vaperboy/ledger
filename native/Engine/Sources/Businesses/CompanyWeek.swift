@@ -7,12 +7,12 @@ import Finance
 /// One company's week: customers, sales, costs, and everything that follows. Original: `weekCoCore`,
 /// `book`, `weekEnd` (engine/company/model.js) and the standard family models (family_basic.js).
 ///
-/// Supported here: service, venue, retail, production and logistics businesses. Project, rental, finance, energy,
-/// holding and football businesses have their own models in the original and are not yet part of the native
-/// engine (see docs/KNOWN_GAPS.md): `isSupported` says which.
+/// Supported here: service, venue, retail, production, logistics and project businesses (the project model is in
+/// `ProjectWeek` / `ProjectDeveloper`). Rental, finance, energy, holding and football businesses have their own models in
+/// the original and are not yet part of the native engine (see docs/KNOWN_GAPS.md): `isSupported` says which.
 public enum CompanyWeek {
     public static func isSupported(_ bd: Trade) -> Bool {
-        ["svc", "venue", "retail", "prod", "logi"].contains(bd.family) && bd.id != "salmon"
+        ["svc", "venue", "retail", "prod", "logi", "project"].contains(bd.family) && bd.id != "salmon"
     }
 
     /// Run the week for the company at `index`. Called once per company per week, after the week counter moved on.
@@ -41,6 +41,7 @@ public enum CompanyWeek {
         if s.companies[i].status == .open {
             Satisfaction.buzzWeek(&s, i)
             Satisfaction.reachCap(&s, i, data: data)
+            if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
         }
     }
 
@@ -78,6 +79,16 @@ public enum CompanyWeek {
     // MARK: Open
 
     static func openWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData, _ marketing: MarketingTables) {
+        // Project businesses: the week's figures come from what happened on the days (jobs) or from the developments.
+        if bd.family == "project" {
+            let ctx = ProjectModel.isDeveloper(bd)
+                ? ProjectDeveloper.week(&s, i, bd, data: data, context: FinanceContext(countries: data.countries, trades: data.catalog))
+                : ProjectWeek.closeWeek(&s, i, bd, data: data)
+            let vat = Vat.rate(s.companies[i], bd, World(state: s, data: data))
+            book(&s, i, bd, ctx, vat: vat, data: data)
+            weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
+            return
+        }
         // Customers and capacity for the week
         let (dm, cp, ticketPrice, vat, goods): (DemandResult, CapacityResult, Double, Double, (m: Double, q: Double)) = {
             let w = World(state: s, data: data)
@@ -137,6 +148,8 @@ public enum CompanyWeek {
     struct WeekContext {
         var units: Double, rev: Double, cogs: Double, D: Double, cap: Double, util: Double, price: Double
         var paidDuringWeek: Double
+        /// The cost of sales is only an accounting entry (a developer pays for land and building as they fall due).
+        var cogsIsAccounting = false
     }
 
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
@@ -284,7 +297,9 @@ public enum CompanyWeek {
         let exempt = vr == 0 && vBase > 0 && Vat.isExempt(co, w)
         let vatIn = (vr > 0 && !salesTax) ? min(vr, 0.25) * 0.9 : 0
         co.vatBalance += rev * vr * (salesTax ? 1 - bd.businessShare : 1)
-        if exempt {
+        if ctx.cogsIsAccounting {
+            // Land and building costs were paid in cash as they fell due; the cost of sales here is only an accounting entry.
+        } else if exempt {
             // Below the VAT threshold: input VAT on purchases cannot be reclaimed and becomes a cost.
             let extra = cogs * min(vBase, 0.25) * 0.9
             co.addPayable("other", cogs + extra)
