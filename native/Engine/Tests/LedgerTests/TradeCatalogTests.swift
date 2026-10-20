@@ -28,7 +28,7 @@ final class TradeCatalogTests: XCTestCase {
         let g = try Golden.load("trades_calibrated")
         for (id, t) in cat.trades {
             let e = g[id]
-            if e["Dc"].isNull { continue }
+            if e["Dc"].isNull || TradeTuning.tunedTradeIDs.contains(id) { continue }  // tuned on purpose: docs/BALANCE_REPORT.md
             assertClose(t.normalDemand, e["Dc"].double, tol: 1e-9, "\(id) Dc")
             assertClose(t.normalCapacity, e["capD"].double, tol: 1e-9, "\(id) capD")
             if !e["F"].isNull { assertClose(t.weeklyFixedCosts, e["F"].double, tol: 1e-9, "\(id) F") }

@@ -81,7 +81,7 @@ public enum Marketing {
         let prem = co.value("prem")
         let kind = prem["kind"].string
         let foot = !prem.isNull && Competition.isFootTraffic(kind)
-        let destinations: [String: Double] = ["skires": 38, "indoorski": 30, "fun": 24]
+        let destinations: [String: Double] = ["skires": 38, "indoorski": 30, "fun": 24, "airline": 30, "hotel": 24, "shipping": 24, "vineyard": 22]
         let online: Set<String> = ["webshop", "webdev", "mktg", "tutor"]
         // Shops people need every week (food, everyday goods) are known to the whole neighbourhood without advertising.
         let neighbourhood: [String: Double] = ["grocery": 48, "kiosk": 44, "bakery": 40, "pharmacy": 44, "hardware": 38, "cafe": 32]

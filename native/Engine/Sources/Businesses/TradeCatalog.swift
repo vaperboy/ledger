@@ -21,7 +21,7 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
             guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Resources") else { throw CocoaError(.fileNoSuchFile) }
             return try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
         }
-        return TradeCatalog(tradesJSON: try load("trades"), tablesJSON: try load("tables"))
+        return TradeCatalog(tradesJSON: TradeTuning.apply(to: try load("trades"), tuning: TradeTuning.bundled()), tablesJSON: try load("tables"))
     }
 
     public subscript(id: String) -> Trade? { trades[id] }
