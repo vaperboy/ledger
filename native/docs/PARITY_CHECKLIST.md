@@ -11,15 +11,16 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Ported | ported; automated tests check it runs and keeps the books balanced; not compared number for number |
 | Engine only | logic ported and tested, no native screen yet |
 | Engine + screen | ported and reachable from a native screen. **The screens have not been run on a device or simulator by the author** (no Mac available); see KNOWN_GAPS |
-| Not ported | not in the native game yet |
+| Not ported | not in the native game yet; see MISSING_ACTIONS.md for the area of each |
+| Presentation only | a navigation step, sheet, filter or tab of the original with no gameplay of its own; the native screens do this their own way |
 
 ## Summary
 
 - Systems: 29 Ported, 19 Verified, 11 Not ported, 5 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
-- Screens: 68 Not ported, 37 Engine + screen
-- Company tabs: 25 Not ported, 18 Engine + screen
-- Actions: 399 Not ported, 152 Engine + screen, 6 Engine only
+- Screens: 54 Engine + screen, 48 Not ported, 3 Presentation only
+- Company tabs: 23 Engine + screen, 10 Presentation only, 10 Not ported
+- Actions: 209 Engine + screen, 202 Not ported, 130 Presentation only, 16 Engine only
 
 ## Systems
 
@@ -181,7 +182,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | academy |  | Not ported |
 | amb27 |  | Not ported |
 | anrep11 |  | Not ported |
-| awards56 |  | Not ported |
+| awards56 | Phone > Achievements | Engine + screen |
 | bank | Phone > Bank | Engine + screen |
 | bigmeet |  | Not ported |
 | bmeet11 |  | Not ported |
@@ -190,7 +191,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | board12 |  | Not ported |
 | boards12 |  | Not ported |
 | branch |  | Not ported |
-| brand56 |  | Not ported |
+| brand56 | Group > Join a franchise | Engine + screen |
 | brandneg | Group > Join a franchise > meeting | Engine + screen |
 | chain12 | Company > Chain | Engine + screen |
 | chain27 | Company > Chain > Supply | Engine + screen |
@@ -201,10 +202,10 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | cy56 |  | Not ported |
 | dealroom |  | Not ported |
 | found36 |  | Not ported |
-| fr56 |  | Not ported |
+| fr56 | Company > Chain > Franchise talk | Engine + screen |
 | franchises | Group > Join a franchise | Engine + screen |
 | frtalk56 | Company > Chain > Franchise talk | Engine + screen |
-| fs58 |  | Not ported |
+| fs58 | Home > First steps | Engine + screen |
 | give28 |  | Not ported |
 | group | Group | Engine + screen |
 | grp27 |  | Not ported |
@@ -215,18 +216,18 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hq |  | Not ported |
 | hqhire |  | Not ported |
 | hqmk |  | Not ported |
-| img31 |  | Not ported |
+| img31 |  | Presentation only |
 | invest | Phone > Invest | Engine + screen |
 | lux | Phone > Luxury | Engine + screen |
 | mail | Inbox | Engine + screen |
-| managers |  | Not ported |
+| managers | Company > Team | Engine + screen |
 | map31 |  | Not ported |
 | market |  | Not ported |
 | meet |  | Not ported |
 | meetings |  | Not ported |
 | menu | StartView | Engine + screen |
-| mgmt56 |  | Not ported |
-| mgrhire |  | Not ported |
+| mgmt56 | Company > Team | Engine + screen |
+| mgrhire | Company > Team (manager search) | Engine + screen |
 | mkt36 | Company > Marketing | Engine + screen |
 | mktdetail | Company > Marketing | Engine + screen |
 | month30 |  | Not ported |
@@ -241,7 +242,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | org56 |  | Not ported |
 | over | GameOverView | Engine + screen |
 | own27 |  | Not ported |
-| p11talk |  | Not ported |
+| p11talk | Company > Team > Promote | Engine + screen |
 | pacct |  | Not ported |
 | paper40 |  | Not ported |
 | payroll29 | Inbox decision (payroll approval) | Engine + screen |
@@ -250,37 +251,37 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | phonehome | Phone | Engine + screen |
 | pickco | Companies | Engine + screen |
 | pk58 |  | Not ported |
-| pr11 |  | Not ported |
+| pr11 | Company > Team > Promote | Engine + screen |
 | pricemoves | Company > Operations (price slider) | Engine + screen |
 | pricewar |  | Not ported |
-| pro59 |  | Not ported |
+| pro59 |  | Presentation only |
 | registry |  | Not ported |
-| reports | Home + Inbox | Not ported |
-| res36 |  | Not ported |
+| reports | Reports (ReportsView, ReportPrompt) | Engine + screen |
+| res36 |  | Presentation only |
 | reviews |  | Not ported |
 | riv31 |  | Not ported |
 | rival |  | Not ported |
 | rivals |  | Not ported |
 | rivmoves |  | Not ported |
 | rvdetail |  | Not ported |
-| sale |  | Not ported |
-| saletalk |  | Not ported |
+| sale | Company > Sell (CompanySaleSection) | Engine + screen |
+| saletalk | Company > Sell (CompanySaleSection) | Engine + screen |
 | settings | Phone > Settings | Engine + screen |
 | shop | Company > Equipment, fleet and premises > shop | Engine + screen |
 | staffman |  | Not ported |
 | start | StartView (new game) | Engine + screen |
 | startups |  | Not ported |
 | stats | Phone > Stats | Engine + screen |
-| store13 |  | Not ported |
+| store13 | Company > Chain (new store) | Engine + screen |
 | suppliers |  | Not ported |
 | tax | Phone > Tax | Engine + screen |
 | tg58 |  | Not ported |
 | title | StartView | Engine + screen |
-| titles |  | Not ported |
+| titles | Phone > Achievements | Engine + screen |
 | tnd56 | Company > Projects (tenders) | Engine + screen |
-| top28 |  | Not ported |
-| trophies28 |  | Not ported |
-| weekreport | Home + Inbox + Activity (no single report screen yet) | Not ported |
+| top28 | Phone > Rich list | Engine + screen |
+| trophies28 | Phone > Achievements | Engine + screen |
+| weekreport | Reports (ReportsView, ReportPrompt) | Engine + screen |
 | world |  | Not ported |
 | wx56 |  | Not ported |
 
@@ -288,38 +289,38 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 
 | Original tab | Native | Status |
 |---|---|---|
-| DEAL_SUB |  | Not ported |
-| FIN_SUB |  | Not ported |
-| OPS_SUB |  | Not ported |
+| DEAL_SUB |  | Presentation only |
+| FIN_SUB |  | Presentation only |
+| OPS_SUB |  | Presentation only |
 | abroad |  | Not ported |
 | advisers |  | Not ported |
 | ana |  | Not ported |
 | chainGrow | Company > Chain | Engine + screen |
-| clRows |  | Not ported |
+| clRows |  | Presentation only |
 | clubPeople | Company > Club > Staff | Engine + screen |
 | clubSp | Company > Club > Sponsors | Engine + screen |
 | clubTable | Company > Club > Table | Engine + screen |
 | complaints |  | Not ported |
-| dealKeys |  | Not ported |
-| dealPart |  | Not ported |
+| dealKeys |  | Presentation only |
+| dealPart |  | Presentation only |
 | demandLevel |  | Not ported |
 | doc | Company > Setup (documents via quick setup) | Engine + screen |
 | eq | Company > Equipment, fleet and premises (Setup and Operations) | Engine + screen |
 | famAssets | Company > Plant (turbines, fields, stakes) | Engine + screen |
 | famOps | Company > Book (insurance products) | Engine + screen |
 | famOv | Company > Plant / Fish (energy, salmon) | Engine + screen |
-| finPart |  | Not ported |
+| finPart |  | Presentation only |
 | finSummary | Company > Money | Engine + screen |
-| franchisor |  | Not ported |
+| franchisor | Company > Chain > Franchise | Engine + screen |
 | insurance |  | Not ported |
 | invSale |  | Not ported |
-| lrow |  | Not ported |
-| marketRow |  | Not ported |
+| lrow |  | Presentation only |
+| marketRow |  | Presentation only |
 | marketing | Company > Marketing | Engine + screen |
-| mgrBanner |  | Not ported |
-| mgrCard |  | Not ported |
+| mgrBanner | Company > Team | Engine + screen |
+| mgrCard | Company > Team | Engine + screen |
 | mkt | Company > Marketing | Engine + screen |
-| opsPart |  | Not ported |
+| opsPart |  | Presentation only |
 | ov | Company > Overview | Engine + screen |
 | ownersRow |  | Not ported |
 | plCard | Company > Money (P&L) | Engine + screen |
@@ -328,8 +329,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | rivalsCard |  | Not ported |
 | route |  | Not ported |
 | setupOv | Company > Setup | Engine + screen |
-| staffProfile |  | Not ported |
-| supply |  | Not ported |
+| staffProfile | Company > Team | Engine + screen |
+| supply | Company > Chain > Supply | Engine + screen |
 | supplyChainRow | Company > Chain > Supply | Engine + screen |
 
 ## Actions
@@ -342,22 +343,22 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | acadc |  | Not ported |
 | acadco |  | Not ported |
 | acads |  | Not ported |
-| acandback |  | Not ported |
-| acandopen |  | Not ported |
+| acandback |  | Presentation only |
+| acandopen |  | Presentation only |
 | acc39 |  | Not ported |
 | acc39d |  | Not ported |
-| acct |  | Not ported |
+| acct |  | Presentation only |
 | acctdrop |  | Not ported |
 | acctmeet |  | Not ported |
-| advance |  | Not ported |
-| age56 |  | Not ported |
-| al30go |  | Not ported |
-| al30later |  | Not ported |
+| advance |  | Presentation only |
+| age56 | GameEngine.newGame | Engine + screen |
+| al30go |  | Presentation only |
+| al30later |  | Presentation only |
 | amb27pick |  | Not ported |
 | applydoc | Documents | Engine only |
 | applydoc2 | Documents | Engine only |
 | arep |  | Not ported |
-| artview |  | Not ported |
+| artview |  | Presentation only |
 | askmgr | GameEngine.askManager (Company > Team) | Engine + screen |
 | asstduty | GameEngine.toggleAssistantDuty (Company > Team) | Engine + screen |
 | asstfire | GameEngine.dismissAssistant (Company > Team) | Engine + screen |
@@ -368,14 +369,14 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | authbuy | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
 | authhire | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
 | authlvl | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
-| autoset |  | Not ported |
-| autostock |  | Not ported |
-| away56 |  | Not ported |
+| autoset | GameEngine.quickSetup | Engine + screen |
+| autostock | GameEngine.setAutoStock | Engine only |
+| away56 |  | Presentation only |
 | b12go |  | Not ported |
 | b13go |  | Not ported |
 | b14go |  | Not ported |
-| back |  | Not ported |
-| backto |  | Not ported |
+| back |  | Presentation only |
+| backto |  | Presentation only |
 | bd12find |  | Not ported |
 | bd12freq |  | Not ported |
 | bd12inv |  | Not ported |
@@ -391,33 +392,33 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | bigwalk |  | Not ported |
 | bk13ok |  | Not ported |
 | boarddeal |  | Not ported |
-| books |  | Not ported |
+| books |  | Presentation only |
 | branchgo |  | Not ported |
 | brandapply | GameEngine.applyToFranchiseBrand | Engine + screen |
 | brandfacts | Franchise meeting > Facts | Engine + screen |
 | brandopen | Franchise meeting | Engine + screen |
-| brandpick |  | Not ported |
+| brandpick | GameEngine.franchiseBrand | Engine + screen |
 | brandstart | GameEngine.startFranchisedCompany | Engine + screen |
-| branduse |  | Not ported |
-| btab |  | Not ported |
-| buyasset |  | Not ported |
+| branduse | GameEngine.startFranchisedCompany | Engine + screen |
+| btab |  | Presentation only |
+| buyasset | GameEngine.buyInvestment | Engine + screen |
 | buyeq | EquipmentMarket.buyNew | Engine + screen |
 | buyprop | GameEngine.buyProperty | Engine + screen |
-| buyveh |  | Not ported |
-| candback |  | Not ported |
-| candinfo |  | Not ported |
-| candopen |  | Not ported |
-| candpass |  | Not ported |
+| buyveh | GameEngine.buyVehicleItem | Engine + screen |
+| candback |  | Presentation only |
+| candinfo |  | Presentation only |
+| candopen |  | Presentation only |
+| candpass |  | Presentation only |
 | car7 |  | Not ported |
 | carallow |  | Not ported |
 | carc |  | Not ported |
-| cash41in |  | Not ported |
-| ccheck |  | Not ported |
-| ccsheet |  | Not ported |
+| cash41in | GameEngine.putMoneyInto | Engine + screen |
+| ccheck | GameEngine.setCreditCheck | Engine only |
+| ccsheet |  | Presentation only |
 | cdiv | PlayerActions.payDividend | Engine + screen |
 | cdraw | PlayerActions.takeMoneyOut | Engine + screen |
-| cel28ok |  | Not ported |
-| cel28wall |  | Not ported |
+| cel28ok |  | Presentation only |
+| cel28wall |  | Presentation only |
 | ceobuy |  | Not ported |
 | ceolvl |  | Not ported |
 | ch12fire |  | Not ported |
@@ -427,21 +428,21 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ch12new | GameEngine.openChainStore | Engine + screen |
 | ch12off | GameEngine.setStoreRule | Engine + screen |
 | ch12rule | GameEngine.setChainRule | Engine + screen |
-| ch12store |  | Not ported |
-| ch12tab |  | Not ported |
-| ch16rp |  | Not ported |
-| ch27k |  | Not ported |
+| ch12store |  | Presentation only |
+| ch12tab |  | Presentation only |
+| ch16rp | GameEngine.setChainRule | Engine + screen |
+| ch27k | GameEngine.setSupplier | Engine + screen |
 | ch27off | GameEngine.clearSupplier | Engine + screen |
 | ch27set | GameEngine.setSupplier | Engine + screen |
 | ch39off |  | Not ported |
 | ch39set |  | Not ported |
 | cinject | PlayerActions.putMoneyInto | Engine + screen |
-| citysheet |  | Not ported |
-| clcset |  | Not ported |
-| cldo |  | Not ported |
-| clgo |  | Not ported |
-| closepop |  | Not ported |
-| clset |  | Not ported |
+| citysheet |  | Presentation only |
+| clcset |  | Presentation only |
+| cldo |  | Presentation only |
+| clgo | GameEngine.closeCompany | Engine only |
+| closepop |  | Presentation only |
+| clset |  | Presentation only |
 | club24buy | GameEngine.signPlayer | Engine + screen |
 | clubbuy | GameEngine.offerForClub | Engine + screen |
 | clubclose | GameEngine.buyClub | Engine + screen |
@@ -453,35 +454,35 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | clubspon | GameEngine.signSponsor | Engine + screen |
 | clubtix | GameEngine.setClubTicketLevel | Engine + screen |
 | clubwage | GameEngine.setClubWageShare | Engine + screen |
-| codeal |  | Not ported |
-| cofilter |  | Not ported |
-| cofin |  | Not ported |
+| codeal |  | Presentation only |
+| cofilter |  | Presentation only |
+| cofin | GameEngine.takeLoan | Engine + screen |
 | complres |  | Not ported |
-| confirmgo |  | Not ported |
-| convgo |  | Not ported |
-| cosal |  | Not ported |
-| cosold |  | Not ported |
-| cosub |  | Not ported |
-| cotab |  | Not ported |
+| confirmgo |  | Presentation only |
+| convgo | GameEngine.convertToLimited | Engine only |
+| cosal | GameEngine.setOwnerSalary | Engine only |
+| cosold |  | Presentation only |
+| cosub | GameEngine.subscribeSoftware | Engine + screen |
+| cotab |  | Presentation only |
 | coursesheet |  | Not ported |
-| crumb |  | Not ported |
-| crumbroot |  | Not ported |
+| crumb |  | Presentation only |
+| crumbroot |  | Presentation only |
 | ct56 |  | Not ported |
 | cv56meet |  | Not ported |
 | cy56bk |  | Not ported |
 | cy56set |  | Not ported |
 | cy56tr |  | Not ported |
-| ddopen |  | Not ported |
-| ddset |  | Not ported |
-| depgo |  | Not ported |
-| depsheet |  | Not ported |
+| ddopen |  | Presentation only |
+| ddset |  | Presentation only |
+| depgo | GameEngine.openDeposit | Engine + screen |
+| depsheet |  | Presentation only |
 | devgo | GameEngine.startDevelopment (Company > Projects) | Engine + screen |
 | devprice | GameEngine.setDevelopmentPrice (Company > Projects) | Engine + screen |
 | devsheet | GameEngine.developmentQuote (Company > Projects) | Engine + screen |
 | docourse |  | Not ported |
-| docsall |  | Not ported |
+| docsall | GameEngine.quickSetup | Engine + screen |
 | doraise | PlayerActions.raise | Engine + screen |
-| dow56go |  | Not ported |
+| dow56go |  | Presentation only |
 | dy59claim |  | Not ported |
 | emg12pick |  | Not ported |
 | eq39buy | GameEngine.buyEquipmentItem | Engine + screen |
@@ -506,7 +507,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | fav31keep |  | Not ported |
 | fb24leave | GameEngine.leaveFranchise | Engine + screen |
 | fdec |  | Not ported |
-| fin31 |  | Not ported |
+| fin31 |  | Presentation only |
 | fireceo |  | Not ported |
 | firehq |  | Not ported |
 | fireregional |  | Not ported |
@@ -524,9 +525,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | fr24term | GameEngine.terminateFranchiseUnit | Engine + screen |
 | frlaunch | GameEngine.launchFranchise | Engine + screen |
 | frmast | GameEngine.sellMasterFranchise | Engine + screen |
-| frset |  | Not ported |
-| frt56 |  | Not ported |
-| frt56ed |  | Not ported |
+| frset |  | Presentation only |
+| frt56 | GameEngine.negotiateFranchise | Engine + screen |
+| frt56ed |  | Presentation only |
 | frt56go | GameEngine.offerToApplicant | Engine + screen |
 | fs58claim |  | Not ported |
 | fs58off |  | Not ported |
@@ -536,14 +537,14 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | fundacc |  | Not ported |
 | fundctr |  | Not ported |
 | funddec |  | Not ported |
-| gaoff |  | Not ported |
-| gaon |  | Not ported |
-| gc28 |  | Not ported |
-| gcandopen |  | Not ported |
+| gaoff |  | Presentation only |
+| gaon |  | Presentation only |
+| gc28 |  | Presentation only |
+| gcandopen |  | Presentation only |
 | give28 |  | Not ported |
-| go |  | Not ported |
-| go30 |  | Not ported |
-| hdt |  | Not ported |
+| go |  | Presentation only |
+| go30 |  | Presentation only |
+| hdt |  | Presentation only |
 | hfin |  | Not ported |
 | hirego | PlayerActions.hire | Engine + screen |
 | hirehq |  | Not ported |
@@ -552,8 +553,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hk54k |  | Not ported |
 | hk54s |  | Not ported |
 | hlist |  | Not ported |
-| hmode |  | Not ported |
-| hmode7 |  | Not ported |
+| hmode |  | Presentation only |
+| hmode7 |  | Presentation only |
 | holdin | GameEngine.holdingInvest | Engine + screen |
 | holdout | GameEngine.holdingDivest | Engine + screen |
 | home37 |  | Not ported |
@@ -568,26 +569,26 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hqtab |  | Not ported |
 | hqtick |  | Not ported |
 | hraise |  | Not ported |
-| hrel |  | Not ported |
-| hrole |  | Not ported |
-| hrole2 |  | Not ported |
+| hrel | GameEngine.releaseFromHolding | Engine + screen |
+| hrole |  | Presentation only |
+| hrole2 |  | Presentation only |
 | hsearch | PlayerActions.searchWorkers | Engine + screen |
-| hstep56 |  | Not ported |
-| hysGo |  | Not ported |
-| hysPick |  | Not ported |
-| hysTog |  | Not ported |
-| inflset |  | Not ported |
+| hstep56 |  | Presentation only |
+| hysGo | GameEngine.setKnob | Engine + screen |
+| hysPick | GameEngine.setKnob | Engine + screen |
+| hysTog | GameEngine.setKnob | Engine + screen |
+| inflset | GameEngine.setInflationHold | Engine only |
 | injhold | PlayerActions.putMoneyInto | Engine + screen |
 | invsheet | PlayerActions.buyInvestment | Engine + screen |
-| itab |  | Not ported |
+| itab |  | Presentation only |
 | leaseprop | GameEngine.leaseSpace | Engine + screen |
 | lh12fire |  | Not ported |
 | lh12set |  | Not ported |
 | loadfile | LegacyImporter | Engine + screen |
 | loadpaste | LegacyImporter | Engine + screen |
 | loango | PlayerActions.takeLoan | Engine + screen |
-| loansheet |  | Not ported |
-| loanterm |  | Not ported |
+| loansheet | GameEngine.takeLoan | Engine + screen |
+| loanterm | GameEngine.takeLoan | Engine + screen |
 | logo |  | Not ported |
 | loset |  | Not ported |
 | luxbuygo | GameEngine.buyLuxury | Engine + screen |
@@ -599,18 +600,18 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | lx56use | GameEngine.setLuxuryUse | Engine + screen |
 | lxbuy | GameEngine.buyLuxury | Engine + screen |
 | lxgo | Phone > Luxury | Engine + screen |
-| mailback |  | Not ported |
-| mailf |  | Not ported |
-| mailopen |  | Not ported |
+| mailback |  | Presentation only |
+| mailf |  | Presentation only |
+| mailopen |  | Presentation only |
 | maint | PlayerActions.setMaintenance | Engine + screen |
 | marketprop | GameEngine.tenantOffers | Engine + screen |
-| mb56 |  | Not ported |
-| mcandback |  | Not ported |
-| mcandopen |  | Not ported |
+| mb56 |  | Presentation only |
+| mcandback |  | Presentation only |
+| mcandopen |  | Presentation only |
 | md56 |  | Not ported |
 | md56give |  | Not ported |
-| menuback |  | Not ported |
-| menucont |  | Not ported |
+| menuback |  | Presentation only |
+| menucont |  | Presentation only |
 | menuload | SaveStore.load / LegacyImporter | Engine + screen |
 | menunew | GameEngine.newGame | Engine + screen |
 | mgrask | GameEngine.interviewManager (Company > Team) | Engine + screen |
@@ -624,51 +625,51 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | mgrsearch | GameEngine.searchManagers (Company > Team) | Engine + screen |
 | mgrsearch56 | GameEngine.searchManagers (Company > Team) | Engine + screen |
 | mhire56 | GameEngine.hireManager (Company > Team) | Engine + screen |
-| mkt26hire |  | Not ported |
+| mkt26hire | GameEngine.hire | Engine + screen |
 | mkt26rep |  | Not ported |
-| moffer56 |  | Not ported |
-| moredocs |  | Not ported |
-| msearch56 |  | Not ported |
-| msglater |  | Not ported |
+| moffer56 |  | Presentation only |
+| moredocs |  | Presentation only |
+| msearch56 | GameEngine.searchManagers | Engine + screen |
+| msglater |  | Presentation only |
 | msgpick | GameEngine.answer | Engine + screen |
-| mstep56 |  | Not ported |
-| mtab |  | Not ported |
+| mstep56 |  | Presentation only |
+| mtab |  | Presentation only |
 | mtgo2 |  | Not ported |
 | mtwho |  | Not ported |
 | mtypeset |  | Not ported |
-| ncgo |  | Not ported |
-| ncset |  | Not ported |
+| ncgo | GameEngine.startCompany | Engine + screen |
+| ncset | GameEngine.startCompany | Engine + screen |
 | negsend | GameEngine.negotiateFranchise | Engine + screen |
 | negsign | GameEngine.signFranchiseTerms | Engine + screen |
-| negstep |  | Not ported |
+| negstep | GameEngine.negotiateFranchise | Engine + screen |
 | net31p |  | Not ported |
 | newgame | GameEngine.newGame | Engine + screen |
 | newgame2 | GameEngine.newGame | Engine + screen |
 | newhold | GameEngine.createHolding | Engine + screen |
 | nextday | GameEngine.nextDay | Engine + screen |
-| nhacc |  | Not ported |
-| nhco |  | Not ported |
-| nhgo |  | Not ported |
+| nhacc |  | Presentation only |
+| nhco |  | Presentation only |
+| nhgo | GameEngine.createHolding | Engine + screen |
 | nhpub |  | Not ported |
-| none |  | Not ported |
-| noop |  | Not ported |
+| none |  | Presentation only |
+| noop |  | Presentation only |
 | ns13city | PlayerActions.startCompany(cityID:) | Engine + screen |
 | ns13go | GameEngine.openChainStore | Engine + screen |
 | ns13size | PlayerActions.startCompany(size:) | Engine + screen |
-| nx59all |  | Not ported |
-| nx59do |  | Not ported |
+| nx59all |  | Presentation only |
+| nx59do |  | Presentation only |
 | oa59meet | GameEngine.meetManager (Company > Team) | Engine + screen |
-| offer |  | Not ported |
-| offer7 |  | Not ported |
+| offer | GameEngine.hire | Engine + screen |
+| offer7 | GameEngine.hire | Engine + screen |
 | officepop |  | Not ported |
 | oilacq | GameEngine.buyOilStake | Engine + screen |
 | oilbuy | GameEngine.buyOilStake | Engine + screen |
 | oilexp | GameEngine.exploreForOil | Engine + screen |
-| onbtick |  | Not ported |
+| onbtick | GameEngine.completePaperwork | Engine + screen |
 | opendec | GameEngine.answer | Engine + screen |
 | opendep | PlayerActions.openDeposit | Engine + screen |
 | openmsg | Inbox | Engine + screen |
-| out40ok |  | Not ported |
+| out40ok |  | Presentation only |
 | own27buy |  | Not ported |
 | own27pol |  | Not ported |
 | ownhrs | PlayerActions.setOwnerHours | Engine + screen |
@@ -681,36 +682,36 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | p11talk | GameEngine.promotionPosts (Company > Team > Promote) | Engine + screen |
 | p17go |  | Not ported |
 | p17open |  | Not ported |
-| pa56 |  | Not ported |
-| pay7 |  | Not ported |
-| payrate |  | Not ported |
-| paysel |  | Not ported |
-| paysrc56 |  | Not ported |
-| paysrcgo |  | Not ported |
+| pa56 |  | Presentation only |
+| pay7 | GameEngine.hire | Engine + screen |
+| payrate |  | Presentation only |
+| paysel |  | Presentation only |
+| paysrc56 |  | Presentation only |
+| paysrcgo |  | Presentation only |
 | pe56go |  | Not ported |
 | pe56sell |  | Not ported |
 | perfauto |  | Not ported |
-| perloan |  | Not ported |
+| perloan | GameEngine.takeLoan | Engine + screen |
 | perloango | PlayerActions.takeLoan(kind: cons) | Engine + screen |
-| phapp |  | Not ported |
-| phback |  | Not ported |
-| phone |  | Not ported |
+| phapp |  | Presentation only |
+| phback |  | Presentation only |
+| phone |  | Presentation only |
 | pickacc |  | Not ported |
-| pickgo |  | Not ported |
+| pickgo |  | Presentation only |
 | pitch |  | Not ported |
 | pk58hgo |  | Not ported |
 | pk58host |  | Not ported |
 | pk58lend |  | Not ported |
 | pk58lgo |  | Not ported |
 | pk58t |  | Not ported |
-| plgo |  | Not ported |
-| ploanT |  | Not ported |
-| plopen |  | Not ported |
-| plset |  | Not ported |
+| plgo | GameEngine.setCampaign | Engine + screen |
+| ploanT | GameEngine.takeLoan | Engine + screen |
+| plopen | GameEngine.setCampaign | Engine + screen |
+| plset | GameEngine.setCampaign | Engine + screen |
 | pm16camp |  | Not ported |
 | pm16end |  | Not ported |
-| pm16go |  | Not ported |
-| pm16set |  | Not ported |
+| pm16go | GameEngine.setPriceLevel | Engine + screen |
+| pm16set | GameEngine.setPriceLevel | Engine + screen |
 | pr29day | Payday | Engine only |
 | pr29mode | PlayerActions.setPayrollMode | Engine only |
 | pr29ok | Payday.answer | Engine + screen |
@@ -718,25 +719,25 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | premset | GameEngine.takePremises | Engine + screen |
 | premsheet | GameEngine.premisesListings / takePremises | Engine + screen |
 | pricestep | PlayerActions.setPriceLevel | Engine + screen |
-| privacy |  | Not ported |
-| pro56 |  | Not ported |
-| pro57 |  | Not ported |
-| proask |  | Not ported |
-| probuy |  | Not ported |
+| privacy |  | Presentation only |
+| pro56 |  | Presentation only |
+| pro57 |  | Presentation only |
+| proask |  | Presentation only |
+| probuy |  | Presentation only |
 | prodtog | GameEngine.setInsuranceProduct | Engine + screen |
-| prolink |  | Not ported |
-| promanage |  | Not ported |
-| promoboss |  | Not ported |
-| promogo |  | Not ported |
-| promoset |  | Not ported |
+| prolink |  | Presentation only |
+| promanage |  | Presentation only |
+| promoboss | GameEngine.offerPromotion | Engine + screen |
+| promogo | GameEngine.offerPromotion | Engine + screen |
+| promoset |  | Presentation only |
 | promosheet | PromotionSheet (Company > Team > Promote) | Engine + screen |
 | promoteact | PromotionSheet | Engine + screen |
-| proplan |  | Not ported |
+| proplan |  | Presentation only |
 | propsheet | GameEngine.propertyListings | Engine + screen |
-| prorestore |  | Not ported |
-| proskin |  | Not ported |
-| proskinc |  | Not ported |
-| prostore |  | Not ported |
+| prorestore |  | Presentation only |
+| proskin |  | Presentation only |
+| proskinc |  | Presentation only |
+| prostore |  | Presentation only |
 | provpick |  | Not ported |
 | provsheet |  | Not ported |
 | pt48 |  | Not ported |
@@ -745,23 +746,23 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | pwgo7 |  | Not ported |
 | pwlen |  | Not ported |
 | pwpick |  | Not ported |
-| raisesheet |  | Not ported |
-| rb56 |  | Not ported |
-| rb56go |  | Not ported |
+| raisesheet | GameEngine.raise | Engine + screen |
+| rb56 |  | Presentation only |
+| rb56go | GameEngine.renameChain | Engine only |
 | rd56go |  | Not ported |
-| refcheck |  | Not ported |
+| refcheck | GameEngine.checkManagerReferences | Engine + screen |
 | regbuy |  | Not ported |
 | reglvl |  | Not ported |
 | renprop | GameEngine.renovateProperty | Engine + screen |
 | rentoffice |  | Not ported |
-| reopen |  | Not ported |
+| reopen | GameEngine.reopenCompany | Engine only |
 | repaireq | GameEngine.serviceEquipment | Engine + screen |
 | repaygo | PlayerActions.repayLoan | Engine + screen |
-| repaysheet |  | Not ported |
-| repdone |  | Not ported |
-| repmsgs |  | Not ported |
+| repaysheet | GameEngine.repayLoan | Engine + screen |
+| repdone |  | Presentation only |
+| repmsgs |  | Presentation only |
 | repset |  | Not ported |
-| res36t |  | Not ported |
+| res36t |  | Presentation only |
 | reviewall |  | Not ported |
 | reviewnow |  | Not ported |
 | rfset |  | Not ported |
@@ -775,28 +776,28 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | rk27f |  | Not ported |
 | rk27s |  | Not ported |
 | rm27 |  | Not ported |
-| rn56 |  | Not ported |
-| rn56go |  | Not ported |
+| rn56 |  | Presentation only |
+| rn56go | GameEngine.renameCompany | Engine only |
 | rv56 |  | Not ported |
 | rvf |  | Not ported |
 | rvmore |  | Not ported |
 | rvopen |  | Not ported |
-| saleacc |  | Not ported |
-| salecounter |  | Not ported |
-| salectr |  | Not ported |
-| saledec |  | Not ported |
-| saledec7 |  | Not ported |
-| salego |  | Not ported |
-| salemode |  | Not ported |
+| saleacc | CompanySale.accept | Engine + screen |
+| salecounter | CompanySale.counter | Engine + screen |
+| salectr | CompanySale.counter | Engine + screen |
+| saledec | CompanySale.decline | Engine + screen |
+| saledec7 | CompanySale.decline | Engine + screen |
+| salego | CompanySale.startListing | Engine + screen |
+| salemode |  | Presentation only |
 | salepct |  | Not ported |
-| saleq |  | Not ported |
-| saletab |  | Not ported |
-| saletalk |  | Not ported |
-| salewd |  | Not ported |
+| saleq |  | Presentation only |
+| saletab |  | Presentation only |
+| saletalk |  | Presentation only |
+| salewd | CompanySale.withdraw | Engine + screen |
 | savefile | SaveStore.save | Engine + screen |
 | sc56 |  | Not ported |
-| sellasset |  | Not ported |
-| sellco |  | Not ported |
+| sellasset | GameEngine.sellInvestment | Engine + screen |
+| sellco | CompanySale.accept | Engine + screen |
 | selleq | GameEngine.sellAllEquipment | Engine + screen |
 | sellinv | PlayerActions.sellInvestment | Engine + screen |
 | sellprop | GameEngine.sellProperty | Engine + screen |
@@ -805,19 +806,19 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | sellunit | GameEngine.sellEquipmentUnit | Engine + screen |
 | sellveh | GameEngine.sellVehicle | Engine + screen |
 | setbig |  | Not ported |
-| setcat |  | Not ported |
-| setcity |  | Not ported |
-| setconf |  | Not ported |
-| setcountry |  | Not ported |
-| setfocus |  | Not ported |
-| setinp |  | Not ported |
+| setcat |  | Presentation only |
+| setcity | GameEngine.newGame | Engine + screen |
+| setconf |  | Presentation only |
+| setcountry | GameEngine.newGame | Engine + screen |
+| setfocus |  | Presentation only |
+| setinp |  | Presentation only |
 | setknob | PlayerActions.setKnob | Engine + screen |
-| setltv |  | Not ported |
+| setltv |  | Presentation only |
 | setmkt | PlayerActions.setCampaign | Engine + screen |
 | setpay |  | Not ported |
 | setrate |  | Not ported |
-| setstory |  | Not ported |
-| sheetclose |  | Not ported |
+| setstory |  | Presentation only |
+| sheetclose |  | Presentation only |
 | shopbuy | GameEngine.buyEquipmentItem / buyVehicleItem / buyUsedItem | Engine + screen |
 | shopcls | Equipment shop | Engine + screen |
 | shoppay | Equipment shop | Engine + screen |
@@ -825,9 +826,9 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | shopsel | Equipment shop | Engine + screen |
 | shopt | Equipment shop | Engine + screen |
 | shopvc | Equipment shop (vehicle make list) | Engine + screen |
-| slotdel |  | Not ported |
-| slotkeep |  | Not ported |
-| slotload |  | Not ported |
+| slotdel |  | Presentation only |
+| slotkeep |  | Presentation only |
+| slotload |  | Presentation only |
 | srcc |  | Not ported |
 | srcv |  | Not ported |
 | st27 |  | Not ported |
@@ -837,10 +838,10 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | stfull |  | Not ported |
 | sthrs |  | Not ported |
 | stockpol | PlayerActions.setStockPolicy | Engine + screen |
-| storysheet |  | Not ported |
+| storysheet |  | Presentation only |
 | stpart |  | Not ported |
 | stseas |  | Not ported |
-| stt56 |  | Not ported |
+| stt56 |  | Presentation only |
 | subcancel | GameEngine.cancelSubscription | Engine + screen |
 | subpick | GameEngine.subscribeSoftware | Engine + screen |
 | sudeal |  | Not ported |
@@ -852,14 +853,14 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | swint |  | Not ported |
 | swmodel |  | Not ported |
 | swself |  | Not ported |
-| tab |  | Not ported |
-| talkstaff |  | Not ported |
+| tab |  | Presentation only |
+| talkstaff | GameEngine.raise | Engine + screen |
 | tcAS | CompanySetup.create(accountantID:) | Engine only |
 | tg58f |  | Not ported |
 | tg58go |  | Not ported |
 | tg58set |  | Not ported |
-| thread |  | Not ported |
-| threadback |  | Not ported |
+| thread |  | Presentation only |
+| threadback |  | Presentation only |
 | tm56auth |  | Not ported |
 | tm56fire |  | Not ported |
 | tmgo |  | Not ported |
@@ -870,29 +871,29 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | tnd56set | Company > Projects (bid price and quality choice) | Engine + screen |
 | toggleins |  | Not ported |
 | tohold | GameEngine.moveToHolding | Engine + screen |
-| trade |  | Not ported |
-| trgo |  | Not ported |
+| trade | GameEngine.buyInvestment | Engine + screen |
+| trgo | GameEngine.putMoneyInto | Engine + screen |
 | trial |  | Not ported |
-| trset |  | Not ported |
-| trsheet |  | Not ported |
-| tw28 |  | Not ported |
-| unl36go |  | Not ported |
-| unl36no |  | Not ported |
+| trset |  | Presentation only |
+| trsheet |  | Presentation only |
+| tw28 |  | Presentation only |
+| unl36go |  | Presentation only |
+| unl36no |  | Presentation only |
 | untilneeded | GameEngine.advanceUntilNeeded | Engine + screen |
-| verifyag |  | Not ported |
+| verifyag | GameEngine.verifySalesperson | Engine + screen |
 | vmeet |  | Not ported |
 | w17dev |  | Not ported |
 | w17int |  | Not ported |
 | w17self |  | Not ported |
 | w17use |  | Not ported |
 | warnstaff |  | Not ported |
-| weekrep |  | Not ported |
-| wel59 |  | Not ported |
-| wel59end |  | Not ported |
-| winduo |  | Not ported |
-| wr35co |  | Not ported |
-| wr35s |  | Not ported |
-| wx56c |  | Not ported |
+| weekrep |  | Presentation only |
+| wel59 |  | Presentation only |
+| wel59end |  | Presentation only |
+| winduo | GameEngine.windUpCompany | Engine only |
+| wr35co |  | Presentation only |
+| wr35s |  | Presentation only |
+| wx56c |  | Presentation only |
 
 ## Extension pipelines of the original
 
