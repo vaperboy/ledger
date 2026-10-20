@@ -109,6 +109,9 @@ public enum DemandModel {
         // 96: a manager nobody checks on lets service slip
         let drift = managerDrift(co, bd, w)
         if drift != 0 && r.customers != 0 { r.customers *= 1 - drift * 0.5 }
+        // 85: a sales director brings more customers, most in business-to-business trades (ManagerTeam)
+        let salesHead = co.value("tm")["sales"].double
+        if salesHead > 0 && r.customers != 0 { r.customers *= 1 + (0.035 + 0.055 * bd.businessShare) * salesHead }
         // 100: own premises: business clients trust you more
         let homeKind = bd.premisesKind == "home"
         if homeKind && (co.value("prem")["m2"].double > 0) && bd.businessShare >= 0.4 && r.customers != 0 { r.customers *= 1.06 }
@@ -131,7 +134,7 @@ public enum DemandModel {
         let since = Double(w.week) - max(lastMeeting, started)
         let weeks = since - 8
         if weeks <= 0 { return 0 }
-        return min(0.12, weeks * 0.005)   // a boss above the manager halves the pace (not modelled yet)
+        return min(0.12, weeks * 0.005 * (co.flag("boss56") ? 0.5 : 1))   // a boss above the manager halves the pace (ManagerTeam.teamWeek)
     }
 
     /// Ways to sell. Original: the 'ways to sell' demand step (trade_sales_mechanics.js).

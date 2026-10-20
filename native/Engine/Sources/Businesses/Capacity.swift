@@ -240,6 +240,9 @@ public enum CapacityModel {
             let k = StartupProducts.effectNow(co, w.state, trade: bd).k
             if k != 0 { r.capacity *= 1 + k }
         }
+        // 60: an operations manager runs the place better (ManagerTeam)
+        let opsHead = co.value("tm")["ops"].double
+        if opsHead > 0 && r.capacity.isFinite && r.capacity != 0 { r.capacity *= 1 + 0.09 * opsHead }
         // 70: own premises: shorter trips for mobile trades
         if mobileTrades.contains(co.type) && bd.premisesKind == "home" && co.value("prem")["m2"].double > 0 { r.capacity *= 1.08 }
         // 80: storms and snow stop outdoor work

@@ -123,7 +123,12 @@ public enum Banking {
         if (owedP + owedC) > max(1, netWorth) * 0.6 { margin += 0.012 }
         // Own bank: cheaper (it earns the spread), but priced like anyone else's for its own owner (+0.006).
         var ownBank = 0
-        if let bank = s.companies.first(where: { $0.type == "bank" && $0.status == .open }) {
+        // The own bank lends to your companies up to 25% of its capital; beyond that an outside bank funds the loan.
+        if let bank = s.companies.first(where: { b in
+            guard b.type == "bank" && b.status == .open else { return false }
+            let fm = b.value("fm"), equity = b.cash + fm["book"].double + fm["gb"].double - fm["dep"].double
+            return fm["gb"].double < max(0, equity) * 0.25
+        }) {
             margin -= 0.006
             margin += 0.006
             ownBank = bank.id

@@ -104,9 +104,9 @@ public extension GameEngine {
         ManagerModel.promotionPosts(state, companyID: companyID, personID: personID, data: data)
     }
 
-    mutating func offerPromotion(companyID: Int, personID: Int, post: String, monthlyWage: Double) -> ManagerModel.PromotionOutcome {
+    mutating func offerPromotion(companyID: Int, personID: Int, post: String, monthlyWage: Double, terms: ManagerModel.PromotionTerms = .init()) -> ManagerModel.PromotionOutcome {
         var r = ManagerModel.PromotionOutcome.unavailable("")
-        update { s, data, _ in r = ManagerModel.offerPromotion(&s, companyID: companyID, personID: personID, post: post, monthlyWage: monthlyWage, data: data) }
+        update { s, data, _ in r = ManagerModel.offerPromotion(&s, companyID: companyID, personID: personID, post: post, monthlyWage: monthlyWage, terms: terms, data: data) }
         return r
     }
 }

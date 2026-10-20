@@ -177,10 +177,10 @@ extension ManagerModel {
 
     // MARK: Proposals
 
-    struct Proposal { var kind: String; var role: String = ""; var cost: Double = 0 }
+    struct Proposal { var kind: String; var role: String = ""; var cost: Double = 0; var id: String = "" }
 
     /// What the manager would like to do about the state of the business. Original: `decideProposal` (hiring, cutting, advertising,
-    /// cash; the buying of equipment, vehicles and space is not ported).
+    /// cash, equipment, vehicles and space; see `bottleneckProposal`).
     static func decideProposal(_ s: GameState, _ ci: Int, _ bd: Trade, data: GameData, quality q: Double, utilisation util: Double, demand D: Double, capacity cap: Double) -> Proposal? {
         let co = s.companies[ci]
         guard cap > 0, util > 0 else { return nil }
@@ -193,11 +193,7 @@ extension ManagerModel {
         if let role = miss, D * sense > cap * 0.85 {
             return Proposal(kind: "hire", role: role, cost: marketWage(s, co, role: role, data: data) * 12)
         }
-        let bo = co.value("dbg")["botObj"]
-        if D * sense > cap * 1.12 && util > 0.9, bo["kind"].string == "staff", let role = bo["k"].string.split(separator: ":").last.map(String.init),
-           data.catalog.tables.roles[role] != nil {
-            return Proposal(kind: "hire", role: role, cost: marketWage(s, co, role: role, data: data) * 12)
-        }
+        if D * sense > cap * 1.12 && util > 0.9, let p = bottleneckProposal(s, co, bd, data: data) { return p }
         if util < 0.5 && co.staff.count > 2 && co.cash > 0 && D < cap * 0.62 { return Proposal(kind: "cut") }
         let wk = weekCost(s, co, data: data)
         if co.awareness < 26 && co.cash > wk * 6 { return Proposal(kind: "ad", cost: cur.scaledPrice(2500)) }
@@ -224,18 +220,30 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         let roleName = data.catalog.tables.roles[dp.role]?.name ?? dp.role
         let short = dp.kind == "hire" ? hireShort(s, co, cost: dp.cost, data: data) : 0
-        let auth = co.value("auth")
-        // Within the budget the owner gave, a manager hires the person the business is short of without waiting for an answer.
-        if dp.kind == "hire", auth["lvl"].double >= 1, short <= 0, dp.cost / 12 <= auth["buy"].double {
+        var auth = co.value("auth")
+        // A manager promoted with only some duties leaves the other decisions to you.
+        if !dutyAllows(n, dp.kind) { auth["lvl"] = 0 }
+        // Within the budget the owner gave, a manager buys what the business is short of without waiting for an answer.
+        let affordable = dp.kind == "hire" ? short <= 0 : co.cash > dp.cost * 0.5 + weekCost(s, co, data: data) * 6
+        if ["hire", "eq", "veh"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double {
             exec(&s, ci, dp, n, q, data: data)
+            if dp.kind != "hire" { s.note("\(n.name) \(dp.kind == "veh" ? "added a vehicle" : "bought equipment") at \(co.name) within the budget you set: customers were being turned away.", tone: "n", companyID: co.id) }
             return
         }
+        // Someone above the manager judges it first and only passes on what is above their budget or a close call.
+        var view = ""
+        if hierarchyDecide(&s, ci, dp, n, affordable: affordable, view: &view, data: data) { return }
         let title: String, body: String, opts: [JSONValue]
         switch dp.kind {
         case "hire":
             title = "Hire a \(roleName.lowercased()) at \(co.name)"
             body = "Customers want more than we can do, and we are short of a \(roleName.lowercased()). Another one would let us take on more work." + (short > 0 ? " We cannot afford it from the cash we have." : "")
             opts = [.option("Approve", short > 0 ? "Puts in about \(cur.display(short)) from your account" : "The company can cover it"), .option("Decline")]
+        case "eq", "veh", "space":
+            let eqName = data.catalog[co.type]?.equipment.first { $0.id == dp.id }?.name ?? "equipment"
+            title = dp.kind == "eq" ? "Buy \(eqName) for \(co.name)" : dp.kind == "veh" ? "Add a vehicle at \(co.name)" : "Expand the premises of \(co.name)"
+            body = "We are turning customers away. The bottleneck is " + (dp.kind == "space" ? "space" : eqName.lowercased()) + "." + (view.isEmpty ? "" : " " + view)
+            opts = [.option("Approve", "About \(cur.display(dp.cost))"), .option("Decline")]
         case "cut":
             title = "Reduce staffing at \(co.name)"; body = "We use less than half our capacity."
             opts = [.option("Approve: let someone go", "Cut payroll; severance applies."), .option("Keep staff")]
@@ -248,7 +256,7 @@ extension ManagerModel {
             opts = [.option("Inject \(cur.display(cur.scaledPrice(100000)))", "From your personal account."), .option("Inject \(cur.display(cur.scaledPrice(30000)))"), .option("Not now", "Cash may run out.")]
         }
         s.addMessage(kind: "ask", from: n.name, title: title, body: body, companyID: co.id, tone: "n", status: "open", options: opts, action: "prop",
-                     data: .object(["t": .string(dp.kind), "role": .string(dp.role), "cost": .number(dp.cost)]), expiresWeek: s.week + 3)
+                     data: .object(["t": .string(dp.kind), "role": .string(dp.role), "cost": .number(dp.cost), "id": .string(dp.id)]), expiresWeek: s.week + 3)
     }
 
     /// Carry out a proposal. Original: `execProposal`.
@@ -262,6 +270,7 @@ extension ManagerModel {
             if Hiring.hire(c.id, into: co.id, monthlyWage: c.askingMonthlyWage, state: &s, data: data) == .ok {
                 s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)
             }
+        case "eq", "veh", "space": buyForProposal(&s, ci, dp, n, data: data)
         case "cut":
             let weakest = co.staff.min { (s.people[$0.id]?.skill ?? 0) + $0.skillGain < (s.people[$1.id]?.skill ?? 0) + $1.skillGain }
             if let w = weakest { Hiring.fire(w.id, from: co.id, state: &s, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
@@ -307,7 +316,7 @@ extension ManagerModel {
                 return
             }
             guard idx == 0, let mid = co.managerID, let n = s.people[mid], let bd = data.catalog[co.type] else { return }
-            let dp = Proposal(kind: kind, role: d["role"].string, cost: d["cost"].double)
+            let dp = Proposal(kind: kind, role: d["role"].string, cost: d["cost"].double, id: d["id"].string)
             if kind == "hire" {
                 let need = hireShort(s, co, cost: dp.cost, data: data)
                 if need > 0 && !Payments.injectCash(&s, companyID: co.id, amount: need) { return }

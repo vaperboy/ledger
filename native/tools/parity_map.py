@@ -35,6 +35,51 @@ MAP_ACTIONS = {
  "rn56go": "renameCompany", "rb56go": "renameChain", "clgo": "closeCompany", "reopen": "reopenCompany",
  "winduo": "windUpCompany", "convgo": "convertToLimited", "ccheck": "setCreditCheck", "autostock": "setAutoStock",
  "inflset": "setInflationHold",
+ # boards, team, office, meetings, academy (Simulation/ExecutiveActions.swift)
+ "bd12mode": "setBoardMode",
+ "bd12freq": "setBoardMode",
+ "bd12rm": "removeFromBoard",
+ "bd12find": "searchForSeat",
+ "bd13find": "searchForSeat",
+ "bd12inv": "fillSeat",
+ "bd13hire": "fillSeat",
+ "bd12meet": "holdBoardMeeting",
+ "bd12yes": "decideMeetingItem",
+ "bd12no": "decideMeetingItem",
+ "emg12pick": "pickEmergency",
+ "b12go": "boardVote",
+ "b13go": "recordPushedThrough",
+ "lh12set": "setRightHand",
+ "lh12fire": "fireOffice",
+ "ch12lend": "lendFromSister",
+ "ch12fire": "releaseExecutive",
+ "tm56fire": "releaseTeam",
+ "tm56auth": "setTeamAuthority",
+ "fireceo": "releaseGroupCEO",
+ "fireregional": "releaseExecutive",
+ "firehq": "fireOffice",
+ "ceolvl": "setExecutiveAuthority",
+ "ceobuy": "setExecutiveAuthority",
+ "reglvl": "setExecutiveAuthority",
+ "regbuy": "setExecutiveAuthority",
+ "setbig": "setGroupLimit",
+ "hqsearch": "searchOffice",
+ "hqoffer": "hireOffice",
+ "hqtick": "tickOfficePaperwork",
+ "hqas": "toggleOfficeAssignment",
+ "rentoffice": "rentOffice",
+ "repset": "setReports",
+ "perfauto": "setPerformanceAnalystAuto",
+ "mtgo2": "meetForProposals",
+ "tmgo": "callMeeting",
+ "docourse": "sendOnCourse",
+ "own27pol": "setDividendPolicy",
+ "own27buy": "buyBackStake",
+ "bigacc": "acceptBigOffer",
+ "bigctr": "counterBigOffer",
+ "bigwalk": "walkAwayFromBigOffer",
+ "arep": "requestAnalystReport",
+ "hqstep56": "searchOffice",
 }
 
 # screen-only items that need no engine call (navigation, choosing, filtering, showing)
@@ -43,32 +88,12 @@ MAP_SCREEN_ACTIONS = {}
 MISSING = {}
 
 MISSING["boards"] = """
-bd13find Find a board member (candidate search for the chain board)
-bd13hire Appoint a board member
-b13go Continue after the board appointment popup
 bk13ok Dismiss a board message from the queue
-bd12mode Set how a board decides (advises or decides)
-bd12freq Set how often a board meets
-bd12rm Remove a board member
-bd12find Search for board candidates
-bd12inv Invite a candidate onto the board
-bd12meet Call a board meeting
-bd12no Vote against a proposal in the board
-bd12yes Vote for a proposal in the board
-emg12pick Pick a response to an emergency raised by a board
-b12go Continue after a board popup
 b14go Continue after a board popup (round 14)
-lh12set Set the right hand's (personal assistant) mode and brief
-lh12fire Let the right hand go
-ch12fire Dismiss a regional or chain executive
-tm56fire Dismiss the CEO of a team/chain
-tm56auth Set the authority of the CEO of a team
 md56 Set the duties a manager performs
 md56give Give a manager a duty
 tmset Set the options of a meeting with all managers
-tmgo Call a meeting with managers (who, goal, severity)
 mtwho Choose who is called to a meeting
-mtgo2 Hold the meeting with one manager
 mtypeset Choose the type of a meeting
 tg58set Set a target or budget for a manager
 tg58f Set a field of the budget form
@@ -79,34 +104,17 @@ acadco Choose the company in the academy
 acadc Choose a course category in the academy
 acads Choose a course in the academy
 coursesheet Open the sheet to book a course for a worker
-docourse Book a course for a worker
-hqas Hire a head-office assistant
-hqtick Tick a head-office duty
-hqsearch Search head-office candidates
 hqref Check references of a head-office candidate
-hqoffer Offer a head-office job
 hirehq Hire a head-office worker
-hqstep56 Step in the head-office hiring
 hqcandopen Open a head-office candidate
 hqmode Choose the head-office search mode
 hqtab Head-office tab
 hq56t Head-office table tab
-firehq Dismiss a head-office worker
-rentoffice Rent the main office
 officepop Move the main office
-repset Set which reports the head office makes
 reviewall Run a performance review of all managers
 reviewnow Run a performance review of one manager
-perfauto Let head office review managers by itself
 boarddeal Take a deal to the board
 vmeet Open a meeting
-setbig Set the "big picture" level of the group view
-ceolvl Set the level of the group CEO
-ceobuy Set the CEO's purchase authority
-fireceo Dismiss the CEO
-reglvl Set the level of a regional manager
-regbuy Set a regional manager's purchase authority
-fireregional Dismiss a regional manager
 cv56meet Open the meeting thread with a manager
 """
 
@@ -170,7 +178,6 @@ fmmand Set the mandate of the finance manager
 fmgo Let the finance manager act
 fmadd Add money for the finance manager
 fmwd Take money from the finance manager
-arep Order an analyst report
 provpick Pick a supplier
 ownpick Pick one of your own companies as supplier
 provsheet Open the supplier sheet
@@ -192,7 +199,6 @@ lx56din Host a dinner on the yacht
 """
 
 MISSING["other"] = """
-ch12lend Lend a worker from one chain store to another
 trial Hire a candidate for a paid trial week
 carallow Let a worker use their own car for work
 carc Choose the car allowance for a candidate

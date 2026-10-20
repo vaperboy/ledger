@@ -10,7 +10,7 @@ import Finance
 /// (`makeChain`, `joinChain`, `applyRules`, `chainWeek`, the rules tab), engine/company/chain.js (`reachOf`, `chainWeek`, `rebate`),
 /// engine/suppliers/own_group.js (`ownSupply`) and features/company/branches_and_addresses.js (stores under one name).
 /// The chains are saved in `rest["chains"]`; a store carries `chain` (the chain's id) and `off` (its own rules).
-/// Not ported: boards with seats and votes, chain chiefs and regional managers, store managers asking to leave the chain price.
+/// Boards, chiefs, group loans and price requests are in `ManagerBoards`, `ManagerTeam`, `ChainHierarchy`.
 public enum Chains {
     // MARK: Registry
 
@@ -189,12 +189,18 @@ public enum Chains {
 
     /// Open a new store: premises, equipment and people to the chain's standard, running on the chain's rules from day one.
     /// Original: `ACT.ns13go`.
-    public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext) -> Result<Int, CompanySetup.StartError> {
+    /// `fundedBy` (store id: amount): a chain that pays for the store from its own stores' spare cash instead of you. The store opens three weeks later.
+    public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first, let cost = newStoreCost(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return .failure(.notAllowedHere) }
-        if Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
+        if parts == nil && Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
         let r = CompanySetup.create(&s, tradeID: ch["type"].string, cityID: cityID, form: first.form, size: size, name: "New store \(s.nextID + 1)", countryCode: first.countryCode, data: data, context: fc)
         guard case .success(let id) = r, let i = s.companyIndex(id) else { return r }
-        Payments.injectCash(&s, companyID: id, amount: cost)
+        if let parts = parts {
+            for (sid, x) in parts.sorted(by: { $0.key < $1.key }) {
+                Payments.companyPays(&s, companyID: sid, amount: x, category: nil, label: "Funding a new store")
+                Payments.companyReceives(&s, companyID: id, amount: x, category: nil, label: "Funding from sister stores")
+            }
+        } else { Payments.injectCash(&s, companyID: id, amount: cost) }
         // The paperwork the first store already has is the chain's: copy what is approved.
         var docs = s.companies[i].value("docs")
         for (k, d) in first.value("docs").object where d["st"].string == "ok" && k != "chain" && k != "accountant_agreement" && docs[k].isNull { docs[k] = d }
@@ -202,6 +208,7 @@ public enum Chains {
         s.companies[i].ownerHours = 0
         _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         join(&s, chainID: chainID, companyID: id, rename: true, data: data)
+        if let k = s.companyIndex(id) { s.companies[k].set("open13", s.week + 3) }   // a new store opens three weeks after it is set up (ManagerModel.openingWait)
         s.note("\(s.company(id)?.name ?? "A new store") is being set up for \(ch["name"].string).", tone: "good", companyID: id)
         return .success(id)
     }
@@ -415,5 +422,6 @@ public enum Chains {
         reachWeek(&s, data: data)
         Franchising.weekly(&s, data: data, context: fc)
         IntercompanySupply.weekly(&s, data: data)
+        ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)   // management team, boards, chain bosses, group loans, the office
     }
 }

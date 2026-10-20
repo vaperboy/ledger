@@ -17,10 +17,14 @@ public enum ManagerModel {
         let fit: Double = type == bd.managerType ? 1 : type == "gen" ? 0.85 : (fitTable[type] ?? 0.6) * 0.9
         let mood = co.value("mood").isNull ? 60 : co.num("mood")
         var v = clamp(q * fit * (0.88 + 0.24 * mood / 100), 0.05, 1)
-        // A manager nobody has met for months slips. Original step: 'owner attention'.
-        let lastMeeting = co.value("meetW").isNull ? -1e9 : co.num("meetW")
-        _ = lastMeeting
-        v = clamp(v, 0.05, 1)
-        return v
+        // A managing director coaches the manager (ManagerTeam).
+        let coach = co.num("mdCoach")
+        if coach > 0 { v = min(1, v + coach) }
+        // Bosses above lift (or drag) every manager under them (ManagerTeam.teamWeek).
+        if !co.value("mgrLift").isNull { v = clamp(v * co.num("mgrLift"), 0.05, 1) }
+        // A manager nobody has met for months slips; a boss above halves the pace. Original step: 'owner attention' (OA59).
+        let drift = co.num("drift56")
+        if drift > 0 { v *= 1 - drift }
+        return clamp(v, 0.05, 1)
     }
 }

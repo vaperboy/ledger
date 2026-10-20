@@ -8,3 +8,5 @@ DerivedData/
 .DS_Store
 # stray downloads
 *.whl
+__pycache__/
+*.pyc

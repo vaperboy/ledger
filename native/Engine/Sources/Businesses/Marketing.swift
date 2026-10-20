@@ -162,6 +162,8 @@ public enum Marketing {
         let wom = co.num("wom")
         if wom > 0.4 { gain += wom * 0.2; co.set("wom", wom * 0.88) } else { co.set("wom", 0) }
         if s.hasHeadOffice("mkt") { gain *= 1.1 }
+        if co.value("tm")["mkt"].double > 0 { gain *= 1 + 0.14 * co.value("tm")["mkt"].double }   // a marketing manager (ManagerTeam)
+        if co.flag("brdMkt") { gain *= 1.05 }                                                      // a marketing adviser on the board (ManagerBoards)
         co.awareness = clamp(co.awareness * decay(co) + gain, 0, CityMarket.awarenessCeiling(co, bd, w))
         spill(&s, from: co, gain: gain)
         s.companies[i] = co
