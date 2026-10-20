@@ -39,11 +39,16 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   * the salmon "Stocking density" choice divides the number of smolt by its capacity effect (as the original does), so low density stocks MORE fish
     with less disease. That looks like an inverted rule in the original; kept for parity (see Candidate corrections);
   * the knob effects `k` and `t` of the power plant's source and price choices are not used by the original's weekly model either;
-  * events not ported keep their absence: the 50 strategic decisions (ev27), rival-run energy firms, oil and salmon trade fairs and tenders.
+  * events not ported keep their absence: rival-run energy firms, oil and salmon trade fairs and tenders.
 * **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
   holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
 * **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
-* **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
+* **Events:** the 133 events of the event library are in, and 66 of the 79 strategic decisions of round 27e (`ev27`, `Events/StrategicDecisions.swift`) with the country events. Not ported because they need rivals as businesses, listings or private equity:
+  `s_acqoffer`, `g_location`, `g_franinq`, `e_merger`, `e_distress`, `t_ipo`, `t_pe`, `t_hostile`, `t_antitrust`, `t_activist`, `t_auction`, `c_JP_succ`, `c_US_vc`. Approximations: `e_execleave` changes the manager's pay and capacity instead of hiring a named replacement;
+  `c_UK_rent` raises costs instead of the rent line; the credit-tightening country event moves loan margins for 39 weeks; the original's rule that a store inside a chain answers for itself is not ported.
+* **Selling and awards:** a company can be sold whole (`CompanySale`, Money tab of the company). Selling part of your shares, raising funding, founding startups, private equity commitments and stakes in rival groups are not ported.
+  Trophies: about 60 of the original's ~90 are in (`Trophies`); missing are those that need acquisitions, markets and country rank, gifts, luxury, startups, private equity, chains, franchises, R&D, review counts, listed holdings and manager tenure; no full-screen celebration, the inbox tells you and the wall shows the date.
+  Business awards run at year end but rank by your place on the rich list (the original ranks companies by revenue and growth against rivals); no "fastest growing" award. The rich list is the original's curve (top fortune by country size, rank^-0.75) without rival group owners.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
 * **Reports (weekly, monthly, yearly):**
@@ -54,7 +59,7 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   * Customers and capacity come from each company's weekly figures; trade types the native engine does not model yet report only what their books hold.
   * The engine sums some floats in dictionary order, so two runs of one seed agree to about 1e-9, not bit for bit. A report is an exact function of the state.
   * The app screens (Reports, Home prompt, Company > Finances) were only syntax-checked (`swiftc -parse`); they have not been compiled or run.
-* **Screens:** see the checklist; no marketing analytics screen, no map, no rich list, no achievements.
+* **Screens:** see the checklist; no marketing analytics screen, no map, the rich list, achievements and company sale screens were only syntax-checked (`swiftc -parse`).
 * **Premises:** choosing a listing and buying equipment item by item exist in the engine but have no screen; "Fill in what is missing" does it.
 
 ## Rental and finance trades (RentalModel, FinanceModel)

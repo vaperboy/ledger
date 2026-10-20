@@ -15,7 +15,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 23 Ported, 19 Verified, 10 Not ported, 2 Statistical
+- Systems: 23 Ported, 19 Verified, 8 Not ported, 3 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
 - Screens: 75 Not ported, 30 Engine + screen
 - Company tabs: 27 Not ported, 16 Engine + screen
@@ -69,16 +69,17 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Holding companies (stakes, index fund, dividends up and down, net worth, tax group, failure) | Businesses/HoldingModel | Ported | SpecialTradesTests; listing on the exchange and raising money by selling shares not ported |
 | Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding) | Businesses/FootballModel | Ported | SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort |
 | Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood | Businesses/StaffTalks | Ported | StaffTalksTests |
-| Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
+| Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported | Events/StrategicDecisions | Engine + screen | DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
 | Key accounts (business customers), assistant managers | - | Not ported |  |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
 | Chains, franchises, branches, intercompany supply | - | Not ported |  |
-| Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
+| Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain | Events/CompanySale | Engine + screen | DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported |
+| Startups you found, private equity funds, stakes in other groups | net worth counts imported values only | Not ported |  |
 | Luxury and estates, family office | net worth counts imported values only | Not ported |  |
 | Rivals as businesses, price wars, acquisitions | - | Not ported | Competition affects demand only |
 | Software/IT products, cyber attacks, tenders for other trades | - | Not ported |  |
-| Achievements, trophies, rich list, awards | - | Not ported |  |
+| Achievements (trophy wall, 60 of the original's 90 or so), yearly business awards, rich list of the home country | Events/Trophies, Events/RichList | Engine + screen | DecisionsTests.testTrophiesAwardsAndTheRichList; trophies that need chains, luxury, startups, rivals or rankings not ported; awards rank by net worth place |
 
 ## Countries
 

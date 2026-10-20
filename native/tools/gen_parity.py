@@ -126,16 +126,17 @@ systems = [
  ("Holding companies (stakes, index fund, dividends up and down, net worth, tax group, failure)", "Businesses/HoldingModel", P, "SpecialTradesTests; listing on the exchange and raising money by selling shares not ported"),
  ("Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding)", "Businesses/FootballModel", P, "SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort"),
  ("Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood", "Businesses/StaffTalks", P, "StaffTalksTests"),
- ("Poaching of the best worker and the other 50 'strategic' decisions (ev27)", "-", N, "listed in KNOWN_GAPS"),
+ ("Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported", "Events/StrategicDecisions", U, "DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout"),
  ("Realistic equipment buying: brands and models, used market, leasing, subscriptions", "-", N, "quickSetup buys standard equipment at the standard price"),
  ("Key accounts (business customers), assistant managers", "-", N, ""),
  ("Managers and boards (managers who manage, board votes, CEO)", "partial: ManagerModel", N, "manager drift in demand only"),
  ("Chains, franchises, branches, intercompany supply", "-", N, ""),
- ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
+ ("Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain", "Events/CompanySale", U, "DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported"),
+ ("Startups you found, private equity funds, stakes in other groups", "net worth counts imported values only", N, ""),
  ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
  ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
  ("Software/IT products, cyber attacks, tenders for other trades", "-", N, ""),
- ("Achievements, trophies, rich list, awards", "-", N, ""),
+ ("Achievements (trophy wall, 60 of the original's 90 or so), yearly business awards, rich list of the home country", "Events/Trophies, Events/RichList", U, "DecisionsTests.testTrophiesAwardsAndTheRichList; trophies that need chains, luxury, startups, rivals or rankings not ported; awards rank by net worth place"),
 ]
 
 # ---- trades
