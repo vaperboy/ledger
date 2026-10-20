@@ -38,6 +38,29 @@ public enum SalmonModel {
         return g * c.n * 1.25 * 27 * (1 + feedChange)
     }
 
+    public struct StepResult { public var revenue = 0.0, cogs = 0.0, biomass = 0.0, tonnes = 0.0; public var harvests: [(tonnes: Double, revenue: Double)] = [] }
+
+    /// One week of all cohorts: growth, deaths, feed and site cost, and the harvest of ripe cohorts (removed from the list).
+    public static func step(_ cohorts: inout [Cohort], growWeeks: Double, growthQuality: Double, illness: Double, feedChange: Double, month: Int, spot: Double, harvest: Bool, diseaseHits: [Bool]) -> StepResult {
+        var r = StepResult()
+        for k in cohorts.indices {
+            r.cogs += growWeek(&cohorts[k], growWeeks: growWeeks, growthQuality: growthQuality, illness: illness, feedChange: feedChange, month: month, diseaseHit: diseaseHits[k])
+            r.biomass += cohorts[k].n * cohorts[k].kg / 1000
+        }
+        var kept: [Cohort] = []
+        for c in cohorts {
+            if c.kg >= 5.1 && harvest {
+                let t = c.n * c.kg * 0.88 / 1000
+                r.revenue += t * 1000 * spot
+                r.tonnes += t
+                r.harvests.append((t, t * 1000 * spot))
+            } else { kept.append(c) }
+        }
+        cohorts = kept
+        r.cogs += r.biomass * 1000 * 0.15
+        return r
+    }
+
     static func context(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         var co = s.companies[i]
         var fm = co.value("fm")
@@ -60,26 +83,15 @@ public enum SalmonModel {
                 s.note("New salmon cohort stocked at \(co.name).", tone: "n", companyID: co.id)
             }
         }
-        var rev = 0.0, cogs = 0.0, biomass = 0.0, units = 0.0
-        for k in cohorts.indices {
-            let hit = s.random.chance(0.002 * ill)
-            cogs += growWeek(&cohorts[k], growWeeks: grow, growthQuality: growthQuality, illness: ill, feedChange: feedChange, month: month, diseaseHit: hit)
-            biomass += cohorts[k].n * cohorts[k].kg / 1000
-        }
         let spot = spotPerKilo(economy: s.economy.salmon)
+        var hits: [Bool] = []
+        for _ in cohorts { hits.append(s.random.chance(0.002 * ill)) }
+        let r = step(&cohorts, growWeeks: grow, growthQuality: growthQuality, illness: ill, feedChange: feedChange, month: month, spot: spot, harvest: harvestOn, diseaseHits: hits)
+        let rev = r.revenue, cogs = r.cogs, biomass = r.biomass, units = r.tonnes
         co = s.companies[i]
         let cur = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
-        var kept: [Cohort] = []
-        for c in cohorts {
-            if c.kg >= 5.1 && harvestOn {
-                let t = c.n * c.kg * 0.88 / 1000
-                let r = t * 1000 * spot
-                rev += r
-                units += t
-                s.note("Harvest at \(co.name): \(Int(jsRound(t))) tonnes sold at \(Int(jsRound(spot))) per kg = \(cur.short(r)).", tone: "good", companyID: co.id)
-            } else { kept.append(c) }
-        }
-        cogs += biomass * 1000 * 0.15
+        for h in r.harvests { s.note("Harvest at \(co.name): \(Int(jsRound(h.tonnes))) tonnes sold at \(Int(jsRound(spot))) per kg = \(cur.short(h.revenue)).", tone: "good", companyID: co.id) }
+        let kept = cohorts
         fm["coh"] = .array(kept.map { $0.json })
         fm["bio"] = .number(biomass)
         fm["price"] = .number(spot)
