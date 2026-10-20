@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 23 Ported, 19 Verified, 8 Not ported, 3 Engine + screen, 2 Statistical
+- Systems: 27 Ported, 19 Verified, 8 Not ported, 3 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
 - Screens: 75 Not ported, 30 Engine + screen
 - Company tabs: 27 Not ported, 16 Engine + screen
-- Actions: 476 Not ported, 72 Engine + screen, 9 Engine only
+- Actions: 448 Not ported, 100 Engine + screen, 9 Engine only
 
 ## Systems
 
@@ -70,9 +70,13 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding) | Businesses/FootballModel | Ported | SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort |
 | Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood | Businesses/StaffTalks | Ported | StaffTalksTests |
 | Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported | Events/StrategicDecisions | Engine + screen | DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout |
+| Poaching of the best worker (g_poach: match, bonus or let go) and of the manager (match or let go); the other 50 'strategic' decisions (ev27) | Events/EventEffects, Businesses/ManagerPeople | Ported | ManagementTests for the manager side; the ev27 decisions are in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
-| Key accounts (business customers), assistant managers | - | Not ported |  |
-| Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
+| Key accounts (business customers) | - | Not ported |  |
+| Assistant managers (two jobs: complaints, paperwork, equipment; pay; let go) | Businesses/ManagerPeople | Ported | ManagementTests; the monthly suggestion and basic insurance are not ported |
+| Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings | Businesses/ManagerModel, ManagerPeople, ManagerWeek | Ported | ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported |
+| Promotions: a worker to a higher role or to manager, with the pay talk and patience | Businesses/ManagerPeople | Ported | ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported |
+| Boards, votes, CEO and managing director, regional and chain managers, group executives | - | Not ported | needs chains and shareholders first; listed in KNOWN_GAPS |
 | Chains, franchises, branches, intercompany supply | - | Not ported |  |
 | Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain | Events/CompanySale | Engine + screen | DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported |
 | Startups you found, private equity funds, stakes in other groups | net worth counts imported values only | Not ported |  |
@@ -347,16 +351,16 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | applydoc2 | Documents | Engine only |
 | arep |  | Not ported |
 | artview |  | Not ported |
-| askmgr |  | Not ported |
-| asstduty |  | Not ported |
-| asstfire |  | Not ported |
-| asstgo |  | Not ported |
-| asstsearch |  | Not ported |
-| asstsearch56 |  | Not ported |
-| authad |  | Not ported |
-| authbuy |  | Not ported |
-| authhire |  | Not ported |
-| authlvl |  | Not ported |
+| askmgr | GameEngine.askManager (Company > Team) | Engine + screen |
+| asstduty | GameEngine.toggleAssistantDuty (Company > Team) | Engine + screen |
+| asstfire | GameEngine.dismissAssistant (Company > Team) | Engine + screen |
+| asstgo | GameEngine.hireAssistant (Company > Team) | Engine + screen |
+| asstsearch | GameEngine.searchAssistants (Company > Team) | Engine + screen |
+| asstsearch56 | GameEngine.searchAssistants (Company > Team) | Engine + screen |
+| authad | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authbuy | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authhire | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authlvl | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
 | autoset |  | Not ported |
 | autostock |  | Not ported |
 | away56 |  | Not ported |
@@ -602,17 +606,17 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | menucont |  | Not ported |
 | menuload | SaveStore.load / LegacyImporter | Engine + screen |
 | menunew | GameEngine.newGame | Engine + screen |
-| mgrask |  | Not ported |
-| mgrfire |  | Not ported |
-| mgrgo |  | Not ported |
-| mgrhirego |  | Not ported |
-| mgrmove |  | Not ported |
-| mgrmovego |  | Not ported |
-| mgrraise |  | Not ported |
-| mgrref |  | Not ported |
-| mgrsearch |  | Not ported |
-| mgrsearch56 |  | Not ported |
-| mhire56 |  | Not ported |
+| mgrask | GameEngine.interviewManager (Company > Team) | Engine + screen |
+| mgrfire | GameEngine.dismissManager (Company > Team) | Engine + screen |
+| mgrgo | Company > Team | Engine + screen |
+| mgrhirego | GameEngine.hireManager (Company > Team) | Engine + screen |
+| mgrmove | GameEngine.moveManager (Company > Team) | Engine + screen |
+| mgrmovego | GameEngine.moveManager (Company > Team) | Engine + screen |
+| mgrraise | GameEngine.giveManagerRaise (Company > Team; the yearly raise ask is answered in the Inbox) | Engine + screen |
+| mgrref | GameEngine.checkManagerReferences (Company > Team) | Engine + screen |
+| mgrsearch | GameEngine.searchManagers (Company > Team) | Engine + screen |
+| mgrsearch56 | GameEngine.searchManagers (Company > Team) | Engine + screen |
+| mhire56 | GameEngine.hireManager (Company > Team) | Engine + screen |
 | mkt26hire |  | Not ported |
 | mkt26rep |  | Not ported |
 | moffer56 |  | Not ported |
@@ -646,7 +650,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ns13size | PlayerActions.startCompany(size:) | Engine + screen |
 | nx59all |  | Not ported |
 | nx59do |  | Not ported |
-| oa59meet |  | Not ported |
+| oa59meet | GameEngine.meetManager (Company > Team) | Engine + screen |
 | offer |  | Not ported |
 | offer7 |  | Not ported |
 | officepop |  | Not ported |
@@ -663,11 +667,11 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ownhrs | PlayerActions.setOwnerHours | Engine + screen |
 | ownpick |  | Not ported |
 | ownsw |  | Not ported |
-| p11back |  | Not ported |
+| p11back | PromotionSheet | Engine + screen |
 | p11duty |  | Not ported |
-| p11offer |  | Not ported |
-| p11set |  | Not ported |
-| p11talk |  | Not ported |
+| p11offer | GameEngine.offerPromotion (Company > Team > Promote) | Engine + screen |
+| p11set | PromotionSheet | Engine + screen |
+| p11talk | GameEngine.promotionPosts (Company > Team > Promote) | Engine + screen |
 | p17go |  | Not ported |
 | p17open |  | Not ported |
 | pa56 |  | Not ported |
@@ -718,8 +722,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | promoboss |  | Not ported |
 | promogo |  | Not ported |
 | promoset |  | Not ported |
-| promosheet |  | Not ported |
-| promoteact |  | Not ported |
+| promosheet | PromotionSheet (Company > Team > Promote) | Engine + screen |
+| promoteact | PromotionSheet | Engine + screen |
 | proplan |  | Not ported |
 | propsheet | GameEngine.propertyListings | Engine + screen |
 | prorestore |  | Not ported |

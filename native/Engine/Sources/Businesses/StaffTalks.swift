@@ -122,7 +122,11 @@ public enum StaffTalks {
         let d = m.value("data")
         let sid = d["sid"].int
         guard s.companies[i].staff.contains(where: { $0.id == sid }) else { return }
-        if d["t"].string == "payask" {
+        if d["t"].string == "raise" {
+            // A manager's pay review (original: ACTS.staffx 'raise')
+            if idx == 0, let k = s.companies[i].staff.first(where: { $0.id == sid }) { raise(&s, companyIndex: i, staffID: sid, percent: max(0, d["w"].double / k.monthlyWage - 1), data: data) }
+            else { markDenied(&s, companyIndex: i, staffID: sid) }
+        } else if d["t"].string == "payask" {
             if idx == 0 || idx == 1 { raise(&s, companyIndex: i, staffID: sid, percent: idx == 0 ? d["big"].double : d["small"].double, data: data) }
             else { markDenied(&s, companyIndex: i, staffID: sid) }
         } else if d["t"].string == "fixask" {

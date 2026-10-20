@@ -49,6 +49,14 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
 * **Selling and awards:** a company can be sold whole (`CompanySale`, Money tab of the company). Selling part of your shares, raising funding, founding startups, private equity commitments and stakes in rival groups are not ported.
   Trophies: about 60 of the original's ~90 are in (`Trophies`); missing are those that need acquisitions, markets and country rank, gifts, luxury, startups, private equity, chains, franchises, R&D, review counts, listed holdings and manager tenure; no full-screen celebration, the inbox tells you and the wall shows the date.
   Business awards run at year end but rank by your place on the rich list (the original ranks companies by revenue and growth against rivals); no "fastest growing" award. The rich list is the original's curve (top fortune by country size, rank^-0.75) without rival group owners.
+  * events not ported keep their absence: the 50 strategic decisions (ev27), rival-run energy firms, oil and salmon trade fairs and tenders.
+* **Groups and ownership:** boards and votes, the CEO and managing director, regional and chain managers (they need chains and shareholders), chains, franchises, branches, intercompany supply,
+  holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
+* **People:** pay talks, paperwork, managers (search, hire, authority, pay review, proposals, resignation, rival offers, move), assistant managers,
+  promotions and the poaching of the best worker are in. Not ported: a manager's proposals to buy equipment, vehicles and premises; the profit bonus
+  and shares, duties/authority/report choices and analyst report in the promotion talk; promoting a manager to a chief post; poaching after a course;
+  the manager's own promotions-from-within and the assistant's monthly suggestion and basic insurance; owner-attention drift is read in demand only (not in the manager's quality).
+* **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
 * **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
 * **Equipment:** brand catalogue, used market, leasing, subscriptions, software licences; only standard equipment at the standard price.
 * **Reports (weekly, monthly, yearly):**

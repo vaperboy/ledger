@@ -82,7 +82,7 @@ extension EventEngine {
             s.companies[i].staff = s.companies[i].staff.filter { $0.id != leaver.id }
             if var p = s.people[leaver.id] { p.employerID = 0; s.people[leaver.id] = p }
         }
-        if fx["raise"].double != 0 { giveRaise(&s, i, fx: fx, country: country, currency: currency) }
+        if fx["raise"].double != 0 || !fx["stay"].isNull { giveRaise(&s, i, fx: fx, country: country, currency: currency) }
         if fx["bonus"].double != 0 { Payments.companyPays(&s, companyID: id, amount: fx["bonus"].double, category: "wages", label: "Bonus") }
         if fx["close"].double != 0 && s.companies[i].status == .open {
             let weeks = fx["close"].double
@@ -174,8 +174,11 @@ extension EventEngine {
         let raise = fx["raise"].double
         var staff = s.companies[i].staff
         var targets = Array(staff.indices)
-        if !fx["stay"].isNull && !staff.isEmpty { targets = [s.random.int(0, staff.count - 1)] }
-        for k in targets { staff[k].monthlyWage = currency.roundedStep(staff[k].monthlyWage * (1 + raise), about: 100) }
+        // A rival goes for the best worker (original: g_poach, "your best worker").
+        if !fx["stay"].isNull && !staff.isEmpty {
+            targets = [staff.indices.max { (s.people[staff[$0].id]?.skill ?? 0) + staff[$0].skillGain < (s.people[staff[$1].id]?.skill ?? 0) + staff[$1].skillGain }!]
+        }
+        for k in targets where raise != 0 { staff[k].monthlyWage = currency.roundedStep(staff[k].monthlyWage * (1 + raise), about: 100) }
         s.companies[i].staff = staff
         if s.companies[i].managerID != nil && raise > 0.09 && fx["stay"].isNull {
             s.companies[i].managerMonthlyWage = currency.roundedStep(s.companies[i].managerMonthlyWage * (1 + raise), about: 100)
