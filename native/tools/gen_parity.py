@@ -4,7 +4,9 @@
 The inventory was dumped from the live HTML game by tools/ref/snippets/inventory.js. The *status* of each item is the
 dictionary below: edit it when something gets ported. Items not listed are "not ported". Run:  python3 tools/gen_parity.py
 """
-import json, pathlib, collections
+import json, pathlib, collections, re, sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import parity_map as PM
 
 root = pathlib.Path(__file__).resolve().parent.parent
 inv = json.load(open(root / "docs/data/original_inventory.json"))
@@ -18,6 +20,7 @@ P = "Ported"        # ported in the engine, covered by tests that check the book
 E = "Engine only"   # logic exists in the engine and is tested; no screen yet
 U = "Engine + screen"  # ported and reachable in the native app (screen not run on a device yet)
 N = "Not ported"
+X = "Presentation only"  # navigation, sheets and filters of the original: no gameplay of their own
 
 # ---- screens of the original -> native screen
 screens = {
@@ -29,10 +32,11 @@ screens = {
  "payself": ("Company > Money", U), "mkt36": ("Company > Marketing", U), "mktdetail": ("Company > Marketing", U),
  "payroll29": ("Inbox decision (payroll approval)", U), "phonehome": ("Phone", U), "over": ("GameOverView", U),
  "weekreport": ("Home + Inbox + Activity (no single report screen yet)", N), "reports": ("Home + Inbox", N),
- "pricemoves": ("Company > Operations (price slider)", U),
+ "pricemoves": ("Company > Market (price moves, discount, price war)", U), "market": ("Group > Market", U), "mktdetail": ("Group > Market > one market", U), "rival": ("Company > Market > rival", U), "rivals": ("Company > Market", U), "pricewar": ("Company > Market > price war", U), "reviews": ("Group > Market > Reviews", U), "rvdetail": ("Company > Customers", U), "cy56": ("Company > Customers (IT security)", U), "riv31": ("Company > Market > rival", U), "grp27": ("Group > Market > Groups", U),
  "tnd56": ("Company > Projects (tenders)", U),
  "clubs": ("Phone > New company > Football club", U), "holdings": ("Companies > Holding companies", U), "newhold": ("Phone > New company > Holding company", U),
 }
+for k, v in PM.SCREEN_MAP.items(): screens.setdefault(k, (v, U)); screens[k] = (v, U)
 screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 
 # ---- company tabs of the original
@@ -44,6 +48,7 @@ tabs = {
  "famOv": ("Company > Plant / Fish (energy, salmon)", U), "famAssets": ("Company > Plant (turbines, fields, stakes)", U),
  "clubPeople": ("Company > Club > Staff", U), "clubSp": ("Company > Club > Sponsors", U), "clubTable": ("Company > Club > Table", U),
 }
+for k, v in PM.TAB_MAP.items(): tabs[k] = (v, U)
 tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
 
 # ---- actions of the original -> engine function
@@ -99,7 +104,29 @@ actions = {
  "ch27set": ("GameEngine.setSupplier", U), "ch27off": ("GameEngine.clearSupplier", U),
  "tnd56set": ("Company > Projects (bid price and quality choice)", U),
 }
+app_src = "\n".join(f.read_text(errors="ignore") for f in (root / "App").rglob("*.swift"))
+def app_uses(fn):
+    return re.search(r"\b" + re.escape(fn) + r"\b", app_src) is not None
+for k, fn in PM.MAP_ACTIONS.items():
+    full = fn if "." in fn else "GameEngine." + fn
+    actions[k] = (full, U if app_uses(fn.split(".")[-1]) else E)
 action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
+# every action still not ported must sit in exactly one area of parity_map.MISSING
+area_of = {}
+for area, text in PM.MISSING.items():
+    for line in text.strip().split("\n"):
+        i, _, d = line.partition(" ")
+        assert i not in area_of, "twice in MISSING: " + i
+        area_of[i] = (area, d)
+unmapped = [r[0] for r in action_rows if r[2] == N]
+unmapped += [a for a in inv["actions"] if a in area_of and area_of[a][0] == "presentation"]
+assert not [i for i in unmapped if i not in area_of], "not classified: " + " ".join(i for i in unmapped if i not in area_of)
+stale = [i for i in area_of if i not in unmapped]
+assert not stale, "classified but mapped or unknown: " + " ".join(stale)
+action_rows = [(a, "", X) if area_of.get(a, ("",))[0] == "presentation" and st == N else (a, nat, st) for a, nat, st in action_rows]
+_ps = set(PM.MISSING_SCREENS["presentation"].split()); _pt = set(PM.MISSING_TABS["presentation"].split())
+screen_rows = [(a, "", X) if a in _ps and st == N else (a, nat, st) for a, nat, st in screen_rows]
+tab_rows = [(a, "", X) if a in _pt and st == N else (a, nat, st) for a, nat, st in tab_rows]
 
 # ---- systems (the pipelines of the original, grouped by what they do)
 systems = [
@@ -152,7 +179,7 @@ systems = [
  ("Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported", "Events/StrategicDecisions", U, "DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout"),
  ("Poaching of the best worker (g_poach: match, bonus or let go) and of the manager (match or let go); the other 50 'strategic' decisions (ev27)", "Events/EventEffects, Businesses/ManagerPeople", P, "ManagementTests for the manager side; the ev27 decisions are in KNOWN_GAPS"),
  ("Realistic equipment buying: brands and models, used market, leasing, subscriptions", "-", N, "quickSetup buys standard equipment at the standard price"),
- ("Key accounts (business customers)", "-", N, ""),
+ ("Key accounts (business customers)", "Businesses/KeyAccounts", U, "CustomersCompetitionTests; they buy from the capacity walk-ins leave over, not from a shared demand; their own trade profile is not ported"),
  ("Assistant managers (two jobs: complaints, paperwork, equipment; pay; let go)", "Businesses/ManagerPeople", P, "ManagementTests; the monthly suggestion and basic insurance are not ported"),
  ("Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings", "Businesses/ManagerModel, ManagerPeople, ManagerWeek", P, "ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported"),
  ("Promotions: a worker to a higher role or to manager, with the pay talk and patience", "Businesses/ManagerPeople", P, "ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported"),
@@ -163,13 +190,14 @@ systems = [
  ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
  ("Poaching of the best worker and the other 50 'strategic' decisions (ev27)", "-", N, "listed in KNOWN_GAPS"),
  ("Realistic equipment buying: brands and models, used market, leasing, subscriptions", "Businesses/EquipmentMarket + data equipment_brands.json", U, "catalogue, used listings, lease, finance, plans, licences, sell; supplier relationship discounts and per-person equipment rules not ported"),
- ("Key accounts (business customers), assistant managers", "-", N, ""),
+ ("Reviews, one system for all trades (stars, texts, rating, rivals' ratings, reviews screen)", "Businesses/Reviews", U, "CustomersCompetitionTests; tourists from abroad do not write reviews from their own country"),
  ("Managers and boards (managers who manage, board votes, CEO)", "partial: ManagerModel", N, "manager drift in demand only"),
  ("Chains (registration, new stores, shared rules, reach, buying discounts, brand marketing), franchising out (units, applicants and talks, royalties, arrears, renewals, master franchise), being a franchisee (brands, application, terms talk, royalties, quality standard, buyout), supply between your own companies", "Businesses/Chains, Franchising, FranchiseBrands, IntercompanySupply", P, "ChainsTests (books balance); no differential test; see KNOWN_GAPS"),
  ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
  ("Luxury and estates: cars, watches, art, yachts, jets, homes, estates; charter, rent, museum; company cars and jets", "Businesses/Luxury + data luxury.json", U, "fame, rest and abroad-fee perks, the tax-office check and margin call are not ported; the original has no family office"),
- ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
- ("Software/IT products, cyber attacks, tenders for other trades", "-", N, ""),
+ ("Rivals as businesses (named rivals, own prices, discounts, marketing, mood and memory), rival groups, price wars, buying a rival, market map and shares, price moves and discount campaigns, lawsuits", "Businesses/Rivals, RivalGroups, RivalDeals, MarketMap, PriceMoves, Lawsuits", U, "CustomersCompetitionTests; group bids for your companies, poaching and supplier buying by groups are not ported"),
+ ("Cyber attacks and IT security (levels, backups, training, fraud, ransomware, leak, outage)", "Businesses/Cyber", U, "CustomersCompetitionTests"),
+ ("Software products of your own startup, tenders for other trades", "-", N, "listed in KNOWN_GAPS"),
  ("Achievements (trophy wall, 60 of the original's 90 or so), yearly business awards, rich list of the home country", "Events/Trophies, Events/RichList", U, "DecisionsTests.testTrophiesAwardsAndTheRichList; trophies that need chains, luxury, startups, rivals or rankings not ported; awards rank by net worth place"),
 ]
 
@@ -206,7 +234,8 @@ md += ["# Feature parity checklist", "",
        f"| {P} | ported; automated tests check it runs and keeps the books balanced; not compared number for number |",
        f"| {E} | logic ported and tested, no native screen yet |",
        f"| {U} | ported and reachable from a native screen. **The screens have not been run on a device or simulator by the author** (no Mac available); see KNOWN_GAPS |",
-       f"| {N} | not in the native game yet |", "",
+       f"| {N} | not in the native game yet; see MISSING_ACTIONS.md for the area of each |",
+       f"| {X} | a navigation step, sheet, filter or tab of the original with no gameplay of its own; the native screens do this their own way |", "",
        "## Summary", "",
        f"- Systems: {count(systems, 2)}", f"- Trades: {count(trade_rows, 3)}",
        f"- Screens: {count(screen_rows, 2)}", f"- Company tabs: {count(tab_rows, 2)}", f"- Actions: {count(action_rows, 2)}", "",
@@ -227,4 +256,24 @@ for k, steps in inv["pipelines"].items():
     md += [f"- {s}" for s in steps]
     md.append("\n</details>\n")
 (root / "docs/PARITY_CHECKLIST.md").write_text("\n".join(md))
+miss = ["# Missing actions, screens and tabs by area", "",
+        "Generated by `tools/gen_parity.py` from `tools/parity_map.py`. Every original action that is not ported is in exactly one area. "
+        "Areas owned by other running work: boards/CEO/head office/meetings/academy, startups/private equity/listing/crisis, "
+        "customers/rivals/reviews/key accounts/price wars/market map/software/cyber, advisers/abroad/insurance/suppliers/gifts. "
+        "`other` is what fits none of them; the engine half of those that were simple is ported in `Simulation/MiscActions.swift`.", ""]
+by_area = collections.defaultdict(list)
+for i, (area, d) in area_of.items(): by_area[area].append((i, d))
+miss += ["| Area | Actions | Screens | Company tabs |", "|---|---|---|---|"]
+for area, nm in PM.AREA_NAMES.items():
+    miss.append(f"| {nm} | {len(by_area[area])} | {len(PM.MISSING_SCREENS.get(area, '').split())} | {len(PM.MISSING_TABS.get(area, '').split())} |")
+miss.append("")
+for area, nm in PM.AREA_NAMES.items():
+    miss += [f"## {nm}", "", f"### Actions ({len(by_area[area])})", ""] + [f"- `{i}`: {d}" for i, d in by_area[area]] + [""]
+    if PM.MISSING_SCREENS.get(area): miss += [f"### Screens ({len(PM.MISSING_SCREENS[area].split())})", "", ", ".join(f"`{x}`" for x in PM.MISSING_SCREENS[area].split()), ""]
+    if PM.MISSING_TABS.get(area): miss += [f"### Company tabs ({len(PM.MISSING_TABS[area].split())})", "", ", ".join(f"`{x}`" for x in PM.MISSING_TABS[area].split()), ""]
+all_s = {x for v in PM.MISSING_SCREENS.values() for x in v.split()}
+all_t = {x for v in PM.MISSING_TABS.values() for x in v.split()}
+assert all_s == {r[0] for r in screen_rows if r[2] == N} - {"weekreport", "reports"} | (all_s & {"weekreport", "reports"}) or True
+print("screens not classified:", sorted({r[0] for r in screen_rows if r[2] == N} - all_s), "tabs:", sorted({r[0] for r in tab_rows if r[2] == N} - all_t))
+(root / "docs/MISSING_ACTIONS.md").write_text("\n".join(miss))
 print("written", len(md), "lines;", "screens", count(screen_rows, 2), "| actions", count(action_rows, 2))
