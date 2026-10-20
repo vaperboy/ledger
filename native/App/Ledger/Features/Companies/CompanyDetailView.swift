@@ -7,7 +7,7 @@ import Businesses
 import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
-    case overview = "Overview", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
+    case overview = "Overview", projects = "Projects", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", setup = "Setup"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
 }
@@ -32,6 +32,7 @@ struct CompanyDetailView: View {
                     SectionTabs(items: sections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section)
+                    case .projects: CompanyProjects(engine: e, company: co)
                     case .staff: CompanyTeam(engine: e, company: co)
                     case .finances: CompanyMoney(engine: e, company: co)
                     case .operations: CompanyOperations(engine: e, company: co)
@@ -58,9 +59,9 @@ struct CompanyDetailView: View {
     private func sections(_ co: Company, _ e: GameEngine) -> [CompanySection] {
         let family = e.tradeInfo(companyID: co.id)?.family
         // Property and finance companies have a section of their own (property portfolio; policies, loans or fund).
-        let own: [CompanySection] = family == "rent" ? [.properties] : family == "fin" ? [.book] : []
+        let own: [CompanySection] = family == "rent" ? [.properties] : family == "fin" ? [.book] : family == "project" ? [.projects] : []
         if co.status == .setup { return own + [.setup, .overview, .finances] }
-        var list = CompanySection.allCases.filter { $0 != .setup && $0 != .properties && $0 != .book }
+        var list = CompanySection.allCases.filter { $0 != .setup && $0 != .properties && $0 != .book && $0 != .projects }
         if !own.isEmpty { list.insert(contentsOf: own, at: 1) }
         return list
     }

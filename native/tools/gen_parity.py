@@ -30,6 +30,7 @@ screens = {
  "payroll29": ("Inbox decision (payroll approval)", U), "phonehome": ("Phone", U), "over": ("GameOverView", U),
  "weekreport": ("Home + Inbox + Activity (no single report screen yet)", N), "reports": ("Home + Inbox", N),
  "pricemoves": ("Company > Operations (price slider)", U),
+ "tnd56": ("Company > Projects (tenders)", U),
 }
 screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 
@@ -37,7 +38,7 @@ screen_rows = [(s, *screens.get(s, ("", N))) for s in inv["screens"]]
 tabs = {
  "ov": ("Company > Overview", U), "setupOv": ("Company > Setup", U), "plCard": ("Company > Money (P&L)", U), "finSummary": ("Company > Money", U),
  "ppl": ("Company > Team", U), "marketing": ("Company > Marketing", U), "mkt": ("Company > Marketing", U), "priceInfo": ("Company > Operations", U),
- "famOv": ("Company > Properties / Book (figures)", U), "famAssets": ("Company > Properties", U), "famOps": ("Company > Book (insurance products)", U),
+ "famOv": ("Company > Projects / Properties / Book (figures)", U), "famAssets": ("Company > Properties", U), "famOps": ("Company > Book (insurance products)", U),
  "doc": ("Company > Setup (documents via quick setup)", U), "eq": ("Company > Setup (equipment via quick setup)", U),
 }
 tab_rows = [(t, *tabs.get(t, ("", N))) for t in inv["companyTabs"]]
@@ -63,6 +64,9 @@ actions = {
  "propsheet": ("GameEngine.propertyListings", U), "buyprop": ("GameEngine.buyProperty", U), "sellprop": ("GameEngine.sellProperty", U), "renprop": ("GameEngine.renovateProperty", U),
  "marketprop": ("GameEngine.tenantOffers", U), "leaseprop": ("GameEngine.leaseSpace", U), "sellto": ("GameEngine.sellBuilding", U),
  "prodtog": ("GameEngine.setInsuranceProduct", U), "f17prod": ("GameEngine.verifySalesperson", U),
+ "devgo": ("GameEngine.startDevelopment (Company > Projects)", U), "devprice": ("GameEngine.setDevelopmentPrice (Company > Projects)", U), "devsheet": ("GameEngine.developmentQuote (Company > Projects)", U),
+ "tnd56go": ("GameEngine.bidOnTender (Company > Projects)", U), "tnd56re": ("GameEngine.withdrawBid (Company > Projects)", U), "tnd56auto": ("GameEngine.setManagerBids (Company > Projects)", U),
+ "tnd56set": ("Company > Projects (bid price and quality choice)", U),
 }
 action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
 
@@ -98,13 +102,16 @@ systems = [
  ("133 random events with weighted choices and expiry", "Events", P, "data equals the original; firing is smoke-tested"),
  ("Event consequence previews", "Events/EffectPreview", P, "PreviewAndAdvisorTests"),
  ("Save: legacy JSON / LZ1 / LZ64 import, native envelope, backups, atomic write", "SaveSystem", V, "LZStringTests, SaveRoundTripTests, SaveStoreTests"),
- ("Service, venue, retail, production, logistics families (50 of 67 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
- ("Project businesses (6 trades)", "-", N, "own model in the original"),
  ("Rental businesses (3 trades): properties, tenants, vacancy, rent policy, maintenance, mortgages, valuation with the housing market", "Businesses/RentalModel", V, "RentalFinanceDifferentialTests (weekly model, listings, buy/renovate/sell, leases, valuation against the original)"),
  ("Insurance company: products and approvals, verified salespeople, premiums, claims, storms, solvency and regulator", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, products, f_storm); balance bands in RentalFinanceBalanceTests"),
  ("Bank: deposits, loan book, spread, loan losses, runs, capital ratio, central bank liquidity facility", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, f_run, f_default); bank run and regulator closure in RentalFinanceTests"),
  ("Investment fund: assets under management, flows, fees, performance fee at year end", "Businesses/FinanceModel", V, "RentalFinanceDifferentialTests (weekly model, year-end fee, redemptions)"),
  ("Regulator closes a bank or insurer whose capital is gone (not in the original)", "Businesses/FinanceModel.insolventCompanies", P, "RentalFinanceTests"),
+
+ ("Service, venue, retail, production, logistics families (50 trades)", "Businesses/CompanyWeek", S, "statistical comparison; gym is +31% (open)"),
+ ("Project businesses: jobs in hours, milestone payments, receivables, overruns, defects (plumber, electrician, construction, engineering office, event agency)", "Businesses/ProjectModel, ProjectWeek", V, "ProjectDifferentialTests (demand, hour value, hours a week, mix against the original); balance probe in BALANCE_PARITY. Price and demand carry a native calibration"),
+ ("Real-estate development: land, zoning, building, units sold, construction loan, housing market", "Businesses/ProjectDeveloper", V, "ProjectDifferentialTests (land, build, units, price, cash); statistical balance probe"),
+ ("Tenders for building, design and event work (bids, scoring, awards, managers who bid)", "Businesses/ProjectTenders", P, "ProjectTradeTests; the volume contracts the original also tenders for are not ported"),
  ("Energy: oil and gas (2 trades)", "-", N, ""),
  ("Holding companies", "-", N, ""),
  ("Football clubs", "-", N, ""),
@@ -117,12 +124,12 @@ systems = [
  ("Startups, private equity funds, stakes", "net worth counts imported values only", N, ""),
  ("Luxury and estates, family office", "net worth counts imported values only", N, ""),
  ("Rivals as businesses, price wars, acquisitions", "-", N, "Competition affects demand only"),
- ("Tenders, software/IT products, cyber attacks", "-", N, ""),
+ ("Software/IT products, cyber attacks, tenders for other trades", "-", N, ""),
  ("Achievements, trophies, rich list, awards", "-", N, ""),
 ]
 
 # ---- trades
-fam_supported = {"svc", "venue", "retail", "prod", "logi"}
+fam_supported = {"svc", "venue", "retail", "prod", "logi", "project"}
 rental_finance = {"resrent", "comrent", "parking", "insco", "bank", "fund"}   # RentalModel, FinanceModel: ported, family models verified
 trade_rows = []
 for t in trade_items:

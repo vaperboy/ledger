@@ -25,6 +25,8 @@ Most additions are data. After any change run `swift test` in `native/Engine`; s
 3. Run `swift test`. `TradeCatalogTests` checks the catalogue; add a line to `SimulationSmokeTests.testEveryNativeFamilyRunsWithoutErrors`
    so the new trade is played for ten weeks with the books checked.
 4. A trade of a family that is not simulated yet (see `CompanyWeek.isSupported`) cannot be started.
+5. A new project trade (family `project`) also needs a row in `ProjectModel.specs` (hour value, size classes, what is sold, mix per focus,
+   price and demand calibration); the developer is the trade with `tw.dev`.
 
 ## A random event
 

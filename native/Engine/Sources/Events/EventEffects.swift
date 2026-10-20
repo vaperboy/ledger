@@ -135,6 +135,7 @@ extension EventEngine {
         }
         if !fx["vacAdd"].isNull || !fx["vac"].isNull || !fx["tenant"].isNull { RentalModel.applyEffects(&s, i, fx: fx, data: data) }
         if !fx["aum"].isNull { FinanceModel.applyEffects(&s, i, fx: fx) }
+        if let bd = data.catalog[s.companies[i].type], bd.family == "project" { ProjectModel.applyEffect(&s, i, fx, bd: bd) }
         if fx["sell"].bool {
             s.addMessage(from: s.companies[i].name, title: "You may consider selling \(s.companies[i].name).",
                          body: "Selling is under the company's Ownership and value section.", companyID: id)

@@ -154,6 +154,7 @@ public extension GameEngine {
             out.append(Insight(id: "bigpay", symbol: "calendar.badge.exclamationmark", text: "\(big.title) of \(cur.short(big.amount)) is due \(big.daysAway <= 0 ? "today" : "in \(big.daysAway) days"); the account holds \(cur.short(max(0, co.cash))).", tone: big.amount > co.cash ? .bad : .warn))
         }
         out += rentalFinanceInsights(for: co)
+        out += projectInsights(for: co)
         if out.isEmpty, co.status == .open { out.append(Insight(id: "ok", symbol: "checkmark.seal", text: "Nothing unusual. The business is running as expected.", tone: .good)) }
         let order: [Insight.Tone: Int] = [.bad: 0, .warn: 1, .neutral: 2, .good: 3]
         return Array(out.sorted { (order[$0.tone] ?? 9) < (order[$1.tone] ?? 9) }.prefix(limit))

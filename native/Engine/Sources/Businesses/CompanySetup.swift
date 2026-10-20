@@ -329,6 +329,8 @@ public enum CompanySetup {
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5
         RentalFinance.addEstimate(&r, bd, size: size, city: city, tmp, w)
+        // Contractors wait weeks for the first jobs and the first payments: a bigger cash buffer. Original: `setupEstimate` step.
+        if bd.family == "project" && !bd.hasTrait("dev") { r.buffer *= 3.5 }
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)

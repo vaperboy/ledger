@@ -183,6 +183,7 @@ public struct GameEngine {
 
     mutating func tradeAndPay(day: Int) {
         DailyTrade.runDay(&state, day: day, data: data)
+        ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)
     }
 
@@ -296,6 +297,7 @@ public struct GameEngine {
                 state.companies[i].set("trf", .array(trf))
             }
         }
+        ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
