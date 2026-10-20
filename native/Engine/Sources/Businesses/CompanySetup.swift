@@ -290,7 +290,9 @@ public enum CompanySetup {
         /// Down payment and fees on a first property (rental businesses).
         public var property = 0.0
         public var registration = 0.0, shareCapital = 0.0, abroad = 0.0
-        public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + property + registration + abroad }
+        /// Wages and rent paid while a long licence is awaited (original: `r.wait` in `setupEstimate`)
+        public var wait = 0.0
+        public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + property + registration + abroad + wait }
         /// Money that must be in the player's account first (registration, capital) plus money to put in the company
         public var personalOutlay: Double { registration + shareCapital + abroad }
     }
@@ -307,6 +309,7 @@ public enum CompanySetup {
         let co = tmp.companies[i]
         let w = World(state: tmp, data: data)
         var r = Estimate()
+        var vehicleFull = 0.0, monthlyRent = 0.0
         for d in Documents.needed(co, bd, w) where d != "vat_not_applicable" && d != "accountant_agreement" { r.documents += Documents.cost(d, company: co, bd, w) }
         let need = standardEquipment(bd, size: size)
         for e in bd.equipment {
@@ -315,12 +318,14 @@ public enum CompanySetup {
             if let model = e.vehicleModels?.first {
                 let price = data.catalog.tables.vehicles[model]?.price ?? 300000
                 r.vehicles += price * q * w.inflationIndex * 0.2
+                vehicleFull += price * q
             } else { r.equipment += equipmentPrice(e, company: co, w) * q }
         }
         if let kind = bd.premisesKind, let P = data.catalog.tables.premises[kind], bd.premisesM2 > 0 {
             let m2 = jsRound(bd.premisesM2 * size)
             let rent = P.rentPerM2Year * city.rent * w.inflationIndex
             r.premises = rent * m2 / 12 * 3 + (data.catalog.tables.fitOut[kind] ?? 0) * m2
+            monthlyRent = rent * m2 / 12
         }
         r.stock = OpeningChecklist.initialStockCost(co, bd, w)
         for (i, st) in bd.standardStaff.enumerated() {
@@ -332,10 +337,13 @@ public enum CompanySetup {
         RentalFinance.addEstimate(&r, bd, size: size, city: city, tmp, w)
         // Contractors wait weeks for the first jobs and the first payments: a bigger cash buffer. Original: `setupEstimate` step.
         if bd.family == "project" && !bd.hasTrait("dev") { r.buffer *= 3.5 }
+        // Months spent waiting for a licence cost wages and rent too (a wait of more than 8 weeks). Original: `r.wait`.
+        let longest = Documents.needed(co, bd, w).compactMap { Documents.definition($0, country: country, tables: data.catalog.tables)?.weeks }.max() ?? 0
+        if longest > 8 { r.wait = (r.firstPayroll + monthlyRent + vehicleFull * 0.012) * Double(longest - 4) / 4.33 * 1.15 }
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
-        r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property)
+        r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
         if code != s.homeCountryCode { r.abroad = cur.scaledPrice(220000 + bd.openingCost * 1.5) }
         return r
@@ -346,7 +354,9 @@ public enum CompanySetup {
     /// Do everything a company needs to open with sensible standard choices: apply for all documents, rent a
     /// standard place, buy the standard equipment, hire the standard team. It then opens by itself once the
     /// paperwork is approved. Returns what could not be done (usually: not enough cash). Original: `autoSetup`.
-    public static func quickSetup(_ s: inout GameState, companyID: Int, data: GameData) -> [String] {
+    /// The original makes one offer to the median-priced candidate per job and does not retry a refusal; the app retries and picks the
+    /// best value. `faithfulHiring` switches to the original's way (used only by the statistical comparison tests).
+    public static func quickSetup(_ s: inout GameState, companyID: Int, data: GameData, faithfulHiring: Bool = false) -> [String] {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return ["unknown company"] }
         var log: [String] = []
         let w = World(state: s, data: data)
@@ -379,12 +389,13 @@ public enum CompanySetup {
                 let have = s.companies[i].staff.filter { $0.role == st.role }.count
                 var n = st.count - have
                 if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil && s.companies[i].ownerHours >= 20 { n = max(0, n - 1) }
-                var attempts = 0
-                while n > 0 && attempts < 6 {
+                var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
+                // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
+                while n > 0 && attempts < allowed {
                     attempts += 1
                     let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
                     guard !cands.isEmpty else { break }
-                    let pick = Hiring.bestValue(cands)
+                    let pick = faithfulHiring ? cands[cands.count / 2] : Hiring.bestValue(cands)
                     let cur = w.currency(s.companies[i])
                     let offer = cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
                     if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }

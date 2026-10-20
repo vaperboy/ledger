@@ -117,6 +117,11 @@ the developer (zoning, building, sales, construction loan repaid from 70% of sal
 
 ## Candidate corrections (not changed, to keep parity)
 
+* The gym and the restaurant are generous or slow compared with real life (see `BALANCE_PARITY.md`, "Which is closer to real life");
+  both engines agree, so they were left for a deliberate balance pass.
+* The vendor system (goods quality and cost per supplier), vehicle and equipment brands, and poaching are not ported; they explain
+  small differences in quality, staff and courier cash.
+
 * Salmon: low stocking density gives more fish and less disease (see above); the 15-month wait without income is covered by the start-up estimate, as in the original.
 * The oil-and-gas start-up estimate has no working-capital buffer (the original has none either), so a new company needs cash put in before it can buy a field.
 

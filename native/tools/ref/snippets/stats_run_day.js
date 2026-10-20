@@ -15,7 +15,8 @@
       injectCash(co, Math.round(setupEstimate(t, o).total * 1.6));
       setupAndOpen(co);
       S.dmode = 1;
-      for (let d = 0; d < 26 * 7; d++) {
+      /* the company is 26 weeks old when the clock reads week 26: setupAndOpen already let the setup weeks pass (as in the native test) */
+      for (let g = 0; S.week < 26 && g < 26 * 7; g++) {
         dayStep();
         S.inbox.forEach(m => { if (m.status === 'open' && m.act && /^pay29/.test(m.act)) { ACTS[m.act](m, 0); m.status = 'done'; } });
         if (S.over) break;

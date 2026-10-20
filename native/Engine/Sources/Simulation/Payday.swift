@@ -250,6 +250,9 @@ public enum Payday {
             if due <= 0 { continue }
             let p = min(due, left)
             if p > 0 {
+                // Keep what the first bill already changed (rent paid): re-reading the company without writing it back first
+                // would forget it, the rent would stay "owed" and be paid again, in full and growing, every month.
+                s.companies[i] = co
                 Ledger.moveRaw(&s, .company(co.id), -p)
                 co = s.companies[i]
                 let used = !co.value("f30").object.isEmpty

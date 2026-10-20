@@ -126,6 +126,25 @@ public enum Satisfaction {
         s.companies[i].awareness = clamp(co.awareness + g, 0, 100)
     }
 
+    /// People who used you tell others: a busy business becomes known in its area, but not famous (the floor is at most 32). The
+    /// floor follows how busy the last 26 weeks were (a young business has fewer weeks to average, so it rises over months), how
+    /// good the work is and how cheap. Original: week.after step 'trades_in_hours weekly' (features/sales/trades_in_hours.js).
+    /// Not ported: the review-score factor (reviews are not a native screen yet) and the hour-priced trades (plumber, electrician...).
+    static func knownByUse(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
+        var co = s.companies[i]
+        guard co.status == .open, !["fin", "energy", "hold", "club", "rent"].contains(bd.family) else { return }
+        let x = bd.normalCapacity > 0 ? co.lastWeekUnits / (bd.normalCapacity * 0.6) : 0
+        let history = (co.value("cu41").array.map { $0.double } + [min(4, x)]).suffix(26)
+        co.set("cu41", .array(history.map { .number($0) }))
+        let ratio = history.reduce(0, +) / 26
+        let w = World(state: s, data: data)
+        var qf = clamp(0.75 + (co.quality - 45) / 80, 0.6, 1.2)
+        qf *= clamp(1 + (1 - w.balance.priceMultiplier(level: co.priceLevel)) * 0.8, 0.75, 1.3)
+        let floor = min(32, 28 * min(1.2, ratio).squareRoot() * qf)
+        if co.awareness < floor { co.awareness = clamp(co.awareness + (floor - co.awareness) * 0.08, 0, 100) }
+        s.companies[i] = co
+    }
+
     /// How much people sold to by a viral moment tell their friends, and what they think of the place afterwards. Original: `hypeWeek`.
     static func buzzWeek(_ s: inout GameState, _ i: Int) {
         var co = s.companies[i]

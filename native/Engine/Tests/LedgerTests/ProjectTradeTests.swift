@@ -146,7 +146,7 @@ final class ProjectTradeTests: XCTestCase {
                 for m in e.openDecisions { e.answer(messageID: m.id, option: 0) }
                 if t == "realdev", !started, e.state.company(id)?.status == .open { started = e.startDevelopment(companyID: id, size: 1, financed: false) == .started }
                 // the owner never adds money; drain what is left so the company cannot survive
-                if let co = e.state.company(id), co.status == .open, co.cash > 0, e.state.week == 40 {
+                if let co = e.state.company(id), co.status == .open, co.cash > 0, e.state.week >= 40 {
                     e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), -co.cash) }
                 }
             }
