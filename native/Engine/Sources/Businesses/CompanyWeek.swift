@@ -407,6 +407,7 @@ public enum CompanyWeek {
         if co.managerID == nil && co.ownerHours >= 20 { co.ownerSkill = clamp(co.ownerSkill + 0.035 * (1 - co.ownerSkill / 120), 0, 100) }
         s.companies[i] = co
         StaffRoutine.weekly(&s, companyIndex: i, bd, data: data, utilisation: ctx.util)
+        ManagerModel.weekly(&s, companyIndex: i, bd, data: data, revenue: ctx.rev, utilisation: ctx.util, demand: ctx.D, capacity: ctx.cap)
         co = s.companies[i]
         if co.cash < 0 {
             co.weeksNegative += 1

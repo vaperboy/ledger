@@ -227,6 +227,10 @@ public enum EventEngine {
                 apply(&s, companyIndex: ci, m.options[bestIndex]["fx"], ctx: ctx, event: e, data: data, context: fc)
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", bestIndex); s.inbox[k].set("auto", 1)
                 s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
+            } else if m.actionID == StrategicDecisions.action {
+                let pick = StrategicDecisions.expired(&s, message: m, data: data, context: fc)
+                s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("auto", 1)
+                s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options.indices.contains(pick) ? m.options[pick]["l"].string : "").", tone: "bad", companyID: m.companyID)
             } else if !m.actionID.isEmpty {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             }

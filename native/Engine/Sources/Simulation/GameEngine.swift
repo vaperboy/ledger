@@ -123,7 +123,9 @@ public struct GameEngine {
     public mutating func answer(messageID: Int, option: Int) -> Bool {
         let d = data, c = context
         let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
+            if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
+            if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
@@ -291,6 +293,7 @@ public struct GameEngine {
         FootballModel.leaguesWeek(&state, data: data)
         Markets.fundsWeekly(&state)
         Brokerage.weekly(&state)
+        Luxury.weekly(&state)
         for i in state.companies.indices {
             guard state.companies[i].status.isLive else { continue }
             CompanyWeek.run(&state, companyIndex: i, data: data, marketing: marketing)
@@ -313,6 +316,8 @@ public struct GameEngine {
         ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)
+        StrategicDecisions.weekly(&state, data: data, context: context)
+        Awards.weekly(&state, data: data, context: context)
         SpecialFamilies.weeklyAfter(&state, data: data, context: context)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }

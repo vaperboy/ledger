@@ -15,11 +15,11 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 
 ## Summary
 
-- Systems: 23 Ported, 19 Verified, 10 Not ported, 2 Statistical
+- Systems: 27 Ported, 19 Verified, 13 Not ported, 5 Engine + screen, 2 Statistical
 - Trades: 56 Statistical, 11 Ported
-- Screens: 75 Not ported, 30 Engine + screen
+- Screens: 73 Not ported, 32 Engine + screen
 - Company tabs: 27 Not ported, 16 Engine + screen
-- Actions: 476 Not ported, 72 Engine + screen, 9 Engine only
+- Actions: 417 Not ported, 134 Engine + screen, 6 Engine only
 
 ## Systems
 
@@ -43,7 +43,7 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Customer complaints (arrive, managers answer, unanswered become bad reviews) | Businesses/Satisfaction | Ported | SimulationSmokeTests; effect on reputation compared in BALANCE_PARITY |
 | Word of mouth, buzz, limit of a local name, closing when nobody works | Businesses/Satisfaction | Ported | awareness and reputation track the original (BALANCE_PARITY) |
 | Paperwork for new people and inspection fines; commission mishaps; hidden talent | Businesses/StaffExtras | Ported | fine totals compared in BALANCE_PARITY |
-| Equipment units: wear per unit, breakdowns, warranty, repair cost, downtime | Businesses/EquipmentUnits | Ported | brand catalogue (reliability, class) not ported |
+| Equipment units: wear per unit, breakdowns, warranty, repair cost, downtime | Businesses/EquipmentUnits | Ported | units carry brand, class and reliability; warranty text and wear as the original |
 | Text tokens {auth:..} {m:..} resolved per country | Countries/TextTokens | Verified | TextTokenTests |
 | Staff: skill, learning, tiredness, sickness, quitting, seasonal staff | Employees, Businesses/StaffRoutine | Ported | smoke |
 | Hiring and firing, candidate generation | Businesses/Hiring | Ported | PlayerActionsTests |
@@ -69,16 +69,28 @@ An item is only marked beyond *Not ported* when code for it exists **and** the s
 | Holding companies (stakes, index fund, dividends up and down, net worth, tax group, failure) | Businesses/HoldingModel | Ported | SpecialTradesTests; listing on the exchange and raising money by selling shares not ported |
 | Football clubs (league, season, table, tickets, TV, sponsors, wages, transfers, coaches, buying and founding) | Businesses/FootballModel | Ported | SpecialTradesDifferentialTests: clubs of a league equal the original; the random match draw is a shuffle, not the original's random sort |
 | Pay talks: people ask for a raise or a fixed salary, the answer changes pay and mood | Businesses/StaffTalks | Ported | StaffTalksTests |
-| Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
+| Strategic decisions (ev27): 66 of 79 ported (startup, growth, established, crisis, group and general ones, 41 country events); poaching, rival merger/distress sales, listing, private equity, hostile takeover, antitrust, activist, auction, new-site and franchise offers not ported | Events/StrategicDecisions | Engine + screen | DecisionsTests: every decision fired and every answer taken, books balance; defaults on timeout |
+| Poaching of the best worker (g_poach: match, bonus or let go) and of the manager (match or let go); the other 50 'strategic' decisions (ev27) | Events/EventEffects, Businesses/ManagerPeople | Ported | ManagementTests for the manager side; the ev27 decisions are in KNOWN_GAPS |
 | Realistic equipment buying: brands and models, used market, leasing, subscriptions | - | Not ported | quickSetup buys standard equipment at the standard price |
+| Key accounts (business customers) | - | Not ported |  |
+| Assistant managers (two jobs: complaints, paperwork, equipment; pay; let go) | Businesses/ManagerPeople | Ported | ManagementTests; the monthly suggestion and basic insurance are not ported |
+| Managers: find (search, interview, references), hire, authority, pay review, proposals, yearly raise, resign and notice, rival offer, move, replace, ask for changes, meetings | Businesses/ManagerModel, ManagerPeople, ManagerWeek | Ported | ManagementTests; buying equipment, vehicles and space and the profit bonus are not ported |
+| Promotions: a worker to a higher role or to manager, with the pay talk and patience | Businesses/ManagerPeople | Ported | ManagementTests; duties, authority, bonus and shares in the offer, and the analyst report are not ported |
+| Boards, votes, CEO and managing director, regional and chain managers, group executives | - | Not ported | needs chains and shareholders first; listed in KNOWN_GAPS |
+| Chains, franchises, branches, intercompany supply | - | Not ported |  |
+| Selling a company: quiet sale or broker, offers over weeks (private, fund, rival, management buyout), counter +8%, loans closed, staff released, tax gain | Events/CompanySale | Engine + screen | DecisionsTests.testSellingACompany; selling part of the shares and raising funding not ported |
+| Startups you found, private equity funds, stakes in other groups | net worth counts imported values only | Not ported |  |
+| Luxury and estates, family office | net worth counts imported values only | Not ported |  |
+| Poaching of the best worker and the other 50 'strategic' decisions (ev27) | - | Not ported | listed in KNOWN_GAPS |
+| Realistic equipment buying: brands and models, used market, leasing, subscriptions | Businesses/EquipmentMarket + data equipment_brands.json | Engine + screen | catalogue, used listings, lease, finance, plans, licences, sell; supplier relationship discounts and per-person equipment rules not ported |
 | Key accounts (business customers), assistant managers | - | Not ported |  |
 | Managers and boards (managers who manage, board votes, CEO) | partial: ManagerModel | Not ported | manager drift in demand only |
 | Chains, franchises, branches, intercompany supply | - | Not ported |  |
 | Startups, private equity funds, stakes | net worth counts imported values only | Not ported |  |
-| Luxury and estates, family office | net worth counts imported values only | Not ported |  |
+| Luxury and estates: cars, watches, art, yachts, jets, homes, estates; charter, rent, museum; company cars and jets | Businesses/Luxury + data luxury.json | Engine + screen | fame, rest and abroad-fee perks, the tax-office check and margin call are not ported; the original has no family office |
 | Rivals as businesses, price wars, acquisitions | - | Not ported | Competition affects demand only |
 | Software/IT products, cyber attacks, tenders for other trades | - | Not ported |  |
-| Achievements, trophies, rich list, awards | - | Not ported |  |
+| Achievements (trophy wall, 60 of the original's 90 or so), yearly business awards, rich list of the home country | Events/Trophies, Events/RichList | Engine + screen | DecisionsTests.testTrophiesAwardsAndTheRichList; trophies that need chains, luxury, startups, rivals or rankings not ported; awards rank by net worth place |
 
 ## Countries
 
@@ -205,7 +217,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | hqmk |  | Not ported |
 | img31 |  | Not ported |
 | invest | Phone > Invest | Engine + screen |
-| lux |  | Not ported |
+| lux | Phone > Luxury | Engine + screen |
 | mail | Inbox | Engine + screen |
 | managers |  | Not ported |
 | map31 |  | Not ported |
@@ -254,7 +266,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | sale |  | Not ported |
 | saletalk |  | Not ported |
 | settings | Phone > Settings | Engine + screen |
-| shop |  | Not ported |
+| shop | Company > Equipment, fleet and premises > shop | Engine + screen |
 | staffman |  | Not ported |
 | start | StartView (new game) | Engine + screen |
 | startups |  | Not ported |
@@ -292,7 +304,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | dealPart |  | Not ported |
 | demandLevel |  | Not ported |
 | doc | Company > Setup (documents via quick setup) | Engine + screen |
-| eq | Company > Setup (equipment via quick setup) | Engine + screen |
+| eq | Company > Equipment, fleet and premises (Setup and Operations) | Engine + screen |
 | famAssets | Company > Plant (turbines, fields, stakes) | Engine + screen |
 | famOps | Company > Book (insurance products) | Engine + screen |
 | famOv | Company > Plant / Fish (energy, salmon) | Engine + screen |
@@ -346,16 +358,16 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | applydoc2 | Documents | Engine only |
 | arep |  | Not ported |
 | artview |  | Not ported |
-| askmgr |  | Not ported |
-| asstduty |  | Not ported |
-| asstfire |  | Not ported |
-| asstgo |  | Not ported |
-| asstsearch |  | Not ported |
-| asstsearch56 |  | Not ported |
-| authad |  | Not ported |
-| authbuy |  | Not ported |
-| authhire |  | Not ported |
-| authlvl |  | Not ported |
+| askmgr | GameEngine.askManager (Company > Team) | Engine + screen |
+| asstduty | GameEngine.toggleAssistantDuty (Company > Team) | Engine + screen |
+| asstfire | GameEngine.dismissAssistant (Company > Team) | Engine + screen |
+| asstgo | GameEngine.hireAssistant (Company > Team) | Engine + screen |
+| asstsearch | GameEngine.searchAssistants (Company > Team) | Engine + screen |
+| asstsearch56 | GameEngine.searchAssistants (Company > Team) | Engine + screen |
+| authad | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authbuy | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authhire | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
+| authlvl | GameEngine.setManagerAuthority (Company > Team) | Engine + screen |
 | autoset |  | Not ported |
 | autostock |  | Not ported |
 | away56 |  | Not ported |
@@ -389,7 +401,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | branduse |  | Not ported |
 | btab |  | Not ported |
 | buyasset |  | Not ported |
-| buyeq | CompanySetup.buyEquipment | Engine only |
+| buyeq | EquipmentMarket.buyNew | Engine + screen |
 | buyprop | GameEngine.buyProperty | Engine + screen |
 | buyveh |  | Not ported |
 | candback |  | Not ported |
@@ -472,16 +484,16 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | dow56go |  | Not ported |
 | dy59claim |  | Not ported |
 | emg12pick |  | Not ported |
-| eq39buy |  | Not ported |
-| eq39cls |  | Not ported |
-| eqbrand |  | Not ported |
-| eqmode |  | Not ported |
-| eqpick |  | Not ported |
-| eqsheet |  | Not ported |
-| eqtab |  | Not ported |
-| est56mode |  | Not ported |
-| est56off |  | Not ported |
-| est56ret |  | Not ported |
+| eq39buy | GameEngine.buyEquipmentItem | Engine + screen |
+| eq39cls | Equipment shop class filter | Engine + screen |
+| eqbrand | EquipmentMarket.offers | Engine + screen |
+| eqmode | EquipmentMarket.Payment | Engine + screen |
+| eqpick | EquipmentMarket.offers | Engine + screen |
+| eqsheet | Company > Equipment, fleet and premises | Engine + screen |
+| eqtab | Company > Equipment, fleet and premises (tabs) | Engine + screen |
+| est56mode | GameEngine.setCastleOpen | Engine + screen |
+| est56off | GameEngine.takeWeekOffOnIsland | Engine + screen |
+| est56ret | GameEngine.hostIslandRetreat | Engine + screen |
 | f17go |  | Not ported |
 | f17model |  | Not ported |
 | f17prod | GameEngine.verifySalesperson | Engine + screen |
@@ -578,15 +590,15 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | loanterm |  | Not ported |
 | logo |  | Not ported |
 | loset |  | Not ported |
-| luxbuygo |  | Not ported |
-| luxsell |  | Not ported |
-| lx56 |  | Not ported |
-| lx56co |  | Not ported |
-| lx56cogo |  | Not ported |
+| luxbuygo | GameEngine.buyLuxury | Engine + screen |
+| luxsell | GameEngine.sellLuxury | Engine + screen |
+| lx56 | Phone > Luxury (manage a piece) | Engine + screen |
+| lx56co | GameEngine.buyLuxury(throughCompany:) | Engine + screen |
+| lx56cogo | GameEngine.buyLuxury(throughCompany:) | Engine + screen |
 | lx56din |  | Not ported |
-| lx56use |  | Not ported |
-| lxbuy |  | Not ported |
-| lxgo |  | Not ported |
+| lx56use | GameEngine.setLuxuryUse | Engine + screen |
+| lxbuy | GameEngine.buyLuxury | Engine + screen |
+| lxgo | Phone > Luxury | Engine + screen |
 | mailback |  | Not ported |
 | mailf |  | Not ported |
 | mailopen |  | Not ported |
@@ -601,17 +613,17 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | menucont |  | Not ported |
 | menuload | SaveStore.load / LegacyImporter | Engine + screen |
 | menunew | GameEngine.newGame | Engine + screen |
-| mgrask |  | Not ported |
-| mgrfire |  | Not ported |
-| mgrgo |  | Not ported |
-| mgrhirego |  | Not ported |
-| mgrmove |  | Not ported |
-| mgrmovego |  | Not ported |
-| mgrraise |  | Not ported |
-| mgrref |  | Not ported |
-| mgrsearch |  | Not ported |
-| mgrsearch56 |  | Not ported |
-| mhire56 |  | Not ported |
+| mgrask | GameEngine.interviewManager (Company > Team) | Engine + screen |
+| mgrfire | GameEngine.dismissManager (Company > Team) | Engine + screen |
+| mgrgo | Company > Team | Engine + screen |
+| mgrhirego | GameEngine.hireManager (Company > Team) | Engine + screen |
+| mgrmove | GameEngine.moveManager (Company > Team) | Engine + screen |
+| mgrmovego | GameEngine.moveManager (Company > Team) | Engine + screen |
+| mgrraise | GameEngine.giveManagerRaise (Company > Team; the yearly raise ask is answered in the Inbox) | Engine + screen |
+| mgrref | GameEngine.checkManagerReferences (Company > Team) | Engine + screen |
+| mgrsearch | GameEngine.searchManagers (Company > Team) | Engine + screen |
+| mgrsearch56 | GameEngine.searchManagers (Company > Team) | Engine + screen |
+| mhire56 | GameEngine.hireManager (Company > Team) | Engine + screen |
 | mkt26hire |  | Not ported |
 | mkt26rep |  | Not ported |
 | moffer56 |  | Not ported |
@@ -645,7 +657,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ns13size | PlayerActions.startCompany(size:) | Engine + screen |
 | nx59all |  | Not ported |
 | nx59do |  | Not ported |
-| oa59meet |  | Not ported |
+| oa59meet | GameEngine.meetManager (Company > Team) | Engine + screen |
 | offer |  | Not ported |
 | offer7 |  | Not ported |
 | officepop |  | Not ported |
@@ -662,11 +674,11 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | ownhrs | PlayerActions.setOwnerHours | Engine + screen |
 | ownpick |  | Not ported |
 | ownsw |  | Not ported |
-| p11back |  | Not ported |
+| p11back | PromotionSheet | Engine + screen |
 | p11duty |  | Not ported |
-| p11offer |  | Not ported |
-| p11set |  | Not ported |
-| p11talk |  | Not ported |
+| p11offer | GameEngine.offerPromotion (Company > Team > Promote) | Engine + screen |
+| p11set | PromotionSheet | Engine + screen |
+| p11talk | GameEngine.promotionPosts (Company > Team > Promote) | Engine + screen |
 | p17go |  | Not ported |
 | p17open |  | Not ported |
 | pa56 |  | Not ported |
@@ -703,8 +715,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | pr29mode | PlayerActions.setPayrollMode | Engine only |
 | pr29ok | Payday.answer | Engine + screen |
 | pr29run | Payday | Engine only |
-| premset | CompanySetup.setPremises | Engine only |
-| premsheet | CompanySetup.listings | Engine only |
+| premset | GameEngine.takePremises | Engine + screen |
+| premsheet | GameEngine.premisesListings / takePremises | Engine + screen |
 | pricestep | PlayerActions.setPriceLevel | Engine + screen |
 | privacy |  | Not ported |
 | pro56 |  | Not ported |
@@ -717,8 +729,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | promoboss |  | Not ported |
 | promogo |  | Not ported |
 | promoset |  | Not ported |
-| promosheet |  | Not ported |
-| promoteact |  | Not ported |
+| promosheet | PromotionSheet (Company > Team > Promote) | Engine + screen |
+| promoteact | PromotionSheet | Engine + screen |
 | proplan |  | Not ported |
 | propsheet | GameEngine.propertyListings | Engine + screen |
 | prorestore |  | Not ported |
@@ -743,7 +755,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | renprop | GameEngine.renovateProperty | Engine + screen |
 | rentoffice |  | Not ported |
 | reopen |  | Not ported |
-| repaireq |  | Not ported |
+| repaireq | GameEngine.serviceEquipment | Engine + screen |
 | repaygo | PlayerActions.repayLoan | Engine + screen |
 | repaysheet |  | Not ported |
 | repdone |  | Not ported |
@@ -785,13 +797,13 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | sc56 |  | Not ported |
 | sellasset |  | Not ported |
 | sellco |  | Not ported |
-| selleq |  | Not ported |
+| selleq | GameEngine.sellAllEquipment | Engine + screen |
 | sellinv | PlayerActions.sellInvestment | Engine + screen |
 | sellprop | GameEngine.sellProperty | Engine + screen |
 | sellsh |  | Not ported |
 | sellto | GameEngine.sellBuilding | Engine + screen |
-| sellunit |  | Not ported |
-| sellveh |  | Not ported |
+| sellunit | GameEngine.sellEquipmentUnit | Engine + screen |
+| sellveh | GameEngine.sellVehicle | Engine + screen |
 | setbig |  | Not ported |
 | setcat |  | Not ported |
 | setcity |  | Not ported |
@@ -806,13 +818,13 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | setrate |  | Not ported |
 | setstory |  | Not ported |
 | sheetclose |  | Not ported |
-| shopbuy |  | Not ported |
-| shopcls |  | Not ported |
-| shoppay |  | Not ported |
-| shopq |  | Not ported |
-| shopsel |  | Not ported |
-| shopt |  | Not ported |
-| shopvc |  | Not ported |
+| shopbuy | GameEngine.buyEquipmentItem / buyVehicleItem / buyUsedItem | Engine + screen |
+| shopcls | Equipment shop | Engine + screen |
+| shoppay | Equipment shop | Engine + screen |
+| shopq | Equipment shop | Engine + screen |
+| shopsel | Equipment shop | Engine + screen |
+| shopt | Equipment shop | Engine + screen |
+| shopvc | Equipment shop (vehicle make list) | Engine + screen |
 | slotdel |  | Not ported |
 | slotkeep |  | Not ported |
 | slotload |  | Not ported |
@@ -829,8 +841,8 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | stpart |  | Not ported |
 | stseas |  | Not ported |
 | stt56 |  | Not ported |
-| subcancel |  | Not ported |
-| subpick |  | Not ported |
+| subcancel | GameEngine.cancelSubscription | Engine + screen |
+| subpick | GameEngine.subscribeSoftware | Engine + screen |
 | sudeal |  | Not ported |
 | sugo |  | Not ported |
 | suhelp |  | Not ported |
