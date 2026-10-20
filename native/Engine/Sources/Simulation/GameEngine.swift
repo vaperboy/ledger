@@ -130,6 +130,9 @@ public struct GameEngine {
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
+            if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
+            if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
+            if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56l" { Cyber.answerLeak(&s, message: m, option: idx, data: d); return true }

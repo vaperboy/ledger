@@ -23,6 +23,8 @@ public enum Payments {
         if category == "fine" {
             if let q = s.companies[i].value("law")["q"].isNull ? nil : s.companies[i].value("law")["q"].double { amt *= 1.1 - 0.45 * q }
             if s.hasHeadOffice("law") { amt *= 0.85 }
+            // A lawyer you know gets the next fine halved (world around you: favours).
+            if amt > 0, s.rest["net31"]?["fineCut"].double ?? 0 != 0 { amt *= 0.5; s.rest["net31"]?["fineCut"] = 0 }
         }
         // Monthly bills build up during a week simulated in day mode. Original: 'payCo.later'.
         if s.transient.simulatingWeek && s.dayMode && label == nil, let cat = category, monthlyCategories.contains(cat), s.companies[i].status.isLive {

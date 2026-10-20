@@ -202,6 +202,7 @@ public enum Rivals {
         collusionWeek(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
         RivalGroups.weekly(&s, data: data)
+        WorldAround.weekly(&s, data: data)
     }
 
     static func behave(_ s: inout GameState, key k: String, idx: [Int], bd: Trade, data: GameData) {

@@ -1,13 +1,16 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
+import Finance
 
 /// The market map: your share of each market you are in, worked out from sales against what each rival sells there (banks, insurers
 /// and funds against the whole country). What you SEE depends on who is looking: nobody (only a feeling, in words), a head-office
 /// data analyst (ranges, sharper with experience) or a market analyst in the company (close numbers, a report every month).
 /// Original: features/world/market_map_and_reviews.js (`markets`, `truthOf`, `know`, `est`, `snap`, `reportLines`).
-/// Not ported: the analyst roles are not hireable in the native game yet, so everyone is at the first level for now; the economy
-/// "weight" block (share of business loans, jobs, regulator attention).
+/// The analyst roles: a market analyst is hired into a company like any worker (role `mktan`; `analystHireVerdict` says what the hire
+/// gives), a data analyst (`ana`) into the head office (`hireDataAnalyst`, paid monthly from `weekly` until the head-office branch
+/// pays its staff itself). `weight` is the "weight in the economy" block (share of business loans, jobs, regulator attention).
 public enum MarketMap {
     public enum Kind: String { case local, national }
 
@@ -212,6 +215,7 @@ public enum MarketMap {
             s.companies[i].set("rv26", .array(L))
         }
         guard GameCalendar.isMonthEnd(week: s.week) else { return }
+        payAnalysts(&s, data: data)
         let mi = s.week / 4
         var snaps = s.rest["ms26"] ?? .object([:])
         for m in markets(s, data: data) {
@@ -252,5 +256,103 @@ public enum MarketMap {
             else if c > b + 0.003, b > a + 0.003 { out.append("Two months of growth in a row.") }
         }
         return out
+    }
+
+    // MARK: Hiring the analysts
+
+    public struct HireVerdict: Equatable { public var ok: Bool, title: String, text: String }
+
+    /// What a market analyst in this company gives instead of a capacity forecast. Original: `R26.mktanHire`.
+    public static func analystHireVerdict(_ s: GameState, companyID: Int, data: GameData) -> HireVerdict {
+        guard let co = s.company(companyID) else { return HireVerdict(ok: false, title: "Nothing to measure here", text: "") }
+        let m = market(of: co, s, data: data)
+        let has = co.staff.contains { $0.role == "mktan" }
+        return HireVerdict(ok: m != nil && !has,
+                           title: has ? "You already have a market analyst here" : m == nil ? "Nothing to measure here" : "Measures where you stand",
+                           text: has ? "A second one adds cost, not insight." : m == nil ? "This kind of business has no market share to track."
+                               : "Monthly reports on your market share; close numbers on the Market map. Sales stay the same.")
+    }
+
+    public static let dataAnalystRole = "ana"
+    /// Monthly pay a data analyst in the head office starts from (before skill and the country). Original: `HQ_ROLES.ana`.
+    static func dataAnalystBase(_ data: GameData) -> Double {
+        let v = data.catalog.tables.raw["HQ_ROLES"]["ana"][1].double
+        return v == 0 ? 64000 : v
+    }
+
+    public static func hasDataAnalyst(_ s: GameState) -> Bool { s.hasHeadOffice(dataAnalystRole) }
+
+    /// Candidates for the head office's data analyst. Original: the head-office hiring screen for `ana`.
+    public static func dataAnalystCandidates(_ s: inout GameState, count: Int = 4, data: GameData) -> [Person] {
+        (0..<count).map { _ in
+            var p = Hiring.generateCandidate(role: dataAnalystRole, company: nil, state: &s, data: data)
+            let w = World(state: s, data: data)
+            p.askingMonthlyWage = (dataAnalystBase(data) * (0.55 + p.skill / 110) * w.inflationIndex / 100).rounded() * 100
+            s.people[p.id] = p
+            return p
+        }
+    }
+
+    public enum HQHire: Equatable { case ok, refused, taken, have }
+
+    /// Hire the data analyst into the head office; an offer well under the ask is refused. Original: `hireHQnpc`.
+    public static func hireDataAnalyst(_ s: inout GameState, personID: Int, monthlyWage wage: Double) -> HQHire {
+        if hasDataAnalyst(s) { return .have }
+        guard var n = s.people[personID] else { return .refused }
+        if n.employerID != 0 { return .taken }
+        let ask = n.askingMonthlyWage
+        if wage < ask * 0.82, !s.random.chance(0.1) { return .refused }
+        let p = clamp((wage / max(1, ask) - 0.86) / 0.18, 0, 1)
+        if !s.random.chance(p), wage < ask { return .refused }
+        n.employerID = -3
+        s.people[personID] = n
+        var office = s.rest["office"] ?? .object(["tier": "home", "since": .number(Double(s.week)), "staff": .array([])])
+        var staff = office["staff"].array
+        staff.append(.object(["id": .number(Double(personID)), "role": .string(dataAnalystRole), "name": .string(n.name), "wage": .number(wage),
+                              "w0": .number(Double(s.week)), "onb": .object([:]), "by": "mm"]))
+        office["staff"] = .array(staff)
+        s.rest["office"] = office
+        return .ok
+    }
+
+    public static func fireDataAnalyst(_ s: inout GameState) {
+        guard var office = s.rest["office"] else { return }
+        for st in office["staff"].array where st["role"].string == dataAnalystRole {
+            if var p = s.people[st["id"].int] { p.employerID = 0; s.people[p.id] = p }
+        }
+        office["staff"] = .array(office["staff"].array.filter { $0["role"].string != dataAnalystRole })
+        s.rest["office"] = office
+    }
+
+    /// Pay head-office analysts hired here once a month. Original: `officeMonth` (staff part).
+    static func payAnalysts(_ s: inout GameState, data: GameData) {
+        let home = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+        for st in s.rest["office"]?["staff"].array ?? [] where st["by"].string == "mm" {
+            Payments.playerPays(&s, jsRound(st["wage"].double * home.employerCostFactor), label: "Head office: data analyst")
+        }
+    }
+
+    // MARK: Weight in the economy
+
+    public struct Weight: Equatable {
+        public var jobs: Int
+        public var debt: Double
+        public var loanShare: Double
+        public var biggestShare: Double
+        /// "Low", "Watching", "Rising" or "High": how closely the competition authority looks, with a tone (pos, amb, neg or empty).
+        public var attention: String
+        public var tone: String
+    }
+
+    /// Share of all business loans, jobs you provide and how closely the regulator watches. Original: `weight`, `attention`.
+    public static func weight(_ s: GameState, data: GameData) -> Weight {
+        let live = s.companies.filter { $0.status == .open || $0.status == .closed }
+        let jobs = live.reduce(0) { $0 + $1.staff.count + ($1.managerID != nil ? 1 : 0) + ($1.value("asst")["npc"].int != 0 ? 1 : 0) } + (s.rest["office"]?["staff"].array.count ?? 0)
+        let debt = s.loans.reduce(0) { $0 + $1.balance }
+        let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+        let nat = max(1, c.populationMillions * 1e6 * 160_000 * pow(c.marketStrength, 2) * c.priceLevel)
+        let top = markets(s, data: data).map { truth(s, $0, data: data).share }.max() ?? 0
+        let a: (String, String) = top >= 0.35 ? ("High", "neg") : top >= 0.2 ? ("Rising", "amb") : top >= 0.1 ? ("Watching", "") : ("Low", "pos")
+        return Weight(jobs: jobs, debt: debt, loanShare: debt / nat, biggestShare: top, attention: a.0, tone: a.1)
     }
 }
