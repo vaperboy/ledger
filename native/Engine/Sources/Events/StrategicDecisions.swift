@@ -9,8 +9,9 @@ import Businesses
 /// country. They sit beside the data-driven weekly events of `EventEngine` and use the same inbox, deadlines and defaults.
 /// A decision is an inbox message with action "e27"; its answers run code here, because their effects depend on the company.
 ///
-/// Not ported (they need rivals as businesses, private equity stakes, listings or branch openings): s_acqoffer, g_location,
-/// g_franinq, e_merger, e_distress, t_ipo, t_pe, t_hostile, t_antitrust, t_activist, t_auction, c_JP_succ, c_US_vc.
+/// The 13 that need rivals, listings, private equity, groups or new sites (s_acqoffer, g_location, g_franinq, e_merger, e_distress, t_ipo, t_pe,
+/// t_hostile, t_antitrust, t_activist, t_auction, c_JP_succ, c_US_vc) are in `StrategicDecisionsCorporate.swift`. They work on the rivals and groups
+/// in `rest["mk"]` and `rest["g27"]` (the Competition port's data), so those that need a rival or a group wait for them.
 public enum StrategicDecisions {
     public static let action = "e27"
 
@@ -48,6 +49,8 @@ public enum StrategicDecisions {
         /// Numbers drawn when the event fires; nil = it does not apply right now.
         var make: ((inout GameState, Int, GameData, FinanceContext) -> JSONValue?)? = nil
         var pre: Run? = nil
+        /// The event happens at once and sends no message (the original's `handle`): `make` does the work.
+        var silent = false
         let title: Txt
         var body: Txt = { _, _, _ in "" }
         var opts: [Opt] = []
@@ -611,6 +614,7 @@ public enum StrategicDecisions {
                       Opt(label: "Controlled delay and claim compensation", detail: "") { s, x in
                           cap(&s, x, 0.8, 2)
                           if s.random.chance(0.6) { Payments.companyReceives(&s, companyID: s.companies[x.i].id, amount: jsRound(x.wk(s) * 0.2), category: "rev", label: "Compensation from supplier") } }])
+        L += corporateDecisions()
         return L
     }
 
@@ -650,7 +654,7 @@ public enum StrategicDecisions {
             if s.random.chance(0.3) { dem(&s, x, 0.7, 26); s.note("The big foreign customer of \(name) moved production elsewhere.", tone: "bad", companyID: companyID) }
         case "rate_back":
             for v in d["ids"].array { if let l = s.loans.firstIndex(where: { $0.id == v.int }) { s.loans[l].margin = max(0.005, s.loans[l].margin - d["add"].double) } }
-        default: break
+        default: followUpCorporate(&s, id: id, index: k, d: d, data: data, context: fc)
         }
     }
 
@@ -722,15 +726,16 @@ public enum StrategicDecisions {
         return fire(&s, chosen, companyIndex: i, data: data, context: fc)
     }
 
-    static func fire(_ s: inout GameState, _ def: Def, companyIndex i: Int, data: GameData, context fc: FinanceContext) -> Bool {
+    static func fire(_ s: inout GameState, _ def: Def, companyIndex i: Int, data: GameData, context fc: FinanceContext, given: JSONValue? = nil) -> Bool {
         var d: JSONValue = .object([:])
-        if let make = def.make { guard let made = make(&s, i, data, fc) else { return false }; d = made }
+        if let g = given { d = g } else if let make = def.make { guard let made = make(&s, i, data, fc) else { return false }; d = made }
         let cur = fc.currency(s.companies[i].countryCode, s)
         let x = X(i: i, d: d, data: data, fc: fc, cur: cur)
         var st = s.rest["e27"] ?? .object([:])
         var last = st["last"].object; last[def.id] = num(Double(s.week)); st["last"] = .object(last)
         s.rest["e27"] = st
         def.pre?(&s, x)
+        if def.silent { return true }
         let co = s.companies[i]
         let title = def.title(co, d, cur), body = def.body(co, d, cur)
         let from = def.from ?? (def.global ? "News" : co.name)

@@ -8,6 +8,8 @@ MISSING: area -> text with one "id description" per line. Every original action 
 
 # id: engine function (name searched for in App/ to decide Engine + screen / Engine only)
 MAP_ACTIONS = {
+ # startups, funding, private equity, owners, listing (Events/Startups, Funding, PrivateEquity, Shareholders, BigMeeting)
+ "f17go": "foundStartup", "f17model": "foundStartup", "f17sec": "foundStartup", "f17seed": "foundStartup", "f17who": "foundStartup", "p17open": "rivalTargetsForProduct", "p17go": "pitchProductToRival", "w17dev": "changeBuilders", "w17self": "toggleOwnerHoursOnProduct", "w17use": "toggleProductUse", "w17int": "setProductInternalPrice", "sudeal": "investInStartup", "sugo": "investInStartup", "suhelp": "helpStartupOnBoard", "susell": "sellStartupStake", "pitch": "pitchToInvestors", "fundacc": "acceptFundingOffer", "fundctr": "counterFundingOffer", "funddec": "declineFundingOffer", "fpitch": "pitchStartupRound", "facc": "acceptStartupRound", "fdec": "declineStartupRound", "ftop": "putMoneyIntoStartup", "ftopgo": "putMoneyIntoStartup", "fshut": "shutDownStartup", "bigacc": "acceptBigMeetingOffer", "bigctr": "counterBigMeetingOffer", "bigwalk": "walkAwayFromBigMeeting", "salepct": "listSharesForSale", "sellsh": "sellPrivateShares", "own27pol": "setDividendPolicy", "own27buy": "buyBackStake", "pe56go": "commitToFund", "pe56sell": "sellFundStake", "hlist": "listHoldingOnExchange", "hraise": "raiseMoneyForHolding", "nhpub": "listHoldingOnExchange", "saleq": "askBuyer", "saletalk": "counterBuyer", "saletab": "listSharesForSale", "salemode": "listSharesForSale", "stab": "foundedStartups",
  # selling a company (Events/CompanySale)
  "salego": "CompanySale.startListing", "salectr": "CompanySale.counter", "salecounter": "CompanySale.counter",
  "saledec": "CompanySale.decline", "saledec7": "CompanySale.decline", "salewd": "CompanySale.withdraw",
@@ -109,48 +111,10 @@ cv56meet Open the meeting thread with a manager
 """
 
 MISSING["startups"] = """
-f17go Start a startup (found it from a sector)
-f17model Choose the startup business model
-f17sec Choose the startup sector
-f17seed Choose the seed amount for a startup
-f17who Choose the founder for a startup
-p17open Open a startup pitch
-p17go Pitch the startup
-w17dev Put effort into the startup's software
-w17self Build the startup's software yourself
-w17use Use the startup's software in your company
-w17int Integrate the startup's software
-stab Startups tab
-sudeal Take a startup deal (invest)
-sugo Invest in a startup
-suhelp Help a startup you hold
-susell Sell your stake in a startup
-pitch Pitch your company to investors
-fundacc Accept a funding offer
-fundctr Counter a funding offer
-funddec Decline a funding offer
-fpitch Pitch to a fund
-facc Accept a fund's offer
-fdec Decline a fund's offer
-ftop Put more money in (follow-on)
-ftopgo Confirm the follow-on money
-fshut Shut a funded company down
-bigacc Accept a big acquisition offer
-bigctr Counter a big acquisition offer
-bigwalk Walk away from a big offer
 rfset Set the restructuring plan in a crisis
 warnstaff Warn staff of layoffs in a crisis
 loset Set the layoff plan
 logo Carry out the layoffs
-salepct Sell a share of your company (partial sale)
-sellsh Sell a percentage of the company (new shares or your own)
-own27pol Set the dividend policy for outside owners
-own27buy Buy out an outside owner's share
-pe56go Buy into a private-equity fund
-pe56sell Sell out of a private-equity fund
-hlist List a holding company on the exchange
-hraise Raise money by selling shares of a holding
-nhpub Make a new holding public
 hfin Choose which holdings the finance manager covers
 """
 
@@ -348,10 +312,6 @@ promoset Promotion sheet setting
 repdone Close the week report
 repmsgs Show the messages after a report
 res36t Results tab
-saleq Ask a question in a sale talk
-saletab Sale tab
-saletalk Open the sale talk
-salemode Choose the sale mode
 setcat Choose a category
 setconf Settings option
 setfocus Set the focus of the home screen
@@ -405,17 +365,17 @@ AREA_NAMES = {
 SCREEN_MAP = {
  "weekreport": "Reports (ReportsView, ReportPrompt)", "reports": "Reports (ReportsView, ReportPrompt)",
  "awards56": "Phone > Achievements", "trophies28": "Phone > Achievements", "titles": "Phone > Achievements", "top28": "Phone > Rich list",
- "fs58": "Home > First steps", "sale": "Company > Sell (CompanySaleSection)", "saletalk": "Company > Sell (CompanySaleSection)",
+ "fs58": "Home > First steps", "found36": "Money > Invest > My startups", "startups": "Money > Invest > Startups", "pe56": "Money > Invest > Private equity", "own27": "Company > Money > Owners and shares", "dealroom": "Company > Money > Sell / Owners and shares", "crisis": "Inbox (open decisions; GameEngine.crisisCentre)", "bigmeet": "Money > Invest > Big meeting", "sale": "Company > Sell (CompanySaleSection)", "saletalk": "Company > Sell (CompanySaleSection)",
  "mgrhire": "Company > Team (manager search)", "managers": "Company > Team", "mgmt56": "Company > Team", "p11talk": "Company > Team > Promote", "pr11": "Company > Team > Promote",
  "store13": "Company > Chain (new store)", "brand56": "Group > Join a franchise", "fr56": "Company > Chain > Franchise talk",
 }
 TAB_MAP = {
+ "invSale": "Company > Money > Owners and shares", "ownersRow": "Company > Money > Owners and shares",
  "franchisor": "Company > Chain > Franchise", "supply": "Company > Chain > Supply", "mgrBanner": "Company > Team", "mgrCard": "Company > Team", "staffProfile": "Company > Team",
 }
 # the rest, by area (one id per word)
 MISSING_SCREENS = {
  "boards": "bigmeet bmeet11 bmeet12 board11 board12 boards12 heads hq hqhire hqmk meet meetings office org56 academy staffman tg58",
- "startups": "found36 startups crisis pe56 own27 dealroom",
  "rivals": "rival rivals riv31 rivmoves rvdetail reviews pricewar market map31 world cy56 branch nem28 grp27",
  "advisers": "suppliers give28 anrep11 pk58 net31",
  "other": "amb27 month30 paper40 wx56 pacct registry",
@@ -424,7 +384,6 @@ MISSING_SCREENS = {
 MISSING_TABS = {
  "advisers": "abroad advisers insurance ana",
  "rivals": "rivalsCard",
- "startups": "invSale ownersRow",
  "other": "complaints demandLevel route",
  "presentation": "DEAL_SUB FIN_SUB OPS_SUB clRows dealKeys dealPart finPart lrow marketRow opsPart",
 }

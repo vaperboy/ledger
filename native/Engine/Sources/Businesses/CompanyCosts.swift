@@ -75,7 +75,10 @@ public enum CompanyCosts {
             p["rent"] = .number(currency.tidy(prem["rent"].double * (1 + max(0, s.economy.inflation))))
             co.set("prem", p)
         }
-        let r = co.value("prem")["rent"].double * prem["m2"].double / 52
+        var r = co.value("prem")["rent"].double * prem["m2"].double / 52
+        // A cheaper first lease, or a renewal at a new price, from a decision (flags.rent27 = { m: factor, until: week }).
+        let r27 = co.value("flags")["rent27"]
+        if !r27.isNull, s.week < r27["until"].int, r27["m"].double > 0 { r *= r27["m"].double }
         co.addPayable("rent", r)
         var b = co.books; b.add("rent", r); co.books = b
         s.companies[i] = co

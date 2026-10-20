@@ -182,3 +182,8 @@ untouched next to the converted save.
 * **Price moves:** percent price change, discount campaigns (with the fine for a fake discount) and price wars are ported; the forecast boxes (customers and margin) and managers moving prices in small steps are not.
 * **Lawsuits** (settle or court, court dates for big cases, lost by default) and **cyber attacks** (IT security levels, backups, training, fraud, ransomware, leak, outage) are ported; a manager does not pick the IT level.
 * **World around you:** rivals remember you (mood, temperament, grudges, lunch). Public image, the network of contacts and favours, and the maps screen are not ported. Software products of your own startup are not ported.
+
+## Startups, funding, private equity, listings (this branch)
+
+* Ported: `Events/Startups`, `Funding`, `PrivateEquity`, `Shareholders`, `BigMeeting`, `GroupDeals`, `Ventures`, partial sales and buyer talk in `CompanySale`, the 13 decisions in `StrategicDecisionsCorporate`, trophies listed/su1/sux/pe1/pe2.
+* Not faithful or left: the earlier software startup is folded into the SaaS sector; a social app's marketing boost; the finance manager of a holding who negotiates raises; investors you hosted; the yearly manager review and the "replace the manager" owners' demand; Ledger Pro gating (no Pro tier); market share for the competition authority is your sales against the market size, not the market map; rival-based decisions and group bids need the Competition data (`rest["mk"].riv`, `rest["g27"]`) and a foreign group for the auction must already exist. Layoff screens (`rfset`, `warnstaff`, `loset`, `logo`) and `hfin` are not part of this area.
