@@ -150,7 +150,9 @@ final class ProjectTradeTests: XCTestCase {
                     e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), -co.cash) }
                 }
             }
-            XCTAssertEqual(e.state.company(id)?.status, .bust, t)
+            // A company that pays its way from sales alone (rivals now move the market price) may rightly survive.
+            let paysItsWay = (e.state.company(id)?.monthlyHistory.suffix(6).map { $0.profit }.reduce(0, +) ?? 0) > 0
+            XCTAssertTrue(e.state.company(id)?.status == .bust || paysItsWay, t)
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(t): \(Ledger.gaps(e.state))")
         }
     }

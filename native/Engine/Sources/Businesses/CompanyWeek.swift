@@ -44,6 +44,8 @@ public enum CompanyWeek {
         if s.companies[i].status == .open {
             Satisfaction.buzzWeek(&s, i)
             Satisfaction.reachCap(&s, i, data: data)
+            Reviews.weekly(&s, i, bd)                              // customers write reviews (all trades share one system)
+            KeyAccounts.weekly(&s, i, bd, data: data)              // business customers: relationships, offers
             if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
         }
     }
@@ -129,7 +131,8 @@ public enum CompanyWeek {
             units = jsRound(min(units, cap) * 10) / 10
         }
         D = max(D, 0)
-        let util = cap > 0 ? units / cap : 0
+        var util = cap > 0 ? units / cap : 0
+        var ctx0Util = util
         var rev = units * price
         var co = s.companies[i]
         let managerQ = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.5
@@ -140,7 +143,16 @@ public enum CompanyWeek {
         if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
         if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
         costRate = max(0.01, costRate)
-        var cogs = rev * costRate
+        // Business customers buy from the capacity the walk-ins leave over (key_accounts.js: acctDemand, acctRev).
+        let acctOrders = KeyAccounts.orders(co, bd, privateDemand: D, capacity: cap, units: units, price: price, costRate: costRate)
+        let walkInRev = rev
+        if acctOrders.units > 0 {
+            units += acctOrders.units; rev += acctOrders.revenue; D += acctOrders.demand
+            ctx0Util = cap > 0 ? units / cap : 0
+            KeyAccounts.record(&s, i, acctOrders, price: price)
+        }
+        var cogs = (acctOrders.units > 0 ? walkInRev + acctOrders.units * price : rev) * costRate
+        if acctOrders.units > 0 { cogs *= 1 - 0.05 * acctOrders.units / max(1, units) }
         if let loc = co.value("prem")["loc"].isNull ? nil : co.value("prem")["loc"].double, loc < 1, !Competition.isFootTraffic(co.value("prem")["kind"].string) {
             cogs += rev * (1 - loc) * 0.6
         }

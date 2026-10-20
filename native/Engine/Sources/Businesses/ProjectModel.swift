@@ -241,29 +241,14 @@ public enum ProjectModel {
 
     // MARK: Reviews (small: a finished job may be reviewed)
 
-    /// How often a customer writes a review. Original: `rvRate`.
-    static func reviewRate(_ bd: Trade) -> Double {
-        let b2b: Set<String> = ["engcons", "construction"]
-        return min(0.3, (b2b.contains(bd.id) ? 0.0015 : 0.006) * max(1, (bd.ticket / 40).squareRoot()))
-    }
+    /// How often a customer writes a review (shared with every trade: `Reviews.rate`).
+    static func reviewRate(_ bd: Trade) -> Double { Reviews.rate(bd) }
 
-    /// One more review with stars drawn around the company's rating. Original: `addReviews` (without the review text).
-    static func addReview(_ s: inout GameState, _ i: Int, bias: Double) {
-        let co = s.companies[i]
-        let n = co.int("rvN") + 1
-        let mu = clamp(Pricing.rating(co) + bias, 1.2, 4.95)
-        var h = HashedRandom("\(s.seed):rv:\(co.id):\(n)")
-        let stars = clamp(jsRound(mu + (h.next() - 0.5) * 1.6), 1, 5)
-        let sum0 = co.value("rvS").isNull ? Pricing.rating(co) * Double(co.int("rvN")) : co.num("rvS")
-        s.companies[i].set("rvN", n)
-        s.companies[i].set("rvS", sum0 + stars)
-    }
+    /// One more review, written by the shared review system (`Reviews`). Original: `addReviews`.
+    static func addReview(_ s: inout GameState, _ i: Int, bias: Double) { Reviews.add(&s, i, bias: bias) }
 
     /// Average of the real reviews (the rating until there are some). Original: `avgRv`.
-    public static func averageRating(_ co: Company) -> Double {
-        let n = co.int("rvN")
-        return n > 0 ? jsRound(co.num("rvS") / Double(n) * 10) / 10 : Pricing.rating(co)
-    }
+    public static func averageRating(_ co: Company) -> Double { Reviews.rating(co) }
 
     // MARK: Events
 

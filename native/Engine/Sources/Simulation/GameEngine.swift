@@ -129,6 +129,10 @@ public struct GameEngine {
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
+            if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
+            if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
+            if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
+            if m.actionID == "cy56l" { Cyber.answerLeak(&s, message: m, option: idx, data: d); return true }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
             return true
         }
@@ -304,6 +308,12 @@ public struct GameEngine {
                 state.companies[i].set("trf", .array(trf))
             }
         }
+        // Customers, competition and reputation: rivals and their groups, price moves, lawsuits, cyber attacks, market shares.
+        Rivals.weekly(&state, data: data)
+        PriceMoves.weekly(&state, data: data)
+        Lawsuits.weekly(&state, data: data)
+        Cyber.weekly(&state, data: data)
+        MarketMap.weekly(&state, data: data)
         ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)
