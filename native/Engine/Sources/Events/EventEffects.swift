@@ -38,7 +38,7 @@ extension EventEngine {
                 let net = min(amt, deductible)
                 var paid = amt - net
                 if paid > 0 {
-                    paid = jsRound(paid * (s.random.chance(0.15) ? s.random.range(0.3, 0.7) : 1))
+                    paid = Advisers.claimPaid(&s, i, paid: paid)
                     if paid > 0 {
                         Payments.companyReceives(&s, companyID: id, amount: paid, category: nil, label: "Insurance payout")
                         Payments.book(&s, companyID: id, category: "loss", amount: -paid)

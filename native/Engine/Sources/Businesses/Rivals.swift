@@ -482,7 +482,7 @@ public enum Rivals {
         guard let r = rivals(s, key: k).first(where: { $0.id == rivalID }) else { return nil }
         let w = World(state: s, data: data)
         let raw = s.rest["mk"]?[k]["riv"].array.first { $0["id"].int == rivalID } ?? .null
-        var mult = mult0, listed = r.forSale
+        var mult = mult0 * Luxury.offerBonus(s), listed = r.forSale   // a serious-buyer perk of your luxury goods
         var scale = 1.0
         if let g = RivalGroups.group(s, id: r.groupID) {
             if g.inTrouble { listed = true; mult *= 1.45; scale = 1.45 } else { mult /= 1.15 }

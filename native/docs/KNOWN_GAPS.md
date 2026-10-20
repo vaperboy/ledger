@@ -192,3 +192,19 @@ untouched next to the converted save.
 * Ported: see `MASTER_CHECKLIST.md`. Effects of the team are cached on the company (`tm`, `mgrLift`, `mdCoach`, `drift56`, `boss56`, `brdLaw`, `brdMkt`) each week and read by demand, capacity, marketing, quits, fines and manager quality.
 * Not faithful: fame is a simplified formula (no foreign countries); head office candidates come from the manager generator with the role's pay, not worker search; holders (co-owners) exist only when given as shares in a promotion, since funding rounds are not ported, so owner votes and director elections are rare; the "loan" vote is not forced on the loan action (use `boardVote` first); manager duties `sec`/`ins` are stored but do nothing; a dividend policy is stored but no quarterly dividend is paid; the finance manager does not lower loan margins; course prices use the country cost index only.
 * Not ported: `grp27` (profile of a rival group, depends on rival groups' UI), supply-from-inside protection against outside supplier events, board pack report preference of a promoted manager.
+## Company tabs, misc screens, fleet and luxury leftovers (branch worktree-agent-a62df16577d42dde6)
+
+| Id | What it is in the original | Native |
+|---|---|---|
+| advisers / insurance | accountant, law firm, insurer choice (own group firms too), policies | `Advisers`, `GameEngine.chooseAdviser`, `toggleInsurancePolicy`; premium factor, claim haggling, own insurer income |
+| abroad | open a subsidiary in another country | `Abroad`, `expandAbroad`; foreign_entity document, compliance fines not ported |
+| complaints, staffProfile | complaint list and answers; person detail, mood, warnings, courses, dismissal, layoffs, commission | `Complaints`, `StaffProfile` |
+| supply (vdisc) | supplier owners, relationship discounts, board deals, goods and repair supplier | `Suppliers`; discount applies to goods cost and equipment price. Auto pick uses a seed from company and half-year, not the shared random stream |
+| give28 | gifts, sponsorships, foundation | `Giving` |
+| amb27 | ambitions with tiers and perks | `Ambitions`. Market-share and rank milestones read zero; only the abroad-fee perk is wired into other systems |
+| paper40 / pr28 | local paper front page, interviews, public image numbers | `Press` |
+| wx56 | storm warnings and damage, securing, tourist news, forecast | `WeatherEvents` (weather effects were already in `Weather`) |
+| month30 | monthly results | `MonthView` |
+| store13, res36, brand56, fr56, img31(screen), pro59 | presentation screens or in-app purchase | skipped; no new logic |
+| net31, img31 data, pk58, tg58, fs58, nem28, top28, st28 | contacts and favours, staff perks and hosting, targets and budgets, first steps, nemesis, Top 50, staff stories | not ported in this branch |
+| fleet / premises / luxury leftovers | car per agent, van per three cleaners, own car mileage, courier fuel, taxi class, hiring car choice, home-trade workshop listings, franchise rent discount, landlord company rent, fame, rest, jet fee, serious buyer, yacht dinner, tax-office check, margin call, own wine | `PersonalEquipment`, `PremisesExtras`, `LuxuryExtras`. `Luxury.fameBonus` and `Luxury.offerBonus` must be called from the head-office fame and rival offer code. Yacht dinner guests are suppliers only (no contacts network yet) |

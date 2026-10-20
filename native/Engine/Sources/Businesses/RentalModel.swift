@@ -262,6 +262,7 @@ public enum RentalModel {
 
     /// Leases that have run out end, with a note. Original: `leaseClean` (company tenants are part of the franchise feature, not ported).
     static func expireLeases(_ s: inout GameState, _ i: Int) {
+        PremisesExtras.cleanLeases(&s, landlordIndex: i)
         var changed = false
         var list = s.companies[i].properties
         for k in list.indices where !list[k].leases.isEmpty {

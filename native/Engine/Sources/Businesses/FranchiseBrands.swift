@@ -82,25 +82,40 @@ public enum FranchiseBrands {
         public var vehicles: Int
         public var building: Int
         public var brandID: String
+        /// A free space in one of your own commercial buildings, where the unit will be. Original: `terms.prem`.
+        public var premises: BuildingRef?
 
         var json: JSONValue {
-            .object(["fee": .number(fee), "roy": .number(royalty), "mkt": .number(marketing), "cover": .number(Double(cover)), "rent": .number(Double(rent)),
-                     "veh": .number(Double(vehicles)), "bld": .number(Double(building)), "brand": .string(brandID)])
+            var o: [String: JSONValue] = ["fee": .number(fee), "roy": .number(royalty), "mkt": .number(marketing), "cover": .number(Double(cover)), "rent": .number(Double(rent)),
+                     "veh": .number(Double(vehicles)), "bld": .number(Double(building)), "brand": .string(brandID)]
+            if let p = premises { o["prem"] = .object(["co": .number(Double(p.companyID)), "pid": .number(Double(p.propertyID))]) }
+            return .object(o)
         }
-        init(fee: Double, royalty: Double, marketing: Double, cover: Int, rent: Int, vehicles: Int, building: Int, brandID: String) {
+        init(fee: Double, royalty: Double, marketing: Double, cover: Int, rent: Int, vehicles: Int, building: Int, brandID: String, premises: BuildingRef? = nil) {
             self.fee = fee; self.royalty = royalty; self.marketing = marketing; self.cover = cover; self.rent = rent; self.vehicles = vehicles; self.building = building; self.brandID = brandID
+            self.premises = premises
         }
         init?(json j: JSONValue) {
             if j.isNull { return nil }
             self.init(fee: j["fee"].double, royalty: j["roy"].double, marketing: j["mkt"].double, cover: j["cover"].int, rent: j["rent"].int,
-                      vehicles: j["veh"].int, building: j["bld"].int, brandID: j["brand"].string)
+                      vehicles: j["veh"].int, building: j["bld"].int, brandID: j["brand"].string,
+                      premises: j["prem"].isNull ? nil : BuildingRef(companyID: j["prem"]["co"].int, propertyID: j["prem"]["pid"].int))
         }
+    }
+
+    /// A building of one of your commercial rental companies. Original: `{ co, pid }`.
+    public struct BuildingRef: Equatable, Sendable {
+        public var companyID: Int
+        public var propertyID: Int
+        public init(companyID: Int, propertyID: Int) { self.companyID = companyID; self.propertyID = propertyID }
     }
 
     /// What you ask for. Fee and royalty are the share taken off (negative: you offer to pay more). Original: the `ask` object.
     public struct Ask: Equatable, Sendable {
         public var fee = 0.0, royalty = 0.0
         public var cover = 0, rent = 0, vehicles = 0, building = 0
+        /// Put the unit in one of your own buildings (the franchisor likes a ready place: +16 bargaining power).
+        public var premises: BuildingRef?
         public init() {}
     }
 
@@ -257,7 +272,7 @@ public enum FranchiseBrands {
     static func power(_ b: Brand, _ ask: Ask?, _ s: GameState, _ w: World, country cc: String) -> Double {
         let exp = Double(experience(s, b.tradeID))
         var p = 34 + exp * 14 + (s.credit - 50) * 0.2 + (s.cash > fee(b, w, country: cc) * 4 ? 8 : 0)
-        if let a = ask, a.building == 2 { p += 16 }
+        if let a = ask, a.building == 2 || a.premises != nil { p += 16 }
         return clamp(p, 0, 100)
     }
 
@@ -271,7 +286,7 @@ public enum FranchiseBrands {
 
     static func terms(_ b: Brand, _ ask: Ask, _ w: World, country cc: String) -> Terms {
         Terms(fee: (fee(b, w, country: cc) * (1 - ask.fee)).rounded(), royalty: max(0, ((b.royalty - ask.royalty) * 1000).rounded() / 1000),
-              marketing: b.marketingFund, cover: max(max(ask.cover, 0), b.support), rent: ask.rent, vehicles: ask.vehicles, building: ask.building, brandID: b.id)
+              marketing: b.marketingFund, cover: max(max(ask.cover, 0), b.support), rent: ask.rent, vehicles: ask.vehicles, building: ask.building, brandID: b.id, premises: ask.premises)
     }
 
     /// The talk about the terms. Original: `fbNegotiate`. Each unfinished round counts against your patience.
@@ -428,6 +443,7 @@ public enum FranchiseBrands {
             "brand": .number(b.strength), "std": .number(b.standard), "cover": .number(Double(t.cover)), "bld": .number(Double(t.building)),
             "term": .number(Double(b.termYears)), "w0": .number(Double(s.week)),
         ]))
+        if let p = t.premises { s.companies[i].set("landlord", .object(["co": .number(Double(p.companyID)), "pid": .number(Double(p.propertyID))])) }
         s.companies[i].reputation = max(s.companies[i].reputation, 38 + Double(b.tier) * 6)
         s.companies[i].awareness = max(s.companies[i].awareness, 25 + b.strength * 0.55)
         var docs = s.companies[i].value("docs")

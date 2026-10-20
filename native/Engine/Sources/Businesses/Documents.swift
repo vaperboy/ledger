@@ -36,6 +36,7 @@ public enum Documents {
         for knob in bd.knobs {
             for o in Knobs.activeOptions(co, knob) { for d in o.requiredDocs where !need.contains(d) { need.append(d) } }
         }
+        if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
         if co.form == .limited && !need.contains("accountant_agreement") { need.append("accountant_agreement") }
         return need.filter { !isSkipped($0, country: country) }
     }
@@ -83,7 +84,7 @@ public enum Documents {
         if fee > 0 && co.cash < fee { return .notEnoughCash }
         let abroad = co.countryCode != s.homeCountryCode
         var weeks = Double(dd.weeks)
-        if abroad { weeks = (weeks * w.country(co).bureaucracy * 1.4).rounded(.up) }
+        if abroad { weeks = (weeks * w.country(co).bureaucracy * (s.hasHeadOffice("cd_" + co.countryCode) ? 0.6 : 1.4)).rounded(.up) }
         if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
         if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
         if fee > 0 { Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Application: \(dd.name)") }

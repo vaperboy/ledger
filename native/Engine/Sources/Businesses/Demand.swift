@@ -99,6 +99,11 @@ public enum DemandModel {
         if fit != 1 && r.customers > 0 { r.customers *= fit }
         // 90: ways to sell (platforms, memberships, peak seasons, contracts)
         applyWaysToSell(&r, co, bd, w)
+        // Taxi classes and nice cars for sales people (realistic_buying.js, step 'demand')
+        let fleet = PersonalEquipment.demandFactor(co, bd, w)
+        if fleet != 1 { r.customers *= fleet }
+        let gifts = Giving.demandFactor(co, w.state) * Luxury.wineFactor(co, w.state)
+        if gifts != 1 { r.customers *= gifts }
         // 94: tourists
         let ts = touristShare(co, bd, w)
         let tf = ts > 0.01 ? 1 + ts * (touristSeason(co, w) - 1) : 1

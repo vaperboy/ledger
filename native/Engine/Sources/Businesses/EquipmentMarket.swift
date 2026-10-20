@@ -154,7 +154,7 @@ public enum EquipmentMarket {
 
     // MARK: Suppliers
 
-    struct Vendor { var id: String; var name: String; var quality: Double }
+    struct Vendor { var id: String; var name: String; var quality: Double; var owner = "" }
 
     /// The pool of supplier companies of a country, shared by all kinds of business. Original: `vpoolAll`.
     static func vendorPool(seed: Int, countryCode cc: String, countries: CountryBook, nouns: JSONValue) -> [(vendor: Vendor, families: [String])] {
@@ -177,9 +177,9 @@ public enum EquipmentMarket {
             let name = pick(starts) + " " + pick(list)
             if used.contains(name) { continue }
             used.insert(name)
-            _ = pick(C.firstNames.isEmpty ? ["A"] : C.firstNames); _ = pick(C.lastNames.isEmpty ? ["B"] : C.lastNames)
+            let owner = pick(C.firstNames.isEmpty ? ["A"] : C.firstNames) + " " + pick(C.lastNames.isEmpty ? ["B"] : C.lastNames)
             let q = jsRound((r.next() - 0.5) * 70) / 100
-            out.append((Vendor(id: "V-\(cc)-\(i)", name: name, quality: q), f))
+            out.append((Vendor(id: "V-\(cc)-\(i)", name: name, quality: q, owner: owner), f))
         }
         return out
     }
@@ -276,8 +276,8 @@ public enum EquipmentMarket {
     // MARK: Prices
 
     /// Price of one item in a brand (factor 1 is the standard price). Original: `eqPrice`.
-    public static func price(_ e: EquipmentSpec, company co: Company, _ w: World, factor f: Double = 1) -> Double {
-        let raw = (e.cost * w.inflationIndex * f * w.country(co).costIndex).rounded()
+    public static func price(_ e: EquipmentSpec, company co: Company, _ w: World, factor f: Double = 1, vendor: String? = nil) -> Double {
+        let raw = (e.cost * w.inflationIndex * f * w.country(co).costIndex * (1 - Suppliers.discount(w.state, scope: "eq", vendorID: vendor))).rounded()
         let fx = w.rates.rate(w.country(co))
         return Currency.nicePrice(raw / fx) * fx
     }
@@ -395,7 +395,7 @@ public enum EquipmentMarket {
             let age = 1 + Int(r.next() * Double(min(8, Int(e.lifeYears) + 2)))
             let t = usedTruth(&r, age: age)
             let kr = age >= 4 && r.next() < 0.25
-            let p = max(100, roundTo(price(e, company: co, c.w, factor: o.priceFactor) * 0.78 * pow(0.86, Double(age)) * (0.7 + 0.45 * t.vis), step: 100))
+            let p = max(100, roundTo(price(e, company: co, c.w, factor: o.priceFactor, vendor: o.vendorID) * 0.78 * pow(0.86, Double(age)) * (0.7 + 0.45 * t.vis), step: 100))
             let seller = sellers[Int(r.next() * Double(sellers.count))]
             let says = t.dressed ? dressedSays[Int(r.next() * Double(dressedSays.count))] : t.vis > 0.8 ? "Well kept, light use" : t.vis > 0.6 ? "Normal signs of use" : "Used hard, but works"
             out.append(UsedOffer(key: key, slot: i, brandIndex: o.index, modelID: "", name: o.name, cls: o.cls, age: age, year: GameCalendar.year(week: s.week) - age,
@@ -484,8 +484,9 @@ public enum EquipmentMarket {
         let mode = one ? softwareMode(e, tradeID: c.bd.id, company: c.co, c.w) : nil
         if mode == .subscription { return subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: 1, offer: offer, data: data) }
         let q = one ? 1 : max(1, quantity)
-        let unit = price(e, company: c.co, c.w, factor: offer.priceFactor)
+        let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
         let total = unit * Double(q)
+        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, big: true) }
         var pay = payment
         if one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
         if pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
@@ -692,12 +693,12 @@ public enum EquipmentMarket {
                 lowest = models.compactMap { m in c.tables.vehicles[m].map { vehiclePrice($0, factor: 0.9, c.w) } }.min() ?? 0
             } else {
                 let cat = offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
-                lowest = cat.map { price(e, company: co, c.w, factor: $0.priceFactor) }.min() ?? price(e, company: co, c.w)
+                lowest = cat.map { price(e, company: co, c.w, factor: $0.priceFactor, vendor: $0.vendorID) }.min() ?? price(e, company: co, c.w)
             }
             let have = e.vehicleModels != nil ? Double(co.value("veh").array.filter { $0["eq"].string == e.id }.count) : co.value("eq")[e.id]["n"].double
             let years = EquipmentUnits.warrantyYears(kind: k, vehicleModel: e.vehicleModels?.first, class: 1, price: lowest, tables: c.tables, currency: c.w.currency(co))
             return Need(equipmentID: e.id, name: e.name, kind: k, have: have, leased: co.value("lease")[e.id].double,
-                        need: std[e.id] ?? (e.isRequired ? 1 : 0), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
+                        need: PersonalEquipment.rule(c.bd, e, tables: c.tables) != nil ? PersonalEquipment.needed(co, c.bd, e, tables: c.tables) : (std[e.id] ?? (e.isRequired ? 1 : 0)), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
                         fromPrice: lowest, canUsed: canBuyUsed(e, tradeID: c.bd.id, tables: c.tables),
                         canLease: canLease(e, tradeID: c.bd.id, unitPrice: lowest, company: co, c.w, tables: c.tables), lifeYears: e.lifeYears, warrantyYears: years)
         }

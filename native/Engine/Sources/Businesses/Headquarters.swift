@@ -53,6 +53,7 @@ public enum Headquarters {
         let aw = live.map { $0.awareness }.max() ?? 0
         let ol = live.map { Double(Competition.chainOutlets($0, w)) }.max() ?? 1
         f += 0.25 * aw + 5 * log2(max(1, ol))
+        f += Luxury.fameBonus(s) + 4 * Double(Abroad.foreignCountries(s).count)   // luxury perks; each foreign country
         return clamp(f, 0, 100)
     }
     public static func fameLabel(_ f: Double) -> String { f >= 80 ? "World famous" : f >= 60 ? "Nationally famous" : f >= 40 ? "Well known in business" : f >= 20 ? "Known locally" : "Unknown" }
