@@ -262,7 +262,7 @@ All 133 events are in `Events/Resources/events.json` (formulas as `{expr}`). Eve
 | tnd56 |  | Not ported |
 | top28 |  | Not ported |
 | trophies28 |  | Not ported |
-| weekreport | Home + Inbox + Activity (no single report screen yet) | Not ported |
+| weekreport | Money > Reports (Week, Month, Year) + Home "Last week" prompt + Company > Finances | Ported, extended (month and year reports are new) |
 | world |  | Not ported |
 | wx56 |  | Not ported |
 

@@ -44,6 +44,7 @@ struct CompanyMoney: View {
                     }
                 }
             }
+            lastWeekReport(cur)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Move money")
@@ -90,6 +91,30 @@ struct CompanyMoney: View {
                         ListRow(symbol: "doc.text.fill", tint: Theme.loss, title: l.name, subtitle: "\(cur.display(l.monthlyPayment)) a month", trailing: cur.display(l.balance), trailingSub: "left to pay")
                     }
                 }
+            }
+        }
+    }
+
+    /// The company's last closed week in a few lines, with a link to all its weekly, monthly and yearly reports.
+    @ViewBuilder private func lastWeekReport(_ cur: Currency) -> some View {
+        let last = engine.latestReport(.week)?.filtered(to: company.id)
+        LedgerSection(title: "Reports", trailing: {
+            NavigationLink { ReportsScreen(companyID: company.id) } label: {
+                Text("Week, month, year  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
+            }.buttonStyle(.plain)
+        }) {
+            if let r = last {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(cur.short(r.group.pnl.netProfit)).font(.hero(26)).foregroundStyle(r.group.pnl.netProfit < 0 ? Theme.loss : Theme.ivory)
+                        Text("profit · " + r.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    if let s = ReportSummary.sentences(r, currency: cur).first {
+                        Text(s).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            } else {
+                Text("The first report arrives when this company has been through a full week.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }

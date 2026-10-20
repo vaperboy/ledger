@@ -11,11 +11,12 @@ public enum ReportSummary {
         let g = r.group
         let net = g.pnl.netProfit
         let prev = r.previous
+        let who = r.scopeName ?? "The group"
         var out: [String] = []
 
         // 1. Profit, against the period before, with the company that moved it most
         if g.pnl.isEmpty {
-            out.append("No company earned or spent anything this \(noun).")
+            out.append(r.scopeName == nil ? "No company earned or spent anything this \(noun)." : "\(who) earned and spent nothing this \(noun).")
         } else {
             var s: String
             if let p = prev, abs(p.pnl.netProfit) >= 1 {
@@ -25,9 +26,9 @@ public enum ReportSummary {
                 } else if net >= 0 {
                     s = "Profit was \(amount(net)), against a loss of \(amount(before)) last \(noun)"
                 } else if before < 0 {
-                    s = "The group lost \(amount(net)), \(abs(net) < abs(before) ? "less" : "more") than the \(amount(before)) lost last \(noun)"
+                    s = "\(who) lost \(amount(net)), \(abs(net) < abs(before) ? "less" : "more") than the \(amount(before)) lost last \(noun)"
                 } else {
-                    s = "The group lost \(amount(net)), after a profit of \(amount(before)) last \(noun)"
+                    s = "\(who) lost \(amount(net)), after a profit of \(amount(before)) last \(noun)"
                 }
                 if let rs = ReportMath.share(g.pnl.revenue, p.pnl.revenue) {
                     if abs(rs) < 0.01 { s += " on flat revenue" }
@@ -35,7 +36,7 @@ public enum ReportSummary {
                 }
                 if let lead = leader(r, prev: p, direction: net - before) { s += ", mostly at \(lead)" }
             } else {
-                s = net >= 0 ? "Profit was \(amount(net))" : "The group lost \(amount(net))"
+                s = net >= 0 ? "Profit was \(amount(net))" : "\(who) lost \(amount(net))"
                 if g.pnl.revenue > 0 { s += " on revenue of \(amount(g.pnl.revenue))" }
             }
             out.append(s + ".")
@@ -57,13 +58,20 @@ public enum ReportSummary {
         }
 
         // 3. Best and weakest company
-        if let b = r.best, let w = r.worst, b.id != w.id {
+        if r.scopeName == nil, let b = r.best, let w = r.worst, b.id != w.id {
             out.append("\(b.name) did best (\(signed(b.pnl.netProfit, amount))) and \(w.name) did worst (\(signed(w.pnl.netProfit, amount))).")
         }
 
         // 4. Net worth
         let change = r.netWorthChange
-        if abs(change) < 1 {
+        if let name = r.scopeName {
+            if abs(change) < 1 { out.append("Your share of \(name) was worth \(amount(r.netWorthEnd.total)), unchanged.") }
+            else {
+                var s = "Your share of \(name) \(change > 0 ? "gained" : "lost") \(amount(change)) in value"
+                if let share = r.netWorthShare, abs(share) >= 0.001 { s += " (\(share > 0 ? "+" : "−")\(pct(share)))" }
+                out.append(s + " to \(amount(r.netWorthEnd.total)).")
+            }
+        } else if abs(change) < 1 {
             out.append("Your net worth stayed at \(amount(r.netWorthEnd.total)).")
         } else {
             var s = "Your net worth \(change > 0 ? "rose" : "fell") by \(amount(change))"
@@ -82,7 +90,7 @@ public enum ReportSummary {
             out.append("Over the year you " + joined(parts) + ".")
         } else {
             let dc = g.cashEnd - g.cashStart
-            var s = "Cash in your accounts and companies \(dc >= 0 ? "rose" : "fell") by \(amount(dc)) to \(g.cashEnd < 0 ? "−" : "")\(amount(g.cashEnd))"
+            var s = "Cash \(r.scopeName.map { "at \($0)" } ?? "in your accounts and companies") \(dc >= 0 ? "rose" : "fell") by \(amount(dc)) to \(g.cashEnd < 0 ? "−" : "")\(amount(g.cashEnd))"
             var bits: [String] = []
             if g.decisionsAnswered > 0 { bits.append("\(g.decisionsAnswered) decision\(g.decisionsAnswered == 1 ? "" : "s") answered") }
             if g.breakdowns > 0 { bits.append("\(g.breakdowns) breakdown\(g.breakdowns == 1 ? "" : "s")") }

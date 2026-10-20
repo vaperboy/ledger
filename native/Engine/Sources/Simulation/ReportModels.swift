@@ -247,6 +247,8 @@ public struct PeriodReport: Codable, Equatable, Sendable, Identifiable {
     public var ranking: [Int] = []
     /// Three to five sentences, written from the numbers above.
     public var summary: [String] = []
+    /// Set on a report cut down to one company (`filtered(to:)`): the company's name. Never stored.
+    public var scopeName: String? = nil
 
     public var netWorthChange: Double { netWorthEnd.total - netWorthStart.total }
     public var netWorthShare: Double? { ReportMath.share(netWorthEnd.total, netWorthStart.total) }
@@ -260,6 +262,7 @@ public struct PeriodReport: Codable, Equatable, Sendable, Identifiable {
     public func filtered(to companyID: Int) -> PeriodReport? {
         guard let c = company(companyID) else { return nil }
         var r = self
+        r.scopeName = c.name
         r.companies = [c]
         var g = ReportGroup()
         g.pnl = c.pnl

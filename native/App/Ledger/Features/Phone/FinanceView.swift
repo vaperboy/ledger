@@ -201,9 +201,10 @@ struct FinanceView: View {
 
     private func reports(_ e: GameEngine, _ o: FinanceOverview) -> some View {
         VStack(spacing: Theme.Space.l) {
+            ReportsContent(engine: e, companyID: companyID)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionLabel("Profit and loss")
+                    SectionLabel("So far, live")
                     ValueRow(label: "Revenue this month", value: store.money(o.monthRevenue))
                     ValueRow(label: "Profit this month", value: store.money(o.monthProfit), tint: Theme.change(o.monthProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.monthProfit))
                     Hairline()

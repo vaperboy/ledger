@@ -42,6 +42,8 @@ final class GameStore: ObservableObject {
     @Published var openCompanyID: Int?
     @Published var phoneDestination: PhoneDestination?
     @Published var moneySection: MoneySection?
+    /// Open the Reports section on this report (set by the Home prompt).
+    @Published var reportRequest: ReportRef?
     @Published var showNewCompany = false
     @Published var openMessageID: Int?
 
