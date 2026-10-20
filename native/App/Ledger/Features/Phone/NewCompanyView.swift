@@ -100,6 +100,7 @@ struct TradeDetailView: View {
                                 line("shippingbox.fill", "Opening stock", est.stock, cur)
                                 line("person.2.fill", "First payroll", est.firstPayroll, cur)
                                 line("signature", "Registration", est.registration, cur)
+                                line("house.fill", "First property (deposit and costs)", est.property, cur)
                                 line("shield.fill", "Working buffer", est.buffer, cur)
                                 if est.abroad > 0 { line("globe", "Abroad", est.abroad, cur) }
                                 Hairline()

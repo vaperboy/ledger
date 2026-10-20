@@ -82,8 +82,10 @@ enum SpecialEvents {
                 s.economy.housing = clamp(h * (1 + s.random.gauss() * 0.012), 0.7, 1.5)
                 s.note("The housing market moves: price index \(String(format: "%.2f", s.economy.housing)).", tone: s.economy.housing > h ? "good" : "bad", companyID: co.id)
             }
+        case "f_storm", "f_run", "f_default":
+            return FinanceModel.specialEvent(e.id, &s, i, data: data)
         default:
-            // f_storm, f_run, f_default (finance), e_price, e_geo (energy): their families are not simulated natively yet.
+            // e_price, e_geo (energy): their family is not simulated natively yet.
             return e.id.hasPrefix("f_") || e.id.hasPrefix("e_") || e.id == "g_lawsuit" ? true : false
         }
         return true

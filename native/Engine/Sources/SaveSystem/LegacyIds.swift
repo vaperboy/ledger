@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 /// Saves from the HTML game use identifiers that were taken from Norwegian words (company forms `ENK` / `AS`, permit ids such as
 /// `mva` or `skjenk`). The native game uses neutral English ids. This turns the old ids into the new ones when a save is imported.
@@ -115,6 +116,7 @@ public enum LegacyIds {
             if !staff.isEmpty { companies[i]["staff"] = .array(staff) }
         }
         if !companies.isEmpty { root["cos"] = .array(companies) }
+        RentalFinance.migrateLegacy(&root)
         // Listed companies and coins got neutral tickers (the old ones were Norwegian words).
         if let s = root["stocks"] { root["stocks"] = renameKeys(s, stocks) }
         if let c = root["crypto"] { root["crypto"] = renameKeys(c, crypto) }
