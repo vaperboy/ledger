@@ -81,6 +81,8 @@ public enum Suppliers {
         s.rest["vr"] = vr
     }
 
+    public static func bumpPublic(_ s: inout GameState, _ id: String, by d: Double) { bump(&s, id, by: d) }
+
     /// Buying something makes the relationship grow a little. Original: `vbuy`.
     static func recordPurchase(_ s: inout GameState, vendorID id: String?, amount: Double, big: Bool = false) {
         guard let id = id, amount > 0 else { return }

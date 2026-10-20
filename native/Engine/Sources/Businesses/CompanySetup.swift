@@ -282,7 +282,7 @@ public enum CompanySetup {
         if let reason = banReason(tradeID, country: country) { return .failure(.banned(reason)) }
         let currency = context.currency(code, s)
         let abroad = code != s.homeCountryCode
-        let abroadFee = abroad ? context.currency(code, s).scaledPrice(220000 + bd.openingCost * 1.5) : 0
+        let abroadFee = abroad ? Luxury.abroadFee(context.currency(code, s).scaledPrice(220000 + bd.openingCost * 1.5) * Ambitions.abroadFeeFactor(s, data), s) : 0
         if abroad && s.cash < abroadFee + currency.scaledPrice(50000) { return .failure(.notEnoughCash) }
         if form == .limited && s.cash < country.shareCapitalMinimum + country.registrationFee + abroadFee { return .failure(.notEnoughCash) }
         let chosenSize = size ?? recommendedSize(bd, city: city)
@@ -405,7 +405,7 @@ public enum CompanySetup {
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
-        if code != s.homeCountryCode { r.abroad = cur.scaledPrice(220000 + bd.openingCost * 1.5) }
+        if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5) * Ambitions.abroadFeeFactor(s, data), s) }
         return r
     }
 

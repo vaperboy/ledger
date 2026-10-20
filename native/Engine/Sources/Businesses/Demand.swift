@@ -97,6 +97,8 @@ public enum DemandModel {
         // Taxi classes and nice cars for sales people (realistic_buying.js, step 'demand')
         let fleet = PersonalEquipment.demandFactor(co, bd, w)
         if fleet != 1 { r.customers *= fleet }
+        let gifts = Giving.demandFactor(co, w.state) * Luxury.wineFactor(co, w.state)
+        if gifts != 1 { r.customers *= gifts }
         // 94: tourists
         let ts = touristShare(co, bd, w)
         let tf = ts > 0.01 ? 1 + ts * (touristSeason(co, w) - 1) : 1

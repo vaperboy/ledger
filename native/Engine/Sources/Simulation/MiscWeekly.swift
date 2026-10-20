@@ -10,6 +10,12 @@ enum MiscWeekly {
     static func run(_ s: inout GameState, data: GameData, context: FinanceContext) {
         StaffProfile.trackWeek(&s)
         PremisesExtras.weekly(&s, data: data)
+        Luxury.ownerWeek(&s)
+        Luxury.riskChecks(&s, data: data)
+        Giving.weekly(&s, data: data)
+        Ambitions.weekly(&s, data: data)
+        Press.weekly(&s, data: data)
+        WeatherEvents.weekly(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s, data: data, context: context) }
     }
 
