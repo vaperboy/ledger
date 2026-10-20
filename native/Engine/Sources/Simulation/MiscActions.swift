@@ -228,6 +228,148 @@ public extension GameEngine {
         }
     }
 
+    // MARK: Staff: employment types, trial week, pay model, car
+
+    /// Hire on given terms: full time with a chosen pay basis, part time (weekly hours) or seasonal (months). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`.
+    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms) -> Hiring.HireResult {
+        var r = Hiring.HireResult.refused
+        update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data, terms: terms) }
+        return r
+    }
+    /// The months of the year a seasonal hire would be for by default: the busy months of the trade.
+    func busyMonths(companyID: Int) -> [Int] { state.company(companyID).map { StaffTalks.busyMonths($0, data: data) } ?? [] }
+
+    /// Pay for a trial week and see what the person can really do. Original: `ACT.trial`.
+    mutating func startTrialWeek(personID: Int, companyID: Int) -> Double? {
+        var r: Double?
+        update { s, _, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s) }
+        return r
+    }
+    mutating func setStaffHours(companyID: Int, staffID: Int, hours: Double) -> StaffTalks.OfferResult {
+        var r = StaffTalks.OfferResult.unknown
+        update { s, _, _ in r = StaffTalks.setStaffHours(&s, companyID: companyID, staffID: staffID, hours: hours) }
+        return r
+    }
+    mutating func offerFullTime(companyID: Int, staffID: Int) -> StaffTalks.OfferResult {
+        var r = StaffTalks.OfferResult.unknown
+        update { s, d, _ in r = StaffTalks.offerFullTime(&s, companyID: companyID, staffID: staffID, data: d) }
+        return r
+    }
+    mutating func offerPartTime(companyID: Int, staffID: Int, hours: Double = 20) -> StaffTalks.OfferResult {
+        var r = StaffTalks.OfferResult.unknown
+        update { s, _, _ in r = StaffTalks.offerPartTime(&s, companyID: companyID, staffID: staffID, hours: hours) }
+        return r
+    }
+    @discardableResult mutating func toggleSeason(companyID: Int, staffID: Int, season: String) -> Bool {
+        var r = false
+        update { s, _, _ in r = StaffTalks.toggleSeason(&s, companyID: companyID, staffID: staffID, season: season) }
+        return r
+    }
+    @discardableResult mutating func offerFixedSalary(companyID: Int, staffID: Int) -> Bool {
+        var r = false
+        update { s, d, _ in r = StaffTalks.offerFixedSalary(&s, companyID: companyID, staffID: staffID, data: d) }
+        return r
+    }
+    mutating func setPayModel(companyID: Int, staffID: Int, mode: String) -> StaffTalks.PayModelResult {
+        var r = StaffTalks.PayModelResult.unknown
+        update { s, d, _ in r = StaffTalks.setPayModel(&s, companyID: companyID, staffID: staffID, mode: mode, data: d) }
+        return r
+    }
+    @discardableResult mutating func setCommissionRate(companyID: Int, staffID: Int, rate: Double) -> Bool {
+        var r = false
+        update { s, _, _ in r = StaffTalks.setCommissionRate(&s, companyID: companyID, staffID: staffID, rate: rate) }
+        return r
+    }
+    @discardableResult mutating func toggleOwnCar(companyID: Int, staffID: Int) -> Bool {
+        var r = false
+        update { s, _, _ in r = StaffTalks.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
+        return r
+    }
+    /// Why a person turned down an offer, in words.
+    func refusalReason(companyID: Int, staffID: Int, want: String) -> String {
+        guard let m = state.company(companyID)?.staff.first(where: { $0.id == staffID }) else { return "" }
+        return StaffTalks.wishWhy(m, name: state.people[staffID]?.name ?? "", want: want)
+    }
+
+    // MARK: Chains, complaints, premises, accountant, development
+
+    @discardableResult mutating func lendWorker(from: Int, to: Int, role: String) -> Bool {
+        var r = false
+        update { s, d, _ in r = Chains.lendWorker(&s, from: from, to: to, role: role, data: d) }
+        return r
+    }
+    func staffShortages(chainID: Int) -> [Chains.Shortage] { Chains.staffShortages(state, chainID: chainID, data: data) }
+
+    /// Answer an open customer complaint yourself. Returns whether the customer is satisfied, nil if there is no such complaint. Original: `ACT.complres`.
+    mutating func answerComplaint(companyID: Int, complaintID: Int, answer: Satisfaction.Answer) -> Bool? {
+        var r: Bool?
+        update { s, d, _ in r = Satisfaction.answerComplaint(&s, companyID: companyID, complaintID: complaintID, answer: answer, data: d) }
+        return r
+    }
+    func openComplaints(companyID: Int) -> [JSONValue] { state.company(companyID).map(Satisfaction.openComplaints) ?? [] }
+
+    @discardableResult mutating func giveUpPremises(companyID: Int) -> Bool {
+        var r = false
+        update { s, d, _ in r = CompanySetup.giveUpPremises(&s, companyID: companyID, data: d) }
+        return r
+    }
+    @discardableResult mutating func changeAccountant(companyID: Int, accountantID: Int) -> Bool {
+        var r = false
+        update { s, d, _ in r = CompanySetup.changeAccountant(&s, companyID: companyID, accountantID: accountantID, data: d) }
+        return r
+    }
+
+    func developmentProjects(companyID: Int) -> [(project: Development.Project, cost: Double)] {
+        guard let co = state.company(companyID) else { return [] }
+        let cur = context.currency(co.countryCode, state)
+        return Development.projects(for: co, data: data).map { ($0, Development.cost($0, for: co, currency: cur)) }
+    }
+    mutating func startDevelopment(companyID: Int, project: String) -> Development.StartResult {
+        var r = Development.StartResult.notPossible
+        update { s, d, _ in r = Development.start(&s, companyID: companyID, project: project, data: d) }
+        return r
+    }
+
+    // MARK: Goals
+
+    /// "yyyy-m-d" of a real date, the key of the daily goal.
+    static func dayString(_ date: Date) -> String {
+        let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
+    }
+
+    mutating func dailyGoal(now: Date = Date()) -> PlayerGoals.DailyGoal? {
+        var r: PlayerGoals.DailyGoal?
+        let cur = homeCurrency
+        update { s, d, _ in r = PlayerGoals.dailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
+        return r
+    }
+    @discardableResult mutating func claimDailyGoal(now: Date = Date()) -> Double? {
+        var r: Double?
+        let cur = homeCurrency
+        update { s, d, _ in r = PlayerGoals.claimDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
+        return r
+    }
+    var firstStepRewards: [PlayerGoals.FirstStep]? { PlayerGoals.firstSteps(state) }
+    var firstStepRewardsHidden: Bool { PlayerGoals.firstStepsHidden(state) }
+    mutating func claimFirstStep(id: String) -> String? {
+        var r: String?
+        let cur = homeCurrency
+        update { s, _, _ in r = PlayerGoals.claimFirstStep(&s, id: id, currency: cur) }
+        return r
+    }
+    mutating func setFirstStepsHidden(_ hidden: Bool) { update { s, _, _ in PlayerGoals.setFirstStepsHidden(&s, hidden) } }
+
+    var ambitionPath: String? { PlayerGoals.ambitionPath(state) }
+    var legacyScore: Int { PlayerGoals.legacyScore(state) }
+    var ambitionMilestones: [PlayerGoals.Milestone] { PlayerGoals.milestones(state, data: data, currency: homeCurrency) }
+    @discardableResult mutating func chooseAmbition(path: String) -> Bool {
+        var r = false
+        let cur = homeCurrency
+        update { s, d, _ in r = PlayerGoals.chooseAmbition(&s, path: path, data: d, currency: cur) }
+        return r
+    }
+
     private mutating func setFlag(_ companyID: Int, _ key: String, _ on: Bool) {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }

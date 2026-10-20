@@ -284,7 +284,10 @@ public extension GameEngine {
     /// Complete a purchase the owner agreed to.
     mutating func buyRival(companyID: Int, rivalID: Int, price: Double) -> Rivals.AcquireResult {
         var r = Rivals.AcquireResult.failed("Nothing happened.")
-        update { s, d, c in r = Rivals.acquire(&s, companyID: companyID, rivalID: rivalID, price: price, data: d, context: c) }
+        update { s, d, c in
+            r = Rivals.acquire(&s, companyID: companyID, rivalID: rivalID, price: price, data: d, context: c)
+            if case .ok = r { PlayerGoals.count(&s, "buy") }   // counts for the market dominator ambition
+        }
         return r
     }
 

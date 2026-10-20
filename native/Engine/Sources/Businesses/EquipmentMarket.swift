@@ -697,7 +697,7 @@ public enum EquipmentMarket {
             let have = e.vehicleModels != nil ? Double(co.value("veh").array.filter { $0["eq"].string == e.id }.count) : co.value("eq")[e.id]["n"].double
             let years = EquipmentUnits.warrantyYears(kind: k, vehicleModel: e.vehicleModels?.first, class: 1, price: lowest, tables: c.tables, currency: c.w.currency(co))
             return Need(equipmentID: e.id, name: e.name, kind: k, have: have, leased: co.value("lease")[e.id].double,
-                        need: std[e.id] ?? (e.isRequired ? 1 : 0), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
+                        need: max(0, (std[e.id] ?? (e.isRequired ? 1 : 0)) - (c.bd.id == "estate" && e.id == "car" ? Double(co.staff.filter { $0.role == "estate" && $0.num("ownCar") != 0 }.count) : 0)), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
                         fromPrice: lowest, canUsed: canBuyUsed(e, tradeID: c.bd.id, tables: c.tables),
                         canLease: canLease(e, tradeID: c.bd.id, unitPrice: lowest, company: co, c.w, tables: c.tables), lifeYears: e.lifeYears, warrantyYears: years)
         }

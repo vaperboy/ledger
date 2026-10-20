@@ -97,6 +97,32 @@ public enum Hiring {
 
     public enum HireResult: Equatable { case ok, taken, refused }
 
+    /// What kind of job is offered: full time (hours 0), part time or seasonal (months 1-12), and the pay basis of a full-timer
+    /// (nil = the custom for the job). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS` (engine/people/people.js).
+    public struct Terms: Equatable, Sendable {
+        public var hours: Double = 0
+        public var seasonMonths: [Int]? = nil
+        public var basis: String? = nil
+        /// An estate agent who uses their own car for work, paid by mileage. Original: `ui.carc` ("own").
+        public var ownCar = false
+        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false) {
+            self.hours = hours; self.seasonMonths = seasonMonths; self.basis = basis; self.ownCar = ownCar
+        }
+        public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
+    }
+
+    /// A paid trial week (a quarter of the monthly ask) shows how good someone really is, give or take a few points.
+    /// Returns the skill seen, or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
+    public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState) -> Double? {
+        guard var n = s.people[personID], n.employerID == 0, s.companyIndex(companyID) != nil else { return nil }
+        guard Payments.companyPays(&s, companyID: companyID, amount: jsRound(n.askingMonthlyWage / 4), category: "wages", label: "Trial week") else { return nil }
+        n.set("trial", 1)
+        let seen = jsRound(n.skill + s.random.gauss() * 6)
+        n.set("trialRes", seen)
+        s.people[personID] = n
+        return seen
+    }
+
     /// The candidate a sensible manager would pick: the most skill for the money, among people who can do the job.
     public static func bestValue(_ cands: [Person]) -> Person {
         let able = cands.filter { $0.skill >= 35 }
@@ -106,13 +132,14 @@ public enum Hiring {
 
     /// Make an offer. The lower it is against what the person asks, the likelier a refusal. Original: `hireWorkerCore`.
     public static func hire(_ personID: Int, into companyID: Int, monthlyWage wage0: Double, state s: inout GameState, data: GameData,
-                            fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {
+                            terms: Terms = Terms(), fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {
         guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return .refused }
         if n.employerID != 0 { return .taken }
-        let basis = fixedSalaryRoles.contains(n.role) ? "fix" : "hour"
+        let part = terms.isPartTime
+        let basis = part ? "hour" : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
         var wage = wage0
         let wantsFixed = HashedRandom.first("fix:\(personID)") < (n.age < 26 ? 0.55 : 0.8)
-        wage *= basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
+        wage *= basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed && !part ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
         let ask = n.askingMonthlyWage
         if wage < ask * 0.82 && !s.random.chance(0.1) { return .refused }
         let p = clamp((wage / ask - 0.86) / 0.18, 0, 1)
@@ -123,6 +150,8 @@ public enum Hiring {
         m.id = personID; m.set("role", n.role); m.monthlyWage = wage0
         m.hiredWeek = s.week; m.payBasis = basis; m.lastRaiseWeek = s.week
         m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0); m.set("onb", .object([:]))
+        if part { StaffTalks.applyPartTime(&m, terms: terms, week: s.week) }
+        else if terms.ownCar, m.role == "estate" { m.set("ownCar", 1) }
         onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)
