@@ -61,7 +61,7 @@ public enum Failure {
         Ledger.set(&s, .company(co.id), to: 0)
         s.stats.bankruptcies += 1
         s.credit = clamp(s.credit - (co.form == .soleTrader ? 22 : 14), 0, 100)
-        let why = reason == "unpaid" ? "Bills went unpaid for months. " : "Cash ran out. "
+        let why = reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : "Cash ran out. "
         let liability = personalHit > 0
             ? "About \(cur.display(personalHit)) lands on you personally (\(co.form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
             : "As a limited company, your loss is limited to what you put in. "

@@ -13,7 +13,7 @@ public enum AutoStaff {
         let context = FinanceContext(countries: data.countries, trades: data.catalog)
         for i in s.companies.indices {
             let co = s.companies[i]
-            guard co.status == .open, let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent", bd.family != "fin" else { continue }
+            guard co.status == .open, let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
             let weekly = context.weeklyCost(co, s)
             guard co.cash > weekly * 4 else { continue }
             for (idx, st) in CompanySetup.standardStaff(bd, size: co.size).enumerated() {

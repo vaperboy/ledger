@@ -286,8 +286,10 @@ public enum CompanySetup {
 
     public struct Estimate: Equatable {
         public var documents = 0.0, equipment = 0.0, vehicles = 0.0, premises = 0.0, stock = 0.0, firstPayroll = 0.0, buffer = 0.0
+        /// Down payment and fees on a first property (rental businesses).
+        public var property = 0.0
         public var registration = 0.0, shareCapital = 0.0, abroad = 0.0
-        public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + registration + abroad }
+        public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + property + registration + abroad }
         /// Money that must be in the player's account first (registration, capital) plus money to put in the company
         public var personalOutlay: Double { registration + shareCapital + abroad }
     }
@@ -326,10 +328,11 @@ public enum CompanySetup {
             r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: w.rates) * country.employerCostFactor
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5
+        RentalFinance.addEstimate(&r, bd, size: size, city: city, tmp, w)
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
-        r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer)
+        r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
         if code != s.homeCountryCode { r.abroad = cur.scaledPrice(220000 + bd.openingCost * 1.5) }
         return r
@@ -367,6 +370,7 @@ public enum CompanySetup {
             while !ok && qq > 1 { qq = max(1, (qq / 2).rounded(.down)); ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true) }
             if !ok { log.append("equipment \(e.id): not enough cash") }
         }
+        RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &log)
         if !bd.hasTrait("noStaff") && bd.family != "rent" {
             for (idx, st) in standardStaff(bd, size: s.companies[i].size).enumerated() {
                 let have = s.companies[i].staff.filter { $0.role == st.role }.count
@@ -385,6 +389,7 @@ public enum CompanySetup {
                 if n > 0 { log.append("hire \(st.role): \(n) missing") }
             }
         }
+        RentalFinance.finishSetup(&s, companyID: companyID, data: data)
         return log
     }
 }

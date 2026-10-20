@@ -12,7 +12,8 @@ import Finance
 /// engine (see docs/KNOWN_GAPS.md): `isSupported` says which.
 public enum CompanyWeek {
     public static func isSupported(_ bd: Trade) -> Bool {
-        ["svc", "venue", "retail", "prod", "logi"].contains(bd.family) && bd.id != "salmon"
+        if RentalFinance.handles(bd) { return true }   // property and finance families: RentalModel, FinanceModel
+        return ["svc", "venue", "retail", "prod", "logi"].contains(bd.family) && bd.id != "salmon"
     }
 
     /// Run the week for the company at `index`. Called once per company per week, after the week counter moved on.
@@ -78,6 +79,14 @@ public enum CompanyWeek {
     // MARK: Open
 
     static func openWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData, _ marketing: MarketingTables) {
+        if RentalFinance.handles(bd) {
+            // Property and finance companies have their own weekly model instead of customers and capacity (original: `FAM.rent.custom`, `FAM.fin.custom`).
+            let ctx = RentalFinance.week(&s, i, bd, data: data)
+            let w = World(state: s, data: data)
+            book(&s, i, bd, ctx, vat: Vat.rate(s.companies[i], bd, w), data: data)
+            weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
+            return
+        }
         // Customers and capacity for the week
         let (dm, cp, ticketPrice, vat, goods): (DemandResult, CapacityResult, Double, Double, (m: Double, q: Double)) = {
             let w = World(state: s, data: data)
