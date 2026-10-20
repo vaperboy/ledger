@@ -126,6 +126,33 @@ public extension GameEngine {
         update { s, _, _ in ProjectTenders.setManagerBids(&s, companyID: companyID, on: on) }
     }
 
+    /// Findings specific to project companies (nothing for other trades).
+    func projectInsights(for co: Company) -> [Insight] {
+        guard co.status == .open, let bd = data.catalog[co.type], bd.family == "project", let b = projectBoard(companyID: co.id) else { return [] }
+        var out: [Insight] = []
+        if b.isDeveloper {
+            if b.developments.isEmpty {
+                out.append(Insight(id: "devidle", symbol: "building.2", text: "No development is running. Buy land and start one under Projects; the first sales come about two years later, so keep cash for the wait.", tone: .neutral))
+            }
+            if let p = b.developments.first(where: { $0.stage == "zoning" && $0.delayWeeks > 0 }) {
+                out.append(Insight(id: "devdelay", symbol: "clock", text: "\(p.name) is held up. Delays cost interest on the construction loan.", tone: .warn))
+            }
+            if state.economy.housing < 0.85 {
+                out.append(Insight(id: "housing", symbol: "chart.line.downtrend.xyaxis", text: "The housing market is weak: units sell slowly and for less.", tone: .warn))
+            }
+            return out
+        }
+        if b.requestsTurnedAway > 0 {
+            out.append(Insight(id: "turnedaway", symbol: "tray.full", text: "Work was turned away in the last weeks: the firm is booked \(Int(jsRound(b.weeksBooked))) weeks ahead. More people or equipment would add revenue.", tone: .warn))
+        } else if b.weeksBooked < 0.3, b.hoursPerWeek > 0 {
+            out.append(Insight(id: "emptybook", symbol: "calendar", text: "The order book is nearly empty. Marketing, a lower price or a tender can fill it.", tone: .neutral))
+        }
+        if let t = b.tenders.first(where: { $0.qualifies && $0.myBid == nil }) {
+            out.append(Insight(id: "tender", symbol: "doc.text.magnifyingglass", text: "A tender is open: \(t.title) from \(t.buyer). \(t.weeksToBid) weeks left to bid.", tone: .neutral))
+        }
+        return out
+    }
+
     /// The order book, tenders and developments of a project company; nil for other trades.
     func projectBoard(companyID: Int) -> ProjectBoard? {
         guard let co = state.company(companyID), let bd = data.catalog[co.type], bd.family == "project" else { return nil }

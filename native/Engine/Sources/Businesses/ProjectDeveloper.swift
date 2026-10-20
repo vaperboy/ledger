@@ -67,7 +67,7 @@ public enum ProjectDeveloper {
         let land = homeCurrency.roundedStep((tw["land"] ?? 0) * sz * (city?.rent ?? 1) * w.economy.housing, about: 1000)
         let build = homeCurrency.roundedStep((tw["build"] ?? 0) * sz * (city?.price ?? 1) * w.economy.materials, about: 1000)
         let units = max(4, Int(jsRound((tw["units"] ?? 24) * sz)))
-        let fee = (w.catalog.tables.raw["DOCS"]["regplan"][2].double) * sz.squareRoot()
+        let fee = (w.catalog.tables.raw["DOCS"]["zoning_plan"][2].double) * sz.squareRoot()
         let down = financed ? land * 0.35 : land
         let loan = financed ? land - down + build * 0.7 : 0
         let unitPrice = homeCurrency.roundedStep((land + build) * 1.38 / Double(units) * Knobs.effect(co, bd, "t", w), about: 1000)

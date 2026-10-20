@@ -99,6 +99,34 @@ final class ProjectTradeTests: XCTestCase {
         }
     }
 
+    /// Tenders appear for the trades that can win them, a bid costs money, and a won tender becomes a job on the order book.
+    func testTendersAreBidAndAwarded() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 31)
+        var id = 0
+        e.update { s, data, ctx in
+            Ledger.move(&s, .me, 500_000_000, why: "Test funds")
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: "electrician", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            id = i
+            Payments.injectCash(&s, companyID: id, amount: 20_000_000)
+            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+        }
+        var sent = 0, results = 0
+        for _ in 0..<(3 * 52 * 7) {
+            e.nextDay()
+            for m in e.openDecisions { e.answer(messageID: m.id, option: 0) }
+            if e.state.day == 0, let board = e.projectBoard(companyID: id) {
+                for t in board.tenders where t.qualifies && t.myBid == nil {
+                    if e.bidOnTender(companyID: id, tenderID: t.id, priceFactor: 0.9, higherQuality: true) == .sent { sent += 1 }
+                }
+                results += board.myTenders.filter { $0.outcome == "won" }.count
+            }
+        }
+        XCTAssertGreaterThan(sent, 0, "no tender could be bid for in three years")
+        let titles = e.state.inbox.map { $0.title }
+        XCTAssertTrue(titles.contains { $0.hasPrefix("Award:") || $0.hasPrefix("Not awarded:") }, "no award was announced")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
     /// A project company that runs out of money is declared bankrupt like any other; the books still balance.
     func testStarvedProjectCompanyGoesBankrupt() throws {
         for t in ["plumber", "realdev"] {
