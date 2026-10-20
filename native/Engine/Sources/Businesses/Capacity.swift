@@ -235,6 +235,9 @@ public enum CapacityModel {
         }
         // 60: a small team covers the support jobs
         smallTeamCoversSupportJobs(&r, co, bd)
+        // 60: an operations manager runs the place better (ManagerTeam)
+        let opsHead = co.value("tm")["ops"].double
+        if opsHead > 0 && r.capacity.isFinite && r.capacity != 0 { r.capacity *= 1 + 0.09 * opsHead }
         // 70: own premises: shorter trips for mobile trades
         if mobileTrades.contains(co.type) && bd.premisesKind == "home" && co.value("prem")["m2"].double > 0 { r.capacity *= 1.08 }
         // 80: storms and snow stop outdoor work
