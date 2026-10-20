@@ -74,6 +74,10 @@ struct CompanyTeam: View {
                             Button("Agency") { search(.agency) }.buttonStyle(QuietButtonStyle())
                         }
                         Text("Ads are cheap and slow, the agency is quick and expensive; better people take better searches.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        if role == "mktan" {
+                            let v = engine.marketAnalystVerdict(companyID: company.id)
+                            Text(v.title + ". " + v.text).font(.caption).foregroundStyle(v.ok ? Theme.ivoryMuted : Theme.caution)
+                        }
                     }
                     ForEach(candidates) { p in
                         HStack(spacing: Theme.Space.m) {

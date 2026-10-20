@@ -76,6 +76,14 @@ struct CompanyMarket: View {
                             store.show(String(format: "Prices %+.0f%%.", real * 100)); Haptics.success()
                         }
                     }.buttonStyle(GoldButtonStyle()).disabled(abs(change) < 0.005)
+                    if abs(change) >= 0.005, let fc = engine.priceForecast(companyID: company.id, byShare: change) {
+                        HStack {
+                            Text("Customers: " + fc.text.customers)
+                            Spacer()
+                            Text("Margin: " + fc.text.margin)
+                        }.font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text(fc.text.byAnalyst ? "Ranges from your data analyst." : "A gut feeling. A data analyst in your office gives ranges.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    }
                     if info.recentCut >= 0.06 { Text("You cut prices lately. Rivals may match you.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
                     Hairline()
                     Text("Discount campaign").capsLabel(Theme.ivoryFaint)
@@ -351,7 +359,8 @@ struct MarketView: View {
 
     private func shares(_ e: GameEngine) -> some View {
         let rows = e.marketRows()
-        return LedgerSection("Your share of each market") {
+        let weight = e.economyWeight()
+        return VStack(alignment: .leading, spacing: Theme.Space.l) { LedgerSection("Your share of each market") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
@@ -367,6 +376,22 @@ struct MarketView: View {
                 }
             }
         }
+            DataAnalystCard()
+            LedgerSection("Your weight in the economy") {
+                VStack(spacing: 6) {
+                    weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")
+                    weightRow("Jobs you provide", "\(weight.jobs)")
+                    weightRow("Regulator attention", weight.attention)
+                    Text(weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position."
+                         : "At about a third of a local market, the competition authority starts to watch your pricing.")
+                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+        }
+    }
+
+    private func weightRow(_ label: String, _ value: String) -> some View {
+        HStack { Text(label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer(); Text(value).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
     }
 
     private func reviews(_ e: GameEngine) -> some View {
@@ -448,6 +473,12 @@ struct MarketDetailView: View {
                                 }.padding(.vertical, 8)
                             }
                         }
+                    }
+                    if d.level == .marketAnalyst {
+                        Button("Ask \(d.analystName) for a report now") {
+                            let r = store.act { $0.orderMarketReport(marketKey: marketKey) }
+                            if case .refused(let why)? = r { store.show(why, tone: "warn") } else { store.show("Report sent to your inbox."); Haptics.success() }
+                        }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                     }
                     if !d.report.isEmpty {
                         LedgerSection(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {

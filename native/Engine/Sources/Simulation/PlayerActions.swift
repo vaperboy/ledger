@@ -245,7 +245,10 @@ public extension GameEngine {
     /// Roles this company can hire for, from its trade's standard staff.
     func hireableRoles(companyID: Int) -> [String] {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return [] }
-        return bd.standardStaff.map { $0.role }
+        var roles = bd.standardStaff.map { $0.role }
+        // A market analyst can be added to any company with a market share to measure (not part of the standard staff).
+        if MarketMap.market(of: co, state, data: data) != nil, !roles.contains("mktan") { roles.append("mktan") }
+        return roles
     }
 
     /// The trade definition behind a company.

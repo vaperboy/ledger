@@ -420,6 +420,17 @@ public extension GameEngine {
     }
     mutating func fireDataAnalyst() { update { s, _, _ in MarketMap.fireDataAnalyst(&s) } }
     func economyWeight() -> MarketMap.Weight { MarketMap.weight(state, data: data) }
+    /// Ask your market analyst for a report now (market map), or your data analyst for one on a company or all of them.
+    mutating func orderMarketReport(marketKey: String) -> ActionResult {
+        var msg: String?
+        update { s, d, _ in msg = MarketMap.orderMarketReport(&s, marketKey: marketKey, data: d) }
+        return msg.map { .refused($0) } ?? .done
+    }
+    mutating func orderAnalystReport(companyID: Int?) -> ActionResult {
+        var msg: String?
+        update { s, d, _ in msg = MarketMap.dataAnalystReport(&s, companyID: companyID, data: d) }
+        return msg.map { .refused($0) } ?? .done
+    }
 
     /// The forecast boxes of the price-move screen: customers and margin, as you or your analyst see them. Original: `est`, `fcBoxes`.
     func priceForecast(companyID: Int, byShare d: Double, campaignPercent cp: Int = 0) -> (forecast: PriceMoves.Forecast, text: PriceMoves.ForecastText)? {

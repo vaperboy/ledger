@@ -18,7 +18,7 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
-enum PhoneDestination: Hashable { case news, stats, activity, luxury, settings, achievements, richList }
+enum PhoneDestination: Hashable { case news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround }
 
 /// The sections of the Money tab.
 enum MoneySection: String, CaseIterable, Hashable { case overview = "Overview", bank = "Bank", invest = "Invest", taxes = "Taxes", costs = "Costs", reports = "Reports" }

@@ -13,7 +13,11 @@ MAP_ACTIONS = {
  "saledec": "CompanySale.decline", "saledec7": "CompanySale.decline", "salewd": "CompanySale.withdraw",
  "saleacc": "CompanySale.accept", "sellco": "CompanySale.accept",
  # hiring and staff
- "offer": "hire", "offer7": "hire", "pay7": "hire", "mkt26hire": "hire", "verifyag": "verifySalesperson",
+ "offer": "hire", "offer7": "hire", "pay7": "hire", "mkt26hire": "hire", "mkt26rep": "orderMarketReport", "arep": "orderAnalystReport",
+ # world around you, ranking, own software, key accounts, IT security (this branch)
+ "rk27f": "rankingBoard", "rk27s": "rankingBoard", "st27": "rankingBoard", "fav31ask": "askForFavour", "fav31call": "callInFavour", "fav31keep": "keepPromise", "net31p": "peopleYouKnow",
+ "swdev": "setSoftwareCoders", "swself": "setSoftwareSelfCoding", "swmodel": "setSoftwareModel", "swint": "setSoftwareInternalPercent", "ownsw": "useOwnSoftware",
+ "acc39": "keyAccountProfile", "acc39d": "setAccountDiscount", "cy56set": "setCyberLevel", "cy56bk": "toggleBackups", "cy56tr": "trainStaff", "verifyag": "verifySalesperson",
  "onbtick": "completePaperwork", "raisesheet": "raise", "talkstaff": "raise", "refcheck": "checkManagerReferences",
  "msearch56": "searchManagers", "promogo": "offerPromotion", "promoboss": "offerPromotion",
  # money
@@ -156,9 +160,6 @@ hfin Choose which holdings the finance manager covers
 
 MISSING["rivals"] = """
 rm27 Answer a rival's counter move (match, ignore)
-rk27f Rivals ranking filter
-rk27s Rivals ranking sort
-st27 Rival groups view setting
 rivhow Absorb a rival (merge or shut)
 rivmeet Meet a rival owner
 rivbuy Buy a rival company
@@ -172,23 +173,12 @@ pwgo Start a price war
 pwgo7 Start a price war (round 7 form)
 pwend End a price war
 branchgo Open a branch next to a rival
-swdev Develop software
-swself Use software yourself
-swmodel Choose a software business model
-swint Integrate software
-ownsw Own software product
-cy56set Set the cyber defence level
-cy56bk Back up systems
-cy56tr Train staff against attacks
-acc39 Open a key account
-acc39d Set a discount for a key account
 ch39set Link a key account to a supplier
 ch39off Remove a key-account link
 acctmeet Meet a key account
 acctdrop End a key-account contract
 ct56 Open a contract with a business customer
 sw33t Sales mechanics switch (upsell and similar)
-mkt26rep Order a market report
 rvf Reviews filter
 rvmore Show more reviews
 rvopen Open a review
@@ -206,17 +196,12 @@ fmmand Set the mandate of the finance manager
 fmgo Let the finance manager act
 fmadd Add money for the finance manager
 fmwd Take money from the finance manager
-arep Order an analyst report
 provpick Pick a supplier
 ownpick Pick one of your own companies as supplier
 provsheet Open the supplier sheet
 srcv Set the sourcing variety
 srcc Set the sourcing concentration
 fixv Fix a supplier
-fav31ask Ask a contact for a favour
-fav31call Call in a favour owed
-fav31keep Keep a favour
-net31p Open a contact's profile
 give28 Give money to a city cause
 found28 Start a foundation
 pk58t Switch a perk on for a company
@@ -405,24 +390,25 @@ AREA_NAMES = {
 SCREEN_MAP = {
  "weekreport": "Reports (ReportsView, ReportPrompt)", "reports": "Reports (ReportsView, ReportPrompt)",
  "awards56": "Phone > Achievements", "trophies28": "Phone > Achievements", "titles": "Phone > Achievements", "top28": "Phone > Rich list",
+ "map31": "Phone > World around you (ownership, presence, influence)", "net31": "Phone > World around you (people, favours)", "img31": "Phone > World around you (public image)", "rk27": "Phone > Biggest companies",
  "fs58": "Home > First steps", "sale": "Company > Sell (CompanySaleSection)", "saletalk": "Company > Sell (CompanySaleSection)",
  "mgrhire": "Company > Team (manager search)", "managers": "Company > Team", "mgmt56": "Company > Team", "p11talk": "Company > Team > Promote", "pr11": "Company > Team > Promote",
  "store13": "Company > Chain (new store)", "brand56": "Group > Join a franchise", "fr56": "Company > Chain > Franchise talk",
 }
 TAB_MAP = {
- "franchisor": "Company > Chain > Franchise", "supply": "Company > Chain > Supply", "mgrBanner": "Company > Team", "mgrCard": "Company > Team", "staffProfile": "Company > Team",
+ "ana": "Group > Market > Data analyst", "franchisor": "Company > Chain > Franchise", "supply": "Company > Chain > Supply", "mgrBanner": "Company > Team", "mgrCard": "Company > Team", "staffProfile": "Company > Team",
 }
 # the rest, by area (one id per word)
 MISSING_SCREENS = {
  "boards": "bigmeet bmeet11 bmeet12 board11 board12 boards12 heads hq hqhire hqmk meet meetings office org56 academy staffman tg58",
  "startups": "found36 startups crisis pe56 own27 dealroom",
- "rivals": "rival rivals riv31 rivmoves rvdetail reviews pricewar market map31 world cy56 branch nem28 grp27",
- "advisers": "suppliers give28 anrep11 pk58 net31",
+ "rivals": "rival rivals riv31 rivmoves rvdetail reviews pricewar market world cy56 branch nem28 grp27",
+ "advisers": "suppliers give28 anrep11 pk58",
  "other": "amb27 month30 paper40 wx56 pacct registry",
- "presentation": "img31 res36 pro59",
+ "presentation": "res36 pro59",
 }
 MISSING_TABS = {
- "advisers": "abroad advisers insurance ana",
+ "advisers": "abroad advisers insurance",
  "rivals": "rivalsCard",
  "startups": "invSale ownersRow",
  "other": "complaints demandLevel route",

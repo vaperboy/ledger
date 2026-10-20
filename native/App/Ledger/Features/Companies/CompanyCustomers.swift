@@ -45,7 +45,7 @@ struct CompanyCustomers: View {
                                 Text(line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Text(line.text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                            Text("\(line.who), \(line.age)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            Text((line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
                     if r.count > 6 {
@@ -94,6 +94,14 @@ struct CompanyCustomers: View {
                     .init(label: "Stopped", value: "\(c.status.blocked)", sub: "attacks caught"),
                     .init(label: "Cyber insurance", value: c.insured ? "Yes" : "No", tint: c.insured ? Theme.gain : Theme.ivory),
                 ])
+                if company.managerID != nil {
+                    Hairline()
+                    HStack {
+                        Text(c.status.managerPicks ? "Your manager picks the level, keeps the backups and books the training." : "Your choice stands.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Spacer()
+                        if !c.status.managerPicks { Button("Leave it to the manager") { store.act { $0.leaveCyberToManager(companyID: company.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                    }
+                }
                 ForEach(Cyber.levels.indices, id: \.self) { i in
                     Hairline()
                     Button { store.act { $0.setCyberLevel(companyID: company.id, level: i) }; Haptics.choose() } label: {
@@ -137,6 +145,9 @@ private struct AccountRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                     Text("\(Rivals.relationshipWord(account.relationship)) · since week \(account.sinceWeek) · paid you \(cur.short(account.totalPaid))")
+                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    let profile = engine.keyAccountProfile(account)
+                    Text("Runs a \(profile.tradeName.lowercased())" + (profile.inputName.map { profile.canBuy ? ". You can buy \($0.lowercased()) from them." : ". Get to know them to buy \($0.lowercased()) from them." } ?? ""))
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer()

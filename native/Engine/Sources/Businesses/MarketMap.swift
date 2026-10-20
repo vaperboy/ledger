@@ -332,6 +332,47 @@ public enum MarketMap {
         }
     }
 
+    // MARK: Reports on request
+
+    /// Ask the market analyst for this month's report now; one every two weeks at most. Returns the reason it did not happen. Original: `ACT.mkt26rep`.
+    public static func orderMarketReport(_ s: inout GameState, marketKey: String, data: GameData) -> String? {
+        guard let m = markets(s, data: data).first(where: { $0.id == marketKey }) else { return "You are no longer in this market." }
+        let k = knowledge(s, m)
+        guard k.level == .marketAnalyst, let cid = m.companyIDs.first(where: { s.company($0)?.staff.contains { $0.role == "mktan" } ?? false }) ?? m.companyIDs.first,
+              let i = s.companyIndex(cid) else { return "Only a market analyst writes these." }
+        if s.week - (s.companies[i].value("mq26").isNull ? -99 : s.companies[i].int("mq26")) < 2 { return "Your analyst sent one last week. Give it a little time." }
+        s.companies[i].set("mq26", s.week)
+        s.addMessage(from: k.name, title: "Market report: \(label(m, data: data, withCity: true))", body: report(s, m, k, data: data).joined(separator: " "), companyID: cid)
+        return nil
+    }
+
+    /// A report from the head-office data analyst on one company or all of them, sent as a message. Original: `analystReport` (meetings.js);
+    /// without the brand-lift estimate and the two-month forecast, which need the marketing outlook.
+    public static func dataAnalystReport(_ s: inout GameState, companyID: Int?, data: GameData) -> String? {
+        guard hasDataAnalyst(s) else { return "You need a data analyst in the head office." }
+        let cos = s.companies.filter { $0.status == .open && (companyID == nil || $0.id == companyID) }
+        guard !cos.isEmpty else { return "Nothing to report on." }
+        var body: [String] = []
+        for co in cos {
+            let h = co.value("rv26").array.map { $0.double }
+            var ln: [String] = []
+            if h.count >= 8 {
+                let a = h.suffix(4).reduce(0, +) / 4, bs = Array(h.suffix(8).prefix(4)), b = bs.reduce(0, +) / Double(max(1, bs.count))
+                if b > 0 { ln.append("Sales over the last four weeks are \(a >= b ? "up" : "down") \(Int(jsRound(abs(a / b - 1) * 100)))% on the four before.") }
+            }
+            let u = co.value("lastW")["util"]
+            if !u.isNull { ln.append(u.double > 0.95 ? "We are at the limit of what we can deliver and turn people away." : u.double < 0.5 ? "We use less than half our capacity." : "We use about \(Int(jsRound(u.double * 100)))% of our capacity.") }
+            if let m = market(of: co, s, data: data) {
+                let t = truth(s, m, data: data), kk = knowledge(s, m)
+                ln.append("Our share of the market is \(text(estimate(t.share, key: "my" + m.id, kk, seed: s.seed, week: s.week))).")
+            }
+            body.append("\(co.name): " + ln.joined(separator: " "))
+        }
+        let who = knowledge(s, Market(id: "", kind: .local, type: "", cityID: "", countryCode: "", companyIDs: [])).name
+        s.addMessage(from: who.isEmpty ? "Data analyst" : who, title: companyID == nil ? "Report: all companies" : "Report: \(cos[0].name)", body: body.joined(separator: "\n"))
+        return nil
+    }
+
     // MARK: Weight in the economy
 
     public struct Weight: Equatable {
