@@ -90,35 +90,65 @@ public enum CompanySetup {
 
     public enum PremisesResult: Equatable { case ok, notEnoughCash, bad }
 
-    /// Rent (or buy) premises. Rent is per m² per year, adjusted for the city, the listing and inflation since the start.
+    /// What a listing costs: rent a year per m², monthly rent, the 3-month deposit, fit-out, and (if bought) the price and the down payment.
+    public struct PremisesTerms: Equatable {
+        public var rentPerM2Year: Double
+        public var monthlyRent: Double
+        public var deposit: Double
+        public var fitOut: Double
+        public var purchasePrice: Double
+        public var downPayment: Double
+        public var squareMetres: Double
+    }
+
+    /// Terms of renting or buying a listing. Rent is per m² per year, adjusted for the city, the listing and inflation since the start.
+    public static func premisesTerms(_ co: Company, _ listing: Listing, data: GameData, world w: World) -> PremisesTerms? {
+        guard let bd = data.catalog[co.type], let kind = bd.premisesKind, let P = data.catalog.tables.premises[kind], let city = w.city(co) else { return nil }
+        let m2 = listing.squareMetres
+        let rent0 = P.rentPerM2Year * listing.rentFactor * city.rent * w.inflationIndex
+        let rent = m2 > 0 ? w.currency(co).tidy(rent0 * m2 / 12) * 12 / m2 : w.currency(co).tidy(rent0)
+        let fit = (data.catalog.tables.fitOut[kind] ?? 0) * m2
+        let price = jsRound(P.pricePerM2 * listing.rentFactor * pow(city.rent, 0.9) * m2 * w.economy.housing)
+        return PremisesTerms(rentPerM2Year: rent, monthlyRent: rent * m2 / 12, deposit: rent * m2 / 12 * 3, fitOut: fit, purchasePrice: price, downPayment: price * 0.35, squareMetres: m2)
+    }
+
+    /// Rent (or buy, with a commercial mortgage: 35% down, 15 years) premises. A deposit on the place being left is returned.
     /// Original: `setPrem`.
     public static func setPremises(_ s: inout GameState, companyID: Int, listing lst: Listing?, buy: Bool = false, data: GameData) -> PremisesResult {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let kind = bd.premisesKind,
-              let P = data.catalog.tables.premises[kind] else { return .bad }
+              data.catalog.tables.premises[kind] != nil else { return .bad }
         if kind == "home" || kind == "none" {
             s.companies[i].set("prem", .object(["kind": .string(kind), "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
             return .ok
         }
         let w = World(state: s, data: data)
+        guard let lst = lst, let t = premisesTerms(s.companies[i], lst, data: data, world: w) else { return .bad }
+        // The deposit of the place being left comes back first.
+        let old = s.companies[i].value("prem")
+        let refund = old["dep"].double > 0 && !old["owned"].bool ? old["dep"].double : 0
         let co = s.companies[i]
-        guard let lst = lst, let city = w.city(co) else { return .bad }
-        let currency = w.currency(co)
+        if co.cash + refund < (buy ? t.downPayment : t.deposit) + t.fitOut { return .notEnoughCash }
+        if refund > 0 { Payments.companyReceives(&s, companyID: companyID, amount: refund, category: nil, label: "Lease deposit returned") }
         let m2 = lst.squareMetres
-        let rent0 = P.rentPerM2Year * lst.rentFactor * city.rent * w.inflationIndex
-        let rent = m2 > 0 ? currency.tidy(rent0 * m2 / 12) * 12 / m2 : currency.tidy(rent0)
-        let fit = (data.catalog.tables.fitOut[kind] ?? 0) * m2
-        let deposit = rent * m2 / 12 * 3
-        if co.cash < deposit + fit { return .notEnoughCash }
-        if deposit > 0 { Payments.companyPays(&s, companyID: companyID, amount: deposit, category: nil, label: "Lease deposit (3 months)") }
-        s.companies[i].set("prem", .object(["kind": .string(kind), "m2": .number(m2), "rent": .number(rent), "owned": false, "val": 0, "loan": 0, "dep": .number(deposit),
-                                            "loc": .number(lst.location), "lname": .string(lst.name), "landlord": .string(lst.landlord)]))
-        var docs = s.companies[i].value("docs")
-        docs["lease_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
-        s.companies[i].set("docs", docs)
-        if fit > 0 {
-            Payments.companyPays(&s, companyID: companyID, amount: fit, category: nil, label: "Fit-out of premises")
+        if buy {
+            Payments.companyPays(&s, companyID: companyID, amount: t.downPayment, category: nil, label: "Premises purchase (equity)")
+            let loanID = EquipmentMarket.openLoan(&s, companyID: companyID, name: "Commercial mortgage", amount: t.purchasePrice - t.downPayment, months: 180,
+                                                  extraMargin: max(0.012, Banking.creditMargin(s.credit) * 0.45) + 0.004 - Banking.creditMargin(s.credit))
+            if let li = s.loans.firstIndex(where: { $0.id == loanID }) { s.loans[li].isGuaranteed = co.form != .limited }
+            s.companies[i].set("prem", .object(["kind": .string(kind), "m2": .number(m2), "rent": 0, "owned": true, "val": .number(t.purchasePrice), "loan": .number(Double(loanID)), "cost": .number(t.purchasePrice),
+                                                "loc": .number(lst.location), "lname": .string(lst.name), "landlord": .string(lst.landlord)]))
+        } else {
+            if t.deposit > 0 { Payments.companyPays(&s, companyID: companyID, amount: t.deposit, category: nil, label: "Lease deposit (3 months)") }
+            s.companies[i].set("prem", .object(["kind": .string(kind), "m2": .number(m2), "rent": .number(t.rentPerM2Year), "owned": false, "val": 0, "loan": 0, "dep": .number(t.deposit),
+                                                "loc": .number(lst.location), "lname": .string(lst.name), "landlord": .string(lst.landlord)]))
+            var docs = s.companies[i].value("docs")
+            docs["lease_agreement"] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))])
+            s.companies[i].set("docs", docs)
+        }
+        if t.fitOut > 0 {
+            Payments.companyPays(&s, companyID: companyID, amount: t.fitOut, category: nil, label: "Fit-out of premises")
             var eq = s.companies[i].value("eq")
-            eq["fit"] = .object(["n": 1, "cond": 1, "bv": .number(fit), "cost": .number(fit), "used": 0, "age": 0, "life": 10])
+            eq["fit"] = .object(["n": 1, "cond": 1, "bv": .number(t.fitOut), "cost": .number(t.fitOut), "used": 0, "age": 0, "life": 10])
             s.companies[i].set("eq", eq)
         }
         return .ok
@@ -159,35 +189,9 @@ public enum CompanySetup {
                 let price = jsRound(roundTo(v.price * w.inflationIndex, step: 1000))
                 // Like a real firm (and the original's autoSetup): buy outright when the cash is there, otherwise finance with
                 // 20% down and a five-year loan secured on the vehicle, otherwise lease. Original: `buyVehCore`.
-                var mode = "own", loanID = 0, lease = 0.0, bookValue = price
-                if s.companies[i].cash >= price && !(preferFinancing && s.companies[i].cash < price * 3) {
-                    Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: v.name)
-                } else if s.companies[i].cash >= price * 0.2 {
-                    mode = "fin"
-                    Payments.companyPays(&s, companyID: companyID, amount: price * 0.2, category: nil, label: "Down payment: \(v.name)")
-                    var loan = Loan(raw: [:])
-                    loan.id = s.makeID()
-                    loan.kind = "biz"
-                    loan.name = "Vehicle loan: \(v.name)"
-                    loan.balance = price * 0.8
-                    loan.originalAmount = price * 0.8
-                    loan.margin = Banking.creditMargin(s.credit) + 0.015
-                    loan.termMonths = 60
-                    loan.companyID = companyID
-                    loan.startWeek = s.week
-                    loan.isGuaranteed = s.companies[i].form != .limited
-                    loan.monthlyPayment = Loans.annuity(principal: price * 0.8, yearlyRate: s.economy.policyRate + loan.margin, months: 60)
-                    s.loans.append(loan)
-                    loanID = loan.id
-                } else {
-                    mode = "lease"; lease = jsRound(price * 0.0215); bookValue = 0
-                }
-                var list = s.companies[i].value("veh").array
-                var rec: JSONValue = .object(["id": .number(Double(s.makeID())), "eq": .string(e.id), "model": .string(model), "cost": .number(price), "bv": .number(bookValue), "cond": 1, "km": 0,
-                                              "mode": .string(mode), "loan": .number(Double(loanID)), "name": .string(v.name), "rel": 1])
-                if mode == "lease" { rec["lease"] = .number(lease) }
-                list.append(rec)
-                s.companies[i].set("veh", .array(list))
+                let cash = s.companies[i].cash
+                let mode = cash >= price && !(preferFinancing && cash < price * 3) ? "own" : cash >= price * 0.2 ? "fin" : "lease"
+                _ = addVehicle(&s, companyIndex: i, e, model: model, modelName: v.name, price: price, mode: mode, brand: nil, data: data)
             }
             return true
         }
@@ -195,18 +199,67 @@ public enum CompanySetup {
         let price = unit * q
         if co.cash < price { return false }
         Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: "\(e.name) x\(Int(q))")
+        addEquipment(&s, companyIndex: i, e, tradeID: bd.id, quantity: q, totalPrice: price, brand: nil, used: nil, data: data)
+        return true
+    }
+
+    /// Put bought equipment into the company's books: the record, its units, the brand's output and reliability. The money has
+    /// been paid already. Used by the standard purchase and by the equipment market. Original: `setupEqRec`.
+    static func addEquipment(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, tradeID: String, quantity q: Double, totalPrice price: Double,
+                             brand: EquipmentMarket.Brand?, used: EquipmentMarket.UsedOffer?, data: GameData) {
         var eq = s.companies[i].value("eq")
         var rec = eq[e.id].isNull ? JSONValue.object(["n": 0, "cond": 1, "bv": 0, "cost": 0, "used": 0, "age": 0]) : eq[e.id]
-        let total = rec["n"].double + q
-        rec["cond"] = .number((rec["cond"].double * rec["n"].double + q) / max(1, total))
+        let before = rec["n"].double
+        let total = before + q
+        rec["cond"] = .number((rec["cond"].double * before + (used?.trueCondition ?? 1) * q) / max(1, total))
         rec["n"] = .number(total)
         rec["bv"] = .number(rec["bv"].double + price)
         rec["cost"] = .number(rec["cost"].double + price)
+        if used != nil { rec["used"] = 1 }
         rec["life"] = .number(e.lifeYears)
+        if let b = brand {
+            rec["perf"] = .number(((rec["perf"].isNull ? 1 : rec["perf"].double) * before + b.performance * q) / max(1, total))
+            rec["rel"] = .number(((rec["rel"].isNull ? 1 : rec["rel"].double) * before + b.reliability * q) / max(1, total))
+            var mods = rec["mods"].array
+            if let at = mods.firstIndex(where: { $0["nm"].string == b.name }) { mods[at]["n"] = .number(mods[at]["n"].double + q) }
+            else { mods.append(.object(["nm": .string(b.name), "n": .number(q), "rt": .number(b.rating)])) }
+            rec["mods"] = .array(mods)
+        }
         eq[e.id] = rec
         s.companies[i].set("eq", eq)
-        EquipmentUnits.recordPurchase(&s, companyIndex: i, e, tradeID: bd.id, quantity: Int(q), unitPrice: unit, data: data)
-        SpecialFamilies.afterBuy(&s, companyIndex: i, bd, equipmentID: e.id, quantity: q)
+        EquipmentUnits.recordPurchase(&s, companyIndex: i, e, tradeID: tradeID, quantity: Int(q), unitPrice: price / max(1, q), brand: brand, used: used, data: data)
+        if let bd = data.catalog[tradeID] { SpecialFamilies.afterBuy(&s, companyIndex: i, bd, equipmentID: e.id, quantity: q) }
+    }
+
+    /// Add one vehicle: paid for in full (`own`), on a loan with 20% down (`fin`) or leased (`lease`). The first payment is made here.
+    /// Returns false when the money for it is not there. Original: `buyVehCore`.
+    static func addVehicle(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, model: String, modelName: String, price: Double, mode: String,
+                           brand: EquipmentMarket.Brand?, data: GameData) -> Bool {
+        let companyID = s.companies[i].id
+        var loanID = 0, lease = 0.0, bookValue = price
+        let name = brand?.name ?? modelName
+        switch mode {
+        case "own":
+            if s.companies[i].cash < price { return false }
+            Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: name)
+        case "fin":
+            if s.companies[i].cash < price * 0.2 { return false }
+            Payments.companyPays(&s, companyID: companyID, amount: price * 0.2, category: nil, label: "Down payment: \(name)")
+            loanID = EquipmentMarket.openLoan(&s, companyID: companyID, name: "Vehicle loan: \(name)", amount: price * 0.8, months: 60, extraMargin: 0.015)
+        default:
+            lease = jsRound(price * 0.0215); bookValue = 0
+        }
+        let year = GameCalendar.year(week: s.week)
+        let warranty = EquipmentUnits.warrantyYears(kind: "veh", vehicleModel: model, class: 1, price: price, tables: data.catalog.tables, currency: World(state: s, data: data).currency(s.companies[i]))
+        var rec: JSONValue = .object(["id": .number(Double(s.makeID())), "eq": .string(e.id), "model": .string(model), "cost": .number(price), "bv": .number(bookValue), "cond": 1, "km": 0,
+                                      "mode": .string(mode), "loan": .number(Double(loanID)), "name": .string(brand == nil ? modelName : "\(name) \(year)"), "rel": .number(brand?.reliability ?? 1),
+                                      "yr": .number(Double(year)), "src": .string(mode == "lease" ? "lease" : "new"), "vis": 1, "c0": 1, "down": 0,
+                                      "warr": .number(Double(s.week) + (mode == "lease" ? 156 : warranty * 52))])
+        if let b = brand { rec["rating"] = .number(b.rating) }
+        if mode == "lease" { rec["lease"] = .number(lease) }
+        var list = s.companies[i].value("veh").array
+        list.append(rec)
+        s.companies[i].set("veh", .array(list))
         return true
     }
 

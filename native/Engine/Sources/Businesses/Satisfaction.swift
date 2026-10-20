@@ -45,6 +45,11 @@ public enum Satisfaction {
                 let good = s.random.chance(0.55 + sk * 0.4)
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: good, data: data)
                 var l = s.companies[i].value("compl").array; l[k]["by"] = "mgr"; s.companies[i].set("compl", .array(l))
+            } else if let sk = ManagerModel.assistantSkill(s.companies[i], duty: "comp", people: s.people) {
+                // An assistant manager with the complaints job answers them.
+                let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)
+                resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: s.random.chance(0.55 + sk * 0.4), data: data)
+                var l = s.companies[i].value("compl").array; l[k]["by"] = "asst"; s.companies[i].set("compl", .array(l))
             } else if s.policy.autoComplaints && c["sev"].int <= 2 {
                 // The owner's standing instruction: staff deal with routine complaints the way a sensible manager would.
                 let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)

@@ -68,6 +68,7 @@ struct CompanyOperations: View {
                     }
                 }
             }
+            EquipmentEntryRow(company: company)
         }
     }
 

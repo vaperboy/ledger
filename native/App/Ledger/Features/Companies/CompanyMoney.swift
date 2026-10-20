@@ -45,6 +45,7 @@ struct CompanyMoney: View {
                 }
             }
             lastWeekReport(cur)
+            CompanySaleSection(engine: engine, company: company)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SectionLabel("Move money")

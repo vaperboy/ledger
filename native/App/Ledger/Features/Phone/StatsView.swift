@@ -22,6 +22,7 @@ struct StatsView: View {
                             }
                         }
                     }
+                    TrophiesPreview()
                     Card {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
                             SectionLabel("What it cost")
