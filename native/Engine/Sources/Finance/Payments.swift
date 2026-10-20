@@ -39,6 +39,7 @@ public enum Payments {
         }
         amt = jsRound(amt)
         if amt <= 0 { return true }
+        if Ledger.observer != nil { Ledger.cause = "pays:\(category ?? "-"):\(label ?? "")" }
         Ledger.moveRaw(&s, .company(companyID), -amt)
         if let cat = category {
             var b = s.companies[i].books
@@ -53,6 +54,7 @@ public enum Payments {
     public static func companyReceives(_ s: inout GameState, companyID: Int, amount: Double, category: String?, label: String?) {
         guard let i = s.companyIndex(companyID) else { return }
         let amt = jsRound(amount)
+        if Ledger.observer != nil { Ledger.cause = "gets:\(category ?? "-"):\(label ?? "")" }
         Ledger.moveRaw(&s, .company(companyID), amt)
         if let cat = category {
             var b = s.companies[i].books

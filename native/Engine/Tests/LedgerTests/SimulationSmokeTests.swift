@@ -21,8 +21,10 @@ final class SimulationSmokeTests: XCTestCase {
             // The reference script (tools/ref/snippets/stats_run.js) asks for the estimate at size 1, whatever size the company has.
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: form, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + fund)
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+            _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
+        // LEDGER_FAITHFUL=1: play like the original does in the comparison script (no automatic replacement of people who leave).
+        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; return p }()) }
         XCTAssertNotEqual(id, 0)
         return id
     }

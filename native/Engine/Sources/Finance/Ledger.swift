@@ -22,8 +22,13 @@ public enum CashHolder: Equatable, Sendable {
 public enum Ledger {
     public static let statementLimit = 600
 
+    /// Test hook: called for every balance change (used by the balance tests to tally cash by cause). Nil in the app.
+    nonisolated(unsafe) public static var observer: ((CashHolder, Double) -> Void)?
+    nonisolated(unsafe) public static var cause: String?
+
     /// The balance moves; no statement line (used by the weekly staging, which writes its own lines).
     public static func moveRaw(_ s: inout GameState, _ holder: CashHolder, _ amount: Double) {
+        if let o = observer { o(holder, amount); cause = nil }
         switch holder {
         case .me: s.cash += amount
         case .company(let id):
