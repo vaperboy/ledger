@@ -29,6 +29,8 @@ public struct Balance: Sendable {
     public var tradeCountryFit: (demand: [String: [String: Double]], price: [String: [String: Double]])
     /// How each trade sells besides the till: contracts, platforms, memberships, peak seasons ... Original: `R33.W`.
     public var salesWays: [String: [SalesWay]]
+    /// Which trades sell to the better-off, and how hard a place's income spread bites (`Resources/market_classes.json`, `CityMarket`).
+    public var cityMarket: CityMarketTables
 
     /// One way a trade sells. `kind`: contract, offer, referral, platform, members, peak, emergency, upsell.
     public struct SalesWay: Sendable {
@@ -40,7 +42,8 @@ public struct Balance: Sendable {
         public var peakMonths: [Int]
     }
 
-    public init(json j: JSONValue, weatherJSON: JSONValue, waysJSON: JSONValue) {
+    public init(json j: JSONValue, weatherJSON: JSONValue, waysJSON: JSONValue, marketJSON: JSONValue = .null) {
+        cityMarket = CityMarketTables(json: marketJSON)
         weather = WeatherTables(json: weatherJSON)
         salesWays = waysJSON["W"].object.mapValues { list in
             list.array.map { w in
@@ -74,7 +77,7 @@ public struct Balance: Sendable {
         var json = try load("balance")
         // Corrections of the demand levels live in trade_tuning.json (see TradeTuning)
         for (id, k) in TradeTuning.bundled()["demandLevel"].object { json["demand"]["demandLevelByTrade"][id] = k }
-        return Balance(json: json, weatherJSON: try load("weather"), waysJSON: try load("sales_ways"))
+        return Balance(json: json, weatherJSON: try load("weather"), waysJSON: try load("sales_ways"), marketJSON: try load("market_classes"))
     }
 
     /// Price multiplier for a (possibly fractional) price level -3 ... +3. Original: `pmOf` (price_moves_and_lawsuits.js).

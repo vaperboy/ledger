@@ -17,6 +17,14 @@ public struct Country: Equatable, Sendable, Identifiable {
         public var wage: Double          // wage level
         public var demand: Double        // customer demand level
         public var price: Double         // price level
+        /// Metropolitan population, thousands (`population` is the city proper). Informational; people in the commuter belt shop here too.
+        public var metro: Double = 0
+        /// Median household income against the country's median (1 = the national median). Data field `inc`; else derived from the wage level.
+        public var affluence: Double = 1
+        /// Gini coefficient of household incomes in this city (`CityMarket.swift`).
+        public var inequality: Double = 0.33
+        /// How many visitors the city draws against the country's tourism share (1 = as the country; hubs and resorts more, industrial towns less).
+        public var touristIndex: Double = 1
     }
 
     public struct IncomeTax: Equatable, Sendable {
@@ -58,6 +66,8 @@ public struct Country: Equatable, Sendable, Identifiable {
     /// Accounting units per one unit of local currency (before monthly drift)
     public var fx: Double
     public var populationMillions: Double
+    /// Gini coefficient of household disposable income (data field `gini`, set in `city_market.json`; 0.33 when missing).
+    public var gini: Double
     /// Price level versus the reference economy
     public var priceLevel: Double
     /// Real spending power (customers' purchasing strength)
@@ -146,6 +156,8 @@ extension Country {
         currencySymbol = p["symbol"].isNull ? p["currency"].string : p["symbol"].string
         self.fx = fx
         populationMillions = p["population"].double
+        let giniValue = p["gini"].isNull ? 0.33 : p["gini"].double
+        gini = giniValue
         let priceIndexRatio = eco["priceIndex"].double / ReferenceEconomy.priceIndex
         priceLevel = r2(priceIndexRatio)
         marketStrength = r2((B(eco["spendPerPerson"].double) / ReferenceEconomy.spendPerPerson / priceIndexRatio).squareRoot())
@@ -247,5 +259,11 @@ extension Country {
             marketStrength = 1
             buyingPower = ei["buyingPowerIndex"].double / ref.buyingPowerIndex
         }
+
+        // Place data (metro size, income level and spread, tourist draw), after the country's final wage level is known.
+        var entries: [String: JSONValue] = [:]
+        for x in p["cities"].array { entries[x["id"].isNull ? x[0].string : x["id"].string] = x }
+        let finalWageLevel = wageLevel
+        cities = cities.map { City.withPlaceData($0, entry: entries[$0.id] ?? .null, countryGini: giniValue, wageLevel: finalWageLevel) }
     }
 }

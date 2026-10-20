@@ -88,6 +88,11 @@ public enum DemandModel {
             let a = affordability(co, bd, w)
             if a != 1 { r.customers *= a; r.parts.append(("affordability", a)) }
         }
+        // 55: trades that sell to the better-off follow the share of local households that can afford them (CityMarket)
+        if bd.normalDemand != 0 && !["fin", "energy", "hold", "club"].contains(bd.family) {
+            let c = CityMarket.demandFactor(co, bd, w)
+            if c != 1 { r.customers *= c; r.parts.append(("market class", c)) }
+        }
         // 60: commodities sell all they make (farms)
         // 86: some trades fit some countries better
         let fit = tradeCountryFit(co, w)
@@ -188,8 +193,7 @@ public enum DemandModel {
     /// Share of customers who are visitors. Original: `WX56.share`.
     static func touristShare(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let trade = w.balance.tourismShareByTrade[co.type] ?? 0.03
-        let country = w.country(co).pack["tourism"]["share"]
-        let visitors = country.isNull ? 0.1 : country.double
+        let visitors = CityMarket.visitorShare(country: w.country(co), city: w.city(co))
         return min(0.55, trade * (0.2 + 0.8 * visitors))
     }
 

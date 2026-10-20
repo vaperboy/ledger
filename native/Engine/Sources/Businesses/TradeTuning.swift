@@ -15,7 +15,7 @@ public enum TradeTuning {
     /// Trades whose numbers deliberately differ from the original game's (parity tests skip them).
     public static var tunedTradeIDs: Set<String> {
         let t = bundled()
-        return Set(t["trades"].object.keys).union(t["demandLevel"].object.keys)
+        return Set(t["trades"].object.keys).union(t["demandLevel"].object.keys).union(CityMarketTables.bundledTradeIDs)
     }
 
     public static func bundled() -> JSONValue {

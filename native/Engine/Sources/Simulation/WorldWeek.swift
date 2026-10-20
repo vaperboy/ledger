@@ -62,8 +62,11 @@ public enum WorldWeek {
             if m.isNull {
                 let city = data.countries.city(co0.cityID, preferring: co0.countryCode)?.city
                 let scale = (bd.family == "fin" || bd.family == "energy") ? 0.3 : 1.0
-                m = .object(["key": .string(key), "n": .number(max(1, jsRound(1 + (city?.population ?? 100) / 120 + s.random.range(0, 2) * scale))),
-                             "pi": 1.0, "str": .number(s.random.range(0.3, 0.8)), "aggr": .number(s.random.range(0.2, 0.9)),
+                // Rivals follow the customers: luxury and premium trades find few rivals where few households can pay (CityMarket).
+                let density = city.map { CityMarket.rivalDensity(trade: bd.id, country: data.countries.resolve(co0.countryCode, orHome: s.homeCountryCode), city: $0, tables: data.balance.cityMarket) } ?? 1
+                m = .object(["key": .string(key), "n": .number(max(1, jsRound(1 + (city?.population ?? 100) / 120 * density + s.random.range(0, 2) * scale))),
+                             "pi": 1.0, "str": .number(s.random.range(0.3, 0.8) + CityMarket.rivalStrengthBoost(trade: bd.id, city: city, tables: data.balance.cityMarket)),
+                             "aggr": .number(s.random.range(0.2, 0.9)),
                              "since": 0, "uw": 0, "calls": 0, "ev": 0])
             }
             var pi = m["pi"].double

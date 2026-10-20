@@ -9,7 +9,8 @@ import Businesses
 final class CompanyModelDifferentialTests: XCTestCase {
     func world() throws -> World {
         let s = try Golden.state("save_uk25")
-        return World(state: s, countries: try CountryBook.bundled(), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
+        // The original game's city data (no tourist draw per city, no city overlay): docs/CITY_DATA.md
+        return World(state: s, countries: try CountryBook.bundled(realCityMarket: false), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
     }
 
     func testDemandPartsMatchOriginal() throws {

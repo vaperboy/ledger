@@ -162,7 +162,7 @@ public enum Marketing {
         let wom = co.num("wom")
         if wom > 0.4 { gain += wom * 0.2; co.set("wom", wom * 0.88) } else { co.set("wom", 0) }
         if s.hasHeadOffice("mkt") { gain *= 1.1 }
-        co.awareness = clamp(co.awareness * decay(co) + gain, 0, 100)
+        co.awareness = clamp(co.awareness * decay(co) + gain, 0, CityMarket.awarenessCeiling(co, bd, w))
         spill(&s, from: co, gain: gain)
         s.companies[i] = co
         viralRoll(&s, companyIndex: i, bd, w, primeTimeActive: primeTimeActive, tables: tables)

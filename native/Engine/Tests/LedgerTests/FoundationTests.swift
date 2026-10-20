@@ -48,7 +48,8 @@ final class FoundationTests: XCTestCase {
     static let correctedEmployerCost: Set<String> = ["DE"]
 
     func testCountryDerivedValuesMatchOriginal() throws {
-        let book = try CountryBook.bundled()
+        // The original game's city data: the real-life city overlay (docs/CITY_DATA.md) adds cities and fields on top of it.
+        let book = try CountryBook.bundled(realCityMarket: false)
         XCTAssertEqual(book.countries.count, 23)
         let g = try Golden.load("countries_derived")
         for c in book.countries {
