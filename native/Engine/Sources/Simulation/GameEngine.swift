@@ -317,6 +317,7 @@ public struct GameEngine {
         Lawsuits.weekly(&state, data: data)
         Cyber.weekly(&state, data: data)
         MarketMap.weekly(&state, data: data)
+        SoftwareProducts.weekly(&state, data: data)
         ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
         EventEngine.expire(&state, data: data, context: context)

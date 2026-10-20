@@ -142,11 +142,14 @@ public enum CompanyWeek {
         if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
         if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
         costRate = max(0.01, costRate)
-        // Business customers buy from the capacity the walk-ins leave over (key_accounts.js: acctDemand, acctRev).
+        // Business customers share the shop with the walk-ins (key_accounts.js: acctDemand, acctRev).
         let acctOrders = KeyAccounts.orders(co, bd, privateDemand: D, capacity: cap, units: units, price: price, costRate: costRate)
-        let walkInRev = rev
+        var walkInRev = rev
         if acctOrders.units > 0 {
-            units += acctOrders.units; rev += acctOrders.revenue; D += acctOrders.demand
+            // A full shop is shared: the walk-ins give up what the accounts take (KeyAccounts.orders).
+            let keep = units > 0 ? acctOrders.walkInUnits / units : 1
+            walkInRev = rev * keep
+            units = acctOrders.walkInUnits + acctOrders.units; rev = walkInRev + acctOrders.revenue; D += acctOrders.demand
             ctx0Util = cap > 0 ? units / cap : 0
             KeyAccounts.record(&s, i, acctOrders, price: price)
         }

@@ -401,3 +401,96 @@ public extension GameEngine {
         return msg.map { .refused($0) } ?? .done
     }
 }
+
+// MARK: Analysts, forecasts, rankings, the world around you, own software
+
+public extension GameEngine {
+    /// What a market analyst in this company would give you (the hire screen). Original: `R26.mktanHire`.
+    func marketAnalystVerdict(companyID: Int) -> MarketMap.HireVerdict { MarketMap.analystHireVerdict(state, companyID: companyID, data: data) }
+    var hasDataAnalyst: Bool { MarketMap.hasDataAnalyst(state) }
+    mutating func dataAnalystCandidates() -> [Person] {
+        var r: [Person] = []
+        update { s, d, _ in r = MarketMap.dataAnalystCandidates(&s, data: d) }
+        return r
+    }
+    mutating func hireDataAnalyst(personID: Int, monthlyWage: Double) -> MarketMap.HQHire {
+        var r = MarketMap.HQHire.refused
+        update { s, _, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage) }
+        return r
+    }
+    mutating func fireDataAnalyst() { update { s, _, _ in MarketMap.fireDataAnalyst(&s) } }
+    func economyWeight() -> MarketMap.Weight { MarketMap.weight(state, data: data) }
+
+    /// The forecast boxes of the price-move screen: customers and margin, as you or your analyst see them. Original: `est`, `fcBoxes`.
+    func priceForecast(companyID: Int, byShare d: Double, campaignPercent cp: Int = 0) -> (forecast: PriceMoves.Forecast, text: PriceMoves.ForecastText)? {
+        guard let f = PriceMoves.forecast(state, companyID: companyID, byShare: d, campaignPercent: cp, data: data) else { return nil }
+        return (f, PriceMoves.forecastText(f, state, key: "p\(companyID):\(Int(jsRound(d * 100))):\(cp)", campaign: cp > 0))
+    }
+
+    /// The biggest companies by sales, profit, value or growth. Original: `R27.ranked`.
+    func rankingBoard(scope: CompanyRanking.Scope, metric: CompanyRanking.Metric) -> CompanyRanking.Board { CompanyRanking.board(state, data: data, scope: scope, metric: metric) }
+    func yourRanking(scope: CompanyRanking.Scope = .country, metric: CompanyRanking.Metric = .revenue) -> (rank: Int, of: Int)? {
+        CompanyRanking.yourRank(state, data: data, scope: scope, metric: metric)
+    }
+
+    // MARK: IT security picked by the manager
+    mutating func leaveCyberToManager(companyID: Int) { update { s, _, _ in Cyber.leaveToManager(&s, companyID: companyID) } }
+
+    // MARK: World around you
+    func publicImage() -> WorldAround.Image { WorldAround.image(state, data: data) }
+    mutating func peopleYouKnow() -> [WorldAround.Contact] {
+        var r: [WorldAround.Contact] = []
+        update { s, d, _ in r = WorldAround.contacts(&s, data: d) }
+        return r
+    }
+    func favours() -> [WorldAround.Favour] { WorldAround.favours(state) }
+    mutating func keepPromise(favourID: Int) -> WorldAround.ActionResult {
+        var r = WorldAround.ActionResult.refused("")
+        update { s, d, _ in r = WorldAround.keepPromise(&s, favourID: favourID, data: d) }
+        return r
+    }
+    mutating func callInFavour(favourID: Int) -> WorldAround.ActionResult {
+        var r = WorldAround.ActionResult.refused("")
+        update { s, d, _ in r = WorldAround.callIn(&s, favourID: favourID, data: d) }
+        return r
+    }
+    mutating func askForFavour(contactID: String) -> WorldAround.ActionResult {
+        var r = WorldAround.ActionResult.refused("")
+        update { s, d, _ in r = WorldAround.askFavour(&s, contactID: contactID, data: d) }
+        return r
+    }
+    func mapOwnership() -> [WorldAround.OwnershipNode] { WorldAround.ownership(state, data: data) }
+    func mapPresence() -> [WorldAround.CountryPresence] { WorldAround.presence(state, data: data) }
+    mutating func mapInfluence() -> WorldAround.Influence {
+        var r = WorldAround.Influence(inner: [], allies: [], others: [], seenAs: "")
+        update { s, d, _ in r = WorldAround.influence(&s, data: d) }
+        return r
+    }
+    mutating func contactsSummary() -> String {
+        var r = ""
+        update { s, d, _ in r = WorldAround.contactsSummary(&s, data: d) }
+        return r
+    }
+    var localPaperName: String? { WorldAround.paperName(state, data: data) }
+
+    // MARK: Key accounts: what they sell
+    func keyAccountProfile(_ a: KeyAccounts.Account) -> KeyAccounts.Profile { KeyAccounts.profile(a, data: data) }
+
+    // MARK: Software of your own
+    func softwareProduct(companyID: Int) -> SoftwareProducts.Product? { SoftwareProducts.product(state, companyID: companyID) }
+    mutating func startSoftware(companyID: Int, type: String, model: String, name: String? = nil) -> Bool {
+        var r = false
+        update { s, d, _ in r = SoftwareProducts.start(&s, companyID: companyID, type: type, model: model, name: name, data: d) }
+        return r
+    }
+    mutating func setSoftwareCoders(companyID: Int, coders: Int) { update { s, _, _ in SoftwareProducts.setCoders(&s, companyID: companyID, coders: coders) } }
+    mutating func setSoftwareSelfCoding(companyID: Int, on: Bool) { update { s, _, _ in SoftwareProducts.setSelfCoding(&s, companyID: companyID, on: on) } }
+    mutating func setSoftwareModel(companyID: Int, model: String) { update { s, d, _ in SoftwareProducts.setModel(&s, companyID: companyID, model: model, data: d) } }
+    mutating func setSoftwareInternalPercent(companyID: Int, percent: Int) { update { s, _, _ in SoftwareProducts.setInternalPercent(&s, companyID: companyID, percent: percent) } }
+    func ownSoftwareOffers(buyerID: Int, equipmentName: String) -> [SoftwareProducts.Offer] { SoftwareProducts.offers(state, equipmentName: equipmentName, buyerID: buyerID) }
+    mutating func useOwnSoftware(companyID: Int, equipmentID: String, producerID: Int) -> SoftwareProducts.AdoptResult {
+        var r = SoftwareProducts.AdoptResult.notPossible
+        update { s, d, _ in r = SoftwareProducts.adopt(&s, companyID: companyID, equipmentID: equipmentID, producerID: producerID, data: d) }
+        return r
+    }
+}

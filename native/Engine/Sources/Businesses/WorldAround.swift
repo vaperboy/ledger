@@ -481,6 +481,7 @@ public enum WorldAround {
         public var allies: [String]      // contacts you are close to (50 or more)
         public var others: [String]      // the rest: rivals and the wary
         public var seenAs: String
+        public init(inner: [String], allies: [String], others: [String], seenAs: String) { self.inner = inner; self.allies = allies; self.others = others; self.seenAs = seenAs }
     }
 
     /// Circles of influence: your companies inside, allies in the middle ring, rivals and the wary outside. Original: `V.map31`, "Influence".

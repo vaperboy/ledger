@@ -159,6 +159,7 @@ public enum EquipmentUnits {
                 let plan = EquipmentMarket.book["plans"][rec["sub"]["tier"].int]
                 rec["perf"] = .number(Double(EquipmentMarket.users(s.companies[i])) > plan["users"].double ? 0.85 : plan["perf"].double)
                 rec["cond"] = 1; rec["_c"] = 1
+                SoftwareProducts.useWeek(&s, companyIndex: i, record: &rec)
                 var eq = s.companies[i].value("eq"); eq[id] = rec; s.companies[i].set("eq", eq)
                 continue
             }
@@ -167,6 +168,7 @@ public enum EquipmentUnits {
                 if rec["upd"].double > 0 { Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["upd"].double / 52, category: "oth") }
                 if rec["soft"].string == "once", Double(s.week) - (rec["ver"].isNull ? Double(s.week) : rec["ver"].double) > spec.lifeYears * 52 { rec["perf"] = .number(min(rec["perf"].isNull ? 1 : rec["perf"].double, 0.92)) }
                 rec["cond"] = 1; rec["_c"] = 1
+                SoftwareProducts.useWeek(&s, companyIndex: i, record: &rec)
                 var eq = s.companies[i].value("eq"); eq[id] = rec; s.companies[i].set("eq", eq)
                 continue
             }
