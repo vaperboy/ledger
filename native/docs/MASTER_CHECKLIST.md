@@ -47,6 +47,11 @@ Counts (original has 557 actions): 235 done and used by a screen, 17 engine only
 
 ## Stage 3 — Redesign UI, one screen at a time (NOT STARTED)
 
+**UI grouping rules (binding for Stage 3; never invent a tab because the HTML game had one):**
+- **Management = one Team / People surface.** Store manager, assistant, regional, chain, chief and department head are rows in one list with a role + scope badge (store | chain | region | group). No tab or root screen called Assistant, Regional, Chief or Managers-vs-Assistants. Hire, promote, fire and pay are sheets or rows on that list, not sibling tabs. Distinct engine role ids still show as one list.
+- **Group = ownership and structure only** (chains, franchises, boards, stakes). A region chief or chain manager lives under Group, in that chain's people (or links into Team with scope=chain). No parallel "Regional managers" area.
+- When unsure: people go under Team, structure goes under Group. No third place.
+
 Current screens are **first versions**, functional only. Ivory Ledger style is chosen (`design/STYLE_IVORY_LEDGER.md`); other four styles are kept in `design/mockups` for later purchase.
 - Designed and shipped in Ivory Ledger (first pass, to be reviewed): Home, Group, company overview, Bank, Money overview, Settings, Inbox, Start.
 - First-version, undesigned: company sections (Projects, Properties, Book, Plant, Fish, Holding, Club, Chain, Franchise, Customers, Market, Equipment, Team/manager), Reports, Achievements, Rich list, Luxury, market/reviews/rivals, franchise brands, sale.
