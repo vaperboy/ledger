@@ -558,7 +558,7 @@ public enum FootballModel {
             s.addMessage(kind: "info", from: co.name, title: "\(old.name) sacked, \(a.name) takes over",
                          body: "After \(why), the club parted with the manager. The assistant \(a.name) is in charge for now. Find a permanent manager and a new assistant as soon as you can.", companyID: co.id, tone: "bad")
         } else {
-            let c = Coach(id: s.makeID(), name: "Caretaker", skill: 35, wage: 1000, age: 50, kind: "coach", interim: true)
+            let c = Coach(id: s.makeID(), name: "Caretaker", skill: 35, wage: cur.roundedStep(1000 * country.wageLevel, about: 100), age: 50, kind: "coach", interim: true)
             fm["coach"] = c.json; fm["coachNew"] = .number(Double(s.week))
             s.companies[i].set("fm", fm)
             s.addMessage(kind: "info", from: co.name, title: "\(old.name) sacked",

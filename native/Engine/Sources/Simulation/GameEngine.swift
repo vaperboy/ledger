@@ -84,6 +84,7 @@ public struct GameEngine {
         l.monthlyPayment = Loans.annuity(principal: loan, yearlyRate: state.economy.policyRate + 0.045, months: Double(country.startLoanTermMonths))
         state.loans.append(l)
         state.economy.set("rate0", state.economy.policyRate)
+        PlayerGoals.startFirstSteps(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")

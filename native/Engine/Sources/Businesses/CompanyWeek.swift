@@ -39,6 +39,7 @@ public enum CompanyWeek {
         }
         // After the week: complaints, word of mouth (weekCo.after), then buzz and the limit of a local name (chainWeek).
         Satisfaction.complaintsWeek(&s, i, bd, data: data)
+        Development.weekly(&s, i, bd, data: data)
         Satisfaction.wordOfMouth(&s, i, bd)
         Satisfaction.knownByUse(&s, i, bd, data: data)
         if s.companies[i].status == .open {

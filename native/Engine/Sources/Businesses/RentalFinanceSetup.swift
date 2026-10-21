@@ -52,7 +52,7 @@ public enum RentalFinance {
     }
 
     /// What the first property costs (down payment and fees on the smallest listing) and the regulator's capital. Original: `setupEstimate` additions.
-    static func addEstimate(_ r: inout CompanySetup.Estimate, _ bd: Trade, size: Double, city: Country.City, _ s: GameState, _ w: World) {
+    static func addEstimate(_ r: inout CompanySetup.Estimate, _ bd: Trade, size: Double, city: Country.City, currency cur: Currency, _ s: GameState, _ w: World) {
         if bd.family == "rent", let tPrice = bd.trait("price") {
             let units = max(2, jsRound((bd.trait("units") ?? 10) * 0.35))
             let price = units * tPrice * pow(city.rent == 0 ? 1 : city.rent, 0.8) * w.economy.housing
@@ -60,7 +60,7 @@ public enum RentalFinance {
             // Listings vary up to about 30% around the typical price.
             r.property = (price * (1 - ltv) + price * 0.06) * 1.3
         }
-        let capital: Double? = bd.id == "bank" ? 180_000_000 : bd.id == "insco" ? 45_000_000 : nil
+        let capital: Double? = bd.id == "bank" ? cur.scaledPrice(180_000_000) : bd.id == "insco" ? cur.scaledPrice(45_000_000) : nil
         if let c = capital { r.buffer = max(r.buffer, c * size) }
     }
 

@@ -11,6 +11,7 @@ public enum StaffRoutine {
     nonisolated(unsafe) public static var probe: ((Double, Double, Double, Double, Double) -> Void)? = nil
 
     public static func weekly(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, utilisation util: Double) {
+        StaffTalks.seasonsTurn(&s, companyIndex: i)
         let w = World(state: s, data: data)
         var co = s.companies[i]
         let people = s.people
@@ -72,6 +73,9 @@ public enum StaffRoutine {
         s.companies[i] = co
         for (id, p) in changedPeople { s.people[id] = p }
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
+        // Agents who use their own car are paid mileage. Original: vehicle week (features/company/realistic_buying.js).
+        let ownCars = co.staff.filter { $0.num("ownCar") != 0 && !$0.isOffSeason }.count
+        if ownCars > 0 { Payments.companyPays(&s, companyID: co.id, amount: w.currency(co).scaledPrice(4500) * 12 / 52 * Double(ownCars), category: "oth", label: "Mileage for own cars") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }

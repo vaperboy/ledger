@@ -333,6 +333,35 @@ public enum CompanySetup {
         return .success(id)
     }
 
+    /// Give up rented or owned premises and work from home again: an owned place is sold at its value and the mortgage paid off,
+    /// a rented one returns the deposit. Original: `ACT.home37`.
+    public static func giveUpPremises(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], bd.premisesKind == "home" else { return false }
+        let prem = s.companies[i].value("prem")
+        guard !prem.isNull, prem["m2"].double > 0 else { return false }
+        if prem["owned"].bool {
+            let loanID = prem["loan"].int
+            let debt = s.loans.first { $0.id == loanID }?.balance ?? 0
+            s.loans.removeAll { $0.id == loanID }
+            let value = prem["val"].double
+            Payments.companyReceives(&s, companyID: companyID, amount: max(0, value - debt), category: nil, label: "Office sold")
+            if debt > value { Payments.companyPays(&s, companyID: companyID, amount: debt - value, category: nil, label: "Mortgage shortfall") }
+        } else if prem["dep"].double > 0 {
+            Payments.companyReceives(&s, companyID: companyID, amount: prem["dep"].double, category: nil, label: "Lease deposit returned")
+        }
+        s.companies[i].set("prem", .object(["kind": "home", "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
+        return true
+    }
+
+    /// Change the accountant of a company. Original: `pickAccountant`.
+    public static func changeAccountant(_ s: inout GameState, companyID: Int, accountantID: Int, data: GameData) -> Bool {
+        guard let i = s.companyIndex(companyID), s.companies[i].value("acc")["id"].int != accountantID else { return false }
+        let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants
+        guard pool.contains(where: { $0["id"].int == accountantID }) else { return false }
+        chooseAccountant(&s, companyID: companyID, accountantID: accountantID, data: data)
+        return true
+    }
+
     static func chooseAccountant(_ s: inout GameState, companyID: Int, accountantID: Int?, data: GameData) {
         guard let i = s.companyIndex(companyID) else { return }
         let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants
@@ -394,7 +423,7 @@ public enum CompanySetup {
             r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: w.rates) * country.employerCostFactor
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
-        RentalFinance.addEstimate(&r, bd, size: size, city: city, tmp, w)
+        RentalFinance.addEstimate(&r, bd, size: size, city: city, currency: w.currency(co), tmp, w)
         // Contractors wait weeks for the first jobs and the first payments: a bigger cash buffer. Original: `setupEstimate` step.
         if bd.family == "project" && !bd.hasTrait("dev") { r.buffer *= 3.5 }
         // Months spent waiting for a licence cost wages and rent too (a wait of more than 8 weeks). Original: `r.wait`.

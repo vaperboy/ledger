@@ -115,6 +115,7 @@ action_rows = [(a, *actions.get(a, ("", N))) for a in inv["actions"]]
 area_of = {}
 for area, text in PM.MISSING.items():
     for line in text.strip().split("\n"):
+        if not line.strip(): continue
         i, _, d = line.partition(" ")
         assert i not in area_of, "twice in MISSING: " + i
         area_of[i] = (area, d)

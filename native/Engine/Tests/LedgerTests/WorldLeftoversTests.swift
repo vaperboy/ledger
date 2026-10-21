@@ -90,7 +90,7 @@ final class WorldLeftoversTests: XCTestCase {
 
     func testWorldAroundYouAndKeyAccountProfile() throws {
         var (e, id) = try engineWith(trade: "cafe", weeks: 8)
-        let img = e.publicImage()
+        let img = e.worldImage()
         XCTAssertEqual(img.groups.count, 6)
         let people = e.peopleYouKnow()
         XCTAssertGreaterThanOrEqual(people.count, 4, "press, bank, council and lawyer")

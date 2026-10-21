@@ -131,6 +131,43 @@ public enum Chains {
         applyRules(&s, chain: ch, companyIndex: i)
     }
 
+    /// A place in a chain that is short of a role, and a sister store that has one more than it needs. Original: the "Short of staff" list.
+    public struct Shortage: Equatable, Sendable { public var storeID: Int; public var role: String; public var spareAtStoreID: Int? }
+
+    public static func staffShortages(_ s: GameState, chainID: Int, data: GameData) -> [Shortage] {
+        guard let ch = chain(s, id: chainID) else { return [] }
+        let stores = stores(s, ch)
+        func std(_ c: Company, _ role: String) -> Int {
+            guard let bd = data.catalog[c.type] else { return 0 }
+            return CompanySetup.standardStaff(bd, size: c.size).filter { $0.role == role }.reduce(0) { $0 + $1.count }
+        }
+        func have(_ c: Company, _ role: String) -> Int { c.staff.filter { $0.role == role }.count }
+        var out: [Shortage] = []
+        for c in stores {
+            guard let bd = data.catalog[c.type] else { continue }
+            for r in CompanySetup.standardStaff(bd, size: c.size) where have(c, r.role) < r.count {
+                out.append(Shortage(storeID: c.id, role: r.role, spareAtStoreID: stores.first { $0.id != c.id && have($0, r.role) > std($0, r.role) }?.id))
+            }
+        }
+        return out
+    }
+
+    /// Lend the least skilled person of a role from one store of a chain to another. Original: `ACT.ch12lend`.
+    @discardableResult
+    public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, data: GameData) -> Bool {
+        guard let a = s.companyIndex(fromID), let b = s.companyIndex(toID), a != b,
+              let ca = chain(s, of: s.companies[a]), let cb = chain(s, of: s.companies[b]), ca["id"].int == cb["id"].int else { return false }
+        let tables = data.catalog.tables
+        let pick = s.companies[a].staff.filter { $0.role == role }
+            .min { StaffModel.skill($0, person: s.people[$0.id], salesRoles: tables.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: tables.salesRoles) }
+        guard let m = pick else { return false }
+        s.companies[a].staff = s.companies[a].staff.filter { $0.id != m.id }
+        s.companies[b].staff = s.companies[b].staff + [m]
+        if var p = s.people[m.id] { p.employerID = toID; s.people[m.id] = p }
+        s.note("\(s.people[m.id]?.name ?? "A worker") moves to \(s.companies[b].name).", companyID: toID)
+        return true
+    }
+
     /// The chain's rules on a store: price (plus its own step), the business choices, ordering. Original: `applyRules`.
     static func applyRules(_ s: inout GameState, chain ch: JSONValue, companyIndex i: Int) {
         let R = ch["rules"], o = s.companies[i].value("off")

@@ -17,6 +17,7 @@ struct CompanyChain: View {
             if company.status == .open || company.status == .closed {
                 if let sum = engine.chainSummary(containing: company.id) {
                     ChainOverview(engine: engine, company: company, summary: sum)
+                    ChainStaffShortages(engine: engine, chainID: sum.id)
                 } else if company.value("franchise").isNull {
                     GrowIntoChain(engine: engine, company: company)
                 }

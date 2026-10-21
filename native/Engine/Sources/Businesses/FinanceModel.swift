@@ -99,7 +99,7 @@ public enum FinanceModel {
         let w = World(state: s, data: data)
         let people = s.people
         let tables = w.catalog.tables
-        let policiesBase = bd.trait("policies") ?? 30000, premiumBase = bd.trait("premium") ?? 5200, lossBase = bd.trait("lossR") ?? 0.66
+        let policiesBase = bd.trait("policies") ?? 30000, premiumBase = bd.trait("premium") ?? w.currency(co).scaledPrice(5200), lossBase = bd.trait("lossR") ?? 0.66
         var pol = fm["pol"].double
         let cover = staffCover(co, bd, w, people: people)
         let uw = fte(co, "underw", w, people) / max(0.5, 3 * co.size)
@@ -158,7 +158,7 @@ public enum FinanceModel {
         var fm = co.value("fm")
         let w = World(state: s, data: data)
         let people = s.people
-        let capital = bd.trait("capital") ?? 400_000_000, capReq = bd.trait("capitalReq") ?? 0.16, nim = bd.trait("nim") ?? 0.031
+        let capital = bd.trait("capital") ?? w.currency(co).scaledPrice(400_000_000), capReq = bd.trait("capitalReq") ?? 0.16, nim = bd.trait("nim") ?? 0.031
         let policy = s.economy.policyRate
         var dep = fm["dep"].double, book = fm["book"].double
         let gb = fm["gb"].double
@@ -372,7 +372,7 @@ public enum FinanceModel {
         switch id {
         case "f_storm":
             if fm["pol"].double == 0 { return true }
-            let prem = fm["premW"].double != 0 ? fm["premW"].double : (co.value("lastW")["rev"].double != 0 ? co.value("lastW")["rev"].double : 50000)
+            let prem = fm["premW"].double != 0 ? fm["premW"].double : (co.value("lastW")["rev"].double != 0 ? co.value("lastW")["rev"].double : w.currency(co).scaledPrice(50000))
             let amt = jsRound(prem * s.random.range(2, 7) * Knobs.effect(co, bd, "r", w))
             Payments.companyPays(&s, companyID: co.id, amount: amt, category: "loss", label: "Storm claims")
             var f = s.companies[i].value("fm"); f["claims"] = .number(f["claims"].double + amt); s.companies[i].set("fm", f)
