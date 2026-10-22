@@ -49,10 +49,30 @@ struct CompanyTeam: View {
                                 if !missing.isEmpty { Button("Paperwork done (\(missing.count))") { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) }; Haptics.success() } }
                                 StaffContractMenu(engine: engine, company: company, member: m)
                                 Button("Promote…") { promoting = m }
+                                Button("Written warning") { warn(m) }
+                                if !engine.courses(companyID: company.id).isEmpty {
+                                    Menu("Send on a course") {
+                                        ForEach(engine.courses(companyID: company.id)) { c in
+                                            Button("\(c.name) · \(cur.short(engine.courseCost(c, companyID: company.id)))") { sendOnCourse(m, c) }
+                                        }
+                                    }
+                                }
                                 Button("Let go…", role: .destructive) { confirmFire = m }
                             } label: {
                                 Image(systemName: "ellipsis").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
                             }
+                        }
+                    }
+                    if company.staff.count > 1 {
+                        HStack {
+                            Text("Cutting costs").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            Spacer()
+                            Menu("Lay off the weakest") {
+                                ForEach([1, 2, 3].filter { $0 < company.staff.count }, id: \.self) { n in
+                                    let p = engine.layoffPreview(companyID: company.id, count: n)
+                                    Button("\(n) · saves \(cur.short(p.savesPerMonth)) a month, severance \(cur.short(p.severance))") { layOff(n) }
+                                }
+                            }.font(.caption.weight(.semibold)).foregroundStyle(Theme.loss)
                         }
                     }
                     let papers = company.staff.reduce(0) { $0 + StaffExtras.missing($1).count }
@@ -108,6 +128,28 @@ struct CompanyTeam: View {
                 Haptics.warning()
             }
         } message: { _ in Text("Notice periods and severance may apply.") }
+    }
+
+    private func warn(_ m: StaffMember) {
+        let worked = store.act { $0.warnStaff(companyID: company.id, staffID: m.id) } ?? nil
+        let name = engine.state.people[m.id]?.name ?? "They"
+        store.show(worked == true ? "The warning worked. \(name) has improved." : "Warning on file for \(name).", tone: worked == true ? "good" : "n")
+        Haptics.tap()
+    }
+
+    private func sendOnCourse(_ m: StaffMember, _ c: Academy.Course) {
+        let r: Academy.Outcome? = store.act { $0.sendOnCourse(companyID: company.id, staffID: m.id, courseID: c.id) }
+        switch r {
+        case .done(let message, _, let poached)?: Haptics.success(); store.show(poached ? "\(message). A competitor poached them." : message, tone: poached ? "warn" : "good")
+        case .notEnoughCash?: store.show("Not enough cash for the course.", tone: "warn")
+        case .unavailable?, nil: store.show("That course is not available.", tone: "warn")
+        }
+    }
+
+    private func layOff(_ n: Int) {
+        let ids = store.act { $0.layOffStaff(companyID: company.id, count: n) } ?? []
+        Haptics.warning()
+        store.show(ids.isEmpty ? "No one was let go." : "\(ids.count) \(ids.count == 1 ? "person" : "people") let go. The rest are shaken.", tone: "n")
     }
 
     private func search(_ mode: Hiring.SearchMode) {

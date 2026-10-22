@@ -121,6 +121,7 @@ public enum IntercompanySupply {
     @discardableResult
     public static func setSupplier(_ s: inout GameState, buyer: Int, kind kid: String, supplier: Int, mode: String) -> Bool {
         guard let b = s.company(buyer), let sp = s.company(supplier), let k = kind(kid), k.suppliers.contains(sp.type), modes.contains(where: { $0.id == mode }) else { return false }
+        AccountSupply.clear(&s, buyer: b.id, kind: kid)   // a new supplier ends a deal with a business customer for the same input
         var L = rawLinks(s).filter { !($0["b"].int == b.id && $0["k"].string == kid) }
         L.append(.object(["id": .number(Double(s.makeID())), "k": .string(kid), "b": .number(Double(b.id)), "s": .number(Double(sp.id)), "mode": .string(mode), "w0": .number(Double(s.week))]))
         s.rest["l27"] = .array(L)

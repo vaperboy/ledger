@@ -461,6 +461,8 @@ public enum Chains {
         reachWeek(&s, data: data)
         Franchising.weekly(&s, data: data, context: fc)
         IntercompanySupply.weekly(&s, data: data)
+        AccountSupply.weekly(&s)   // inputs bought from your business customers
+        RivalAbsorb.weekly(&s)     // a matched price ends, a site beside a rival takes its customers
         ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)   // management team, boards, chain bosses, group loans, the office
     }
 }

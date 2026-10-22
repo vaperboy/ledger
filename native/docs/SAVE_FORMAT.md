@@ -45,3 +45,5 @@ luxury, football clubs.
 
 Add the accessor on the record type (for example in `GameCore/State/Company.swift`), give it a default for old saves, and — only if
 the old value must be changed — add a step to `NativeMigrations.steps`.
+
+The last-50-actions pass (`AccountSupply`, `RivalAbsorb`, `OfficeChecks`) saves in the original's own names, so legacy saves and native saves are the same shape and need no migration: `rest["l39"]` (links to business customers), `flags.match27`, `flags.brand27`, `branch.of` and `branch.r` on a company, `uc27.resp` on a rival, `lastRev` on a company.
