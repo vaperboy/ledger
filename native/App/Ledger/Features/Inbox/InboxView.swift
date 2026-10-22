@@ -128,6 +128,12 @@ struct MessageCard: View {
                             Chip(text: left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week", tint: left <= 1 ? Theme.loss : Theme.caution, symbol: "clock")
                         }
                         let opts = Array(message.options.enumerated())
+                        if message.expiresWeek != nil {
+                            Text("If you leave it, the cheapest answer is taken when time runs out.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        if opts.isEmpty {
+                            Text("Nothing to choose here. This is dealt with in the company it concerns.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                        }
                         let detailed = message.options.contains { !$0["d"].string.isEmpty || !preview($0).isEmpty }
                         if !detailed && opts.count <= 3 {
                             HStack(spacing: 8) {

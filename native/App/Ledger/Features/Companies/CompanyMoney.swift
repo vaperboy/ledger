@@ -26,6 +26,7 @@ struct CompanyMoney: View {
                     }
                 }
             }
+            stress(cur)
             let o = engine.financeOverview(companyID: company.id)
             if !o.upcoming.isEmpty || o.taxesOwed > 0 {
                 Card {
@@ -86,15 +87,44 @@ struct CompanyMoney: View {
                     SectionLabel("Borrow for this company")
                     AmountField(title: "Loan amount", currency: cur, amount: $loanAmount)
                     let offer = engine.loanOffer(kind: "biz", amount: loanAmount, companyID: company.id)
-                    Text("The bank would lend up to \(cur.display(offer.maximum)) at about \(Currency.percent(engine.state.economy.policyRate + offer.margin, decimals: 1)).")
+                    let shift = Banking.countryRateShift(companyID: company.id, state: engine.state, context: engine.context)
+                    Text("The bank would lend up to \(cur.display(offer.maximum)) at about \(Currency.percent(engine.state.economy.policyRate + shift + offer.margin, decimals: 1)).")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     Button("Take a 5-year loan") { borrow() }.buttonStyle(QuietButtonStyle())
                     ForEach(engine.state.loans.filter { $0.companyID == company.id }) { l in
-                        ListRow(symbol: "doc.text.fill", tint: Theme.loss, title: l.name, subtitle: "\(cur.display(l.monthlyPayment)) a month", trailing: cur.display(l.balance), trailingSub: "left to pay")
+                        ListRow(symbol: "doc.text.fill", tint: Theme.loss, title: l.name, subtitle: "Interest \(Currency.percent(Banking.rate(of: l, state: engine.state, modifiers: engine.context.lending, countryShift: shift), decimals: 2)) · \(cur.display(l.monthlyPayment)) a month" + (l.int("miss") > 0 ? " · \(l.int("miss")) missed" : ""), trailing: cur.display(l.balance), trailingSub: "left to pay")
                     }
                 }
             }
         }
+    }
+
+    /// What unpaid loans, bills and VAT have set in motion: restricted credit, a called loan, suppliers who want cash, overdue VAT.
+    @ViewBuilder private func stress(_ cur: Currency) -> some View {
+        let loans = engine.state.loans.filter { $0.companyID == company.id }
+        let missed = loans.reduce(0) { $0 + $1.int("miss") }
+        let called = company.int("loanCall")
+        let weeksLeft = called - engine.state.week
+        let sup = company.int("supCut")
+        let vatOver = company.num("vatOver")
+        let billsOwed = (company.payables["rent"] ?? 0) + (company.payables["other"] ?? 0)
+        if missed > 0 || company.flag("loanFrozen") || called != 0 || sup > 0 || vatOver > 1 {
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    SectionLabel("Behind on payments")
+                    if called != 0 { stressLine("The bank has called the loan: pay the next instalment within \(max(0, weeksLeft)) weeks or the company is wound up.", Theme.loss) }
+                    else if missed > 0 { stressLine("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Unpaid interest and a penalty were added to the loan.", Theme.loss) }
+                    if company.flag("loanFrozen") { stressLine("Credit restricted: no new loans until the instalments are back on track.", Theme.caution) }
+                    if vatOver > 1 { stressLine("VAT overdue \(cur.short(vatOver)), with interest running and a penalty added.", Theme.loss) }
+                    if sup >= 2 { stressLine("Suppliers have stopped delivering stock until the overdue bills are paid.", Theme.loss) }
+                    else if sup == 1 { stressLine("Suppliers only deliver stock against cash in the account.", Theme.caution) }
+                    if billsOwed > 0 { stressLine("Rent and supplier bills waiting for month end: \(cur.short(billsOwed)).", Theme.ivoryMuted) }
+                }
+            }
+        }
+    }
+    private func stressLine(_ text: String, _ tint: Color) -> some View {
+        Text(text).font(.caption).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
     }
 
     /// The company's last closed week in a few lines, with a link to all its weekly, monthly and yearly reports.
