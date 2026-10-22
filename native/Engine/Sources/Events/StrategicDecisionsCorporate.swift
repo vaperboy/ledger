@@ -87,7 +87,7 @@ extension StrategicDecisions {
             } else { s.note("The site in \(d["cn"].string) went to someone else.", tone: "n", companyID: s.companies[k].id) }
         case "e_merger_review":
             if s.random.chance(0.4), let def = byID["t_antitrust"] { _ = fire(&s, def, companyIndex: k, data: data, context: fc) }
-        default: break
+        default: Misconduct.followUp(&s, id: id, index: k, d: d, data: data, context: fc)
         }
     }
 

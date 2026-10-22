@@ -31,7 +31,10 @@ public enum MonthEnd {
         let lc0 = co.lossCarryAtYearStart ?? 0
         // In a tax group (a holding and the companies it owns 90% or more of) profit covers a sister company's loss.
         let gc = HoldingModel.groupContribution(co, in: s)
-        let target = max(0, co.yearProfitSoFar - lc0 - gc.out) * rate
+        // Profit kept out of the tax base this year: legal deductions and concealed takings (see `Misconduct`).
+        let ev = co.value("evade")
+        let kept = ev["y"].int == GameCalendar.year(week: s.week) ? ev["c"].double + ev["l"].double : 0
+        let target = max(0, co.yearProfitSoFar - lc0 - gc.out - kept) * rate
         let delta = target - co.taxAccrued
         co.taxAccrued = target
         co.lossCarryForward = max(0, lc0 - co.yearProfitSoFar - gc.in)

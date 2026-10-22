@@ -581,6 +581,7 @@ public enum StrategicDecisions {
                           cap(&s, x, 0.8, 2)
                           if s.random.chance(0.6) { Payments.companyReceives(&s, companyID: s.companies[x.i].id, amount: jsRound(x.wk(s) * 0.2), category: "rev", label: "Compensation from supplier") } }])
         L += corporateDecisions()
+        L += misconductDecisions()
         return L
     }
 
@@ -637,6 +638,7 @@ public enum StrategicDecisions {
         st["q"] = .array(st["q"].array.filter { s.week < $0["w"].int })
         s.rest["e27"] = st
         for f in due { followUp(&s, id: f["id"].string, companyID: f["co"].int, d: f["d"], data: data, context: fc) }
+        Misconduct.weekly(&s, data: data, context: fc)
         guard GameCalendar.isMonthEnd(week: s.week) else { return }
         monthly(&s, data: data, context: fc)
     }
@@ -665,6 +667,11 @@ public enum StrategicDecisions {
         }
         if tycoon && s.week - get("lastT") >= 26 && s.random.chance(0.12) {
             if attempt("corp", s.random.pick(cos)) { set("lastT", s.week) }
+        }
+        // Misconduct and political offers: gated by hashed rolls, so a game that never sees one draws nothing extra.
+        for cls in ["mis", "pol"] where s.week - get("last_" + cls) >= 20 && Misconduct.gate(s, cls, 0.08) {
+            let who = cos[Int(HashedRandom.first("misco:\(cls):\(s.week)") * Double(cos.count)) % cos.count]
+            if attempt(cls, who) { set("last_" + cls, s.week) }
         }
         if s.random.chance(0.12) { _ = attempt("gen", s.random.pick(cos)) }
         for cc in Set(cos.map { s.companies[$0].countryCode }).sorted() {
