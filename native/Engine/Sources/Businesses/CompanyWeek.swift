@@ -260,7 +260,10 @@ public enum CompanyWeek {
         let target = ctx.cogs * stockWeeks / 7 * mult
         let d = target - co.inventory
         let q = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0
-        let step = d * (0.25 + (co.managerID != nil ? 0.15 * q : 0))
+        var step = d * (0.25 + (co.managerID != nil ? 0.15 * q : 0))
+        // Suppliers cut off after repeated missed bills (see `Payday.payBills`): stock only against cash in the account, then none at all.
+        let supCut = co.int("supCut")
+        if step > 0 && supCut > 0 { step = supCut >= 2 ? 0 : min(step, max(0, co.cash)) }
         var books = co.books
         if co.inventory > target * 1.8 && target > 0 {
             let obsolete = (co.inventory - target * 1.8) * 0.03

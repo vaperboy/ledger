@@ -39,6 +39,8 @@ public enum Payday {
         }
         return d
     }
+    /// Monthly late interest on rent and supplier bills left unpaid.
+    static let lateInterestRate = 0.02
     static func billDate(year y: Int, month m: Int) -> Int { GameCalendar.daysFromCivil(year: y, month: m, day: lastDay(y, m)) }
 
     // MARK: Per-company settings (stored as `pr29` in the company)
@@ -57,6 +59,8 @@ public enum Payday {
         public var lateOwed = 0.0
         public var lateDays = 0
         public var billShortMonths = 0
+        /// What was still unpaid on rent ("rent") and suppliers ("other") after the last month-end bills; it earns late interest.
+        public var arrears: [String: Double] = [:]
 
         init(json j: JSONValue = .null, defaultsFor monthIndex: Int? = nil, paidThisMonth: Bool = false) {
             if j.isNull {
@@ -75,6 +79,7 @@ public enum Payday {
             billsMonth = j["bm"].isNull ? -1 : j["bm"].int
             ownerPaidMonth = j["om"].isNull ? -1 : j["om"].int
             billShortMonths = j["bs"].int
+            for (k, v) in j["arr"].object { arrears[k] = v.double }
             let late = j["late"]
             if !late.isNull {
                 lateSince = Int(late["d0"].double)
@@ -88,6 +93,7 @@ public enum Payday {
             var o: [String: JSONValue] = ["day": .number(Double(day)), "pm": .number(Double(paidMonth)), "ok": .number(Double(approvedMonth)),
                                           "rem": .number(Double(reminderMonth)), "bm": .number(Double(billsMonth)), "om": .number(Double(ownerPaidMonth)),
                                           "bs": .number(Double(billShortMonths))]
+            if !arrears.isEmpty { o["arr"] = .object(arrears.mapValues { .number($0) }) }
             if let m = mode { o["mode"] = .string(m.rawValue) }
             if let d0 = lateSince {
                 o["late"] = .object(["d0": .number(Double(d0)), "why": .string(lateWhy), "mi": .number(Double(lateMonth)), "owe": .number(lateOwed), "n": .number(Double(lateDays))])
@@ -245,9 +251,22 @@ public enum Payday {
         var co = s.companies[i]
         var left = max(0, co.cash + context.overdraftRoom(co, s))
         var short = 0.0, paid = 0.0
+        var cfg = config(co, today: t)
+        // Late interest on what was left unpaid last month (rent and suppliers): added to the supplier bill, booked as interest.
+        let overdue = (cfg.arrears["rent"] ?? 0) + (cfg.arrears["other"] ?? 0)
+        let carried = min(overdue, (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0))
+        let lateFee = jsRound(carried * lateInterestRate)
+        if lateFee > 0 {
+            co.addPayable("other", lateFee)
+            var b = co.books; b.add("int", lateFee); co.books = b
+            s.companies[i] = co
+            s.addMessage(from: co.name, title: "Late fees at \(co.name)",
+                         body: "Rent and supplier bills left unpaid last month now carry late interest of \(context.currency(co.countryCode, s).display(lateFee)).",
+                         companyID: co.id, tone: "bad")
+        }
         for k in ["rent", "other"] {
             let due = co.payables[k] ?? 0
-            if due <= 0 { continue }
+            if due <= 0 { cfg.arrears[k] = nil; continue }
             let p = min(due, left)
             if p > 0 {
                 // Keep what the first bill already changed (rent paid): re-reading the company without writing it back first
@@ -257,15 +276,18 @@ public enum Payday {
                 co = s.companies[i]
                 let used = !co.value("f30").object.isEmpty
                 co.addTransaction(week: s.week, amount: -jsRound(p), label: k == "rent" ? "Rent" : (used ? "Monthly bills: suppliers, insurance, leasing, fees" : "Suppliers and costs"))
+                // The landlord company is paid when the tenant really pays: the same period and the same amount.
+                if k == "rent" { s.companies[i] = co; PremisesExtras.payLandlord(&s, tenantIndex: i, paid: p); co = s.companies[i] }
             }
+            cfg.arrears[k] = jsRound(due - p) < 1 ? nil : jsRound(due - p)
             co.payables[k] = due - p
             left -= p
             short += due - p
             paid += p
         }
         if (co.payables["other"] ?? 0) < 1 { co.set("f30", .object([:])) }
-        var cfg = config(co, today: t)
         s.companies[i] = co
+        let wasCut = co.int("supCut")
         if short > context.currency(co.countryCode, s).scaledPrice(1500) {
             cfg.billShortMonths += 1
             if cfg.billShortMonths == 1 {
@@ -275,6 +297,17 @@ public enum Payday {
             }
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
+        // Repeated misses: suppliers tighten terms (2 months: stock only against cash in the account) and then stop delivering stock (3 months).
+        let level = cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
+        s.companies[i].set("supCut", level)
+        if level > wasCut {
+            s.addMessage(from: co.name, title: level == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
+                         body: level == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
+                                          : "Suppliers refuse new stock until the overdue bills are paid. Sales will suffer.",
+                         companyID: co.id, tone: "bad")
+        } else if level == 0 && wasCut > 0 {
+            s.addMessage(from: co.name, title: "Suppliers deliver normally again", body: "The overdue bills at \(co.name) are paid. Suppliers are back on normal terms.", companyID: co.id, tone: "good")
+        }
         s.companies[i].set("pr29", cfg.json)
         return (jsRound(paid), jsRound(short))
     }
