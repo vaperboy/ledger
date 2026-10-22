@@ -408,7 +408,8 @@ public enum CompanyWeek {
         // Quality and reputation follow how well the company does its job.
         co = s.companies[i]
         let w3 = World(state: s, data: data)
-        let target = QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing, w3.state, data))
+        // the hidden champion ambition perk lifts the target (original: step 'window.qualityTarget:10', after the target's own steps)
+        let target = min(99, QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing, w3.state, data)) + Ambitions.qualityBonus(s, data))
         co.quality += (target - co.quality) * 0.18
         co.reputation = clamp(co.reputation + (co.quality - co.reputation) * 0.025 - ((ctx.D > ctx.cap * 1.25 && ctx.cap > 0) ? 0.08 : 0), 0, 100)
         if co.managerID == nil && co.ownerHours >= 20 { co.ownerSkill = clamp(co.ownerSkill + 0.035 * (1 - co.ownerSkill / 120), 0, 100) }

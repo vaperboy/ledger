@@ -21,6 +21,15 @@ public extension GameEngine {
         return out
     }
 
+    /// "Find a successor": start the executive search for a manager who is leaving; the candidates stay until hired.
+    @discardableResult
+    mutating func findSuccessor(companyID: Int) -> [Person]? {
+        var out: [Person]?
+        update { s, data, _ in out = ManagerModel.findSuccessor(&s, companyID: companyID, data: data) }
+        return out
+    }
+    func successorCandidates(companyID: Int) -> [Person] { ManagerModel.successorCandidates(state, companyID: companyID) }
+
     /// Ask a candidate one of the interview questions (three per candidate); returns what they said.
     mutating func interviewManager(personID: Int, skill: String) -> Double? {
         var out: Double?
@@ -34,9 +43,10 @@ public extension GameEngine {
         return ok
     }
 
-    mutating func hireManager(personID: Int, companyID: Int, monthlyWage: Double) -> ManagerModel.HireResult {
+    /// `profitBonus` is a share (0...0.3) of each month's profit paid on top of the wage; the candidate counts part of it towards the offer.
+    mutating func hireManager(personID: Int, companyID: Int, monthlyWage: Double, profitBonus: Double = 0) -> ManagerModel.HireResult {
         var r = ManagerModel.HireResult.refused
-        update { s, data, _ in r = ManagerModel.hire(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, data: data) }
+        update { s, data, _ in r = ManagerModel.hire(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, profitBonus: profitBonus, data: data) }
         return r
     }
 

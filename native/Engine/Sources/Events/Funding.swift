@@ -14,8 +14,7 @@ import Businesses
 /// `rest["fundTried"][companyID]` = the week you last pitched. A company's outside owners are `holders` = [{ name, pct, in, ... }]
 /// (pct = percent of the whole company), and `flags.boardSeat` counts board seats given away; a holding has `listed` = 1 once on the exchange.
 ///
-/// Not faithful: the finance manager of the head office who negotiates a holding's raise (`mg` in `raisePlan`) is not ported, so a holding
-/// always raises as if you negotiate yourself; investors you hosted (perks) do not come sooner. Converting a sole trader to a limited company
+/// Not faithful: investors you hosted (perks) do not come sooner. Converting a sole trader to a limited company
 /// to be able to sell shares is not an action here (new companies can be founded as limited).
 public enum Funding {
     // MARK: Founder record
@@ -277,16 +276,20 @@ public enum Funding {
         public var value: Double
         /// The share needed for the goal, the share you will likely give (49 at most), the money that brings, and the bank fee on the exchange.
         public var needed: Double, given: Double, amount: Double, fee: Double
+        /// The office finance manager who negotiates a private raise (nil: you do) and how experienced he is (0.2...0.98).
+        public var manager: String? = nil, managerSkill: Double? = nil
     }
     /// What raising `goal` for a holding would cost in shares. mode "public" (on the exchange) or "private". Original: `raisePlan`.
     public static func raisePlan(_ s: GameState, holdingID: Int, goal: Double, mode: String, data: GameData, context fc: FinanceContext) -> RaisePlan {
         let v0 = max(fc.homeCurrency(s).scaledPrice(100000), holdingValue(s, holdingID: holdingID, data: data))
-        let f = mode == "public" ? 0.97 : 0.9
-        let over = mode == "public" ? 0 : 0.1
+        let mg = FinanceManager.negotiator(s, holdingID: holdingID)   // the finance manager who runs this holding, if any
+        let f = mode == "public" ? 0.97 : mg.map { 0.78 + 0.3 * $0.skill } ?? 0.9
+        let over = mode == "public" ? 0 : mg.map { (1 - $0.skill) * 0.7 } ?? 0.1
         let q = 100 * goal / (v0 * f + goal)
         let qa = min(49, q * (1 + over))
         let amt = jsRound(qa * v0 * f / (100 - qa))
-        return RaisePlan(value: v0, needed: q, given: qa, amount: amt, fee: mode == "public" ? jsRound(amt * 0.03) : 0)
+        return RaisePlan(value: v0, needed: q, given: qa, amount: amt, fee: mode == "public" ? jsRound(amt * 0.03) : 0,
+                         manager: mg?.name, managerSkill: mg?.skill)
     }
 
     /// Issue new shares in a holding; the money goes into the holding and your share shrinks. Original: `ACT.hraise`.
@@ -304,6 +307,11 @@ public enum Funding {
         s.companies[i].ownership = jsRound(s.companies[i].ownership * (1 - r.given / 100) * 100) / 100
         bump(&s, "raised", r.amount)
         s.note("\(s.companies[i].name) raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer).", tone: "good", companyID: holdingID)
+        if let who = r.manager, m == "private" {   // the finance manager reports back
+            s.addMessage(kind: "info", from: who, title: "Money raised for \(s.companies[i].name)",
+                         body: "I raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer) for \(String(format: "%g", (r.given * 10).rounded() / 10))% of the holding." + (r.given > r.needed * 1.15 ? " I had to give a bit more than I hoped." : ""),
+                         companyID: holdingID, tone: "good")
+        }
         return r.amount
     }
 }

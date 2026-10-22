@@ -554,6 +554,8 @@ public enum Rivals {
         let hostedBy = StaffPerks.rivalFactor(s, rivalID: rivalID)   // an owner you hosted judges the offer a little better
         var mult = mult0 * Luxury.offerBonus(s) * hostedBy, listed = r.forSale   // a serious-buyer perk of your luxury goods
         var scale = hostedBy
+        let dealer = Ambitions.buyPriceFactor(s, data)   // the market dominator perk: owners judge the offer better, the price paid stays
+        mult *= dealer; scale *= dealer
         if let g = RivalGroups.group(s, id: r.groupID) {
             if g.inTrouble { listed = true; mult *= 1.45; scale *= 1.45 } else { mult /= 1.15 }
         }

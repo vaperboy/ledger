@@ -339,7 +339,9 @@ public enum ManagerTargets {
 
     // MARK: Answers
 
-    public static func handlesAnswer(_ action: String) -> Bool { action == "tg58talk" || action == "tg58bad" || action == "tg58bud" }
+    /// "Find a successor", asked when a manager gives notice (`ManagerModel.resign`) or after three bad months.
+    public static let successorAction = "mgrsucc"
+    public static func handlesAnswer(_ action: String) -> Bool { action == "tg58talk" || action == "tg58bad" || action == "tg58bud" || action == successorAction }
 
     /// The player's answer to a target talk, a successor question or the budgets. Original: `ACTS.tg58talk`, `tg58bad`, `tg58bud`.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData) {
@@ -350,7 +352,7 @@ public enum ManagerTargets {
             var t = record(s.companies[ci]); let mood = ManagerModel.mood(s.companies[ci])
             if m.actionID == "tg58bad" {
                 if idx == 0 { t["bad"] = .number(0); s.companies[ci].set("mood", clamp(mood - 3, 0, 100)) }
-                else { s.addMessage(kind: "info", from: "Your management", title: "Find a successor at \(s.companies[ci].name)", body: "Open the Team page of the company and hire a new manager.", companyID: s.companies[ci].id, tone: "n", status: "done") }
+                else { _ = ManagerModel.findSuccessor(&s, companyID: s.companies[ci].id, data: data) }
                 put(&s, ci, t)
             } else if idx == 0 {
                 s.companies[ci].set("mood", clamp(mood + 4, 0, 100))
@@ -361,6 +363,8 @@ public enum ManagerTargets {
                 t["easy"] = .number(Double(mi(s) + 1)); put(&s, ci, t)
                 if current(s.companies[ci], week: s.week) != nil { setTargets(&s, ci, month: mi(s), mode: 0, data: data) }
             }
+        case successorAction:
+            if idx == 0 { _ = ManagerModel.findSuccessor(&s, companyID: d["co"].int, data: data) }
         default:
             for id in d["cos"].array.map({ $0.int }) {
                 guard let ci = s.companyIndex(id) else { continue }

@@ -35,7 +35,9 @@ public struct GameEngine {
         self.data = data
         self.events = events
         self.marketing = marketing
-        self.context = FinanceContext(countries: data.countries, trades: data.catalog)
+        var lending = LendingModifiers()
+        lending.marginAdjustment = { [data] _, _, s in -Ambitions.loanMarginCut(s, data) }   // the financier / dynasty ambition perk: cheaper loans
+        self.context = FinanceContext(countries: data.countries, trades: data.catalog, lending: lending)
     }
 
     /// Load all bundled data. Throws if a data file is missing or broken.

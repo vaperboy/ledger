@@ -5,8 +5,8 @@ import Finance
 
 /// Ambitions: pick what kind of empire to build; each path has milestones in tiers, a perk, and a legacy score.
 /// Original: features/player/ambitions.js (`PATHS`, `check`, `R27.perk`, `ACT.amb27pick`).
-/// Not faithful: milestones that need market share, rank among groups or purchased rivals read zero until those systems feed
-/// `amb27.cnt` / the rank helpers (`marketShare`, `rank` below); the price-war and rival-purchase counters are incremented by `countEvent`.
+/// Market share and rank milestones read `MarketMap` and `CompanyRanking`; the price-war and rival-purchase counters are incremented by
+/// `countEvent` (the share of all bank deposits in your country, f3a, still reads zero).
 public enum Ambitions {
     public struct Milestone: Equatable, Sendable { public var id: String; public var text: String; public var now: Double; public var target: Double; public var done: Int? }
     public struct Path: Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var detail: String }
@@ -49,7 +49,7 @@ public enum Ambitions {
 
     // MARK: Facts
 
-    struct Facts {
+    final class Facts {
         let s: GameState, data: GameData, live: [Company], w: World
         init(_ s: GameState, _ data: GameData) { self.s = s; self.data = data; live = s.companies.filter { $0.status == .open || $0.status == .closed }; w = World(state: s, data: data) }
         func ann(_ c: Company) -> Double {
@@ -78,9 +78,21 @@ public enum Ambitions {
         var portfolio: Double { let n = Valuation.netWorth(s, trades: data.catalog); return n.investments }
         var stakes: Double { Double((s.rest["startups"]?.array ?? []).filter { $0["st"].string != "exit" && $0["pct"].double > 0 }.count) }
         var franchAbroad: Bool { live.contains { $0.countryCode != s.homeCountryCode && (!$0.value("franchise").isNull || !$0.value("foreignOf").isNull || !$0.value("branch").isNull) } || s.companies.contains { !$0.value("fr")["masters"].array.isEmpty } }
-        /// Share of the biggest market and number of markets led. Not available without market shares of your own: zero.
-        var marketShare: (best: Double, no1: Double) { (0, 0) }
-        func rank(_ scope: String) -> Double { 999 }
+        /// Share of the biggest market and number of markets led (more share than every rival there). Original: `shareTop`.
+        lazy var marketShare: (best: Double, no1: Double) = {
+            var best = 0.0, no1 = 0.0
+            for m in MarketMap.markets(self.s, data: self.data) {
+                let t = MarketMap.truth(self.s, m, data: self.data)
+                best = max(best, t.share)
+                if t.players.allSatisfy({ $0.share < t.share }) { no1 += 1 }
+            }
+            return (best, no1)
+        }()
+        /// Your place by sales: "cc" in your country, "ind" among your industries, "world". 999 without a ranking. Original: `rank`.
+        func rank(_ scope: String) -> Double {
+            let sc: CompanyRanking.Scope = scope == "ind" ? .industries : scope == "world" ? .world : .country
+            return CompanyRanking.yourRank(self.s, data: self.data, scope: sc, metric: .revenue).map { Double($0.rank) } ?? 999
+        }
     }
 
     /// Share of group sales that come from companies abroad (0...1). For the trophy wall.
@@ -147,7 +159,8 @@ public enum Ambitions {
         guard a["path"].string == k, s.week >= a["settle"].int else { return -1 }
         let t = tier(s, k)
         guard t > 0 else { return 0 }
-        let doneAll = milestones(s, data, path: k, tier: t).allSatisfy { $0.done != nil }
+        // `check` keeps this answer in `pkAll`, so the many callers (every company's weekly quality) do not rebuild the milestones.
+        let doneAll = a["pkAll"].isNull ? milestones(s, data, path: k, tier: t).allSatisfy { $0.done != nil } : a["pkAll"].bool
         return min(2, t - 1 + (doneAll ? 1 : 0))
     }
     /// Perk effects other systems read. Original: the `window.*` steps at the end of the perks section.
@@ -156,6 +169,11 @@ public enum Ambitions {
         return f >= 0 ? [0.003, 0.005, 0.008][f] : d >= 0 ? [0.002, 0.0035, 0.005][d] : 0
     }
     public static func abroadFeeFactor(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "global"); return p >= 0 ? 1 - [0.2, 0.35, 0.5][p] : 1 }
+    /// A fee for starting abroad after the global group perk, rounded to 5000 as the original does.
+    public static func abroadFee(_ v: Double, _ s: GameState, _ data: GameData) -> Double {
+        let f = abroadFeeFactor(s, data)
+        return f < 1 ? roundTo(v * f, step: 5000) : v
+    }
     public static func qualityBonus(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "champion"); return p >= 0 ? [2, 3, 4][p] : 0 }
     public static func supplyCostCut(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "titan"); return p >= 0 ? [0.05, 0.08, 0.12][p] : 0 }
     public static func buyPriceFactor(_ s: GameState, _ data: GameData) -> Double { let p = perk(s, data, "dominator"); return p >= 0 ? [1.05, 1.08, 1.12][p] : 1 }
@@ -210,6 +228,9 @@ public enum Ambitions {
             s.addMessage(kind: "info", from: "Ambition", title: "\(path(k)?.name ?? k) \(roman[min(9, t)]) complete",
                          body: "+\(Int(bonus)) legacy points. \(t < 2 ? "Your perk grows: " + perkText(k, level: t + 1) : "The next level asks for three times as much.") Next: \(next).", tone: "good")
         }
+        a = state(s)
+        a["pkAll"] = .bool(milestones(s, data, path: k, tier: a["tier"][k].int).allSatisfy { $0.done != nil })
+        s.rest["amb27"] = a
     }
 
     public static func weekly(_ s: inout GameState, data: GameData) {
