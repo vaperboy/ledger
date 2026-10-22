@@ -27,7 +27,7 @@ public enum DemandModel {
         func apply(_ name: String, _ f: Double) { D *= f; parts.append((name, f)) }
 
         parts.append(("city", cityDemand))
-        apply("season", season(bd, w))
+        apply("season", season(bd, w, for: co))
         apply("marketing", awarenessFactor(co))
         apply("chain", Competition.chainReachFactor(co, w))
         apply("buzz", 1 + co.num("hype") * 0.006)
@@ -57,9 +57,12 @@ public enum DemandModel {
         co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key) * (key == "cogsup" ? VolumeTenders.qualityUplift(co) : 1)
     }
 
-    static func season(_ bd: Trade, _ w: World) -> Double {
+    /// Season curves are written for the northern hemisphere; a company in the southern one (AU, BR) lives six months apart.
+    static func season(_ bd: Trade, _ w: World, for co: Company? = nil) -> Double {
         let curve = w.catalog.tables.seasons[bd.seasonKey] ?? Array(repeating: 1, count: 12)
-        return curve[GameCalendar.month(week: w.week)]
+        let month = GameCalendar.month(week: w.week)
+        let south = co.map { CountryTraits.isSouthernHemisphere($0.countryCode) } ?? false
+        return curve[south ? (month + 6) % 12 : month]
     }
 
     /// An unknown business gets few customers. Original: `window.mktMult` (realistic_odds.js).

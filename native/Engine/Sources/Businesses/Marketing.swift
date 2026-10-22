@@ -205,7 +205,7 @@ public enum Marketing {
             }
         }
         if primeTimeActive { fit += 1.2 }
-        let season: Double = DemandModel.season(bd, w) > 1.06 ? 1.5 : 1
+        let season: Double = DemandModel.season(bd, w, for: co) > 1.06 ? 1.5 : 1
         var p = (0.0006 + 0.0035 * min(2.5, fit)) * season
         if co.quality >= 70 && co.reputation >= 65 { p += 0.0004 }
         if !s.random.chance(p) { return }
