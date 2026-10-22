@@ -20,8 +20,11 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
         let perked = Banking.offer(kind: "cons", amount: 1000, company: nil, state: e.state, netWorth: 1_000_000, context: e.context).margin
         XCTAssertEqual(plain - perked, 0.003, accuracy: 1e-9, "the engine's lending hook applies the perk")
         // A milestone about your rank among all companies now reads a real place (you run a company, so not the 999 of "no ranking").
-        let rank = e.yourRanking(scope: .country, metric: .revenue)
-        XCTAssertNotNil(rank)
+        // Only an open (or closed) company counts in the table, so open the one still being set up.
+        e.update { s, _, _ in for i in s.companies.indices { s.companies[i].status = .open } }
+        let rank = try XCTUnwrap(e.yourRanking(scope: .country, metric: .revenue))
+        XCTAssertGreaterThanOrEqual(rank.rank, 1)
+        XCTAssertLessThanOrEqual(rank.rank, rank.of)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
