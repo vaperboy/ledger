@@ -87,3 +87,7 @@ Current screens are **first versions**, functional only. Ivory Ledger style is c
 - Verified by trace as already correct: revenue vs receivables vs cash, payroll/tax accrual, depreciation, double entry, lease rates (match original), stockouts (original has no extra penalty), opening-hours trait (unused in original).
 - Left: board seats/stakes have no standalone Group view; iPad company table; policy rate on consumer demand only for rate-sensitive trades; FX on repatriation (not in original); minimum wage/hours/income tax not separately traced; airline lease economics follow the original (balance question for stage 4).
 - MUST DO on a Mac: build, `swift test`, fix compile errors, re-baseline golden tests (random streams changed by removing duplicate big-meeting weekly, tenders, rivals), then UI polish and balance (stage 4).
+
+## BLOCKED: toolchain (manual step required)
+- No Swift toolchain on the cloud host and the sandbox proxy denies swift.org (403). Needs the user to add `download.swift.org` / `swift.org` under Allowed domains (cloud environment settings > Network access), or to run on a Mac: `cd native/Engine && swift test`, then build the app in Xcode (needs Swift 5.10+; `nonisolated(unsafe)` is used).
+- Until then every Swift change from the web session is unbuilt: only hand-compiled by reviewer passes.
