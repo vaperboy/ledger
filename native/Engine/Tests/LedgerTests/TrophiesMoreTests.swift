@@ -30,4 +30,15 @@ final class TrophiesMoreTests: XCTestCase {
         XCTAssertFalse(reached.contains("fr1"))
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    func testMarketRankAndTeamTrophiesExistAndDepositShareReadsMarket() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
+        let ids = Set(Trophies.all.map { $0.id })
+        for id in ["no1", "top10", "team56", "n13", "n110", "rk50", "rk3", "rk1"] { XCTAssertTrue(ids.contains(id), id) }
+        XCTAssertEqual(Ambitions.marketsLed(e.state, e.data).count, 0)
+        let f3a = Ambitions.milestones(e.state, e.data, path: "financier", tier: 2).first { $0.id == "f3a" }
+        XCTAssertEqual(f3a?.now, 0)
+        e.update { s, data, ctx in Trophies.check(&s, data: data, context: ctx) }
+        XCTAssertFalse(Trophies.entries(e.state).contains { $0.id == "team56" && $0.reachedWeek != nil })
+    }
 }

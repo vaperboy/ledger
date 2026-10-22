@@ -6,7 +6,7 @@ import Finance
 /// Ambitions: pick what kind of empire to build; each path has milestones in tiers, a perk, and a legacy score.
 /// Original: features/player/ambitions.js (`PATHS`, `check`, `R27.perk`, `ACT.amb27pick`).
 /// Market share and rank milestones read `MarketMap` and `CompanyRanking`; the price-war and rival-purchase counters are incremented by
-/// `countEvent` (the share of all bank deposits in your country, f3a, still reads zero).
+/// `countEvent` (f3a reads your share of bank deposits).
 public enum Ambitions {
     public struct Milestone: Equatable, Sendable { public var id: String; public var text: String; public var now: Double; public var target: Double; public var done: Int? }
     public struct Path: Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var detail: String }
@@ -88,10 +88,23 @@ public enum Ambitions {
             }
             return (best, no1)
         }()
+        /// Your share (0...1) of the first bank market. Original: `depShare`.
+        lazy var depShare: Double = {
+            guard let m = MarketMap.markets(self.s, data: self.data).first(where: { $0.type == "bank" }) else { return 0 }
+            return MarketMap.truth(self.s, m, data: self.data).share
+        }()
         /// Your place by sales: "cc" in your country, "ind" among your industries, "world". 999 without a ranking. Original: `rank`.
         func rank(_ scope: String) -> Double {
             let sc: CompanyRanking.Scope = scope == "ind" ? .industries : scope == "world" ? .world : .country
             return CompanyRanking.yourRank(self.s, data: self.data, scope: sc, metric: .revenue).map { Double($0.rank) } ?? 999
+        }
+    }
+
+    /// Markets where you out-sell every rival there (a market with no rival does not count). Original: `no1N` in the trophy wall.
+    public static func marketsLed(_ s: GameState, _ data: GameData) -> [MarketMap.Market] {
+        MarketMap.markets(s, data: data).filter { m in
+            let t = MarketMap.truth(s, m, data: data)
+            return !t.players.isEmpty && t.players.allSatisfy { $0.share < t.share }
         }
     }
 
@@ -133,7 +146,7 @@ public enum Ambitions {
         case ("champion", _): return [m("h3a", "\(Int(3 * f)) companies rated 4.5 or better", F.rating(4.5, 200), 3 * f), m("h3b", "A 35% margin with sales over \(ms(50e6 * f))", F.marginBest(K(50e6 * f)) * 100, 35), m("h3c", "Profit of \(ms(1.5e6 * f)) per person", F.profitPerPerson, K(1.5e6 * f))]
         case ("financier", 0): return [m("f1a", "Own a holding company", b(F.has("hold")).0, 1), m("f1b", "Investments worth \(ms(5e6))", F.portfolio, K(5e6)), m("f1c", "Own a bank, insurer or fund", b(F.has("bank") || F.has("insco") || F.has("fund")).0, 1)]
         case ("financier", 1): return [m("f2a", "Own a bank", b(F.has("bank")).0, 1), m("f2b", "Finance a purchase through your own bank", a["bankfin"].double, 1), m("f2c", "A listed holding company", b(F.listedHold).0, 1), m("f2d", "Investments worth \(ms(100e6))", F.portfolio, K(100e6))]
-        case ("financier", _): return [m("f3a", "\(f > 1 ? Int(3 * f) : 1)% of all bank deposits in your country", 0, f > 1 ? 3 * f : 1), m("f3b", "Net worth of \(ms(2e9 * f))", F.nw, K(2e9 * f)), m("f3c", "Stakes in \(Int(5 * f)) startups", F.stakes, 5 * f)]
+        case ("financier", _): return [m("f3a", "\(f > 1 ? Int(3 * f) : 1)% of all bank deposits in your country", F.depShare * 100, f > 1 ? 3 * f : 1), m("f3b", "Net worth of \(ms(2e9 * f))", F.nw, K(2e9 * f)), m("f3c", "Stakes in \(Int(5 * f)) startups", F.stakes, 5 * f)]
         case ("global", 0): return [m("g1a", "Companies in two countries", F.countries, 2), m("g1b", "A franchise or branch abroad", b(F.franchAbroad).0, 1), m("g1c", "Group sales of \(ms(20e6)) a year", F.rev, K(20e6))]
         case ("global", 1): return [m("g2a", "Companies in four countries", F.countries, 4), m("g2b", "30% of sales from abroad", F.abroadShare * 100, 30), m("g2c", "Top 10 by sales in your country", F.rank("cc") <= 10 ? 1 : 0, 1)]
         case ("global", _): let n = min(15, 8 + 3 * lg); return [m("g3a", "Companies in \(Int(n)) countries", F.countries, n), m("g3b", f > 1 ? "Top 10 by sales worldwide" : "Top 25 by sales worldwide", F.rank("world") <= (f > 1 ? 10 : 25) ? 1 : 0, 1), m("g3c", "Group sales of \(ms(2e9 * f)) a year", F.rev, K(2e9 * f))]

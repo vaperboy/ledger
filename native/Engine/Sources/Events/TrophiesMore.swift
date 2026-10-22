@@ -7,9 +7,6 @@ import Businesses
 /// More of the trophy wall, for systems the first port did not have: acquisitions, chains, franchise units, review counts, R&D,
 /// luxury pieces, gifts, long tenure, the main office, and sales from abroad. Original: features/player/moments_and_trophies.js (round 28a and 56).
 /// They are added to `Trophies.all` and kept in the same record (`rest["ach28"]`), so saves are unchanged.
-///
-/// Still not ported: No. 1 in a market, country rank and "a management team" (market shares and rank lists of your own, and the CEO and
-/// department-head team of one company, are not in the native game yet).
 enum TrophiesMore {
     static func ladder(_ pre: String, _ group: String, _ rungs: [(String, String, Double)], _ value: @escaping (Trophies.Facts) -> Double, text: @escaping (Double) -> String) -> [Trophies.Trophy] {
         Trophies.ladder(pre, group, rungs, test: { f, v in value(f) >= v }, text: { _, v in text(v) })
@@ -22,6 +19,10 @@ enum TrophiesMore {
     static func reviewed(_ f: Trophies.Facts, reviews: Int, stars: Double) -> Company? {
         f.live.first { $0.int("rvN") >= reviews && Reviews.rating($0) >= stars }
     }
+
+    /// Your place among companies in your country by sales (nil without a ranking). Original: `R27.myRank('cc','rev')`.
+    static func rankInCountry(_ f: Trophies.Facts) -> Int? { CompanyRanking.yourRank(f.s, data: f.data, scope: .country, metric: .revenue)?.rank }
+    static func countryName(_ f: Trophies.Facts) -> String { f.data.countries.resolve(f.s.homeCountryCode, orHome: f.s.homeCountryCode).name }
 
     static let list: [Trophies.Trophy] = {
         var L: [Trophies.Trophy] = []
@@ -47,6 +48,22 @@ enum TrophiesMore {
         one("lxm", "On the museum wall", "legacy") { f in owned(f.s) { $0.use == "museum" } ? "A work from your collection hangs in a museum." : nil }
         one("lxw", "Paid for itself", "legacy") { f in owned(f.s) { $0.use == "charter" || $0.use == "rent" } ? "Something you own earns its keep." : nil }
         one("lxc5", "A car collection", "legacy") { f in Luxury.pieces(f.s).filter { $0.item.category == "cars" }.count >= 5 ? "Five cars in the garage." : nil }
+        one("no1", "No. 1 in a market", "market") { f in
+            Ambitions.marketsLed(f.s, f.data).first.map { m in
+                m.kind == .national ? "Nobody sells more here than you."
+                    : "Nobody sells more \(MarketMap.label(m, data: f.data, withCity: false).lowercased()) in \(f.data.countries.city(m.cityID, preferring: m.countryCode)?.city.name ?? m.cityID) than you." } }
+        one("top10", "Top 10 in your country", "market") { f in
+            rankInCountry(f).flatMap { $0 <= 10 ? "Only \($0 - 1) \($0 == 2 ? "company" : "companies") in \(countryName(f)) sell more than you." : nil } }
+        one("team56", "A management team", "people") { f in
+            f.live.contains { c in
+                let slots = ManagerModel.teamSlots(f.s, companyID: c.id, data: f.data).filter { $0.personID != nil }
+                return slots.contains { $0.key == "ceo" } && slots.filter { ManagerModel.teamRoles.contains(where: { r in r.key == $0.key }) }.count >= 2
+            } ? "A company with a managing director and its own department heads." : nil }
+        L += ladder("n1", "market", [("3", "No. 1 in three markets", 3), ("10", "No. 1 in ten markets", 10)],
+                    { Double(Ambitions.marketsLed($0.s, $0.data).count) }, text: { "Nobody sells more than you in \(Int($0)) markets." })
+        L += Trophies.ladder("rk", "market", [("50", "Top 50 in the country", 50), ("3", "Top 3 in the country", 3), ("1", "The biggest in the country", 1)],
+                             test: { f, v in Double(rankInCountry(f) ?? Int.max) <= v },
+                             text: { f, v in v == 1 ? "No company in \(countryName(f)) sells more than you." : "Your group is among the \(Int(v)) biggest in \(countryName(f))." })
         L += ladder("ch", "trades", [("3", "A chain of three", 3), ("10", "A chain of ten", 10), ("25", "A chain of twenty-five", 25)],
                     { Double(chainMax($0.s)) }, text: { "One of your chains has \(Int($0)) stores." })
         L += ladder("fr", "trades", [("1", "First franchisee", 1), ("5", "Five franchise units", 5), ("25", "Twenty-five franchise units", 25), ("100", "A hundred franchise units", 100)],

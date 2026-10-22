@@ -9,7 +9,6 @@ import Businesses
 /// Records live in `state.rest["ach28"]` as `{ id: { w: week, t: text, old: 1 if reached before the wall existed } }`.
 ///
 /// More trophies (acquisitions, chains, franchises, reviews, R&D, luxury, gifts, tenure) are in `TrophiesMore.swift`.
-/// Not ported (they need systems the native game does not have yet): No. 1 in a market, country rank, a management team.
 public enum Trophies {
     public struct Trophy: Identifiable {
         public let id: String
