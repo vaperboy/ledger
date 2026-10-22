@@ -396,6 +396,7 @@ public enum CompanyWeek {
         for (k, on) in co2.value("ins").object.sorted(by: { $0.key < $1.key }) where on.bool {
             if let p = marketing.insuranceProducts[k], p.count > 3 { premium += CompanyCosts.insurancePremium(co2, product: k, rate: p[3].double, w2) }
         }
+        if premium > 0, co2.value("flags")["premUntil"].double > Double(s.week) { premium *= 1 + co2.value("flags")["premUp"].double }   // repriced after a lost lawsuit (Aftermath)
         if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins"); Advisers.premiumsPaid(&s, i, total: premium) }
         // Leased vehicles
         for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {

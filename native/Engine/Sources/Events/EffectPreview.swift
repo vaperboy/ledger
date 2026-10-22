@@ -35,6 +35,10 @@ public enum EffectPreview {
         if fx["brk"].bool { out.append("Equipment may break") }
         if fx["ill"].double != 0 { out.append("Disease risk in the pens rises for a few weeks") }
         if fx["fixeq"].double != 0 { out.append("Repairs your worst equipment") }
+        if fx["premUp"].double != 0 { out.append("Insurance premiums +\(Int((fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks") }
+        if fx["cyberLvl"].double != 0 { out.append("IT security raised (monthly fee applies)") }
+        if fx["cyberTrain"].bool { out.append("Staff security training") }
+        if fx["cyberTarget"].bool { out.append("Attack odds x1.8 for 26 weeks") }
         if fx["warn"].bool { out.append("A warning on record: demand −7% for 6 weeks") }
         return out
     }

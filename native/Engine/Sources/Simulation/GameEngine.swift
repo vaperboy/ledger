@@ -331,6 +331,7 @@ public struct GameEngine {
         SoftwareProducts.weekly(&state, data: data)
         ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
+        Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
         EventEngine.expire(&state, data: data, context: context)
         StrategicDecisions.weekly(&state, data: data, context: context)
         Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
