@@ -188,6 +188,7 @@ public enum MonthEnd {
         let v: Double = homeIsEuro ? 1 : (euro.compactMap { rates.drift[$0] }.first(where: { $0 != 0 }) ?? 1)
         for k in euro { rates.drift[k] = v }
         s.exchangeRates = GameState.ExchangeDrift(rates.drift)
+        Abroad.regulationMonth(&s, data: data)
     }
 
     /// Year end. Original: `yearEnd`.
