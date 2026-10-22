@@ -8,7 +8,10 @@ import Businesses
 /// (tools/ref/snippets/uk17.js).
 final class CompanyModelDifferentialTests: XCTestCase {
     func world() throws -> World {
-        let s = try Golden.state("save_uk25")
+        var s = try Golden.state("save_uk25")
+        // Intended difference, not a regression: the Swift game has named, living rivals (strategy, fortune) whose strength moves the
+        // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
+        if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
         // The original game's city data (no tourist draw per city, no city overlay): docs/CITY_DATA.md
         return World(state: s, countries: try CountryBook.bundled(realCityMarket: false), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
     }
