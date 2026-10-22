@@ -173,9 +173,10 @@ extension ManagerModel {
     }
 
     /// Offer the job. A lower offer is more likely to be refused. Original: `hireManager`.
-    public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage wage: Double, profitBonus bonus: Double = 0, data: GameData) -> HireResult {
+    public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage proposed: Double, profitBonus bonus: Double = 0, data: GameData) -> HireResult {
         guard let ci = s.companyIndex(companyID), let n = s.people[personID], let bd = data.catalog[s.companies[ci].type] else { return .refused }
         if n.employerID != 0 { return .taken }
+        let wage = max(proposed, World(state: s, data: data).minimumWage(s.companies[ci]))   // never below the minimum wage
         let ask = max(1, n.askingMonthlyWage)
         // a share of the profit counts towards the package (a manager weighs it at 70% of what the last months' profit would pay)
         let share = clamp(bonus, 0, 0.3)
@@ -188,12 +189,13 @@ extension ManagerModel {
         return .ok
     }
 
-    /// Dismiss the manager: three months of pay, and the owner runs it again. Original: `fireManager`.
+    /// Dismiss the manager: notice and severance by the country's labour law, and the owner runs it again. Original: `fireManager`.
     @discardableResult
     public static func fire(_ s: inout GameState, companyID: Int, data: GameData) -> Double {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID else { return 0 }
         let w = World(state: s, data: data)
-        let sev = s.companies[ci].managerMonthlyWage * 3 * (1 + w.country(s.companies[ci]).employerSocial)
+        let hired = s.companies[ci].value("mgrW0").isNull ? Double(s.week - 52) : s.companies[ci].num("mgrW0")
+        let sev = w.terminationCost(s.companies[ci], monthlyWage: s.companies[ci].managerMonthlyWage, tenureWeeks: Double(s.week) - hired)
         if var n = s.people[mid] { n.employerID = 0; s.people[mid] = n }
         Payments.companyPays(&s, companyID: companyID, amount: sev, category: "wages", label: "Manager severance")
         stepDown(&s, ci)

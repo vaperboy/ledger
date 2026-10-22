@@ -84,6 +84,9 @@ public enum StaffTalks {
         var m = staff[k]
         let need = raiseNeeded(role: m.role, age: n.age, tables: data.catalog.tables)
         m.monthlyWage = (m.weeklyHours ?? 0) != 0 ? m.monthlyWage * (1 + percent) : cur.roundedStep(m.monthlyWage * (1 + percent), about: 100)
+        if m.commissionMode == nil || m.commissionMode == "fix" {   // a raise never leaves pay under the minimum wage
+            m.monthlyWage = max(m.monthlyWage, w.minimumWage(s.companies[i], hours: m.weeklyHours ?? StaffModel.fullWeekHours))
+        }
         m.set("denied", 0)
         if percent >= need {
             m.lastRaiseWeek = s.week

@@ -1,6 +1,7 @@
 import XCTest
 import GameCore
 import Countries
+import Employees
 import Finance
 import Businesses
 @testable import Simulation
@@ -62,6 +63,8 @@ final class CompanyCountryRulesTests: XCTestCase {
             social = World(state: s, data: data).country(s.companies[i]).employerSocial
             sev = Hiring.fire(m.id, from: id, state: &s, data: data)
         }
-        XCTAssertEqual(sev, wage * 2 * (1 + social), accuracy: 1)
+        let weeks = LabourRules(code: "DE").termination(tenureWeeks: 60).weeks
+        XCTAssertGreaterThan(weeks, 0)
+        XCTAssertEqual(sev, wage * 12 / 52 * weeks * (1 + social), accuracy: 1)
     }
 }

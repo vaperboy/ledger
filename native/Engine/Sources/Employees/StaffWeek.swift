@@ -41,12 +41,13 @@ public enum StaffWeek {
 
     /// A week of work: tiredness up or down; a worn-out person may fall sick for a week. Original: `tireWeek`.
     /// `hoursWorked` is the person's hours, stretched when the place ran over capacity.
-    public static func tire(_ s: inout StaffMember, hoursWorked h: Double, week: Int, random r: inout DeterministicRandom) -> Bool {
+    /// Tiredness grows with hours over `from` (the standard week of the country, 40 at most) and falls below it.
+    public static func tire(_ s: inout StaffMember, hoursWorked h: Double, from t: Double = 40, week: Int, random r: inout DeterministicRandom) -> Bool {
         if s.isOffSeason { s.tiredness = max(0, s.tiredness - 20); return false }
         if StaffModel.isSick(s, week: week) { return false }
         let t0 = s.tiredness
         let stamina = StaffModel.staminaFactor[StaffModel.staminaType(s)] ?? 1
-        s.tiredness = h > 40 ? min(100, t0 + (h - 40) * 1.2 * stamina) : max(0, t0 - (40 - h) * 0.6 - 6)
+        s.tiredness = h > t ? min(100, t0 + (h - t) * 1.2 * stamina) : max(0, t0 - (t - h) * 0.6 - 6)
         s.set("hw", jsRound(h))
         if s.tiredness > 60 && r.chance((s.tiredness - 60) / 400) {
             s.sickUntilWeek = week + 1

@@ -27,6 +27,8 @@ public enum StaffRoutine {
         let country = w.country(co)
         var extras: [StaffExtras.Outcome] = []
         var goneIDs: [Int] = []
+        let labour = LabourRules(country: country)
+        var overtimePay = 0.0, lifted = 0
         var changedPeople: [Int: Person] = [:]
         let utilisationLast: Double? = co.value("lastW")["util"].isNull ? nil : co.value("lastW")["util"].double
         for idx in staff.indices {
@@ -46,10 +48,22 @@ public enum StaffRoutine {
             if person.raw != n.raw { changedPeople[m.id] = person }
             extras.append(extra)
             if extra.left { goneIDs.append(m.id); var p2 = person; p2.employerID = 0; changedPeople[m.id] = p2; staff[idx] = m; continue }
-            if StaffWeek.tire(&m, hoursWorked: StaffWeek.hoursWorked(m, utilisation: util, limitedByPeople: bottleneckIsPeople), week: s.week, random: &s.random) {
+            let contracted = m.weeklyHours ?? m.num("wh", StaffModel.fullWeekHours)
+            let worked = StaffWeek.hoursWorked(m, utilisation: util, limitedByPeople: bottleneckIsPeople)
+            if StaffWeek.tire(&m, hoursWorked: worked, from: labour.tirednessThreshold(contracted: contracted), week: s.week, random: &s.random) {
                 events.append(.sick(staffID: m.id))
             }
             if m.isOffSeason { staff[idx] = m; continue }
+            let paidByWage = m.commissionMode == nil || m.commissionMode == "fix"
+            // Hours over the standard week cost the country's overtime premium (people on fixed salaries or commission are not paid by the hour).
+            if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
+                overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked)
+            }
+            // The minimum wage moves with inflation: pay that has fallen under it is lifted.
+            if paidByWage {
+                let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
+                if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
+            }
             let base = tables.roles[m.role]?.baseMonthlyWage ?? 40000
             let market = (w.city(co).map { Wages.market(baseMonthlyWage: base, country: country, city: $0, economy: s.economy, week: s.week, rates: w.rates) } ?? base) * m.partTimeShare
             let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
@@ -76,6 +90,8 @@ public enum StaffRoutine {
         // Agents who use their own car are paid mileage. Original: vehicle week (features/company/realistic_buying.js).
         let ownCars = co.staff.filter { $0.num("ownCar") != 0 && !$0.isOffSeason }.count
         if ownCars > 0 { Payments.companyPays(&s, companyID: co.id, amount: w.currency(co).scaledPrice(4500) * 12 / 52 * Double(ownCars), category: "oth", label: "Mileage for own cars") }
+        if lifted > 0 { s.note("\(lifted) \(lifted == 1 ? "person's pay was" : "people's pay was") raised to the new minimum wage at \(co.name).", companyID: co.id) }
+        if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerSocial), category: "wages", label: "Overtime pay") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }

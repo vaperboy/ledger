@@ -3,6 +3,7 @@
 ## Unreleased — native migration (branch `native-swiftui`)
 
 ### Added
+* Country labour rules (data: `labour` in `country_traits.json`, `LabourRules`): minimum wage (offers and raises are lifted to it, pay follows it with inflation), standard week with overtime premium and tiredness, notice and severance by years of service for dismissals, layoffs and managers (one helper), probation and at-will rules, and a read-only Labour rules card in Company > Team.
 * Management and people: general managers (executive search, interviews, references, hire, what they may decide, pay review, proposals and yearly raise in the Inbox, resignation with notice, rival offers, move, replace, ask for changes, meetings), assistant managers with two jobs, promotions with a pay talk, and the best worker as the target of a poaching offer. Company > Team has the manager card, hiring and the promotion sheet.
 * Rental and finance trades: residential rentals, commercial property, parking and self-storage (`RentalModel`), insurance company, bank and investment fund (`FinanceModel`), with Properties and Book sections in the company screen; compared with the original on a saved game.
 * `native/Engine`: the game engine in Swift — seeded randomness identical to the original's, calendar, 23 countries as data, taxes,

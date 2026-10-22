@@ -109,8 +109,7 @@ public enum StaffProfile {
         let t = data.catalog.tables
         let skill = StaffModel.skill(m, person: n, salesRoles: t.salesRoles)
         let w = World(state: s, data: data)
-        let months: Double = m.hiredWeek < s.week - 52 ? 2 : m.hiredWeek < s.week - 13 ? 1 : 0.5
-        let sev = m.monthlyWage * months * (1 + w.country(co).employerSocial)
+        let sev = w.terminationCost(co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), onNotice: m.noticeWeeks > 0)
         let market = marketPay(s, co, m, data: data)
         let gap = (market * (0.7 + n.skill / 160) - m.monthlyWage) / max(1, m.monthlyWage)
         let hours = m.weeklyHours ?? StaffModel.fullWeekHours
@@ -187,7 +186,8 @@ public enum StaffProfile {
     public static func dismiss(_ s: inout GameState, companyID: Int, staffID: Int, data: GameData) -> DismissResult? {
         guard let i = s.companyIndex(companyID), let m = s.companies[i].staff.first(where: { $0.id == staffID }) else { return nil }
         let just = isDocumented(m)
-        let unfair = !just && s.random.chance(!m.value("flag").isNull ? 0.35 : 0.55)
+        let tenure = Double(s.week - m.hiredWeek)
+        let unfair = !just && World(state: s, data: data).labour(s.companies[i]).canClaimUnfairDismissal(tenureWeeks: tenure) && s.random.chance(!m.value("flag").isNull ? 0.35 : 0.55)
         let name = s.people[staffID]?.name ?? "A team member"
         let wage = m.monthlyWage
         let sev = Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: just)
@@ -218,10 +218,11 @@ public enum StaffProfile {
     public static func layoffPreview(_ s: GameState, companyID: Int, count n: Int, data: GameData) -> (names: [String], savesPerMonth: Double, severance: Double) {
         guard let co = s.company(companyID) else { return ([], 0, 0) }
         let t = data.catalog.tables
-        let emp = World(state: s, data: data).country(co).employerSocial
+        let world = World(state: s, data: data)
+        let emp = world.country(co).employerSocial
         let pick = co.staff.sorted { StaffModel.skill($0, person: s.people[$0.id], salesRoles: t.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: t.salesRoles) }.prefix(max(0, n))
         let saves = pick.reduce(0) { $0 + $1.monthlyWage * (1 + emp) }
-        let sev = pick.reduce(0) { $0 + $1.monthlyWage * ($1.hiredWeek < s.week - 52 ? 2 : $1.hiredWeek < s.week - 13 ? 1 : 0.5) * (1 + emp) }
+        let sev = pick.reduce(0) { $0 + world.terminationCost(co, monthlyWage: $1.monthlyWage, tenureWeeks: Double(s.week - $1.hiredWeek), onNotice: $1.noticeWeeks > 0) }
         return (pick.map { $0.id }.compactMap { s.people[$0]?.name }, saves, sev)
     }
 
