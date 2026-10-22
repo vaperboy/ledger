@@ -302,6 +302,7 @@ public struct GameEngine {
         FootballModel.leaguesWeek(&state, data: data)
         Markets.fundsWeekly(&state)
         Brokerage.weekly(&state)
+        FinanceManager.weekly(&state, context: context)   // your fund manager's returns, the office finance manager's holdings
         Luxury.weekly(&state)
         for i in state.companies.indices {
             guard state.companies[i].status.isLive else { continue }
@@ -344,6 +345,6 @@ public struct GameEngine {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
         snapshot()
-        Failure.checkOver(&state, data: data, context: context, liquidate: { s, need in Brokerage.liquidate(&s, need: need) })
+        Failure.checkOver(&state, data: data, context: context, liquidate: { s, need in Brokerage.liquidate(&s, need: need); FinanceManager.cashIn(&s, need: need) })
     }
 }
