@@ -210,6 +210,7 @@ struct RivalSheet: View {
                                 }
                             }
                         }
+                        HostingSection(engine: e, onlyRival: rivalID)
                         LedgerSection("What you can do") {
                             VStack(alignment: .leading, spacing: 10) {
                                 Button("Meet the owner · " + cur.short(cur.scaledPrice(4000))) {
