@@ -166,7 +166,8 @@ public enum CompanyCosts {
             weight += v["cost"].double
             eqv += v["cost"].double
             vehicles[n]["km"] = .number(v["km"].double + (bd.trait("km") ?? 500) / Double(max(1, vehicles.count)) * util)
-            upkeep += v["cost"].double * mc * 1.3 / 52
+            // A leased vehicle is serviced by the lessor ("Service included in lease"): no upkeep bill on top of the lease payment.
+            if v["mode"].string != "lease" { upkeep += v["cost"].double * mc * 1.3 / 52 }
         }
         co.set("eq", eq)
         co.set("veh", .array(vehicles))
