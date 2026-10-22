@@ -134,6 +134,7 @@ public struct GameEngine {
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
             if Ventures.handlesAnswer(m.actionID) { return Ventures.answer(&s, message: m, option: idx, data: d, context: c) }
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
+            if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
             if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }

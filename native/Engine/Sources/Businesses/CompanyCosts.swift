@@ -174,7 +174,10 @@ public enum CompanyCosts {
         co.set("eqc", weight != 0 ? total / weight : 1)
         co.set("eqv", eqv)
         s.companies[i] = co
-        if upkeep > 0 { Payments.companyPays(&s, companyID: co.id, amount: upkeep, category: "oth") }
+        if upkeep > 0 {
+            let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
+            Payments.companyPays(&s, companyID: co.id, amount: upkeep * (1 - fixDisc), category: "oth")
+        }
     }
 
     /// Owned premises follow the housing market and cost 1% of their value per year to keep. Original: `premValueWeek`.

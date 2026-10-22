@@ -109,7 +109,7 @@ public extension GameEngine {
     @discardableResult
     mutating func serviceEquipment(companyID: Int, equipmentID: String) -> EquipmentMarket.Result {
         var r = EquipmentMarket.Result.notPossible
-        update { s, _, _ in r = EquipmentMarket.serviceAll(&s, companyID: companyID, equipmentID: equipmentID) }
+        update { s, d, _ in r = EquipmentMarket.serviceAll(&s, companyID: companyID, equipmentID: equipmentID, data: d) }
         return r
     }
 
