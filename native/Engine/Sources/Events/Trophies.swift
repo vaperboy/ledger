@@ -8,8 +8,8 @@ import Businesses
 /// Each trophy is a test on the game state; the first week it holds, it is kept with the date and an inbox message tells you.
 /// Records live in `state.rest["ach28"]` as `{ id: { w: week, t: text, old: 1 if reached before the wall existed } }`.
 ///
-/// Not ported (they need systems the native game does not have yet): acquisitions, No. 1 in a market, country rank, gifts,
-/// luxury assets, startups, private equity, franchises, chains, R&D, review counts, listed holdings, manager tenure.
+/// More trophies (acquisitions, chains, franchises, reviews, R&D, luxury, gifts, tenure) are in `TrophiesMore.swift`.
+/// Not ported (they need systems the native game does not have yet): No. 1 in a market, country rank, a management team.
 public enum Trophies {
     public struct Trophy: Identifiable {
         public let id: String
@@ -108,6 +108,7 @@ public enum Trophies {
         one("pe1", "Private equity", "legacy") { f in (f.s.rest["pe56"]?["mine"].array.count ?? 0) >= 1 ? "You committed money to a private equity fund." : nil }
         one("pe2", "Twice your money", "legacy") { f in (f.s.rest["pe56"]?["mine"].array ?? []).contains { $0["paid"].double > 0 && $0["dist"].double >= $0["paid"].double * 2 } ? "A fund paid you back twice what you put in." : nil }
         one("boty", "Business of the year", "legacy") { f in Awards.wonCount(f.s, kind: "boty") >= 1 ? "One of your companies was named business of the year." : nil }
+        L += TrophiesMore.list
         return L
     }()
 

@@ -83,6 +83,9 @@ public enum Ambitions {
         func rank(_ scope: String) -> Double { 999 }
     }
 
+    /// Share of group sales that come from companies abroad (0...1). For the trophy wall.
+    public static func abroadShare(_ s: GameState, _ data: GameData) -> Double { Facts(s, data).abroadShare }
+
     static func mshort(_ v: Double, _ s: GameState, _ data: GameData) -> String {
         Currency(country: data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).display(v)
     }
