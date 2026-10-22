@@ -24,4 +24,30 @@
 "KR": {"stormName": "a typhoon", "mdirTitle": "CEO", "paper": "The Seoul Ledger", "cityPaper": "{city} Ilbo"},
 "AE": {"stormName": "a sandstorm", "paper": "The Gulf Ledger"},
 "CA": {"mdirTitle": "CEO", "paper": "The Northern Ledger"}
-}}
+},
+"politics": {
+"NO": {"enforcement": 1.3, "openness": 0.6},
+"SE": {"enforcement": 1.3, "openness": 0.6},
+"DK": {"enforcement": 1.3, "openness": 0.6},
+"FI": {"enforcement": 1.3, "openness": 0.6},
+"DE": {"enforcement": 1.2, "openness": 0.8},
+"CH": {"enforcement": 1.2, "openness": 0.7},
+"NL": {"enforcement": 1.2, "openness": 0.8},
+"UK": {"enforcement": 1.15, "openness": 1.0},
+"AU": {"enforcement": 1.15, "openness": 0.9},
+"CA": {"enforcement": 1.1, "openness": 0.9},
+"SG": {"enforcement": 1.3, "openness": 0.5},
+"IE": {"enforcement": 1.0, "openness": 0.9},
+"FR": {"enforcement": 1.0, "openness": 1.0},
+"US": {"enforcement": 1.1, "openness": 1.3},
+"JP": {"enforcement": 1.1, "openness": 1.0},
+"KR": {"enforcement": 1.0, "openness": 1.1},
+"ES": {"enforcement": 0.9, "openness": 1.0},
+"PL": {"enforcement": 0.9, "openness": 1.0},
+"LT": {"enforcement": 0.85, "openness": 0.9},
+"IT": {"enforcement": 0.8, "openness": 1.1},
+"MX": {"enforcement": 0.7, "openness": 1.2},
+"BR": {"enforcement": 0.7, "openness": 1.2},
+"AE": {"enforcement": 0.9, "openness": 0.8}
+}
+}

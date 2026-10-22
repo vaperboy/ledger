@@ -21,6 +21,12 @@ public enum CountryTraits {
     public static func flag(_ code: String, _ key: String) -> Bool { entry(code)[key].bool }
     public static func text(_ code: String, _ key: String) -> String? { let v = entry(code)[key]; return v.isNull ? nil : v.string }
 
+    /// Enforcement strictness and openness to influence (1 = average), data: `politics` in `country_traits.json`.
+    public static func politics(_ code: String, _ key: String) -> Double {
+        let v = file["politics"][code][key]
+        return v.isNull ? 1 : v.double
+    }
+
     public static var globalBrandOrigins: [String] { file["globalBrandOrigins"].array.map { $0.string } }
     public static func isSouthernHemisphere(_ code: String) -> Bool { flag(code, "southernHemisphere") }
     public static func hasDataProtectionLaw(_ code: String) -> Bool { flag(code, "gdpr") }
