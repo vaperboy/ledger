@@ -35,8 +35,9 @@ struct PhoneView: View {
                 }
             }
             .ledgerBackground()
-            .navigationTitle("Phone")
+            .navigationTitle("More")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { store.showPhone = false } } }
             .navigationDestination(for: PhoneDestination.self) { dest in
                 switch dest {
                 case .news: NewsView()

@@ -61,7 +61,13 @@ struct CompanyDetailView: View {
             .ledgerBackground()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { if co.status == .setup { section = .setup } }
+            .onAppear {
+                if co.status == .setup { section = .setup }
+                if let want = store.companySection {
+                    if sections(co, e).contains(want) { section = want }
+                    store.companySection = nil
+                }
+            }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

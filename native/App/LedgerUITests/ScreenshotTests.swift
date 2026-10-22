@@ -34,22 +34,28 @@ final class ScreenshotTests: XCTestCase {
         let next = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Next day")).firstMatch
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }
 
-        open("Group"); sleep(1); shot("03-group")
+        open("Company"); sleep(1); shot("03-company")
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-overview")
-            for section in ["Staff", "Finances", "Operations", "Marketing"] {
+            for section in ["Finances", "Operations", "Marketing"] {
                 let b = app.buttons[section]
                 if b.exists { b.tap(); sleep(1); shot("05-company-" + section.lowercased()) }
             }
             if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }
         }
-        open("Money"); sleep(1); shot("06-money")
+        open("Team"); sleep(1); shot("05-team")
+        open("Group"); sleep(1); shot("06-group")
+        let money = app.buttons["Money"].firstMatch
+        if money.exists { money.tap(); sleep(1) }
+        shot("06-money")
         for section in ["Bank", "Invest", "Taxes", "Costs"] {
             let b = app.buttons[section]
             if b.exists { b.tap(); sleep(1); shot("06-money-" + section.lowercased()) }
         }
-        open("Phone"); sleep(1); shot("07-phone")
+        let more = app.buttons["more-button"].firstMatch
+        if more.exists { more.tap(); sleep(1) }
+        shot("07-phone")
         for item in ["Settings", "Stats"] {
             let b = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", item)).firstMatch
             if b.exists {
@@ -57,6 +63,8 @@ final class ScreenshotTests: XCTestCase {
                 if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }
             }
         }
+        if app.buttons["Done"].exists { app.buttons["Done"].tap() }
+        open("Projects"); sleep(1); shot("08-projects")
         open("Inbox"); sleep(1); shot("09-inbox")
     }
 }

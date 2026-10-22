@@ -52,6 +52,7 @@ Counts (original has 557 actions): 235 done and used by a screen, 17 engine only
 - **Status (unbuilt, no Swift toolchain in the cloud session):** company section is now "Team"; `CompanyTeamRoster` lists MD, department heads and regional manager (role + scope badge, search/hire/authority/let go) under the manager and assistant cards. Still to do: fold manager/assistant cards into the same list; chain/group posts now have rows too (`ExecutivePosts`: group MD on Group, chain CEO / chain manager / regional managers in the company's Chain section; unbuilt).
 - **Group = ownership and structure only** (chains, franchises, boards, stakes). A region chief or chain manager lives under Group, in that chain's people (or links into Team with scope=chain). No parallel "Regional managers" area.
 - When unsure: people go under Team, structure goes under Group. No third place.
+- **Navigation status (unbuilt):** tabs are Company (home summary + company list), Team (one cross-company people list, scope filter), Group (holdings, chains, ExecutivePosts, Money as a section), Projects (company projects/tenders + ventures), Inbox; former Phone pages are a sheet behind the "More" toolbar button on Company and Group.
 
 Current screens are **first versions**, functional only. Ivory Ledger style is chosen (`design/STYLE_IVORY_LEDGER.md`); other four styles are kept in `design/mockups` for later purchase.
 - Designed and shipped in Ivory Ledger (first pass, to be reviewed): Home, Group, company overview, Bank, Money overview, Settings, Inbox, Start.

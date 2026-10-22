@@ -22,44 +22,15 @@ struct CompaniesView: View {
                     let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            HomeSummary(engine: e)
                             HStack(alignment: .lastTextBaseline) {
-                                Text("Group").font(.serifTitle(28))
+                                Text("Company").font(.serifTitle(28))
                                 Spacer()
                                 if !cos.isEmpty {
                                     Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
                                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 }
                             }
-                            if cos.contains(where: { $0.status == .open }) {
-                                NavigationLink(value: CompanyRoute.market) {
-                                    HStack {
-                                        Text("Market, reviews and rivals").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                        Spacer()
-                                        Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                    }.padding(.vertical, 6).contentShape(Rectangle())
-                                }.buttonStyle(.plain)
-                            }
-                            if cos.filter({ $0.status.isLive }).count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
-                            if !e.holdingCompanies.isEmpty {
-                                LedgerSection("Holding companies") {
-                                    VStack(spacing: 0) {
-                                        ForEach(Array(e.holdingCompanies.enumerated()), id: \.element.id) { n, h in
-                                            if n > 0 { Hairline() }
-                                            NavigationLink(value: CompanyRoute.company(h.id)) {
-                                                HStack {
-                                                    VStack(alignment: .leading, spacing: 2) {
-                                                        Text(h.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                                        Text("\(e.state.companies.filter { $0.holdingID == h.id && $0.status.isLive }.count) companies under it").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                                    }
-                                                    Spacer()
-                                                    Text(store.short(Valuation.companyValue(h, state: e.state, trades: e.data.catalog), in: h)).font(.system(size: 13.5).monospacedDigit())
-                                                }.padding(.vertical, 9).contentShape(Rectangle())
-                                            }.buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
-                            ChainsGroupSection(engine: e)
                             if cos.isEmpty {
                                 LedgerSection("No companies yet") {
                                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -68,7 +39,6 @@ struct CompaniesView: View {
                                     }
                                 }
                             } else {
-                                GroupSummary(engine: e, rows: rows.map { $0.h }, staff: cos.reduce(0) { $0 + $1.staff.count })
                                 LedgerSection(title: "Companies", trailing: {
                                     Menu {
                                         Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
@@ -96,10 +66,11 @@ struct CompaniesView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 130)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
             }
             .ledgerBackground()
@@ -113,6 +84,7 @@ struct CompaniesView: View {
                 }
             }
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
+            .phoneToolbar()
             .onAppear { openRequested() }
             .onChange(of: store.openCompanyID) { _, _ in openRequested() }
             .onChange(of: store.showNewCompany) { _, _ in openRequested() }

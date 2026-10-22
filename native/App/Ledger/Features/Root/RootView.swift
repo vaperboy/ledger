@@ -23,7 +23,10 @@ struct GameShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
+        Group {
+            if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
+        }
+        .sheet(isPresented: $store.showPhone) { PhoneView().environmentObject(store) }
     }
 }
 
@@ -66,10 +69,10 @@ struct TabContent: View {
     var tab: AppTab
     var body: some View {
         switch tab {
-        case .home: HomeView()
-        case .companies: CompaniesView()
-        case .money: MoneyView()
-        case .phone: PhoneView()
+        case .company: CompaniesView()
+        case .team: TeamView()
+        case .group: GroupView()
+        case .projects: ProjectsView()
         case .inbox: InboxView()
         }
     }

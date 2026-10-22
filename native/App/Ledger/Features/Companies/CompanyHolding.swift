@@ -149,7 +149,7 @@ struct NewHoldingView: View {
                     Button("Create the holding company") {
                         let r = store.act { $0.createHolding(name: name, companies: Array(picked)) }
                         switch r {
-                        case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.tab = .companies; store.openCompanyID = id
+                        case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.tab = .company; store.openCompanyID = id
                         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.short(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
                         default: store.show("Not possible.", tone: "warn")
                         }

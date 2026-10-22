@@ -8,13 +8,14 @@ import Events
 import SaveSystem
 import Simulation
 
-/// Five flat destinations: today, the companies (with the group's totals), money (finance, bank, investments), decisions, and the rest.
+/// Five destinations: daily company operations (with today's summary), everyone who works for you, the group (ownership, structure, money),
+/// time-bound projects and investments, and decisions. The old Phone pages sit behind a toolbar button on Company and Group.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case home, companies, money, inbox, phone
+    case company, team, group, projects, inbox
     var id: String { rawValue }
-    var title: String { switch self { case .home: return "Home"; case .companies: return "Group"; case .money: return "Money"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
+    var title: String { switch self { case .company: return "Company"; case .team: return "Team"; case .group: return "Group"; case .projects: return "Projects"; case .inbox: return "Inbox" } }
     var symbol: String {
-        switch self { case .home: return "house"; case .companies: return "building.2"; case .money: return "banknote"; case .phone: return "iphone.gen3"; case .inbox: return "tray" }
+        switch self { case .company: return "building.2"; case .team: return "person.3"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .inbox: return "tray" }
     }
 }
 
@@ -38,9 +39,13 @@ final class GameStore: ObservableObject {
     @Published private(set) var isAdvancing = false
 
     // Navigation requests from anywhere (e.g. a suggestion card)
-    @Published var tab: AppTab = .home
+    @Published var tab: AppTab = .company
     @Published var openCompanyID: Int?
-    @Published var phoneDestination: PhoneDestination?
+    @Published var phoneDestination: PhoneDestination? { didSet { if phoneDestination != nil { showPhone = true } } }
+    /// The sheet with news, stats, activity, luxury, settings and the rest (opened from the toolbar of Company and Group).
+    @Published var showPhone = false
+    /// Open this section of the company named by `openCompanyID` (Team, Projects, ...).
+    @Published var companySection: CompanySection?
     @Published var moneySection: MoneySection?
     /// Open the Reports section on this report (set by the Home prompt).
     @Published var reportRequest: ReportRef?
@@ -93,13 +98,13 @@ final class GameStore: ObservableObject {
     }
 
     func newGame(name: String, countryCode: String) {
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name); tab = .home; save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name); tab = .company; save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
     func importLegacy(text: String) {
         guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); tab = .home; save(); show("Save imported. The original file is kept untouched.", tone: "good") }
+        do { try start(with: saves.importLegacy(text: text)); tab = .company; save(); show("Save imported. The original file is kept untouched.", tone: "good") }
         catch { errorText = "That save could not be imported: \(error)" }
     }
 
@@ -190,11 +195,11 @@ final class GameStore: ObservableObject {
         Haptics.tap()
         switch action {
         case .openMessage(let id): openMessageID = id; tab = .inbox
-        case .openCompany(let id): openCompanyID = id; tab = .companies
-        case .openLoans: moneySection = .bank; tab = .money
-        case .openInvest: moneySection = .invest; tab = .money
-        case .openTax: moneySection = .taxes; tab = .money
-        case .newCompany: showNewCompany = true; tab = .companies
+        case .openCompany(let id): openCompanyID = id; tab = .company
+        case .openLoans: moneySection = .bank; tab = .group
+        case .openInvest: moneySection = .invest; tab = .group
+        case .openTax: moneySection = .taxes; tab = .group
+        case .newCompany: showNewCompany = true; tab = .company
         }
     }
 
