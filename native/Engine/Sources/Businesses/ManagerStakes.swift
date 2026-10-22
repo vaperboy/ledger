@@ -27,7 +27,7 @@ extension ManagerModel {
         guard let i = s.companyIndex(companyID), let price = buyBackPrice(s, companyID: companyID, holderName: holderName, data: data), Payments.liquid(s) >= price else { return false }
         var H = s.companies[i].value("holders").array
         guard let k = H.firstIndex(where: { $0["name"].string == holderName }) else { return false }
-        Payments.playerPays(&s, price, label: "Bought \(holderName)'s stake in \(s.companies[i].name)")
+        Payments.playerPays(&s, price, label: "Bought \(holderName)'s stake in \(s.companies[i].name)", companyID: companyID)
         s.companies[i].ownership = min(100, s.companies[i].ownership + H[k]["pct"].double)
         H.remove(at: k)
         s.companies[i].set("holders", .array(H))

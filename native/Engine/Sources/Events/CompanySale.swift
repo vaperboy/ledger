@@ -142,6 +142,7 @@ public enum CompanySale {
     static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, mbo: Bool = false, data: GameData, context fc: FinanceContext) -> Double? {
         let co = s.companies[i]
         guard co.status.isLive else { return nil }
+        defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }   // a sold company leaves the holding's assets at once
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
         let basis = max(0, co.injectedCapital)

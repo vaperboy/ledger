@@ -63,10 +63,10 @@ public extension GameEngine {
         return r
     }
     @discardableResult mutating func moveToHolding(companyID: Int, holdingID: Int) -> Bool {
-        var ok = false; update { s, _, _ in ok = HoldingModel.move(&s, companyID: companyID, into: holdingID) }; return ok
+        var ok = false; update { s, d, _ in ok = HoldingModel.move(&s, companyID: companyID, into: holdingID, data: d) }; return ok
     }
     @discardableResult mutating func releaseFromHolding(companyID: Int) -> Bool {
-        var ok = false; update { s, _, _ in ok = HoldingModel.release(&s, companyID: companyID) }; return ok
+        var ok = false; update { s, d, _ in ok = HoldingModel.release(&s, companyID: companyID, data: d) }; return ok
     }
     @discardableResult mutating func holdingInvest(holdingID: Int, amount: Double) -> Bool {
         var ok = false; update { s, _, _ in ok = HoldingModel.invest(&s, holdingID: holdingID, amount: amount) }; return ok
