@@ -140,6 +140,7 @@ public struct GameEngine {
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56l" { Cyber.answerLeak(&s, message: m, option: idx, data: d); return true }
+            if Stories.handlesAnswer(m.actionID) { Stories.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == Press.interviewAction { Press.answerInterview(&s, questionIndex: m.value("data")["q"].int, option: idx); return true }
             if m.actionID == WeatherEvents.prepareAction { WeatherEvents.answerPrepare(&s, data: d, message: m, option: idx); return true }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)

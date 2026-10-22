@@ -38,14 +38,18 @@ public enum Hiring {
         let exp = jsRound(s.random.range(T.exp.0, T.exp.1) * 2) / 2
         let superOne = s.random.chance(["sales", "cardealer", "estate"].contains(role) ? 0.04 : 0.015)
         if superOne { skill = Double(s.random.int(88, 100)) }
+        // a company with good perks draws better people, with fewer bad habits, who ask a little less (StaffPerks)
+        let pull = co.map { StaffPerks.pull($0) } ?? 0
+        if pull > 0 && !superOne { skill = min(97, skill + jsRound(pull * s.random.range(2, 7))) }
         let claimSkill = lie ? clamp(skill + Double(s.random.int(8, 28)), 0, 98) : clamp(skill + Double(s.random.int(-4, 4)), 0, 98)
         let claimExp = lie ? exp + Double(s.random.int(2, 8)) : exp
         let base = w.catalog.tables.roles[role]?.baseMonthlyWage ?? 40000
         let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
         let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
         let spread = Wages.paySpread(baseMonthlyWage: base, country: country)
-        let ask = roundTo(base * cityWage * T.ask * (0.55 + skill / 110 + (lie ? 0.05 : 0)) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1), step: 100)
-        let trait: String? = s.random.chance(0.14) ? s.random.pick(traits) : nil
+        let perkAsk = 1 - 0.04 * pull
+        let ask = roundTo(base * cityWage * T.ask * (0.55 + skill / 110 + (lie ? 0.05 : 0)) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk, step: 100)
+        let trait: String? = s.random.chance(0.14 * (1 - 0.4 * pull)) ? s.random.pick(traits) : nil
         let rel = clamp(s.random.range(0.55, 1) - (trait != nil ? 0.12 : 0), 0.3, 1)
         let name = personName(country, &s.random)
         let resume = s.random.pick(experienceLines).replacingOccurrences(of: "{y}", with: String(format: "%g", claimExp)) + (lie && s.random.chance(0.4) ? " References available on request." : "")
