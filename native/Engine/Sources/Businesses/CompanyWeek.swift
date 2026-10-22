@@ -47,6 +47,7 @@ public enum CompanyWeek {
             Satisfaction.reachCap(&s, i, data: data)
             Reviews.weekly(&s, i, bd, data: data)                              // customers write reviews (all trades share one system)
             KeyAccounts.weekly(&s, i, bd, data: data)              // business customers: relationships, offers
+            SalesWays.weekly(&s, i, bd, data: data)                // platform fees, memberships, referrals, call-out, add-ons, peak seasons
             VolumeContracts.weekly(&s, i, bd, data: data)          // volume contracts: discount, payment delay, delivery, customer risk, offers
             if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
         }

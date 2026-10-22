@@ -13,13 +13,13 @@ import Finance
 /// not depend on the order of play. A won tender becomes a job on the order book. A manager bids at list price when the company has
 /// room and the bid is within its limits (switch it off to be asked).
 ///
-/// Only the trades below can win tenders here. The original also lets services, shops and carriers tender for volume contracts;
-/// those need the business-customer contract model (not ported), so they are not offered.
+/// The trades below win jobs; services, shops and carriers tender for volume contracts (`VolumeTenders`, which become contracts
+/// under `VolumeContracts`).
 public enum ProjectTenders {
-    public struct Offer { public let title: String; public let buyer: String; public let local: Bool }
+    public struct Offer { public let title: String; public let buyer: String; public let local: Bool; public var volume = false }
 
     /// What each trade can win: title, kind of buyer, whether the work is local. Original: `W`.
-    public static let catalog: [String: [Offer]] = [
+    static let jobCatalog: [String: [Offer]] = [
         "construction": [Offer(title: "A school extension", buyer: "muni", local: true), Offer(title: "A new fire station", buyer: "muni", local: true),
                          Offer(title: "Upgrading a county road", buyer: "road", local: false)],
         "electrician": [Offer(title: "Electrical service for municipal buildings", buyer: "muni", local: true),
@@ -28,6 +28,9 @@ public enum ProjectTenders {
         "engcons": [Offer(title: "Design of a sports hall", buyer: "muni", local: true), Offer(title: "A bridge study", buyer: "road", local: false)],
         "event": [Offer(title: "The county’s annual conference", buyer: "county", local: false)],
     ]
+
+    /// Job tenders and the volume tenders of services, shops and carriers (`VolumeTenders.offers`).
+    public static let catalog: [String: [Offer]] = jobCatalog.merging(VolumeTenders.offers) { $0 + $1 }
 
     public struct Bid: JSONRecord {
         public var raw: [String: JSONValue]
@@ -154,6 +157,7 @@ public enum ProjectTenders {
         let val = home.roundedStep(bd.ticket * Pricing.ticketMultiplier(co, bd, w) * (2 + s.random.next() * 4), about: 1000)
         t.set("val", val); t.set("yrs", 0); t.set("ext", 0)
         t.set("cost", home.roundedStep(max(w.currency(co).scaledPrice(4000), val * 0.004), about: 500))
+        if offer.volume { t.set("kind", "vol"); VolumeTenders.size(&t, &s, co, bd, w, home: home) }
         return t
     }
 
@@ -212,6 +216,7 @@ public enum ProjectTenders {
                 && c.managerID != nil && s.people[c.managerID!] != nil && st.auto[String(c.id)]?.double != 0 {
                 if t.bid(of: c.id) != nil || !qualification(t, c, week: s.week).ok { continue }
                 if c.cash < t.bidCost * 3 { continue }
+                if VolumeTenders.noRoom(t, c) { continue }
                 Payments.companyPays(&s, companyID: c.id, amount: t.bidCost, category: "oth", label: "Tender bid: \(t.title)")
                 var bids = st.list[ti].bids
                 bids.append(Bid(raw: ["co": .number(Double(c.id)), "pf": 1, "q": false, "w": .number(Double(s.week))]))
@@ -255,9 +260,9 @@ public enum ProjectTenders {
             let place = order.firstIndex(of: idx)! + 1
             let pts = Int(jsRound(e.score * 100))
             if idx == order[0] {
-                startJob(&s, t, co, priceFactor: e.pf, data: data)
+                startJob(&s, t, co, priceFactor: e.pf, higherQuality: e.higher, data: data)
                 s.addMessage(from: t.buyer, title: "Award: \(t.title)",
-                             body: "\(co.name) won with \(pts) points out of 100 (\(all.count) \(all.count == 1 ? "bid" : "bids")). Work starts now.",
+                             body: "\(co.name) won with \(pts) points out of 100 (\(all.count) \(all.count == 1 ? "bid" : "bids")). \(t.isVolume ? VolumeTenders.startText(t) : "Work starts now.")",
                              companyID: cid, tone: "good", status: "done")
             } else {
                 let weights = t.priceWeight >= 1 ? ", on price alone." : ". Price counted \(Int(jsRound(t.priceWeight * 100)))%, quality \(Int(jsRound((1 - t.priceWeight) * 100)))%."
@@ -272,7 +277,8 @@ public enum ProjectTenders {
     static func ordinal(_ n: Int) -> String { "\(n)" + (n == 1 ? "st" : n == 2 ? "nd" : n == 3 ? "rd" : "th") }
 
     /// The won tender becomes a job on the order book. Original: `start`.
-    static func startJob(_ s: inout GameState, _ t: Tender, _ co: Company, priceFactor pf: Double, data: GameData) {
+    static func startJob(_ s: inout GameState, _ t: Tender, _ co: Company, priceFactor pf: Double, higherQuality: Bool = false, data: GameData) {
+        if t.isVolume { VolumeTenders.startContract(&s, t, co, priceFactor: pf, higherQuality: higherQuality); return }
         guard let i = s.companyIndex(co.id), let bd = data.catalog[co.type] else { return }
         let tw = bd.traits
         var fm = s.companies[i].value("fm")
