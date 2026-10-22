@@ -26,6 +26,7 @@ struct CompanyMarketing: View {
                     Text("Marketing builds awareness, which fades every week. Results vary: some channels pay off well, some do little.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
+            CompanyWaysToSell(engine: engine, company: company)
             ForEach(channels, id: \.id) { ch in
                 let running = mkt[ch.id]
                 let budget = running.isNull ? 0 : running["b"].double
