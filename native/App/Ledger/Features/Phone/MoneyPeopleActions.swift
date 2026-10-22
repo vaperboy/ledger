@@ -209,6 +209,74 @@ struct HoldingFinanceManagerCard: View {
     var engine: GameEngine
     var company: Company
     @State private var confirm = false
+    @State private var found: [Person] = []
+    @State private var confirmFire = false
+
+    private var staffEntry: JSONValue? { engine.officeStaff.first { $0["role"].string == "fin" } }
+
+    private func blockedText(_ r: Headquarters.RoomResult) -> String {
+        switch r {
+        case .office: return "Rent a main office first."
+        case .homeoffice: return "A home office has no room for one. Upgrade the main office."
+        case .desks: return "The main office has no free desk."
+        case .locked: return "Needs a holding company."
+        default: return "Not possible right now."
+        }
+    }
+
+    @ViewBuilder private var hireFlow: some View {
+        let cur = engine.currency(for: company)
+        let room = engine.officeRoom(role: "fin")
+        let role = engine.officeRoles.first { $0.id == "fin" }
+        if let e = staffEntry {
+            let id = e["id"].int
+            Text("Hired: \(e["name"].string), \(cur.short(e["wage"].double)) a month, paid by the group.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            ForEach(engine.officePaperwork(personID: id), id: \.key) { item in
+                HStack {
+                    Text(item.text).font(.system(size: 11.5)).foregroundStyle(item.done ? Theme.ivoryFaint : Theme.ivory)
+                    Spacer(minLength: 8)
+                    if !item.done { Button("Done") { store.act { $0.tickOfficePaperwork(personID: id, item: item.key) } }.buttonStyle(QuietButtonStyle()) }
+                }
+            }
+            Button("Let go") { confirmFire = true }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+        } else if room == .ok {
+            Text("Wage about \(cur.short(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            if found.isEmpty {
+                HStack {
+                    Button("Ask around, free") { search(.network) }.buttonStyle(QuietButtonStyle())
+                    Button("Job ad, \(cur.short(cur.scaledPrice(1500)))") { search(.ad) }.buttonStyle(QuietButtonStyle())
+                    Button("Agency, \(cur.short(cur.scaledPrice(12000)))") { search(.agency) }.buttonStyle(QuietButtonStyle())
+                }
+                Text("An agency checks references; with the others the paperwork is yours to verify.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            } else {
+                ForEach(found, id: \.id) { c in
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                            Text("Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill · asks \(cur.short(c.askingMonthlyWage)) a month\(c.flag("checked") ? " · references checked" : "")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Hire") { hire(c) }.buttonStyle(QuietButtonStyle())
+                    }
+                }
+            }
+        } else {
+            Text(blockedText(room)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+        }
+    }
+
+    private func search(_ mode: Headquarters.SearchMode) {
+        if let r = store.act({ $0.searchOffice(role: "fin", mode: mode) }) ?? nil, !r.isEmpty { found = r; Haptics.tap() }
+        else { store.show("Nobody to meet now. Try again later or pay for a search.", tone: "warn") }
+    }
+
+    private func hire(_ c: Person) {
+        switch store.act({ $0.hireOffice(role: "fin", personID: c.id, monthlyWage: c.askingMonthlyWage) }) {
+        case .ok?: Haptics.success(); found = []; store.show("\(c.name) joins as finance manager.", tone: "good")
+        case .refuse?: store.show("\(c.name) turned the offer down.", tone: "warn")
+        default: store.show("Not possible.", tone: "warn")
+        }
+    }
 
     var body: some View {
         let on = engine.holdingsRunByFinanceManager.contains(company.id)
@@ -222,9 +290,16 @@ struct HoldingFinanceManagerCard: View {
                 }
                 Text("Cost: none beyond their pay, which you already pay. Benefit: cash above \(cur.short(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better. Risk: the index fund can fall, and selling it costs 0.66%.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                Button(on ? "Take it back" : "Let the finance manager run it") { confirm = true }.buttonStyle(QuietButtonStyle())
+                if staffEntry != nil { Button(on ? "Take it back" : "Let the finance manager run it") { confirm = true }.buttonStyle(QuietButtonStyle()) }
+                else { Text("You have no finance manager. Hire one for the main office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+                hireFlow
             }
         }
+        .confirmationDialog("Let the finance manager go?", isPresented: $confirmFire, titleVisibility: .visible) {
+            Button("Let go", role: .destructive) {
+                if let id = staffEntry?["id"].int { store.act { $0.fireOffice(personID: id) }; Haptics.warning() }
+            }
+        } message: { Text("He stops running your holdings, and you run them yourself again.") }
         .confirmationDialog(on ? "Run \(company.name) yourself again?" : "Let the finance manager run \(company.name)?", isPresented: $confirm, titleVisibility: .visible) {
             Button(on ? "Take it back" : "Hand it over") {
                 if let now = store.act({ $0.toggleHoldingFinanceManager(holdingID: company.id) }) ?? nil { Haptics.success(); store.show(now ? "Handed over." : "You run it yourself again.", tone: "n") }
