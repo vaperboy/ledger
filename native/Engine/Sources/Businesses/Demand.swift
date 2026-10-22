@@ -117,6 +117,9 @@ public enum DemandModel {
         // 85: a sales director brings more customers, most in business-to-business trades (ManagerTeam)
         let salesHead = co.value("tm")["sales"].double
         if salesHead > 0 && r.customers != 0 { r.customers *= 1 + (0.035 + 0.055 * bd.businessShare) * salesHead }
+        // 80: a manager chasing the month's targets pushes a little harder (ManagerTargets)
+        let chase = ManagerTargets.demandFactor(co, week: w.week)
+        if chase != 1 && r.customers != 0 { r.customers *= chase }
         // 100: own premises: business clients trust you more
         let homeKind = bd.premisesKind == "home"
         if homeKind && (co.value("prem")["m2"].double > 0) && bd.businessShare >= 0.4 && r.customers != 0 { r.customers *= 1.06 }
