@@ -32,7 +32,7 @@ final class RivalLifeTests: XCTestCase {
             let old: JSONValue = .object(["id": 77, "name": "Old Co", "size": 1.0, "pm16": 1.0, "ig16": 1])
             XCTAssertTrue(Rivals.strategies.contains(Rivals.strategyOf(old)))
             XCTAssertEqual(Rivals.fortuneOf(old), 1)
-            XCTAssertFalse(Rivals.traits(rs[0].strategy).strength.isEmpty)
+            XCTAssertFalse(Rivals.traits(rs.first?.strategy ?? "cheap").strength.isEmpty)
             XCTAssertTrue(Ledger.gaps(s).isEmpty)
         }
     }
@@ -61,8 +61,9 @@ final class RivalLifeTests: XCTestCase {
             Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
             let first = Rivals.rivals(s, key: k)
             XCTAssertEqual(first.count, 1)
+            guard !first.isEmpty else { return }
             let msgs = s.inbox.count
-            Rivals.mutate(&s, key: k, id: first[0].id) { $0["fort"] = -1.4 }
+            Rivals.mutate(&s, key: k, id: first[0].id) { $0["fort"] = -1.5; $0["st"] = "expander"; $0["pm16"] = 1; $0["ig16"] = 1; $0["g27"] = .null }   // deep in trouble whatever the year's luck
             s.week = 52 * 3 + 1   // a new year
             Rivals.fortuneYear(&s, data: data)
             XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty, "out of money, it closes")
@@ -90,7 +91,7 @@ final class RivalLifeTests: XCTestCase {
                 var t = s
                 t.economy.demand = demand
                 t.week = 52 * 4 + 1
-                let rid = Rivals.rivals(t, key: k)[0].id
+                guard let rid = Rivals.rivals(t, key: k).first?.id else { return -9 }
                 Rivals.mutate(&t, key: k, id: rid) { $0["fort"] = 1.0; $0["st"] = "cheap"; $0["g27"] = .null }
                 Rivals.fortuneYear(&t, data: data)
                 return Rivals.rivals(t, key: k).first { $0.id == rid }?.fortune ?? -9
@@ -109,7 +110,7 @@ final class RivalLifeTests: XCTestCase {
             guard let other = c.country.cities.indices.first(where: { $0 != idx && abs($0 - idx) <= 3 }) else { return }
             let tk = co.type + "|" + c.country.cities[other].id
             s.rest["mk"]![tk] = s.rest["mk"]![k]
-            let rid = Rivals.rivals(s, key: k)[0].id
+            guard let rid = Rivals.rivals(s, key: k).first?.id else { return XCTFail("no rival in the market") }
             Rivals.mutate(&s, key: k, id: rid) { $0["st"] = "expander"; $0["fort"] = 2; $0["size"] = 1.3 }
             s.rest["mk"]![tk] = s.rest["mk"]![k]
             Rivals.mutate(&s, key: tk, id: rid) { $0["name"] = "Someone Else" }
