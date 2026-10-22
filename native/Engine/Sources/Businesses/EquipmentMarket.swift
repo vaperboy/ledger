@@ -164,7 +164,7 @@ public enum EquipmentMarket {
         let generic = ["Group", "Trading", "Supply Group", "Holding", "Partners"]
         let starts = C.companyNameStarts.isEmpty ? ["Nova"] : C.companyNameStarts
         func pick<T>(_ a: [T]) -> T { a[min(a.count - 1, Int(r.next() * Double(a.count)))] }
-        var out: [(Vendor, [String])] = []
+        var out: [(vendor: Vendor, families: [String])] = []
         var used = Set<String>()
         var guardN = 0
         while out.count < 60 && guardN < 600 {
