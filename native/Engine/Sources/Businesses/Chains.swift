@@ -438,10 +438,12 @@ public enum Chains {
             let co = s.companies[i]
             guard co.status == .open, co.type != "club" else { continue }
             let lw = co.value("lastW")
-            if co.type == "cardealer", lw["rev"].double > 0, let pl = s.companies.first(where: { $0.type == "factory" && $0.status == .open && $0.id != co.id && $0.value("knob")["line"].int >= 1 }) {
+            if co.type == "cardealer", lw["rev"].double > 0, let pl = s.companies.first(where: { $0.type == "factory" && $0.status == .open && $0.id != co.id && $0.countryCode == co.countryCode && $0.value("knob")["line"].int >= 1 }) {
                 let rev = lw["rev"].double
-                rebate(&s, co.id, min(rev * 0.06, lw["cogs"].double * 0.12))
-                Payments.companyReceives(&s, companyID: pl.id, amount: rev * 0.04, category: "rev", label: "Wholesale to \(co.name)")
+                // The dealer's saving and the plant's wholesale revenue are the same amount (same country, as in IntercompanySupply).
+                let discount = min(rev * 0.06, lw["cogs"].double * 0.12).rounded()
+                rebate(&s, co.id, discount)
+                if discount > 0 { Payments.companyReceives(&s, companyID: pl.id, amount: discount, category: "rev", label: "Wholesale to \(co.name)") }
                 let cap = clamp(36 + 17 * log2(Double(max(1, Competition.chainOutlets(co, World(state: s, data: data))))), 36, 100)
                 s.companies[i].awareness = max(s.companies[i].awareness, min(cap, pl.awareness * 0.5))
             }

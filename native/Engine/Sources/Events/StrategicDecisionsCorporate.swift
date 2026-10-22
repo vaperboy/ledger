@@ -207,8 +207,7 @@ extension StrategicDecisions {
                         Opt(label: "Sell them 60%", detail: "") { s, x in
                             guard let ci = s.companyIndex(x.d["c"].int) else { return }
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.6 * c.ownership / 100)
-                            Payments.playerReceives(&s, amt, label: "Sold 60% of \(c.name) to private equity", companyID: c.id)
-                            s.tax.gains += amt * 0.7
+                            Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 60% of \(c.name) to private equity")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
                             Funding.addHolder(&s, ci, name: who, pct: 60, paid: amt, extra: ["k27": "exit", "sat": 65])
                             s.companies[ci].ownership = c.ownership * 0.4
@@ -216,8 +215,7 @@ extension StrategicDecisions {
                         Opt(label: "Offer them 25% instead", detail: "They may accept a minority stake.") { s, x in
                             guard let ci = s.companyIndex(x.d["c"].int), s.random.chance(0.5) else { s.note("They only wanted control.", tone: "n"); return }
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.25 * c.ownership / 100)
-                            Payments.playerReceives(&s, amt, label: "Sold 25% of \(c.name)", companyID: c.id)
-                            s.tax.gains += amt * 0.7
+                            Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 25% of \(c.name)")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
                             Funding.addHolder(&s, ci, name: who, pct: 25, paid: amt, extra: ["k27": "growth", "sat": 60])
                             s.companies[ci].ownership = c.ownership * 0.75

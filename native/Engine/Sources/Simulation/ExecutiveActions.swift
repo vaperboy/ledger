@@ -5,7 +5,7 @@ import Finance
 import Businesses
 
 /// Boards, the management team, chain and group executives, the main office, meetings, the academy, owners and the big meeting, as player actions.
-/// Models: `ManagerTeam`, `ManagerBoards`, `ManagerMeetings`, `ManagerPromotions`, `ManagerProposals`, `ChainHierarchy`, `Headquarters`, `Academy`, `ManagerStakes`.
+/// Models: `ManagerTeam`, `ManagerBoards`, `ManagerMeetings`, `ManagerPromotions`, `ManagerProposals`, `ChainHierarchy`, `Headquarters`, `Academy`.
 public extension GameEngine {
     // MARK: Management team of a company (managing director, department heads, regional manager)
 
@@ -148,13 +148,4 @@ public extension GameEngine {
         var r = Academy.Outcome.unavailable; update { s, d, _ in r = Academy.send(&s, companyID: companyID, staffID: staffID, course: courseID, data: d) }; return r
     }
 
-    // MARK: Owners and the big meeting
-
-    func buyBackPrice(companyID: Int, holderName: String) -> Double? { ManagerModel.buyBackPrice(state, companyID: companyID, holderName: holderName, data: data) }
-    mutating func buyBackStake(companyID: Int, holderName: String) -> Bool { var r = false; update { s, d, _ in r = ManagerModel.buyBackStake(&s, companyID: companyID, holderName: holderName, data: d) }; return r }
-    var bigOffer: ManagerModel.BigOffer? { ManagerModel.bigOffer(state) }
-    var stakes: [ManagerModel.Stake] { ManagerModel.stakes(state) }
-    mutating func acceptBigOffer() -> ManagerModel.BigResult { var r = ManagerModel.BigResult.none; update { s, d, _ in r = ManagerModel.acceptBigOffer(&s, data: d) }; return r }
-    mutating func counterBigOffer() -> ManagerModel.BigResult { var r = ManagerModel.BigResult.none; update { s, _, _ in r = ManagerModel.counterBigOffer(&s) }; return r }
-    mutating func walkAwayFromBigOffer() { update { s, _, _ in ManagerModel.walkAwayFromBigOffer(&s) } }
 }
