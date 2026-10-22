@@ -162,6 +162,8 @@ struct RivalSheet: View {
     @State private var offer = 1.2
     @State private var reply: String?
     @State private var counter: Double?
+    /// The price the owner agreed to: asks what the business should become before paying.
+    @State private var pendingPrice: Double?
 
     var body: some View {
         NavigationStack {
@@ -211,6 +213,19 @@ struct RivalSheet: View {
                             }
                         }
                         HostingSection(engine: e, onlyRival: rivalID)
+                        if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
+                            LedgerSection("\(d.rival.name) cut prices \(cut.pct)%") {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Some of your customers are trying them. It runs until about week \(cut.end).").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                                    Button("Match their price") { answerCut(.match) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                    Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                    Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                    Text("Doing nothing is also a choice: you lose some customers until the cut ends. You can also buy them out below.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                            }
+                        } else if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), let answer = cut.answered {
+                            Text("You answered their price cut: \(answer).").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        }
                         LedgerSection("What you can do") {
                             VStack(alignment: .leading, spacing: 10) {
                                 Button("Meet the owner · " + cur.short(cur.scaledPrice(4000))) {
@@ -231,7 +246,13 @@ struct RivalSheet: View {
                                 Text("Plus about \(cur.short(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                                 Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(GoldButtonStyle())
                                 if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                                if let counter { Button("Accept their price · " + cur.short(counter)) { buy(counter) }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                                if let counter { Button("Accept their price · " + cur.short(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                                Hairline()
+                                if co.value("docs")["fran"]["st"].string == "ok" {
+                                    Button("Open a new site beside them") { openSite() }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                                } else {
+                                    Text("A new site beside a rival needs your franchise papers (Chain section).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                                }
                             }
                         }
                     }
@@ -242,6 +263,67 @@ struct RivalSheet: View {
             }
             .ledgerBackground()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .confirmationDialog("What should it become?", isPresented: Binding(get: { pendingPrice != nil }, set: { if !$0 { pendingPrice = nil } }), titleVisibility: .visible) {
+                if let p = pendingPrice, let e = store.engine {
+                    Button("Its own company") { pendingPrice = nil; buy(p) }
+                    Button("Your branch") { absorb(p, .branch) }
+                    Button("Merge into your company (extra 8%)") { absorb(p, .merge) }
+                    Button("Close it down (extra 12%)") { absorb(p, .shut) }
+                    if e.state.company(companyID)?.value("fr")["on"].bool == true {
+                        Button("Franchise office, owner stays") { absorb(p, .franchiseOldOwner) }
+                        Button("Franchise office, new franchisee") { absorb(p, .franchiseNewOwner) }
+                    }
+                    if e.ownBank != nil, e.ownBankRoom() >= p * 0.2 { Button("Its own company, 70% from my own bank") { buyWithBank(p) } }
+                }
+            } message: { Text("A branch carries your name from day one. Merging brings their customers and some staff over; closing removes a rival (a big market share can draw the competition authority).") }
+        }
+    }
+
+    private func absorb(_ price: Double, _ how: RivalAbsorb.How) {
+        pendingPrice = nil
+        let r = store.act { $0.absorbRival(companyID: companyID, rivalID: rivalID, price: price, how: how) }
+        switch r {
+        case .ok(let message, let id, _)?: Haptics.success(); store.show(message, tone: "good"); dismiss(); if let id { store.openCompanyID = id }
+        case .notEnoughCash?: reply = "Not enough cash for the price and the extra costs."; Haptics.warning()
+        case .failed(let why)?: reply = why
+        case nil: break
+        }
+    }
+
+    private func buyWithBank(_ price: Double) {
+        pendingPrice = nil
+        guard let e = store.engine else { return }
+        let amount = min((price * 0.7 / 1000).rounded() * 1000, (e.ownBankRoom() / 1000).rounded(.down) * 1000)
+        let r = store.act { $0.buyRivalWithOwnBank(companyID: companyID, rivalID: rivalID, price: price, amount: amount) }
+        switch r {
+        case .ok(.ok(let id))?: Haptics.success(); store.show("You bought the business with a loan from your bank.", tone: "good"); dismiss(); store.openCompanyID = id
+        case .ok(.notEnoughCash)?: reply = "Not enough cash for the rest of the price and the set-up."; Haptics.warning()
+        case .ok(.failed(let why))?: reply = why
+        case .bankCannotLend?: reply = "Your bank cannot lend that much."; Haptics.warning()
+        case nil: break
+        }
+    }
+
+    private func answerCut(_ answer: RivalAbsorb.Counter) {
+        let r = store.act { $0.answerPriceCut(companyID: companyID, rivalID: rivalID, answer: answer) }
+        switch r {
+        case .done(let m)?: Haptics.success(); store.show(m, tone: "good")
+        case .alreadyLowest?: store.show("You are already at your lowest price.", tone: "warn")
+        case .notEnoughCash?: store.show("Not enough cash.", tone: "warn")
+        case .newCompany(let id)?: Haptics.success(); store.show("The second brand is registered. Set it up to open."); dismiss(); store.openCompanyID = id
+        case .failed(let m)?: store.show(m, tone: "warn")
+        case nil: break
+        }
+    }
+
+    private func openSite() {
+        let r = store.act { $0.openBranchNextToRival(companyID: companyID, rivalID: rivalID) }
+        switch r {
+        case .ok(let id)?: Haptics.success(); store.show("The new site is registered. Set it up to open."); dismiss(); store.openCompanyID = id
+        case .needsFranchisePapers?: store.show("You need your franchise papers first.", tone: "warn")
+        case .notEnoughCash?: store.show("Not enough money to start it.", tone: "warn")
+        case .failed(let m)?: store.show(m, tone: "warn")
+        case nil: break
         }
     }
 
@@ -251,7 +333,7 @@ struct RivalSheet: View {
         switch r {
         case .ignore(let m), .reject(let m): reply = m; Haptics.warning()
         case .counter(let p, let m): reply = m; counter = p
-        case .accept(let p, let m): reply = m; buy(p)
+        case .accept(let p, let m): reply = m; pendingPrice = p
         }
     }
 

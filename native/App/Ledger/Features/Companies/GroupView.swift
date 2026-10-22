@@ -62,6 +62,7 @@ struct GroupView: View {
                 }
                 HostingSection(engine: e)
                 if cos.filter({ $0.status.isLive }).count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
+                if cos.contains(where: { $0.status.isLive }) { HeadOfficeSection(engine: e) }
                 if !e.holdingCompanies.isEmpty {
                     LedgerSection("Holding companies") {
                         VStack(spacing: 0) {

@@ -274,7 +274,8 @@ struct CompanySupply: View {
         let kinds = engine.supplyKinds(companyID: company.id)
         let sells = engine.supplyLinks().filter { $0.supplierID == company.id }
         let cur = engine.currency(for: company)
-        let shown = kinds.filter { engine.supplyLink(buyer: company.id, kind: $0.id) != nil || !engine.possibleSuppliers(buyer: company.id, kind: $0.id).isEmpty }
+        let shown = kinds.filter { engine.supplyLink(buyer: company.id, kind: $0.id) != nil || !engine.possibleSuppliers(buyer: company.id, kind: $0.id).isEmpty
+            || engine.accountSupplyLink(buyer: company.id, kind: $0.id) != nil || !engine.accountSupplyCandidates(buyer: company.id, kind: $0.id).isEmpty }
         if !shown.isEmpty || !sells.isEmpty {
             LedgerSection("Supply from your own companies") {
                 VStack(alignment: .leading, spacing: 0) {
@@ -309,16 +310,20 @@ struct CompanySupply: View {
         let link = engine.supplyLink(buyer: company.id, kind: k.id)
         let supplier = link.flatMap { engine.state.company($0.supplierID) }
         let year = engine.yearlySupplySpend(buyer: company.id, kind: k.id)
+        let acct = engine.accountSupplyLink(buyer: company.id, kind: k.id)
+        let customers = engine.accountSupplyCandidates(buyer: company.id, kind: k.id)
+        let acctName = acct.flatMap { l in customers.first { $0.accountID == l.accountID }?.accountName }
         VStack(alignment: .leading, spacing: 6) {
             Button { picking = picking == k.id ? nil : k.id } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(supplier?.name ?? "Outside suppliers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(k.name) · \(link.map { IntercompanySupply.modeName($0.mode) } ?? "about \(cur.short(year)) a year")\(link != nil ? " · saves \(cur.short(link!.saved)) so far" : "")")
+                        Text(supplier?.name ?? acctName ?? "Outside suppliers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text(acct != nil && link == nil ? "\(k.name) · business customer · saves \(cur.short(acct!.savedSoFar)) so far"
+                             : "\(k.name) · \(link.map { IntercompanySupply.modeName($0.mode) } ?? "about \(cur.short(year)) a year")\(link != nil ? " · saves \(cur.short(link!.saved)) so far" : "")")
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
                     Spacer(minLength: 8)
-                    Chip(text: link == nil ? "Outside" : (link!.lastShare < 0.9 ? "Short" : "Yours"), tint: link == nil ? Theme.ivoryMuted : (link!.lastShare < 0.9 ? Theme.loss : Theme.gain))
+                    Chip(text: link == nil ? (acct == nil ? "Outside" : "Customer") : (link!.lastShare < 0.9 ? "Short" : "Yours"), tint: link == nil ? (acct == nil ? Theme.ivoryMuted : Theme.gain) : (link!.lastShare < 0.9 ? Theme.loss : Theme.gain))
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if picking == k.id {
@@ -336,6 +341,26 @@ struct CompanySupply: View {
                         }
                     }
                 }
+                if !customers.isEmpty {
+                    Text("Your business customers").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryMuted).padding(.top, 4)
+                    ForEach(customers) { c in
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(c.accountName).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                                Text(c.canBuy ? "\(Rivals.relationshipWord(c.relationship)) · buys from \(c.ownerCompanyName) · \(Int(((1 - c.priceFactor) * 100).rounded()))% below the outside price"
+                                     : "Get to know them better first (familiar or closer).").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            }
+                            Spacer(minLength: 8)
+                            if acct?.accountID == c.accountID { Chip(text: "Current", tint: Theme.gain) }
+                            else if c.canBuy {
+                                Button("Buy · saves \(cur.short(c.yearlySaving)) a year") {
+                                    if store.act({ $0.buyFromAccount(buyer: company.id, kind: k.id, accountID: c.accountID) }) == .ok { Haptics.success(); picking = nil }
+                                }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).font(.caption)
+                            }
+                        }
+                    }
+                }
+                if acct != nil { Button("Stop buying from the business customer") { store.act { $0.stopBuyingFromAccount(buyer: company.id, kind: k.id) }; picking = nil }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
                 if link != nil { Button("Back to outside suppliers") { store.act { $0.clearSupplier(buyer: company.id, kind: k.id) }; picking = nil }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
                 Text("Market price keeps the profit in the supplier; at cost it moves to the buyer. If the supplier is short of people or closes, the buyer pays for emergency supply and its customers notice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
