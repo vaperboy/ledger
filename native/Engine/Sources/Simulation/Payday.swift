@@ -167,7 +167,7 @@ public enum Payday {
             s.companies[i].addPayable("wages", cost)
             Payments.book(&s, companyID: co.id, category: "wages", amount: cost)
             co = s.companies[i]
-            let tax = Taxes.personalIncomeTax(co.ownerMonthlySalary * 12, kind: .wage, in: context.homeCountry(s)) / 12
+            let tax = Taxes.personalIncomeTax(co.ownerMonthlySalary * 12, kind: .wage, in: country) / 12
             co.set("ownPend", .object(["sal": .number(co.ownerMonthlySalary), "tax": .number(tax)]))
             s.companies[i] = co
         }
