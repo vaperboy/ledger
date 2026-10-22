@@ -126,14 +126,15 @@ public enum PremisesExtras {
         var props = s.companies[i].properties
         var changed = false
         for k in props.indices {
-            let keep = props[k].leases.filter { l in
+            let current = props[k].leases
+            let keep = current.filter { l in
                 guard l.companyID != 0 else { return true }
                 if let t = s.company(l.companyID), t.status.isLive { return true }
                 props[k].leasedUnits = max(0, props[k].leasedUnits - l.squareMetres)
                 changed = true
                 return false
             }
-            if keep.count != props[k].leases.count { props[k].leases = keep }
+            if keep.count != current.count { props[k].leases = keep }
         }
         if changed { s.companies[i].properties = props }
     }
