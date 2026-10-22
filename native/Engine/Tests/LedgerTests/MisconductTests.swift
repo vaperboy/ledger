@@ -197,7 +197,7 @@ final class MisconductTests: XCTestCase {
     // MARK: Political influence
 
     func politicalDecision(ps: Double, pw: Double) -> JSONValue {
-        .object(["spent": 40_000, "p": 0.4, "pw": pw, "ps": ps, "m": 0.985, "weeks": 78, "scandal": 0.1, "fineMult": 2,
+        .object(["spent": 40_000, "p": 0.4, "pw": .number(pw), "ps": .number(ps), "m": 0.985, "weeks": 78, "scandal": 0.1, "fineMult": 2,
                  "what": "party donation", "kind": "donate", "fine": 80_000])
     }
 
