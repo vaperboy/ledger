@@ -91,6 +91,7 @@ final class LabourRulesTests: XCTestCase {
         let minimum = w.minimumWage(co)
         XCTAssertGreaterThan(minimum, 0)
         var hired = 0
+        let startingStaff = co.staff.count
         for _ in 0..<40 {
             var pid = 0
             e.update { s, d, _ in let co = s.company(id); pid = Hiring.generateCandidate(role: "barista", company: co, tier: "mid", state: &s, data: d).id }
@@ -98,7 +99,7 @@ final class LabourRulesTests: XCTestCase {
         }
         if hired == 0 { throw XCTSkip("nobody took the minimum") }
         let staff = try XCTUnwrap(e.state.company(id)).staff
-        XCTAssertEqual(staff.count, hired)
+        XCTAssertEqual(staff.count, startingStaff + hired, "a new cafe opens with its first hand already on the books")
         for m in staff { XCTAssertGreaterThanOrEqual(m.monthlyWage, minimum - 0.5) }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
@@ -134,14 +135,18 @@ final class LabourRulesTests: XCTestCase {
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             var st = s.companies[i].staff
-            st[0].hiredWeek = s.week - 5 * 52
+            let k = st.firstIndex { $0.id == pid }!
+            st[k].hiredWeek = s.week - 5 * 52
             s.companies[i].staff = st
         }
-        let senior = try XCTUnwrap(e.state.company(id)).staff[0]
+        let senior = try XCTUnwrap(e.state.company(id)).staff.first { $0.id == pid }!
         let expected = w.terminationCost(co, monthlyWage: senior.monthlyWage, tenureWeeks: 5 * 52)
         XCTAssertGreaterThan(expected, w.terminationCost(co, monthlyWage: m.monthlyWage, tenureWeeks: 1), "more tenure, more pay")
-        let preview = e.layoffPreview(companyID: id, count: 1)
-        XCTAssertEqual(preview.severance, expected, accuracy: 1, "the layoff preview uses the same helper")
+        // the preview picks the weakest, so ask for everyone and compare the whole bill with the helper applied one by one
+        let all = try XCTUnwrap(e.state.company(id)).staff
+        let preview = e.layoffPreview(companyID: id, count: all.count)
+        let each = all.reduce(0.0) { $0 + w.terminationCost(co, monthlyWage: $1.monthlyWage, tenureWeeks: Double(e.state.week - $1.hiredWeek), onNotice: $1.noticeWeeks > 0) }
+        XCTAssertEqual(preview.severance, each, accuracy: 1, "the layoff preview uses the same helper")
         let before = try XCTUnwrap(e.state.company(id)).cash
         let r = try XCTUnwrap(e.dismissStaff(companyID: id, staffID: pid))
         XCTAssertEqual(r.severance, expected, accuracy: 1)

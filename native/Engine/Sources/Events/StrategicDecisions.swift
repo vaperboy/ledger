@@ -336,8 +336,9 @@ public enum StrategicDecisions {
                             pay(&s, x, x.d["c"].double * 0.3, "oth", "Legal costs")
                             if s.random.chance(0.45) { pay(&s, x, x.d["c"].double * 2, "fine", "Compliance fine") } }]))
         L.append(Def(id: "e_refi", cls: "strat", stages: ["grow", "est"], w: 2, def: 2,
-                     cond: { s, co, _ in
-                         return s.loans.contains { $0.companyID == co.id && $0.kind != "start" && $0.balance > 150000 } },
+                     cond: { s, co, data in
+                         let floor = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(150_000)
+                         return s.loans.contains { $0.companyID == co.id && $0.kind != "start" && $0.balance > floor } },
                      make: { s, i, _, fc in
                          let co = s.companies[i]
                          let b = s.loans.filter { $0.companyID == co.id && $0.kind != "start" }.reduce(0) { $0 + $1.balance }

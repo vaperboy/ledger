@@ -100,21 +100,7 @@ public enum WorldAround {
         let cc = s.homeCountryCode
         let cityID = s.rest["player"]?["city"].string ?? ""
         guard let n = (data.countries.city(cityID, preferring: cc) ?? data.countries[cc]?.cities.first.map { (country: data.countries[cc]!, city: $0) })?.city.name, !n.isEmpty else { return nil }
-        switch cc {
-        case "NO": return n + "posten"
-        case "SE": return n + (n.hasSuffix("s") ? "" : "s") + "-Kuriren"
-        case "DK": return n + "s Dagblad"
-        case "DE": return n + "er Tageblatt"
-        case "FR": return "Le Courrier de " + n
-        case "ES": return "El Diario de " + n
-        case "NL": return "Dagblad van " + n
-        case "BR": return "Diário de " + n
-        case "KR": return n + " Ilbo"
-        case "JP": return "The " + n + " Shimbun"
-        case "UK": return "The " + n + " Courier"
-        case "AU": return "The " + n + " Chronicle"
-        default: return "The " + n + " Ledger"
-        }
+        return CountryTraits.cityPaperName(cc, city: n) ?? "The " + n + " Ledger"
     }
 
     // MARK: People you know
