@@ -59,7 +59,7 @@ struct VenturesContent: View {
                     }
                 }
             }
-            LedgerSection(title: "Startups to invest in") {
+            LedgerSection("Startups to invest in") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     ForEach(Array(startupPitches.enumerated()), id: \.element.id) { n, p in
                         if n > 0 { Hairline() }
@@ -81,7 +81,7 @@ struct VenturesContent: View {
                     }
                 }
             }
-            LedgerSection(title: "Private equity") {
+            LedgerSection("Private equity") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     ForEach(e.privateEquityFunds.filter { $0.live }) { f in
                         HStack {
@@ -101,7 +101,7 @@ struct VenturesContent: View {
                 }
             }
             if let o = e.bigMeetingOffer {
-                LedgerSection(title: "Big meeting") {
+                LedgerSection("Big meeting") {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("\(o.seller) offers \(o.pct)% of \(o.target) for \(cur.short(o.price)) · profit share \(cur.short(o.yearlyProfitShare)) a year" + (e.bigMeetingRatesWarning() ? " · interest could exceed the profit share" : ""))
                             .font(.caption).foregroundStyle(Theme.ivory)
@@ -114,7 +114,7 @@ struct VenturesContent: View {
                 }
             }
             if !e.bigMeetingStakes.isEmpty || !e.groupStakes.isEmpty {
-                LedgerSection(title: "Stakes in groups") {
+                LedgerSection("Stakes in groups") {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(e.bigMeetingStakes) { s in Text("\(s.name) · \(Int(s.pct))% · \(cur.short(s.value)) · \(cur.short(s.yearlyProfitShare)) a year").font(.caption).foregroundStyle(Theme.ivory) }
                         ForEach(e.groupStakes) { s in Text("\(s.name) · \(Int((s.ownership * 100).rounded()))% · \(cur.short(s.value))").font(.caption).foregroundStyle(Theme.ivory) }

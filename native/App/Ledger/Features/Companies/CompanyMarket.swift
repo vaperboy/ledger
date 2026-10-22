@@ -32,7 +32,7 @@ struct CompanyMarket: View {
 
     @ViewBuilder private var share: some View {
         if let row = engine.marketRows().first(where: { $0.companyNames.contains(company.name) }) {
-            LedgerSection(title: "Your share") {
+            LedgerSection("Your share") {
                 NavigationLink { MarketDetailView(marketKey: row.id) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -53,7 +53,7 @@ struct CompanyMarket: View {
 
     private func priceMoves(_ info: PriceMovesInfo) -> some View {
         let cur = engine.currency(for: company)
-        return LedgerSection(title: "Price moves") {
+        return LedgerSection("Price moves") {
             VStack(alignment: .leading, spacing: 10) {
                 KeyFigures(items: [
                     .init(label: "Your price", value: cur.short(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
@@ -127,7 +127,7 @@ struct CompanyMarket: View {
         let rows = engine.rivalRows(company)
         let cur = engine.currency(for: company)
         _ = cur
-        return LedgerSection(title: "Rivals") {
+        return LedgerSection("Rivals") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in

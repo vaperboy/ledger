@@ -45,7 +45,7 @@ struct ExecutivePosts: View {
     var body: some View {
         let cur = engine.homeCurrency
         let list = posts
-        LedgerSection(title: chainID == nil ? "Group management" : "Chain management") {
+        LedgerSection(chainID == nil ? "Group management" : "Chain management") {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, p in
                     if n > 0 { Hairline() }
