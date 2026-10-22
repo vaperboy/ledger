@@ -18,7 +18,7 @@ import Finance
 ///  * upsell (on): a one-off set-up cost, then extra revenue on every sale, which costs 35 % of itself;
 ///  * peak: three weeks before the season starts you are told, with how much busier it gets (the extra customers are in the demand).
 ///
-/// Not ported: the seasonal help that a manager hires by himself (and the shortcut to Find workers); hire seasonal workers yourself.
+/// The seasonal help a manager brings in ahead of a peak is `ManagerSeasonal.swift`. Not ported: the shortcut to Find workers.
 public enum SalesWays {
     public enum Switch: Equatable, Sendable { case changed, notAWay, notSwitchable, notEnoughCash(Double), noCompany }
 

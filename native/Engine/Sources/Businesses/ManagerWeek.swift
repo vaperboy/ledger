@@ -44,6 +44,7 @@ extension ManagerModel {
         rivalOffer(&s, companyIndex: ci, data: data)
         staffWork(&s, ci, bd, n, q, data: data, revenue: rev)
         keepTeam(&s, ci, bd, data: data, quality: q)
+        seasonalWeek(&s, ci, n, data: data, capacity: cap)   // seasonal help ahead of a busy season (ManagerSeasonal.swift)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
         if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
@@ -271,6 +272,7 @@ extension ManagerModel {
                 s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)
             }
         case "eq", "veh", "space": buyForProposal(&s, ci, dp, n, data: data)
+        case "seas": execSeasonal(&s, ci, dp, n, data: data)
         case "cut":
             let weakest = co.staff.min { (s.people[$0.id]?.skill ?? 0) + $0.skillGain < (s.people[$1.id]?.skill ?? 0) + $1.skillGain }
             if let w = weakest { Hiring.fire(w.id, from: co.id, state: &s, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }

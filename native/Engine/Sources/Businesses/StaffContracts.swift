@@ -25,8 +25,7 @@ extension StaffTalks {
 
     /// Months (1-12) in which the trade is busy: the ones a seasonal worker is for. Original: `R54.busyMonths`.
     public static func busyMonths(_ co: Company, data: GameData) -> [Int] {
-        guard let bd = data.catalog[co.type], let t = data.catalog.tables.seasons[bd.seasonKey], t.count == 12 else { return [] }
-        return (1...12).filter { t[$0 - 1] >= 1.08 }
+        ManagerModel.seasonalBusyMonths(co, data: data)   // the trade's year with its own peak, as the original
     }
 
     static func month1(_ week: Int) -> Int { GameCalendar.month(week: week) + 1 }
