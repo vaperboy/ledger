@@ -118,25 +118,64 @@ public enum MonthEnd {
         // VAT return, when it is due
         co = s.companies[i]
         let freq = max(1, country.vatFilingMonths == 0 ? 2 : country.vatFilingMonths)
-        if GameCalendar.monthIndex(week: s.week) % freq == freq - 1 {
+        // Like any other bill: only what the account (with its overdraft room) can cover is paid. The rest stays owed ("vatOver"),
+        // draws a 5 % penalty and then 1 % interest a month, and counts as unpaid tax for the "unpaid for months" check.
+        var vatUnpaid = 0.0
+        let filing = GameCalendar.monthIndex(week: s.week) % freq == freq - 1
+        let vatRoom = max(0, s.companies[i].cash + context.overdraftRoom(s.companies[i], s))
+        if filing {
             let v = jsRound(co.vatBalance)
             if v > 0 {
-                Ledger.moveRaw(&s, .company(co.id), -v)
-                s.companies[i].addTransaction(week: s.week, amount: -v, label: "VAT settlement")
-                s.stats.taxPaid += v
-            } else if v < 0 {
-                Payments.companyReceives(&s, companyID: co.id, amount: -v, category: nil, label: "VAT refund")
+                let pay = min(v, vatRoom)
+                if pay > 0 {
+                    Ledger.moveRaw(&s, .company(co.id), -pay)
+                    s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement")
+                    s.stats.taxPaid += pay
+                }
+                var rest = v - pay
+                if rest > 1 {
+                    let penalty = jsRound(rest * 0.05)
+                    Payments.book(&s, companyID: co.id, category: "fine", amount: penalty)
+                    rest += penalty
+                    s.companies[i].set("vatOver", rest)
+                    s.addMessage(from: co.name, title: "VAT return not paid at \(co.name)",
+                                 body: "\(w.currency(co).display(v - pay)) of VAT could not be paid on time. A penalty of \(w.currency(co).display(penalty)) was added and interest runs until it is paid.",
+                                 companyID: co.id, tone: "bad")
+                    vatUnpaid = rest
+                } else { rest = 0; s.companies[i].set("vatOver", 0) }
+                s.companies[i].vatBalance = rest
+            } else {
+                if v < 0 { Payments.companyReceives(&s, companyID: co.id, amount: -v, category: nil, label: "VAT refund") }
+                s.companies[i].vatBalance = 0
+                s.companies[i].set("vatOver", 0)
             }
-            s.companies[i].vatBalance = 0
+        } else if s.companies[i].num("vatOver") > 1 {
+            var over = s.companies[i].num("vatOver")
+            let interest = jsRound(over * 0.01)
+            Payments.book(&s, companyID: co.id, category: "int", amount: interest)
+            over += interest
+            s.companies[i].vatBalance += interest
+            let pay = min(over, max(0, s.companies[i].vatBalance), vatRoom)
+            if pay > 0 {
+                Ledger.moveRaw(&s, .company(co.id), -pay)
+                s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement (overdue)")
+                s.stats.taxPaid += pay
+                s.companies[i].vatBalance -= pay
+                over -= pay
+            }
+            if over < 1 {
+                s.companies[i].set("vatOver", 0)
+                s.addMessage(from: co.name, title: "VAT paid up at \(co.name)", body: "The overdue VAT is paid. Interest stops.", companyID: co.id, tone: "good")
+            } else { s.companies[i].set("vatOver", over); vatUnpaid = over }
         }
         co = s.companies[i]
         // Unpaid tax counts as unpaid bills
-        if unpaidTax > w.currency(co).scaledPrice(1500) {
+        if unpaidTax + vatUnpaid > w.currency(co).scaledPrice(1500) {
             co.unpaidMonths += 1
             s.companies[i] = co
             if co.unpaidMonths == 1 {
                 s.addMessage(from: co.name, title: "Could not pay all bills at \(co.name)",
-                             body: "Missing \(w.currency(co).display(unpaidTax)) this month. Put money in or cut costs.", companyID: co.id, tone: "bad")
+                             body: "Missing \(w.currency(co).display(unpaidTax + vatUnpaid)) this month. Put money in or cut costs.", companyID: co.id, tone: "bad")
             }
         } else { co.unpaidMonths = 0; s.companies[i] = co }
         co = s.companies[i]
