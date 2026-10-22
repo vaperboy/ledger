@@ -320,8 +320,14 @@ public enum ManagerTargets {
         let cur = World(state: s, data: data).currency(s.companies[live[0]])
         if !res.isEmpty {
             let all = res.filter { $0.1["n"].int == 3 }.count, bon = res.reduce(0) { $0 + $1.1["bonus"].double }
-            let body = res.map { "\($0.0) \($0.1["n"].int)/3" + ($0.1["bonus"].double > 0 ? " (bonus \(cur.display($0.1["bonus"].double)))" : "") }.joined(separator: " · ") + "."
-                + (talks.isEmpty ? "" : " " + talks.joined(separator: ". ") + ".") + (bon > 0 ? " Bonuses paid: \(cur.display(bon))." : "")
+            var parts: [String] = []
+            for r in res {
+                let bonusPart: String = r.1["bonus"].double > 0 ? " (bonus \(cur.display(r.1["bonus"].double)))" : ""
+                parts.append("\(r.0) \(r.1["n"].int)/3" + bonusPart)
+            }
+            var body: String = parts.joined(separator: " · ") + "."
+            if !talks.isEmpty { body += " " + talks.joined(separator: ". ") + "." }
+            if bon > 0 { body += " Bonuses paid: \(cur.display(bon))." }
             s.addMessage(kind: "info", from: "Your management", title: "Targets in \(monthName(mi(s))): \(all) of \(res.count) \(res.count > 1 ? "companies" : "company") hit all three", body: body,
                          tone: all == res.count ? "good" : all > 0 ? "n" : "bad", status: "done")
         }

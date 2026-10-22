@@ -688,8 +688,10 @@ public enum Rivals {
         for f in ["mem31", "n31", "camp16", "mkt16", "rv31", "g27", "sold16"] { copy[f] = .null }
         copy["listed"] = false; copy["ign"] = 0; copy["lock"] = 0; copy["meet"] = -99
         copy["nx16"] = .number(Double(s.week + 8))
-        s.rest["mk"]?[tk]["riv"] = .array((s.rest["mk"]?[tk]["riv"].array ?? []) + [copy])
-        s.rest["mk"]?[tk]["n"] = .number((s.rest["mk"]?[tk]["n"].double ?? 1) + 1)
+        let tkRivals: [JSONValue] = (s.rest["mk"]?[tk]["riv"].array ?? []) + [copy]
+        let tkCount: Double = (s.rest["mk"]?[tk]["n"].double ?? 1) + 1
+        s.rest["mk"]?[tk]["riv"] = .array(tkRivals)
+        s.rest["mk"]?[tk]["n"] = .number(tkCount)
         s.rest["mk"]?[tk]["hire"] = .object(["until": .number(Double(s.week + 52)), "f": 1.05])
         var home2 = s.rest["mk"]?[k]["riv"].array ?? []
         for j in home2.indices where home2[j]["id"].int == id { home2[j]["size"] = .number(jsRound(home2[j]["size"].double * 0.93 * 100) / 100) }
