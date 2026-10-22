@@ -22,7 +22,7 @@ public enum ReportSummary {
             if let p = prev, abs(p.pnl.netProfit) >= 1 {
                 let before = p.pnl.netProfit
                 if net >= 0 && before > 0 {
-                    s = "Profit \(net >= before ? "rose" : "fell") \(pct((net - before) / before)) to \(amount(net))"
+                    s = "Profit \(net >= before ? "rose" : "fell") \(pct((net - before) / before)) on last \(noun) to \(amount(net))"
                 } else if net >= 0 {
                     s = "Profit was \(amount(net)), against a loss of \(amount(before)) last \(noun)"
                 } else if before < 0 {

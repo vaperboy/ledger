@@ -324,10 +324,12 @@ extension StrategicDecisions {
 
         // MARK: Flattering accounts for the bank
         L.append(Def(id: "m_bank", cls: "mis", stages: ["grow", "est"], w: 2, from: "The bank", exp: 4, def: 2,
-                     cond: { s, co, _ in s.loans.contains { $0.companyID == co.id && $0.kind != "start" && $0.balance > 150_000 } },
+                     cond: { s, co, data in
+                         let floor = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(150_000)
+                         return s.loans.contains { $0.companyID == co.id && $0.kind != "start" && $0.balance > floor } },
                      make: { s, i, data, fc in
                          let co = s.companies[i]
-                         let ls = s.loans.filter { $0.companyID == co.id && $0.kind != "start" && $0.balance > 150_000 }
+                         let ls = s.loans.filter { $0.companyID == co.id && $0.kind != "start" && $0.balance > scaledC(s, i, fc, 150_000) }
                          let bal = ls.reduce(0) { $0 + $1.balance }
                          guard bal > scaledC(s, i, fc, 150_000) else { return nil }
                          return .object(["bal": num(bal), "save": num(jsRound(bal * 0.006)), "lsave": num(jsRound(bal * 0.002)),

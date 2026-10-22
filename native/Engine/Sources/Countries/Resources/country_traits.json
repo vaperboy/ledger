@@ -16,7 +16,7 @@
 "FI": {"gdpr": true, "paper": "Viikon Tase", "groupWord": "Konserni"},
 "IE": {"gdpr": true, "paper": "The Monday Ledger"},
 "AU": {"southernHemisphere": true, "stormName": "a severe storm", "paper": "The Weekly Bottom Line", "cityPaper": "The {city} Chronicle"},
-"BR": {"southernHemisphere": true, "stormName": "a severe storm", "paper": "O Balanco Semanal", "cityPaper": "Diario de {city}", "groupWord": "Grupo"},
+"BR": {"southernHemisphere": true, "stormName": "a severe storm", "paper": "O Balanco Semanal", "cityPaper": "Diário de {city}", "groupWord": "Grupo"},
 "SG": {"stormName": "a monsoon storm", "paper": "The Straits Ledger"},
 "US": {"stormName": "a hurricane", "mdirTitle": "CEO", "paper": "The Weekly Ticker"},
 "MX": {"stormName": "a hurricane", "paper": "El Balance Semanal", "groupWord": "Grupo"},

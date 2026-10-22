@@ -32,6 +32,11 @@ final class CompanyCountryRulesTests: XCTestCase {
             expected = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.country(of: s.companies[i], s)) / 12
             home = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.homeCountry(s)) / 12
             let t = Payday.dayNumber(week: s.week, day: s.day)
+            // a company still being set up pays no one, and a fresh payroll book counts this month's owner pay as already made
+            s.companies[i].status = .open
+            var cfg = Payday.config(s.companies[i], today: t)
+            cfg.ownerPaidMonth = Payday.monthNumber(t) - 1
+            s.companies[i].set("pr29", cfg.json)
             _ = Payday.runPayroll(&s, i, how: .manual, today: t, data: data, context: ctx)
         }
         XCTAssertEqual(code, "DE")
