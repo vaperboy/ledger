@@ -38,10 +38,10 @@ struct FranchiseeCard: View {
                 FlatRow(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 1) + " of revenue")
                 FlatRow(label: "Marketing fund", value: Currency.percent(f["mkt"].double, decimals: 0) + " of revenue")
                 FlatRow(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double), sub: "Your quality keeps it strong or drags it down.")
-                FlatRow(label: "Quality", value: "\(Int(company.quality.rounded())) (brand minimum \(Int(minQ)))", tint: company.quality < minQ ? Theme.loss : Theme.ivory,
-                        sub: company.quality < minQ ? "Below the standard: the franchisor warns, then ends the contract." : "")
+                FlatRow(label: "Quality", value: "\(Int(company.quality.rounded())) (brand minimum \(Int(minQ)))", sub: company.quality < minQ ? "Below the standard: the franchisor warns, then ends the contract." : "",
+                        tint: company.quality < minQ ? Theme.loss : Theme.ivory)
                 if !f["end"].isNull { FlatRow(label: "Contract ends", value: GameCalendar.dateString(week: f["end"].int, dayOffset: 0)) }
-                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.short(f["owed"].double), tint: Theme.loss, sub: "Paid first from the company's cash; unpaid parts pile up.") }
+                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.short(f["owed"].double), sub: "Paid first from the company's cash; unpaid parts pile up.", tint: Theme.loss) }
                 Hairline()
                 Button("Leave the franchise · buyout \(cur.short(buyout))") { confirmLeave = true }
                     .font(.system(size: 12.5)).foregroundStyle(Theme.loss).buttonStyle(.plain).padding(.top, 10)
