@@ -15,8 +15,8 @@ import Finance
 /// A higher-quality promise costs about 3 % more to deliver, in proportion to the units it covers (`qualityUplift`, read by
 /// `DemandModel.modifier` as part of "cogsup").
 ///
-/// Not ported: farm tenders (the original's own list of ways to sell has no farm, so the contract would add no demand), and the
-/// job-kind tenders of factories and furniture makers (the original starts nothing for them).
+/// Factories and furniture workshops bid for a volume too (the original's "jobs" for them have no order book to land on).
+/// Not ported: farm tenders (the original's own list of ways to sell has no farm, so the contract would add no demand).
 public enum VolumeTenders {
     /// What each trade can win as a volume contract: title, kind of buyer, whether the work is local. Original: `W` (kind 'vol').
     static let offers: [String: [ProjectTenders.Offer]] = [
@@ -45,6 +45,10 @@ public enum VolumeTenders {
         "wh3pl": [vol("Storage and distribution for the health trust", "health", false)],
         "skires": [vol("Ski days for the schools", "muni", true)],
         "indoorski": [vol("Training slots for the ski federation", "state", true)],
+        // The original lists these two as one-off jobs, but only the project family has an order book for jobs (a factory or a
+        // workshop would get a contract of no units), so here they are a framework volume like the other producers' supply deals.
+        "factory": [vol("A large order for an industrial buyer", "priv", false)],
+        "furniture": [vol("Furniture for a new school", "muni", true)],
     ]
 
     static func vol(_ title: String, _ buyer: String, _ local: Bool) -> ProjectTenders.Offer {
