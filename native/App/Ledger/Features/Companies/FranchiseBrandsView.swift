@@ -317,7 +317,7 @@ struct StartFranchisedView: View {
                             let fund = min((est.estimate.total + est.fee) * 1.15, Payments.liquid(e.state) - est.estimate.personalOutlay)
                             let r = store.act { $0.startFranchisedCompany(brandID: brandID, cityID: city, form: form, name: name, fundWith: max(0, fund)) }
                             switch r {
-                            case .success(let id)?: Haptics.success(); store.show("Started under \(b.name).", tone: "good"); store.tab = .companies; store.openCompanyID = id; dismiss()
+                            case .success(let id)?: Haptics.success(); store.show("Started under \(b.name).", tone: "good"); store.tab = .company; store.openCompanyID = id; dismiss()
                             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
                             case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
                             default: Haptics.warning(); store.show("Not possible here.", tone: "warn")

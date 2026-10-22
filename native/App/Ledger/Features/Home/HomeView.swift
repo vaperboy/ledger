@@ -3,41 +3,28 @@ import Simulation
 import Finance
 import Businesses
 
-struct HomeView: View {
-    @EnvironmentObject var store: GameStore
+/// Today's summary, the top of the Company tab: net worth, the report prompt, the suggestion, what is coming up, first steps and goals.
+/// (The company list that used to be a card here is the Company tab's own list below it.)
+struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
+    var engine: GameEngine
 
     var body: some View {
-        NavigationStack {
-            if let e = store.engine {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        HomeHeader(engine: e)
-                        if sizeClass == .regular {
-                            HStack(alignment: .top, spacing: Theme.Space.xl) {
-                                VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e); EmpireCard(engine: e) }
-                                VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e); GoalsCard(engine: e) }
-                            }
-                        } else {
-                            NetWorthSection(engine: e)
-                            ReportPromptSection(engine: e)
-                            SuggestionCard(engine: e)
-                            EmpireCard(engine: e)
-                            ComingUpCard(engine: e)
-                            FirstStepsCard(engine: e)
-                            GoalsCard(engine: e)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.margin)
-                    .padding(.top, Theme.Space.s)
-                    .padding(.bottom, 130)
-                    .frame(maxWidth: 980)
-                    .frame(maxWidth: .infinity)
+        let e = engine
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            HomeHeader(engine: e)
+            if sizeClass == .regular {
+                HStack(alignment: .top, spacing: Theme.Space.xl) {
+                    VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e) }
+                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e); GoalsCard(engine: e) }
                 }
-                .scrollIndicators(.hidden)
-                .ledgerBackground()
-                .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
-                .navigationBarHidden(true)
+            } else {
+                NetWorthSection(engine: e)
+                ReportPromptSection(engine: e)
+                SuggestionCard(engine: e)
+                ComingUpCard(engine: e)
+                FirstStepsCard(engine: e)
+                GoalsCard(engine: e)
             }
         }
     }
@@ -168,7 +155,7 @@ struct EmpireCard: View {
                         if i < min(rows.count, 5) - 1 { Hairline() }
                     }
                     if rows.count > 5 {
-                        Button { store.tab = .companies } label: { Text("All \(rows.count) companies  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }
+                        Button { store.tab = .company } label: { Text("All \(rows.count) companies  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }
                             .buttonStyle(.plain).padding(.top, 6).frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }

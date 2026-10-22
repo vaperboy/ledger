@@ -278,7 +278,7 @@ struct ClubMarketView: View {
             .confirmationDialog("Found a new club?", isPresented: $confirmFound, titleVisibility: .visible) {
                 Button("Found it") {
                     switch store.act({ $0.foundClub(countryCode: code) }) {
-                    case .ok(let id)?: Haptics.success(); store.tab = .companies; store.openCompanyID = id
+                    case .ok(let id)?: Haptics.success(); store.tab = .company; store.openCompanyID = id
                     case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
                     default: store.show("Not possible.", tone: "warn")
                     }
@@ -296,7 +296,7 @@ struct ClubMarketView: View {
                 if let p = a.price, a.answer == .accept || a.answer == .counter {
                     Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.short(p)) {
                         switch store.act({ $0.buyClub(clubID: c.id, price: p) }) {
-                        case .ok(let id)?: Haptics.success(); offerFor = nil; store.tab = .companies; store.openCompanyID = id
+                        case .ok(let id)?: Haptics.success(); offerFor = nil; store.tab = .company; store.openCompanyID = id
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
                         default: store.show("The club is no longer for sale.", tone: "warn")
                         }
