@@ -70,7 +70,7 @@ struct ExecutivePosts: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
-                        Text(person?.name ?? p.level.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                         Chip(text: "\(p.level.title) · \(p.scope)", tint: Theme.gold)
                     }
                     if person == nil { Text(p.level.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
