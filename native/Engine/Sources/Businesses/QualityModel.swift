@@ -24,6 +24,7 @@ public enum QualityModel {
         q -= max(0, util - 0.97) * 40
         q += [-3.0, 0, 2][min(2, max(0, co.maintenance))]
         q += goods.q
+        q += ManagerTargets.qualityCare(co, week: w.week)   // a rating target: more care for quality
         return clamp(q, 5, 99)
     }
 }

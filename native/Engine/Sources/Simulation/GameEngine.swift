@@ -128,6 +128,7 @@ public struct GameEngine {
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
+            if ManagerTargets.handlesAnswer(m.actionID) { ManagerTargets.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
@@ -334,6 +335,7 @@ public struct GameEngine {
         MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
+        ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
         for i in state.companies.indices {
             let c = state.companies[i]
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
