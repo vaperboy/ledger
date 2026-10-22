@@ -68,6 +68,7 @@ public enum EventEngine {
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
+            if Sourcing.shields(s, companyID: co.id, eventID: id) { continue }   // supplied from inside: outside supplier trouble does not reach it
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
             if !e.options.isEmpty { setFlag(&s, i, "evCool", 6) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)

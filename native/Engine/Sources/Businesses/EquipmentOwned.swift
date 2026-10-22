@@ -86,18 +86,18 @@ public extension EquipmentMarket {
             out.append(Owned(equipmentID: e.id, name: e.name, kind: kind(e, tradeID: bd.id, tables: tables), count: rec["n"].double, leasedCount: leased,
                              leaseMonthly: co.value("eqL")[e.id].double, units: units, vehicles: [], subscription: sub, licence: licence,
                              subscriptionMonthly: rec["sub"]["fee"].double, outdated: (rec["perf"].isNull ? 1 : rec["perf"].double) < 0.95 && !rec["soft"].isNull,
-                             bookValue: rec["bv"].double, serviceCost: jsRound(rec["cost"].double * 0.04)))
+                             bookValue: rec["bv"].double, serviceCost: jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: co, data: data)))))
         }
         return out
     }
 
     /// Pay for servicing all units of one kind of equipment: 4% of what it cost, and the wear is partly undone. Original: `repaireq`.
     @discardableResult
-    static func serviceAll(_ s: inout GameState, companyID: Int, equipmentID: String) -> Result {
+    static func serviceAll(_ s: inout GameState, companyID: Int, equipmentID: String, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID) else { return .notPossible }
         let rec = s.companies[i].value("eq")[equipmentID]
         guard !rec.isNull else { return .notPossible }
-        let c = jsRound(rec["cost"].double * 0.04)
+        let c = jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: s.companies[i], data: data)))   // the repair supplier's discount (fixDisc)
         if s.companies[i].cash < c { return .notEnoughCash }
         Payments.companyPays(&s, companyID: companyID, amount: c, category: "oth", label: "Equipment service")
         // The record's condition rises; the units follow at the start of next week ('eqWeek.before').
