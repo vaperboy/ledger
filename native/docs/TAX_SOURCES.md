@@ -123,6 +123,48 @@ open.
 
 **SG Singapore** (SGD, checked 2026-10). Resident rates (YA 2024 on): 0% to SGD 20,000 rising to 24% above SGD 1 M, in 11 steps, simplified at the 19.5-20% steps. CPF employee 20% / employer 17% (citizens and PRs under 55). Corporate 17% (partial exemption for new companies not modelled). No dividend tax, no wealth or inheritance tax. GST 9%.
 
+## Labour rules (`labour` in `country_traits.json`)
+
+Added October 2026 from my own knowledge of the 2025/26 rules (no web check was possible in this pass: **every figure here should be
+verified against the official pages**; those marked *unsure* are the least certain). Money is in the country's own currency per
+month for a standard week; the game converts it with the exchange rate and indexes it with inflation like the market wage.
+`statutory: false` means there is no national statutory minimum: the figure is a floor from collective agreements (or a regional
+minimum) and is enforced in the game as if it were law. Where the real minimum is higher than what the game's existing wage table
+pays for its cheapest job, the data holds a **game-scaled** value (about 85% of the cheapest market wage) and `realMinMonthly` keeps
+the real figure, so the wage tables are not rebalanced.
+
+| Country | Min wage / month | Std week | Overtime premium | Notice (weeks) | Severance (weeks) | Leave days | Probation |
+|---|---|---:|---:|---|---|---:|---|
+| NO | 29,000 NOK, none by law (sector minima), *unsure* | 37.5 | +40% | 4.3, +0.5/yr, max 13 | none | 25 | 26 wk, 2 wk notice |
+| SE | 17,900 SEK game-scaled (real about 25,000, none by law) | 40 | +50% (agreements) | 4.3, +0.5/yr, max 26 | none (agreements) | 25 | 26 wk |
+| PL | 2,160 PLN game-scaled (real 4,806) | 40 | +50% | 2, +4/yr, max 13 | 0.5/yr, min 4.3, max 13 | 20 | 12 wk, 1 wk notice |
+| LT | 650 EUR game-scaled (real 1,153) | 40 | +50% | 4.3, +0.5/yr, max 13 | 4.3 flat after 1 yr, *unsure* | 20 | 12 wk, 1 wk |
+| DE | 2,410 EUR (EUR 13.90/h x 40 h) | 40 | +25% (custom, no statutory premium), *unsure* | 4, +1.5/yr, max 30 | 2.17/yr (half a month a year, customary in settlements), *unsure* | 20 | 26 wk, 2 wk |
+| UK | 2,065 GBP (GBP 12.71/h, 21+, April 2026, x 37.5 h) | 37.5 | none by law | 1, +1/yr, max 12 | 1.0/yr after 2 yrs (statutory redundancy 0.5 / 1 / 1.5 by age) | 28 | 104 wk (qualifying period for unfair dismissal; shortens under the Employment Rights Act 2025, *unsure* when), 1 wk |
+| FR | 1,823 EUR (SMIC 2026, 35 h) | 35 | +25% | 4.3, +2/yr, max 8.7 | 1.08/yr after 1 yr (1/4 month a year) | 25 | 8 wk, 1 wk |
+| ES | 1,424 EUR (SMI 1,221 x 14 payments / 12) | 40 | +25% (rest or pay at least the basic rate), *unsure* | 2 | 2.86/yr (20 days a year, objective dismissal), max 52 | 22 | 8 wk |
+| NL | 2,450 EUR (WML 2026, 40 h), *unsure* | 40 | +25% (agreements), *unsure* | 4.3, +0.4/yr, max 17 | 1.44/yr (transition payment, 1/3 month a year) | 20 | 8 wk |
+| US | 1,257 USD (federal USD 7.25/h x 40 h; states are higher) | 40 | +50% (FLSA) | none (at will) | none | 0 | at will, no unfair dismissal |
+| CA | 3,080 CAD (federal about CAD 17.75/h), *unsure* | 40 | +50% | 1, +1/yr, max 8 | 0.4/yr after 1 yr (federal), *unsure* | 10 | 13 wk |
+| AU | 4,108 AUD (national minimum AUD 24.95/h x 38 h, 2025/26; July 2026 rise not included), *unsure* | 38 | +50% (awards) | 1, +0.8/yr, max 5 | 1.6/yr after 1 yr, max 16 (redundancy scale, simplified) | 20 | 26 wk, 1 wk |
+| JP | 194,000 JPY (national weighted average JPY 1,121/h x 40 h), *unsure* | 40 | +25% | 4.3 | none statutory | 10 | 13 wk |
+| KR | 1,481,000 KRW game-scaled (real 2,157,000: KRW 10,320/h x 209 h) | 40 | +50% | 4.3 | 4.3/yr after 1 yr (30 days a year retirement pay) | 15 | 13 wk |
+| BR | 510 BRL game-scaled (real 1,621, 2026) | 44 | +50% | 4.3, +0.43/yr, max 12.9 | 1.7/yr (40% FGTS fine, simplified), *unsure* | 30 | 13 wk |
+| CH | 4,000 CHF, none national (cantonal minima, e.g. Geneva about CHF 24.5/h), *unsure* | 42 | +25% above the legal maximum, *unsure* | 4.3, +0.9/yr, max 13 | none | 20 | 4.3 wk, 1 wk |
+| MX | 1,370 MXN game-scaled (real 9,577: MXN 315.04/day, 2026) | 48 | +100% | none | 3.0/yr (3 months' pay, simplified), *unsure* | 12 | 4 wk |
+| AE | 2,000 AED, none by law, *unsure* | 48 | +25% | 4.3 | 3.0/yr after 1 yr (21 days a year, gratuity) | 30 | 26 wk, 4.3 wk |
+| IT | 920 EUR game-scaled (real about 1,500, none by law; agreements) | 40 | +25% (agreements), *unsure* | 4, +1/yr, max 16 | 3.6/yr (TFR, about 6.9% of annual pay) | 20 | 26 wk |
+| DK | 21,000 DKK, none by law (agreements), *unsure* | 37 | +50% (agreements), *unsure* | 4.3, +0.6/yr, max 26 | 0.25/yr after 12 yrs, *unsure* | 25 | 13 wk, 2 wk |
+| FI | 1,740 EUR game-scaled (real about 2,200, none by law; agreements) | 37.5 | +50% | 2, +1.5/yr, max 26 | none | 30 | 26 wk |
+| IE | 2,391 EUR (EUR 14.15/h x 39 h, 2026), *unsure* | 39 | +25% (custom), *unsure* | 1, +1/yr, max 8 | 2/yr after 2 yrs (+1 bonus week not modelled) | 20 | 52 wk |
+| SG | 2,000 SGD, none by law (Progressive Wage Model in some sectors), *unsure* | 44 | +50% | 1, +0.8/yr, max 4 | 2/yr after 2 yrs (custom), *unsure* | 14 | 13 wk, 1 wk |
+
+Simplifications: notice is paid in lieu and added to severance in one payment; notice
+grows with whole years of service; the unfair dismissal claim (the existing 35-55% risk without two warnings on file) cannot happen
+during probation or in an at-will country; part-timers' pay and the minimum are pro rata to the standard week; the premium is paid
+only to hourly staff (not fixed-salary or commission staff) for hours above the standard or agreed week; wage claims for unpaid
+wages already existed (`Payday.lateDay`) and are unchanged.
+
 ## How to update
 
 Edit `Engine/Sources/Countries/Resources/countries.json` (`tax`, `vat`, `companies`), update `dataBasis.note` and `checked`, add the

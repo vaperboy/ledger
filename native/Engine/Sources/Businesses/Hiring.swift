@@ -135,10 +135,14 @@ public enum Hiring {
     }
 
     /// Make an offer. The lower it is against what the person asks, the likelier a refusal. Original: `hireWorkerCore`.
-    public static func hire(_ personID: Int, into companyID: Int, monthlyWage wage0: Double, state s: inout GameState, data: GameData,
+    public static func hire(_ personID: Int, into companyID: Int, monthlyWage offered: Double, state s: inout GameState, data: GameData,
                             terms: Terms = Terms(), fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {
         guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return .refused }
         if n.employerID != 0 { return .taken }
+        // No offer goes below the minimum pay of the company's country; a lower one is raised to it (pay is per full-time week).
+        let world = World(state: s, data: data)
+        let wage0 = max(offered, world.minimumWage(s.companies[ci]))
+        if wage0 > offered { s.note("The offer to \(n.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
         let part = terms.isPartTime
         let basis = part ? "hour" : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
         var wage = wage0
@@ -180,14 +184,12 @@ public enum Hiring {
     public static let fixedSalaryNorm: Set<String> = ["dentist", "dentnurse", "vintner", "physio", "lawyer", "paralegal", "acct", "dev", "designer", "marketer",
                                                       "consult", "foreman", "engineer", "architect", "fishtech", "underw", "claims", "banker", "credit", "analyst", "propm"]
 
-    /// Let someone go. Severance depends on how long they have worked: half a month, one or two months of pay.
+    /// Let someone go. Notice and severance follow the labour law of the company's country and how long they have worked (`LabourRules.termination`).
     @discardableResult
     public static func fire(_ personID: Int, from companyID: Int, state s: inout GameState, data: GameData, withCause: Bool = false) -> Double {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) else { return 0 }
         let m = s.companies[ci].staff[k]
-        let months: Double = m.hiredWeek < s.week - 52 ? 2 : m.hiredWeek < s.week - 13 ? 1 : 0.5
-        let w = World(state: s, data: data)
-        let sev = (withCause || m.noticeWeeks > 0) ? 0 : m.monthlyWage * months * (1 + w.country(s.companies[ci]).employerSocial)
+        let sev = World(state: s, data: data).terminationCost(s.companies[ci], monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), withCause: withCause, onNotice: m.noticeWeeks > 0)
         s.companies[ci].staff.remove(at: k)
         if var p = s.people[personID] { p.employerID = 0; s.people[personID] = p }
         if sev > 0 { Payments.companyPays(&s, companyID: companyID, amount: sev, category: "wages", label: "Severance") }

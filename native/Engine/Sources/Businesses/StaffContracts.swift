@@ -173,8 +173,9 @@ extension StaffTalks {
         let rate = mode == "fix" ? 0.0 : mode == "mix" ? 0.03 : 0.06
         let cur = World(state: s, data: data).currency(s.companies[ci])
         let mk = cur.roundedStep(ManagerModel.marketWage(s, s.companies[ci], role: m0.role, data: data) * m0.partTimeShare * (0.7 + n.skill / 160), about: 100)
+        let floor = World(state: s, data: data).minimumWage(s.companies[ci], hours: m0.weeklyHours ?? StaffModel.fullWeekHours)   // fixed pay never goes under the minimum wage
         edit(&s, ci, staffID) { m in
-            m.monthlyWage = mode == "fix" ? max(m.monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : mode == "mix" ? cur.roundedStep(mk * 0.6, about: 100) : 0
+            m.monthlyWage = mode == "fix" ? max(m.monthlyWage, cur.roundedStep(mk * 0.95, about: 100), floor) : mode == "mix" ? max(cur.roundedStep(mk * 0.6, about: 100), floor) : 0
             m.set("pay", .object(["m": .string(mode), "rate": .number(rate)]))
             m.set("commEma", 0)
         }

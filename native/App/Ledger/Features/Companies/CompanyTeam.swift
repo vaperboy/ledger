@@ -20,6 +20,7 @@ struct CompanyTeam: View {
             CompanyTeamRoster(engine: engine, company: company)
             CompanyTargetsCard(engine: engine, company: company)
             CompanyPerksCard(engine: engine, company: company)
+            CompanyLabourCard(engine: engine, company: company)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {

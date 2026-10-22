@@ -27,6 +27,9 @@ public enum CountryTraits {
         return v.isNull ? 1 : v.double
     }
 
+    /// Labour law of a country (minimum wage, hours, notice, severance ...), data: `labour` in `country_traits.json`; see `LabourRules`.
+    public static func labour(_ code: String) -> JSONValue { file["labour"][code] }
+
     public static var globalBrandOrigins: [String] { file["globalBrandOrigins"].array.map { $0.string } }
     public static func isSouthernHemisphere(_ code: String) -> Bool { flag(code, "southernHemisphere") }
     public static func hasDataProtectionLaw(_ code: String) -> Bool { flag(code, "gdpr") }
