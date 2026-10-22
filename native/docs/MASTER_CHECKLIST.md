@@ -74,3 +74,9 @@ Current screens are **first versions**, functional only. Ivory Ledger style is c
 - Already existed, map was stale: board deal vote, move office, supplier variety/concentration/fix, vdisc, layoffs, yacht dinner, fame/jet/serious-buyer luxury extras.
 - Left out: volume tenders for services/shops/carriers, successor-search shortcut, promoting juniors (`st28pro`), managed-holding skill in funding raises, platform fees/memberships/peak seasons, quality-promise cost uplift.
 - Next: build and run `swift test` on a Mac; fix compile errors from this batch first.
+
+## Stage 1 batch 4 (engine only; unbuilt)
+- DONE (unbuilt): volume tenders for 24 service/shop/carrier trades (`VolumeTenders.swift`, one port kept after two parallel ones); ways to sell money side (`SalesWays.swift`: platform commission, memberships, referrals, call-out, add-ons, peak-season warning); quality-promise 3% cost uplift; 20 more trophies + chain/franchise ladders (`TrophiesMore.swift`); ambition perks on loan margin, quality, supply cost, rival prices, abroad fee, market-share/world-rank facts; finance-manager skill in funding raises; `st28pro`; find-a-successor (`ManagerModel.findSuccessor`); manager hire with profit bonus (removed duplicate bonus payout in ChainHierarchy).
+- Corrected as stale: all `ev27` strategic decisions exist; rival energy firms, oil/salmon fairs, club investors and football PRO gating do not exist in the original (nothing to port); holding listing/share sales exist.
+- Left out: trophies n1, rk, no1, top10 (need market/country rank data), team56 (can now use `teamSlots`); seasonal-worker hiring by managers; farm, factory and furniture tenders; bank-deposit-share ambition milestone; dominator perk keeps price paid unchanged (original raises it; looks like a bug).
+- Risks to check on a Mac: new weekly random draws (tenders) may move golden tests; `resign()` now posts an ask message (check the Inbox UI handles it); all of batches 3-4 are uncompiled.
