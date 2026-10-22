@@ -16,48 +16,28 @@ Honest list. Nothing here is hidden behind a "done".
 The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179 extension pipelines. See
 `PARITY_CHECKLIST.md` for every item. In short:
 
-* **Trades:** 56 of 67 can be started (the 50 of the simple families plus residential rentals, commercial property, parking and
-  self-storage, insurance company, bank and investment fund). Not started yet: project businesses (6), energy (2), the holding
-  company, football clubs, and the salmon farm. The menu says "Coming in a later update". A legacy save that contains them
-* **Trades:** 56 of 67 can be started. Not started yet: rental (3), finance (3), energy (2), the holding
-  company, football clubs, and the salmon farm. (The six project trades are in: plumber, electrician, construction, engineering
-  office, event agency, real-estate development; see the next section.) The menu says "Coming in a later update". A legacy save that contains them
-* **Trades:** 53 of 67 can be started from the trade menu (the salmon farm and the two energy trades are in), and the holding
-  company and football clubs have their own entry points (New company > Holding company / Football club). Not started yet:
-  project businesses (6), rental (3), finance (3). The menu says "Coming in a later update". A legacy save that contains them
-  keeps their data untouched, they just do not run.
+* **Trades:** all 67 can be started: the 50 simple-family trades, the six project trades, rental (3), finance (3), energy (2), salmon, the holding company (New company > Holding company) and football clubs.
 * **Energy, salmon, holding, football (new):** ported from engine/company/family_energy.js, family_basic.js (salmon), world/deals.js,
   world/football.js and the round-24 files. Not faithful or not ported:
   * the match draw of a league round shuffles the clubs (the original sorts with a random comparison, which cannot be copied);
   * the bundled UK and US surname lists are one name shorter than the original's, so generated club names after the city names differ there
     (clubs, values and ranks are identical; checked by `SpecialTradesDifferentialTests`);
-  * holding: listing on the exchange, selling shares to investors, the finance manager of the head office and the management team (CEO) are not ported;
-  * football: the original's "PRO" gating, club investors, and the rival owners buying clubs are not ported; transfers are the three tiers of
+  * holding: listing on the exchange and selling shares to investors are ported (`Startups`, `CompanySale`); the finance manager of the head office is in (`FinanceManager`);
+  * football: the original has no "PRO" gating, club investors or rival owners buying clubs (checked), so none exist here; transfers are the three tiers of
     round 24 (no individual players);
   * oil and gas: a manager buys stakes by itself only when the company has a manager (as in the original); the player buys stakes and drills from the
     Plant section; the fictional 78% oil tax is the country data, the exploration refund is the data key `oilRefund` (Norway);
   * the salmon "Stocking density" choice divides the number of smolt by its capacity effect (as the original does), so low density stocks MORE fish
     with less disease. That looks like an inverted rule in the original; kept for parity (see Candidate corrections);
   * the knob effects `k` and `t` of the power plant's source and price choices are not used by the original's weekly model either;
-  * events not ported keep their absence: rival-run energy firms, oil and salmon trade fairs and tenders.
-* **Groups and ownership:** managers beyond the basic model, boards and votes, chains, franchises, branches, intercompany supply,
-  holding companies, startups, private equity (their values still count in net worth when imported). Luxury and estates are in (see Equipment market and luxury).
-* **People:** poaching, promotions, assistant managers (pay talks and paperwork are in).
-* **Events:** the 133 events of the event library are in, and 66 of the 79 strategic decisions of round 27e (`ev27`, `Events/StrategicDecisions.swift`) with the country events. Not ported because they need rivals as businesses, listings or private equity:
-  `s_acqoffer`, `g_location`, `g_franinq`, `e_merger`, `e_distress`, `t_ipo`, `t_pe`, `t_hostile`, `t_antitrust`, `t_activist`, `t_auction`, `c_JP_succ`, `c_US_vc`. Approximations: `e_execleave` changes the manager's pay and capacity instead of hiring a named replacement;
+  * rival-run energy firms, oil and salmon trade fairs and tenders, and club investors do not exist in the original, so there is nothing to port.
+* **Events:** the 133 events of the event library and all of the strategic decisions of round 27e (`ev27`, `Events/StrategicDecisions*.swift`) with the country events are in. Approximations: `e_execleave` changes the manager's pay and capacity instead of hiring a named replacement;
   `c_UK_rent` raises costs instead of the rent line; the credit-tightening country event moves loan margins for 39 weeks; the original's rule that a store inside a chain answers for itself is not ported.
-* **Selling and awards:** a company can be sold whole (`CompanySale`, Money tab of the company). Selling part of your shares, raising funding, founding startups, private equity commitments and stakes in rival groups are not ported.
-  Trophies: about 60 of the original's ~90 are in (`Trophies`); missing are those that need acquisitions, markets and country rank, gifts, luxury, startups, private equity, chains, franchises, R&D, review counts, listed holdings and manager tenure; no full-screen celebration, the inbox tells you and the wall shows the date.
+* **Selling and awards:** a company can be sold whole or in part (`CompanySale`); funding rounds, startups, private equity and stakes in rival groups are in (see below). Trophies are ported (`Trophies`, `TrophiesMore`, incl. chain/franchise ladders); missing: n1, rk, no1, top10 (need market/country rank data) and team56. No full-screen celebration; the inbox tells you and the wall shows the date.
   Business awards run at year end but rank by your place on the rich list (the original ranks companies by revenue and growth against rivals); no "fastest growing" award. The rich list is the original's curve (top fortune by country size, rank^-0.75) without rival group owners.
-  * events not ported keep their absence: the 50 strategic decisions (ev27), rival-run energy firms, oil and salmon trade fairs and tenders.
-* **Groups and ownership:** boards and votes, the CEO and managing director, regional and chain managers (they need chains and shareholders), chains, franchises, branches, intercompany supply,
-  holding companies, startups, private equity, luxury and estates (their values still count in net worth when imported).
-* **People:** pay talks, paperwork, managers (search, hire, authority, pay review, proposals, resignation, rival offers, move), assistant managers,
-  promotions and the poaching of the best worker are in. Not ported: a manager's proposals to buy equipment, vehicles and premises; the profit bonus
-  and shares, duties/authority/report choices and analyst report in the promotion talk; promoting a manager to a chief post; poaching after a course;
-  the manager's own promotions-from-within and the assistant's monthly suggestion and basic insurance; owner-attention drift is read in demand only (not in the manager's quality).
-* **Events:** the 133 events of the event library are in; the 50 "strategic" decisions (`ev27`) and the country-specific ones are not.
-* **Customers:** key accounts (business customers), reviews as a screen, price wars, rivals as businesses.
+* **Compliance, finance manager, perks, targets, contracts:** abroad compliance fines, the finance manager, staff perks, manager targets and yearly budget, volume contracts and tenders, sourcing hookups, rival life (strategy, fortune, exit, entrants) and the trophies above are ported (engine only; unbuilt).
+* **People:** pay talks, paperwork, managers (search, hire with profit bonus, authority, pay review, proposals, resignation, rival offers, move), assistant managers, boards/CEO/MD/regional posts, promotions, `st28pro`, find-a-successor and the poaching of the best worker are in. Not ported: seasonal-worker hiring by managers; poaching after a course; the assistant's monthly suggestion and basic insurance; owner-attention drift is read in demand only (not in the manager's quality).
+* **Customers:** key accounts, reviews, price wars and rivals as businesses are in (see Customers, competition and reputation).
 * **Equipment:** the market is in (see Equipment market and luxury). Quick setup still buys the standard class at the standard price, as before.
 * **Reports (weekly, monthly, yearly):**
   * A report closes when the seventh day of the last week of the period is over, just before the weekly turn, so the staged week money has all been released. Month and year end follow the engine's own `isMonthEnd` / `isYearEnd`, not the calendar day.
@@ -69,8 +49,7 @@ The original is 48,000 lines of JavaScript with 105 screens, 557 actions and 179
   * The app screens (Reports, Home prompt, Company > Finances) were only syntax-checked (`swiftc -parse`); they have not been compiled or run.
 * **Screens:** see the checklist; no marketing analytics screen, no map, the rich list, achievements and company sale screens were only syntax-checked (`swiftc -parse`).
 * **Premises:** choosing a listing and buying equipment item by item exist in the engine but have no screen; "Fill in what is missing" does it.
-* **Screens:** see the checklist; no marketing analytics screen, no map, no rich list, no achievements.
-* **Premises:** the listing choice (rent, or buy with a mortgage) and item-by-item buying have a screen (Company > Equipment, fleet and premises). Not yet: the home-trade workshop listings (R37), franchise building terms, a landlord company receiving the rent.
+* **Premises:** the listing choice (rent, or buy with a mortgage) and item-by-item buying have a screen (Company > Equipment, fleet and premises). Home-trade workshop listings, franchise rent discount and a landlord company receiving the rent are in the engine (`PremisesExtras`); franchise building terms are not.
 
 ## Rental and finance trades (RentalModel, FinanceModel)
 
@@ -113,7 +92,7 @@ the developer (zoning, building, sales, construction loan repaid from 70% of sal
   original's own numbers lose money for a small construction firm and an engineering office (see BALANCE_PARITY). They are the
   only knobs; everything else is the original's formula.
 * Reviews are a counter and a star sum (no texts, no review screen); the tender "needs N stars" rule uses them after 5 reviews.
-* Tenders: only job tenders for the six trades. The original's volume contracts (business customers) are not ported.
+* Tenders: job tenders for the six trades, and volume tenders/contracts for business customers of services, shops and carriers (`VolumeTenders`, `VolumeContracts`). Not ported: farm, factory and furniture tenders.
 * The old contract-backlog model (`FAM.project.custom` before hours) is dead code in the original for every job trade, so it is
   not ported; jobs from tenders enter the hours model, as in the original.
 * Developer: no "other assets" screen line; `fm.assets` (work in progress) counts in the company's value as in the original.
@@ -132,11 +111,13 @@ the developer (zoning, building, sales, construction loan repaid from 70% of sal
 * Some numbers in the original were frozen before later balance patches (trade demand, capacity, fixed costs). The native game
   stores the final numbers as data (`trades.json`) and uses the formula (`TradeCatalog.calibrate`) only for new trades.
 
+* **Pay and tax rules abroad:** the country data has no statutory minimum wage, overtime law or notice period (wages come from role tables; overtime is the original's 1.5x in `DailyTrade`; severance is 0.5/1/2 months by tenure). Employer social, corporate tax with loss carry-forward, VAT and owner-salary withholding use the company's own country; the player's yearly personal assessment (dividends, gains, sole-trader income) uses the home country by design (`CompanyCountryRulesTests`).
+
 ## Candidate corrections (not changed, to keep parity)
 
 * The gym and the restaurant are generous or slow compared with real life (see `BALANCE_PARITY.md`, "Which is closer to real life");
   both engines agree, so they were left for a deliberate balance pass.
-* The vendor system (goods quality and cost per supplier) and poaching are not ported (equipment and vehicle brands are); they explain
+* The vendor system (goods quality and cost per supplier) is partly in (`Suppliers`, `Sourcing`); poaching is ported (`Rivals`); they explain
   small differences in quality, staff and courier cash.
 
 * Salmon: low stocking density gives more fish and less disease (see above); the 15-month wait without income is covered by the start-up estimate, as in the original.
@@ -159,11 +140,11 @@ untouched next to the converted save.
 ## Equipment market and luxury (EquipmentMarket, Luxury)
 
 * **Brands:** `Resources/equipment_brands.json` holds the maker names and rules; the catalogue (3 classes per brand, price factor, rating, output, reliability) follows `eqCat`/`vehCat` with the same seeded draws. Output (`perf`) and reliability (`rel`) of the brands bought feed the existing capacity and breakdown models.
-* **Not ported from the buying file:** supplier relationship discounts (`vdisc`: price is always the list price), the equipment each person needs (`PER` rules: a car per estate agent, a van per three cleaners; the screen shows the trade's standard count instead), own-car mileage for agents, courier/trucking fuel by van size, taxi class demand, the hiring screen's work-car choice, picture drawings.
+* **Equipment buying file:** supplier relationship discounts (`vdisc`, `Suppliers`), per-person equipment rules, own-car mileage, courier fuel by van size, taxi class and the work-car choice are ported (`PersonalEquipment`, `PremisesExtras`). Not ported: picture drawings.
 * **Quick setup** still buys the standard item at the standard price (the original's `mgrCat` picks the best standard-class brand); it was left alone so the balance does not move.
 * **Leasing** is for vehicles and machines of 100 000 or more (as the original); returning leased equipment is a plain end of the lease.
 * **Luxury:** items, rates, uses, risks and estate yields are data (`Resources/luxury.json`). Pieces live in `rest["lux"]` like the original's `S.lux`, so imported saves keep working. Company cars and jets sit in the company's assets as `luxBV`.
-* **Not ported from lifestyle/estates:** the fame and rest perks of homes and jets, the lower fee for starting abroad with a jet, serious car/watch offers, the yacht dinner, the tax-office check on an oversized company car, the margin call on a loan against the collection (the loan itself is offered against `Luxury.collateral`), the vineyard's effect on demand in your restaurants, the castle's fame, museum lending provenance, Ledger Pro gating of estates, and the photographs. The original has no "family office"; none is invented.
+* **Not ported from lifestyle/estates:** the margin call on a loan against the collection (the loan itself is offered against `Luxury.collateral`), the vineyard's effect on demand in your restaurants, museum lending provenance, Ledger Pro gating of estates, and the photographs. Fame, jet fee, serious buyers and the yacht dinner are in (`LuxuryExtras`, `Luxury.fameBonus`). The original has no "family office"; none is invented.
 * **Tests:** `MarketTests` (catalogue is stable, premises, buy new/used/lease/finance/subscribe, sell, luxury buy/charter/sell, company car, books balance). Not run: the full suite, and the app screens (only `swiftc -parse`).
 
 ## Chains, franchises, branches and supply between your companies
@@ -171,42 +152,35 @@ untouched next to the converted save.
 * Ported: chain registration and the checklist, new stores (set up with the standard package, run on the chain's rules), chain rules and a store's own rules, brand marketing, buying discounts, shared awareness, monthly pay floor, reach; franchising out; being a franchisee; master franchise; supply between your own companies at market, cost + 10% or cost. Checked with `ChainsTests` (books balance); no differential tests against the original. The screens were only syntax-checked (`swiftc -parse`).
 * Brands are made from the game seed and the trade and country with a hashed random stream, not the original's; the same game always shows the same brands, but they are not the original's brands.
 * "Someone to look after franchisees" also counts a manager in every store of a chain of three or more, because chain chiefs, a managing director and boards are not ported.
-* Not ported: store managers asking to leave the chain price, bosses deciding requests and moving money between sister stores (group loans), chain board with seats and votes, the price-percent step of a store, the 'opens in 3 weeks' wait for a new store (it opens when its paperwork and team are ready), a franchisee's location in your own building and the building 15% under market, prospects hosted at a perk, 'supply from inside' protection against outside supplier events, the 25%-of-capital limit on lending from your own bank, opening next to a rival's best site (branch screen), rival supply (`rivalSupply`).
+* Ported since: price requests and group loans, the 3-week opening wait, the 25% own-bank cap, board with seats and votes, supply-from-inside protection (`Sourcing`). Not ported: store managers asking to leave the chain price (partial), a franchisee's location in your own building and the building 15% under market, opening next to a rival's best site (branch screen), rival supply (`rivalSupply`).
 * As in the original, intercompany sales carry no VAT; each company's profit tax follows from its own books. Master franchise fee is in the franchisor's currency.
 ## Customers, competition and reputation
 
-* **Reviews** are one system (`Reviews`): stars follow quality and reputation, the average of stored reviews is the rating; project trades review per finished job, every other trade weekly. Not ported: tourists writing from their own country, owner replies (the original has none).
-* **Key accounts** buy from the capacity the walk-ins leave over (the original adds them to the demand and shares a full shop; the day-by-day trade has no account volume). The account's trade profile (what it sells, so you could buy from it) is not ported.
-* **Rivals** live inside the market record (`mk[key].riv`) and set the market price index like the original. Rival calls about matched price cuts (and the illegal price-fixing choice) are not ported. Rival groups: undercut, open next door, buy a rival, marketing push, raise prices, go abroad, distress and collapse are ported; **bids for your companies, poaching your manager, buying your suppliers and the ranking of the biggest companies are not**.
-* **Market map:** the analyst roles (market analyst in a company, data analyst in the head office) are not hireable yet, so every market is shown at the "feeling" level (words) until those roles exist; the code for ranges and monthly reports is in and tested only through the roles being absent. The "weight in the economy" block is not ported.
-* **Price moves:** percent price change, discount campaigns (with the fine for a fake discount) and price wars are ported; the forecast boxes (customers and margin) and managers moving prices in small steps are not.
-* **Lawsuits** (settle or court, court dates for big cases, lost by default) and **cyber attacks** (IT security levels, backups, training, fraud, ransomware, leak, outage) are ported; a manager does not pick the IT level.
-* **World around you:** rivals remember you (mood, temperament, grudges, lunch). Public image, the network of contacts and favours, and the maps screen are not ported. Software products of your own startup are not ported.
 
 ## Startups, funding, private equity, listings (this branch)
 
 * Ported: `Events/Startups`, `Funding`, `PrivateEquity`, `Shareholders`, `BigMeeting`, `GroupDeals`, `Ventures`, partial sales and buyer talk in `CompanySale`, the 13 decisions in `StrategicDecisionsCorporate`, trophies listed/su1/sux/pe1/pe2.
-* Not faithful or left: the earlier software startup is folded into the SaaS sector; a social app's marketing boost; the finance manager of a holding who negotiates raises; investors you hosted; the yearly manager review and the "replace the manager" owners' demand; Ledger Pro gating (no Pro tier); market share for the competition authority is your sales against the market size, not the market map; rival-based decisions and group bids need the Competition data (`rest["mk"].riv`, `rest["g27"]`) and a foreign group for the auction must already exist. Layoff screens (`rfset`, `warnstaff`, `loset`, `logo`) and `hfin` are not part of this area.
+* Not faithful or left: the earlier software startup is folded into the SaaS sector; a social app's marketing boost; investors you hosted; Ledger Pro gating (no Pro tier); market share for the competition authority is your sales against the market size, not the market map. The finance manager (`FinanceManager`), layoff screens (`rfset`, `loset`, `logo`) and the yearly manager review are ported at engine level.
 ## Boards, executives, head office, meetings, academy (ManagerTeam, ManagerBoards, ManagerMeetings, ManagerPromotions, ManagerProposals, ChainHierarchy, Headquarters, Academy)
 
 * Ported: see `MASTER_CHECKLIST.md`. Effects of the team are cached on the company (`tm`, `mgrLift`, `mdCoach`, `drift56`, `boss56`, `brdLaw`, `brdMkt`) each week and read by demand, capacity, marketing, quits, fines and manager quality.
 * Not faithful: fame is a simplified formula (no foreign countries); head office candidates come from the manager generator with the role's pay, not worker search; holders (co-owners) exist only when given as shares in a promotion, since funding rounds are not ported, so owner votes and director elections are rare; the "loan" vote is not forced on the loan action (use `boardVote` first); manager duties `sec`/`ins` are stored but do nothing; a dividend policy is stored but no quarterly dividend is paid; the finance manager does not lower loan margins; course prices use the country cost index only.
-* Not ported: `grp27` (profile of a rival group, depends on rival groups' UI), supply-from-inside protection against outside supplier events, board pack report preference of a promoted manager.
+* Not ported: `grp27` (profile of a rival group, depends on rival groups' UI), board pack report preference of a promoted manager. (Supply-from-inside protection is in: `Sourcing`.)
 ## Company tabs, misc screens, fleet and luxury leftovers (branch worktree-agent-a62df16577d42dde6)
 
 | Id | What it is in the original | Native |
 |---|---|---|
 | advisers / insurance | accountant, law firm, insurer choice (own group firms too), policies | `Advisers`, `GameEngine.chooseAdviser`, `toggleInsurancePolicy`; premium factor, claim haggling, own insurer income |
-| abroad | open a subsidiary in another country | `Abroad`, `expandAbroad`; foreign_entity document, compliance fines not ported |
+| abroad | open a subsidiary in another country | `Abroad`, `expandAbroad`; foreign_entity document and the compliance fines (`AbroadComplianceTests`) |
 | complaints, staffProfile | complaint list and answers; person detail, mood, warnings, courses, dismissal, layoffs, commission | `Complaints`, `StaffProfile` |
 | supply (vdisc) | supplier owners, relationship discounts, board deals, goods and repair supplier | `Suppliers`; discount applies to goods cost and equipment price. Auto pick uses a seed from company and half-year, not the shared random stream |
 | give28 | gifts, sponsorships, foundation | `Giving` |
-| amb27 | ambitions with tiers and perks | `Ambitions`. Market-share and rank milestones read zero; only the abroad-fee perk is wired into other systems |
+| amb27 | ambitions with tiers and perks | `Ambitions`. Perks are wired into loan margin, abroad fee, quality, supply cost and rival prices; market-share and world-rank facts exist |
 | paper40 / pr28 | local paper front page, interviews, public image numbers | `Press` |
 | wx56 | storm warnings and damage, securing, tourist news, forecast | `WeatherEvents` (weather effects were already in `Weather`) |
 | month30 | monthly results | `MonthView` |
 | store13, res36, brand56, fr56, img31(screen), pro59 | presentation screens or in-app purchase | skipped; no new logic |
-| net31, img31 data, pk58, tg58, fs58, nem28, top28, st28 | contacts and favours, staff perks and hosting, targets and budgets, first steps, nemesis, Top 50, staff stories | not ported in this branch |
+| net31, img31 data, pk58, tg58, fs58, nem28, top28, st28 | contacts and favours, staff perks and hosting, targets and budgets, first steps, nemesis, Top 50, staff stories | `WorldAround`, `StaffPerks`, `ManagerTargets`, `OpeningChecklist`, `Stories`: all ported (engine; unbuilt) |
 | fleet / premises / luxury leftovers | car per agent, van per three cleaners, own car mileage, courier fuel, taxi class, hiring car choice, home-trade workshop listings, franchise rent discount, landlord company rent, fame, rest, jet fee, serious buyer, yacht dinner, tax-office check, margin call, own wine | `PersonalEquipment`, `PremisesExtras`, `LuxuryExtras`. `Luxury.fameBonus` and `Luxury.offerBonus` must be called from the head-office fame and rival offer code. Yacht dinner guests are suppliers only (no contacts network yet) |
 * **Reviews** are one system (`Reviews`): stars follow quality and reputation, the average of stored reviews is the rating; project trades review per finished job, every other trade weekly. Tourists write from their own country where the trade has foreign visitors (flag, "on holiday here"). Not ported: the "heard about you at home" line (needs national media campaigns abroad). Owner replies do not exist in the original.
 * **Key accounts** share a full shop with the walk-ins (demand added, everyone gets the same share of the capacity); the day-by-day trade has no account volume, so the accounts are added to the week's total. Each account runs a trade (`KeyAccounts.profile`): once you know them (relationship 22 and up) the screen says you can buy from them. Not ported: the actual supply-chain link to an account (`L39`, `custSuppliers`).
