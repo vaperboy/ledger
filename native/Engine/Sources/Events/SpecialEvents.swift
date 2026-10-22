@@ -49,6 +49,7 @@ enum SpecialEvents {
                 let f = jsRound(max(cur.scaledPrice(8000), c.wk * 0.2))
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Inspection fine")
                 s.note("Inspectors found issues at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                AftermathQueue.schedule(&s, companyID: co.id, kind: "reinspect", delay: 4)
                 s.addMessage(from: fc.country(of: co, s).pack["authorities"]["lab"].string, title: "Inspection at \(co.name)", body: "Deviations were found. Fine \(cur.display(f)). Improve routines and training.", companyID: co.id, tone: "bad")
             } else { s.note("Inspection at \(co.name): passed.", tone: "good", companyID: co.id) }
         case "v_health":
@@ -60,6 +61,7 @@ enum SpecialEvents {
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Food safety fine")
                 s.companies[i].reputation = clamp(co.reputation - 3, 0, 100)
                 s.note("\(food) found hygiene deviations at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                AftermathQueue.schedule(&s, companyID: co.id, kind: "reinspect", delay: 4)
                 s.addMessage(from: food, title: "Inspection at \(co.name)", body: "Deviations in hygiene routines. Fine \(cur.display(f)).", companyID: co.id, tone: "bad")
             } else {
                 s.companies[i].reputation = clamp(co.reputation + 0.5, 0, 100)

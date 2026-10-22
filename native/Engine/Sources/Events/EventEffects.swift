@@ -141,6 +141,7 @@ extension EventEngine {
             s.addMessage(from: s.companies[i].name, title: "You may consider selling \(s.companies[i].name).",
                          body: "Selling is under the company's Ownership and value section.", companyID: id)
         }
+        Aftermath.afterEffects(&s, i, event: e, fx: fx, data: data)
     }
 
     // MARK: Pieces
