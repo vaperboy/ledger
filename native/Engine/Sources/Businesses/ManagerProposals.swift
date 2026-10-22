@@ -201,15 +201,7 @@ extension ManagerModel {
 
     // MARK: Profit bonus and a manager's year
 
-    /// A share of the month's profit on top of the salary, booked as wages before tax. Original: `monthEndCoCore`.
-    static func profitBonus(_ s: inout GameState, data: GameData) {
-        for co in s.companies where co.status == .open && co.managerID != nil && co.managerProfitBonus > 0 && s.people[co.managerID!] != nil {
-            let p0 = Books.profit(co.books.month)
-            let x = p0 > 0 ? jsRound(p0 * co.managerProfitBonus * (1 + World(state: s, data: data).country(co).employerSocial)) : 0
-            if x > 0 { Payments.companyPays(&s, companyID: co.id, amount: x, category: "wages", label: "Profit bonus: \(s.people[co.managerID!]!.name)") }
-            if let i = s.companyIndex(co.id) { s.companies[i].set("mgrBonusLast", x) }
-        }
-    }
+    /// The share of a month's profit a manager is paid on top of the salary is booked in `MonthEnd.closeMonth` (original: `monthEndCoCore`).
     public static func setManagerProfitBonus(_ s: inout GameState, companyID: Int, share: Double) {
         guard let i = s.companyIndex(companyID), s.companies[i].managerID != nil else { return }
         s.companies[i].managerProfitBonus = clamp(share, 0, 0.3)

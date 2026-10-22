@@ -207,7 +207,7 @@ public extension GameEngine {
     }
     /// How a supplier's price compares with the market: 1 = market price. Original: `pfOf`.
     func supplyPriceFactor(supplier: Int, mode: String) -> Double {
-        state.company(supplier).map { IntercompanySupply.priceFactor(mode: mode, supplier: $0, data: data) } ?? 1
+        state.company(supplier).map { IntercompanySupply.priceFactor(mode: mode, supplier: $0, data: data, perkCut: Ambitions.supplyCostCut(state, data)) } ?? 1
     }
 
     @discardableResult

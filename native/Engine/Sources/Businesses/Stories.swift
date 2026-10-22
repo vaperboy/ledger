@@ -2,14 +2,29 @@ import Foundation
 import GameCore
 import Countries
 import Finance
+import Employees
 
 /// People you care about: staff stories (anniversaries, thank-you notes, life events, retirement), the one rival owner who makes it
 /// personal (the nemesis, with a running score) and the Top 50 every January.
 /// Original: features/people/staff_stories_and_nemesis.js (`staffWeek`, `nemWeek`, `top50`). The business paper and the interviews are `Press`.
-/// Not ported: promoting a junior worker from the bottom up (`st28pro`).
 public enum Stories {
-    public static let annAction = "st28ann", retAction = "st28ret", lifeAction = "st28life"
-    public static func handlesAnswer(_ action: String) -> Bool { [annAction, retAction, lifeAction].contains(action) }
+    public static let annAction = "st28ann", retAction = "st28ret", lifeAction = "st28life", proAction = "st28pro"
+    public static func handlesAnswer(_ action: String) -> Bool { [annAction, retAction, lifeAction, proAction].contains(action) }
+
+    /// Entry-level roles: a worker in one of these who has learned the job may be offered the next step up. Original: `JUN`.
+    static let juniorRoles: Set<String> = ["helper", "cleaner", "cashier", "waiter", "barista", "housek", "labour", "fworker", "usher", "waiterB", "carwash", "courier", "recept", "groom", "seaman", "farmh", "teller"]
+
+    /// The next role up in this trade's own staff list: the cheapest non-entry role paying clearly more than the current one. Original: `nextRole`.
+    static func nextRole(_ co: Company, _ m: StaffMember, data: GameData) -> String? {
+        guard let bd = data.catalog[co.type] else { return nil }
+        let roles = data.catalog.tables.roles
+        let w0 = roles[m.role]?.baseMonthlyWage ?? 40000
+        let up = bd.standardStaff.map { $0.role }.filter { r in
+            guard let b = roles[r]?.baseMonthlyWage else { return false }
+            return !juniorRoles.contains(r) && r != m.role && b > w0 * 1.08
+        }
+        return up.min { (roles[$0]?.baseMonthlyWage ?? 0) < (roles[$1]?.baseMonthlyWage ?? 0) }
+    }
 
     // MARK: Helpers
 
@@ -83,6 +98,19 @@ public enum Stories {
                                  action: annAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "y": .number(Double(y))]), expiresWeek: s.week + 2)
                 }
             }
+            // from the bottom up: a junior who has learned the job next door may be promoted
+            if juniorRoles.contains(m.role) && y >= 1 && m.value("pr28").isNull && fresh,
+               StaffModel.skill(m, person: n, salesRoles: data.catalog.tables.salesRoles) >= 66, roll(s, "pro:\(id)") < 0.04,
+               let to = nextRole(co, m, data: data) {
+                m.set("pr28", s.week); fresh = false
+                s.companies[ci].set("sl28", s.week)
+                let wage = roundTo(max(m.monthlyWage * 1.15, ManagerModel.marketWage(s, co, role: to, data: data) * 0.95), step: 100)
+                s.addMessage(kind: "ask", from: co.name, title: "Promote \(n.name) to \(roleName(s, data, to))?",
+                             body: "\(n.name) started as \(role) \(y) year\(y > 1 ? "s" : "") ago and has learned the job next door. \(first(n.name)) would earn \(cur.display(wage)) a month.",
+                             companyID: co.id, tone: "good", status: "open",
+                             options: [.option("Promote \(first(n.name))", "Loyal, motivated, and already knows the place."), .option("Not yet", "\(first(n.name)) may look elsewhere.")],
+                             action: proAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "to": .string(to), "wage": .number(wage)]), expiresWeek: s.week + 3)
+            }
             // retirement
             if Double(n.age) + Double(s.week - hired) / 52 >= 67 && m.value("ret28").isNull && fresh {
                 m.set("ret28", s.week); fresh = false
@@ -144,6 +172,18 @@ public enum Stories {
             if idx == 0 { pay(cur.scaledPrice(4000) + Double(co.staff.count) * cur.scaledPrice(400), "oth", "Anniversary party"); bumpMood(&s, ci, 6); loyal(26); addStory(&s, company: ci, staff: id, "\(y) years: a party with the whole team") }
             else if idx == 1 { pay(st.monthlyWage, "wages", "Anniversary bonus"); bumpMood(&s, ci, 3); loyal(26); addStory(&s, company: ci, staff: id, "\(y) years: a bonus") }
             else { bumpMood(&s, ci, 1); addStory(&s, company: ci, staff: id, "\(y) years: a card") }
+        case proAction:
+            let to = d["to"].string
+            guard juniorRoles.contains(st.role), data.catalog.tables.roles[to] != nil else { break }
+            if idx == 0 {
+                let from = roleName(s, data, st.role)
+                s.companies[ci].staff[k].set("role", to); s.companies[ci].staff[k].monthlyWage = d["wage"].double
+                s.companies[ci].staff[k].skillGain += 5; s.companies[ci].staff[k].noticeWeeks = 0; s.companies[ci].staff[k].lastRaiseWeek = s.week
+                s.people[id]?.role = to
+                addStory(&s, company: ci, staff: id, "Promoted from \(from) to \(roleName(s, data, to))")
+                bumpMood(&s, ci, 4)
+                s.note("\(s.people[id]?.name ?? "A colleague") is now \(roleName(s, data, to)) at \(co.name).", tone: "good", companyID: co.id)
+            } else if roll(s, "prono:\(id)") < 0.25 { s.companies[ci].staff[k].noticeWeeks = 4 }
         case lifeAction:
             if idx == 0 { pay(cur.scaledPrice(1500), "oth", "Gift to \(s.people[id]?.name ?? "a colleague")"); bumpMood(&s, ci, 1.5); loyal(13); addStory(&s, company: ci, staff: id, "\(d["t"].string) (the company sent a gift)") }
             else { addStory(&s, company: ci, staff: id, d["t"].string) }

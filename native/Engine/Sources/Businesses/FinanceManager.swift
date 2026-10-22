@@ -191,6 +191,13 @@ public enum FinanceManager {
     }
     public static func manages(_ s: GameState, holdingID: Int) -> Bool { managedHoldings(s).contains(holdingID) }
 
+    /// The office finance manager who negotiates share sales for a holding he runs, and how good he is (0.2...0.98: skill/100 plus
+    /// a point per 100 years of experience). Original: `mg` / `s` in `raisePlan`.
+    public static func negotiator(_ s: GameState, holdingID: Int) -> (name: String, skill: Double)? {
+        guard manages(s, holdingID: holdingID), let k = officeFinanceIndex(s), let p = s.people[(s.rest["office"]?["staff"].array[k]["id"].int) ?? 0] else { return nil }
+        return (p.name, clamp((p.value("skill").isNull ? 55 : p.value("skill").double) / 100 + p.value("exp").double * 0.01, 0.2, 0.98))
+    }
+
     /// Let the finance manager run a holding, or take it back. Returns the new state (nil: no finance manager in the office).
     /// Original: `ACT.hfin`.
     @discardableResult

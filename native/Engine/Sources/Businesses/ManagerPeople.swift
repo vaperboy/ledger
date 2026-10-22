@@ -75,6 +75,31 @@ extension ManagerModel {
         return out
     }
 
+    /// "Find a successor": pay for the executive search for the company's manager's replacement and keep the candidates (`succ`) for the
+    /// hiring page. Asked after a resignation or three bad months; a search already running is not paid twice. Original: the choice opens
+    /// the hiring page (`UI.go('mgrhire')`), where `ACT.mgrsearch` starts the search.
+    @discardableResult
+    public static func findSuccessor(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
+        guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil else { return nil }
+        let waiting = successorCandidates(s, companyID: companyID)
+        if !waiting.isEmpty { return waiting }
+        guard let list = search(&s, companyID: companyID, data: data) else {
+            s.addMessage(kind: "info", from: "Your management", title: "No search at \(s.companies[ci].name)", body: "There is not enough cash to pay the executive search.", companyID: companyID, tone: "bad", status: "done")
+            return nil
+        }
+        s.companies[ci].set("succ", .array(list.map { .number(Double($0.id)) })); s.companies[ci].set("succW", s.week)
+        let cur = World(state: s, data: data).currency(s.companies[ci])
+        let lines = list.map { "\($0.name), \($0.age), asks \(cur.display($0.askingMonthlyWage)) a month" }.joined(separator: "; ")
+        s.addMessage(kind: "info", from: "Your management", title: "Candidates to run \(s.companies[ci].name)",
+                     body: "The search found \(list.count): \(lines). Interview them and hire one on the Team page.", companyID: companyID, tone: "good", status: "done")
+        return list
+    }
+    /// The people a successor search found who are still free to hire.
+    public static func successorCandidates(_ s: GameState, companyID: Int) -> [Person] {
+        guard let co = s.company(companyID), s.week - co.int("succW") <= 26 else { return [] }
+        return co.value("succ").array.compactMap { s.people[$0.int] }.filter { $0.employerID == 0 }
+    }
+
     /// What a candidate says about one skill: their claim, unless the answer slips. Three questions each. Original: `interview`.
     @discardableResult
     public static func interview(_ s: inout GameState, personID: Int, key: String) -> Double? {
@@ -140,14 +165,25 @@ extension ManagerModel {
         var p = n; p.employerID = co.id; s.people[n.id] = p
     }
 
+    /// What a profit share is worth to a manager each month: the recent monthly profit times the share, less 30% for the risk. Original: `bonusWorth`.
+    public static func bonusWorth(_ co: Company, _ share: Double) -> Double {
+        guard share > 0 else { return 0 }
+        let h = co.monthlyHistory.suffix(3)
+        return max(0, h.reduce(0) { $0 + $1.profit } / Double(max(1, min(3, h.count)))) * share * 0.7
+    }
+
     /// Offer the job. A lower offer is more likely to be refused. Original: `hireManager`.
-    public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage wage: Double, data: GameData) -> HireResult {
+    public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage wage: Double, profitBonus bonus: Double = 0, data: GameData) -> HireResult {
         guard let ci = s.companyIndex(companyID), let n = s.people[personID], let bd = data.catalog[s.companies[ci].type] else { return .refused }
         if n.employerID != 0 { return .taken }
         let ask = max(1, n.askingMonthlyWage)
-        let p = clamp((wage / ask - 0.88) / 0.14, 0, 1)
-        if wage < ask && !s.random.chance(p) { return .refused }
+        // a share of the profit counts towards the package (a manager weighs it at 70% of what the last months' profit would pay)
+        let share = clamp(bonus, 0, 0.3)
+        let offered = wage + bonusWorth(s.companies[ci], share)
+        let p = clamp((offered / ask - 0.88) / 0.14, 0, 1)
+        if offered < ask && !s.random.chance(p) { return .refused }
         appoint(&s, companyIndex: ci, person: n, wage: wage, data: data)
+        s.companies[ci].managerProfitBonus = share
         s.note("\(n.name) is now \(title(bd).lowercased()) of \(s.companies[ci].name).", tone: "good", companyID: companyID)
         return .ok
     }
@@ -168,6 +204,7 @@ extension ManagerModel {
         s.companies[ci].managerID = nil
         s.companies[ci].managerMonthlyWage = 0
         s.companies[ci].set("mgrNotice", .null)
+        s.companies[ci].managerProfitBonus = 0
         s.companies[ci].ownerHours = 40
     }
 
@@ -219,9 +256,10 @@ extension ManagerModel {
         let f = moveFactor(from: s.companies[ai], to: s.companies[bi], data: data)
         n.set("exp", jsRound(n.num("exp") * f * 2) / 2)
         s.people[mid] = n
-        let wage = s.companies[ai].managerMonthlyWage, md = mood(s.companies[ai])
+        let wage = s.companies[ai].managerMonthlyWage, md = mood(s.companies[ai]), bonus = s.companies[ai].managerProfitBonus
         stepDown(&s, ai)
         appoint(&s, companyIndex: bi, person: n, wage: wage, data: data)
+        s.companies[bi].managerProfitBonus = bonus   // the profit share goes with the manager
         s.companies[bi].set("mood", md)
         s.note("\(n.name) now manages \(s.companies[bi].name).", tone: "n", companyID: b)
         return true
@@ -237,7 +275,9 @@ extension ManagerModel {
         let reason = why.isEmpty ? "" : why.prefix(1).uppercased() + why.dropFirst() + ". "
         s.addMessage(kind: "info", from: n.name, title: "\(n.name) has resigned from \(co.name)",
                      body: "\(reason)I will work my notice and leave on \(GameCalendar.dateString(week: s.week + wk, dayOffset: 0))\(rival.isEmpty ? "" : ", when I start at \(rival)"). That gives you about \(Int(jsRound(Double(wk) / 4.33))) months to find someone. Hire my successor before then and I will hand over and go.",
-                     companyID: co.id, tone: "bad", status: "done")
+                     companyID: co.id, tone: "bad", status: "open",
+                     options: [.option("Find a successor", "Pays for an executive search now."), .option("I will handle it", "")],
+                     action: ManagerTargets.successorAction, data: .object(["co": .number(Double(co.id))]), expiresWeek: s.week + wk)
     }
 
     /// The last day of the notice: they go, and you run the company until there is a new manager. Original: `mgrNoticeWeek`.

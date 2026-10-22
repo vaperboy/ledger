@@ -88,10 +88,11 @@ public enum IntercompanySupply {
     }
 
     /// The supplier's full cost per unit of sales, from its own results. Original: `costRatio`.
-    public static func costRatio(_ c: Company, data: GameData) -> Double {
+    /// `perkCut` is the industrial titan perk (`Ambitions.supplyCostCut`): your own suppliers work that much cheaper for the group.
+    public static func costRatio(_ c: Company, data: GameData, perkCut: Double = 0) -> Double {
         let h = c.monthlyHistory.suffix(3)
         let rv = h.reduce(0.0) { $0 + $1.revenue }, pf = h.reduce(0.0) { $0 + $1.profit }
-        let cr = rv > 0 ? 1 - pf / rv : 1 - (data.catalog[c.type]?.margin ?? 0.1)
+        let cr = (rv > 0 ? 1 - pf / rv : 1 - (data.catalog[c.type]?.margin ?? 0.1)) * (1 - perkCut)
         return clamp(cr, 0.45, 1.3)
     }
     static func varRatio(_ c: Company, data: GameData) -> Double {
@@ -100,8 +101,8 @@ public enum IntercompanySupply {
         return clamp(rev != 0 ? (b["cogs"] ?? 0) / rev : (data.catalog[c.type]?.costOfSales ?? 0.3), 0.05, 0.8)
     }
     /// A transfer price never goes above what the buyer would pay outside. Original: `pfOf`.
-    public static func priceFactor(mode: String, supplier c: Company, data: GameData) -> Double {
-        mode == "mkt" ? 1 : mode == "c10" ? min(1, costRatio(c, data: data) * 1.1) : min(1, costRatio(c, data: data))
+    public static func priceFactor(mode: String, supplier c: Company, data: GameData, perkCut: Double = 0) -> Double {
+        mode == "mkt" ? 1 : mode == "c10" ? min(1, costRatio(c, data: data, perkCut: perkCut) * 1.1) : min(1, costRatio(c, data: data, perkCut: perkCut))
     }
 
     /// Weekly spend of a buyer on an input. Original: `spendOf`.
@@ -138,6 +139,7 @@ public enum IntercompanySupply {
 
     static func weekly(_ s: inout GameState, data: GameData) {
         guard !rawLinks(s).isEmpty || s.companies.contains(where: { $0.num("int27u") > 0 }) else { return }
+        let titanCut = Ambitions.supplyCostCut(s, data)
         // tickets are worked out before anything moves (they read the whole state)
         var tickets: [Int: Double] = [:]
         do {
@@ -171,7 +173,7 @@ public enum IntercompanySupply {
             let u = K.noCapacity ? 0 : (ticket > 0 ? x / ticket : 0)
             let capB = sp.status == .open ? sp.value("lastW")["cap"].double + sp.num("int27u") : 0
             let f = K.noCapacity ? (sp.status == .open ? 1.0 : 0) : (u > 0 ? clamp(capB / u, 0, 1) : 1)
-            let pf = priceFactor(mode: l["mode"].string, supplier: sp, data: data), vr = varRatio(sp, data: data)
+            let pf = priceFactor(mode: l["mode"].string, supplier: sp, data: data, perkCut: titanCut), vr = varRatio(sp, data: data)
             let got = x * f
             // the buyer: what it paid outside before, against what it pays the group now
             let diff = got * (1 - pf)

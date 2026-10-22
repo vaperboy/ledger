@@ -321,7 +321,6 @@ extension ManagerModel {
         executivesWeekly(&s, data: data)
         bigWeekly(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) {
-            profitBonus(&s, data: data)
             groupMonthly(&s, data: data)
             Headquarters.monthly(&s, data: data)
         }
