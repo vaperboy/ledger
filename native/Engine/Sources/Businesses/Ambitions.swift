@@ -81,8 +81,8 @@ public enum Ambitions {
         /// Share of the biggest market and number of markets led (more share than every rival there). Original: `shareTop`.
         lazy var marketShare: (best: Double, no1: Double) = {
             var best = 0.0, no1 = 0.0
-            for m in MarketMap.markets(s, data: data) {
-                let t = MarketMap.truth(s, m, data: data)
+            for m in MarketMap.markets(self.s, data: self.data) {
+                let t = MarketMap.truth(self.s, m, data: self.data)
                 best = max(best, t.share)
                 if t.players.allSatisfy({ $0.share < t.share }) { no1 += 1 }
             }
@@ -91,7 +91,7 @@ public enum Ambitions {
         /// Your place by sales: "cc" in your country, "ind" among your industries, "world". 999 without a ranking. Original: `rank`.
         func rank(_ scope: String) -> Double {
             let sc: CompanyRanking.Scope = scope == "ind" ? .industries : scope == "world" ? .world : .country
-            return CompanyRanking.yourRank(s, data: data, scope: sc, metric: .revenue).map { Double($0.rank) } ?? 999
+            return CompanyRanking.yourRank(self.s, data: self.data, scope: sc, metric: .revenue).map { Double($0.rank) } ?? 999
         }
     }
 
