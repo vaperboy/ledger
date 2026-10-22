@@ -108,7 +108,7 @@ public enum Rivals {
         let taken = Set(riv.map { $0["name"].string } + s.companies.map { $0.name })
         var used = taken
         while riv.count < want {
-            var h = HashedRandom("\(s.seed):rivals:\(key):\(riv.count)")
+            var h = HashedRandom("\(s.seed):rivals:\(key):\(riv.count + 7 * m["gone"].int)")   // a rival that closed does not come back under the same name
             var name = ""
             for g in 0..<40 {
                 var r = DeterministicRandom(seed: Int(h.next() * 1_000_000_000) &+ g)
@@ -514,6 +514,7 @@ public enum Rivals {
         guard var mk = s.rest["mk"], !mk[k].isNull else { return }
         mk[k]["riv"] = .array(mk[k]["riv"].array.filter { $0["id"].int != id })
         mk[k]["n"] = .number(max(1, mk[k]["n"].double - 1))
+        mk[k]["gone"] = .number(mk[k]["gone"].double + 1)
         s.rest["mk"] = mk
     }
 
