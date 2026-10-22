@@ -65,6 +65,7 @@ struct CompanyManagement: View {
                     Text("\(m.name.split(separator: " ").first.map(String.init) ?? "The manager") leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Hire a successor before then and they will hand over.")
                         .font(.system(size: 12)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
                 }
+                if !notice.isNull { SuccessorSection(engine: engine, company: company) }
                 RateBar(label: "Overall results", fraction: q)
                 if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                 if months >= 3 {

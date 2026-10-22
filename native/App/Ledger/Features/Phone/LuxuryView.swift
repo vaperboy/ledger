@@ -202,6 +202,7 @@ struct LuxuryView: View {
                 SectionTabs(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
                             selection: Binding(get: { open }, set: { v in store.act { $0.setCastleOpen(pieceID: p.id, open: v) } })).padding(.horizontal, -Theme.Space.margin)
             }
+            LendPieceSection(engine: e, piece: p)
             HStack(spacing: Theme.Space.m) {
                 if p.item.id == "e2" {
                     Button("Host a retreat") {

@@ -70,6 +70,7 @@ struct CompanyHolding: View {
                         }
                     }
                 }
+                HoldingFinanceManagerCard(engine: engine, company: company)
                 LedgerSection("Move money") {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         AmountField(title: "Amount", currency: cur, amount: $amount)
