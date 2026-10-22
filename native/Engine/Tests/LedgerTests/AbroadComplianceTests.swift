@@ -11,10 +11,10 @@ final class AbroadComplianceTests: XCTestCase {
     private func abroadEngine() throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK")
         let cafe = ChainsTests.start(&e, "cafe")
-        e.update { s, _, _ in s.companies[s.companyIndex(cafe)!].reputation = 60 }
+        e.update { s, _, _ in s.companies[s.companyIndex(cafe)!].reputation = 60; s.companies[s.companyIndex(cafe)!].status = .open }
         let option = try XCTUnwrap(e.abroadOptions(companyID: cafe).first)
         guard case .success(let id) = e.expandAbroad(companyID: cafe, countryCode: option.countryCode) else { XCTFail("no expansion"); return (e, 0) }
-        e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .open; s.companies[s.companyIndex(id)!].cash = 1_000_000 }
+        e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .open; _ = Payments.injectCash(&s, companyID: id, amount: 1_000_000) }
         return (e, id)
     }
 
