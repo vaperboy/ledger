@@ -12,7 +12,10 @@ public enum Competition {
         let r0 = Pricing.priceIndex(co, w) / pi
         let dv = r0 - 1
         let ratio = 1 + dv * min(1, abs(dv) / 0.06)
-        var mult = 1 - min(0.3 + CityMarket.rivalCapBoost(co, w), 0.035 * m["n"].double) * (0.7 + 0.5 * m["str"].double)
+        // A market whose last rival has gone and not yet been replaced has nobody to take customers (see `Rivals.vacant`).
+        let n = Rivals.vacant(m, week: w.week) ? 0 : m["n"].double
+        var mult = 1 - min(0.3 + CityMarket.rivalCapBoost(co, w), 0.035 * n) * (0.7 + 0.5 * m["str"].double)
+        mult *= Rivals.strengthFactor(m, week: w.week)
         mult *= ratio > 1 ? exp(-0.9 * (ratio - 1)) : exp(0.35 * (1 - ratio))
         mult *= cheapRivalFactor(co, m, w)
         let v = clamp(mult, 0.2, 1.25)
