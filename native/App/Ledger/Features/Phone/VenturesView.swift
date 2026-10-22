@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Countries
+import Businesses
 import Events
 import Simulation
 
@@ -12,11 +13,16 @@ struct VenturesContent: View {
         if store.engine != nil { content }
     }
 
+    private func startupRecordText(_ e: GameEngine) -> String {
+        let r = e.founderRecord
+        return "\(r.exits) exits · \(r.fails) failures"
+    }
+
     private var content: some View {
         let e = store.engine!
         let cur = e.homeCurrency
         return VStack(spacing: Theme.Space.l) {
-            LedgerSection(title: "My startups", trailing: { Text("\(e.founderRecord.exits) exits · \(e.founderRecord.fails) failures").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            LedgerSection(title: "My startups", trailing: { Text(startupRecordText(e)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
