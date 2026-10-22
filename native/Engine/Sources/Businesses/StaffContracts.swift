@@ -18,8 +18,8 @@ extension StaffTalks {
     /// The months (1-12) as seasons in words. Original: `R54.seasText`.
     public static func seasonText(_ ms: [Int]) -> String {
         let full = seasons.filter { $0.months.allSatisfy(ms.contains) }
-        let covered = Set(full.flatMap(\.months))
-        let out = (full.map(\.name) + ms.filter { !covered.contains($0) }.map { monthNames[$0] }).joined(separator: ", ")
+        let covered = Set(full.flatMap { $0.months })
+        let out = (full.map { $0.name } + ms.filter { !covered.contains($0) }.map { monthNames[$0] }).joined(separator: ", ")
         return out.isEmpty ? "no months yet" : out
     }
 

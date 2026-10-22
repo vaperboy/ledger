@@ -136,17 +136,17 @@ public enum Chains {
 
     public static func staffShortages(_ s: GameState, chainID: Int, data: GameData) -> [Shortage] {
         guard let ch = chain(s, id: chainID) else { return [] }
-        let stores = stores(s, ch)
+        let chainStores = stores(s, ch)
         func std(_ c: Company, _ role: String) -> Int {
             guard let bd = data.catalog[c.type] else { return 0 }
             return CompanySetup.standardStaff(bd, size: c.size).filter { $0.role == role }.reduce(0) { $0 + $1.count }
         }
         func have(_ c: Company, _ role: String) -> Int { c.staff.filter { $0.role == role }.count }
         var out: [Shortage] = []
-        for c in stores {
+        for c in chainStores {
             guard let bd = data.catalog[c.type] else { continue }
             for r in CompanySetup.standardStaff(bd, size: c.size) where have(c, r.role) < r.count {
-                out.append(Shortage(storeID: c.id, role: r.role, spareAtStoreID: stores.first { $0.id != c.id && have($0, r.role) > std($0, r.role) }?.id))
+                out.append(Shortage(storeID: c.id, role: r.role, spareAtStoreID: chainStores.first { $0.id != c.id && have($0, r.role) > std($0, r.role) }?.id))
             }
         }
         return out
