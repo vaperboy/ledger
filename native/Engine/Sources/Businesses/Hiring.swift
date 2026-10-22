@@ -48,7 +48,7 @@ public enum Hiring {
         let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
         let spread = Wages.paySpread(baseMonthlyWage: base, country: country)
         let perkAsk = 1 - 0.04 * pull
-        let ask = roundTo(base * cityWage * T.ask * (0.55 + skill / 110 + (lie ? 0.05 : 0)) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk, step: 100)
+        let ask = roundTo(base * cityWage * T.ask * (0.55 + skill / 110 + (lie ? 0.05 : 0)) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk * (co.map { Rivals.hiringPressure(s, $0) } ?? 1), step: 100)
         let trait: String? = s.random.chance(0.14 * (1 - 0.4 * pull)) ? s.random.pick(traits) : nil
         let rel = clamp(s.random.range(0.55, 1) - (trait != nil ? 0.12 : 0), 0.3, 1)
         let name = personName(country, &s.random)

@@ -67,6 +67,9 @@ final class DemandWiringTests: XCTestCase {
             Rivals.removeRival(&s, key: k, id: first[0].id)
             XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty)
             Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
+            XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty, "a vacated market is not refilled at once")
+            s.week = Int(s.rest["mk"]![k]["vac"].double) + 1
+            Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
             let second = Rivals.rivals(s, key: k)
             XCTAssertEqual(second.count, 1)
             XCTAssertNotEqual(second[0].name, first[0].name)

@@ -27,6 +27,8 @@ public enum Rivals {
         public var groupID: String?
         public var known: Bool                  // has noticed you
         public var memory: [(week: Int, text: String, change: Double)]
+        public var strategy: String = "cheap"   // cheap, premium, quality or expander (old saves get one from their id)
+        public var fortune: Double = 1          // 1 = healthy; below 0 = in trouble; below -0.5 = out of money
         public static func == (a: Rival, b: Rival) -> Bool { a.id == b.id && a.size == b.size && a.relationship == b.relationship }
     }
 
@@ -45,7 +47,56 @@ public enum Rivals {
               forSale: r["listed"].bool, priceFactor: effectivePrice(r, week: week), discountPercent: running(r["camp16"], week) ? r["camp16"]["pct"].int : nil,
               marketing: r["mkt16"].double > Double(week), holdingPrices: r["hold16"].bool,
               groupID: r["g27"].isNull || r["g27"].string.isEmpty || r["g27"].string == "0" ? nil : r["g27"].string, known: !r["n31"].isNull && r["n31"].double != 0,
-              memory: r["mem31"].array.map { ($0["w"].int, $0["t"].string, $0["d"].double) })
+              memory: r["mem31"].array.map { ($0["w"].int, $0["t"].string, $0["d"].double) },
+              strategy: strategyOf(r), fortune: fortuneOf(r))
+    }
+
+    // MARK: Strategy, fortune and how they reach your demand (no counterpart in the original, which only has strategies for groups)
+
+    public static let strategies = ["cheap", "premium", "quality", "expander"]
+
+    /// A rival's way of competing; saves from before this existed get a stable one from the id.
+    static func strategyOf(_ r: JSONValue) -> String {
+        let s = r["st"].string
+        return strategies.contains(s) ? s : strategies[abs((String(r["id"].int) + "st").hashValueStable) % strategies.count]
+    }
+
+    static func fortuneOf(_ r: JSONValue) -> Double { r["fort"].isNull ? 1 : r["fort"].double }
+
+    public static func traits(_ strategy: String) -> (name: String, strength: String, weakness: String) {
+        switch strategy {
+        case "premium": return ("Premium", "A loyal, better-off clientele and a name people trust.", "Hurt first when money gets tight, and weak against a good cheaper offer.")
+        case "quality": return ("Quality", "Customers stay for the work; reviews and word of mouth.", "Slow to grow and costly to run, so a bad year bites.")
+        case "expander": return ("Expander", "Opens new sites and hires hard when it is doing well.", "Spends ahead of its cash; a downturn or a high policy rate can sink it.")
+        default: return ("Cheap", "Low prices bring a steady crowd.", "Thin margins: a price war or a slump hits it quickly.")
+        }
+    }
+
+    /// How attractive a rival is to customers compared with an average one (1 = average): price, strategy and health.
+    static func appeal(_ r: JSONValue, week: Int) -> Double {
+        var a = 1 + (1 - effectivePrice(r, week: week)) * 0.6
+        switch strategyOf(r) { case "premium": a += 0.06; case "quality": a += 0.12; case "expander": a += 0.04; default: break }
+        let f = fortuneOf(r)
+        if f < 0.4 { a *= clamp(0.7 + 0.3 * (f + 0.6), 0.7, 1) } else if f > 2 { a *= 1.05 }
+        return a
+    }
+
+    /// What the named rivals' size, price, quality and health do to your share of the market: a big, cheap, healthy rival takes customers,
+    /// a failing one releases them. 1 when there is nobody written down yet. Clamped to 0.88...1.1.
+    public static func strengthFactor(_ m: JSONValue, week: Int) -> Double {
+        let riv = m["riv"].array
+        guard !riv.isEmpty else { return 1 }
+        let p = riv.reduce(0) { $0 + $1["size"].double * appeal($1, week: week) } / Double(riv.count)
+        return clamp(1 - 0.25 * (p - 1), 0.88, 1.1)
+    }
+
+    /// A market whose last rival has gone and has not yet been replaced.
+    public static func vacant(_ m: JSONValue, week: Int) -> Bool { m["riv"].array.isEmpty && m["vac"].double > Double(week) }
+
+    /// Local hiring costs while a strong rival is growing there (a few percent, for a year). Hook for `Hiring.generateCandidate`.
+    public static func hiringPressure(_ s: GameState, _ co: Company) -> Double {
+        guard let h = s.rest["mk"]?[key(co)]["hire"], !h.isNull, Double(s.week) < h["until"].double else { return 1 }
+        return clamp(h["f"].double, 1, 1.08)
     }
 
     static func running(_ camp: JSONValue, _ week: Int) -> Bool { !camp.isNull && Double(week) < camp["end"].double }
@@ -98,12 +149,19 @@ public enum Rivals {
     }
 
     /// Fill a market with its named rivals (the same every time for this game). Original: `rivalsOfCore`.
-    static func ensure(_ s: inout GameState, key: String, trade bd: Trade, countryCode: String, data: GameData) {
-        guard var mk = s.rest["mk"], !mk[key].isNull else { return }
+    @discardableResult
+    static func ensure(_ s: inout GameState, key: String, trade bd: Trade, countryCode: String, data: GameData) -> [String] {
+        guard var mk = s.rest["mk"], !mk[key].isNull else { return [] }
         var m = mk[key]
         var riv = m["riv"].array
         let want = min(5, max(1, m["n"].int))
-        guard riv.count < want || riv.count > want + 1 else { return }
+        guard riv.count < want || riv.count > want + 1 else {
+            if !m["vac"].isNull { m["vac"] = .null; mk[key] = m; s.rest["mk"] = mk }   // nobody to replace any more
+            return []
+        }
+        // A vacated market stays empty (or short) for a while before a newcomer arrives.
+        if riv.count < want, Double(s.week) < m["vac"].double { return [] }
+        let before = riv.count
         let country = data.countries[countryCode] ?? data.countries.countries[0]
         let taken = Set(riv.map { $0["name"].string } + s.companies.map { $0.name })
         var used = taken
@@ -120,14 +178,23 @@ public enum Rivals {
                 + " " + (country.lastNames.isEmpty ? "Smith" : country.lastNames[Int(h.next() * Double(country.lastNames.count)) % country.lastNames.count])
             let id = nextID(&s)
             let size = jsRound((0.45 + h.next() * 1.05) * 100) / 100
+            let rel = jsRound(30 + h.next() * 25), listed = h.next() < 0.12
+            let nx = Double(s.week + 4 + Int(h.next() * 14))
+            let st = strategies[Int(h.next() * Double(strategies.count)) % strategies.count]   // drawn last so the older draws stay as they were
+            let fort = jsRound((0.7 + h.next() * 0.7) * 100) / 100
+            let bias = st == "cheap" ? 0.93 : st == "premium" ? 1.08 : 1
             riv.append(.object(["id": .number(Double(id)), "name": .string(name), "owner": .string(owner), "size": .number(size),
-                                "rel": .number(jsRound(30 + h.next() * 25)), "listed": .bool(h.next() < 0.12), "ign": 0, "lock": 0, "meet": -99,
-                                "pm16": .number(initialPrice(seed: s.seed, id: id)), "ig16": 1, "nx16": .number(Double(s.week + 4 + Int(h.next() * 14)))]))
+                                "rel": .number(rel), "listed": .bool(listed), "ign": 0, "lock": 0, "meet": -99,
+                                "pm16": .number(clamp(jsRound(initialPrice(seed: s.seed, id: id) * bias * 1000) / 1000, 0.7, 1.6)), "ig16": 1, "nx16": .number(nx),
+                                "st": .string(st), "fort": .number(fort)]))
         }
         if riv.count > want + 1 { riv.removeLast(riv.count - (want + 1)) }
+        let added = riv.count > before ? riv[before...].map { $0["name"].string } : []
+        if riv.count >= want { m["vac"] = .null }
         m["riv"] = .array(riv)
         mk[key] = m
         s.rest["mk"] = mk
+        return added
     }
 
     /// Change one rival record in place.
@@ -193,11 +260,16 @@ public enum Rivals {
         for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "hold" && c.type != "club" { byMarket[key(c), default: []].append(i) }
         for k in byMarket.keys.sorted() {
             guard let idx = byMarket[k], let first = idx.first, let bd = data.catalog[s.companies[first].type] else { continue }
-            ensure(&s, key: k, trade: bd, countryCode: s.companies[first].countryCode, data: data)
+            let newcomers = ensure(&s, key: k, trade: bd, countryCode: s.companies[first].countryCode, data: data)
+            if let nc = newcomers.first, (s.rest["mk"]?[k]["gone"].int ?? 0) > 0 {   // a replacement after a closure, not the first fill
+                let city = data.countries.city(s.companies[first].cityID, preferring: s.companies[first].countryCode)?.city.name ?? "town"
+                for i in idx { s.note("\(nc) opens in \(city), a new \(bd.name.lowercased()) competitor.", tone: "n", companyID: s.companies[i].id) }
+            }
             RivalGroups.assign(&s, key: k, type: s.companies[first].type, countryCode: s.companies[first].countryCode, data: data)
             if !noPrice.contains(bd.family) { behave(&s, key: k, idx: idx, bd: bd, data: data) }
             remember(&s, key: k, idx: idx, data: data)
         }
+        if s.week / 52 != (s.week - 1) / 52 { fortuneYear(&s, data: data) }
         for i in s.companies.indices { priceWarWeek(&s, i, data: data) }
         collusionWeek(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
@@ -515,7 +587,119 @@ public enum Rivals {
         mk[k]["riv"] = .array(mk[k]["riv"].array.filter { $0["id"].int != id })
         mk[k]["n"] = .number(max(1, mk[k]["n"].double - 1))
         mk[k]["gone"] = .number(mk[k]["gone"].double + 1)
+        // The gap stays open for a while; a newcomer then arrives under a new name (`ensure`).
+        let delay = 26 + Int(HashedRandom.first("\(s.seed):vac:\(k):\(mk[k]["gone"].int)") * 40)
+        mk[k]["vac"] = .number(Double(s.week + delay))
         s.rest["mk"] = mk
+    }
+
+    // MARK: A rival's year
+
+    /// Once a year each rival's fortune moves with the economy cycle, the policy rate, its own price and strategy, and how you behave
+    /// against it; one that runs out of money closes, and a strong expander may open in a nearby city.
+    static func fortuneYear(_ s: inout GameState, data: GameData) {
+        guard var mk = s.rest["mk"] else { return }
+        let w = World(state: s, data: data)
+        let year = s.week / 52
+        var closing: [(key: String, id: Int)] = []
+        var expanding: [(key: String, id: Int)] = []
+        for k in mk.object.keys.sorted() {
+            var m = mk[k]
+            var riv = m["riv"].array
+            guard !riv.isEmpty else { continue }
+            let mine = s.companies.filter { $0.status == .open && key($0) == k }
+            for j in riv.indices {
+                var r = riv[j]
+                let st = strategyOf(r)
+                let price = effectivePrice(r, week: s.week)
+                var d = (s.economy.demand - 1) * 4 - (s.economy.policyRate - 0.04) * (st == "expander" ? 5 : 2) + (price - 0.95) * 1.5
+                switch st {
+                case "cheap": d -= 0.05
+                case "premium": d += (s.economy.demand - 1) * 2 + 0.05
+                case "quality": d += 0.04
+                default: d -= 0.12
+                }
+                for co in mine {
+                    if Pricing.priceIndex(co, w) / max(0.01, co.num("ig", 1)) < price - 0.08 { d -= 0.2 }   // you undercut it
+                    if Reviews.rating(co) > 4.2 { d -= 0.1 }
+                    if co.awareness > 60 { d -= 0.05 }
+                }
+                if !(r["g27"].isNull || r["g27"].string.isEmpty || r["g27"].string == "0") { d += 0.15 }   // a group behind it
+                d += (HashedRandom.first("\(s.seed):fort\(year):\(r["id"].int)") - 0.5) * 0.6
+                let f0 = fortuneOf(r)
+                let f = clamp(f0 + (1 - f0) * 0.15 + d, -1.5, 4)
+                r["fort"] = .number(jsRound(f * 100) / 100)
+                // Health shows in size: a rival doing well grows, one in trouble shrinks.
+                let g = clamp((f - 1) * 0.03, -0.06, 0.05) + (st == "expander" && f > 1 ? 0.03 : 0)
+                r["size"] = .number(clamp(jsRound(r["size"].double * (1 + g) * 100) / 100, 0.3, 2.2))
+                if st == "expander", f > 1.4, r["size"].double >= 0.9, HashedRandom.first("\(s.seed):expand\(year):\(r["id"].int)") < 0.35 {
+                    expanding.append((k, r["id"].int))
+                    m["hire"] = .object(["until": .number(Double(s.week + 52)), "f": 1.03])
+                }
+                if f < -0.5 { closing.append((k, r["id"].int)) }
+                riv[j] = r
+            }
+            m["riv"] = .array(riv)
+            mk[k] = m
+        }
+        s.rest["mk"] = mk
+        for x in expanding { expand(&s, key: x.key, id: x.id, data: data) }
+        for x in closing { bankrupt(&s, key: x.key, id: x.id, data: data) }
+    }
+
+    /// A rival with no money left closes. You hear about it if you are in that market.
+    static func bankrupt(_ s: inout GameState, key k: String, id: Int, data: GameData) {
+        guard let r = rivals(s, key: k).first(where: { $0.id == id }) else { return }
+        removeRival(&s, key: k, id: id)
+        if let gid = r.groupID, var g = s.rest["g27"]?["g"][gid], !g.isNull {
+            g["br"] = .number(Double(max(1, g["br"].int - 1)))
+            s.rest["g27"]?["g"][gid] = g
+        }
+        let kind = traits(r.strategy).name.lowercased()
+        let ours = s.companies.filter { $0.status == .open && key($0) == k }
+        for co in ours {
+            let city = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? "town"
+            s.addMessage(from: "Market", title: "\(r.name) has run out of money",
+                         body: "\(r.name), a \(kind) competitor in \(city), has closed. Its customers are looking for somewhere new, and nobody is likely to take its place for a while.",
+                         companyID: co.id, tone: "good")
+        }
+        if !ours.isEmpty { s.news("\(r.name) closes after running out of money.") }
+    }
+
+    /// A strong expander opens a second site in a nearby city where you also trade, as the same named business.
+    static func expand(_ s: inout GameState, key k: String, id: Int, data: GameData) {
+        guard let from = s.rest["mk"]?[k]["riv"].array.first(where: { $0["id"].int == id }), let bar = k.firstIndex(of: "|") else { return }
+        let type = String(k[..<bar]), home = String(k[k.index(after: bar)...])
+        guard let hc = data.countries.city(home), let hi = hc.country.cities.firstIndex(where: { $0.id == home }) else { return }
+        let targets = (s.rest["mk"]?.object.keys.sorted() ?? []).filter { tk in
+            guard tk.hasPrefix(type + "|"), tk != k else { return false }
+            let cid = String(tk.dropFirst(type.count + 1))
+            guard let ci = hc.country.cities.firstIndex(where: { $0.id == cid }), abs(ci - hi) <= 3 else { return false }
+            let rs = s.rest["mk"]?[tk]["riv"].array ?? []
+            return !rs.isEmpty && !rs.contains { $0["name"].string == from["name"].string } && (s.rest["mk"]?[tk]["n"].double ?? 0) < 8
+        }
+        guard !targets.isEmpty else { return }
+        let tk = targets[Int(HashedRandom.first("\(s.seed):exp:\(s.week):\(id)") * Double(targets.count)) % targets.count]
+        var copy = from
+        copy["id"] = .number(Double(nextID(&s)))
+        copy["size"] = .number(clamp(jsRound(from["size"].double * 0.5 * 100) / 100, 0.4, 1.2))
+        copy["fort"] = .number(0.9)
+        copy["rel"] = .number(45)
+        for f in ["mem31", "n31", "camp16", "mkt16", "rv31", "g27", "sold16"] { copy[f] = .null }
+        copy["listed"] = false; copy["ign"] = 0; copy["lock"] = 0; copy["meet"] = -99
+        copy["nx16"] = .number(Double(s.week + 8))
+        s.rest["mk"]?[tk]["riv"] = .array((s.rest["mk"]?[tk]["riv"].array ?? []) + [copy])
+        s.rest["mk"]?[tk]["n"] = .number((s.rest["mk"]?[tk]["n"].double ?? 1) + 1)
+        s.rest["mk"]?[tk]["hire"] = .object(["until": .number(Double(s.week + 52)), "f": 1.05])
+        var home2 = s.rest["mk"]?[k]["riv"].array ?? []
+        for j in home2.indices where home2[j]["id"].int == id { home2[j]["size"] = .number(jsRound(home2[j]["size"].double * 0.93 * 100) / 100) }
+        s.rest["mk"]?[k]["riv"] = .array(home2)
+        for co in s.companies where co.status == .open && key(co) == tk {
+            let cn = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? "town"
+            s.addMessage(from: "Market", title: "\(from["name"].string) expands into \(cn)",
+                         body: "\(from["name"].string) from \(hc.city.name) has opened a site in \(cn). Expect more competition for customers and for staff there.",
+                         companyID: co.id, tone: "bad")
+        }
     }
 
     // MARK: Talking to and buying rivals

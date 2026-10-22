@@ -39,6 +39,9 @@ public enum DemandModel {
         parts.append(("price", pe))
         apply("choices", Knobs.effect(co, bd, "d", w))
         apply("economy", 1 + (w.economy.demand - 1) * (w.balance.economySensitivity[bd.family] ?? 0.8))
+        // Rate-sensitive trades (housing, cars, luxury) lean a little on the policy rate. Mild by design (about +-3% at the extremes).
+        let credit = creditFactor(co, w)
+        if credit != 1 { apply("credit", credit) }
         apply("rivals", Competition.rivalFactor(co, w))
         let own = Competition.ownOutletShare(co, w)
         D *= own
@@ -50,6 +53,16 @@ public enum DemandModel {
         var r = DemandResult(customers: max(0, D), parts: parts)
         applySteps(&r, co, bd, w)
         return r
+    }
+
+    /// Trades whose customers borrow to buy: how much of the policy rate's distance from a neutral 4% they feel (housing, cars, luxury).
+    static let rateSensitivity: [String: Double] = ["estate": 0.8, "realdev": 1.0, "construction": 0.7, "cardealer": 0.9, "carrental": 0.3,
+                                                     "boutique": 0.4, "furniture": 0.5]
+
+    /// A mild effect of credit conditions on consumer demand: dearer money, fewer big purchases. Clamped to 0.96...1.03.
+    static func creditFactor(_ co: Company, _ w: World) -> Double {
+        guard let k = rateSensitivity[co.type] else { return 1 }
+        return clamp(1 - (w.economy.policyRate - 0.04) * k * 1.0, 0.96, 1.03)
     }
 
     /// Temporary effects on a company (events, one-off bonuses). Original: `modProd(co, key)`.
