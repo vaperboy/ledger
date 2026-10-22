@@ -21,8 +21,7 @@ import Finance
 ///    (a less reliable customer and a longer delay raise it). The money moves through `Payments`, so the books balance;
 ///  * risk: a customer can go under (its unpaid invoices are lost, the contract ends), walk away from poor quality, or not renew.
 ///
-/// Not ported: the volume tenders of services, shops and carriers (only job tenders exist, see `ProjectTenders`); `sign` takes a
-/// tender's id (`tnd`) so a later port can feed them in. The other ways to sell (platforms, memberships ...) are not part of this file.
+/// Volume tenders (`VolumeTenders`) feed `sign` with a tender's id (`tnd`). The other ways to sell (platforms, memberships ...) are in `SalesWays`.
 public enum VolumeContracts {
     public static let action = "ctv"
     static let termChoices = [13, 26, 52]
@@ -433,7 +432,7 @@ public enum VolumeContracts {
                     continue
                 }
                 if good { recordDelivery(&s, companyID: co.id, ok: true) }
-                VolumeTenders.newRound(&s, companyID: co.id, title: c["n"].string, buyer: c["who"].string, units: c["u"].double, data: data)
+                VolumeTenders.newRound(&s, contract: c, companyID: co.id, data: data)
             } else if good && h.next() < 0.45 + 0.3 * ratingFactor(co) {
                 let term = c["term"].isNull ? 26 : c["term"].int
                 c["end"] = .number(Double(s.week + term)); c["warn"] = 0

@@ -54,7 +54,7 @@ public enum DemandModel {
 
     /// Temporary effects on a company (events, one-off bonuses). Original: `modProd(co, key)`.
     static func modifier(_ co: Company, _ key: String) -> Double {
-        co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key)
+        co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key) * (key == "cogsup" ? VolumeTenders.qualityUplift(co) : 1)
     }
 
     static func season(_ bd: Trade, _ w: World) -> Double {

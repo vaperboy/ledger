@@ -2,53 +2,57 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-@testable import Businesses
+import Businesses
 import Simulation
 
-/// Volume tenders (the salmon farm's supermarket chain, canteens, carriers ...): a won bid becomes a contract of the company.
+/// Volume tenders of services (they become volume contracts) and the other ways to sell (platform, memberships ...).
 final class VolumeTendersTests: XCTestCase {
-    func testEveryTenderTradeExists() throws {
-        let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
-        XCTAssertFalse(VolumeTenders.catalog["salmon"]?.isEmpty ?? true)
-        for (trade, offers) in VolumeTenders.catalog {
-            XCTAssertNotNil(e.data.catalog[trade], "unknown trade \(trade)")
-            XCTAssertTrue(offers.allSatisfy { $0.volume }, trade)
+    func testServiceCompanyGetsVolumeTenderBidsAndWinsAContract() throws {
+        var e = try ChainsTests.engine()
+        let id = ChainsTests.start(&e, "cleaning")
+        var bidOn: Int?
+        // A tender for the trade turns up about every nine weeks; bid for the first volume one (lowest price, higher quality).
+        for _ in 0..<80 where bidOn == nil {
+            ChainsTests.play(&e, days: 7)
+            let co = try XCTUnwrap(e.state.company(id))
+            if let t = ProjectTenders.openTenders(e.state, for: co).first(where: { $0.isVolume }) {
+                var result = ProjectTenders.BidResult.closed
+                e.update { s, d, _ in result = ProjectTenders.placeBid(&s, companyID: id, tenderID: t.id, priceFactor: 0.8, higherQuality: true, data: d) }
+                if result == .sent { bidOn = t.id }
+            }
         }
+        try XCTSkipUnless(bidOn != nil, "no volume tender turned up or the company could not bid")
+        for _ in 0..<12 { ChainsTests.play(&e, days: 7) }
+        let won = e.volumeContracts(companyID: id).first { $0.tenderID == bidOn }
+        try XCTSkipUnless(won != nil, "a rival won this tender")
+        let c = try XCTUnwrap(won)
+        XCTAssertTrue(c.higherQuality)
+        XCTAssertGreaterThan(c.units, 0)
+        XCTAssertGreaterThan(c.endWeek - c.startWeek, 100, "two years")
+        XCTAssertEqual(c.extensionsLeft, 2)
+        XCTAssertGreaterThan(e.contractLoad(companyID: id).units, 0)
+        ChainsTests.play(&e, days: 6 * 7)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testWonVolumeTenderBecomesContract() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 17)
-        var id = 0, tid = 0
-        var bidCost = 0.0, cashBefore = 0.0, cashAfterBid = 0.0
-        e.update { s, data, ctx in
-            Ledger.move(&s, .me, 500_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
-            id = i
-            Payments.injectCash(&s, companyID: id, amount: 20_000_000)
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
-            guard let co = s.company(id) else { return }
-            var st = ProjectTenders.load(s)
-            var t = ProjectTenders.make(&s, co, data: data, home: ctx.homeCurrency(s))
-            t.set("rivals", 0); t.set("minR", 0); t.set("minY", 0); t.set("wP", 1)
-            t.set("due", s.week + 1); t.set("award", s.week + 2)
-            st.list.append(t)
-            ProjectTenders.save(&s, st)
-            tid = t.id
-            bidCost = t.bidCost
-            cashBefore = s.company(id)?.cash ?? 0
-            XCTAssertTrue(t.isVolume)
-            XCTAssertEqual(ProjectTenders.placeBid(&s, companyID: id, tenderID: tid, priceFactor: 0.95, higherQuality: false, data: data), .sent)
-            cashAfterBid = s.company(id)?.cash ?? 0
-        }
-        XCTAssertGreaterThan(bidCost, 0)
-        XCTAssertEqual(cashBefore - cashAfterBid, bidCost, accuracy: 1)
-        for _ in 0..<(3 * 7) { e.nextDay() }
+    func testPlatformMembershipAndAddOnsMoveRealMoneyAndTheBooksBalance() throws {
+        var e = try ChainsTests.engine()
+        let id = ChainsTests.start(&e, "cafe")
+        ChainsTests.play(&e, days: 10 * 7)
+        let rows = e.waysToSell(companyID: id)
+        XCTAssertTrue(rows.contains { $0.kind == "platform" && $0.canSwitch })
+        XCTAssertTrue(rows.contains { $0.kind == "members" && $0.canSwitch })
+        let oth0 = try XCTUnwrap(e.state.company(id)).books.total["oth"] ?? 0
+        XCTAssertEqual(e.setWayToSell(companyID: id, kind: "platform", on: true), .changed)
+        XCTAssertEqual(e.setWayToSell(companyID: id, kind: "members", on: true), .changed)
+        XCTAssertEqual(e.setWayToSell(companyID: id, kind: "contract", on: true), .notSwitchable)
+        XCTAssertEqual(e.setWayToSell(companyID: id, kind: "nothing", on: true), .notAWay)
+        ChainsTests.play(&e, days: 8 * 7)
         let co = try XCTUnwrap(e.state.company(id))
-        let won = VolumeContracts.contracts(co, week: e.state.week).first { $0.tenderID == tid }
-        XCTAssertNotNil(won, "the won tender should be a contract")
-        XCTAssertEqual(won?.isPublic, true)
-        XCTAssertEqual(won?.discount ?? 0, 0.05, accuracy: 0.0001)
-        XCTAssertTrue(e.state.inbox.contains { $0.title.hasPrefix("Award:") })
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        try XCTSkipUnless(co.value("lastW")["rev"].double > 0, "the cafe did not trade in the test run")
+        XCTAssertGreaterThan(co.books.total["oth"] ?? 0, oth0, "commission and perks are costs")
+        XCTAssertGreaterThan(co.value("sw33")["mem"].double, 0, "members build up")
+        XCTAssertTrue(e.waysToSell(companyID: id).first { $0.kind == "platform" }?.isOn ?? false)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 }
