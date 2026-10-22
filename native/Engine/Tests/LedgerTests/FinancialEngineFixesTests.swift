@@ -50,7 +50,7 @@ final class FinancialEngineFixesTests: XCTestCase {
         e.update { s, _, _ in ok = Banking.repay(loanID: loanID, amount: 10_000, state: &s) }
         XCTAssertTrue(ok)
         XCTAssertGreaterThanOrEqual(e.state.cash, 0, "the rest came over from savings")
-        XCTAssertTrue(e.state.loans.isEmpty)
+        XCTAssertNil(e.state.loans.first { $0.id == loanID }, "the repaid loan is gone (the start-up loan remains)")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 

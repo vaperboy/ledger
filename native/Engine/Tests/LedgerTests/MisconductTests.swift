@@ -254,14 +254,15 @@ final class MisconductTests: XCTestCase {
 
     func testMessagesShowCostBenefitRiskAndTiming() throws {
         var (e, id) = try engine()
+        let already = e.state.inbox.filter { $0.actionID == StrategicDecisions.action }.count
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             for (defID, d) in [("m_tax", self.taxDecision()), ("m_pol_donate", self.politicalDecision(ps: 0.1, pw: 0.4))] {
                 _ = StrategicDecisions.fire(&s, StrategicDecisions.byID[defID]!, companyIndex: i, data: data, context: ctx, given: d)
             }
         }
-        let bodies = e.state.inbox.filter { $0.actionID == StrategicDecisions.action }.map { $0.body.lowercased() }
-        XCTAssertEqual(bodies.count, 2)
+        let bodies = e.state.inbox.filter { $0.actionID == StrategicDecisions.action }.prefix(2).map { $0.body.lowercased() }
+        XCTAssertEqual(e.state.inbox.filter { $0.actionID == StrategicDecisions.action }.count, already + 2)
         for b in bodies {
             XCTAssertTrue(b.contains("cost") || b.contains("fee"), b)
             XCTAssertTrue(b.contains("benefit"), b)

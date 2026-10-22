@@ -64,6 +64,7 @@ final class DemandWiringTests: XCTestCase {
             Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
             let first = Rivals.rivals(s, key: k)
             XCTAssertEqual(first.count, 1)
+            guard !first.isEmpty else { return }
             Rivals.removeRival(&s, key: k, id: first[0].id)
             XCTAssertTrue(Rivals.rivals(s, key: k).isEmpty)
             Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
@@ -72,6 +73,7 @@ final class DemandWiringTests: XCTestCase {
             Rivals.ensure(&s, key: k, trade: bd, countryCode: co.countryCode, data: data)
             let second = Rivals.rivals(s, key: k)
             XCTAssertEqual(second.count, 1)
+            guard !second.isEmpty else { return }
             XCTAssertNotEqual(second[0].name, first[0].name)
             XCTAssertNotEqual(second[0].id, first[0].id)
         }
