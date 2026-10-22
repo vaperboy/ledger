@@ -233,8 +233,7 @@ public enum Funding {
             return .ok(amt)
         }
         let amt = jsRound(v * pct / 100 * 0.85 * co.ownership / 100)
-        Payments.playerReceives(&s, amt, label: "Sold \(Int(pct))% of \(co.name)", companyID: companyID)
-        s.tax.gains += max(0, amt * 0.7)
+        Payments.ownerReceivesSale(&s, from: co, amount: amt, gain: amt * 0.7, label: "Sold \(Int(pct))% of \(co.name)")
         addHolder(&s, i, name: inv, pct: pct, paid: amt)
         s.companies[i].ownership = co.ownership - pct * co.ownership / 100
         if pct >= 20 { addBoardSeats(&s, i, 1) }

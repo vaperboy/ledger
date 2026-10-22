@@ -146,16 +146,16 @@ public enum CompanySale {
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
         let basis = max(0, co.injectedCapital)
-        s.tax.gains += max(0, proceeds - basis * mine)
+        let gain = max(0, proceeds - basis * mine)
         var now = proceeds
         if mbo {
             let later = jsRound(proceeds / 3)
             now -= later
             var d = s.rest["deferred"]?.array ?? []
-            d.append(.object(["w": .number(Double(s.week + 104)), "amt": .number(later), "name": .string(co.name), "hurdle": .number(0)]))
+            d.append(.object(["w": .number(Double(s.week + 104)), "amt": .number(later), "name": .string(co.name), "hurdle": .number(0), "to": .number(Double(co.holdingID))]))
             s.rest["deferred"] = .array(d)
         }
-        Payments.playerReceives(&s, now, label: "Sold \(co.name) (\(buyer))", companyID: co.id)
+        Payments.ownerReceivesSale(&s, from: co, amount: now, gain: gain, label: "Sold \(co.name) (\(buyer))")
         for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
         s.companies[i].staff = []
@@ -173,8 +173,7 @@ public enum CompanySale {
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let pts = min(pct * co.ownership / 100, co.ownership - 1)
-        Payments.playerReceives(&s, amount, label: "Sold \(Int(pct))% of \(co.name)", companyID: co.id)
-        s.tax.gains += max(0, amount - co.injectedCapital * pts / 100)
+        Payments.ownerReceivesSale(&s, from: co, amount: amount, gain: amount - co.injectedCapital * pts / 100, label: "Sold \(Int(pct))% of \(co.name)")
         Funding.addHolder(&s, i, name: buyer, pct: pts, paid: amount)
         s.companies[i].ownership = jsRound((co.ownership - pts) * 100) / 100
         if pts >= 20 { Funding.addBoardSeats(&s, i, 1) }
@@ -295,7 +294,10 @@ public enum CompanySale {
         for d in s.rest["deferred"]?.array ?? [] {
             guard s.week >= d["w"].int else { keep.append(d); continue }
             let paid = jsRound(d["amt"].double)
-            Payments.playerReceives(&s, paid, label: "Paid back for \(d["name"].string)")
+            if d["to"].int != 0, let hi = s.companyIndex(d["to"].int), s.companies[hi].status.isLive {
+                Ledger.moveRaw(&s, .company(d["to"].int), paid)
+                s.companies[hi].addTransaction(week: s.week, amount: paid, label: "Paid back for \(d["name"].string)")
+            } else { Payments.playerReceives(&s, paid, label: "Paid back for \(d["name"].string)") }
             s.note("The money still owed for \(d["name"].string) has been paid.", tone: "good")
         }
         s.rest["deferred"] = .array(keep)

@@ -79,6 +79,23 @@ public enum Payments {
 
     // MARK: The player
 
+    /// Proceeds from selling a company or shares of it, to whoever owns it: the holding company when it sits in a holding (cash and the gain in its
+    /// books, like dividends), else you (cash and the capital-gains base). Returns true when it went to a holding.
+    @discardableResult
+    public static func ownerReceivesSale(_ s: inout GameState, from co: Company, amount: Double, gain: Double, label: String) -> Bool {
+        let g = max(0, gain)
+        if co.holdingID != 0, let hi = s.companyIndex(co.holdingID), s.companies[hi].status.isLive {
+            let amt = jsRound(amount)
+            Ledger.moveRaw(&s, .company(co.holdingID), amt)
+            s.companies[hi].addTransaction(week: s.week, amount: amt, label: label)
+            book(&s, companyID: co.holdingID, category: "gain", amount: g)
+            return true
+        }
+        playerReceives(&s, amount, label: label, companyID: co.id)
+        s.tax.gains += g
+        return false
+    }
+
     public static func playerPays(_ s: inout GameState, _ amount: Double, label: String, companyID: Int = 0) {
         Ledger.move(&s, .me, -jsRound(amount), why: label, companyID: companyID)
     }

@@ -319,7 +319,6 @@ extension ManagerModel {
         openingWait(&s, data: data)
         boardsWeekly(&s, data: data)
         executivesWeekly(&s, data: data)
-        bigWeekly(&s, data: data)
         if GameCalendar.isMonthEnd(week: s.week) {
             groupMonthly(&s, data: data)
             Headquarters.monthly(&s, data: data)
