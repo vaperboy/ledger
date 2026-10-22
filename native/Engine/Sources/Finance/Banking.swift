@@ -191,6 +191,7 @@ public enum Banking {
             Payments.companyPays(&s, companyID: loan.companyID, amount: amt, category: nil, label: "Loan repaid")
         } else {
             if s.cash + s.savings < amt { return false }
+            Payments.transferFromSavings(&s, need: amt)
             Payments.playerPays(&s, amt, label: "Loan repaid")
         }
         if loan.bankCompanyID != 0, let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open {

@@ -279,6 +279,11 @@ public enum Payday {
         return (jsRound(paid), jsRound(short))
     }
 
+    /// Bills (rent, suppliers) short for four months running, or tax unpaid for six: the company can no longer pay. Used by `Failure`.
+    static func unpaidForMonths(_ co: Company, today t: Int) -> Bool {
+        config(co, today: t).billShortMonths >= 4 || co.unpaidMonths >= 6
+    }
+
     /// One more day with wages owed: people quit, word gets out, a wage claim follows. Original: `lateDay`.
     static func lateDay(_ s: inout GameState, _ i: Int, today t: Int, data: GameData, context: FinanceContext) {
         var co = s.companies[i]

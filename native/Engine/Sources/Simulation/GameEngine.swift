@@ -346,6 +346,10 @@ public struct GameEngine {
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
                 Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
             }
+            else if (c.status == .open || c.status == .closed) && c.cash < 0 && Payday.unpaidForMonths(c, today: Payday.dayNumber(week: state.week, day: state.day)) {
+                // Rent, suppliers or tax left unpaid for months while the account is empty: creditors close the company.
+                Failure.bankrupt(&state, companyIndex: i, reason: "unpaid", data: data, context: context)
+            }
         }
         for id in FinanceModel.insolventCompanies(&state, data: data) {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
