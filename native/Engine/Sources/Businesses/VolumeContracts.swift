@@ -287,7 +287,7 @@ public enum VolumeContracts {
         if !store(co)["ct"].array.isEmpty || !store(co)["one"].array.isEmpty {
             settle(&s, i, bd, data: data)
             serviceAndRisk(&s, i, bd, data: data)
-            endings(&s, i)
+            endings(&s, i, data: data)
         }
         offers(&s, i, bd, data: data)
     }
@@ -415,7 +415,7 @@ public enum VolumeContracts {
 
     /// The end of a term: a tender contract with extensions left is extended for a year when delivery was good; another contract is
     /// renewed if the customer was satisfied (more likely with a good rating), otherwise it ends. Original: `contractsWeek`, `weekly`.
-    static func endings(_ s: inout GameState, _ i: Int) {
+    static func endings(_ s: inout GameState, _ i: Int, data: GameData) {
         let co = s.companies[i]
         var sw = store(co)
         let list = sw["ct"].array
@@ -433,6 +433,7 @@ public enum VolumeContracts {
                     continue
                 }
                 if good { recordDelivery(&s, companyID: co.id, ok: true) }
+                VolumeTenders.newRound(&s, companyID: co.id, title: c["n"].string, buyer: c["who"].string, units: c["u"].double, data: data)
             } else if good && h.next() < 0.45 + 0.3 * ratingFactor(co) {
                 let term = c["term"].isNull ? 26 : c["term"].int
                 c["end"] = .number(Double(s.week + term)); c["warn"] = 0

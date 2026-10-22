@@ -16,7 +16,7 @@ import Finance
 /// Only the trades below can win tenders here. The original also lets services, shops and carriers tender for volume contracts;
 /// those need the business-customer contract model (not ported), so they are not offered.
 public enum ProjectTenders {
-    public struct Offer { public let title: String; public let buyer: String; public let local: Bool }
+    public struct Offer { public let title: String; public let buyer: String; public let local: Bool; public var volume = false }
 
     /// What each trade can win: title, kind of buyer, whether the work is local. Original: `W`.
     public static let catalog: [String: [Offer]] = [
@@ -85,7 +85,10 @@ public enum ProjectTenders {
         s.rest["tnd56"] = .object(["L": .array(st.list.map { .object($0.raw) }), "hist": .object(st.history), "auto": .object(st.auto)])
     }
 
-    public static func isEligible(_ co: Company) -> Bool { co.status == .open && catalog[co.type] != nil }
+    public static func isEligible(_ co: Company) -> Bool { co.status == .open && !offers(for: co.type).isEmpty }
+
+    /// Job tenders (`catalog`) and volume tenders (`VolumeTenders.catalog`) a trade can win.
+    static func offers(for type: String) -> [Offer] { (catalog[type] ?? []) + (VolumeTenders.catalog[type] ?? []) }
 
     /// Tenders still open for bids that suit this company (its trade, country and, for local ones, city). Original: `open`.
     public static func openTenders(_ s: GameState, for co: Company) -> [Tender] {
@@ -136,7 +139,7 @@ public enum ProjectTenders {
     static func make(_ s: inout GameState, _ co: Company, data: GameData, home: Currency) -> Tender {
         let w = World(state: s, data: data)
         let bd = data.catalog[co.type]!
-        let list = catalog[co.type]!
+        let list = offers(for: co.type)
         let offer = list[Int((s.random.next() * Double(list.count)).rounded(.down))]
         let priceOnly = s.random.next() < 0.46
         var t = Tender(raw: [:])
@@ -151,6 +154,10 @@ public enum ProjectTenders {
         t.set("rivals", s.random.next() < 0.28 ? 0 : 1 + Int((s.random.next() * 5).rounded(.down)))
         t.set("bids", .array([]))
         t.set("award", t.closesWeek + 2 + Int((s.random.next() * 3).rounded(.down)))
+        if offer.volume {
+            VolumeTenders.fillVolume(&t, &s, co, data: data, home: home)
+            return t
+        }
         let val = home.roundedStep(bd.ticket * Pricing.ticketMultiplier(co, bd, w) * (2 + s.random.next() * 4), about: 1000)
         t.set("val", val); t.set("yrs", 0); t.set("ext", 0)
         t.set("cost", home.roundedStep(max(w.currency(co).scaledPrice(4000), val * 0.004), about: 500))
@@ -197,7 +204,7 @@ public enum ProjectTenders {
         // Each trade you run sees about one relevant tender every two months in its country.
         var seen = Set<String>()
         for co in s.companies where isEligible(co) {
-            let local = catalog[co.type]?.contains { $0.local } ?? false
+            let local = offers(for: co.type).contains { $0.local }
             let k = "\(co.countryCode):\(co.type):\(local ? co.cityID : "")"
             if seen.contains(k) { continue }
             seen.insert(k)
@@ -212,6 +219,7 @@ public enum ProjectTenders {
                 && c.managerID != nil && s.people[c.managerID!] != nil && st.auto[String(c.id)]?.double != 0 {
                 if t.bid(of: c.id) != nil || !qualification(t, c, week: s.week).ok { continue }
                 if c.cash < t.bidCost * 3 { continue }
+                if t.isVolume && t.units > VolumeTenders.capacity(c, data: data) * (1 - c.value("lastW")["util"].double) { continue }
                 Payments.companyPays(&s, companyID: c.id, amount: t.bidCost, category: "oth", label: "Tender bid: \(t.title)")
                 var bids = st.list[ti].bids
                 bids.append(Bid(raw: ["co": .number(Double(c.id)), "pf": 1, "q": false, "w": .number(Double(s.week))]))
@@ -255,9 +263,9 @@ public enum ProjectTenders {
             let place = order.firstIndex(of: idx)! + 1
             let pts = Int(jsRound(e.score * 100))
             if idx == order[0] {
-                startJob(&s, t, co, priceFactor: e.pf, data: data)
+                if t.isVolume { VolumeTenders.start(&s, t, co, bid: t.bid(of: cid), priceFactor: e.pf) } else { startJob(&s, t, co, priceFactor: e.pf, data: data) }
                 s.addMessage(from: t.buyer, title: "Award: \(t.title)",
-                             body: "\(co.name) won with \(pts) points out of 100 (\(all.count) \(all.count == 1 ? "bid" : "bids")). Work starts now.",
+                             body: "\(co.name) won with \(pts) points out of 100 (\(all.count) \(all.count == 1 ? "bid" : "bids")). " + (t.isVolume ? VolumeTenders.awardText(t) : "Work starts now."),
                              companyID: cid, tone: "good", status: "done")
             } else {
                 let weights = t.priceWeight >= 1 ? ", on price alone." : ". Price counted \(Int(jsRound(t.priceWeight * 100)))%, quality \(Int(jsRound((1 - t.priceWeight) * 100)))%."
