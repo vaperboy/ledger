@@ -7,7 +7,7 @@ import Businesses
 import Simulation
 
 enum CompanySection: String, CaseIterable, Hashable {
-    case overview = "Overview", projects = "Projects", staff = "Staff", finances = "Finances", operations = "Operations", marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
+    case overview = "Overview", projects = "Projects", staff = "Team", finances = "Finances", operations = "Operations", marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
     // Shown only for the trades that have them (energy, salmon farm, holding company, football club)

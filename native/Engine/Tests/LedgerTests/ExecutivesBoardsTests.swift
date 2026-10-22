@@ -38,4 +38,17 @@ final class ExecutivesBoardsTests: XCTestCase {
         for _ in 0..<60 { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    /// The Team roster rows: hiring fills the slot, the wage reaches the books, letting go empties it again.
+    func testTeamSlotHireAndRelease() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 12)
+        e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { return XCTFail("start") }
+        guard let slot = e.teamSlots(companyID: id).first(where: { $0.personID == nil }), let list = e.searchTeam(companyID: id, key: slot.key), let cand = list.first else { return }
+        XCTAssertEqual(e.hireTeam(companyID: id, key: slot.key, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.25), .ok)
+        XCTAssertEqual(e.teamSlots(companyID: id).first { $0.key == slot.key }?.personID, cand.id)
+        XCTAssertTrue(e.releaseTeam(companyID: id, key: slot.key, regionalID: slot.regionalID))
+        XCTAssertNil(e.teamSlots(companyID: id).first { $0.key == slot.key }?.personID)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
 }

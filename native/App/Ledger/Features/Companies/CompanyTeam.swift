@@ -17,6 +17,7 @@ struct CompanyTeam: View {
         let cur = engine.currency(for: company)
         VStack(spacing: Theme.Space.l) {
             CompanyManagement(engine: engine, company: company)
+            CompanyTeamRoster(engine: engine, company: company)
             Card {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {

@@ -49,6 +49,7 @@ Counts (original has 557 actions): 235 done and used by a screen, 17 engine only
 
 **UI grouping rules (binding for Stage 3; never invent a tab because the HTML game had one):**
 - **Management = one Team / People surface.** Store manager, assistant, regional, chain, chief and department head are rows in one list with a role + scope badge (store | chain | region | group). No tab or root screen called Assistant, Regional, Chief or Managers-vs-Assistants. Hire, promote, fire and pay are sheets or rows on that list, not sibling tabs. Distinct engine role ids still show as one list.
+- **Status (unbuilt, no Swift toolchain in the cloud session):** company section is now "Team"; `CompanyTeamRoster` lists MD, department heads and regional manager (role + scope badge, search/hire/authority/let go) under the manager and assistant cards. Still to do: fold manager/assistant cards into the same list; chain/group posts (`hireExecutive` etc.) have no UI yet; Group should link into Team with scope=chain.
 - **Group = ownership and structure only** (chains, franchises, boards, stakes). A region chief or chain manager lives under Group, in that chain's people (or links into Team with scope=chain). No parallel "Regional managers" area.
 - When unsure: people go under Team, structure goes under Group. No third place.
 
