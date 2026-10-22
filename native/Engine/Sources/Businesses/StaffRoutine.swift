@@ -60,7 +60,7 @@ public enum StaffRoutine {
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
             if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
             probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
-            if s.random.chance(odds * (1 - 0.13 * co.value("tm")["hr"].double)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }   // an HR manager (ManagerTeam)
+            if s.random.chance(odds * StaffPerks.quitFactor(co, m) * (1 - 0.13 * co.value("tm")["hr"].double)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }   // an HR manager (ManagerTeam)
             if let trait = n.trait, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
                s.random.chance((s.hasHeadOffice("hr") ? 0.012 : 0.02) * (hasLead ? 0.6 : 1)) {
                 m.set("flag", trait)

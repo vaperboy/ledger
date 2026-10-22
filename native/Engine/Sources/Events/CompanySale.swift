@@ -265,7 +265,8 @@ public enum CompanySale {
                 let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog))
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
-                if s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45)) {
+                let hostedInv = StaffPerks.hosted(s, "inv")   // investors you hosted: buyers come sooner and pay a little more
+                if s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45) * (1 + 0.35 * hostedInv)) {
                     var kinds = pct == 100 ? ["private", "fund", "rival"] : ["private", "fund", "angel"]
                     if pct == 100, co.managerID != nil && s.people[co.managerID!] != nil { kinds.append("mbo") }
                     let k = s.random.pick(kinds)
@@ -274,7 +275,7 @@ public enum CompanySale {
                     let name: String = k == "mbo" ? (s.people[co.managerID ?? 0]?.name ?? "Your manager") + ", your manager"
                         : k == "rival" ? "A rival in your trade" : k == "fund" ? "An investment fund" : k == "angel" ? "A private investor" : "A private buyer"
                     let base = pct == 100 ? v0 : v0 * Double(pct) / 100 * co.ownership / 100
-                    let price = (base * f / 1000).rounded() * 1000
+                    let price = (base * f * (1 + 0.04 * hostedInv) / 1000).rounded() * 1000
                     offers.append(.object(["id": .number(Double(s.makeID())), "k": .string(k), "name": .string(name), "price": .number(price), "note": .string(notes[k] ?? ""),
                                            "exp": .number(Double(s.week + 6)), "ctr": .number(0)]))
                     s.addMessage(from: name, title: "Offer for \(pct == 100 ? co.name : "\(pct)% of \(co.name)")", body: "\(name) offers \(currency.display(pct == 100 ? price * co.ownership / 100 : price)) for your stake.", companyID: co.id, tone: "good")

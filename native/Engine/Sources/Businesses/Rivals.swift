@@ -551,10 +551,11 @@ public enum Rivals {
         guard let r = rivals(s, key: k).first(where: { $0.id == rivalID }) else { return nil }
         let w = World(state: s, data: data)
         let raw = s.rest["mk"]?[k]["riv"].array.first { $0["id"].int == rivalID } ?? .null
-        var mult = mult0 * Luxury.offerBonus(s), listed = r.forSale   // a serious-buyer perk of your luxury goods
-        var scale = 1.0
+        let hostedBy = StaffPerks.rivalFactor(s, rivalID: rivalID)   // an owner you hosted judges the offer a little better
+        var mult = mult0 * Luxury.offerBonus(s) * hostedBy, listed = r.forSale   // a serious-buyer perk of your luxury goods
+        var scale = hostedBy
         if let g = RivalGroups.group(s, id: r.groupID) {
-            if g.inTrouble { listed = true; mult *= 1.45; scale = 1.45 } else { mult /= 1.15 }
+            if g.inTrouble { listed = true; mult *= 1.45; scale *= 1.45 } else { mult /= 1.15 }
         }
         if Double(s.week) < raw["lock"].double { return .ignore("\(r.owner) does not answer your calls.") }
         let V = value(bd, r, w, co)
