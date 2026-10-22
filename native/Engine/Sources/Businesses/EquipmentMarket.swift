@@ -608,6 +608,7 @@ public enum EquipmentMarket {
         else { units[equipmentID] = .array(list) }
         s.companies[i].set("eq", eq); s.companies[i].set("units", units)
         if r["n"].double - 1 > 0 { EquipmentUnits.syncCondition(&s, companyIndex: i, equipmentID: equipmentID) }
+        if bvU > val { Payments.book(&s, companyID: companyID, category: "loss", amount: bvU - val) }   // sold below book value: the loss is an expense
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold used \(equipmentID)") }
         return val
     }
@@ -626,10 +627,12 @@ public enum EquipmentMarket {
         guard let i = s.companyIndex(companyID) else { return 0 }
         var eq = s.companies[i].value("eq")
         guard !eq[equipmentID].isNull, equipmentID != "fit" else { return 0 }
-        let v = jsRound(eq[equipmentID]["bv"].double * 0.7)
+        let bookValue = eq[equipmentID]["bv"].double
+        let v = jsRound(bookValue * 0.7)
         eq = .object(eq.object.filter { $0.key != equipmentID })
         s.companies[i].set("eq", eq)
         s.companies[i].set("units", EquipmentUnits.removing(s.companies[i].value("units"), equipmentID))
+        if bookValue > v { Payments.book(&s, companyID: companyID, category: "loss", amount: bookValue - v) }
         Payments.companyReceives(&s, companyID: companyID, amount: v, category: nil, label: "Sold equipment")
         return v
     }
@@ -643,6 +646,7 @@ public enum EquipmentMarket {
         let v = list.remove(at: at)
         s.companies[i].set("veh", .array(list))
         let val = v["mode"].string == "lease" ? 0 : jsRound(v["bv"].double * 0.78)
+        if v["bv"].double > val { Payments.book(&s, companyID: companyID, category: "loss", amount: v["bv"].double - val) }
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold \(v["name"].string)") }
         if v["loan"].int != 0, let li = s.loans.firstIndex(where: { $0.id == v["loan"].int }) {
             Payments.companyPays(&s, companyID: companyID, amount: s.loans[li].balance, category: nil, label: "Loan settled")
