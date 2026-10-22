@@ -81,18 +81,7 @@ struct GroupView: View {
                     }
                 }
                 ChainsGroupSection(engine: e)
-                LedgerSection("Stakes and boards") {
-                    Button { moneyTo(.invest) } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Stakes in other groups and board seats").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("Under Money, Invest").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 6).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                }
+                BoardsGroupSection(engine: e) { moneyTo(.invest) }
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
             .frame(maxWidth: 1100).frame(maxWidth: .infinity)
