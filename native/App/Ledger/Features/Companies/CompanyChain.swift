@@ -18,6 +18,7 @@ struct CompanyChain: View {
                 if let sum = engine.chainSummary(containing: company.id) {
                     ChainOverview(engine: engine, company: company, summary: sum)
                     ChainStaffShortages(engine: engine, chainID: sum.id)
+                    ExecutivePosts(engine: engine, chainID: sum.id)
                 } else if company.value("franchise").isNull {
                     GrowIntoChain(engine: engine, company: company)
                 }

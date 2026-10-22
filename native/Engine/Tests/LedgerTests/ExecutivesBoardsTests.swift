@@ -51,4 +51,18 @@ final class ExecutivesBoardsTests: XCTestCase {
         XCTAssertNil(e.teamSlots(companyID: id).first { $0.key == slot.key }?.personID)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    /// Group level post: hire the managing director, set authority, let go; the books still balance.
+    func testGroupManagingDirectorHireAndRelease() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 13)
+        e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
+        guard let cand = e.searchExecutive(.md)?.first else { return XCTFail("search") }
+        XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.25), .ok)
+        XCTAssertFalse(e.groupManagingDirector.isNull)
+        e.setExecutiveAuthority(.md, authority: 2)
+        XCTAssertEqual(e.groupManagingDirector["lvl"].int, 2)
+        XCTAssertTrue(e.releaseExecutive(.md))
+        XCTAssertTrue(e.groupManagingDirector.isNull)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
 }

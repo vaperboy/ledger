@@ -39,6 +39,7 @@ struct CompaniesView: View {
                                     }.padding(.vertical, 6).contentShape(Rectangle())
                                 }.buttonStyle(.plain)
                             }
+                            if cos.filter({ $0.status.isLive }).count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
                             if !e.holdingCompanies.isEmpty {
                                 LedgerSection("Holding companies") {
                                     VStack(spacing: 0) {
