@@ -270,16 +270,7 @@ public extension GameEngine {
         update { s, d, _ in r = StaffTalks.offerFixedSalary(&s, companyID: companyID, staffID: staffID, data: d) }
         return r
     }
-    mutating func setPayModel(companyID: Int, staffID: Int, mode: String) -> StaffTalks.PayModelResult {
-        var r = StaffTalks.PayModelResult.unknown
-        update { s, d, _ in r = StaffTalks.setPayModel(&s, companyID: companyID, staffID: staffID, mode: mode, data: d) }
-        return r
-    }
-    @discardableResult mutating func toggleOwnCar(companyID: Int, staffID: Int) -> Bool {
-        var r = false
-        update { s, _, _ in r = StaffTalks.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
-        return r
-    }
+    // setPayModel and toggleOwnCar live in CompanyTabActions and PremisesActions (one wrapper each).
     /// Roles that sell and can be paid by commission.
     var salesRoles: Set<String> { data.catalog.tables.salesRoles }
     /// Why a person turned down an offer, in words.

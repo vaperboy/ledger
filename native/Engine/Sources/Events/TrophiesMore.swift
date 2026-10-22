@@ -57,7 +57,7 @@ enum TrophiesMore {
         one("team56", "A management team", "people") { f in
             f.live.contains { c in
                 let slots = ManagerModel.teamSlots(f.s, companyID: c.id, data: f.data).filter { $0.personID != nil }
-                return slots.contains { $0.key == "ceo" } && slots.filter { ManagerModel.teamRoles.contains(where: { r in r.key == $0.key }) }.count >= 2
+                return slots.contains { $0.key == "ceo" } && slots.filter { sl in ManagerModel.teamRoles.contains(where: { r in r.key == sl.key }) }.count >= 2
             } ? "A company with a managing director and its own department heads." : nil }
         L += ladder("n1", "market", [("3", "No. 1 in three markets", 3), ("10", "No. 1 in ten markets", 10)],
                     { Double(Ambitions.marketsLed($0.s, $0.data).count) }, text: { "Nobody sells more than you in \(Int($0)) markets." })
