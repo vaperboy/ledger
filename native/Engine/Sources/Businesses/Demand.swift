@@ -20,7 +20,7 @@ public struct DemandResult: Equatable {
 ///             fit, what local people can afford, the trade's fit with the country and tourists.
 public enum DemandModel {
     public static func compute(_ co: Company, _ bd: Trade, _ w: World) -> DemandResult {
-        var parts: [(String, Double)] = [("base", bd.normalDemand)]
+        var parts: [(name: String, value: Double)] = [("base", bd.normalDemand)]
         let city = w.city(co)
         let cityDemand = city?.demand ?? 1
         var D = bd.normalDemand * w.balance.demandDesignFactor * cityDemand

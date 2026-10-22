@@ -179,9 +179,9 @@ public enum CompanySetup {
 
     /// People a company of this size normally employs. Original: `stdStaff` (+ small-firm step).
     public static func standardStaff(_ bd: Trade, size: Double) -> [(role: String, count: Int)] {
-        var base = bd.standardStaff.map { ($0.role, Int(max(1, jsRound($0.count * size)))) }
+        var base: [(role: String, count: Int)] = bd.standardStaff.map { (role: $0.role, count: Int(max(1, jsRound($0.count * size)))) }
         if size <= 0.6 {
-            base = bd.standardStaff.enumerated().map { (i, s) in (s.role, i == 0 ? Int(max(1, jsRound(s.count * size))) : Int(max(0, jsRound(s.count * size)))) }
+            base = bd.standardStaff.enumerated().map { (i, s) in (role: s.role, count: i == 0 ? Int(max(1, jsRound(s.count * size))) : Int(max(0, jsRound(s.count * size)))) }
         }
         return base
     }
