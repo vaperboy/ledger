@@ -17,7 +17,7 @@ final class RivalLifeTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
-        for _ in 0..<(3 * 7) { e.nextDay() }
+        for _ in 0..<(6 * 7) { e.nextDay() }   // the cafe opens after three weeks of set-up; its market (and rivals) appear the week after
         return (e, id)
     }
 
@@ -114,6 +114,7 @@ final class RivalLifeTests: XCTestCase {
             Rivals.mutate(&s, key: k, id: rid) { $0["st"] = "expander"; $0["fort"] = 2; $0["size"] = 1.3 }
             s.rest["mk"]![tk] = s.rest["mk"]![k]
             Rivals.mutate(&s, key: tk, id: rid) { $0["name"] = "Someone Else" }
+            s.rest["mk"]![tk]["n"] = 3   // expansion only goes where the market is not already crowded (fewer than 8 rivals; London is)
             let before = Rivals.rivals(s, key: tk).count
             Rivals.expand(&s, key: k, id: rid, data: data)
             XCTAssertEqual(Rivals.rivals(s, key: tk).count, before + 1)
