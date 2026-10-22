@@ -14,6 +14,7 @@ struct CompanyCustomers: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             reviews
             accounts
+            CompanyContracts(engine: engine, company: company)
             security
         }
     }
