@@ -167,7 +167,7 @@ extension StaffTalks {
     public static func setPayModel(_ s: inout GameState, companyID: Int, staffID: Int, mode: String, data: GameData) -> PayModelResult {
         guard let ci = s.companyIndex(companyID), let m0 = s.companies[ci].staff.first(where: { $0.id == staffID }), let n = s.people[staffID] else { return .unknown }
         if mode == "com", n.num("sec") > 0.65, s.random.chance(0.6) {
-            _ = Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: true)
+            Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, reason: .resignation, data: data)
             return .resigned
         }
         let rate = mode == "fix" ? 0.0 : mode == "mix" ? 0.03 : 0.06

@@ -131,8 +131,8 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
-    func newGame(name: String, countryCode: String) {
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil) {
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.

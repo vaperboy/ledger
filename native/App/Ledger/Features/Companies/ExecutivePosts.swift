@@ -105,7 +105,7 @@ struct ExecutivePosts: View {
     }
 
     @ViewBuilder private func searchButton(_ p: Post, _ cur: Currency) -> some View {
-        Button("Executive search · \(cur.tidyShort(cur.scaledPrice(15000)))") {
+        Button("Executive search · \(cur.tidyShort(ManagerModel.searchFee(currency: cur)))") {
             if let list = store.act({ $0.searchExecutive(p.level) }) ?? nil { searching = p.id; candidates = list.map { $0.id }; Haptics.tap() }
             else { store.show("Not enough cash for the search.", tone: "warn") }
         }.buttonStyle(QuietButtonStyle())

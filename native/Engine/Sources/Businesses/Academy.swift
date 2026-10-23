@@ -65,7 +65,7 @@ public enum Academy {
         s.note("\(name) attended \"\(c.name)\" at \(co.name): \(msg).", tone: gain > 0 ? "good" : "n", companyID: companyID)
         if poach {
             s.note("\(name) was poached by a competitor after the course.", tone: "bad", companyID: companyID)
-            Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: true)
+            Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, reason: .resignation, data: data)
         }
         return .done(message: msg, gain: gain, poached: poach)
     }

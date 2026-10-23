@@ -132,9 +132,8 @@ public enum StaffRoutine {
             s.note("\(name(id)) is off sick this week at \(co.name).", tone: "bad", companyID: co.id)
         case .leave(let id):
             s.note("\(name(id)) has left \(co.name).", tone: "bad", companyID: co.id)
-            co.staff = co.staff.filter { $0.id != id }
-            s.companies[i] = co
-            if var p = s.people[id] { p.employerID = 0; s.people[id] = p }
+            // The notice has been worked: nothing is owed (a resignation).
+            Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, noticeServed: true, data: data)
         case .problem(let id, let trait):
             let labels = ["late": "is often late", "lazy": "is under-performing", "conflict": "is causing conflict in the team",
                           "sick": "has high sick leave", "theft": "is suspected of stealing"]

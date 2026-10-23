@@ -3,6 +3,8 @@ import UniformTypeIdentifiers
 import GameCore
 import Countries
 import SaveSystem
+import Simulation
+import Finance
 
 /// First screen. The game keeps one save (written after every day, with the previous copy and month-end backups kept by
 /// `SaveStore`), so the screen has three states:
@@ -19,6 +21,9 @@ struct StartView: View {
     @State private var pasted = ""
     @State private var summary: SaveSummary?
     @State private var pending: PendingAction?
+    @State private var story: LifeStory = .loan
+    @State private var familyCityID = ""
+    @State private var previews: [LifeStory: StoryPreview] = [:]
     private let countries: [Country] = ((try? CountryBook.bundled().countries) ?? []).sorted { $0.name < $1.name }
 
     /// The country of the device's region if the game has it; otherwise the first in the list. No country is the built-in default.
@@ -43,7 +48,7 @@ struct StartView: View {
 
     private func begin() {
         let n = name.trimmingCharacters(in: .whitespaces)
-        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode) }
+        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil) }
     }
 
     var body: some View {
@@ -157,6 +162,7 @@ struct StartView: View {
                 if let c = countries.first(where: { $0.code == countryCode }) {
                     Text("Currency: \(c.currencyCode)").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 }
+                if !countryCode.isEmpty { storyPicker }
                 if countries.isEmpty {
                     Text("The country list could not be loaded, so a new game cannot start. Reinstalling the app restores it.")
                         .font(.caption).foregroundStyle(Theme.loss)
@@ -169,6 +175,51 @@ struct StartView: View {
                 }
             }
         }
+    }
+
+    /// Each story with the numbers the engine produces for the chosen country (a game is built and read, nothing is typed in).
+    private var storyPicker: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionLabel("Your story")
+            let country = countries.first { $0.code == countryCode }
+            let cur = country.map { Currency(country: $0, rates: ExchangeRates()) }
+            ForEach(LifeStory.allCases, id: \.self) { s in
+                Button { story = s } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: story == s ? "largecircle.fill.circle" : "circle").foregroundStyle(Theme.gold)
+                            Text(s.title).font(.bodyText)
+                        }
+                        Text(s.tagline).font(.caption).foregroundStyle(Theme.ivoryMuted)
+                        if let p = previews[s], let cur {
+                            Text(storyFacts(p, cur)).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+            if story.needsCity, let country {
+                Picker("Where is the family café?", selection: Binding(get: { familyCityID.isEmpty ? (country.cities.first?.id ?? "") : familyCityID }, set: { familyCityID = $0 })) {
+                    ForEach(country.cities) { Text($0.name).tag($0.id) }
+                }.pickerStyle(.menu)
+            }
+        }
+        .task(id: countryCode + "|" + familyCityID) { loadPreviews() }
+    }
+
+    private func storyFacts(_ p: StoryPreview, _ cur: Currency) -> String {
+        var parts = ["Cash \(cur.display(p.cash))"]
+        if p.debt > 0 { parts.append("debt \(cur.display(p.debt)), repaid with about \(cur.display(p.monthlyRepayment)) a month") } else { parts.append("no debt") }
+        if let n = p.companyName { parts.append("you own \(n), worth about \(cur.display(p.companyValue))") } else { parts.append("no business yet") }
+        parts.append("credit \(Int(p.credit.rounded()))")
+        return parts.joined(separator: " · ")
+    }
+
+    private func loadPreviews() {
+        guard !countryCode.isEmpty else { return }
+        var out: [LifeStory: StoryPreview] = [:]
+        for s in LifeStory.allCases { if let p = GameEngine.storyPreview(s, countryCode: countryCode, cityID: s.needsCity && !familyCityID.isEmpty ? familyCityID : nil) { out[s] = p } }
+        previews = out
     }
 
     private var importCard: some View {

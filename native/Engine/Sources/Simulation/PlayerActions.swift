@@ -182,7 +182,7 @@ public extension GameEngine {
     @discardableResult
     mutating func fire(personID: Int, companyID: Int) -> Double {
         var sev = 0.0
-        update { s, data, _ in sev = Hiring.fire(personID, from: companyID, state: &s, data: data) }
+        update { s, data, _ in sev = Dismissal.dismiss(&s, companyID: companyID, staffID: personID, reason: .redundancy, data: data)?.paid ?? 0 }
         return sev
     }
 
