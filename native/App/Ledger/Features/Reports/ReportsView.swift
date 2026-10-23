@@ -28,6 +28,7 @@ struct ReportsContent: View {
     var companyID: Int? = nil
     @State private var kind: ReportKind = .week
     @State private var chosen: [String: Int] = [:]
+    @State private var page: ReportPage = .summary
 
     private var format: ReportFormat {
         if let id = companyID, let co = engine.state.company(id) {
@@ -59,10 +60,37 @@ struct ReportsContent: View {
                 .padding(.horizontal, -Theme.Space.margin)
             if let r = current {
                 picker(r, all)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(ReportPage.allCases, id: \.self) { p in
+                            Button(p.rawValue) { page = p }.buttonStyle(QuietButtonStyle(tint: page == p ? Theme.gold : Theme.ivoryFaint))
+                        }
+                    }
+                }
+                switch page {
+                case .summary: summaryPage(r, all)
+                case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)
+                case .bills: ReportBills(engine: engine, report: r, companyID: companyID)
+                }
+            } else {
+                LedgerSection("No report yet") {
+                    Text("A report is written each time a week, month or year ends. The first one arrives after your first full week.")
+                        .font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+                }
+            }
+        }
+        .onAppear { takeRequest() }
+        .onChange(of: store.reportRequest) { _, _ in takeRequest() }
+    }
+
+    @ViewBuilder private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
+        Group {
                 hero(r)
                 keyFigures(r)
                 summary(r)
                 trend(r, all)
+        }
+        Group {
                 LedgerSection("Profit and loss") {
                     PnLTable(now: r.group.pnl, before: r.previous?.pnl, nowTitle: kind.title == "Week" ? "This week" : "This " + kind.noun,
                              beforeTitle: "Before", format: format)
@@ -73,15 +101,7 @@ struct ReportsContent: View {
                 people(r)
                 if kind == .year { yearly(r) }
                 happened(r)
-            } else {
-                LedgerSection("No report yet") {
-                    Text("A report is written each time a week, month or year ends. The first one arrives after your first full week.")
-                        .font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                }
-            }
         }
-        .onAppear { takeRequest() }
-        .onChange(of: store.reportRequest) { _, _ in takeRequest() }
     }
 
     // MARK: Period picker
