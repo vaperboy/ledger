@@ -183,21 +183,4 @@ public enum Hiring {
     /// Roles where a fixed salary is the custom from the start. Original: `FIX_NORM`.
     public static let fixedSalaryNorm: Set<String> = ["dentist", "dentnurse", "vintner", "physio", "lawyer", "paralegal", "acct", "dev", "designer", "marketer",
                                                       "consult", "foreman", "engineer", "architect", "fishtech", "underw", "claims", "banker", "credit", "analyst", "propm"]
-
-    /// Let someone go. Notice and severance follow the labour law of the company's country and how long they have worked (`LabourRules.termination`).
-    @discardableResult
-    public static func fire(_ personID: Int, from companyID: Int, state s: inout GameState, data: GameData, withCause: Bool = false) -> Double {
-        guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) else { return 0 }
-        let m = s.companies[ci].staff[k]
-        let pay = World(state: s, data: data).terminationPayments(s.companies[ci], monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), withCause: withCause,
-                                                                   onNotice: m.noticeWeeks > 0, age: s.people[personID].map { Double($0.age) })
-        let sev = pay.notice + pay.severance + pay.fine
-        s.companies[ci].staff.remove(at: k)
-        if var p = s.people[personID] { p.employerID = 0; s.people[personID] = p }
-        // Notice (or pay in lieu), severance and the termination fine are separate payments from routine payroll.
-        if pay.notice > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.notice, category: "wages", label: "Notice pay") }
-        if pay.severance > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.severance, category: "wages", label: "Severance") }
-        if pay.fine > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.fine, category: "wages", label: "Termination fund fine") }
-        return sev
-    }
 }
