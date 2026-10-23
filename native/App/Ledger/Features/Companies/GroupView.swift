@@ -25,14 +25,7 @@ struct GroupView: View {
             .navigationTitle("Group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .navigationDestination(for: CompanyRoute.self) { route in
-                switch route {
-                case .company(let id): CompanyDetailView(companyID: id)
-                case .companyAt(let id, let sec): CompanyDetailView(companyID: id, initialSection: sec)
-                case .newCompany: NewCompanyView()
-                case .market: MarketView()
-                }
-            }
+            .companyRouteDestinations()
             .phoneToolbar()
             .onAppear { takeMoneyRequest() }
             .onChange(of: store.moneySection) { _, _ in takeMoneyRequest() }

@@ -1,4 +1,7 @@
 import SwiftUI
+import GameCore
+import Countries
+import Simulation
 
 /// Chooses between the start screen and the game, and between a tab bar (iPhone) and a sidebar (iPad).
 struct RootView: View {
@@ -46,21 +49,59 @@ struct PhoneShell: View {
     }
 }
 
-/// iPad: a sidebar with the same five destinations and a wide detail area.
+/// iPad: a sidebar with the same five destinations as the iPhone tab bar, then the More pages, and a wide detail area.
+/// Like the tab bar, every tab keeps its own navigation stack while you visit others: a tab is built the first time it is
+/// chosen and then kept (hidden) so coming back returns to the same screen. Each tab's stack is its own, so a company opened
+/// in Team never appears in Company.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
+    @State private var visited: Set<AppTab> = []
+
     var body: some View {
         NavigationSplitView {
-            List(AppTab.allCases, selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0 { store.tab = t; Haptics.tap() } })) { tab in
-                Label(tab.title, systemImage: tab.symbol)
-                    .badge(tab == .inbox ? store.unreadCount : 0)
-                    .tag(tab)
+            List(selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0, t != store.tab { store.tab = t; Haptics.tap() } })) {
+                if let e = store.engine {
+                    Section {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(e.state.player.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory).lineLimit(1)
+                            Text("\(e.homeCountry.flag) \(GameCalendar.dateString(week: e.state.week, dayOffset: e.state.day)) · week \(e.state.week + 1)")
+                                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                        }
+                        .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                Section {
+                    ForEach(AppTab.allCases) { tab in
+                        Label(tab.title, systemImage: tab.symbol)
+                            .badge(tab == .inbox ? store.unreadCount : 0)
+                            .tag(tab)
+                    }
+                }
+                Section("More") {
+                    ForEach(PhoneDestination.allCases, id: \.self) { d in
+                        Button { store.openMore(d) } label: { Label(d.title, systemImage: d.symbol) }
+                    }
+                }
+                // While the More sheet is up, its own rows (Stats, Settings, ...) are the ones to reach.
+                .accessibilityHidden(store.showPhone)
             }
             .navigationTitle("Ledger")
             .scrollContentBackground(.hidden)
             .background(Theme.walnutRaised)
         } detail: {
-            TabContent(tab: store.tab)
+            ZStack {
+                ForEach(AppTab.allCases.filter { visited.contains($0) || $0 == store.tab }) { tab in
+                    let shown = tab == store.tab
+                    TabContent(tab: tab)
+                        .opacity(shown ? 1 : 0)
+                        .allowsHitTesting(shown)
+                        .accessibilityHidden(!shown)
+                        .zIndex(shown ? 1 : 0)
+                }
+            }
+            .onAppear { visited.insert(store.tab) }
+            .onChange(of: store.tab) { _, t in visited.insert(t) }
         }
     }
 }

@@ -86,14 +86,7 @@ struct CompaniesView: View {
             .ledgerBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .navigationDestination(for: CompanyRoute.self) { route in
-                switch route {
-                case .company(let id): CompanyDetailView(companyID: id)
-                case .companyAt(let id, let sec): CompanyDetailView(companyID: id, initialSection: sec)
-                case .newCompany: NewCompanyView()
-                case .market: MarketView()
-                }
-            }
+            .companyRouteDestinations()
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
             .phoneToolbar()
             .onAppear { openRequested() }
