@@ -23,7 +23,12 @@ jobs:
         working-directory: native/Engine
         run: |
           set -o pipefail
-          swift test 2>&1 | tail -n 40
+          if ! swift test > test.log 2>&1; then
+            grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 60
+            tail -n 40 test.log
+            exit 1
+          fi
+          tail -n 5 test.log
 
   app-build:
     runs-on: macos-15
