@@ -123,7 +123,7 @@ struct TeamSlotSheet: View {
     }
 
     @ViewBuilder private func vacant(_ slot: ManagerModel.TeamSlot, _ co: Company, _ cur: Currency, _ e: GameEngine) -> some View {
-        let fee = cur.scaledPrice(15000)
+        let fee = ManagerModel.searchFee(currency: cur)
         LedgerSection("Vacant") {
             VStack(alignment: .leading, spacing: 10) {
                 Text(slot.detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)

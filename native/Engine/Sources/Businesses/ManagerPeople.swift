@@ -62,11 +62,15 @@ extension ManagerModel {
         return p
     }
 
+    /// What every executive search costs (manager, team role, chain or group executive; the App's button labels read this too).
+    /// 15,000 at the reference level, scaled by the country's price level.
+    public static func searchFee(currency cur: Currency) -> Double { cur.scaledPrice(15000) }
+
     /// Executive search: a fee, and four candidates, three of the trade's own type. Original: `ACT.mgrsearch`.
     public static func search(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), let bd = data.catalog[s.companies[ci].type] else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard s.companies[ci].cash >= fee || Payments.liquid(s) >= fee else { return nil }
         Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Executive search")
         let co = s.companies[ci]

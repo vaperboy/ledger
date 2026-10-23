@@ -163,7 +163,7 @@ struct SuccessorSection: View {
         let waiting = engine.successorCandidates(companyID: company.id)
         VStack(alignment: .leading, spacing: 8) {
             if waiting.isEmpty {
-                Button("Find a successor · \(cur.tidyShort(cur.scaledPrice(15000)))") { confirm = true }.buttonStyle(QuietButtonStyle())
+                Button("Find a successor · \(cur.tidyShort(ManagerModel.searchFee(currency: cur)))") { confirm = true }.buttonStyle(QuietButtonStyle())
                 Text("Cost: the executive search fee. Benefit: four candidates to choose from before the handover, so the company is not left without a manager. Risk: none may suit, and the fee is not refunded.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
@@ -177,7 +177,7 @@ struct SuccessorSection: View {
             }
         }
         .confirmationDialog("Start the search?", isPresented: $confirm, titleVisibility: .visible) {
-            Button("Pay \(cur.tidyShort(cur.scaledPrice(15000))) and search") {
+            Button("Pay \(cur.tidyShort(ManagerModel.searchFee(currency: cur))) and search") {
                 if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found.", tone: "good") }
                 else { store.show("Not enough cash for the search.", tone: "warn") }
             }
