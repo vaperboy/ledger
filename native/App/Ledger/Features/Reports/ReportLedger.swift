@@ -7,7 +7,7 @@ import Simulation
 enum ReportPage: String, CaseIterable, Hashable { case summary = "Summary", movements = "Transactions", bills = "Bills and payroll" }
 
 /// Amounts in the currency of the company they belong to (the home currency for the group's own lines).
-private struct MoneyText {
+@MainActor private struct MoneyText {
     var store: GameStore
     var engine: GameEngine
     func short(_ v: Double, company id: Int) -> String {
