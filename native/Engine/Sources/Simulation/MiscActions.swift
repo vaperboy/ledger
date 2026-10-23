@@ -230,8 +230,11 @@ public extension GameEngine {
 
     // MARK: Staff: employment types, trial week, pay model, car
 
-    /// Hire on given terms: full time with a chosen pay basis, part time (weekly hours) or seasonal (months). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`.
-    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms) -> Hiring.HireResult {
+    /// THE way to hire a candidate (every worker hire goes through here to `Hiring.hire`): checks the offer against the ask, lifts it to the minimum wage,
+    /// books the hire, makes the staff record and its paperwork, and answers `.ok`, `.taken` (has a job) or `.refused` (offer too low, or unknown person/company).
+    /// Terms: full time with a chosen pay basis (the default), part time (weekly hours), seasonal (months), own car (estate agents only). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`, `ACT.offer` + `carc`.
+    @discardableResult
+    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms()) -> Hiring.HireResult {
         var r = Hiring.HireResult.refused
         update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data, terms: terms) }
         return r
