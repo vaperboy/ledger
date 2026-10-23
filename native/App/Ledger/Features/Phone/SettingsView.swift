@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var confirmQuit = false
     @State private var showImporter = false
     @State private var policy = ManagementPolicy()
+    @State private var askStep = Double(ConfirmThreshold.step)
 
     var body: some View {
         ScrollView {
@@ -16,7 +17,7 @@ struct SettingsView: View {
                 group("Feel") {
                     row("hand.tap", "Haptic feedback") { Toggle("", isOn: $haptics).labelsHidden().tint(Theme.gold).onChange(of: haptics) { _, v in Haptics.enabled = v } }
                 }
-                group("How much I decide", footer: "Routine payroll is approved when the company can pay it, gaps in a team are filled, and small complaints are handled. Campaigns pause when cash would drop below the reserve. Big choices (hiring a manager, loans, sales, legal trouble) always come to your inbox.") {
+                group("How much I decide", footer: "Routine payroll is approved when the company can pay it, gaps in a team are filled, and small complaints are handled. Campaigns pause when cash would drop below the reserve. Big choices (hiring a manager, loans, sales, legal trouble) always come to your inbox. Sales, closures, loans, dismissals and other irreversible steps always ask, whatever the size you set for spending.") {
                     row("checkmark.seal", "Approve routine payroll for me") { Toggle("", isOn: $policy.autoPayroll).labelsHidden().tint(Theme.gold) }
                     Hairline()
                     row("person.badge.plus", "Replace people who leave", detail: "Recruits at the going rate when there is cash") { Toggle("", isOn: $policy.autoRehire).labelsHidden().tint(Theme.gold) }
@@ -25,6 +26,10 @@ struct SettingsView: View {
                     Hairline()
                     row("shield", "Cash reserve", detail: policy.reserveWeeks == 0 ? "None" : "\(policy.reserveWeeks.formatted()) weeks of costs") {
                         StepperPill(value: $policy.reserveWeeks, range: 0...8, step: 0.5)
+                    }
+                    Hairline()
+                    row("questionmark.circle", "Ask before spending", detail: askDetail) {
+                        StepperPill(value: $askStep, range: 0...Double(ConfirmThreshold.sizes.count - 1), step: 1)
                     }
                     Hairline()
                     row("banknote", "Pay dividends automatically", detail: policy.autoDividendWeeks == 0 ? "Never" : "Above \(Int(policy.autoDividendWeeks)) weeks of spare cash") {
@@ -54,6 +59,7 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
+        .onChange(of: askStep) { _, v in ConfirmThreshold.step = Int(v) }
         .onChange(of: policy) { _, v in _ = store.act { $0.setPolicy(v) } }
         .confirmationDialog("Leave this game?", isPresented: $confirmQuit) {
             Button("Save and leave", role: .destructive) { store.quitToMenu() }
@@ -64,6 +70,12 @@ struct SettingsView: View {
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             if let text = try? String(contentsOf: url, encoding: .utf8) { store.importLegacy(text: text) } else { store.errorText = "That file could not be read as text." }
         }
+    }
+
+    private var askDetail: String {
+        let step = Int(askStep)
+        guard step > 0, let cur = store.engine?.homeCurrency else { return "Always ask" }
+        return "Not for small spends under \(cur.short(ConfirmThreshold.limit(step: step, currency: cur)).tidyMoney); the result is still reported"
     }
 
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {
