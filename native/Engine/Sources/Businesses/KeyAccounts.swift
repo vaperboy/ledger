@@ -192,17 +192,17 @@ public enum KeyAccounts {
         guard let i = s.companyIndex(companyID) else { return .missing }
         var list = s.companies[i].value("accts").array
         guard let k = list.firstIndex(where: { $0["id"].int == accountID }) else { return .missing }
-        if !list[k]["meet"].isNull, s.week - list[k]["meet"].int < 4 { return .wait }
         let co = s.companies[i]
         let cost = World(state: s, data: data).currency(co).scaledPrice(6000)
-        if s.cash < cost { return .cash }
-        Payments.playerPays(&s, cost, label: "Dinner with \(list[k]["name"].string)", companyID: companyID)
-        var h = HashedRandom("\(s.seed):meet:\(s.week):\(accountID)")
-        let rel = list[k]["rel"].double
-        list[k]["meet"] = .number(Double(s.week))
-        list[k]["rel"] = .number(min(100, rel + (4 + (h.next() * 4).rounded(.down)) * (1 - pow(rel / 100, 1.6))))
-        s.companies[i].set("accts", .array(list))
-        return .ok
+        let last: Double? = list[k]["meet"].isNull ? nil : list[k]["meet"].double
+        let res = CounterpartMeeting.meet(&s, lastWeek: last, cost: cost, label: "Dinner with \(list[k]["name"].string)", companyID: companyID) { t in
+            var h = HashedRandom("\(t.seed):meet:\(t.week):\(accountID)")
+            let rel = list[k]["rel"].double
+            list[k]["meet"] = .number(Double(t.week))
+            list[k]["rel"] = .number(min(100, rel + (4 + (h.next() * 4).rounded(.down)) * (1 - pow(rel / 100, 1.6))))
+            t.companies[i].set("accts", .array(list))
+        }
+        return res == .ok ? .ok : res == .wait ? .wait : .cash
     }
 
     public static func drop(_ s: inout GameState, companyID: Int, accountID: Int) {

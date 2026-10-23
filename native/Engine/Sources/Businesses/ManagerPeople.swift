@@ -243,13 +243,14 @@ extension ManagerModel {
     public static func meet(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return false }
         let co = s.companies[ci]
-        if !co.value("meetW").isNull, Double(s.week) - co.num("meetW") < 4 { return false }
-        s.companies[ci].set("meetW", s.week)
-        let cur = World(state: s, data: data).currency(co)
-        let line = co.monthlyHistory.last.map { "Last month: revenue \(cur.short($0.revenue)), profit \(cur.short($0.profit))." } ?? "It is too early to say how it is going."
-        s.addMessage(kind: "info", from: n.name, title: "Re: \(co.name)",
-                     body: "Thanks for taking the time. \(line) We are using \(Int(jsRound(co.value("lastW")["util"].double * 100)))% of our capacity.", companyID: co.id, tone: "n", status: "done")
-        return true
+        let last: Double? = co.value("meetW").isNull ? nil : co.num("meetW")
+        return CounterpartMeeting.meet(&s, lastWeek: last, cost: nil, label: "") { t in
+            t.companies[ci].set("meetW", t.week)
+            let cur = World(state: t, data: data).currency(co)
+            let line = co.monthlyHistory.last.map { "Last month: revenue \(cur.short($0.revenue)), profit \(cur.short($0.profit))." } ?? "It is too early to say how it is going."
+            t.addMessage(kind: "info", from: n.name, title: "Re: \(co.name)",
+                         body: "Thanks for taking the time. \(line) We are using \(Int(jsRound(co.value("lastW")["util"].double * 100)))% of our capacity.", companyID: co.id, tone: "n", status: "done")
+        } == .ok
     }
 
     /// How much experience a manager keeps when moved from one business to another. Original: `moveLoss`.

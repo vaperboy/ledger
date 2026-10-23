@@ -712,19 +712,18 @@ public enum Rivals {
     public static func meet(_ s: inout GameState, companyID: Int, rivalID: Int, data: GameData) -> MeetResult {
         guard let co = s.company(companyID), let r = rivals(s, for: co).first(where: { $0.id == rivalID }) else { return .missing }
         let raw = s.rest["mk"]?[key(co)]["riv"].array.first { $0["id"].int == rivalID }?["meet"].double ?? -99
-        if Double(s.week) - raw < 4 { return .wait }
         let cost = World(state: s, data: data).currency(co).scaledPrice(4000)
-        if s.cash < cost { return .cash }
-        Payments.playerPays(&s, cost, label: "Lunch and a meeting with \(r.owner)", companyID: companyID)
-        var h = HashedRandom("\(s.seed):lunch:\(s.week):\(rivalID)")
-        let gain = 4 + (h.next() * 6).rounded(.down)
-        let wk = s.week
-        mutate(&s, key: key(co), id: rivalID) { rr in
-            rr["meet"] = .number(Double(wk))
-            rr["rel"] = .number(min(100, rr["rel"].double + gain))
-            remember(&rr, week: wk, text: "Had lunch with you.", change: 4)
+        let res = CounterpartMeeting.meet(&s, lastWeek: raw, cost: cost, label: "Lunch and a meeting with \(r.owner)", companyID: companyID) { t in
+            var h = HashedRandom("\(t.seed):lunch:\(t.week):\(rivalID)")
+            let gain = 4 + (h.next() * 6).rounded(.down)
+            let wk = t.week
+            mutate(&t, key: key(co), id: rivalID) { rr in
+                rr["meet"] = .number(Double(wk))
+                rr["rel"] = .number(min(100, rr["rel"].double + gain))
+                remember(&rr, week: wk, text: "Had lunch with you.", change: 4)
+            }
         }
-        return .ok
+        return res == .ok ? .ok : res == .wait ? .wait : .cash
     }
 
     public enum OfferReply: Equatable {

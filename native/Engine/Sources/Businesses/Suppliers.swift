@@ -98,14 +98,13 @@ public enum Suppliers {
         guard let v = vendor(s, id: id, data: data) else { return .unknown }
         var vr = s.rest["vr"] ?? .object([:])
         let o = vr[id].isNull ? JSONValue.object(["r": 0, "w": .number(Double(s.week)), "meet": -99]) : vr[id]
-        if Double(s.week) - o["meet"].double < 4 { return .wait }
         let cost = homeCurrency(s, data).scaledPrice(5000)
-        if s.cash < cost { return .cash }
-        Payments.playerPays(&s, cost, label: "Lunch with \(v.owner) of \(v.name)")
-        var o2 = o; o2["meet"] = .number(Double(s.week))
-        vr[id] = o2; s.rest["vr"] = vr
-        bump(&s, id, by: Double(s.random.int(5, 9)))
-        return .ok
+        let r = CounterpartMeeting.meet(&s, lastWeek: o["meet"].double, cost: cost, label: "Lunch with \(v.owner) of \(v.name)") { t in
+            var o2 = o; o2["meet"] = .number(Double(t.week))
+            vr[id] = o2; t.rest["vr"] = vr
+            bump(&t, id, by: Double(t.random.int(5, 9)))
+        }
+        return r == .ok ? .ok : r == .wait ? .wait : .cash
     }
 
     /// Relationships fade when you do not buy. Original: `vendMonth`.

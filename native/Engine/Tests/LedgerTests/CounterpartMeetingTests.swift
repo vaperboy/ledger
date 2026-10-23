@@ -163,6 +163,19 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
+    /// A fifth copy of the cool-down must not appear: the meeting files compare the last-meeting week only through `CounterpartMeeting`.
+    func testNoHandWrittenMeetingCoolDown() throws {
+        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Businesses")
+        var hits: [String] = []
+        for name in ["Suppliers.swift", "Rivals.swift", "KeyAccounts.swift", "ManagerPeople.swift", "ManagerMeetings.swift"] {
+            guard let text = try? String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8) else { continue }
+            for (n, line) in text.components(separatedBy: "\n").enumerated() where line.contains("[\"meet\"]") && (line.contains("< 4") || line.contains(">= 3")) || line.contains("meetW") && (line.contains("< 4") || line.contains(">= 3")) {
+                hits.append("\(name):\(n + 1)")
+            }
+        }
+        XCTAssertTrue(hits.isEmpty, "Use CounterpartMeeting.isCoolingDown / meet instead: \(hits)")
+    }
+
     /// The board "call a meeting" uses a three-week cool-down on the same stamp (original: `callMeeting`), not four.
     func testCallMeetingCoolDownIsThreeWeeks() throws {
         var (e, id) = try gameWithManager()
