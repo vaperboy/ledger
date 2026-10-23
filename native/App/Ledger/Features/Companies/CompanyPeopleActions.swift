@@ -167,37 +167,20 @@ struct SuccessorSection: View {
                 Text("Cost: the executive search fee. Benefit: four candidates to choose from before the handover, so the company is not left without a manager. Risk: none may suit, and the fee is not refunded.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("Candidates").capsLabel(Theme.ivoryFaint)
-                ForEach(Array(waiting.enumerated()), id: \.element.id) { n, p in
-                    if n > 0 { Hairline() }
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(p.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                            Text("Age \(p.age) · \(String(format: "%g", p.num("exp"))) yr · \(p.str("resume"))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        Menu("\(cur.short(p.askingMonthlyWage)) / mo") {
-                            ForEach([1.0, 1.1], id: \.self) { f in
-                                Button("Offer \(cur.short(cur.roundedStep(p.askingMonthlyWage * f, about: 500)))") { hire(p, cur.roundedStep(p.askingMonthlyWage * f, about: 500)) }
-                            }
-                        }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    }
+                CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
+                    CandidateHireRow(person: p, currency: cur, factors: [1.0, 1.1, 1.25], offer: { wage in
+                        let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }, name: p.name, company: company.name)
+                        if fb.isHired { store.show(fb.text, tone: "good") }
+                        return fb
+                    }) { ManagerCandidateChecks(person: p, companyID: company.id, currency: cur) }
                 }
             }
         }
         .confirmationDialog("Start the search?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Pay \(cur.short(cur.scaledPrice(15000))) and search") {
-                if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success() }
+                if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found.", tone: "good") }
                 else { store.show("Not enough cash for the search.", tone: "warn") }
             }
         } message: { Text("Three people from the trade and one generalist. The list stays for about six months.") }
-    }
-
-    private func hire(_ p: Person, _ wage: Double) {
-        switch store.act({ $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }) {
-        case .ok?: Haptics.success(); store.show("\(p.name) now runs \(company.name).", tone: "good")
-        case .refused?: store.show("\(p.name) declined. Offer more.", tone: "warn")
-        default: store.show("They took another job.", tone: "warn")
-        }
     }
 }
