@@ -15,14 +15,13 @@ struct CompanyMarketing: View {
         VStack(spacing: Theme.Space.l) {
             GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Awareness").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("Awareness: people who know about you").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     HStack(alignment: .firstTextBaseline) {
                         Text("\(Int(company.awareness.rounded()))%").font(.hero(34))
                         Spacer()
                         let spend = mkt.object.values.reduce(0) { $0 + $1["b"].double }
-                        Chip(text: spend > 0 ? cur.short(spend) + " a week" : "No campaigns", tint: spend > 0 ? Theme.gold : Theme.ivoryMuted, symbol: "megaphone.fill")
+                        Chip(text: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", tint: spend > 0 ? Theme.gold : Theme.ivoryMuted, symbol: "megaphone.fill")
                     }
-                    Meter(label: "People who know about you", value: company.awareness)
                     Text("Marketing builds awareness, which fades every week. Results vary: some channels pay off well, some do little.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
@@ -51,7 +50,7 @@ struct CompanyMarketing: View {
                             HStack {
                                 Button("Off") { set(ch.id, 0) }.buttonStyle(QuietButtonStyle(tint: budget == 0 ? Theme.gold : Theme.ivoryFaint))
                                 ForEach(ch.budgets(in: cur), id: \.self) { b in
-                                    Button(cur.short(b) + "/wk") { set(ch.id, b) }.buttonStyle(QuietButtonStyle(tint: budget == b ? Theme.gold : Theme.ivoryMuted))
+                                    Button(cur.tidyShort(b) + "/wk") { set(ch.id, b) }.buttonStyle(QuietButtonStyle(tint: budget == b ? Theme.gold : Theme.ivoryMuted))
                                 }
                             }
                         }

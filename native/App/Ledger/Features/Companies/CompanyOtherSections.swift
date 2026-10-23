@@ -60,16 +60,16 @@ struct CompanyOtherSections: View {
             let cur = engine.currency(for: company)
             let run = Development.running(company)
             LedgerSection(title: "Develop something new", trailing: {
-                if let run { Text("\(max(0, run.weeksLeft - engine.state.week)) weeks to go").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                if let run { Text("\(max(0, run.weeksLeft - engine.state.week).weeksText) to go").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }) {
                 if let run, let p = list.first(where: { $0.project.id == run.project }) {
-                    FlatRow(label: p.project.name, value: cur.short(run.cost), sub: "Spent. The team's skill and your quality decide how well it works.", rule: false)
+                    FlatRow(label: p.project.name, value: cur.tidyShort(run.cost), sub: "Spent. The team's skill and your quality decide how well it works.", rule: false)
                 } else {
                     ForEach(Array(list.enumerated()), id: \.offset) { n, x in
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(x.project.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("\(x.project.text) · \(x.project.weeks) weeks · \(cur.short(x.cost))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text("\(x.project.text) · \(x.project.weeks) weeks · \(cur.tidyShort(x.cost))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
                             Button("Start") { start(x.project) }.buttonStyle(QuietButtonStyle())
@@ -123,7 +123,7 @@ struct CompanyOtherSections: View {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(a.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("\(cur.short(a.fee)) a month · rated \(String(format: "%.1f", a.rating))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            Text("\(cur.tidyShort(a.fee)) a month · rated \(String(format: "%.1f", a.rating))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer(minLength: 8)
                         if a.current { Chip(text: "Yours", tint: Theme.gain) }

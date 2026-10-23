@@ -50,12 +50,11 @@ struct PhoneShell: View {
 }
 
 /// iPad: a sidebar with the same five destinations as the iPhone tab bar, then the More pages, and a wide detail area.
-/// Like the tab bar, every tab keeps its own navigation stack while you visit others: a tab is built the first time it is
-/// chosen and then kept (hidden) so coming back returns to the same screen. Each tab's stack is its own, so a company opened
-/// in Team never appears in Company.
+/// Only the chosen tab is in the detail column: keeping hidden tabs alive made every visited tab's toolbar items, title and search
+/// field pile up in the split view's one navigation bar (two More buttons, a stray "+" and the Team search on Group and Inbox).
+/// Each tab owns its navigation stack, so a company opened in Team never appears in Company.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
-    @State private var visited: Set<AppTab> = []
 
     var body: some View {
         NavigationSplitView {
@@ -90,18 +89,7 @@ struct SidebarShell: View {
             .scrollContentBackground(.hidden)
             .background(Theme.walnutRaised)
         } detail: {
-            ZStack {
-                ForEach(AppTab.allCases.filter { visited.contains($0) || $0 == store.tab }) { tab in
-                    let shown = tab == store.tab
-                    TabContent(tab: tab)
-                        .opacity(shown ? 1 : 0)
-                        .allowsHitTesting(shown)
-                        .accessibilityHidden(!shown)
-                        .zIndex(shown ? 1 : 0)
-                }
-            }
-            .onAppear { visited.insert(store.tab) }
-            .onChange(of: store.tab) { _, t in visited.insert(t) }
+            TabContent(tab: store.tab).id(store.tab)
         }
     }
 }

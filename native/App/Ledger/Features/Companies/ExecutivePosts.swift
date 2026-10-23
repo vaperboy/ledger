@@ -55,10 +55,10 @@ struct ExecutivePosts: View {
                 if chainID == nil, !engine.groupManagingDirector.isNull {
                     let big = engine.state.rest["group"]?["big"].double ?? 0
                     Hairline()
-                    Menu("Deals above \(big > 0 ? cur.short(big) : "any size") always come to you") {
+                    Menu("Deals above \(big > 0 ? cur.tidyShort(big) : "any size") always come to you") {
                         ForEach([0.0, 250_000, 1_000_000, 5_000_000, 20_000_000], id: \.self) { v in
                             let amt = cur.scaledPrice(v)
-                            Button(v == 0 ? "No limit set" : cur.short(amt)) { store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }; store.show(v == 0 ? "No group limit." : "Deals above \(cur.short(amt)) come to you.") }
+                            Button(v == 0 ? "No limit set" : cur.tidyShort(amt)) { store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }; store.show(v == 0 ? "No group limit." : "Deals above \(cur.tidyShort(amt)) come to you.") }
                         }
                     }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).padding(.top, 8)
                 }
@@ -81,12 +81,12 @@ struct ExecutivePosts: View {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Chip(text: "\(p.level.title) · \(p.scope)", tint: Theme.gold)
+                        RoleScopeBadge(role: p.level == .md ? "Group managing director" : p.level.title, scope: p.scope)
                     }
                     if person == nil { Text(p.level.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
-                if person != nil { Text(cur.short(p.rec["wage"].double)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
+                if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
             }
             if person != nil {
                 let lvl = Int(p.rec["lvl"].double)
@@ -105,7 +105,7 @@ struct ExecutivePosts: View {
     }
 
     @ViewBuilder private func searchButton(_ p: Post, _ cur: Currency) -> some View {
-        Button("Executive search · \(cur.short(cur.scaledPrice(15000)))") {
+        Button("Executive search · \(cur.tidyShort(cur.scaledPrice(15000)))") {
             if let list = store.act({ $0.searchExecutive(p.level) }) ?? nil { searching = p.id; candidates = list.map { $0.id }; Haptics.tap() }
             else { store.show("Not enough cash for the search.", tone: "warn") }
         }.buttonStyle(QuietButtonStyle())
@@ -113,21 +113,8 @@ struct ExecutivePosts: View {
     }
 
     @ViewBuilder private func candidateList(_ p: Post, _ cur: Currency) -> some View {
-        ForEach(candidates, id: \.self) { id in
-            if let c = engine.state.people[id] {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(c.name).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text("Age \(c.age) · \(String(format: "%g", c.num("exp"))) yr · \(c.str("resume"))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Menu("\(cur.short(c.askingMonthlyWage)) / mo") {
-                        ForEach([1.0, 1.1], id: \.self) { f in
-                            Button("Offer \(cur.short(cur.roundedStep(c.askingMonthlyWage * f, about: 500)))") { hire(p, c, cur.roundedStep(c.askingMonthlyWage * f, about: 500)) }
-                        }
-                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                }
-            }
+        CandidateHireList(people: candidates.compactMap { engine.state.people[$0] }, emptyText: "Everyone on the shortlist has taken another job. Search again.") { c in
+            CandidateHireRow(person: c, currency: cur) { wage in hire(p, c, wage) }
         }
     }
 
@@ -160,12 +147,13 @@ struct ExecutivePosts: View {
         else { store.show("Not enough cash for the search.", tone: "warn") }
     }
 
-    private func hire(_ p: Post, _ c: Person, _ wage: Double) {
+    /// The engine's answer, in the words every hiring screen uses; the shared row shows it under the candidate.
+    private func hire(_ p: Post, _ c: Person, _ wage: Double) -> HireFeedback {
         let city = p.city ?? regionCity
-        switch store.act({ $0.hireExecutive(p.level, personID: c.id, monthlyWage: wage, chainID: chainID, city: city) }) {
-        case .ok?: Haptics.success(); candidates = []; searching = nil; regionCity = nil; store.show("\(c.name) starts as \(p.level.title.lowercased()).", tone: "good")
-        case .refused?: store.show("\(c.name) found that a bit low.", tone: "warn")
-        default: store.show("They took another job.", tone: "warn")
-        }
+        let r = store.act { $0.hireExecutive(p.level, personID: c.id, monthlyWage: wage, chainID: chainID, city: city) }
+        let feedback = HireFeedback.from(r, name: c.name, role: p.level.title)
+        if feedback.isHired { candidates = []; searching = nil; regionCity = nil }
+        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
+        return feedback
     }
 }

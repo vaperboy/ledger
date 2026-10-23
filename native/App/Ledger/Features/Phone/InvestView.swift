@@ -34,7 +34,7 @@ struct InvestContent: View {
                                             .frame(width: 40, alignment: .leading)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(q.name).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                            Text(q.value > 0 ? "You hold \(cur.short(q.value))" : q.symbol).font(.caption).foregroundStyle(q.value > 0 ? Theme.gold : Theme.ivoryFaint)
+                                            Text(q.value > 0 ? "You hold \(cur.tidyShort(q.value))" : q.symbol).font(.caption).foregroundStyle(q.value > 0 ? Theme.gold : Theme.ivoryFaint)
                                         }
                                         Spacer(minLength: 6)
                                         if !q.history.isEmpty { Sparkline(values: Array(q.history.suffix(26)), tint: (q.weekChange ?? 0) >= 0 ? Theme.gain : Theme.loss).frame(width: 60, height: 26) }
@@ -101,7 +101,7 @@ struct TradeSheet: View {
                                         let before = live.value
                                         store.act { $0.sellInvestment(quote.kind, symbol: quote.symbol, fraction: f) }
                                         let after = store.engine?.quotes(quote.kind).first { $0.id == quote.id }?.value ?? 0
-                                        if after < before { Haptics.success(); store.show("Sold \(cur.short(before - after)) of \(quote.symbol), less the broker fee.", tone: "good") }
+                                        if after < before { Haptics.success(); store.show("Sold \(cur.tidyShort(before - after)) of \(quote.symbol), less the broker fee.", tone: "good") }
                                         else { Haptics.warning(); store.show("Nothing was sold: trading in \(quote.symbol) has stopped.", tone: "warn") }
                                     }
                                         .buttonStyle(QuietButtonStyle(tint: Theme.roseGold))
@@ -139,7 +139,7 @@ struct VenturesLinkRow: View {
                         Text(total > 0 ? "Managed in Projects > Ventures" : "Found or back a startup, commit to a fund: Projects > Ventures").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
                     Spacer(minLength: 8)
-                    if total > 0 { Text(cur.short(total)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory) }
+                    if total > 0 { Text(cur.tidyShort(total)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory) }
                     Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }.padding(.vertical, 6).contentShape(Rectangle())
             }.buttonStyle(.plain)

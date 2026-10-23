@@ -47,7 +47,7 @@ struct ChainView: View {
                 Button("Rename") { rename(sum, cur) }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Every store takes the new name and pays for its own new signs (about \(cur.short(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
+                Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
             }
         } else {
             Text("This chain no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -97,8 +97,8 @@ struct ChainFigures: View {
         let r = summary.reach
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             KeyFigures(items: [
-                .init(label: "Revenue / mo", value: currency.short(summary.revenue)),
-                .init(label: "Profit / mo", value: currency.short(summary.profit), tint: summary.profit < 0 ? Theme.loss : Theme.ivory),
+                .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
+                .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: summary.profit < 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Staff", value: "\(summary.staff)"),
                 .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
                 .init(label: "Buying discount", value: String(format: "%.1f%%", r.rebate * 100), sub: "of cost of sales"),
@@ -171,16 +171,16 @@ struct ChainAttention: View {
             NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(c.name) is out of cash").font(.system(size: 13.5)).foregroundStyle(Theme.loss)
-                    Text("Cash \(currency.short(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.short(owed))" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
             }.buttonStyle(.plain)
             Spacer(minLength: 8)
-            Button("Group loan \(currency.short(need))") {
-                pending = PendingAction(title: "Lend \(currency.short(need)) to \(c.name)?",
+            Button("Group loan \(currency.tidyShort(need))") {
+                pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
                                         message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
                                         button: "Lend") {
                     let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
-                    if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.short(need)).", tone: "good") }
+                    if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
                     else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
                 }
             }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
@@ -221,7 +221,7 @@ struct ChainStoreComparison: View {
                         HStack {
                             Text(city).capsLabel(Theme.ivoryFaint)
                             Spacer()
-                            Text("\(list.count) · \(currency.short(list.reduce(0) { $0 + $1.profit })) / mo").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                            Text("\(list.count) · \(currency.tidyShort(list.reduce(0) { $0 + $1.profit })) / mo").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                         }.padding(.top, 10)
                         ForEach(list) { s in row(s) }
                     }
@@ -259,8 +259,8 @@ struct ChainStoreComparison: View {
                 }.buttonStyle(.plain)
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 3) {
-                    Text(currency.short(s.profit)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(s.profit < 0 ? Theme.loss : Theme.ivory)
-                    Text(currency.short(s.revenue) + " rev").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                    Text(currency.tidyShort(s.profit)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(s.profit < 0 ? Theme.loss : Theme.ivory)
+                    Text(currency.tidyShort(s.revenue) + " rev").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                     Button(openRulesFor == s.id ? "Hide rules" : "Own rules") { openRulesFor = openRulesFor == s.id ? nil : s.id }
                         .font(.system(size: 11.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                 }
@@ -331,7 +331,7 @@ struct ChainSupplyOverview: View {
                     NavigationLink(value: CompanyRoute.companyAt(l.buyerID, .chain)) {
                         GroupLinkRow(title: "\(supplier) → \(buyer)",
                                      sub: "\(IntercompanySupply.kind(l.kindID)?.name ?? l.kindID) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered",
-                                     trailing: currency.short(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr",
+                                     trailing: currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr",
                                      subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
                     }.buttonStyle(.plain)
                 }
@@ -367,10 +367,10 @@ struct ChainNewStore: View {
                 }.pickerStyle(.menu)
                 Picker("Size", selection: $newSize) { Text("Small").tag(0.7); Text("Standard").tag(1.0); Text("Large").tag(1.4) }.pickerStyle(.segmented)
                 if let cost {
-                    FlatRow(label: "Cost", value: currency.short(cost), sub: "You have \(store.money(Payments.liquid(engine.state))) available.", rule: false)
+                    FlatRow(label: "Cost", value: currency.tidyShort(cost), sub: "You have \(store.money(Payments.liquid(engine.state))) available.", rule: false)
                     Button("Open \(summary.name) \(cityName)") {
                         pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
-                                                message: "About \(currency.short(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
+                                                message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
                                                 button: "Open the store") { open(cityID: cityID) }
                     }.buttonStyle(GoldButtonStyle())
                 } else {

@@ -50,7 +50,7 @@ struct CompanyAccounts: View {
                         Text(l.label).font(.system(size: 12.5)).foregroundStyle(l.key == "rev" ? Theme.ivory : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, alignment: .leading)
                         ForEach(periods) { p in
                             let v = p.books[l.key] ?? 0
-                            Text(l.key == "rev" ? cur.short(v) : (v == 0 ? "–" : "−" + cur.short(v))).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 58, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(l.key == "rev" ? cur.tidyShort(v) : (v == 0 ? "–" : "−" + cur.tidyShort(v))).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 58, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.7)
                         }
                     }.padding(.vertical, 6)
                 }
@@ -59,7 +59,7 @@ struct CompanyAccounts: View {
                     Text("Profit before tax").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ivory).frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(periods) { p in
                         let v = Books.profit(p.books)
-                        Text(cur.short(v)).font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(v < 0 ? Theme.loss : Theme.ivory).frame(width: 58, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(cur.tidyShort(v)).font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(v < 0 ? Theme.loss : Theme.ivory).frame(width: 58, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }.padding(.vertical, 7)
                 Text("Week, month and year so far. Corporate tax is settled after the year and shown under Tax.").font(.caption2).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
@@ -73,23 +73,23 @@ struct CompanyAccounts: View {
         if let b = engine.companyBalanceSheet(companyID: company.id) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 KeyFigures(items: [
-                    .init(label: "Owns", value: cur.short(b.totalAssets)),
-                    .init(label: "Owes", value: cur.short(b.totalDebts), tint: b.totalDebts > 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Equity", value: cur.short(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.gain),
+                    .init(label: "Owns", value: cur.tidyShort(b.totalAssets)),
+                    .init(label: "Owes", value: cur.tidyShort(b.totalDebts), tint: b.totalDebts > 0 ? Theme.loss : Theme.ivory),
+                    .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.gain),
                 ])
-                LedgerSection(title: "What it owns", trailing: { Text(cur.short(b.totalAssets)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
-                    VStack(spacing: 0) { ForEach(Array(b.assets.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.short(l.amount), sub: l.detail, tint: l.amount < 0 ? Theme.loss : Theme.ivory, rule: n > 0) } }
+                LedgerSection(title: "What it owns", trailing: { Text(cur.tidyShort(b.totalAssets)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
+                    VStack(spacing: 0) { ForEach(Array(b.assets.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), sub: l.detail, tint: l.amount < 0 ? Theme.loss : Theme.ivory, rule: n > 0) } }
                 }
-                LedgerSection(title: "What it owes", trailing: { Text(cur.short(b.totalDebts)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
+                LedgerSection(title: "What it owes", trailing: { Text(cur.tidyShort(b.totalDebts)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
                     if b.debts.isEmpty { Text("No debts.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
-                    VStack(spacing: 0) { ForEach(Array(b.debts.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.short(l.amount), rule: n > 0) } }
+                    VStack(spacing: 0) { ForEach(Array(b.debts.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0) } }
                 }
                 LedgerSection("Equity") {
                     VStack(spacing: 0) {
-                        if company.form == .limited { FlatRow(label: "Share capital", value: cur.short(b.shareCapital), rule: false) }
-                        FlatRow(label: "Put in by owners over time", value: cur.short(b.injected), rule: company.form == .limited)
-                        if b.distributed > 0 { FlatRow(label: "Paid out as dividends", value: cur.short(b.distributed)) }
-                        FlatRow(label: "Equity (owns minus owes)", value: cur.short(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory)
+                        if company.form == .limited { FlatRow(label: "Share capital", value: cur.tidyShort(b.shareCapital), rule: false) }
+                        FlatRow(label: "Put in by owners over time", value: cur.tidyShort(b.injected), rule: company.form == .limited)
+                        if b.distributed > 0 { FlatRow(label: "Paid out as dividends", value: cur.tidyShort(b.distributed)) }
+                        FlatRow(label: "Equity (owns minus owes)", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory)
                     }
                     if b.equity < 0 { Text("The company owes more than it owns. Banks lend less, and a limited company in this state should be recapitalised or wound up.").font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true) }
                 }
@@ -116,9 +116,9 @@ struct CompanyAccounts: View {
                         Hairline()
                         HStack(spacing: 4) {
                             Text(m.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).frame(maxWidth: .infinity, alignment: .leading)
-                            num(cur.short(m.profit), m.profit < 0 ? Theme.loss : Theme.ivory, 64)
-                            num(m.otherMovements.map { cur.short($0) } ?? "–", (m.otherMovements ?? 0) < 0 ? Theme.caution : Theme.ivoryMuted, 64)
-                            num(cur.short(m.cashAtEnd), m.cashAtEnd < 0 ? Theme.loss : Theme.ivory, 70)
+                            num(cur.tidyShort(m.profit), m.profit < 0 ? Theme.loss : Theme.ivory, 64)
+                            num(m.otherMovements.map { cur.tidyShort($0) } ?? "–", (m.otherMovements ?? 0) < 0 ? Theme.caution : Theme.ivoryMuted, 64)
+                            num(cur.tidyShort(m.cashAtEnd), m.cashAtEnd < 0 ? Theme.loss : Theme.ivory, 70)
                         }.padding(.vertical, 6)
                     }
                     Text("Other is cash that moved without being profit: money you put in or took out, loans drawn or repaid, equipment bought, stock and bills paid later or earlier.")
@@ -133,18 +133,18 @@ struct CompanyAccounts: View {
     private func tax(_ cur: Currency) -> some View {
         let o = engine.financeOverview(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection(title: "Tax and VAT", trailing: { Text("owed now " + cur.short(o.taxesOwed)).font(.system(size: 11.5)).foregroundStyle(o.taxesOwed > 0 ? Theme.caution : Theme.ivoryFaint) }) {
+            LedgerSection(title: "Tax and VAT", trailing: { Text("owed now " + cur.tidyShort(o.taxesOwed)).font(.system(size: 11.5)).foregroundStyle(o.taxesOwed > 0 ? Theme.caution : Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
                     if company.form == .limited {
-                        FlatRow(label: "Profit so far this year", value: cur.short(company.yearProfitSoFar), rule: false)
-                        FlatRow(label: "Tax set aside for this year", value: cur.short(company.taxAccrued))
-                        if company.taxDue { FlatRow(label: "Last year's tax, due week \(company.taxDueWeek + 1)", value: cur.short(company.taxPrevYear), tint: Theme.caution) }
-                        if company.lossCarryForward > 0 { FlatRow(label: "Losses to set against future profit", value: cur.short(company.lossCarryForward)) }
+                        FlatRow(label: "Profit so far this year", value: cur.tidyShort(company.yearProfitSoFar), rule: false)
+                        FlatRow(label: "Tax set aside for this year", value: cur.tidyShort(company.taxAccrued))
+                        if company.taxDue { FlatRow(label: "Last year's tax, due week \(company.taxDueWeek + 1)", value: cur.tidyShort(company.taxPrevYear), tint: Theme.caution) }
+                        if company.lossCarryForward > 0 { FlatRow(label: "Losses to set against future profit", value: cur.tidyShort(company.lossCarryForward)) }
                     } else {
                         Text("A sole trader pays no company tax: the profit is taxed on your personal return each year (see Group › Money › Taxes).")
                             .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    ForEach(o.taxes) { t in FlatRow(label: t.label.replacingOccurrences(of: " · " + company.name, with: ""), value: cur.short(t.amount), sub: t.detail) }
+                    ForEach(o.taxes) { t in FlatRow(label: t.label.replacingOccurrences(of: " · " + company.name, with: ""), value: cur.tidyShort(t.amount), sub: t.detail) }
                 }
             }
             if !o.rules.isEmpty {
@@ -164,7 +164,7 @@ struct CompanyAccounts: View {
             if tx.isEmpty { Text("No transactions recorded yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
             VStack(spacing: 0) {
                 ForEach(Array(tx.enumerated()), id: \.offset) { n, t in
-                    FlatRow(label: t["l"].string, value: (t["a"].double < 0 ? "−" : "+") + cur.short(abs(t["a"].double)), sub: "Week \(t["w"].int + 1)",
+                    FlatRow(label: t["l"].string, value: (t["a"].double < 0 ? "−" : "+") + cur.tidyShort(abs(t["a"].double)), sub: "Week \(t["w"].int + 1)",
                             tint: t["a"].double < 0 ? Theme.ivory : Theme.gain, rule: n > 0)
                 }
             }

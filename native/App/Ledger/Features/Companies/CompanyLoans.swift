@@ -23,7 +23,7 @@ struct CompanyLoans: View {
         let shift = Banking.countryRateShift(companyID: company.id, state: engine.state, context: engine.context)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             LedgerSection(title: "What the company owes", trailing: {
-                Text(loans.isEmpty ? "no loans" : cur.short(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.short(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
+                Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
                     .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
             }) {
                 if loans.isEmpty { Text("This company has no loans.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
@@ -39,7 +39,7 @@ struct CompanyLoans: View {
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.short(l.balance)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Text(cur.tidyShort(l.balance)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
                                 Button("Repay…") { repaying = l }.font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                             }
                         }.padding(.vertical, 9)
@@ -71,9 +71,9 @@ struct CompanyLoans: View {
                 if loanAmount > 0 {
                     let pay = engine.companyLoanPayment(amount: loanAmount, termMonths: term, companyID: company.id)
                     KeyFigures(items: [
-                        .init(label: "A month", value: cur.short(pay)),
-                        .init(label: "Paid in total", value: cur.short(pay * Double(term))),
-                        .init(label: "Interest", value: cur.short(max(0, pay * Double(term) - loanAmount)), tint: Theme.caution),
+                        .init(label: "A month", value: cur.tidyShort(pay)),
+                        .init(label: "Paid in total", value: cur.tidyShort(pay * Double(term))),
+                        .init(label: "Interest", value: cur.tidyShort(max(0, pay * Double(term) - loanAmount)), tint: Theme.caution),
                     ])
                     if loanAmount > offer.maximum { Text("More than the bank will lend.").font(.caption).foregroundStyle(Theme.loss) }
                 }
@@ -114,9 +114,9 @@ struct RepayLoanSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     KeyFigures(items: [
-                        .init(label: "Left to pay", value: cur.short(loan.balance)),
-                        .init(label: "A month now", value: cur.short(loan.monthlyPayment)),
-                        .init(label: "Company cash", value: cur.short(cash), tint: cash < loan.balance ? Theme.caution : Theme.ivory),
+                        .init(label: "Left to pay", value: cur.tidyShort(loan.balance)),
+                        .init(label: "A month now", value: cur.tidyShort(loan.monthlyPayment)),
+                        .init(label: "Company cash", value: cur.tidyShort(cash), tint: cash < loan.balance ? Theme.caution : Theme.ivory),
                     ])
                     AmountField(title: "Repay", currency: cur, amount: $amount)
                     HStack {

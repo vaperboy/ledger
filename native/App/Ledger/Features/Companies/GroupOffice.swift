@@ -141,22 +141,12 @@ struct HeadOfficeSection: View {
 
     @ViewBuilder private func candidate(_ p: Person, role: Headquarters.Role) -> some View {
         let ref = references[p.id] ?? (p.flag("checked") ? OfficeChecks.reference(p) : nil)
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(p.name).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text("Age \(p.age) · says \(StaffProfile.band(p.claimedSkill).lowercased())").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    if let ref {
-                        Text("References: really \(ref.skillBand.lowercased()), \(String(format: "%g", ref.experience)) yr" + (ref.matchesCV ? ". Matches the CV." : ". The CV does not match."))
-                            .font(.system(size: 11)).foregroundStyle(ref.matchesCV ? Theme.gain : Theme.caution)
-                    }
-                }
-                Spacer(minLength: 8)
-                Menu(store.short(p.askingMonthlyWage) + " / mo") {
-                    ForEach([1.0, 1.1], id: \.self) { f in Button("Offer \(store.short(p.askingMonthlyWage * f))") { hire(role, p, p.askingMonthlyWage * f) } }
-                }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-            }
-            if ref == nil {
+        CandidateHireRow(person: p, currency: engine.homeCurrency, subtitle: "Age \(p.age) · says \(StaffProfile.band(p.claimedSkill).lowercased())",
+                         offer: { wage in hire(role, p, wage) }) {
+            if let ref {
+                Text("References: really \(ref.skillBand.lowercased()), \(String(format: "%g", ref.experience)) yr" + (ref.matchesCV ? ". Matches the CV." : ". The CV does not match."))
+                    .font(.system(size: 11)).foregroundStyle(ref.matchesCV ? Theme.gain : Theme.caution)
+            } else {
                 Button("Check references") { checkReferences(p) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
             }
         }
@@ -170,13 +160,18 @@ struct HeadOfficeSection: View {
         }
     }
 
-    private func hire(_ role: Headquarters.Role, _ p: Person, _ wage: Double) {
+    /// The engine's answer in the words every hiring screen uses; the shared row shows it under the candidate.
+    private func hire(_ role: Headquarters.Role, _ p: Person, _ wage: Double) -> HireFeedback {
+        let feedback: HireFeedback
         switch store.act({ $0.hireOffice(role: role.id, personID: p.id, monthlyWage: wage) }) {
-        case .ok?: Haptics.success(); candidates = []; searchRole = nil; store.show("\(p.name) joins as \(role.title.lowercased()). Complete the paperwork.", tone: "good")
-        case .refuse?: store.show("\(p.name) found that a bit low.", tone: "warn")
-        case .taken?: store.show("They took another job.", tone: "warn")
-        default: store.show("There is no room for that role.", tone: "warn")
+        case .ok?: feedback = .hired("\(p.name) joins as \(role.title.lowercased()). Complete the paperwork.")
+        case .refuse?: feedback = .declined("\(p.name) found that a bit low. Offer more or pick someone else.")
+        case .taken?: feedback = .unavailable("\(p.name) took another job.")
+        default: feedback = .unavailable("There is no room for that role.")
         }
+        if feedback.isHired { candidates = []; searchRole = nil }
+        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
+        return feedback
     }
 
     // MARK: Manager reviews

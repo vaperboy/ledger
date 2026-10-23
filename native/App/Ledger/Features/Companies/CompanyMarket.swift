@@ -56,13 +56,13 @@ struct CompanyMarket: View {
         return LedgerSection("Price moves") {
             VStack(alignment: .leading, spacing: 10) {
                 KeyFigures(items: [
-                    .init(label: "Your price", value: cur.short(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
-                    .init(label: "Rivals", value: info.rivalsAverage.map { cur.short($0) } ?? "–"),
+                    .init(label: "Your price", value: cur.tidyShort(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
+                    .init(label: "Rivals", value: info.rivalsAverage.map { cur.tidyShort($0) } ?? "–"),
                     .init(label: "Margin", value: info.margin.map { String(format: "%.0f%%", $0 * 100) } ?? "–", tint: (info.margin ?? 0) < 0 ? Theme.loss : Theme.ivory),
                 ])
                 if let war = info.war {
                     Hairline()
-                    Text("Price war · \(war.weeksLeft) wk left · \(cur.short(war.loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
+                    Text("Price war · \(war.weeksLeft) wk left · \(cur.tidyShort(war.loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
                     Button("End the price war now") { store.act { $0.endPriceWar(companyID: company.id) }; Haptics.tap() }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 } else {
                     Hairline()
@@ -71,7 +71,7 @@ struct CompanyMarket: View {
                         Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
                         Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
                     }
-                    Button(abs(change) < 0.005 ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.short(info.yourTicket * (1 + change)))) {
+                    Button(abs(change) < 0.005 ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.tidyShort(info.yourTicket * (1 + change)))) {
                         if let real = store.act({ $0.changePrice(companyID: company.id, byShare: change) }) ?? nil {
                             store.show(String(format: "Prices %+.0f%%.", real * 100)); Haptics.success()
                         }
@@ -228,7 +228,7 @@ struct RivalSheet: View {
                         }
                         LedgerSection("What you can do") {
                             VStack(alignment: .leading, spacing: 10) {
-                                Button("Meet the owner · " + cur.short(cur.scaledPrice(4000))) {
+                                Button("Meet the owner · " + cur.tidyShort(cur.scaledPrice(4000))) {
                                     let r = store.act { $0.meetRival(companyID: companyID, rivalID: rivalID) }
                                     switch r {
                                     case .wait?: store.show("You met recently. Give it a few weeks.", tone: "warn")
@@ -238,15 +238,15 @@ struct RivalSheet: View {
                                 }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                                 Hairline()
                                 let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
-                                Text("Offer to buy · worth about \(cur.short(value))").capsLabel(Theme.ivoryFaint)
+                                Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
                                 HStack {
                                     Slider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
-                                    Text(cur.short(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
+                                    Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
                                 }
-                                Text("Plus about \(cur.short(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                                Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                                 Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(GoldButtonStyle())
                                 if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                                if let counter { Button("Accept their price · " + cur.short(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                                if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
                                 Hairline()
                                 if co.value("docs")["fran"]["st"].string == "ok" {
                                     Button("Open a new site beside them") { openSite() }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
@@ -395,7 +395,7 @@ struct PriceWarSheet: View {
                                     .init(label: "You hold out", value: est.yourWeeks >= 99 ? "Long" : "\(est.yourWeeks) wk", tint: est.yourWeeks < weeks ? Theme.loss : Theme.ivory),
                                     .init(label: "They close", value: "\(Int((est.odds * 100).rounded()))%"),
                                     .init(label: "To you", value: "\(Int((est.toYou * 100).rounded()))%", sub: "of their customers"),
-                                    .init(label: "It costs", value: cur.short(est.cost), tint: Theme.loss),
+                                    .init(label: "It costs", value: cur.tidyShort(est.cost), tint: Theme.loss),
                                     .init(label: "Authority", value: est.yourShare >= 0.35 ? "Can fine" : "Low risk", tint: est.yourShare >= 0.35 ? Theme.loss : Theme.ivory),
                                 ])
                             }

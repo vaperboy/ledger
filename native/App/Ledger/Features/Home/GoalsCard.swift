@@ -12,9 +12,9 @@ struct GoalsCard: View {
         LedgerSection(title: "Goals", trailing: { if engine.legacyScore > 0 { Text("Legacy \(Int(engine.legacyScore.rounded()))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) } }) {
             VStack(alignment: .leading, spacing: 0) {
                 if let g = daily, !g.claimed {
-                    row("Today: \(g.title)", g.done ? "Done. Reward \(cur.short(g.reward))" + (g.streak > 0 ? " · \(g.streak + 1) days in a row" : "") : g.progress,
+                    row("Today: \(g.title)", g.done ? "Done. Reward \(cur.tidyShort(g.reward))" + (g.streak > 0 ? " · \(g.streak + 1) days in a row" : "") : g.progress,
                         g.done ? "Claim" : nil) {
-                        if let r = store.act({ $0.claimDailyGoal() }) ?? nil { Haptics.success(); store.show("Daily goal: \(cur.short(r)). A new goal comes tomorrow.", tone: "good"); refresh() }
+                        if let r = store.act({ $0.claimDailyGoal() }) ?? nil { Haptics.success(); store.show("Daily goal: \(cur.tidyShort(r)). A new goal comes tomorrow.", tone: "good"); refresh() }
                     }
                 }
                 if let steps = engine.firstStepRewards, !engine.firstStepRewardsHidden, let next = steps.first(where: { !$0.claimed }) {

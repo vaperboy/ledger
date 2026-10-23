@@ -64,7 +64,7 @@ struct CompanyTeam: View {
                                     Text("Says \(StaffProfile.band(p.claimedSkill).lowercased()) (\(Int(p.claimedSkill.rounded()))) · age \(p.age)").font(.caption).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()
-                                Text(cur.short(p.askingMonthlyWage) + " / mo").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Text(cur.tidyShort(p.askingMonthlyWage) + " / mo").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
                                 Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
                             }.contentShape(Rectangle())
                         }.buttonStyle(.plain)

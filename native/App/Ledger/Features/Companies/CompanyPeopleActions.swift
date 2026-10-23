@@ -15,7 +15,7 @@ struct CompanyTargetsCard: View {
     @State private var confirm = false
 
     private static let names = ["rev": "Sales", "profit": "Profit", "rating": "Rating", "util": "How busy", "aware": "Awareness"]
-    private func value(_ key: String, _ v: Double, _ cur: Currency) -> String { key == "rev" || key == "profit" ? cur.short(v) : String(format: "%.0f", v) }
+    private func value(_ key: String, _ v: Double, _ cur: Currency) -> String { key == "rev" || key == "profit" ? cur.tidyShort(v) : String(format: "%.0f", v) }
 
     var body: some View {
         if let st = engine.targetStatus(companyID: company.id) {
@@ -36,8 +36,8 @@ struct CompanyTargetsCard: View {
                     if let b = st.budget {
                         Hairline()
                         Text("Budget \(b.year)\(b.by.isEmpty ? "" : " · drafted by \(b.by)")").capsLabel(Theme.ivoryFaint)
-                        FlatRow(label: "Sales", value: "\(cur.short(b.doneRev)) of \(cur.short(b.rev))", rule: false)
-                        FlatRow(label: "Profit", value: "\(cur.short(b.doneProfit)) of \(cur.short(b.profit))", tint: b.doneProfit < 0 ? Theme.loss : Theme.ivory)
+                        FlatRow(label: "Sales", value: "\(cur.tidyShort(b.doneRev)) of \(cur.tidyShort(b.rev))", rule: false)
+                        FlatRow(label: "Profit", value: "\(cur.tidyShort(b.doneProfit)) of \(cur.tidyShort(b.profit))", tint: b.doneProfit < 0 ? Theme.loss : Theme.ivory)
                         if b.approved {
                             Text("Approved.").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
                         } else {
@@ -55,7 +55,7 @@ struct CompanyTargetsCard: View {
                             HStack {
                                 Text("\(l.met) of 3 met").font(.system(size: 12.5)).foregroundStyle(l.met == 3 ? Theme.gain : l.met == 0 ? Theme.loss : Theme.ivoryMuted)
                                 Spacer()
-                                Text(l.bonus > 0 ? "bonus \(cur.short(l.bonus))" : "no bonus").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                                Text(l.bonus > 0 ? "bonus \(cur.tidyShort(l.bonus))" : "no bonus").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
                     }
@@ -75,7 +75,7 @@ struct CompanyTargetsCard: View {
                             SectionTabs(items: [0, 1, 2], title: { ManagerTargets.bonusLevels[$0].name }, selection: $bonus).padding(.horizontal, -Theme.Space.margin)
                         }
                         let perTarget = pv.hasManager ? pv.bonusPerTarget[min(2, max(0, bonus))] : 0
-                        let costLine = pv.hasManager ? (perTarget > 0 ? "\(cur.short(perTarget)) for each target met, up to \(cur.short(perTarget * 3)) a month." : "no bonus is paid.") : "none, you run it yourself."
+                        let costLine = pv.hasManager ? (perTarget > 0 ? "\(cur.tidyShort(perTarget)) for each target met, up to \(cur.tidyShort(perTarget * 3)) a month." : "no bonus is paid.") : "none, you run it yourself."
                         let benefitLine = mode == 2 ? "a stretch pushes for the most, and a manager with a bonus works to it." : mode == 0 ? "easy numbers are usually met, so the bonus is nearly always earned." : "a fair aim based on the last year and the market."
                         let riskLine = mode == 2 ? "stretch targets are often missed, and a manager who misses again and again can lose heart." : mode == 0 ? "you may pay bonuses for what would have happened anyway." : "a bad month still misses them."
                         VStack(alignment: .leading, spacing: 3) {
@@ -113,7 +113,7 @@ struct CompanyPerksCard: View {
         if !company.staff.isEmpty || company.managerID != nil {
             let cur = engine.currency(for: company)
             let total = engine.staffPerksMonthlyTotal(companyID: company.id)
-            LedgerSection(title: "Perks", trailing: { Text(total > 0 ? "\(cur.short(total)) a month" : "none yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            LedgerSection(title: "Perks", trailing: { Text(total > 0 ? "\(cur.tidyShort(total)) a month" : "none yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(engine.staffPerkOptions.enumerated()), id: \.element.id) { n, p in
                         let on = engine.staffPerkIsOn(companyID: company.id, perk: p.id)
@@ -122,7 +122,7 @@ struct CompanyPerksCard: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                 Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                                Text("\(cur.short(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                                Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
                             }
                             Spacer(minLength: 8)
                             Button(on ? "On" : "Add") {
@@ -136,7 +136,7 @@ struct CompanyPerksCard: View {
             }
             .confirmationDialog(pending.map { "Add \($0.name.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending {
-                    Button("Add for \(cur.short(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month") {
+                    Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month") {
                         let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil
                         if r == true { Haptics.success(); store.show("\(p.name) added.", tone: "good") } else { store.show("Not possible right now.", tone: "warn") }
                         pending = nil
@@ -163,7 +163,7 @@ struct SuccessorSection: View {
         let waiting = engine.successorCandidates(companyID: company.id)
         VStack(alignment: .leading, spacing: 8) {
             if waiting.isEmpty {
-                Button("Find a successor · \(cur.short(cur.scaledPrice(15000)))") { confirm = true }.buttonStyle(QuietButtonStyle())
+                Button("Find a successor · \(cur.tidyShort(cur.scaledPrice(15000)))") { confirm = true }.buttonStyle(QuietButtonStyle())
                 Text("Cost: the executive search fee. Benefit: four candidates to choose from before the handover, so the company is not left without a manager. Risk: none may suit, and the fee is not refunded.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
@@ -177,7 +177,7 @@ struct SuccessorSection: View {
             }
         }
         .confirmationDialog("Start the search?", isPresented: $confirm, titleVisibility: .visible) {
-            Button("Pay \(cur.short(cur.scaledPrice(15000))) and search") {
+            Button("Pay \(cur.tidyShort(cur.scaledPrice(15000))) and search") {
                 if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found.", tone: "good") }
                 else { store.show("Not enough cash for the search.", tone: "warn") }
             }

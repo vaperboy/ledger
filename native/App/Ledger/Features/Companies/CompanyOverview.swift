@@ -86,7 +86,7 @@ struct CompanyOverview: View {
         default: break
         }
         if co.cash < 0 { return "Out of cash: bills and wages are at risk. Put money in or cut costs." }
-        if let w = h.runwayWeeks, w < 8 { return "Losing money: at this rate the cash runs out in \(Int(w)) weeks." }
+        if let w = h.runwayWeeks, w < 8 { return "Losing money: at this rate the cash runs out in \(Int(w).weeksText)." }
         switch h.label {
         case "Thriving": return "Doing very well: profitable, growing and with cash to spare."
         case "Healthy": return "Doing well: profitable and paying its way."
@@ -100,6 +100,8 @@ struct CompanyOverview: View {
     @ViewBuilder private func needsYou(_ co: Company) -> some View {
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count
+        // The same list the Team tab shows (paperwork, worn-out staff, a manager leaving or struggling), so the two screens never disagree.
+        let matters = engine.teamOverview().issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
         let nobody = co.status == .open && co.type != "hold" && co.managerID == nil && co.ownerHours == 0 && engine.decisionChain(companyID: co.id).isEmpty
         let setupLeft = co.status == .setup ? engine.openingChecklist(companyID: co.id).filter { !$0.isDone }.count : 0
         let behind = engine.state.loans.contains { $0.companyID == co.id && $0.int("miss") > 0 } || co.int("supCut") > 0 || co.num("vatOver") > 1 || co.int("loanCall") != 0
@@ -110,16 +112,17 @@ struct CompanyOverview: View {
                 ForEach(Array(asks.prefix(3).enumerated()), id: \.element.id) { n, m in
                     if n > 0 { Hairline() }
                     row(symbol: "questionmark.bubble", tint: Theme.caution, title: m.title, sub: m.from.isEmpty ? "Waiting for your answer" : "From \(m.from)", action: "Decide") {
-                        store.openMessageID = m.id; store.tab = .inbox
+                        store.openMessage(m.id)
                     }
                 }
                 if asks.count > 3 { Text("and \(asks.count - 3) more in Inbox").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4) }
                 if setupLeft > 0 { divider(asks.isEmpty); row(symbol: "checklist", tint: Theme.caution, title: "\(setupLeft) thing\(setupLeft == 1 ? "" : "s") left before opening", sub: "Documents, premises, equipment, stock", action: "Setup") { go(.setup) } }
                 if co.status == .closed { divider(asks.isEmpty && setupLeft == 0); row(symbol: "moon.zzz", tint: Theme.caution, title: "Closed", sub: "Reopen it or close down for good", action: "Settings") { goMoney(.settings) } }
                 if behind { divider(false); row(symbol: "exclamationmark.triangle", tint: Theme.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Finances") { goMoney(.summary) } }
+                if !matters.isEmpty { divider(false); row(symbol: "doc.badge.ellipsis", tint: Theme.caution, title: matters.count == 1 ? matters[0].title : "\(matters.count) staff matters need you", sub: matters.count == 1 ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Team") { go(.staff) } }
                 if people > 0 { divider(false); row(symbol: "person.crop.circle.badge.exclamationmark", tint: Theme.caution, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Team") { go(.staff) } }
                 if nobody { divider(false); row(symbol: "person.fill.questionmark", tint: Theme.loss, title: "No one runs it", sub: "You do not work here and there is no manager", action: "Team") { go(.staff) } }
-                if asks.isEmpty && setupLeft == 0 && co.status != .closed && !behind && people == 0 && !nobody {
+                if asks.isEmpty && setupLeft == 0 && co.status != .closed && !behind && people == 0 && matters.isEmpty && !nobody {
                     Text("Nothing waiting for you here.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
                 }
             }

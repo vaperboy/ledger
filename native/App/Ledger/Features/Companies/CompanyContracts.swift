@@ -86,8 +86,8 @@ struct CompanyContracts: View {
         return VStack(alignment: .leading, spacing: 8) {
             row("Price per unit", store.money(d.price, in: company) + discountText)
             row("Worth a year", store.short(d.worthAYear, in: company))
-            row("Term", "\(d.weeksLeft) weeks left" + extText)
-            row("Customer pays after", "\(c.paymentWeeks) weeks")
+            row("Term", "\(d.weeksLeft.weeksText) left" + extText)
+            row("Customer pays after", c.paymentWeeks.weeksText)
             row("Unpaid invoices", store.short(d.outstanding, in: company))
             row("Warnings", "\(Int(c.warnings)) of 12" + (c.higherQuality ? " · higher quality promised" : ""))
             Text("Risks: a customer can go under (its unpaid invoices are lost), walk away from poor quality or not renew. Below 85% served, warnings build up: a penalty at six, the contract is cancelled at twelve.")
@@ -174,9 +174,9 @@ struct CompanyContracts: View {
             row("Your price", priceText)
             row("Worth a year at your price", store.short(t.worth * pf / years, in: company))
             row("Term", termText)
-            row("Buyer pays after", "\(payWeeks) weeks")
+            row("Buyer pays after", payWeeks.weeksText)
             row("Takes of your capacity", capText)
-            row("Bids close", "in \(weeksToBid) weeks · award \(GameCalendar.dateString(week: t.awardWeek))")
+            row("Bids close", "in \(weeksToBid.weeksText) · award \(GameCalendar.dateString(week: t.awardWeek))")
             row("Writing the bid costs", store.money(t.bidCost, in: company))
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {

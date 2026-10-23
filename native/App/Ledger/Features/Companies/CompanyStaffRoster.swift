@@ -42,7 +42,7 @@ struct CompanyStaffRoster: View {
         let attention = shown.filter(StaffIssue.needsAttention)
         let big = staff.count > 8
         LedgerSection(title: "Team", trailing: {
-            Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(cur.short(staff.reduce(0) { $0 + $1.monthlyWage })) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(cur.tidyShort(staff.reduce(0) { $0 + $1.monthlyWage })) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 if staff.isEmpty {
@@ -67,7 +67,7 @@ struct CompanyStaffRoster: View {
                                 Text(roleLabel(role)).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                                 Text("\(members.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 Spacer()
-                                Text(cur.short(members.reduce(0) { $0 + $1.monthlyWage }) + " a month").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                Text(cur.tidyShort(members.reduce(0) { $0 + $1.monthlyWage }) + " a month").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }.buttonStyle(.plain).overlay(alignment: .top) { Hairline() }
                         if open { ForEach(members) { m in row(m, cur, showIssues: false).padding(.leading, 14) } }
@@ -106,7 +106,7 @@ struct CompanyStaffRoster: View {
                         .font(.system(size: 11)).foregroundStyle(StaffIssue.needsAttention(m) ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
                 }
                 Spacer(minLength: 6)
-                Text(cur.short(m.monthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(cur.tidyShort(m.monthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
                 Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
             }.padding(.vertical, 8).contentShape(Rectangle())
         }.buttonStyle(.plain)
@@ -130,7 +130,7 @@ struct CompanyStaffRoster: View {
                 Menu("Lay off the weakest") {
                     ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
                         let p = engine.layoffPreview(companyID: company.id, count: n)
-                        Button("\(n) · saves \(cur.short(p.savesPerMonth)) a month, severance \(cur.short(p.severance))") { confirmLayOff(n, p, cur) }
+                        Button("\(n) · saves \(cur.tidyShort(p.savesPerMonth)) a month, severance \(cur.tidyShort(p.severance))") { confirmLayOff(n, p, cur) }
                     }
                 }.font(.caption.weight(.semibold)).foregroundStyle(Theme.loss)
             }.padding(.top, 8)
@@ -188,7 +188,7 @@ struct StaffProfileView: View {
             Text(p.name).font(.serifTitle(26)).foregroundStyle(Theme.ivory)
             Text("\(p.roleName) · age \(p.age) · \(p.skillBand.lowercased())").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             KeyFigures(items: [
-                .init(label: "Pay", value: cur.short(p.monthlyWage), sub: p.payBasis == "fix" ? "fixed, a month" : "by the hour, a month"),
+                .init(label: "Pay", value: cur.tidyShort(p.monthlyWage), sub: p.payBasis == "fix" ? "fixed, a month" : "by the hour, a month"),
                 .init(label: "Skill", value: "\(Int(p.skill.rounded()))", sub: p.skillGainedSinceStart ? "has grown here" : ""),
                 .init(label: "With you", value: p.weeksWithYou >= 52 ? String(format: "%.1f yr", Double(p.weeksWithYou) / 52) : "\(p.weeksWithYou) wk"),
             ]).padding(.top, 8)
@@ -227,7 +227,7 @@ struct StaffProfileView: View {
                 HStack {
                     Menu("Give a raise") {
                         ForEach([3, 6, 10], id: \.self) { pct in
-                            Button("\(pct)% · \(cur.short(p.monthlyWage * Double(pct) / 100)) more a month") { raise(pct, p, cur) }
+                            Button("\(pct)% · \(cur.tidyShort(p.monthlyWage * Double(pct) / 100)) more a month") { raise(pct, p, cur) }
                         }
                     }.buttonStyle(QuietButtonStyle())
                     if p.problem != nil { Button("Talk to them") { talk(p) }.buttonStyle(QuietButtonStyle()) }
@@ -244,7 +244,7 @@ struct StaffProfileView: View {
                 if !p.courses.isEmpty {
                     Menu("Send on a course") {
                         ForEach(p.courses, id: \.id) { c in
-                            Button("\(c.name) · \(cur.short(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { course(c, p) }
+                            Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { course(c, p) }
                         }
                     }.buttonStyle(QuietButtonStyle())
                     Text("Results vary: a course can change nothing, and a good result may tempt a competitor to poach them.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -285,7 +285,7 @@ struct StaffProfileView: View {
     }
 
     private func confirmDismiss(_ p: StaffProfile.Profile, _ cur: Currency) {
-        let risk = p.dismissalDocumented ? "Two warnings or theft are on file, so this is easy to defend." : "Nothing documented: they may claim unfair dismissal and win \(cur.short(p.compensationRange.lowerBound)) to \(cur.short(p.compensationRange.upperBound))."
+        let risk = p.dismissalDocumented ? "Two warnings or theft are on file, so this is easy to defend." : "Nothing documented: they may claim unfair dismissal and win \(cur.tidyShort(p.compensationRange.lowerBound)) to \(cur.tidyShort(p.compensationRange.upperBound))."
         pending = PendingAction(title: "Let \(p.name) go?", message: "Notice and severance of \(cur.display(p.severance)) is paid. \(risk)", button: "Let go", destructive: true) {
             guard let r = store.act({ $0.dismissStaff(companyID: companyID, staffID: staffID) }) ?? nil else { store.show("They no longer work here.", tone: "warn"); dismiss(); return }
             Haptics.warning()

@@ -32,11 +32,11 @@ struct CompanyProperties: View {
 
     private func figures(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         KeyFigures(items: [
-            .init(label: "Property value", value: cur.short(pf.totalValue), sub: "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"),
-            .init(label: "Rent a week", value: cur.short(pf.weeklyRent), sub: pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""),
+            .init(label: "Property value", value: cur.tidyShort(pf.totalValue), sub: "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"),
+            .init(label: "Rent a week", value: cur.tidyShort(pf.weeklyRent), sub: pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""),
             .init(label: "Let", value: Currency.percent(pf.occupancy, decimals: 0), tint: pf.occupancy < 0.8 ? Theme.caution : Theme.ivory, sub: "\(Int(pf.totalUnits.rounded())) \(pf.unitWord)"),
-            .init(label: "Mortgages", value: cur.short(pf.mortgages), tint: pf.mortgages > 0 ? Theme.loss : Theme.ivory),
-            .init(label: "Gain on cost", value: cur.short(pf.gainOnCost), tint: Theme.change(pf.gainOnCost), sub: "not profit until sold"),
+            .init(label: "Mortgages", value: cur.tidyShort(pf.mortgages), tint: pf.mortgages > 0 ? Theme.loss : Theme.ivory),
+            .init(label: "Gain on cost", value: cur.tidyShort(pf.gainOnCost), tint: Theme.change(pf.gainOnCost), sub: "not profit until sold"),
             .init(label: "Staff cover", value: Currency.percent(min(1, pf.staffCover), decimals: 0), tint: pf.staffCover < 0.8 ? Theme.caution : Theme.ivory, sub: "caretakers, managers"),
         ])
     }
@@ -59,13 +59,13 @@ struct CompanyProperties: View {
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.short(p.value)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Text("bought " + cur.short(p.cost)).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                Text(cur.tidyShort(p.value)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Text("bought " + cur.tidyShort(p.cost)).font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
                         HStack(spacing: 14) {
-                            Text("Rent " + cur.short(p.weeklyRent) + " a week").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                            if p.mortgage > 0 { Text("Mortgage " + cur.short(p.mortgage)).font(.caption).foregroundStyle(Theme.loss) }
+                            Text("Rent " + cur.tidyShort(p.weeklyRent) + " a week").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                            if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).font(.caption).foregroundStyle(Theme.loss) }
                         }
                         HStack(spacing: 18) {
                             Button("Renovate") { renovate(p) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
@@ -84,7 +84,7 @@ struct CompanyProperties: View {
             }
         }
         .confirmationDialog("Sell this property?", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), presenting: pendingSell) { p in
-            Button("Sell for about " + cur.short(p.value * 0.975) + (p.mortgage > 0 ? ", repay the mortgage" : ""), role: .destructive) { sell(p) }
+            Button("Sell for about " + cur.tidyShort(p.value * 0.975) + (p.mortgage > 0 ? ", repay the mortgage" : ""), role: .destructive) { sell(p) }
             Button("Keep it", role: .cancel) {}
         } message: { p in
             Text("Selling on the market costs 2.5% of the value. \(p.name)")
@@ -100,7 +100,7 @@ struct CompanyProperties: View {
                     HStack {
                         Text("\(l.tenant) · \(Int(l.squareMetres)) m2").font(.caption).foregroundStyle(Theme.ivoryMuted)
                         Spacer()
-                        Text(cur.short(l.weeklyRent) + " a week · \(l.weeksLeft / 52) y left").font(.caption.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                        Text(cur.tidyShort(l.weeklyRent) + " a week · \(l.weeksLeft / 52) y left").font(.caption.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }
@@ -112,7 +112,7 @@ struct CompanyProperties: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("\(Int(o.squareMetres)) m2 · \(cur.short(o.squareMetres * o.weeklyRentPerM2)) a week · \(o.years) year lease").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("\(Int(o.squareMetres)) m2 · \(cur.tidyShort(o.squareMetres * o.weeklyRentPerM2)) a week · \(o.years) year lease").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
                         Button("Lease") { lease(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
@@ -123,7 +123,7 @@ struct CompanyProperties: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("Offers " + cur.short(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
                         Button("Sell to them") { sellBuilding(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
@@ -150,12 +150,12 @@ struct CompanyProperties: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                            Text("Rent \(cur.short(L.rentPerUnit)) a week each · gross yield \(Currency.percent(L.grossYield, decimals: 1)) · \(conditionWord(L.condition))")
+                            Text("Rent \(cur.tidyShort(L.rentPerUnit)) a week each · gross yield \(Currency.percent(L.grossYield, decimals: 1)) · \(conditionWord(L.condition))")
                                 .font(.caption).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text(cur.short(L.price)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Text(cur.tidyShort(L.price)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
                             Button("Buy") { pendingBuy = L }.font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                         }
                     }
@@ -165,7 +165,7 @@ struct CompanyProperties: View {
             }
         }
         .confirmationDialog("Buy this property?", isPresented: Binding(get: { pendingBuy != nil }, set: { if !$0 { pendingBuy = nil } }), presenting: pendingBuy) { L in
-            Button("Buy for " + cur.short(L.price) + " plus 2.5% costs, \(Currency.percent(loanToValue, decimals: 0)) loan") { buy(L) }
+            Button("Buy for " + cur.tidyShort(L.price) + " plus 2.5% costs, \(Currency.percent(loanToValue, decimals: 0)) loan") { buy(L) }
             Button("Cancel", role: .cancel) {}
         } message: { L in
             Text(L.name)
@@ -184,7 +184,7 @@ struct CompanyProperties: View {
     }
 
     private func sell(_ p: PropertyRow) {
-        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 { Haptics.success(); store.show("Sold for \(engine.currency(for: company).short(net)) after costs.", tone: "good") }
+        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 { Haptics.success(); store.show("Sold for \(engine.currency(for: company).tidyShort(net)) after costs.", tone: "good") }
         else { Haptics.warning(); store.show("The property could not be sold.", tone: "warn") }
     }
 

@@ -42,10 +42,10 @@ struct CompanyFinanceBook: View {
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
                 .init(label: "Policies", value: String(Int(b.policies.rounded()))),
-                .init(label: "Premiums a week", value: cur.short(b.weeklyPremium), sub: cur.short(b.weeklyPremium * 52) + " a year"),
+                .init(label: "Premiums a week", value: cur.tidyShort(b.weeklyPremium), sub: cur.tidyShort(b.weeklyPremium * 52) + " a year"),
                 .init(label: "Claims vs premiums", value: Currency.percent(b.lossRatio, decimals: 0), tint: b.lossRatio > 0.9 ? Theme.loss : Theme.ivory, sub: "loss ratio"),
                 .init(label: "Solvency", value: String(format: "%.2f", b.solvency), tint: b.solvency < 1 ? Theme.loss : Theme.ivory, sub: "needs 1.0"),
-                .init(label: "Storm claims", value: cur.short(b.claimsPaidByStorms), sub: "so far"),
+                .init(label: "Storm claims", value: cur.tidyShort(b.claimsPaidByStorms), sub: "so far"),
             ])
             LedgerSection("Products") {
                 VStack(spacing: 0) {
@@ -53,7 +53,7 @@ struct CompanyFinanceBook: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
-                                Text(p.status + (p.isOffered ? " · verified sellers \(String(format: "%.1f", p.verifiedSellers))" : " · approval " + cur.short(p.approvalFee)))
+                                Text(p.status + (p.isOffered ? " · verified sellers \(String(format: "%.1f", p.verifiedSellers))" : " · approval " + cur.tidyShort(p.approvalFee)))
                                     .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -96,12 +96,12 @@ struct CompanyFinanceBook: View {
     private func bank(_ b: FinanceBook, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
-                .init(label: "Deposits", value: cur.short(b.deposits), sub: "owed to savers"),
-                .init(label: "Loans to customers", value: cur.short(b.loans)),
-                .init(label: "Loans to your group", value: cur.short(b.groupLoans)),
+                .init(label: "Deposits", value: cur.tidyShort(b.deposits), sub: "owed to savers"),
+                .init(label: "Loans to customers", value: cur.tidyShort(b.loans)),
+                .init(label: "Loans to your group", value: cur.tidyShort(b.groupLoans)),
                 .init(label: "Capital ratio", value: Currency.percent(b.capitalRatio, decimals: 1), tint: b.capitalRatio < b.requiredRatio ? Theme.loss : Theme.ivory, sub: "minimum " + Currency.percent(b.requiredRatio, decimals: 0)),
-                .init(label: "Equity", value: cur.short(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory),
-                .init(label: "Central bank", value: cur.short(b.centralBankLoan), tint: b.centralBankLoan > 0 ? Theme.caution : Theme.ivory, sub: "liquidity loan"),
+                .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory),
+                .init(label: "Central bank", value: cur.tidyShort(b.centralBankLoan), tint: b.centralBankLoan > 0 ? Theme.caution : Theme.ivory, sub: "liquidity loan"),
             ])
             LedgerSection("How the bank earns") {
                 Meter(label: "Capital", value: min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
@@ -116,8 +116,8 @@ struct CompanyFinanceBook: View {
     private func fund(_ b: FinanceBook, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
-                .init(label: "Assets managed", value: cur.short(b.assetsUnderManagement), sub: "investors' money"),
-                .init(label: "Fee income", value: cur.short(b.assetsUnderManagement * b.managementFee / 52), sub: "a week, " + Currency.percent(b.managementFee, decimals: 1) + " a year"),
+                .init(label: "Assets managed", value: cur.tidyShort(b.assetsUnderManagement), sub: "investors' money"),
+                .init(label: "Fee income", value: cur.tidyShort(b.assetsUnderManagement * b.managementFee / 52), sub: "a week, " + Currency.percent(b.managementFee, decimals: 1) + " a year"),
                 .init(label: "Unit value", value: String(format: "%.3f", b.unitValue), tint: Theme.change(b.unitValue - 1)),
                 .init(label: "High-water mark", value: String(format: "%.3f", b.highWaterMark), sub: b.unitValue > b.highWaterMark * 1.04 ? "fee due at year end" : "fee above +4%"),
                 .init(label: "Performance fee", value: Currency.percent(b.performanceFee, decimals: 0), sub: "of gains above the mark"),

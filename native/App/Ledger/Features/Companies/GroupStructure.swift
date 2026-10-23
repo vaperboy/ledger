@@ -100,9 +100,9 @@ struct GroupStructureOverview: View {
         LedgerSection("Structure") {
             VStack(alignment: .leading, spacing: 0) {
                 KeyFigures(items: [
-                    .init(label: "Companies", value: "\(live.count)", sub: "\(Set(live.map { $0.cityID }).count) cities"),
+                    .init(label: "Companies", value: "\(live.count)", sub: "\(Set(live.map { $0.cityID }).count) \(Set(live.map { $0.cityID }).count == 1 ? "city" : "cities")"),
                     .init(label: "Holdings", value: "\(holdings.count)", sub: "\(live.filter { $0.holdingID != 0 }.count) held"),
-                    .init(label: "Chains", value: "\(chains.count)", sub: "\(chains.reduce(0) { $0 + $1.stores.count }) stores"),
+                    .init(label: "Chains", value: "\(chains.count)", sub: "\(chains.reduce(0) { $0 + $1.stores.count }) \(chains.reduce(0) { $0 + $1.stores.count } == 1 ? "store" : "stores")"),
                     .init(label: "Your franchise units", value: "\(units)", sub: "run by others"),
                     .init(label: "Franchisee", value: "\(franchised.count)", sub: "under a brand"),
                     .init(label: "Stand alone", value: "\(alone.count)", sub: "no chain"),
@@ -166,7 +166,7 @@ struct GroupStructureOverview: View {
                         NavigationLink { ChainView(chainID: s.id) } label: {
                             GroupLinkRow(title: s.name,
                                          sub: "\(s.stores.count) \(s.stores.count == 1 ? "store" : "stores") in \(cities) \(cities == 1 ? "city" : "cities") · \(s.reach.label)" + (s.franchiseUnits > 0 ? " · \(s.franchiseUnits) franchise units" : "") + (losing > 0 ? " · \(losing) losing money" : ""),
-                                         trailing: engine.homeCurrency.short(s.profit) + " / mo", tint: s.profit < 0 ? Theme.loss : Theme.ivory,
+                                         trailing: engine.homeCurrency.tidyShort(s.profit) + " / mo", tint: s.profit < 0 ? Theme.loss : Theme.ivory,
                                          subTint: losing > 0 ? Theme.caution : Theme.ivoryFaint)
                         }.buttonStyle(.plain)
                     }
@@ -220,8 +220,8 @@ struct GroupStructureOverview: View {
         let f = engine.franchiseSystem(companyID: c.id)
         let apps = engine.franchiseApplicants(companyID: c.id).count
         let row = GroupLinkRow(title: "\(chain?.name ?? c.name) franchise",
-                               sub: "\(f["units"].array.count) units · \(apps) applying · fee \(engine.currency(for: c).short(f["fee"].double)) · royalty \(Currency.percent(f["roy"].double, decimals: 0))",
-                               trailing: engine.currency(for: c).short(f["income"].double) + " / wk", subTint: apps > 0 ? Theme.gain : Theme.ivoryFaint)
+                               sub: "\(f["units"].array.count) \(f["units"].array.count == 1 ? "unit" : "units") · \(apps) applying · fee \(engine.currency(for: c).tidyShort(f["fee"].double)) · royalty \(Currency.percent(f["roy"].double, decimals: 0))",
+                               trailing: engine.currency(for: c).tidyShort(f["income"].double) + " / wk", subTint: apps > 0 ? Theme.gain : Theme.ivoryFaint)
         if let chain {
             NavigationLink { ChainView(chainID: chain.id) } label: { row }.buttonStyle(.plain)
         } else {
@@ -239,7 +239,7 @@ struct GroupStructureOverview: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(brand).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(cos.count) units under this brand").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text("\(cos.count) \(cos.count == 1 ? "unit" : "units") under this brand").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
                     Spacer()
                     Image(systemName: openBrand == brand ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)

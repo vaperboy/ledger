@@ -137,7 +137,7 @@ struct TeamView: View {
     /// Opens the exact record an issue is about: the decision in the Inbox, or the company on the section where it is dealt with.
     private func open(_ i: TeamOverview.Issue, _ e: GameEngine) {
         Haptics.tap()
-        if i.kind == .decision, let m = i.messageID { store.openMessageID = m; store.tab = .inbox; return }
+        if i.kind == .decision, let m = i.messageID { store.openMessage(m); return }
         guard let id = i.companyID else { return }
         let section: CompanySection
         switch i.kind {

@@ -63,7 +63,7 @@ struct AcquisitionSheet: View {
                                             Image(systemName: selected == c.kind ? "checkmark.circle.fill" : "circle").foregroundStyle(selected == c.kind ? Theme.gold : Theme.ivoryFaint)
                                             Text(title(c.kind)).font(.system(size: 13.5)).foregroundStyle(c.affordable ? Theme.ivory : Theme.ivoryFaint)
                                             Spacer()
-                                            Text(c.affordable ? cur.short(c.cashNeeded) : "Short of cash").font(.system(size: 12).monospacedDigit()).foregroundStyle(c.affordable ? Theme.ivoryMuted : Theme.loss)
+                                            Text(c.affordable ? cur.tidyShort(c.cashNeeded) : "Short of cash").font(.system(size: 12).monospacedDigit()).foregroundStyle(c.affordable ? Theme.ivoryMuted : Theme.loss)
                                         }.padding(.vertical, 9).contentShape(Rectangle())
                                     }.buttonStyle(.plain)
                                 }
@@ -71,11 +71,11 @@ struct AcquisitionSheet: View {
                         }
                         LedgerSection("Cash and costs") {
                             VStack(spacing: 0) {
-                                FlatRow(label: "Price to the owner", value: cur.short(price), rule: false)
-                                if ch.extraCost > 0 { FlatRow(label: ownsCompany(ch.kind) ? "Set-up money for the new company" : "Extra cost of this choice", value: cur.short(ch.extraCost)) }
-                                if ch.loan > 0 { FlatRow(label: "Loan from your bank", value: "−" + cur.short(ch.loan), sub: "\(cur.short(ch.loanMonthly)) a month for 8 years at \(Currency.percent(ch.loanRate, decimals: 2))", tint: Theme.caution) }
-                                FlatRow(label: "Cash you need", value: cur.short(ch.cashNeeded), sub: ownsCompany(ch.kind) ? "includes a \(cur.short(plan.reserve)) reserve the purchase insists on" : "", tint: ch.affordable ? Theme.ivory : Theme.loss)
-                                FlatRow(label: "You have", value: cur.short(ownsCompany(ch.kind) ? plan.liquid : plan.cash), sub: ownsCompany(ch.kind) ? "cash and savings" : "current account")
+                                FlatRow(label: "Price to the owner", value: cur.tidyShort(price), rule: false)
+                                if ch.extraCost > 0 { FlatRow(label: ownsCompany(ch.kind) ? "Set-up money for the new company" : "Extra cost of this choice", value: cur.tidyShort(ch.extraCost)) }
+                                if ch.loan > 0 { FlatRow(label: "Loan from your bank", value: "−" + cur.tidyShort(ch.loan), sub: "\(cur.tidyShort(ch.loanMonthly)) a month for 8 years at \(Currency.percent(ch.loanRate, decimals: 2))", tint: Theme.caution) }
+                                FlatRow(label: "Cash you need", value: cur.tidyShort(ch.cashNeeded), sub: ownsCompany(ch.kind) ? "includes a \(cur.tidyShort(plan.reserve)) reserve the purchase insists on" : "", tint: ch.affordable ? Theme.ivory : Theme.loss)
+                                FlatRow(label: "You have", value: cur.tidyShort(ownsCompany(ch.kind) ? plan.liquid : plan.cash), sub: ownsCompany(ch.kind) ? "cash and savings" : "current account")
                             }
                         }
                         LedgerSection("What changes") {
@@ -86,7 +86,7 @@ struct AcquisitionSheet: View {
                                 if plan.hiddenBillRisk { labelled("In trouble", "\(r.name) is in money trouble. Unpaid supplier bills or a tax claim from before may surface after you buy, and they become yours.") }
                             }
                         }
-                        Button("Buy for \(cur.short(price))") {
+                        Button("Buy for \(cur.tidyShort(price))") {
                             pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.display(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.display(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
                                 let k = ch.kind; dismiss(); choose(k)
                             }

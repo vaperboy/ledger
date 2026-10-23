@@ -68,12 +68,12 @@ struct PhoneView: View {
     }
     private func richLine(_ e: GameEngine) -> String {
         let st = RichList.standing(e.state, data: e.data, context: e.context)
-        return st.rank.map { "You are number \($0) in \(e.homeCountry.name)" } ?? "Not on the list yet"
+        return st.rank.map { "You are number \($0.formatted()) in \(e.homeCountry.name)" } ?? "Not on the list yet"
     }
 
     private func rankingLine(_ e: GameEngine) -> String {
         guard let r = e.yourRanking() else { return "Appears once you run a business" }
-        return "You are number \(r.rank) of \(r.of) in \(e.homeCountry.name) by sales"
+        return "You are number \(r.rank.formatted()) of \(r.of.formatted()) in \(e.homeCountry.name) by sales"
     }
 
     private func openRequested() {

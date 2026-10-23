@@ -47,14 +47,14 @@ struct FranchisesView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(b.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text("\(b.tierDescription) · \(b.units) units · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(b.tierDescription) · \(b.units) \(b.units == 1 ? "unit" : "units") · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer(minLength: 8)
-                Text("Fee \(cur.short(e.franchiseEntryFee(b)))").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text("Fee \(cur.tidyShort(e.franchiseEntryFee(b)))").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
             }
             switch st {
             case "pending":
-                Text("Application sent. Answer in about \(max(1, a["due"].int - e.state.week)) weeks.").font(.caption).foregroundStyle(Theme.caution)
+                Text("Application sent. Answer in about \(max(1, a["due"].int - e.state.week).weeksText).").font(.caption).foregroundStyle(Theme.caution)
             case "invited":
                 HStack {
                     Text("They want to talk. Open for \(max(0, a["exp"].int - e.state.week)) more weeks.").font(.caption).foregroundStyle(Theme.gain)
@@ -64,7 +64,7 @@ struct FranchisesView: View {
             case "agreed":
                 let t = e.franchiseAgreedTerms(b.id)
                 HStack {
-                    Text("Terms agreed. Entry fee \(cur.short(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).").font(.caption).foregroundStyle(Theme.gain)
+                    Text("Terms agreed. Entry fee \(cur.tidyShort(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).").font(.caption).foregroundStyle(Theme.gain)
                     Spacer()
                     NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Talk again").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
                     NavigationLink { StartFranchisedView(brandID: b.id) } label: { Text("Start with this deal").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold) }
@@ -154,19 +154,19 @@ struct BrandMeetingView: View {
                             }
                         }
                         if let t = result?.terms, result?.kind == .accept || result?.kind == .counter {
-                            Text("Entry fee \(cur.short(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                            Text("Entry fee \(cur.tidyShort(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
                         }
                     }
                     LedgerSection(title: "Facts", trailing: { Button(showFacts ? "Hide" : "Show") { showFacts.toggle() }.font(.system(size: 11)).foregroundStyle(Theme.gold).buttonStyle(.plain) }) {
                         if showFacts {
                             VStack(spacing: 0) {
                                 FlatRow(label: "Units open", value: "\(b.units)", rule: false)
-                                FlatRow(label: "Entry fee", value: cur.short(e.franchiseEntryFee(b)))
+                                FlatRow(label: "Entry fee", value: cur.tidyShort(e.franchiseEntryFee(b)))
                                 FlatRow(label: "Royalty", value: Currency.percent(b.royalty, decimals: 1) + " of revenue")
                                 FlatRow(label: "Marketing fund", value: Currency.percent(b.marketingFund, decimals: 0))
                                 FlatRow(label: "Setup support", value: ["None, you pay everything", "They cover about 40%", "They cover about 70%"][min(2, b.support)])
                                 FlatRow(label: "Contract length", value: "\(b.termYears) years")
-                                FlatRow(label: "Typical unit revenue", value: cur.short(stats.revenue) + " / wk")
+                                FlatRow(label: "Typical unit revenue", value: cur.tidyShort(stats.revenue) + " / wk")
                                 FlatRow(label: "Margin after fees", value: Currency.percent(stats.margin, decimals: 0))
                                 FlatRow(label: "Units failing in 5 years", value: "\(Int(b.failPercent))%")
                                 FlatRow(label: "Quality standard", value: b.standard >= 70 ? "Strict" : b.standard >= 58 ? "Firm" : "Relaxed")
@@ -232,7 +232,7 @@ struct StartFranchisedView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Start under \(b.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("Entry fee \(cur.short(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Entry fee \(cur.tidyShort(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     LedgerSection("Where and how") {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -245,10 +245,10 @@ struct StartFranchisedView: View {
                     if let est {
                         LedgerSection("Start-up cost") {
                             VStack(spacing: 0) {
-                                FlatRow(label: "Start-up estimate", value: cur.short(est.estimate.total), sub: "Documents, equipment, premises, stock, first payroll.", rule: false)
-                                FlatRow(label: "Franchise entry fee", value: cur.short(est.fee))
+                                FlatRow(label: "Start-up estimate", value: cur.tidyShort(est.estimate.total), sub: "Documents, equipment, premises, stock, first payroll.", rule: false)
+                                FlatRow(label: "Franchise entry fee", value: cur.tidyShort(est.fee))
                                 if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in the company's account when you start.", tint: Theme.gain) }
-                                FlatRow(label: "You have available", value: cur.short(Payments.liquid(e.state)))
+                                FlatRow(label: "You have available", value: cur.tidyShort(Payments.liquid(e.state)))
                             }
                         }
                         Button("Create company") {

@@ -47,13 +47,13 @@ struct CompanyClub: View {
                     .init(label: "Position", value: c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"),
                     .init(label: "Points", value: "\(c.points)", sub: "from \(c.played) games"),
                     .init(label: "Squad", value: FootballModel.wordForStrength(c.squadStrength), sub: "strength \(Int(c.squadStrength.rounded()))"),
-                    .init(label: "Club value", value: cur.short(c.clubValue)),
+                    .init(label: "Club value", value: cur.tidyShort(c.clubValue)),
                     .init(label: "Titles", value: "\(c.titles)"),
                     .init(label: "Stadium full", value: c.fill > 0 ? "\(Int((c.fill * 100).rounded()))%" : "–"),
                 ])
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
                 if !c.form.isEmpty { HStack(spacing: 2) { ForEach(Array(c.form.suffix(8).enumerated()), id: \.offset) { _, r in form(r) } }.padding(.bottom, 6) }
-                if c.debt > 0 { FlatRow(label: "Club debt", value: cur.short(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
+                if c.debt > 0 { FlatRow(label: "Club debt", value: cur.tidyShort(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
                 if !c.seasons.isEmpty {
                     Text("Past seasons").capsLabel().padding(.top, Theme.Space.m)
                     ForEach(Array(c.seasons.enumerated()), id: \.offset) { n, s in
@@ -83,15 +83,15 @@ struct CompanyClub: View {
             }
             LedgerSection("A normal week") {
                 VStack(spacing: 0) {
-                    FlatRow(label: "Television", value: cur.short(c.weekly["tv"] ?? 0), rule: false)
-                    FlatRow(label: "Sponsors", value: cur.short(c.weekly["spons"] ?? 0))
-                    FlatRow(label: "Merchandise", value: cur.short(c.weekly["merch"] ?? 0))
-                    FlatRow(label: "Gate income, last home match", value: cur.short(c.weekly["match"] ?? 0))
-                    FlatRow(label: "Player wages", value: cur.short(c.weekly["wages"] ?? 0), tint: Theme.ivoryMuted)
-                    FlatRow(label: "Manager and assistant", value: cur.short(c.weekly["coaches"] ?? 0), tint: Theme.ivoryMuted)
-                    FlatRow(label: "Stadium, travel, academy", value: cur.short(c.weekly["ops"] ?? 0), tint: Theme.ivoryMuted)
+                    FlatRow(label: "Television", value: cur.tidyShort(c.weekly["tv"] ?? 0), rule: false)
+                    FlatRow(label: "Sponsors", value: cur.tidyShort(c.weekly["spons"] ?? 0))
+                    FlatRow(label: "Merchandise", value: cur.tidyShort(c.weekly["merch"] ?? 0))
+                    FlatRow(label: "Gate income, last home match", value: cur.tidyShort(c.weekly["match"] ?? 0))
+                    FlatRow(label: "Player wages", value: cur.tidyShort(c.weekly["wages"] ?? 0), tint: Theme.ivoryMuted)
+                    FlatRow(label: "Manager and assistant", value: cur.tidyShort(c.weekly["coaches"] ?? 0), tint: Theme.ivoryMuted)
+                    FlatRow(label: "Stadium, travel, academy", value: cur.tidyShort(c.weekly["ops"] ?? 0), tint: Theme.ivoryMuted)
                     FlatRow(label: "Wages share of revenue", value: "\(Int((c.wageToRevenue * 100).rounded()))%", tint: c.wageToRevenue > 0.75 ? Theme.loss : Theme.ivory)
-                    FlatRow(label: "Yearly revenue (about)", value: cur.short(c.yearlyRevenue))
+                    FlatRow(label: "Yearly revenue (about)", value: cur.tidyShort(c.yearlyRevenue))
                 }
             }
         }
@@ -114,7 +114,7 @@ struct CompanyClub: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(cd.name).font(.system(size: 13.5))
-                                    Text("Age \(cd.age) · \(cd.quality) · asks \(cur.short(cd.wage)) a week").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    Text("Age \(cd.age) · \(cd.quality) · asks \(cur.tidyShort(cd.wage)) a week").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()
                                 Button("Hire…") {
@@ -139,7 +139,7 @@ struct CompanyClub: View {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).font(.system(size: 13.5))
-                    Text(p.map { "\($0.name)\($0.interim ? " (interim)" : "") · \($0.quality) · \(cur.short($0.wage)) a week" } ?? "Vacant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(p.map { "\($0.name)\($0.interim ? " (interim)" : "") · \($0.quality) · \(cur.tidyShort($0.wage)) a week" } ?? "Vacant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer()
                 if let p { Button("Dismiss…") {
@@ -160,7 +160,7 @@ struct CompanyClub: View {
         return LedgerSection("Transfers") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Window", value: w.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Closed · opens in \(w.weeksToOpen) wk", rule: false)
-                FlatRow(label: "Bought / sold", value: cur.short(c.tradedIn) + " / " + cur.short(c.tradedOut))
+                FlatRow(label: "Bought / sold", value: cur.tidyShort(c.tradedIn) + " / " + cur.tidyShort(c.tradedOut))
                 ForEach(0..<FootballModel.tiers.count, id: \.self) { i in
                     let t = FootballModel.tiers[i]
                     VStack(spacing: 0) {
@@ -168,16 +168,16 @@ struct CompanyClub: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(t.name).font(.system(size: 13.5))
-                                Text("\(cur.short(engine.signingFee(companyID: company.id, tier: i))) fee, written off over three years · about +\(String(format: "%.1f", t.strength)) strength").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text("\(cur.tidyShort(engine.signingFee(companyID: company.id, tier: i))) fee, written off over three years · about +\(String(format: "%.1f", t.strength)) strength").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
                             Button("Sign…") {
                                 let fee = engine.signingFee(companyID: company.id, tier: i)
-                                pending = PendingAction(title: "Sign a \(t.name.lowercased())?", message: "\(cur.display(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.short(company.cash)).", button: "Sign") {
+                                pending = PendingAction(title: "Sign a \(t.name.lowercased())?", message: "\(cur.display(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.tidyShort(company.cash)).", button: "Sign") {
                                     switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
                                     case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
                                     case .closed?: store.show("The transfer window is closed.", tone: "warn")
-                                    default: store.show("The club needs \(cur.short(fee)) in cash.", tone: "warn")
+                                    default: store.show("The club needs \(cur.tidyShort(fee)) in cash.", tone: "warn")
                                     }
                                 }
                             }.buttonStyle(QuietButtonStyle()).disabled(w.name == nil)
@@ -195,14 +195,14 @@ struct CompanyClub: View {
                 LedgerSection(slot.title) {
                     VStack(spacing: 0) {
                         if let s = c.sponsors.first(where: { $0.slot == slot.key }) {
-                            FlatRow(label: s.name, value: cur.short(s.weekly) + " / wk", sub: String(format: "%.1f years left", s.yearsLeft), rule: false)
+                            FlatRow(label: s.name, value: cur.tidyShort(s.weekly) + " / wk", sub: String(format: "%.1f years left", s.yearsLeft), rule: false)
                         } else if let offers = c.offers[slot.key], !offers.isEmpty {
                             ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
                                 if n > 0 { Hairline() }
                                 HStack {
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(o.name).font(.system(size: 13.5))
-                                        Text("\(cur.short(o.weekly)) a week · \(o.years) year\(o.years == 1 ? "" : "s")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                        Text("\(cur.tidyShort(o.weekly)) a week · \(o.years) year\(o.years == 1 ? "" : "s")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
                                     Spacer()
                                     Button("Sign…") {
@@ -271,7 +271,7 @@ struct ClubMarketView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(c.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                        Text("About \(cur.short(c.value))\(c.isListed ? " · open to offers" : "")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                        Text("About \(cur.tidyShort(c.value))\(c.isListed ? " · open to offers" : "")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
                                     Spacer()
                                     if c.owner == "you" { Chip(text: "Yours", tint: Theme.gold) }
@@ -283,7 +283,7 @@ struct ClubMarketView: View {
                     if let cost = e.foundingCost(countryCode: code) {
                         LedgerSection("Found a new club") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                                Text("Start a club in the second tier. It costs about \(cur.short(cost)) and must earn promotion to the top league (finish in the top three).").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                                Text("Start a club in the second tier. It costs about \(cur.tidyShort(cost)) and must earn promotion to the top league (finish in the top three).").font(.caption).foregroundStyle(Theme.ivoryMuted)
                                 Button("Found a club") { confirmFound = true }.buttonStyle(QuietButtonStyle())
                             }
                         }
@@ -310,11 +310,11 @@ struct ClubMarketView: View {
     private func offerSheet(_ c: FootballModel.ClubInfo, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(c.name).font(.serifTitle(22))
-            Text("Rough value \(cur.short(c.value)). A bad offer can end the talks for a year.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text("Rough value \(cur.tidyShort(c.value)). A bad offer can end the talks for a year.").font(.caption).foregroundStyle(Theme.ivoryMuted)
             if let a = answer {
                 Text(a.message).font(.bodyText).foregroundStyle(a.answer == .accept ? Theme.gain : a.answer == .counter ? Theme.ivory : Theme.loss)
                 if let p = a.price, a.answer == .accept || a.answer == .counter {
-                    Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.short(p)) {
+                    Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.tidyShort(p)) {
                         switch store.act({ $0.buyClub(clubID: c.id, price: p) }) {
                         case .ok(let id)?: Haptics.success(); offerFor = nil; store.openCompany(id)
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
@@ -325,7 +325,7 @@ struct ClubMarketView: View {
             } else {
                 ForEach([0.9, 1.2, 1.8, 3.0], id: \.self) { f in
                     Button { answer = store.act { $0.offerForClub(clubID: c.id, multiple: f) } } label: {
-                        HStack { Text(cur.short((c.value * f / 100000).rounded() * 100000)).font(.system(size: 15, weight: .medium)); Spacer(); Text("\(Int(f * 100))% of value").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                        HStack { Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).font(.system(size: 15, weight: .medium)); Spacer(); Text("\(Int(f * 100))% of value").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                             .padding(.vertical, 8).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                     Hairline()

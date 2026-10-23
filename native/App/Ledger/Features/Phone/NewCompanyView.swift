@@ -127,7 +127,7 @@ struct TradeDetailView: View {
                         }
                         let liquid = Payments.liquid(e.state)
                         let afford = liquid >= est.total
-                        if !afford { Text("You are \(cur.short(est.total - liquid)) short of the full start-up cost. You can still register, but opening will wait for money.").font(.caption).foregroundStyle(Theme.caution) }
+                        if !afford { Text("You are \(cur.tidyShort(est.total - liquid)) short of the full start-up cost. You can still register, but opening will wait for money.").font(.caption).foregroundStyle(Theme.caution) }
                         Text("Other ways in: a franchise (known brand, their rules and a fee) or buying a rival that is already trading, from the rival's page under Market.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         Button("Start this business") {
                             pending = PendingAction(title: "Start \(t.name) in \(country.cities.first { $0.id == city }?.name ?? "town")?",

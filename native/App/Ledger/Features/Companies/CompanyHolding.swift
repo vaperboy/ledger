@@ -23,15 +23,15 @@ struct CompanyHolding: View {
                 LedgerSection("Consolidated") {
                     VStack(alignment: .leading, spacing: 0) {
                         KeyFigures(items: [
-                            .init(label: "Holding value", value: cur.short(o.holdingValue)),
-                            .init(label: "Companies", value: cur.short(o.companiesValue), sub: "your share"),
-                            .init(label: "Index fund", value: cur.short(o.indexFund)),
-                            .init(label: "Revenue 12 mo", value: cur.short(o.revenueTTM), sub: "your share"),
-                            .init(label: "Profit 12 mo", value: cur.short(o.profitTTM), tint: o.profitTTM < 0 ? Theme.loss : Theme.ivory, sub: "your share"),
-                            .init(label: "Cash in group", value: cur.short(o.cashInGroup)),
+                            .init(label: "Holding value", value: cur.tidyShort(o.holdingValue)),
+                            .init(label: "Companies", value: cur.tidyShort(o.companiesValue), sub: "your share"),
+                            .init(label: "Index fund", value: cur.tidyShort(o.indexFund)),
+                            .init(label: "Revenue 12 mo", value: cur.tidyShort(o.revenueTTM), sub: "your share"),
+                            .init(label: "Profit 12 mo", value: cur.tidyShort(o.profitTTM), tint: o.profitTTM < 0 ? Theme.loss : Theme.ivory, sub: "your share"),
+                            .init(label: "Cash in group", value: cur.tidyShort(o.cashInGroup)),
                         ])
                         if o.groupCovered > 0 {
-                            Text("Tax group: profits cover \(cur.short(o.groupCovered)) of sister companies' losses this year.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, 8)
+                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, 8)
                         }
                     }
                 }
@@ -43,12 +43,12 @@ struct CompanyHolding: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(k.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(Int(k.ownership.rounded()))% · profit \(cur.short(k.profitTTM)) · cash \(cur.short(k.cash))\(k.inTaxGroup ? " · tax group" : "")")
+                                    Text("\(Int(k.ownership.rounded()))% · profit \(cur.tidyShort(k.profitTTM)) · cash \(cur.tidyShort(k.cash))\(k.inTaxGroup ? " · tax group" : "")")
                                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer(minLength: 8)
                                 VStack(alignment: .trailing, spacing: 3) {
-                                    Text(cur.short(k.share)).font(.system(size: 13.5).monospacedDigit())
+                                    Text(cur.tidyShort(k.share)).font(.system(size: 13.5).monospacedDigit())
                                     Button("Release") {
                                         let ok = store.act { $0.releaseFromHolding(companyID: k.id) } ?? false
                                         Haptics.choose(); store.show(ok ? "Released: it is owned by you directly again." : "It could not be released now.", tone: ok ? "good" : "warn")
@@ -148,15 +148,15 @@ struct NewHoldingView: View {
                     }
                     LedgerSection("What it costs") {
                         VStack(spacing: 0) {
-                            FlatRow(label: "Share capital", value: cur.short(country.shareCapitalMinimum), sub: "stays in the holding", rule: false)
-                            FlatRow(label: "Registration", value: cur.short(country.registrationFee))
+                            FlatRow(label: "Share capital", value: cur.tidyShort(country.shareCapitalMinimum), sub: "stays in the holding", rule: false)
+                            FlatRow(label: "Registration", value: cur.tidyShort(country.registrationFee))
                         }
                     }
                     Button("Create the holding company") {
                         let r = store.act { $0.createHolding(name: name, companies: Array(picked)) }
                         switch r {
                         case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.openCompany(id)
-                        case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.short(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
+                        case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.tidyShort(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
                         default: store.show("Not possible.", tone: "warn")
                         }
                     }.buttonStyle(GoldButtonStyle())

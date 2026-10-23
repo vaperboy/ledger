@@ -26,12 +26,12 @@ struct CandidateSheet: View {
                         KeyFigures(items: [
                             .init(label: "Says", value: StaffProfile.band(p.claimedSkill), sub: "skill \(Int(p.claimedSkill.rounded()))"),
                             .init(label: "Age", value: "\(p.age)"),
-                            .init(label: "Asks", value: cur.short(p.askingMonthlyWage), sub: "a month"),
+                            .init(label: "Asks", value: cur.tidyShort(p.askingMonthlyWage), sub: "a month"),
                         ])
                         if !p.value("trialRes").isNull {
                             Text("After a trial week their work looked like skill \(Int(p.num("trialRes").rounded())), give or take a few points.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                         } else {
-                            Text("The CV is what they claim. A paid trial week (\(cur.short(p.askingMonthlyWage / 4))) shows roughly how good they really are.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                            Text("The CV is what they claim. A paid trial week (\(cur.tidyShort(p.askingMonthlyWage / 4))) shows roughly how good they really are.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                             Button("Paid trial week") { trial() }.buttonStyle(QuietButtonStyle())
                         }
                         LedgerSection("Offer") {

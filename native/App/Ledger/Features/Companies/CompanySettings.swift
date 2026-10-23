@@ -38,8 +38,8 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    FlatRow(label: "Registration fee", value: cur.short(cost.registrationFee), sub: "paid from your account", rule: false)
-                    FlatRow(label: "Share capital", value: cur.short(cost.shareCapital), sub: "moves from your account into the company")
+                    FlatRow(label: "Registration fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account", rule: false)
+                    FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "moves from your account into the company")
                     Button("Convert to a limited company…") { confirmConvert(cost, cur) }.buttonStyle(QuietButtonStyle())
                 }
             } else {
@@ -125,7 +125,7 @@ struct CompanySettings: View {
                         Toggle(isOn: $giveUpRent) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("Give up the rented place").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("Three months' rent as notice (\(cur.short(notice.notice)))" + (notice.depositBack > 0 ? ", deposit of \(cur.short(notice.depositBack)) back" : "") + ". You will need new premises to reopen.")
+                                Text("Three months' rent as notice (\(cur.tidyShort(notice.notice)))" + (notice.depositBack > 0 ? ", deposit of \(cur.tidyShort(notice.depositBack)) back" : "") + ". You will need new premises to reopen.")
                                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                             }
                         }.tint(Theme.gold)
@@ -157,8 +157,8 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    FlatRow(label: "Debts and bills paid first", value: cur.short(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
-                    FlatRow(label: "Left for you (your share)", value: cur.short(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
+                    FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
+                    FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
                     if CompanySale.canSell(engine.state, companyID: company.id) {
                         Text("Selling as a going concern usually fetches more: see You and owners.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
@@ -186,7 +186,7 @@ struct CompanySettings: View {
         if !lic.isEmpty {
             LedgerSection(title: "Documents and permits", trailing: { Text("✓ held").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
-                    ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.short(l.amount) : "free", sub: l.detail, rule: n > 0) }
+                    ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.tidyShort(l.amount) : "free", sub: l.detail, rule: n > 0) }
                 }
             }
         }

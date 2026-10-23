@@ -38,7 +38,7 @@ struct HostingSection: View {
                             Spacer(minLength: 8)
                             Menu("Host…") {
                                 ForEach(venues) { v in
-                                    Button("\(v.item.name) · \(cur.short(engine.hostingCost(pieceID: v.id) ?? 0))") { pending = (v, g) }
+                                    Button("\(v.item.name) · \(cur.tidyShort(engine.hostingCost(pieceID: v.id) ?? 0))") { pending = (v, g) }
                                 }
                             }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
                         }.padding(.vertical, 8)
@@ -48,7 +48,7 @@ struct HostingSection: View {
             }
             .confirmationDialog(pending.map { "Host \($0.option.title) on \($0.piece.item.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending {
-                    Button("Host for \(cur.short(engine.hostingCost(pieceID: p.piece.id) ?? 0))") {
+                    Button("Host for \(cur.tidyShort(engine.hostingCost(pieceID: p.piece.id) ?? 0))") {
                         switch store.act({ $0.hostDeal(pieceID: p.piece.id, guest: p.option.guest) }) {
                         case .ok(let title, _)?: Haptics.success(); store.show(title, tone: "good")
                         case .away?: store.show("That piece is away.", tone: "warn")
@@ -136,8 +136,8 @@ struct FundManagerCard: View {
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 1) {
-                            Text(cur.short(a.balance)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
-                            Text("\(a.result >= 0 ? "+" : "−")\(pct(abs(a.result))) on \(cur.short(a.cost))").font(.system(size: 11)).foregroundStyle(Theme.change(a.result))
+                            Text(cur.tidyShort(a.balance)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Text("\(a.result >= 0 ? "+" : "−")\(pct(abs(a.result))) on \(cur.tidyShort(a.cost))").font(.system(size: 11)).foregroundStyle(Theme.change(a.result))
                         }
                     }
                     AmountField(title: "Amount", currency: cur, amount: $amount)
@@ -180,7 +180,7 @@ struct FundManagerCard: View {
                 }
             }
         }
-        .confirmationDialog(hiring.map { "Hand \(cur.short(amount)) to \($0.name)?" } ?? "", isPresented: Binding(get: { hiring != nil }, set: { if !$0 { hiring = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(hiring.map { "Hand \(cur.tidyShort(amount)) to \($0.name)?" } ?? "", isPresented: Binding(get: { hiring != nil }, set: { if !$0 { hiring = nil } }), titleVisibility: .visible) {
             if let c = hiring {
                 Button("Hire, \(mandate.title.lowercased()) mandate") {
                     switch store.act({ $0.hireFundManager(personID: c.id, mandate: mandate, amount: amount) }) {
@@ -194,7 +194,7 @@ struct FundManagerCard: View {
             }
         } message: {
             if let c = hiring {
-                Text("Cost: a fee of \(pct(c.fee)) a year on the managed money, about \(cur.short(amount * c.fee)) a year on this sum. Benefit: it is invested for you without your time. Risk: it can lose value, more under an aggressive mandate, and the fee is due even in a bad year.")
+                Text("Cost: a fee of \(pct(c.fee)) a year on the managed money, about \(cur.tidyShort(amount * c.fee)) a year on this sum. Benefit: it is invested for you without your time. Risk: it can lose value, more under an aggressive mandate, and the fee is due even in a bad year.")
             }
         }
         .confirmationDialog("Let the fund manager go?", isPresented: $confirmDismiss, titleVisibility: .visible) {
@@ -230,7 +230,7 @@ struct HoldingFinanceManagerCard: View {
         let role = engine.officeRoles.first { $0.id == "fin" }
         if let e = staffEntry {
             let id = e["id"].int
-            Text("Hired: \(e["name"].string), \(cur.short(e["wage"].double)) a month, paid by the group.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text("Hired: \(e["name"].string), \(cur.tidyShort(e["wage"].double)) a month, paid by the group.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             ForEach(engine.officePaperwork(personID: id), id: \.key) { item in
                 HStack {
                     Text(item.text).font(.system(size: 11.5)).foregroundStyle(item.done ? Theme.ivoryFaint : Theme.ivory)
@@ -240,24 +240,17 @@ struct HoldingFinanceManagerCard: View {
             }
             Button("Let go") { confirmFire = true }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
         } else if room == .ok {
-            Text("Wage about \(cur.short(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             if found.isEmpty {
                 HStack {
                     Button("Ask around, free") { search(.network) }.buttonStyle(QuietButtonStyle())
-                    Button("Job ad, \(cur.short(cur.scaledPrice(1500)))") { search(.ad) }.buttonStyle(QuietButtonStyle())
-                    Button("Agency, \(cur.short(cur.scaledPrice(12000)))") { search(.agency) }.buttonStyle(QuietButtonStyle())
+                    Button("Job ad, \(cur.tidyShort(cur.scaledPrice(1500)))") { search(.ad) }.buttonStyle(QuietButtonStyle())
+                    Button("Agency, \(cur.tidyShort(cur.scaledPrice(12000)))") { search(.agency) }.buttonStyle(QuietButtonStyle())
                 }
                 Text("An agency checks references; with the others the paperwork is yours to verify.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             } else {
-                ForEach(found, id: \.id) { c in
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(c.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                            Text("Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill · asks \(cur.short(c.askingMonthlyWage)) a month\(c.flag("checked") ? " · references checked" : "")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        Button("Hire") { hire(c) }.buttonStyle(QuietButtonStyle())
-                    }
+                CandidateHireList(people: found, emptyText: "Nobody to meet now.") { c in
+                    CandidateHireRow(person: c, currency: cur, subtitle: "Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill\(c.flag("checked") ? " · references checked" : "")") { wage in hire(c, wage) }
                 }
             }
         } else {
@@ -270,12 +263,18 @@ struct HoldingFinanceManagerCard: View {
         else { store.show("Nobody to meet now. Try again later or pay for a search.", tone: "warn") }
     }
 
-    private func hire(_ c: Person) {
-        switch store.act({ $0.hireOffice(role: "fin", personID: c.id, monthlyWage: c.askingMonthlyWage) }) {
-        case .ok?: Haptics.success(); found = []; store.show("\(c.name) joins as finance manager.", tone: "good")
-        case .refuse?: store.show("\(c.name) turned the offer down.", tone: "warn")
-        default: store.show("Not possible.", tone: "warn")
+    /// The same main-office hire as Group > Main office (`hireOffice`), reported in the same words.
+    private func hire(_ c: Person, _ wage: Double) -> HireFeedback {
+        let feedback: HireFeedback
+        switch store.act({ $0.hireOffice(role: "fin", personID: c.id, monthlyWage: wage) }) {
+        case .ok?: feedback = .hired("\(c.name) joins as finance manager. Complete the paperwork.")
+        case .refuse?: feedback = .declined("\(c.name) found that a bit low. Offer more or pick someone else.")
+        case .taken?: feedback = .unavailable("\(c.name) took another job.")
+        default: feedback = .unavailable("There is no room for that role.")
         }
+        if feedback.isHired { found = [] }
+        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
+        return feedback
     }
 
     var body: some View {
@@ -288,7 +287,7 @@ struct HoldingFinanceManagerCard: View {
                 } else {
                     Text(on ? "Your finance manager runs this holding." : "You run this holding yourself.").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
                 }
-                Text("Cost: none beyond their pay, which you already pay. Benefit: cash above \(cur.short(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better. Risk: the index fund can fall, and selling it costs 0.66%.")
+                Text("Cost: none beyond their pay, which you already pay. Benefit: cash above \(cur.tidyShort(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better. Risk: the index fund can fall, and selling it costs 0.66%.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 if staffEntry != nil { Button(on ? "Take it back" : "Let the finance manager run it") { confirm = true }.buttonStyle(QuietButtonStyle()) }
                 else { Text("You have no finance manager. Hire one for the main office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }

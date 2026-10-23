@@ -100,7 +100,7 @@ struct AbroadOptionsView: View {
                 Text(o.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
                 if present { Chip(text: "You operate here", tint: Theme.gold) }
                 Spacer()
-                Text(cur.short(o.estimatedStartCost)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(cur.tidyShort(o.estimatedStartCost)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
             }
             Text("Registration about \(Int(o.registrationWeeks)) weeks" + (o.hasDesk ? " (your head-office desk there speeds it up)" : " (slower without a head-office desk there)")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             Button("Register in \(o.name)") {

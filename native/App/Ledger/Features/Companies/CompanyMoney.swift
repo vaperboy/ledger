@@ -53,11 +53,11 @@ struct CompanyMoneySummary: View {
                 Text(h.runwayWeeks != nil ? "At the current rate of loss the cash lasts \(RunwayText.of(h))." : String(format: "About %.0f weeks of costs in the bank.", h.weeksOfCash))
                     .font(.system(size: 12)).foregroundStyle(h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryFaint)
                 KeyFigures(items: [
-                    .init(label: "Profit this month", value: cur.short(o.monthProfit), tint: o.monthProfit < 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Profit this year", value: cur.short(o.yearProfit), tint: o.yearProfit < 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Due in 30 days", value: cur.short(o.dueWithin30Days), tint: o.dueWithin30Days > max(0, company.cash) ? Theme.loss : Theme.ivory),
-                    .init(label: "Debt", value: cur.short(h.debt), tint: h.debt > 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Tax and VAT owed", value: cur.short(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory),
+                    .init(label: "Profit this month", value: cur.tidyShort(o.monthProfit), tint: o.monthProfit < 0 ? Theme.loss : Theme.ivory),
+                    .init(label: "Profit this year", value: cur.tidyShort(o.yearProfit), tint: o.yearProfit < 0 ? Theme.loss : Theme.ivory),
+                    .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: o.dueWithin30Days > max(0, company.cash) ? Theme.loss : Theme.ivory),
+                    .init(label: "Debt", value: cur.tidyShort(h.debt), tint: h.debt > 0 ? Theme.loss : Theme.ivory),
+                    .init(label: "Tax and VAT owed", value: cur.tidyShort(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory),
                     .init(label: "Your account", value: store.short(engine.state.cash)),
                 ]).padding(.top, 8)
             }
@@ -70,7 +70,7 @@ struct CompanyMoneySummary: View {
                 }) {
                     VStack(spacing: 0) {
                         ForEach(o.upcoming.prefix(4)) { u in
-                            ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted, title: u.title, subtitle: u.detail, trailing: cur.short(u.amount), trailingSub: u.dateText)
+                            ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted, title: u.title, subtitle: u.detail, trailing: cur.tidyShort(u.amount), trailingSub: u.dateText)
                         }
                     }
                 }
@@ -111,7 +111,7 @@ struct CompanyMoneySummary: View {
             if let r = last {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(cur.short(r.group.pnl.netProfit)).font(.hero(26)).foregroundStyle(r.group.pnl.netProfit < 0 ? Theme.loss : Theme.ivory)
+                        Text(cur.tidyShort(r.group.pnl.netProfit)).font(.hero(26)).foregroundStyle(r.group.pnl.netProfit < 0 ? Theme.loss : Theme.ivory)
                         Text("profit · " + r.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                     }
                     if let s = ReportSummary.sentences(r, currency: cur).first {
@@ -142,13 +142,13 @@ struct CompanyPaymentStress: View {
         if missed > 0 || company.flag("loanFrozen") || called != 0 || sup > 0 || vatOver > 1 {
             LedgerSection("Behind on payments") {
                 VStack(alignment: .leading, spacing: 6) {
-                    if called != 0 { line("The bank has called the loan: pay the next instalment within \(max(0, weeksLeft)) weeks or the company is wound up.", Theme.loss) }
+                    if called != 0 { line("The bank has called the loan: pay the next instalment within \(max(0, weeksLeft).weeksText) or the company is wound up.", Theme.loss) }
                     else if missed > 0 { line("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Unpaid interest and a penalty were added to the loan.", Theme.loss) }
                     if company.flag("loanFrozen") { line("Credit restricted: no new loans until the instalments are back on track.", Theme.caution) }
-                    if vatOver > 1 { line("VAT overdue \(cur.short(vatOver)), with interest running and a penalty added.", Theme.loss) }
+                    if vatOver > 1 { line("VAT overdue \(cur.tidyShort(vatOver)), with interest running and a penalty added.", Theme.loss) }
                     if sup >= 2 { line("Suppliers have stopped delivering stock until the overdue bills are paid.", Theme.loss) }
                     else if sup == 1 { line("Suppliers only deliver stock against cash in the account.", Theme.caution) }
-                    if billsOwed > 0 { line("Rent and supplier bills waiting for month end: \(cur.short(billsOwed)).", Theme.ivoryMuted) }
+                    if billsOwed > 0 { line("Rent and supplier bills waiting for month end: \(cur.tidyShort(billsOwed)).", Theme.ivoryMuted) }
                 }
             }
         }
@@ -195,7 +195,7 @@ struct CompanyOwnerMoney: View {
             }
             if company.form == .limited {
                 LedgerSection(title: "Your salary", trailing: {
-                    Text(company.ownerMonthlySalary > 0 ? cur.short(company.ownerMonthlySalary) + " a month" : "None").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(company.ownerMonthlySalary > 0 ? cur.tidyShort(company.ownerMonthlySalary) + " a month" : "None").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 }) {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         AmountField(title: "Monthly salary", currency: cur, amount: $salary)

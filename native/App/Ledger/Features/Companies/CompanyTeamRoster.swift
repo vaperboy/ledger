@@ -57,9 +57,9 @@ struct TeamSlotSheet: View {
         let person = slot.personID.flatMap { engine.state.people[$0] }
         let line: String
         if person == nil { line = slot.detail }
-        else if slot.key == "ceo" { line = "\(AuthorityWords.label(slot.level))\(slot.level == 1 ? " · spends up to \(cur.short(slot.buy))" : "")" }
+        else if slot.key == "ceo" { line = "\(AuthorityWords.label(slot.level))\(slot.level == 1 ? " · spends up to \(cur.tidyShort(slot.buy))" : "")" }
         else { line = "Since \(GameCalendar.dateString(week: slot.since, dayOffset: 0))" }
-        return ManagementRow(name: person?.name, role: slot.title, scope: scope(slot, company: company), line: line, wage: person == nil ? nil : cur.short(slot.monthlyWage))
+        return ManagementRow(name: person?.name, role: slot.title, scope: scope(slot, company: company), line: line, wage: person == nil ? nil : cur.tidyShort(slot.monthlyWage))
     }
 
     var body: some View {
@@ -81,7 +81,7 @@ struct TeamSlotSheet: View {
     @ViewBuilder private func filled(_ slot: ManagerModel.TeamSlot, _ p: Person, _ co: Company, _ cur: Currency) -> some View {
         LedgerSection("Who") {
             VStack(alignment: .leading, spacing: 6) {
-                FlatRow(label: p.name, value: "\(cur.short(slot.monthlyWage)) a month", rule: false)
+                FlatRow(label: p.name, value: "\(cur.tidyShort(slot.monthlyWage)) a month", rule: false)
                 Text("In the post since \(GameCalendar.dateString(week: slot.since, dayOffset: 0)).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 Text(slot.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
@@ -99,12 +99,12 @@ struct TeamSlotSheet: View {
                             Spacer()
                             Menu {
                                 ForEach([25000.0, 50000, 100000, 250000, 500000], id: \.self) { v in
-                                    Button(cur.short(cur.scaledPrice(v))) {
+                                    Button(cur.tidyShort(cur.scaledPrice(v))) {
                                         store.act { $0.setTeamAuthority(companyID: co.id, buy: cur.scaledPrice(v)) }
-                                        store.show("Above \(cur.short(cur.scaledPrice(v))) it comes to you.", tone: "n")
+                                        store.show("Above \(cur.tidyShort(cur.scaledPrice(v))) it comes to you.", tone: "n")
                                     }
                                 }
-                            } label: { Text(cur.short(slot.buy)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
+                            } label: { Text(cur.tidyShort(slot.buy)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
                         }
                     }
                 }
@@ -127,10 +127,10 @@ struct TeamSlotSheet: View {
         LedgerSection("Vacant") {
             VStack(alignment: .leading, spacing: 10) {
                 Text(slot.detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                Button(candidates.isEmpty ? "Executive search · \(cur.short(fee))" : "Search again · \(cur.short(fee))") {
+                Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
-                                            message: "Cost: \(cur.short(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",
-                                            button: "Search for \(cur.short(fee))") {
+                                            message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",
+                                            button: "Search for \(cur.tidyShort(fee))") {
                         if let list = store.act({ $0.searchTeam(companyID: co.id, key: slot.key) }) ?? nil {
                             candidates = list.map { $0.id }; Haptics.tap()
                             store.show(list.isEmpty ? "The search found no one." : "\(list.count) candidates found.", tone: list.isEmpty ? "warn" : "n")

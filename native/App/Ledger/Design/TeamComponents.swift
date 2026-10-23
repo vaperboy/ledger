@@ -54,7 +54,7 @@ struct CandidateHireRow<Extra: View>: View {
     @State private var feedback: HireFeedback?
 
     private func wage(_ f: Double) -> Double { f == 1 ? person.askingMonthlyWage : currency.roundedStep(person.askingMonthlyWage * f, about: 500) }
-    private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.short(wage(f)))" : "\(currency.short(wage(f))) (+\(Int(((f - 1) * 100).rounded()))%)" }
+    private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.tidyShort(wage(f)))" : "\(currency.tidyShort(wage(f))) (+\(Int(((f - 1) * 100).rounded()))%)" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -65,7 +65,7 @@ struct CandidateHireRow<Extra: View>: View {
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(currency.short(person.askingMonthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text(currency.tidyShort(person.askingMonthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
                     Text("asks a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
@@ -142,17 +142,11 @@ enum AuthorityWords {
     }
 }
 
-/// Picks an authority level, with what it means under the picker.
+/// Picks an authority level, with what it means under the picker. The same `AuthorityPicker` as the executive posts, without a spend limit.
 struct AuthorityLevelPicker: View {
     var level: Int
     var set: (Int) -> Void
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionTabs(items: [0, 1, 2], title: { AuthorityWords.label($0) }, selection: Binding(get: { min(2, max(0, level)) }, set: { set($0) }))
-                .padding(.horizontal, -Theme.Space.margin)
-            Text(AuthorityWords.consequence(level)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-        }
-    }
+    var body: some View { AuthorityPicker(level: level, style: .full, setLevel: set) }
 }
 
 /// Role plus scope (store, company, chain, region, group) as one badge, as on every management list.

@@ -70,14 +70,14 @@ struct CompanyManagement: View {
         let notice = company.value("mgrNotice")
         if !notice.isNull {
             return ManagementRow(name: m.name, role: title, scope: "store", line: "Leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Find a successor.",
-                                 lineTint: Theme.loss, wage: cur.short(company.managerMonthlyWage))
+                                 lineTint: Theme.loss, wage: cur.tidyShort(company.managerMonthlyWage))
         }
         let lvl = Int(company.value("auth")["lvl"].double)
         var line = AuthorityWords.label(lvl)
         if let card = engine.managerScorecard(companyID: company.id) { line += " · scorecard \(card.score), \(Self.scoreWord(card.score))" }
         if company.managerProfitBonus > 0 { line += " · \(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
-        return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.short(company.managerMonthlyWage))
+        return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage))
     }
 
     private func assistantRow(_ cur: Currency) -> ManagementRow {
@@ -89,7 +89,7 @@ struct CompanyManagement: View {
         let jobs = a["duties"].array.compactMap { d in ManagerModel.assistantDuties.first { $0.key == d.string }?.title.lowercased() }
         return ManagementRow(name: n.name, role: "Assistant manager", scope: "store",
                              line: jobs.isEmpty ? "No jobs picked yet: pick up to two." : "Looks after " + jobs.joined(separator: " and "),
-                             lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.short(a["wage"].double))
+                             lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double))
     }
 
     /// Who stands above this company's own management (chain, region, group), managed where those posts live.
@@ -143,7 +143,7 @@ struct ManagerSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(m.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
             RoleScopeBadge(role: bd.map { ManagerModel.title($0) } ?? "Manager", scope: "store")
-            Text("\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job · \(cur.short(co.managerMonthlyWage)) a month")
+            Text("\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job · \(cur.tidyShort(co.managerMonthlyWage)) a month")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
         }
         if !notice.isNull {
@@ -222,9 +222,9 @@ struct ManagerSheet: View {
             Spacer()
             Menu {
                 ForEach(options, id: \.self) { o in
-                    Button(o == 0 ? "None" : cur.short(cur.scaledPrice(o))) { set(cur.scaledPrice(o)); store.show("\(label): \(o == 0 ? "none" : cur.short(cur.scaledPrice(o))).", tone: "n") }
+                    Button(o == 0 ? "None" : cur.tidyShort(cur.scaledPrice(o))) { set(cur.scaledPrice(o)); store.show("\(label): \(o == 0 ? "none" : cur.tidyShort(cur.scaledPrice(o))).", tone: "n") }
                 }
-            } label: { Text(value == 0 ? "None" : cur.short(value)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
+            } label: { Text(value == 0 ? "None" : cur.tidyShort(value)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
         }
     }
 
@@ -263,9 +263,9 @@ struct ManagerSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("A share of each profitable month's profit, paid on top of the salary with the next wages. Nothing is paid in a loss month.")
                         .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    FlatRow(label: "Average monthly profit, last 3 months", value: cur.short(pv.averageMonthlyProfit), rule: false)
-                    if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.short(pv.monthlyCost)) a month") }
-                    if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.short(pv.lastPaid)) }
+                    FlatRow(label: "Average monthly profit, last 3 months", value: cur.tidyShort(pv.averageMonthlyProfit), rule: false)
+                    if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.tidyShort(pv.monthlyCost)) a month") }
+                    if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.tidyShort(pv.lastPaid)) }
                     Menu {
                         ForEach([0.0, 0.05, 0.1, 0.15, 0.2, 0.3], id: \.self) { x in
                             Button(x == 0 ? "No profit share" : "\(Int(x * 100))%") { askShare(x, co, m, cur) }
@@ -284,8 +284,8 @@ struct ManagerSheet: View {
         pending = PendingAction(
             title: x == 0 ? "Stop \(m.name)'s profit share?" : "Give \(m.name) \(pct)% of profit?",
             message: x == 0
-                ? "Saves about \(cur.short(pv.averageMonthlyProfit * pv.current)) a month at recent profit. They lose part of their pay, which they will not like."
-                : "Cost: about \(cur.short(pv.monthlyCost)) a month at the recent average profit of \(cur.short(pv.averageMonthlyProfit)), employer costs included; more in a good month, nothing in a loss month. Benefit: their pay follows the profit, and the share moves with them if you move them. Risk: you pay it on profit they did not make.",
+                ? "Saves about \(cur.tidyShort(pv.averageMonthlyProfit * pv.current)) a month at recent profit. They lose part of their pay, which they will not like."
+                : "Cost: about \(cur.tidyShort(pv.monthlyCost)) a month at the recent average profit of \(cur.tidyShort(pv.averageMonthlyProfit)), employer costs included; more in a good month, nothing in a loss month. Benefit: their pay follows the profit, and the share moves with them if you move them. Risk: you pay it on profit they did not make.",
             button: x == 0 ? "Stop the share" : "Set \(pct)%") {
                 store.act { $0.setManagerProfitBonus(companyID: co.id, share: x) }
                 let now = store.engine?.state.company(co.id)?.managerProfitBonus ?? -1
@@ -314,11 +314,11 @@ struct ManagerSheet: View {
                     Button("Give a raise") {
                         let next = cur.roundedStep(co.managerMonthlyWage * 1.08, about: 100)
                         pending = PendingAction(title: "Give \(m.name) a raise?",
-                                                message: "Cost: their pay goes from \(cur.short(co.managerMonthlyWage)) to about \(cur.short(next)) a month. Benefit: a happier manager is less likely to leave or slack. Risk: pay only goes up.",
-                                                button: "Raise to \(cur.short(next))") {
+                                                message: "Cost: their pay goes from \(cur.tidyShort(co.managerMonthlyWage)) to about \(cur.tidyShort(next)) a month. Benefit: a happier manager is less likely to leave or slack. Risk: pay only goes up.",
+                                                button: "Raise to \(cur.tidyShort(next))") {
                             store.act { $0.giveManagerRaise(companyID: companyID) }
                             let now = store.engine?.state.company(companyID)?.managerMonthlyWage ?? 0
-                            store.show("Raise given: now \(cur.short(now)) a month.", tone: "good"); Haptics.success()
+                            store.show("Raise given: now \(cur.tidyShort(now)) a month.", tone: "good"); Haptics.success()
                         }
                     }
                     Spacer(minLength: 0)
@@ -364,10 +364,10 @@ struct ManagerSheet: View {
         }
         Text("Runs \(co.name) day to day: hires, prices, stock, and keeps the team up. You set what they may decide and step back from the work. They are not cheap, and a manager nobody checks on slowly slips.")
             .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-        Button(candidates.isEmpty ? "Executive search · \(cur.short(fee))" : "Search again · \(cur.short(fee))") {
+        Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
             pending = PendingAction(title: "Pay for an executive search?",
-                                    message: "Cost: \(cur.short(fee)), not refunded. Benefit: a shortlist you can interview and check. Risk: none may suit.",
-                                    button: "Search for \(cur.short(fee))") {
+                                    message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist you can interview and check. Risk: none may suit.",
+                                    button: "Search for \(cur.tidyShort(fee))") {
                 if let list = store.act({ $0.searchManagers(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) candidates found.", tone: "n") }
                 else { store.show("Not enough cash for the search.", tone: "warn") }
             }
@@ -419,7 +419,7 @@ struct ManagerCandidateChecks: View {
                     }
                 }
                 if !checked {
-                    Button("References · \(currency.short(fee))") {
+                    Button("References · \(currency.tidyShort(fee))") {
                         let ok = store.act { $0.checkManagerReferences(personID: person.id, companyID: companyID) } ?? false
                         store.show(ok ? "References in: their real skills are shown." : "Not enough cash for the reference check.", tone: ok ? "n" : "warn")
                     }
@@ -460,7 +460,7 @@ struct AssistantSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(n.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
             RoleScopeBadge(role: "Assistant manager", scope: "store")
-            Text("\(co.name) · \(cur.short(a["wage"].double)) a month · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide.")
+            Text("\(co.name) · \(cur.tidyShort(a["wage"].double)) a month · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
         }
         LedgerSection(title: "Jobs", trailing: { Text("\(a["duties"].array.count) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
@@ -504,8 +504,8 @@ struct AssistantSheet: View {
         }
         Text("Works alongside the team and takes up to two jobs off \(co.managerID == nil ? "your" : "the manager's") plate: complaints, paperwork, equipment. Paid more than a worker, less than a manager. They advise; you decide.")
             .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-        Button(candidates.isEmpty ? "Job ad · \(cur.short(fee))" : "New job ad · \(cur.short(fee))") {
-            pending = PendingAction(title: "Place a job ad?", message: "Cost: \(cur.short(fee)). Benefit: a shortlist of applicants. Risk: none may suit.", button: "Pay \(cur.short(fee))") {
+        Button(candidates.isEmpty ? "Job ad · \(cur.tidyShort(fee))" : "New job ad · \(cur.tidyShort(fee))") {
+            pending = PendingAction(title: "Place a job ad?", message: "Cost: \(cur.tidyShort(fee)). Benefit: a shortlist of applicants. Risk: none may suit.", button: "Pay \(cur.tidyShort(fee))") {
                 if let list = store.act({ $0.searchAssistants(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) applicants.", tone: "n") }
                 else { store.show("Not enough cash for the job ad.", tone: "warn") }
             }
@@ -548,7 +548,7 @@ struct PromotionSheet: View {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(p.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(p.place) · will ask about \(cur.short(p.ask)) a month").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    Text("\(p.place) · will ask about \(cur.tidyShort(p.ask)) a month").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()
                                 Image(systemName: post?.id == p.id ? "checkmark" : "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
@@ -560,15 +560,15 @@ struct PromotionSheet: View {
             if let post {
                 LedgerSection("Your offer for \(post.title.lowercased())") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Now \(cur.short(member.monthlyWage)) a month.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Now \(cur.tidyShort(member.monthlyWage)) a month.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                         HStack(spacing: 12) {
                             ForEach([0.9, 1.0, 1.1], id: \.self) { f in
-                                Button("\(Int(f * 100))% · \(cur.short(cur.roundedStep(post.ask * f, about: 500)))") { offer = cur.roundedStep(post.ask * f, about: 500) }
+                                Button("\(Int(f * 100))% · \(cur.tidyShort(cur.roundedStep(post.ask * f, about: 500)))") { offer = cur.roundedStep(post.ask * f, about: 500) }
                                     .buttonStyle(QuietButtonStyle())
                             }
                         }
                         AmountField(title: "Monthly salary", currency: cur, amount: $offer)
-                        Button("Send offer · \(cur.short(offer))") { send(post, cur) }.buttonStyle(GoldButtonStyle())
+                        Button("Send offer · \(cur.tidyShort(offer))") { send(post, cur) }.buttonStyle(GoldButtonStyle())
                         if !reply.isEmpty { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
                     }
                 }

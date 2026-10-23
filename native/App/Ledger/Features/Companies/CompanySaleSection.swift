@@ -19,7 +19,7 @@ struct CompanySaleSection: View {
             let value = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
             let listing = CompanySale.listing(engine.state, companyID: company.id)
             LedgerSection(title: "Sell the company", trailing: {
-                Text("Worth about " + cur.short(value * company.ownership / 100)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Worth about " + cur.tidyShort(value * company.ownership / 100)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 if let l = listing {
                     listed(l, cur)
@@ -40,7 +40,7 @@ struct CompanySaleSection: View {
                 BuyerTalkSheet(companyID: company.id, offerID: t.id) { confirming = $0 }
             }
             .confirmationDialog("Sell \(company.name)?", isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible, presenting: confirming) { o in
-                Button("Sell for " + cur.short(o.price * company.ownership / 100), role: .destructive) {
+                Button("Sell for " + cur.tidyShort(o.price * company.ownership / 100), role: .destructive) {
                     let got = store.act { $0.update { s, data, ctx in CompanySale.accept(&s, companyID: company.id, offerID: o.id, data: data, context: ctx) } }
                     if store.engine?.state.company(company.id)?.status == .sold { Haptics.success(); store.show("\(company.name) is sold to \(o.buyer).", tone: "good") }
                     else { _ = got; Haptics.warning(); store.show("The sale did not go through: the other owners may be blocking it.", tone: "warn") }
@@ -58,7 +58,7 @@ struct CompanySaleSection: View {
     private func consequences(_ o: CompanySale.Offer, _ cur: Currency) -> String {
         let loans = engine.state.loans.filter { $0.companyID == company.id }.reduce(0) { $0 + $1.balance }
         var t = "The company's \(company.staff.count) staff leave your payroll"
-        if loans > 0 { t += " and its loans of \(cur.short(loans)) are settled" }
+        if loans > 0 { t += " and its loans of \(cur.tidyShort(loans)) are settled" }
         t += ". Gains are taxed. \(o.note) This cannot be undone."
         return t
     }
@@ -76,7 +76,7 @@ struct CompanySaleSection: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(o.buyer).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
                         Spacer()
-                        Text(cur.short(o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
+                        Text(cur.tidyShort(o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
                     }
                     Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     HStack {
@@ -113,7 +113,7 @@ struct BuyerTalkSheet: View {
                             Text(o.note).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                         }
                         KeyFigures(items: [
-                            .init(label: "They offer", value: cur.short(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),
+                            .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),
                             .init(label: "Patience", value: String(repeating: "●", count: max(0, o.patience)) + String(repeating: "○", count: max(0, 3 - o.patience)), tint: o.patience <= 1 ? Theme.caution : Theme.ivory),
                             .init(label: "Open until", value: GameCalendar.dateString(week: o.expiresWeek)),
                         ])
@@ -141,10 +141,10 @@ struct BuyerTalkSheet: View {
                                     }
                                 }
                                 Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                                Button(ask > 0 ? "Ask \(cur.short(ask * mine)) for your share" : "Enter a price above") {
+                                Button(ask > 0 ? "Ask \(cur.tidyShort(ask * mine)) for your share" : "Enter a price above") {
                                     switch store.act({ $0.counterBuyer(companyID: companyID, offerID: offerID, price: ask) }) {
-                                    case .agreed(let p)?: Haptics.success(); store.show("\(o.buyer) agrees to \(cur.short(p * mine)).", tone: "good")
-                                    case .stretched(let p)?: store.show("They stretch to \(cur.short(p * mine)) and no further.", tone: "n")
+                                    case .agreed(let p)?: Haptics.success(); store.show("\(o.buyer) agrees to \(cur.tidyShort(p * mine)).", tone: "good")
+                                    case .stretched(let p)?: store.show("They stretch to \(cur.tidyShort(p * mine)) and no further.", tone: "n")
                                     case .refused?: Haptics.warning(); store.show("Far above what it is worth to them.", tone: "warn")
                                     case .walkedAway?: Haptics.warning(); store.show("\(o.buyer) walked away.", tone: "bad"); dismiss()
                                     default: store.show("That is what they offered. Sign, or ask for more.", tone: "n")
@@ -152,7 +152,7 @@ struct BuyerTalkSheet: View {
                                 }.buttonStyle(QuietButtonStyle()).disabled(ask <= 0)
                             }
                         }
-                        Button("Sign at \(cur.short(o.price * mine))") { dismiss(); onSign(o) }.buttonStyle(GoldButtonStyle())
+                        Button("Sign at \(cur.tidyShort(o.price * mine))") { dismiss(); onSign(o) }.buttonStyle(GoldButtonStyle())
                     }
                     .padding(Theme.Space.margin)
                 } else {

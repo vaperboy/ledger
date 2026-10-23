@@ -268,6 +268,17 @@ final class GameStore: ObservableObject {
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
 }
 
+extension Int {
+    /// "1 week", "3 weeks".
+    var weeksText: String { "\(self) \(self == 1 ? "week" : "weeks")" }
+}
+
+extension Currency {
+    /// `short` as the player should read it ("£220k", "£2,751"), the same as `GameStore.short`. Views that hold a currency use this,
+    /// so the same amount never shows as "£2 751" on one screen and "£2,751" on the next.
+    func tidyShort(_ v: Double) -> String { short(v).tidyMoney }
+}
+
 extension String {
     /// "£220 k" and "2\u{00A0}751" as the player should read them: "£220k", "2,751".
     var tidyMoney: String {

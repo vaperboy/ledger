@@ -79,7 +79,7 @@ struct GrowIntoChain: View {
                         }.buttonStyle(GoldButtonStyle())
                     }.padding(.top, 10)
                 } else {
-                    Button("Apply for chain registration · \(cur.short(engine.documentFee(companyID: company.id, document: "chain")))") {
+                    Button("Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))") {
                         switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
                         case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
                         case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
@@ -110,13 +110,13 @@ struct StoreInChainCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 NavigationLink { ChainView(chainID: summary.id) } label: {
                     GroupLinkRow(title: "Open the chain", sub: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
-                                 trailing: cur.short(summary.profit) + " / mo", tint: summary.profit < 0 ? Theme.loss : Theme.ivory)
+                                 trailing: cur.tidyShort(summary.profit) + " / mo", tint: summary.profit < 0 ? Theme.loss : Theme.ivory)
                 }.buttonStyle(.plain)
                 if summary.stores.count > 1 {
-                    FlatRow(label: "This store", value: "No. \(rank) of \(summary.stores.count) by profit", sub: "Profit last month \(cur.short(summary.stores.first { $0.id == company.id }?.profit ?? 0)).")
+                    FlatRow(label: "This store", value: "No. \(rank) of \(summary.stores.count) by profit", sub: "Profit last month \(cur.tidyShort(summary.stores.first { $0.id == company.id }?.profit ?? 0)).")
                 }
                 if owed > 0 {
-                    FlatRow(label: "Owes sister stores", value: cur.short(owed), sub: "A group loan, paid back by itself once the store has a cushion.", tint: Theme.caution)
+                    FlatRow(label: "Owes sister stores", value: cur.tidyShort(owed), sub: "A group loan, paid back by itself once the store has a cushion.", tint: Theme.caution)
                 }
                 Hairline()
                 StoreRules(engine: engine, storeID: company.id).padding(.vertical, 9)
@@ -194,7 +194,7 @@ struct CompanySupply: View {
                                     Text("\(k.name) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered").font(.system(size: 11)).foregroundStyle(l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
                                 }
                                 Spacer(minLength: 8)
-                                Text(cur.short(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr").font(.system(size: 13.5).monospacedDigit())
+                                Text(cur.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr").font(.system(size: 13.5).monospacedDigit())
                             }.padding(.vertical, 9)
                         }
                     }
@@ -218,8 +218,8 @@ struct CompanySupply: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(supplier?.name ?? acctName ?? "Outside suppliers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text(acct != nil && link == nil ? "\(k.name) · business customer · saves \(cur.short(acct!.savedSoFar)) so far"
-                             : "\(k.name) · \(link.map { IntercompanySupply.modeName($0.mode) } ?? "about \(cur.short(year)) a year")\(link != nil ? " · saves \(cur.short(link!.saved)) so far" : "")")
+                        Text(acct != nil && link == nil ? "\(k.name) · business customer · saves \(cur.tidyShort(acct!.savedSoFar)) so far"
+                             : "\(k.name) · \(link.map { IntercompanySupply.modeName($0.mode) } ?? "about \(cur.tidyShort(year)) a year")\(link != nil ? " · saves \(cur.tidyShort(link!.saved)) so far" : "")")
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
                     Spacer(minLength: 8)
@@ -234,7 +234,7 @@ struct CompanySupply: View {
                         HStack {
                             ForEach(IntercompanySupply.modes, id: \.id) { m in
                                 let pf = engine.supplyPriceFactor(supplier: s.id, mode: m.id)
-                                Button(m.name + (pf < 1 ? " · saves \(cur.short(year * (1 - pf)))" : "")) {
+                                Button(m.name + (pf < 1 ? " · saves \(cur.tidyShort(year * (1 - pf)))" : "")) {
                                     if store.act({ $0.setSupplier(buyer: company.id, kind: k.id, supplier: s.id, mode: m.id) }) == true { Haptics.success(); picking = nil }
                                 }.buttonStyle(QuietButtonStyle(tint: link?.supplierID == s.id && link?.mode == m.id ? Theme.gold : Theme.ivoryMuted)).font(.caption)
                             }
@@ -253,7 +253,7 @@ struct CompanySupply: View {
                             Spacer(minLength: 8)
                             if acct?.accountID == c.accountID { Chip(text: "Current", tint: Theme.gain) }
                             else if c.canBuy {
-                                Button("Buy · saves \(cur.short(c.yearlySaving)) a year") {
+                                Button("Buy · saves \(cur.tidyShort(c.yearlySaving)) a year") {
                                     if store.act({ $0.buyFromAccount(buyer: company.id, kind: k.id, accountID: c.accountID) }) == .ok { Haptics.success(); picking = nil }
                                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).font(.caption)
                             }
