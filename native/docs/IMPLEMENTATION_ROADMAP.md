@@ -95,9 +95,9 @@ kept just because tests pass. Test ranges (BalanceGuardTests) may only detect su
 
 | ID | Item | Class | Rationale | Depends on |
 |---|---|---|---|---|
-| F1 | Car dealer structural loss (about −14% mean over 18 seeds) | DEFER | Owner said no balancing yet; analysis exists (BALANCE_REPORT). | owner go |
-| F2 | High seed variance (grocery, hardware, courier, 3PL, car repair) | DEFER | Bound single-event losses as the farm fix did. | owner go |
-| F3 | Balance guard checks only 2 seeds | DEFER | Use 5+ seeds and the median. | F1 |
+| F1 | Car dealer structural loss (about −14% mean over 18 seeds) | DEFER | Trace one losing seed month by month to the cause (stock financing, depreciation of stock, margins, demand) and compare with the original model; fix the formula, not the result. Owner said no balancing yet. | owner go |
+| F2 | High seed variance (grocery, hardware, courier, 3PL, car repair) | DEFER | Find what draws dominate (events, fines, rival entry, key-account loss) and whether each is a real mechanism with a real size; keep legitimate high and low outcomes (SIMULATION_RULES 2); model missing constraints (insurance, diversification, working capital) instead of capping. | owner go |
+| F3 | Balance guard checks only 2 seeds | DEFER | Run many seeds and print the distribution as a detector; no pass/fail band that forces tuning. | F1 |
 | F4 | Kiosk returns may be too easy; airline ~4% with large first-year loss | DEFER | Review with F1. | F1 |
 | F5 | Rival-run energy firms, oil/salmon fairs, club investors | REMOVE | Do not exist in the original; nothing to port. | none |
 | F6 | Tender draws change the shared random stream | DEFER | Re-check golden baselines when balancing. | F1 |
