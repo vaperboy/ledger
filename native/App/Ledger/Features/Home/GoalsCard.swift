@@ -35,7 +35,10 @@ struct GoalsCard: View {
                 }
                 Menu(engine.currentAmbition == nil ? "Choose your ambition" : "Switch ambition") {
                     ForEach(engine.ambitionPaths, id: \.id) { p in
-                        Button(p.name + ": " + p.detail) { store.act { $0.chooseAmbition(path: p.id) }; Haptics.tap(); store.show("Your ambition: \(p.name).", tone: "good") }
+                        Button(p.name + ": " + p.detail) {
+                            let ok = store.act { $0.chooseAmbition(path: p.id) } ?? false
+                            Haptics.tap(); store.show(ok ? "Your ambition: \(p.name)." : "You cannot switch ambition yet.", tone: ok ? "good" : "warn")
+                        }
                     }
                 }
                 .font(.system(size: 13)).foregroundStyle(Theme.gold).padding(.top, 6)

@@ -56,7 +56,7 @@ struct ExecutivePosts: View {
         }
         .confirmationDialog("Let \(releasing?.level.title.lowercased() ?? "them") go?", isPresented: Binding(get: { releasing != nil }, set: { if !$0 { releasing = nil } }), titleVisibility: .visible) {
             Button("Let go", role: .destructive) {
-                if let r = releasing { _ = store.act { $0.releaseExecutive(r.level, chainID: chainID, regionalID: r.regionalID) }; Haptics.warning() }
+                if let r = releasing { let ok = store.act { $0.releaseExecutive(r.level, chainID: chainID, regionalID: r.regionalID) } ?? false; Haptics.warning(); store.show(ok ? "Let go. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn") }
                 releasing = nil
             }
         } message: { Text("Severance of about a month's pay plus costs is paid now.") }

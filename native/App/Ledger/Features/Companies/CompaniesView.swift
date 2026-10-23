@@ -17,13 +17,17 @@ struct CompaniesView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var path: [CompanyRoute] = []
     @State private var sort: Sort = .profit
+    /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
+    @State private var query = ""
+    @State private var chainFilter = "all"
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if let e = store.engine {
                     let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
-                    let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    let rows = cos.filter(matches).map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    let chains = e.chainSummaries
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
                             HomeSummary(engine: e)
@@ -50,6 +54,8 @@ struct CompaniesView: View {
                                         Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
                                 }) {
+                                    if cos.count >= 8 { filterBar(chains) }
+                                    if rows.isEmpty { Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
                                     if sizeClass == .regular {
                                         CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
                                     } else {
@@ -94,6 +100,34 @@ struct CompaniesView: View {
             .onChange(of: store.openCompanyID) { _, _ in openRequested() }
             .onChange(of: store.showNewCompany) { _, _ in openRequested() }
         }
+    }
+
+    private func matches(_ co: Company) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if !q.isEmpty && !co.name.lowercased().contains(q) && !(store.engine.map { $0.cityName(co).lowercased().contains(q) || $0.tradeName(co).lowercased().contains(q) } ?? false) { return false }
+        switch chainFilter {
+        case "all": return true
+        case "independent": return co.value("chain").isNull
+        default: return !co.value("chain").isNull && String(co.value("chain").int) == chainFilter
+        }
+    }
+
+    /// Search and chain chips, shown once there are enough companies for a long list to need them.
+    @ViewBuilder private func filterBar(_ chains: [Chains.Summary]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                TextField("Name, city or trade", text: $query).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
+                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain) }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
+            if !chains.isEmpty {
+                SectionTabs(items: ["all"] + chains.map { String($0.id) } + ["independent"],
+                            title: { k in k == "all" ? "All" : k == "independent" ? "Independent" : (chains.first { String($0.id) == k }?.name ?? "Chain") },
+                            selection: $chainFilter).padding(.horizontal, -Theme.Space.margin)
+            }
+        }.padding(.bottom, 6)
     }
 
     private func order(_ a: (co: Company, h: CompanyHealth), _ b: (co: Company, h: CompanyHealth)) -> Bool {

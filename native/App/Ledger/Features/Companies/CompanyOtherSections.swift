@@ -158,17 +158,24 @@ struct StaffContractMenu: View {
             Menu("Seasons") {
                 ForEach(StaffTalks.seasons, id: \.id) { s in
                     Button((s.months.allSatisfy { member.value("seas").array.map { $0.int }.contains($0) } ? "On: " : "Off: ") + s.name) {
-                        store.act { $0.toggleSeason(companyID: id, staffID: sid, season: s.id) }
+                        let ok = store.act { $0.toggleSeason(companyID: id, staffID: sid, season: s.id) } ?? false
+                        if !ok { store.show("That season cannot be changed now.", tone: "warn") }
                     }
                 }
             }
             Button("Offer part time all year") { report(store.act { $0.offerPartTime(companyID: id, staffID: sid) }, want: "season") }
         }
         if !part, member.payBasis == "hour" {
-            Button("Offer a fixed salary") { store.act { $0.offerFixedSalary(companyID: id, staffID: sid) }; store.show("Now on a fixed salary.", tone: "good") }
+            Button("Offer a fixed salary") {
+                let ok = store.act { $0.offerFixedSalary(companyID: id, staffID: sid) } ?? false
+                store.show(ok ? "Now on a fixed salary." : "They turned the fixed salary down.", tone: ok ? "good" : "warn")
+            }
         }
         if member.role == "estate" {
-            Button(member.num("ownCar") != 0 ? "Give a company car" : "Own car and mileage") { store.act { $0.toggleOwnCar(companyID: id, staffID: sid) } }
+            Button(member.num("ownCar") != 0 ? "Give a company car" : "Own car and mileage") {
+                let r = store.act { $0.toggleOwnCar(companyID: id, staffID: sid) } ?? nil
+                store.show(r == nil ? "Not possible for this person." : (r == true ? "They use their own car; mileage is paid." : "They drive a company car."), tone: r == nil ? "warn" : "good")
+            }
         }
         if engine.salesRoles.contains(member.role) {
             Menu("Pay model") {
@@ -177,7 +184,10 @@ struct StaffContractMenu: View {
                 Button("Commission only") { payModel("com") }
                 if member.commissionMode != nil && member.commissionMode != "fix" {
                     ForEach([0.02, 0.03, 0.05, 0.08, 0.12], id: \.self) { r in
-                        Button("Commission \(Int(r * 100))%") { store.act { $0.setCommissionRate(companyID: id, staffID: sid, rate: r) } }
+                        Button("Commission \(Int(r * 100))%") {
+                            let ok = store.act { $0.setCommissionRate(companyID: id, staffID: sid, rate: r) } ?? false
+                            store.show(ok ? "Commission set to \(Int(r * 100))%." : "Not possible on this pay model.", tone: ok ? "good" : "warn")
+                        }
                     }
                 }
             }

@@ -49,7 +49,10 @@ struct CompanyHolding: View {
                                 Spacer(minLength: 8)
                                 VStack(alignment: .trailing, spacing: 3) {
                                     Text(cur.short(k.share)).font(.system(size: 13.5).monospacedDigit())
-                                    Button("Release") { store.act { $0.releaseFromHolding(companyID: k.id) }; Haptics.choose() }.font(.system(size: 11.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                                    Button("Release") {
+                                        let ok = store.act { $0.releaseFromHolding(companyID: k.id) } ?? false
+                                        Haptics.choose(); store.show(ok ? "Released: it is owned by you directly again." : "It could not be released now.", tone: ok ? "good" : "warn")
+                                    }.font(.system(size: 11.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                                 }
                             }.padding(.vertical, 9)
                         }

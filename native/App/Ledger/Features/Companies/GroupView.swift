@@ -63,6 +63,11 @@ struct GroupView: View {
                 }
                 HostingSection(engine: e)
                 if cos.filter({ $0.status.isLive }).count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
+                else if !cos.isEmpty {
+                    LedgerSection("Group management") {
+                        Text("A managing director for the whole group becomes possible once you own two running companies.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
                 if cos.contains(where: { $0.status.isLive }) { HeadOfficeSection(engine: e) }
                 if !e.holdingCompanies.isEmpty {
                     LedgerSection("Holding companies") {

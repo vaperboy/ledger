@@ -13,9 +13,26 @@ struct CompanyTeam: View {
     @State private var confirmFire: StaffMember?
     @State private var promoting: StaffMember?
 
+    /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
+    @ViewBuilder private var delegation: some View {
+        let chain = engine.decisionChain(companyID: company.id)
+        if let boss = chain.first {
+            let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
+            let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
+            Text("\(boss.name), \(title), runs the team day to day and \(lvl). Anything you change here overrides them; problems they cannot solve reach you in Team.")
+                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if company.status == .open {
+            Text(company.ownerHours > 0 ? "You run this team yourself. A manager takes the day-to-day off you once the company is big enough to need one." : "No one runs this team: you do not work here and there is no manager.")
+                .font(.system(size: 12)).foregroundStyle(company.ownerHours > 0 ? Theme.ivoryMuted : Theme.caution).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(spacing: Theme.Space.l) {
+            delegation
             CompanyManagement(engine: engine, company: company)
             CompanyTeamRoster(engine: engine, company: company)
             CompanyTargetsCard(engine: engine, company: company)

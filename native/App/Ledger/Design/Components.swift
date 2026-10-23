@@ -454,3 +454,24 @@ enum TradeSymbol {
         }
     }
 }
+
+/// A consequential action waiting for confirmation: what it is, what it costs or changes, and what to run.
+/// One shared confirmation instead of a hand-written dialog per button.
+struct PendingAction: Identifiable {
+    let id = UUID()
+    var title: String
+    var message: String
+    var button: String
+    var destructive = false
+    var run: () -> Void
+}
+
+extension View {
+    /// Shows `pending` as a confirmation dialog; confirming runs it, cancelling drops it.
+    func confirmAction(_ pending: Binding<PendingAction?>) -> some View {
+        confirmationDialog(pending.wrappedValue?.title ?? "", isPresented: Binding(get: { pending.wrappedValue != nil }, set: { if !$0 { pending.wrappedValue = nil } }),
+                           titleVisibility: .visible, presenting: pending.wrappedValue) { p in
+            Button(p.button, role: p.destructive ? .destructive : nil) { p.run(); pending.wrappedValue = nil }
+        } message: { p in Text(p.message) }
+    }
+}

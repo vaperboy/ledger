@@ -34,7 +34,7 @@ struct CompanyTeamRoster: View {
             }
             .confirmationDialog("Let \(releasing?.title.lowercased() ?? "them") go?", isPresented: Binding(get: { releasing != nil }, set: { if !$0 { releasing = nil } }), titleVisibility: .visible) {
                 Button("Let go", role: .destructive) {
-                    if let r = releasing { _ = store.act { $0.releaseTeam(companyID: company.id, key: r.key, regionalID: r.regionalID) }; Haptics.warning() }
+                    if let r = releasing { let ok = store.act { $0.releaseTeam(companyID: company.id, key: r.key, regionalID: r.regionalID) } ?? false; Haptics.warning(); store.show(ok ? "Let go. One month of pay is paid as severance." : "They had already left.", tone: ok ? "n" : "warn") }
                     releasing = nil
                 }
             } message: { Text("One month of pay plus employer costs is paid now, and their work goes back to the manager.") }

@@ -157,7 +157,10 @@ struct BoardsGroupSection: View {
                                 let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
                                 if case .followUp(let what)? = r { message = "Approved. Follow up on it (\(what)) in the company." }
                             }.buttonStyle(SmallGoldButtonStyle())
-                            Button("Decline") { store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) } }.buttonStyle(SmallOutlineButtonStyle())
+                            Button("Decline") {
+                                let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
+                                if case .gone? = r { message = "That item is no longer on the agenda." } else { message = "Declined." }
+                            }.buttonStyle(SmallOutlineButtonStyle())
                         }
                     }
                 }

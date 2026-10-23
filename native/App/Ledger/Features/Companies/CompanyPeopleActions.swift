@@ -126,7 +126,7 @@ struct CompanyPerksCard: View {
                             }
                             Spacer(minLength: 8)
                             Button(on ? "On" : "Add") {
-                                if on { store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) }; Haptics.tap() } else { pending = p }
+                                if on { let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil; Haptics.tap(); if r == nil { store.show("Not possible right now.", tone: "warn") } } else { pending = p }
                             }.buttonStyle(QuietButtonStyle(tint: on ? Theme.gain : Theme.gold))
                         }.padding(.vertical, 9)
                     }
@@ -137,7 +137,9 @@ struct CompanyPerksCard: View {
             .confirmationDialog(pending.map { "Add \($0.name.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending {
                     Button("Add for \(cur.short(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month") {
-                        store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) }; Haptics.success(); pending = nil
+                        let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil
+                        if r == true { Haptics.success(); store.show("\(p.name) added.", tone: "good") } else { store.show("Not possible right now.", tone: "warn") }
+                        pending = nil
                     }
                 }
             } message: {
