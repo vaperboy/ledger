@@ -192,17 +192,7 @@ extension ManagerModel {
     /// Dismiss the manager: notice and severance by the country's labour law, and the owner runs it again. Original: `fireManager`.
     @discardableResult
     public static func fire(_ s: inout GameState, companyID: Int, data: GameData) -> Double {
-        guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID else { return 0 }
-        let w = World(state: s, data: data)
-        let hired = s.companies[ci].value("mgrW0").isNull ? Double(s.week - 52) : s.companies[ci].num("mgrW0")
-        let pay = w.terminationPayments(s.companies[ci], monthlyWage: s.companies[ci].managerMonthlyWage, tenureWeeks: Double(s.week) - hired, age: s.people[mid].map { Double($0.age) })
-        let sev = pay.notice + pay.severance + pay.fine
-        if var n = s.people[mid] { n.employerID = 0; s.people[mid] = n }
-        if pay.notice > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.notice, category: "wages", label: "Manager notice pay") }
-        if pay.severance > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.severance, category: "wages", label: "Manager severance") }
-        if pay.fine > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.fine, category: "wages", label: "Termination fund fine") }
-        stepDown(&s, ci)
-        return sev
+        Dismissal.dismissManager(&s, companyID: companyID, data: data)?.total ?? 0
     }
 
     static func stepDown(_ s: inout GameState, _ ci: Int) {
@@ -286,14 +276,13 @@ extension ManagerModel {
     }
 
     /// The last day of the notice: they go, and you run the company until there is a new manager. Original: `mgrNoticeWeek`.
-    static func noticeWeek(_ s: inout GameState, companyIndex ci: Int) {
+    static func noticeWeek(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let t = s.companies[ci].value("mgrNotice")
         if t.isNull { return }
         guard s.companies[ci].managerID == t["npc"].int else { s.companies[ci].set("mgrNotice", .null); return }
         guard Double(s.week) >= t["w"].double else { return }
         let n = s.people[t["npc"].int]
-        if var p = n { p.employerID = 0; s.people[p.id] = p }
-        stepDown(&s, ci)
+        Dismissal.dismissManager(&s, companyID: s.companies[ci].id, reason: .resignation, noticeServed: true, data: data)
         s.companies[ci].set("mood", 60)
         let to = t["to"].string
         s.note("\(n?.name ?? "Your manager") has left \(s.companies[ci].name)\(to.isEmpty ? "" : " for \(to)"). You run it yourself until you hire a new manager.", tone: "bad", companyID: s.companies[ci].id)
@@ -371,7 +360,7 @@ extension ManagerModel {
         let a = s.companies[ci].value("asst")
         guard a["npc"].int != 0 else { return }
         let social = World(state: s, data: data).country(s.companies[ci]).employerSocial
-        Payments.companyPays(&s, companyID: companyID, amount: a["wage"].double * (1 + social), category: "wages", label: "Notice pay")
+        Dismissal.book(&s, payer: .company(companyID), notice: Dismissal.monthOfPay(wage: a["wage"].double, employerSocial: social))
         if var n = s.people[a["npc"].int] { n.employerID = 0; s.people[n.id] = n }
         s.companies[ci].set("asst", .null)
     }

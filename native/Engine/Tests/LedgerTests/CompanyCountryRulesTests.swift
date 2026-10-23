@@ -66,7 +66,7 @@ final class CompanyCountryRulesTests: XCTestCase {
             s.companies[i].staff.append(m)
             wage = m.monthlyWage
             social = World(state: s, data: data).country(s.companies[i]).employerSocial
-            sev = Hiring.fire(m.id, from: id, state: &s, data: data)
+            sev = Dismissal.dismiss(&s, companyID: id, staffID: m.id, reason: .redundancy, data: data)?.paid ?? 0
         }
         let weeks = LabourRules(code: "DE").termination(tenureWeeks: 60).weeks
         XCTAssertGreaterThan(weeks, 0)
