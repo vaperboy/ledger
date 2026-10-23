@@ -14,7 +14,7 @@ struct CompanyMarketing: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let mkt = company.value("mkt")
-        let channels = engine.marketing.channels.values.filter { $0.onlyInCountry == nil || $0.onlyInCountry == company.countryCode }.sorted { $0.name < $1.name }
+        let channels = engine.marketingChannels(companyID: company.id)
         VStack(spacing: Theme.Space.l) {
             GlassCard {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -97,7 +97,7 @@ struct CompanyMarketing: View {
 
     private func symbol(_ id: String) -> String {
         ["flyer": "doc.richtext.fill", "google": "magnifyingglass", "meta": "person.2.wave.2.fill", "tiktok": "play.rectangle.fill", "local": "radio.fill",
-         "bill": "rectangle.on.rectangle", "seo": "globe", "mail": "envelope.fill", "b2b": "briefcase.fill", "fair": "flag.fill", "ref": "person.line.dotted.person.fill"][id] ?? "megaphone.fill"
+         "bill": "rectangle.on.rectangle", "seo": "globe", "mail": "envelope.fill", "b2b": "briefcase.fill", "fair": "flag.fill", "ref": "person.line.dotted.person.fill", "primetime": "tv.fill"][id] ?? "megaphone.fill"
     }
 
     private func set(_ channel: String, _ budget: Double, _ weeks: Int?) {

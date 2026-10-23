@@ -109,6 +109,21 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 - Country rules: start in two countries and compare wages, notice and tax.
 - Balance feel: play 3 years of a shop, a contractor, a rental company.
 
+### 9.B Marketing and how you sell (stage 2, batch 2B)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9B.1 | Open a barber (or any trade with add-ons) > Operations > How you sell; switch on two add-ons | Both stay on; switching one off leaves the other; an add-on needing a licence asks first with fee and weeks | | NOT TESTED | | |
+| T9B.2 | Marketing > pick a channel, a length (4/12/26 weeks, Until I stop it), tap a budget | Confirmation shows weekly budget, total cost for the length, the lock, "results vary"; no customer or reach number anywhere | | NOT TESTED | | |
+| T9B.3 | Start a 4-week campaign and play 5 weeks | Campaign stops by itself; card says "Ends in N weeks" before; money stops leaving | | NOT TESTED | | |
+| T9B.4 | Try to switch off a campaign inside its minimum weeks, or choose a length below the channel minimum | Refusal toast with the weeks left; nothing changes | | NOT TESTED | | |
+| T9B.5 | Café > Operations > How you sell > pick a different concept | Confirmation: changeover cost, weeks at 75% capacity, on-paper effects, "no guarantee"; after confirming cash drops by that amount and capacity is lower for those weeks | | NOT TESTED | | |
+| T9B.6 | Change the same choice again straight away | Refused: "Still changing over" until the stated week | | NOT TESTED | | |
+| T9B.7 | Change with too little cash | Refusal says how much is needed; nothing changes | | NOT TESTED | | |
+| T9B.8 | Chain with 2+ stores > Chain rules > pick a "how you sell" standard | Confirmation lists stores changing, total cost, and stores that cannot (kept as exceptions with reason); stores then show that choice locked with the chain's name | | NOT TESTED | | |
+| T9B.9 | In such a store try to change the locked choice; then set the chain rule to "Each store decides" | Locked and refused first; free for the store afterwards (with its own changeover) | | NOT TESTED | | |
+| T9B.10 | Marketing > last channel "Prime-time TV ..." in two countries | Named from that country's own broadcast moment; budgets bigger in more populous countries; independent shop gets little for the money | | NOT TESTED | | |
+| T9B.11 | Team a marketing manager and leave it running for months | Manager never starts Prime-time TV | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

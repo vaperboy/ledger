@@ -29,11 +29,30 @@ public struct MarketingChannel: Sendable {
     public var isPrimeTime: Bool
     public var isNational: Bool
     public var onlyInCountry: String?
+    /// Budgets and scale grow with the country's population (a broadcast reaches more people in a bigger country)
+    public var popScaled: Bool = false
+    /// Offered only where the country's data names a national broadcast moment (`media.prime`); named from it
+    public var needsCountryMedia: Bool = false
+
+    /// Population factor of the original `initPremCh`: sqrt(max(2, millions) / 5) x 0.9. 1 for channels that do not scale.
+    func populationFactor(_ country: Country) -> Double { popScaled ? (max(2, country.populationMillions) / 5).squareRoot() * 0.9 : 1 }
 
     /// The weekly budget presets in this country's money (written at the reference price level; 0 stays 0).
-    public func budgets(in cur: Currency) -> [Double] { budgetOptions.map { $0 == 0 ? 0 : cur.scaledPrice($0) } }
+    public func budgets(in cur: Currency) -> [Double] { budgetOptions.map { $0 == 0 ? 0 : cur.scaledPrice($0 * populationFactor(cur.country)) } }
     /// The budget at which returns flatten, at this country's price level.
-    public func scale(in cur: Currency) -> Double { scale * cur.country.costIndex }
+    public func scale(in cur: Currency) -> Double { scale * cur.country.costIndex * populationFactor(cur.country) }
+
+    /// This channel as the country offers it: a country-media channel takes its name and note from the country's own data
+    /// (`media.prime`); nil when the country has none, so the channel is simply not offered there.
+    public func offered(in country: Country) -> MarketingChannel? {
+        guard needsCountryMedia else { return self }
+        let media = country.pack["media"]["prime"]
+        guard !media.isNull, !media[0].string.isEmpty else { return nil }
+        var c = self
+        c.name = media[0].string
+        c.note = (media[1].string.isEmpty ? "" : media[1].string + " ") + note
+        return c
+    }
 }
 
 public struct MarketingTables: Sendable {
@@ -53,7 +72,8 @@ public struct MarketingTables: Sendable {
                              businessShare: c["b2b"].double, minimumWeeks: c["mw"].int, note: c["note"].string,
                              budgetOptions: c["opts"].array.map { $0.double }, isHighVariance: c["var"].bool, isSlow: c["slow"].bool,
                              isLoyalty: c["loyal"].bool, isPrimeTime: c["prem"].bool, isNational: c["nat"].bool,
-                             onlyInCountry: c["only"].isNull ? nil : c["only"].string)
+                             onlyInCountry: c["only"].isNull ? nil : c["only"].string,
+                             popScaled: c["pop"].bool, needsCountryMedia: c["media"].bool)
         }
         for (k, _) in channels { channels[k]!.id = k }
         insuranceProducts = j["INSP"].object.mapValues { $0.array }

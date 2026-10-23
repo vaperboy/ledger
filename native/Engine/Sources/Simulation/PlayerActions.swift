@@ -103,8 +103,9 @@ public extension GameEngine {
     mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int? = nil) -> ActionResult {
         var result = ActionResult.done
         let channels = marketing.channels
-        update { s, _, _ in
+        update { s, data, _ in
             guard let i = s.companyIndex(companyID), let c = channels[channel] else { result = .refused("unknown channel"); return }
+            if c.offered(in: World(state: s, data: data).country(s.companies[i])) == nil { result = .refused("not available in this country"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
             if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
             var mkt = s.companies[i].value("mkt")
@@ -132,6 +133,16 @@ public extension GameEngine {
             s.companies[i].set("mktEnd", mktEnd)
         }
         return result
+    }
+
+    /// The channels this company can buy, as its country offers them (a country-media channel carries the country's own name).
+    /// The prime-time channel comes last; managers never pick it (they choose search or social ads only).
+    func marketingChannels(companyID: Int) -> [MarketingChannel] {
+        guard let co = state.company(companyID) else { return [] }
+        let country = World(state: state, data: data).country(co)
+        return marketing.channels.values.compactMap { $0.offered(in: country) }
+            .filter { $0.onlyInCountry == nil || $0.onlyInCountry == co.countryCode }
+            .sorted { $0.isPrimeTime != $1.isPrimeTime ? !$0.isPrimeTime : $0.name < $1.name }
     }
 
     /// What starting this campaign commits you to; shown before the player confirms. Nil for an unknown company or channel.
