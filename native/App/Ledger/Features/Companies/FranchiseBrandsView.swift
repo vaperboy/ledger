@@ -5,72 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Chains and franchises on the Group screen: your chains, stores that share a name, franchise units you run, and the way to join a brand.
-struct ChainsGroupSection: View {
-    var engine: GameEngine
-
-    var body: some View {
-        let sums = engine.chainSummaries
-        let loose = engine.looseStoreGroups
-        let brands = engine.franchiseBrands()
-        let franchised = engine.state.companies.filter { $0.status.isLive && !$0.value("franchise").isNull }
-        let franchisors = engine.state.companies.filter { $0.status.isLive && $0.value("fr")["on"].bool }
-        if !sums.isEmpty || !loose.isEmpty || !brands.isEmpty || !franchised.isEmpty || !franchisors.isEmpty {
-            LedgerSection("Chains and franchises") {
-                VStack(spacing: 0) {
-                    ForEach(Array(sums.enumerated()), id: \.element.id) { n, s in
-                        if n > 0 { Hairline() }
-                        if let first = s.stores.first {
-                            NavigationLink(value: CompanyRoute.company(first.id)) {
-                                row(title: s.name, sub: "\(s.stores.count) \(s.stores.count == 1 ? "store" : "stores") · \(s.reach.label)\(s.franchiseUnits > 0 ? " · \(s.franchiseUnits) franchise units" : "")",
-                                    trailing: engine.homeCurrency.short(s.profit) + " / mo", tint: s.profit < 0 ? Theme.loss : Theme.ivory)
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    ForEach(Array(loose.enumerated()), id: \.element.id) { n, g in
-                        if n > 0 || !sums.isEmpty { Hairline() }
-                        if let id = g.companyIDs.first {
-                            NavigationLink(value: CompanyRoute.company(id)) {
-                                row(title: g.name, sub: "\(g.companyIDs.count) \(engine.data.catalog[g.tradeID]?.name.lowercased() ?? "stores") under one name · register a chain", trailing: "›", tint: Theme.gold)
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    ForEach(Array(franchisors.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 || !sums.isEmpty || !loose.isEmpty { Hairline() }
-                        NavigationLink(value: CompanyRoute.company(c.id)) {
-                            row(title: "\(c.name) franchise", sub: "\(c.value("fr")["units"].array.count) units · \(c.value("fr")["app"].array.count) applying", trailing: engine.currency(for: c).short(c.value("fr")["income"].double) + " / wk", tint: Theme.ivory)
-                        }.buttonStyle(.plain)
-                    }
-                    ForEach(Array(franchised.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 || !sums.isEmpty || !loose.isEmpty || !franchisors.isEmpty { Hairline() }
-                        NavigationLink(value: CompanyRoute.company(c.id)) {
-                            row(title: c.name, sub: "Franchisee of \(c.value("franchise")["brandName"].string) · royalty \(Currency.percent(c.value("franchise")["roy"].double, decimals: 1))", trailing: "›", tint: Theme.gold)
-                        }.buttonStyle(.plain)
-                    }
-                    if !brands.isEmpty {
-                        let any = !sums.isEmpty || !loose.isEmpty || !franchisors.isEmpty || !franchised.isEmpty
-                        if any { Hairline() }
-                        NavigationLink { FranchisesView() } label: {
-                            row(title: "Join a franchise", sub: "A known brand, their rules, a fee · \(brands.count) \(brands.count == 1 ? "brand" : "brands")", trailing: "›", tint: Theme.gold)
-                        }.buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
-    private func row(title: String, sub: String, trailing: String, tint: Color) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
-            }
-            Spacer(minLength: 8)
-            Text(trailing).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint)
-        }.padding(.vertical, 9).contentShape(Rectangle())
-    }
-}
-
 /// Brands that take new franchisees. You apply, they answer in a week or three, then you meet them to agree the terms, then you start.
 struct FranchisesView: View {
     @EnvironmentObject var store: GameStore
@@ -212,7 +146,11 @@ struct BrandMeetingView: View {
                                 if let c = r?.counter { ask = c }
                             }.buttonStyle(result?.terms != nil ? AnyButtonStyle(QuietButtonStyle()) : AnyButtonStyle(GoldButtonStyle()))
                             if let t = result?.terms, result?.kind == .accept || result?.kind == .counter {
-                                Button("Sign this deal") { store.act { $0.signFranchiseTerms(brandID, terms: t) }; Haptics.success(); dismiss() }.buttonStyle(GoldButtonStyle())
+                                Button("Sign this deal") {
+                                    store.act { $0.signFranchiseTerms(brandID, terms: t) }
+                                    if store.engine?.franchiseAgreedTerms(brandID) != nil { Haptics.success(); store.show("Terms agreed. Start the company under the brand from the list.", tone: "good"); dismiss() }
+                                    else { Haptics.warning(); store.show("The brand did not sign. Talk again.", tone: "warn") }
+                                }.buttonStyle(GoldButtonStyle())
                             }
                         }
                         if let t = result?.terms, result?.kind == .accept || result?.kind == .counter {
