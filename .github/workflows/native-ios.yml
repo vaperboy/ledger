@@ -31,6 +31,19 @@ jobs:
           if ! swift test > test.log 2>&1; then
             grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 60
             tail -n 40 test.log
+            # A crashed test process leaves no XCTest output: print the macOS crash report's faulting thread.
+            R=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 1)
+            if [ -n "$R" ]; then echo "== crash report $R"; python3 -c "
+          import json,sys
+          t=open(sys.argv[1]).read().split('\\n',1)[1]; d=json.loads(t)
+          print('exception:', d.get('exception'), d.get('termination',{}).get('indicator'))
+          imgs=d.get('usedImages',[])
+          for th in d.get('threads',[]):
+              if th.get('triggered'):
+                  for f in th.get('frames',[])[:40]:
+                      im=imgs[f.get('imageIndex',0)].get('name','?') if imgs else '?'
+                      print(' ', im, f.get('symbol','?'), f.get('sourceFile',''), f.get('sourceLine',''))
+          " "$R" || head -c 4000 "$R"; fi
             exit 1
           fi
           tail -n 5 test.log
