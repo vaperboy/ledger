@@ -25,6 +25,11 @@ struct NewCompanyView: View {
                             NavigationLink { FranchisesView() } label: {
                                 ListRow(symbol: "storefront", tint: Theme.gold, title: "Join a franchise", subtitle: "A known brand, their rules and a fee", chevron: true).contentShape(Rectangle())
                             }.buttonStyle(.plain)
+                            if e.state.companies.contains(where: { $0.status == .open && $0.type != "hold" }) {
+                                NavigationLink { ExpandAbroadView() } label: {
+                                    ListRow(symbol: "globe", tint: Theme.gold, title: "Expand abroad", subtitle: "A subsidiary of one of your companies in another country", chevron: true).contentShape(Rectangle())
+                                }.buttonStyle(.plain)
+                            }
                             NavigationLink { ClubMarketView() } label: {
                                 ListRow(symbol: TradeSymbol.of(family: "club"), tint: Theme.gold, title: "Football club", subtitle: "Buy a club in a top league, or found one", chevron: true).contentShape(Rectangle())
                             }.buttonStyle(.plain)
@@ -60,6 +65,7 @@ struct TradeDetailView: View {
     @State private var limited = false
     @State private var size = 1.0
     @State private var sizeSet = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
@@ -119,15 +125,23 @@ struct TradeDetailView: View {
                                 Text("You have \(cur.display(Payments.liquid(e.state))) available. Share capital for a limited company: \(cur.display(est.shareCapital)).").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
+                        let liquid = Payments.liquid(e.state)
+                        let afford = liquid >= est.total
+                        if !afford { Text("You are \(cur.short(est.total - liquid)) short of the full start-up cost. You can still register, but opening will wait for money.").font(.caption).foregroundStyle(Theme.caution) }
+                        Text("Other ways in: a franchise (known brand, their rules and a fee) or buying a rival that is already trading, from the rival's page under Market.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         Button("Start this business") {
-                            let fund = min(est.total * 1.15, Payments.liquid(e.state))
-                            let r = store.act { $0.startCompany(tradeID: t.id, cityID: city, form: form, size: size, fundWith: fund) }
-                            switch r {
-                            case .success(let id)?: Haptics.success(); store.show("Started. Set it up, then open for business.", tone: "good"); store.openCompany(id)
-                            case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
-                            case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
-                            case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
-                            default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
+                            pending = PendingAction(title: "Start \(t.name) in \(country.cities.first { $0.id == city }?.name ?? "town")?",
+                                                    message: "About \(cur.display(est.total)) to start, of which \(cur.display(min(est.total * 1.15, liquid))) goes into the company from your cash now. You keep \(cur.display(max(0, liquid - est.total * 1.15))). \(form == .limited ? "A limited company protects your personal assets." : "As a sole trader you are personally liable for its debts.") Risk: it earns nothing until it is set up and open; most new businesses need months to break even.",
+                                                    button: "Start it") {
+                                let fund = min(est.total * 1.15, Payments.liquid(e.state))
+                                let r = store.act { $0.startCompany(tradeID: t.id, cityID: city, form: form, size: size, fundWith: fund) }
+                                switch r {
+                                case .success(let id)?: Haptics.success(); store.show("Started. Set it up, then open for business.", tone: "good"); store.openCompany(id)
+                                case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
+                                case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
+                                case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
+                                default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
+                                }
                             }
                         }
                         .buttonStyle(GoldButtonStyle()).disabled(ban != nil)
@@ -139,6 +153,7 @@ struct TradeDetailView: View {
             .ledgerBackground()
             .navigationTitle(t.name)
             .navigationBarTitleDisplayMode(.inline)
+            .confirmAction($pending)
             .onAppear { if !sizeSet { size = CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); sizeSet = true } }
         }
     }

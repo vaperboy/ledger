@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Countries
 import Businesses
+import Finance
 import Events
 import Simulation
 
