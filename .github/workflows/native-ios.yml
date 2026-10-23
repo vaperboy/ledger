@@ -28,7 +28,9 @@ jobs:
         working-directory: native/Engine
         run: |
           set -o pipefail
-          if ! swift test > test.log 2>&1; then
+          # Release build with testing enabled: the same tests, several times faster (the long balance probes ran past what the
+          # macOS runner allows a silent test process in a debug build).
+          if ! swift test -c release -Xswiftc -enable-testing > test.log 2>&1; then
             grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 60
             tail -n 40 test.log
             # A crashed test process leaves no XCTest output: print the macOS crash report's faulting thread.
