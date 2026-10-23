@@ -7,6 +7,8 @@ The one place that says what is still to do and why. It does not replace the inv
 Updated: 23 Oct 2026, at commit 1da0ac8 (native-swiftui). Source of every item: the engine/screen audits of this session, the agent
 reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-checked after the UI pass.
 
+**Binding rules:** `SIMULATION_RULES.md` (no artificial caps/floors, balance the causes, sales methods with real consequences, respect chain/franchise structure) and `DESIGN_RULES.md`.
+
 **Classes**
 - **KEEP**: build it as the original/owner intends.
 - **ADAPT**: build it, but differently from the original (reason given).
@@ -82,7 +84,15 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 | E4 | FX on repatriating foreign profit | REMOVE | The original has no such mechanic; cash is held in accounting units. | none |
 | E5 | Overtime paid to hourly staff only; hours/notice per country not traced for all 23 | DEFER | Check after the dismissal merge (A1). | A1 |
 
-## F. Economy and balance (owner: not yet)
+## F. Economy and balance (owner: not yet; bound by SIMULATION_RULES.md)
+Review of past balance work against the rules (23 Oct): the changes below were fitted to ROI ranges or cap a loss and must be re-examined for their *cause*, not
+kept just because tests pass. Test ranges (BalanceGuardTests) may only detect suspicious results, never limit outcomes.
+| ID | Item | Class | Rationale | Depends on |
+|---|---|---|---|---|
+| F0a | Farm: fire/theft loss capped at weeks of revenue (`events.json` `min(eqv*0.22, wk*6)`) | ADAPT | A cap on a loss is a symptom fix. Find why an uninsured total loss is not modelled (property insurance, recovery, partial damage) and model that mechanism explicitly. | cause analysis |
+| F0b | Courier/other trades: `demandLevel`/`Dc` tuned until ROI sat in a band (trade_tuning.json) | ADAPT | Fitted to a target range. Keep the courier equipment bug fix (a real defect); re-derive demand from the trade's market (customers, price, capacity) rather than the ROI band. | cause analysis |
+| F0c | `BalanceGuardTests` ROI bands and 'nothing above ~50%' | ADAPT | Keep as detectors that report, not as gates that force tuning; add multi-seed distribution output. | F3 |
+
 | ID | Item | Class | Rationale | Depends on |
 |---|---|---|---|---|
 | F1 | Car dealer structural loss (about −14% mean over 18 seeds) | DEFER | Owner said no balancing yet; analysis exists (BALANCE_REPORT). | owner go |
