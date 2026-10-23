@@ -14,9 +14,14 @@ permissions:
 
 jobs:
   engine-tests:
-    runs-on: macos-14
+    # Same runner and Xcode as app-build, so the engine is tested with the toolchain that builds the app.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
       - name: Swift version
         run: swift --version
       - name: Test the game engine
