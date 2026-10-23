@@ -155,7 +155,7 @@ struct CompanyOverview: View {
                 VStack(spacing: 0) {
                     if let boss = chain.first {
                         let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-                        FlatRow(label: boss.name, value: GameEngine.bossTitle(boss.kind, trade: trade), sub: lvl.prefix(1).uppercased() + lvl.dropFirst(), rule: false)
+                        FlatRow(label: boss.name, value: GameEngine.bossTitle(boss.kind, trade: trade), sub: String(lvl.prefix(1).uppercased() + lvl.dropFirst()), rule: false)
                         ForEach(Array(chain.dropFirst().prefix(2).enumerated()), id: \.offset) { _, b in
                             FlatRow(label: b.name, value: GameEngine.bossTitle(b.kind, trade: trade), sub: "Above them")
                         }
