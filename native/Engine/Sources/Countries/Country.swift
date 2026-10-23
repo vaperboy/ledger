@@ -8,6 +8,13 @@ import GameCore
 /// current exchange rate (see `ExchangeRates`).
 ///
 /// To change a country's economy, edit `countries.json`; no code needs to change (see docs/ADDING_CONTENT.md).
+/// One employer contribution component: a share of pay up to `capUnits` times the contribution unit (0 = no cap).
+public struct EmployerContribution: Equatable, Sendable {
+    public var name: String
+    public var rate: Double
+    public var capUnits: Double
+}
+
 public struct Country: Equatable, Sendable, Identifiable {
     public struct City: Equatable, Sendable, Identifiable {
         public var id: String
@@ -91,6 +98,12 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var employerSocial: Double
     public var employerPension: Double
     public var employerInjury: Double
+    /// Employer contribution table (components with a rate and a cap in UMA-style units), e.g. Mexico's IMSS branches; empty where the flat rates above are used.
+    public var employerContributions: [EmployerContribution] = []
+    /// The UMA-style unit behind the caps, per month in accounting units (0 where there are no capped components).
+    public var contributionUnitMonthly: Double = 0
+    /// A state/regional payroll tax paid by the employer on gross pay (share of payroll), included in `employerSocial` when a table is used.
+    public var statePayrollTax: Double = 0
     public var employeeSocial: Double
     public var selfEmployedSocial: Double
     public var income: IncomeTax
@@ -124,6 +137,18 @@ public struct Country: Equatable, Sendable, Identifiable {
 
     /// Employer's total payroll multiplier: wages cost this much more than the gross pay. Original: `OC()`.
     public var employerCostFactor: Double { 1 + employerSocial + employerPension + employerInjury }
+
+    /// The employer's contribution rate for one wage (accounting units a month): the table components each on the pay up to their cap,
+    /// plus the state payroll tax and the flat pension/injury rates. Without a table it is the flat `employerSocial`.
+    public func employerSocialRate(monthlyWage: Double) -> Double {
+        guard !employerContributions.isEmpty, monthlyWage > 0 else { return employerSocial }
+        let unit = contributionUnitMonthly
+        let charged = employerContributions.reduce(0.0) { acc, c in
+            let base = c.capUnits > 0 && unit > 0 ? min(monthlyWage, c.capUnits * unit) : monthlyWage
+            return acc + c.rate * base
+        }
+        return charged / monthlyWage + statePayrollTax
+    }
 
     /// Median monthly gross wage in accounting units: the reference economy's median times this country's wage level.
     /// Every money limit that is really "a number of months of an ordinary wage" (loan floors, income assumptions) derives from this.
@@ -180,6 +205,10 @@ extension Country {
         employerSocial = tax["employer"]["social"].double
         employerPension = tax["employer"]["pension"].double
         employerInjury = tax["employer"]["injury"].double
+        employerContributions = tax["employer"]["contributions"].array.map { EmployerContribution(name: $0["name"].string, rate: $0["rate"].double, capUnits: $0["capUMA"].double) }
+        statePayrollTax = tax["employer"]["statePayroll"].double
+        let unitDaily = tax["employer"]["unit"]["daily"].double, unitDays = tax["employer"]["unit"]["monthDays"].double
+        contributionUnitMonthly = B(unitDaily * unitDays)
         employeeSocial = soc["employee"].double
         selfEmployedSocial = soc["selfEmployed"].double
         let wd = inc["wageDeduction"].array
@@ -271,5 +300,7 @@ extension Country {
         for x in p["cities"].array { entries[x["id"].isNull ? x[0].string : x["id"].string] = x }
         let finalWageLevel = wageLevel
         cities = cities.map { City.withPlaceData($0, entry: entries[$0.id] ?? .null, countryGini: giniValue, wageLevel: finalWageLevel) }
+        // With a contribution table the flat social rate is that table evaluated at the median wage (so flat estimates stay consistent).
+        if !employerContributions.isEmpty { employerSocial = employerSocialRate(monthlyWage: B(eco["medianWage"].double)) }
     }
 }

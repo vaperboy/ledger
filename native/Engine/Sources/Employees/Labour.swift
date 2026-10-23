@@ -15,6 +15,9 @@ import Countries
 /// `minMonthly` is in the country's own currency for a standard week (`stdHours`); `statutory` false means it is a floor set by
 /// collective agreements and custom rather than by law. A max of 0 means no cap. See docs/TAX_SOURCES.md for sources.
 public struct LabourRules: Equatable, Sendable {
+    /// A step in a table: from this many years (or this age) the value applies.
+    public struct Band: Equatable, Sendable { public var from: Double; public var value: Double }
+
     public var minMonthly = 0.0
     public var statutory = false
     public var stdHours = 40.0
@@ -31,6 +34,27 @@ public struct LabourRules: Equatable, Sendable {
     public var probationNoticeWeeks = 0.0
     /// No unfair dismissal protection at all.
     public var atWill = false
+    /// Notice by service: the last band whose years are reached gives the weeks (`noticeBands`: [[fromYears, weeks]]). Empty = base plus per year.
+    public var noticeBands: [Band] = []
+    /// Severance in tiers of weeks per year of service (`severanceTiersMonths`: [[fromYears, monthsOfReferenceSalaryPerYear]], a month being 52/12 weeks).
+    public var severanceTiers: [Band] = []
+    /// Severance weeks per year by the person's age (`severanceAgeBands`: [[fromAge, weeksPerYear]]); used when the age is known.
+    public var severanceAgeBands: [Band] = []
+    /// A flat part of severance in weeks on top of the per-year part (an indemnity of a number of months plus days a year), and an extra per-year premium.
+    public var severanceBaseWeeks = 0.0
+    public var severancePremiumPerYear = 0.0
+    /// Years of service counted for severance (0 = all).
+    public var severanceMaxYears = 0.0
+    /// The termination reasons that earn severance, and the ones that earn notice (raw values of `TerminationReason`).
+    public var severanceReasons: Set<String> = [TerminationReason.redundancy.rawValue, TerminationReason.unjustified.rawValue]
+    public var noticeReasons: Set<String> = [TerminationReason.redundancy.rawValue, TerminationReason.unjustified.rawValue]
+    /// A mandatory termination fund (share of pay paid in during service, employer cost paid through payroll) and the fine on that balance when
+    /// the employer ends the job for the `fundFineReasons`: a one-off liability, not wages.
+    public var fundRate = 0.0
+    public var fundFineRate = 0.0
+    public var fundFineReasons: Set<String> = [TerminationReason.redundancy.rawValue, TerminationReason.unjustified.rawValue]
+    /// Notice (weeks) owed in a mass layoff where the country has such a law (0 = none); only applied when the caller says it is a mass layoff.
+    public var massLayoffNoticeWeeks = 0.0
 
     public init() {}
 
@@ -42,6 +66,15 @@ public struct LabourRules: Equatable, Sendable {
         noticeWeeks = n("noticeWeeks"); noticePerYear = n("noticePerYear"); noticeMax = n("noticeMax")
         severancePerYear = n("severancePerYear"); severanceMin = n("severanceMin"); severanceMax = n("severanceMax"); severanceAfterYears = n("severanceAfterYears")
         leaveDays = n("leaveDays"); probationWeeks = n("probationWeeks"); probationNoticeWeeks = n("probationNoticeWeeks"); atWill = j["atWill"].bool
+        noticeBands = j["noticeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
+        severanceTiers = j["severanceTiersMonths"].array.map { Band(from: $0[0].double, value: $0[1].double * 52 / 12) }.sorted { $0.from < $1.from }
+        severanceAgeBands = j["severanceAgeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
+        severanceBaseWeeks = n("severanceBaseWeeks"); severancePremiumPerYear = n("severancePremiumPerYear"); severanceMaxYears = n("severanceMaxYears")
+        if !j["severanceReasons"].isNull { severanceReasons = Set(j["severanceReasons"].array.map { $0.string }) }
+        if !j["noticeReasons"].isNull { noticeReasons = Set(j["noticeReasons"].array.map { $0.string }) }
+        fundRate = n("fundRate"); fundFineRate = n("fundFineRate")
+        if !j["fundFineReasons"].isNull { fundFineReasons = Set(j["fundFineReasons"].array.map { $0.string }) }
+        massLayoffNoticeWeeks = n("massLayoffNoticeWeeks")
     }
 
     public init(country: Country) { self.init(code: country.code) }
@@ -76,28 +109,77 @@ public struct LabourRules: Equatable, Sendable {
 
     // MARK: Dismissal
 
+    /// Why the job ends. Notice, severance and the termination fine are owed or not by reason (`severanceReasons`, `noticeReasons`,
+    /// `fundFineReasons` in the country data): a dismissal for cause or a resignation owes nothing in most countries.
+    public enum TerminationReason: String, Sendable { case redundancy, unjustified, forCause, resignation }
+
     public struct Termination: Equatable, Sendable {
         public var noticeWeeks: Double
         public var severanceWeeks: Double
+        /// The termination fund fine, in months of the person's pay (fine rate x fund rate x months served).
+        public var fundFineMonths = 0.0
         public var weeks: Double { noticeWeeks + severanceWeeks }
-        /// What the employer pays (accounting units) for a person on `monthlyWage`, with the employer's social charge.
-        public func cost(monthlyWage: Double, employerSocial: Double) -> Double { monthlyWage * 12 / 52 * weeks * (1 + employerSocial) }
+
+        public init(noticeWeeks: Double, severanceWeeks: Double, fundFineMonths: Double = 0) {
+            self.noticeWeeks = noticeWeeks; self.severanceWeeks = severanceWeeks; self.fundFineMonths = fundFineMonths
+        }
+
+        /// The separate one-off payments for a person on `monthlyWage` (accounting units): notice paid in lieu carries the employer's
+        /// social charge like wages; severance and the fund fine do not.
+        public func payments(monthlyWage: Double, employerSocial: Double) -> (notice: Double, severance: Double, fine: Double) {
+            (monthlyWage * 12 / 52 * noticeWeeks * (1 + employerSocial), monthlyWage * 12 / 52 * severanceWeeks, monthlyWage * fundFineMonths)
+        }
+
+        public func cost(monthlyWage: Double, employerSocial: Double) -> Double {
+            let p = payments(monthlyWage: monthlyWage, employerSocial: employerSocial)
+            return p.notice + p.severance + p.fine
+        }
     }
 
-    /// Notice (paid in lieu) and severance for letting someone go after `tenureWeeks`. The one place the game works this out for staff,
-    /// layoffs and the manager. Nothing is due for dismissal with cause or for someone already serving notice.
-    public func termination(tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false) -> Termination {
-        if withCause || onNotice { return Termination(noticeWeeks: 0, severanceWeeks: 0) }
+    /// Notice (paid in lieu), severance and any termination fine for letting someone go after `tenureWeeks`. The one place the game works this
+    /// out for staff, layoffs and the manager. Whether each is owed depends on the reason and on service (and age, where the data uses it).
+    public func termination(tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false, reason: TerminationReason? = nil,
+                            age: Double? = nil, massLayoff: Bool = false) -> Termination {
+        let why = reason ?? (withCause ? .forCause : .redundancy)
+        if onNotice { return Termination(noticeWeeks: 0, severanceWeeks: 0) }
         let years = max(0, tenureWeeks) / 52
-        if tenureWeeks < probationWeeks { return Termination(noticeWeeks: probationNoticeWeeks, severanceWeeks: 0) }
-        var notice = noticeWeeks + noticePerYear * years.rounded(.down)
-        if noticeMax > 0 { notice = min(notice, noticeMax) }
+        let inProbation = tenureWeeks < probationWeeks
+        // Notice
+        var notice = 0.0
+        if noticeReasons.contains(why.rawValue) {
+            if !noticeBands.isEmpty {
+                notice = noticeBands.last { years >= $0.from }?.value ?? 0
+            } else if inProbation {
+                notice = probationNoticeWeeks
+            } else {
+                notice = noticeWeeks + noticePerYear * years.rounded(.down)
+            }
+            if noticeMax > 0 { notice = min(notice, noticeMax) }
+            if massLayoff { notice = max(notice, massLayoffNoticeWeeks) }
+        }
+        // Severance
         var sev = 0.0
-        if (severancePerYear > 0 || severanceMin > 0) && years >= severanceAfterYears {
-            sev = max(severanceMin, severancePerYear * years)
+        let hasSeverance = severancePerYear > 0 || severanceMin > 0 || !severanceTiers.isEmpty || severanceBaseWeeks > 0 || severancePremiumPerYear > 0
+        if hasSeverance && !inProbation && severanceReasons.contains(why.rawValue) && years >= severanceAfterYears {
+            let y = severanceMaxYears > 0 ? min(years, severanceMaxYears) : years
+            var part = 0.0
+            if !severanceTiers.isEmpty {
+                for (i, t) in severanceTiers.enumerated() {
+                    let upper = i + 1 < severanceTiers.count ? severanceTiers[i + 1].from : Double.infinity
+                    part += max(0, min(y, upper) - t.from) * t.value
+                }
+            } else {
+                var perYear = severancePerYear
+                if let age, let band = severanceAgeBands.last(where: { age >= $0.from }) { perYear = band.value }
+                part = perYear * y
+            }
+            sev = max(severanceMin, severanceBaseWeeks + part + severancePremiumPerYear * y)
             if severanceMax > 0 { sev = min(sev, severanceMax) }
         }
-        return Termination(noticeWeeks: notice, severanceWeeks: sev)
+        // Termination fund fine
+        var fine = 0.0
+        if fundFineRate > 0 && fundRate > 0 && fundFineReasons.contains(why.rawValue) { fine = fundFineRate * fundRate * max(0, tenureWeeks) * 12 / 52 }
+        return Termination(noticeWeeks: notice, severanceWeeks: sev, fundFineMonths: fine)
     }
 
     /// Whether someone let go without a documented reason can claim unfair dismissal: not in probation, not in an at-will country.
@@ -112,8 +194,8 @@ public struct LabourRules: Equatable, Sendable {
         out.append(("Minimum wage", hasMinimum ? "\(currency.country.currencySymbol) \(Int(minMonthly.rounded())) a month" + (statutory ? "" : " (agreements)") : "None"))
         out.append(("Standard week", "\(w(stdHours)) h"))
         out.append(("Overtime", overtimePremium > 0 ? "+\(Int((overtimePremium * 100).rounded()))%" : "Basic rate"))
-        out.append(("Notice", noticeWeeks > 0 || noticePerYear > 0 ? "\(w(noticeWeeks)) weeks, +\(w(noticePerYear)) a year" : "None"))
-        out.append(("Severance", severancePerYear > 0 ? "\(w(severancePerYear)) weeks a year" + (severanceAfterYears > 0 ? " after \(w(severanceAfterYears)) years" : "") : severanceMin > 0 ? "\(w(severanceMin)) weeks" : "None"))
+        out.append(("Notice", !noticeBands.isEmpty ? "\(w(noticeBands.first?.value ?? 0)) to \(w(noticeBands.last?.value ?? 0)) weeks by service" : noticeWeeks > 0 || noticePerYear > 0 ? "\(w(noticeWeeks)) weeks, +\(w(noticePerYear)) a year" : "None"))
+        out.append(("Severance", !severanceTiers.isEmpty || severanceBaseWeeks > 0 ? "By service, only if not for cause" : severancePerYear > 0 ? "\(w(severancePerYear)) weeks a year" + (severanceAfterYears > 0 ? " after \(w(severanceAfterYears)) years" : "") : severanceMin > 0 ? "\(w(severanceMin)) weeks" : "None"))
         out.append(("Paid leave", leaveDays > 0 ? "\(w(leaveDays)) days" : "None"))
         out.append(("Probation", atWill ? "At will" : probationWeeks > 0 ? "\(w(probationWeeks)) weeks" : "None"))
         return out

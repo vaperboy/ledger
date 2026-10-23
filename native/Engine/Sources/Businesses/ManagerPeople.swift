@@ -195,9 +195,12 @@ extension ManagerModel {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID else { return 0 }
         let w = World(state: s, data: data)
         let hired = s.companies[ci].value("mgrW0").isNull ? Double(s.week - 52) : s.companies[ci].num("mgrW0")
-        let sev = w.terminationCost(s.companies[ci], monthlyWage: s.companies[ci].managerMonthlyWage, tenureWeeks: Double(s.week) - hired)
+        let pay = w.terminationPayments(s.companies[ci], monthlyWage: s.companies[ci].managerMonthlyWage, tenureWeeks: Double(s.week) - hired, age: s.people[mid].map { Double($0.age) })
+        let sev = pay.notice + pay.severance + pay.fine
         if var n = s.people[mid] { n.employerID = 0; s.people[mid] = n }
-        Payments.companyPays(&s, companyID: companyID, amount: sev, category: "wages", label: "Manager severance")
+        if pay.notice > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.notice, category: "wages", label: "Manager notice pay") }
+        if pay.severance > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.severance, category: "wages", label: "Manager severance") }
+        if pay.fine > 0 { Payments.companyPays(&s, companyID: companyID, amount: pay.fine, category: "wages", label: "Termination fund fine") }
         stepDown(&s, ci)
         return sev
     }

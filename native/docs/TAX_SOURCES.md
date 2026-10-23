@@ -42,6 +42,10 @@ with the original dividend rate and says so.
 | AE | `tax.corporate` | `0.08` | `0.09` | Federal corporate tax is 9% (0% below AED 375,000) |
 | LT | `tax.income.brackets` (thresholds) | `[[0, 0.2], [83000, 0.25], [138300, 0.32]]` | `[[0, 0.2], [83237, 0.25], [138729, 0.32]]` | 36 and 60 x 2026 average wage EUR 2,312.15 = EUR 83,237.40 / 138,729 (KPMG Lithuania newsletter Jan 2026 https://kpmg.com/lt/lt/izvalgos/mokesciu-ir-teises-naujienlaiskiai/2026-sausis.html, citing VMI; earlier KPMG US flash had a preliminary 82,962 / 138,270) |
 | MX | `tax.income.brackets` | 2025 table (`8952 ... 4511707`) | `[[0, 0.0192], [10135, 0.064], [86022, 0.1088], [151176, 0.16], [175736, 0.1792], [210404, 0.2136], [424354, 0.2352], [668840, 0.30], [1276926, 0.32], [1702568, 0.34], [5107704, 0.35]]` | Annual tariff 2026, SAT Anexo 8 RMF 2026 (DOF 28 Dec 2025) https://www.sat.gob.mx/minisitio/NormatividadRMFyRGCE/documentos2026/rmf/anexos/Anexo-8-RMF-2026_DOF-28122025.pdf (art. 152 indexation, +13.21%) |
+| MX | `tax.corporate` | `0.37` | `0.30` | ISR 30% on taxable profit, not revenue; PTU no longer folded in. Source: owner-supplied 2026 rules |
+| MX | `tax.employer` | `social 0.22, pension 0.07, injury 0.01` | `statePayroll 0.03` + IMSS `contributions` table (components, rate, cap in UMA) | State payroll tax about 3%; IMSS computed from payroll, contribution base and caps. Source: owner-supplied 2026 rules |
+| BR | `tax.employer.pension` | `0` | `0.08` | Employer FGTS 8% of pay is a payroll cost; the termination fine is a separate one-off (`labour.fundFineRate`). Source: owner-supplied 2026 rules |
+| LT | `vat.rates.food` | `0.09` | `0.12` | Reduced rate for certain categories is 12% from 2026 (old 9% replaced where applied); standard 21%, other reduced 5% and exemptions unchanged. Source: owner-supplied 2026 rules |
 | FI | `tax.income.brackets` | `[[0, 0], [15000, 0.2], [21200, 0.265], [31500, 0.38], [52100, 0.415], [88200, 0.49]]` | `[[0, 0], [18600, 0.27], [27000, 0.33], [45000, 0.42], [58000, 0.44]]` | 2026 state scale 12.64 / 19 / 30.25 / 33.25 / 37.5% from 0 / 22,000 / 32,600 / 40,100 / 52,100 (https://www.veronmaksajat.fi/neuvot/henkiloverotus/tyo-elake-ja-etuudet/ansiotulojen-verot-ja-maksut/valtion-tulovero/ ; Vero 2026) plus municipal avg 7.57%, health contribution 1.10% (https://vero.fi/en/individuals/tax-cards-and-tax-returns/tax_card/tax-rate-and-income-ceiling/tax-bases/). The game's four steps are fitted by hand to the all-in 2026 income-tax curve (taxes minus 8.2% pension/unemployment contributions) of https://www.veronmaksajat.fi/luvut/Laskelmat/Palkansaajan-veroprosentit/ : 373 / 1,691 / 3,224 / 6,452 / 10,542 / 14,665 / 23,486 EUR at 20k / 25k / 30k / 40k / 50k / 60k / 80k, within about 3%. Church tax is included in that curve (average 1.38%) and not modelled separately |
 | DK | `tax.income.brackets` | `[[0, 0], [54100, 0.34], [697000, 0.41], [845500, 0.48], [2818000, 0.52]]` | `[[0, 0], [54100, 0.3706], [641200, 0.4456], [777900, 0.5206], [2592700, 0.5706]]` | 2026: municipal ~25.05% + base tax 12.01% above DKK 54,100; new middle tax (7.5%), top tax cut to 7.5%, new top-top tax (5%) |
 
@@ -51,7 +55,7 @@ IT (already 2026-like: 25/35/45 = 23/33/43 + ~2 points of local surcharges), IE,
 **FI, LT, MX re-verified in the labour/tax pass (October 2026), no longer unsure:**
 - FI: corporate 20% for 2026 (an 18% cut from tax year 2027 is only a government proposal: https://uutishuone.pwc.fi/en/finnish-corporate-income-tax-rate-to-be-reduced-to-18/, https://www.borenius.com/legal-alerts/2026/05/08/finnish-government-proposes-corporate-tax-rate-cut-and-extended-loss-carry-forward-period/); VAT 25.5%, reduced 13.5% (food, from 1 Jan 2026), 10% (newspapers), https://www.vero.fi/en/businesses-and-corporations/taxes-and-charges/vat/rates-of-vat/ ; capital income 30% to EUR 30,000 and 34% above (Vero tax bases 2026, link above). Dividend 28% and employee/employer contributions are unchanged simplifications (not re-derived; the all-in 8.2% pension/unemployment contribution in the Veronmaksajat table is lower than the game's 9.5% employee rate, left as is). Income brackets changed (table above).
 - LT: corporate 17% from 2026 and dividends 15% (KPMG US Tax News Flash 4 Dec 2025 https://kpmg.com/kpmg-us/content/dam/kpmg/taxnewsflash/pdf/2025/12/tnf-lithuania-dec-4-2025.pdf ; the VMI PDF and Sodra pages could not be fetched, Cloudflare block). VAT 21% and registration threshold EUR 45,000 confirmed only by secondary summaries (workinlithuania.com, investlithuania.com 2026), not by a VMI page. Employee 19.5% / employer 1.77% unchanged, not re-fetched. Brackets updated (table above).
-- MX: annual tariff verified against the SAT/DOF Anexo 8 (table above). Corporate 30% (LISR art. 9), PTU 10%, IVA 16% and dividend withholding 10% are statutory figures that were not re-fetched in this pass: **unverified by a fetched source**. Employer IMSS/SAR/Infonavit 29% likewise unverified.
+- MX: annual tariff verified against the SAT/DOF Anexo 8 (table above). Corporate ISR 30%, IVA 16% and dividend withholding 10% now come from owner-supplied 2026 rules (below).
 
 ## Per country
 
@@ -60,7 +64,7 @@ IT (already 2026-like: 25/35/45 = 23/33/43 + ~2 points of local surcharges), IE,
 | NO Norway | 22% | 37.84% | 25% | 16.6% | 7.6% | 1% above 1,900,000 |
 | SE Sweden | 20.6% | 30% | 25% | 31.42% | 7% | none |
 | PL Poland | 19% | 19% | 23% | 22.17% | 22% | none |
-| LT Lithuania | 17% | 15% | 21% | 1.77% | 19.5% | none |
+| LT Lithuania | 17% | 15% | 21% (12% / 5% reduced, 0% exempt) | 1.77% | 19.5% | none |
 | DE Germany | 30% | 26.38% | 19% | 22.15% | 21.15% | none |
 | UK United Kingdom | 25% | 35.75% | 20% | 18% | 8% | none |
 | FR France | 25% | 31.4% | 20% | 43% | 22% | none |
@@ -73,7 +77,7 @@ IT (already 2026-like: 25/35/45 = 23/33/43 + ~2 points of local surcharges), IE,
 | KR South Korea | 22% | 15.4% | 10% | 11% | 9% | none |
 | BR Brazil | 34% | 10% | 17% | 30% | 9% | none |
 | CH Switzerland | 14.7% | 20% | 8.1% | 14.4% | 6.4% | 0.3% above 80,000 |
-| MX Mexico | 37% | 10% | 16% | 30% | 2.8% | none |
+| MX Mexico | 30% | 10% | 16% | 30% | 2.8% | none |
 | AE United Arab Emirates | 9% | 0% | 5% | 6.5% | 0% | none |
 | IT Italy | 27.9% | 26% | 22% | 37.9% | 9.19% | none |
 | DK Denmark | 22% | 42% | 25% | 9.5% | 8% | none |
@@ -115,7 +119,7 @@ IT (already 2026-like: 25/35/45 = 23/33/43 + ~2 points of local surcharges), IE,
 
 **CH Switzerland** (CHF, checked 2026-10). Federal + cantonal + municipal averages, very simplified (cantons differ widely: corporate 12-21%). VAT 8.1% / 2.6% / 3.8% (a temporary rise for the AHV pension is planned from 2028). AHV/IV/EO 5.3% + unemployment 1.1% each side; self-employed AHV about 10%. Wealth tax 0.3% average, cantonal.
 
-**MX Mexico** (MXN, checked 2026-10). ISR annual tariff 2026 (SAT Anexo 8, verified); corporate 30% plus the 10% employee profit share (PTU) = 37% effective on profit. Dividends 10% withholding. IVA 16%. Employer IMSS + SAR + Infonavit about 29%. Update the table when SAT publishes the 2027 indexing.
+**MX Mexico** (MXN, checked 2026-10). ISR annual tariff 2026 (SAT Anexo 8, verified); corporate ISR 30% on taxable profit (not revenue; the 10% employee profit share PTU is no longer modelled as part of the rate). Dividends: 10% additional withholding on qualifying after-tax distributions. IVA 16% standard, on taxable sales less eligible input IVA. State payroll tax about 3% (employer expense, broad estimate). IMSS employer contributions are computed from payroll: `tax.employer.contributions` is a small table of components (rate, cap in UMA units; UMA MXN 117.31 a day, 30.4 days a month, from my own knowledge, not fetched) and `Country.employerSocialRate(monthlyWage:)` applies each rate to pay up to its cap, plus the 3% state tax; the flat `employerSocial` is that table at the median wage. Source: owner-supplied 2026 rules. Update the table when SAT publishes the 2027 indexing.
 
 **AE United Arab Emirates** (AED, checked 2026-10). Federal corporate tax 9% above AED 375,000 of profit (0% below; large multinationals 15% top-up not modelled). No personal income tax, no dividend tax, no wealth tax. VAT 5%, threshold AED 375,000. Employer cost: end-of-service gratuity and pension for nationals (6%) simplified.
 
@@ -144,25 +148,37 @@ the real figure, so the wage tables are not rebalanced.
 | SE | 17,900 SEK game-scaled (real about 25,000, none by law) | 40 | +50% (agreements) | 4.3, +2.2/yr, max 26 (LAS 11 §: 1 / 2 / 3 / 4 / 5 / 6 months at 0 / 2 / 4 / 6 / 8 / 10 years) | none (agreements) | 25 | 26 wk |
 | PL | 2,160 PLN game-scaled (real 4,806) | 40 | +50% | 2, +4/yr, max 13 | 0.5/yr, min 4.3, max 13 | 20 | 12 wk, 1 wk notice |
 | LT | 650 EUR game-scaled (real 1,153) | 40 | +50% | 4.3 flat (2 weeks under 1 yr, not modelled) | 8.7 (2 months) after 1 yr, secondary sources | 20 | 12 wk, 1 wk |
-| DE | 2,410 EUR (EUR 13.90/h x 40 h) | 40 | +25% (custom, no statutory premium), *unsure* | 4, +1.5/yr, max 30 | 2.17/yr (half a month a year, customary in settlements), *unsure* | 20 | 26 wk, 2 wk |
-| UK | 2,065 GBP (GBP 12.71/h, 21+, April 2026, x 37.5 h) | 37.5 | none by law | 1, +1/yr, max 12 | 1.0/yr after 2 yrs (statutory redundancy 0.5 / 1 / 1.5 by age) | 28 | 104 wk (qualifying period for unfair dismissal; shortens under the Employment Rights Act 2025, *unsure* when), 1 wk |
-| FR | 1,823 EUR (SMIC 2026, 35 h) | 35 | +25% | 4.3, +2/yr, max 8.7 | 1.08/yr after 1 yr (1/4 month a year) | 25 | 8 wk, 1 wk |
+| DE | 2,410 EUR (EUR 13.90/h from 1 Jan 2026, x 40 h) | 40 | +25% (custom, no statutory premium), *unsure* | by service (`noticeBands`): 4 weeks (to the 15th or month-end), 2 y 1 month, 5 y 2, 8 y 3, 10 y 4, 12 y 5, 15 y 6, 20 y 7 months (to month-end), as 4.3 / 8.7 / 13 / 17.4 / 21.7 / 26 / 30.4 weeks | none automatic: not due for every dismissal | 20 | 26 wk (notice bands apply instead of the probation notice) |
+| UK | 2,065 GBP (GBP 12.71/h National Living Wage, age 21+, from 1 Apr 2026, x 37.5 h; lower age bands differ) | 37.5 | none by law | `noticeBands`: 1 week after 1 month up to 2 years, then 1 week per completed year 2 to 12, max 12 weeks | statutory redundancy pay separate from notice: eligible after 2 years, 0.5 / 1 / 1.5 weeks a year by age (under 22, 22-40, 41+), service counted to 20 years | 28 | 104 wk (qualifying period for unfair dismissal; shortens under the Employment Rights Act 2025, *unsure* when) |
+| FR | 1,867 EUR (SMIC EUR 12.31/h from 1 Jun 2026 = EUR 1,867.02 at 35 h; EUR 12.02/h Jan-May) | 35 | +25% | 4.3, +2/yr, max 8.7 (kept from earlier data; no figure given) | needs 8 months uninterrupted service; 1/4 month of reference salary per year for the first 10 years, 1/3 month per year after (`severanceTiersMonths`; collective agreements may give more); separate from notice | 25 | 8 wk, 1 wk |
 | ES | 1,424 EUR (SMI 1,221 x 14 payments / 12) | 40 | +25% (rest or pay at least the basic rate), *unsure* | 2 | 2.86/yr (20 days a year, objective dismissal), max 52 | 22 | 8 wk |
 | NL | 2,598 EUR (WML EUR 14.99/h from 1 Jul 2026 x 40 h) | 40 | +25% (agreements), *unsure* | 4.3, +0.4/yr, max 17 | 1.44/yr (transition payment, 1/3 month a year) | 20 | 8 wk |
-| US | 1,257 USD (federal USD 7.25/h x 40 h; states are higher) | 40 | +50% (FLSA) | none (at will) | none | 0 | at will, no unfair dismissal |
+| US | 1,257 USD (federal USD 7.25/h x 40 h; higher state or local minimum can apply) | 40 | +50% (FLSA) | none by default (at will); WARN-type mass layoff notice only under `massLayoffNoticeWeeks` (60 days) when the caller flags a mass layoff | none | 0 | at will, no unfair dismissal |
 | CA | 3,146 CAD (federal CAD 18.15/h from 1 Apr 2026 x 40 h; Ontario CAD 17.95 from 1 Oct 2026) | 40 | +50% | 2 (Canada Labour Code, federal) | 0.4/yr (2 days a year), at least 1 week, after 1 yr (federal) | 10 | 13 wk |
 | AU | 4,354 AUD (national minimum AUD 26.44/h x 38 h from 1 Jul 2026) | 38 | +50% (awards) | 1, +0.8/yr, max 5 | 1.6/yr, at least 4, after 1 yr, max 16 (NES redundancy scale 4 weeks at 1 yr to 16 at 10 yrs, simplified) | 20 | 26 wk, 1 wk |
 | JP | 204,000 JPY (national weighted average JPY 1,177/h, FY2026 revision, x 40 h; takes effect region by region Oct-Dec 2026) | 40 | +25% | 4.3 | none statutory | 10 | 13 wk |
-| KR | 1,481,000 KRW game-scaled (real 2,157,000: KRW 10,320/h x 209 h) | 40 | +50% | 4.3 | 4.3/yr after 1 yr (30 days a year retirement pay) | 15 | 13 wk |
-| BR | 510 BRL game-scaled (real 1,621, 2026) | 44 | +50% | 4.3, +0.43/yr, max 12.9 | 1.7/yr (40% FGTS fine, simplified), *unsure* | 30 | 13 wk |
+| KR | 1,481,000 KRW game-scaled (real 2,156,880: KRW 10,320/h x 209 h = 40 h week with paid weekly rest, 2026) | 40 | +50% | 4.3 | 4.3/yr after 1 yr (30 days a year retirement pay) | 15 | 13 wk |
+| BR | 510 BRL game-scaled (real 1,621: BRL 54.04/day, 7.37/h, 2026) | 44 | +50% | 30 days up to one year of service plus 3 days per year, max 90 days (in lieu or worked by termination type; the game pays in lieu, only without cause) | FGTS: employer 8% of pay is payroll cost (`tax.employer.pension`); the 40% fine on the FGTS balance is a one-off liability (`fundFineRate` x `fundRate` x months served), separate from wages and notice | 30 | 13 wk |
 | CH | 4,000 CHF, none national (cantonal minima, e.g. Geneva about CHF 24.5/h), *unsure* | 42 | +25% above the legal maximum, *unsure* | 4.3, +0.9/yr, max 13 | none | 20 | 4.3 wk, 1 wk |
-| MX | 1,370 MXN game-scaled (real 9,577: MXN 315.04/day, 2026) | 48 | +100% | none | at least 12.9 (90 days) and 4.0/yr (law: 90 days + 20 days a year, i.e. 12.9 + 2.9/yr; simplified because the data takes the larger of the two) | 12 | 4 wk |
+| MX | 1,370 MXN game-scaled (real 9,577: MXN 315.04/day general zone from 1 Jan 2026; 440.87/day northern border zone) | 48 | +100% | none | indemnity only for `severanceReasons` (unjustified dismissal or redundancy; none for justified or for-cause dismissal or resignation): 3 months (13 weeks) + 20 days a year + seniority premium 12 days a year (premium cap of twice the minimum wage not modelled); replaces the earlier 12.9 weeks / 4.0 a year | 12 | 4 wk |
 | AE | 2,000 AED, none by law, *unsure* | 48 | +25% | 4.3 | 3.0/yr after 1 yr (21 days a year, gratuity) | 30 | 26 wk, 4.3 wk |
 | IT | 920 EUR game-scaled (real about 1,500, none by law; agreements) | 40 | +25% (agreements), *unsure* | 4, +1/yr, max 16 | 3.6/yr (TFR, about 6.9% of annual pay) | 20 | 26 wk |
 | DK | 21,000 DKK, none by law (agreements), *unsure* | 37 | +50% (agreements), *unsure* | 4.3, +0.6/yr, max 26 | 0.36/yr, at least 4.3, after 12 yrs (Funktionærloven: 1 month after 12 yrs, 2 after 17) | 25 | 13 wk, 2 wk |
 | FI | 1,740 EUR game-scaled (real about 2,200, none by law; agreements) | 37.5 | +50% | 2, +1.5/yr, max 26 | none | 30 | 26 wk |
-| IE | 2,391 EUR (EUR 14.15/h x 39 h, 2026), *unsure* | 39 | +25% (custom), *unsure* | 1, +1/yr, max 8 | 2/yr after 2 yrs (+1 bonus week not modelled) | 20 | 52 wk |
+| IE | 2,391 EUR (EUR 14.15/h, age 20+, from 1 Jan 2026; lower for younger; x 39 h) | 39 | +25% (custom), *unsure* | `noticeBands`: 13 weeks to under 2 y 1 week; 2 to under 5 y 2; 5 to under 10 y 4; 10 to under 15 y 6; 15 y+ 8 (employee's own statutory notice generally 1 week after 13 weeks: `employeeNoticeWeeks`) | 2/yr after 2 yrs (+1 bonus week not modelled) | 20 | 52 wk |
 | SG | 2,080 SGD, none by law (Progressive Wage Model cleaners from 1 Jul 2026, MOM) | 44 | +50% | 1, +0.8/yr, max 4 | 2/yr after 2 yrs (custom), *unsure* | 14 | 13 wk, 1 wk |
+
+### Owner-supplied 2026 rules (source "owner-supplied 2026 rules")
+
+Authoritative figures given by the project owner in October 2026; they replace any earlier conflicting value in this file. Not independently
+fetched. Where the rule data keeps them: `labour` in `country_traits.json` (`minimumWage` list with amount, currency, period, ageBand,
+region, effective date; `noticeBands`; `severanceTiersMonths`, `severanceAgeBands`, `severanceBaseWeeks`, `severancePremiumPerYear`,
+`severanceReasons`, `noticeReasons`, `fundRate`, `fundFineRate`, `massLayoffNoticeWeeks`) and `tax` / `vat` in `countries.json`.
+
+- Minimum wage 2026: MX MXN 315.04/day general zone from 1 Jan (440.87/day northern border); KR KRW 10,320/h (2,156,880/month, 40 h week with paid weekly rest); BR BRL 1,621/month (54.04/day, 7.37/h); FR EUR 12.31/h = 1,867.02/month at 35 h from 1 Jun (Jan-May 12.02); DE EUR 13.90/h from 1 Jan; UK GBP 12.71/h (21+, from 1 Apr); IE EUR 14.15/h (20+, from 1 Jan); US USD 7.25/h federal. The scaled game minima (SE, PL, LT, KR, BR, MX, IT, FI: about 85% of the cheapest market wage) depend only on the market wage, so re-deriving them with the same formula leaves them unchanged; only the real figures (`realMinMonthly`, KR 2,157,000 to 2,156,880) and unscaled minima (FR 1,823 to 1,867) changed.
+- Dismissal: notice (or pay in lieu) and severance are separate payments, computed from the person's actual wage and tenure and gated by the termination reason (redundancy, unjustified, for cause, resignation); routine payroll (including employer FGTS) is separate from one-off termination liabilities (severance, the BR fund fine). Notice pay carries the employer charge at that wage; severance and the fine do not.
+- Mexico tax: ISR 30%, IVA 16%, dividend withholding 10%, state payroll tax about 3%, IMSS from the table. Lithuania VAT: standard 21%, reduced category rate 12% from 2026 (was 9%), other reduced rates and exemptions kept separate.
+
 
 ### Labour verification log (second pass, October 2026)
 
@@ -177,14 +193,14 @@ Confirmed or corrected against fetched sources (URL, year of the figure):
 - SE notice periods confirmed in the statute LAS 11 § (https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/lag-198280-om-anstallningsskydd_sfs-1982-80/): per-year rate raised from 0.5 to 2.2 weeks so that 2 / 4 / 6 / 8 / 10 years give 2 / 3 / 4 / 5 / 6 months. SE real minimum (SEK 25,000, agreements) not verified.
 - LT notice: one month (two weeks under a year), Labour Code art. 57 (Eurofound ERM database https://apps.eurofound.europa.eu/legislationdb/notice-period-to-employees/lithuania); severance two months of average pay after a year, from secondary guides only (https://www.rippling.com/en-GB/blog/termination-in-lithuania): unverified against e-tar.lt. The old 0.5 weeks of notice a year is not in the Code.
 - UK: the unfair-dismissal qualifying period is still two years until 1 Jan 2027, when the Employment Rights Act 2025 cuts it to six months (law-firm summaries only, e.g. https://www.lewissilkin.com/insights/2026/09/04/whats-in-the-employment-rights-act). Data left at 104 weeks; change to 26 when the date passes.
-- MX severance changed to the constitutional indemnity (3 months plus 20 days a year; seniority premium not modelled); statute text (LFT) not fetched, from knowledge only. MX minimum MXN 315.04/day for 2026 and the other scaled real minima (KR KRW 10,320/h, BR BRL 1,621) were not re-fetched: unverified.
+- MX severance: superseded by the owner-supplied 2026 rules (indemnity gated by termination reason, 3 months + 20 days a year + seniority premium; the previous 12.9 weeks / 4.0 a year is gone). MX, KR and BR minimum wages are now owner-supplied.
 - DK: Funktionærloven severance (1 month after 12 years, 2 after 17) from knowledge only; the DK minimum (DKK 21,000, agreements) unverified.
 - NO real minimum: Tariffnemnda regulation of 21 Oct 2024, cleaning minimum NOK 227.54/h (https://arbeidstilsynet.no/globalassets/regelverkspdfer/forskrift-om-delvis-allmenngjoring-av-tariffavtale-for-renholdsbedrifter); the 2026 agreement raises it, figure not found. The game value 29,000 is game-scaled (about 85% of the cheapest market wage); `realMinMonthly` 37,000 is informational.
 
-Not verified in this pass (kept as in the table, from knowledge): DE (EUR 13.90/h; overtime premium and severance are customary, not statutory), FR SMIC EUR 1,823, UK NLW GBP 12.71, IE EUR 14.15, US federal USD 7.25, KR/BR/MX statutory minima, CH cantonal minima, AE end-of-service gratuity, IT/FI/SE real agreement minima, and all notice/severance figures not named above.
+Not verified in this pass (kept as in the table, from knowledge): DE overtime premium (customary, not statutory); the DE/FR/UK/IE/US/KR/BR/MX minimum wages are owner-supplied 2026 figures; CH cantonal minima, AE end-of-service gratuity, IT/FI/SE real agreement minima, and all notice/severance figures not named above.
 
-Simplifications: notice is paid in lieu and added to severance in one payment; notice
-grows with whole years of service; the unfair dismissal claim (the existing 35-55% risk without two warnings on file) cannot happen
+Simplifications: notice is paid in lieu and paid separately from severance (and from any termination fund fine); notice
+grows with whole years of service (or follows the country's `noticeBands`); the unfair dismissal claim (the existing 35-55% risk without two warnings on file) cannot happen
 during probation or in an at-will country; part-timers' pay and the minimum are pro rata to the standard week; the premium is paid
 only to hourly staff (not fixed-salary or commission staff) for hours above the standard or agreed week; wage claims for unpaid
 wages already existed (`Payday.lateDay`) and are unchanged.
