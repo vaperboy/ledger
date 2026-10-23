@@ -209,41 +209,6 @@ struct StaffContractMenu: View {
     }
 }
 
-/// How to hire a candidate: full time, part time, seasonal for the busy months, or after a paid trial week.
-struct HireOptionsMenu: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    var person: Person
-    var onHired: () -> Void
-
-    var body: some View {
-        Menu {
-            Button("Full time") { hire(Hiring.Terms()) }
-            Button("Part time, 20 h") { hire(Hiring.Terms(hours: 20)) }
-            Button("Seasonal, busy months") { hire(Hiring.Terms(hours: 25, seasonMonths: busy)) }
-            if person.role == "estate" { Button("Full time, own car") { hire(Hiring.Terms(ownCar: true)) } }
-            Button("Paid trial week") {
-                if let seen = store.act({ $0.startTrialWeek(personID: person.id, companyID: company.id) }) ?? nil {
-                    store.show("After a week their work looks like \(Int(seen)) skill.", tone: "n")
-                } else { store.show("Could not arrange a trial week.", tone: "warn") }
-            }
-        } label: {
-            Image(systemName: "ellipsis").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
-        }
-    }
-
-    private var busy: [Int] { let m = engine.busyMonths(companyID: company.id); return m.isEmpty ? [6, 7, 8] : m }
-
-    private func hire(_ t: Hiring.Terms) {
-        switch store.act({ $0.hire(personID: person.id, companyID: company.id, monthlyWage: person.askingMonthlyWage, terms: t) }) {
-        case .ok?: Haptics.success(); onHired(); store.show("\(person.name) has joined.", tone: "good")
-        case .taken?: store.show("They took another job.", tone: "warn")
-        default: store.show("They declined that offer.", tone: "warn")
-        }
-    }
-}
-
 /// Places in a chain that are short of a role, with a sister store that has one to spare.
 struct ChainStaffShortages: View {
     @EnvironmentObject var store: GameStore

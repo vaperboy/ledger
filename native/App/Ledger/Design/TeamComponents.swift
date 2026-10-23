@@ -28,6 +28,16 @@ enum HireFeedback: Equatable {
         }
     }
 
+    /// For hiring workers (`GameEngine.hire`, any terms).
+    static func from(_ r: Hiring.HireResult?, name: String) -> HireFeedback {
+        switch r {
+        case .ok?: return .hired("\(name) has joined.")
+        case .refused?: return .declined("\(name) turned that offer down. Try a higher one.")
+        case .taken?: return .unavailable("\(name) took another job.")
+        case nil: return .unavailable("No game is loaded.")
+        }
+    }
+
     /// For hiring a store manager.
     static func from(_ r: ManagerModel.HireResult?, name: String, company: String) -> HireFeedback {
         switch r {
@@ -54,7 +64,7 @@ struct CandidateHireRow<Extra: View>: View {
     @State private var feedback: HireFeedback?
 
     private func wage(_ f: Double) -> Double { f == 1 ? person.askingMonthlyWage : currency.roundedStep(person.askingMonthlyWage * f, about: 500) }
-    private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.tidyShort(wage(f)))" : "\(currency.tidyShort(wage(f))) (+\(Int(((f - 1) * 100).rounded()))%)" }
+    private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.tidyShort(wage(f)))" : "\(currency.tidyShort(wage(f))) (\(f > 1 ? "+" : "")\(Int(((f - 1) * 100).rounded()))%)" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

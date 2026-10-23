@@ -10,7 +10,6 @@ struct CompanyTeam: View {
     var company: Company
     @State private var role = ""
     @State private var candidates: [Person] = []
-    @State private var viewing: Person?
 
     /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
     @ViewBuilder private var delegation: some View {
@@ -29,7 +28,7 @@ struct CompanyTeam: View {
     }
 
     var body: some View {
-        let cur = engine.currency(for: company)
+        let live = store.engine ?? engine
         VStack(spacing: Theme.Space.l) {
             delegation
             CompanyManagement(engine: engine, company: company)
@@ -56,24 +55,12 @@ struct CompanyTeam: View {
                             Text(v.title + ". " + v.text).font(.caption).foregroundStyle(v.ok ? Theme.ivoryMuted : Theme.caution)
                         }
                     }
-                    ForEach(candidates) { p in
-                        Button { viewing = p } label: {
-                            HStack(spacing: Theme.Space.m) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(p.name).font(.bodyText.weight(.medium)).foregroundStyle(Theme.ivory)
-                                    Text("Says \(StaffProfile.band(p.claimedSkill).lowercased()) (\(Int(p.claimedSkill.rounded()))) · age \(p.age)").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                                }
-                                Spacer()
-                                Text(cur.tidyShort(p.askingMonthlyWage) + " / mo").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
-                            }.contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                    CandidateHireList(people: candidates.compactMap { live.state.people[$0.id] }.filter { $0.employerID == 0 },
+                                      emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
+                        WorkerHireRow(engine: live, company: company, person: p)
                     }
                 }
             }
-        }
-        .sheet(item: $viewing) { p in
-            CandidateSheet(engine: engine, company: company, personID: p.id) { candidates.removeAll { $0.id == p.id } }.environmentObject(store)
         }
         .onAppear { if role.isEmpty { role = engine.hireableRoles(companyID: company.id).first ?? "" } }
     }
