@@ -45,7 +45,8 @@ public extension GameEngine {
     mutating func setMaintenance(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].maintenance = min(2, max(0, level)) } } }
     mutating func setStockPolicy(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].set("stockPol", min(2, max(0, level))) } } }
 
-    /// Choose a business option (a "knob"), e.g. the café concept. Needs the documents the option requires.
+    /// Write a business option (a "knob") directly, free of any changeover. For tests and set-up only: a player changes how
+    /// the business sells with `changeKnob` / `toggleKnobOption`, which cost something and respect chain and franchise rules.
     mutating func setKnob(companyID: Int, knob: String, option: Int) {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
@@ -54,18 +55,46 @@ public extension GameEngine {
     }
 
     /// Switch one add-on of a multi-choice knob on or off. Several add-ons can run together: the knob is a bit mask,
-    /// so this sets or clears that option's bit and leaves the others alone.
+    /// so this sets or clears that option's bit and leaves the others alone. An add-on that needs a licence applies for it
+    /// (fee paid now); a chain standard or franchise agreement that fixes the knob refuses.
     @discardableResult
     mutating func toggleKnobOption(companyID: Int, knob: String, option: Int, on: Bool) -> ActionResult {
         var result = ActionResult.done
         update { s, data, _ in
             guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
                   let k = bd.knobs.first(where: { $0.id == knob }), k.isMulti, k.options.indices.contains(option) else { result = .refused("not a choice of this business"); return }
-            var all = s.companies[i].value("knob")
-            all[knob] = .number(Double(Knobs.mask(all[knob].int, option: option, on: on)))
-            s.companies[i].set("knob", all)
+            let now = KnobChange.currentValue(s.companies[i], k)
+            let mask = Knobs.mask(now, option: option, on: on)
+            if mask == now { return }
+            if case .refused(let why) = KnobChange.apply(&s, data, companyID: companyID, knob: knob, value: mask) { result = .refused(why) }
         }
         return result
+    }
+
+    /// What changing a single-choice knob to option `option` (or a multi-choice knob to the bit mask `option`) costs and commits you to.
+    func knobChangeQuote(companyID: Int, knob: String, option: Int) -> KnobChangeQuote? {
+        KnobChange.quote(state, data, companyID: companyID, knob: knob, value: option)
+    }
+
+    /// The same for switching one add-on of a multi-choice knob on or off.
+    func knobToggleQuote(companyID: Int, knob: String, option: Int, on: Bool) -> KnobChangeQuote? {
+        guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
+        return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
+    }
+
+    /// Who fixes this knob for the company (its chain's standard, its franchise agreement), or nil when the owner decides.
+    func knobGovernedBy(companyID: Int, knob: String) -> String? { state.company(companyID).flatMap { KnobChange.governedBy(state, $0, knob: knob) } }
+
+    /// Change how the business sells (a single-choice knob): pays the changeover and any licences, then trades at reduced
+    /// capacity for a few weeks. Nothing is promised about the result.
+    @discardableResult
+    mutating func changeKnob(companyID: Int, knob: String, option: Int) -> KnobChangeOutcome {
+        var out = KnobChangeOutcome.refused("not a choice of this business")
+        update { s, data, _ in
+            guard let co = s.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), !k.isMulti else { return }
+            out = KnobChange.apply(&s, data, companyID: companyID, knob: knob, value: option)
+        }
+        return out
     }
 
     /// Start, change or stop a marketing campaign. A campaign cannot be cut before its minimum length.
