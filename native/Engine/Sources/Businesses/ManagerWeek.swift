@@ -10,7 +10,7 @@ import Finance
 extension ManagerModel {
     /// Called once a week for every company, after the staff routine.
     public static func weekly(_ s: inout GameState, companyIndex ci: Int, _ bd: Trade, data: GameData, revenue rev: Double, utilisation util: Double, demand D: Double, capacity cap: Double) {
-        noticeWeek(&s, companyIndex: ci)
+        noticeWeek(&s, companyIndex: ci, data: data)
         assistantWeek(&s, companyIndex: ci, data: data)
         let co = s.companies[ci]
         guard let mid = co.managerID, let n = s.people[mid] else { return }
@@ -275,7 +275,7 @@ extension ManagerModel {
         case "seas": execSeasonal(&s, ci, dp, n, data: data)
         case "cut":
             let weakest = co.staff.min { (s.people[$0.id]?.skill ?? 0) + $0.skillGain < (s.people[$1.id]?.skill ?? 0) + $1.skillGain }
-            if let w = weakest { Hiring.fire(w.id, from: co.id, state: &s, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
+            if let w = weakest { Dismissal.dismiss(&s, companyID: co.id, staffID: w.id, reason: .redundancy, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
         case "ad":
             let ch = (data.catalog[co.type]?.audience ?? 0) > 0.5 ? "google" : "meta"
             var mkt = co.value("mkt")
