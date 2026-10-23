@@ -53,6 +53,16 @@ jobs:
           fi
           tail -n 5 test.log
 
+      - name: Backtrace of the crashing test (only if the tests failed)
+        if: failure()
+        working-directory: native/Engine
+        run: |
+          B=$(find .build -name "LedgerEnginePackageTests.xctest" -maxdepth 4 | head -n 1)
+          X=$(xcrun -f xctest)
+          echo "bundle=$B xctest=$X"
+          LEDGER_PROGRESS=1 lldb --batch -o "process handle SIGILL SIGTRAP SIGSEGV SIGBUS SIGABRT -s true -n true" -o run -o "bt 60" -o "thread list" \
+            -- "$X" -XCTest LedgerTests.BalanceGuardTests/testCapitalHeavyTradesEarnModestReturns "$B" 2>&1 | grep -vE "^PROGRESS" | tail -n 90
+
   app-build:
     runs-on: macos-15
     needs: engine-tests
