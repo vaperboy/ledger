@@ -63,9 +63,9 @@ jobs:
           LEDGER_PROGRESS=1 lldb --batch -o "process handle SIGILL SIGTRAP SIGSEGV SIGBUS SIGABRT -s true -n true" -o run -o "bt 60" -o "thread list" \
             -- "$X" -XCTest LedgerTests.BalanceGuardTests/testCapitalHeavyTradesEarnModestReturns "$B" 2>&1 | grep -vE "^PROGRESS" | tail -n 90
 
+  # Runs in parallel with engine-tests (both must pass): a compile error in the app shows up without waiting for the long engine tests.
   app-build:
     runs-on: macos-15
-    needs: engine-tests
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode

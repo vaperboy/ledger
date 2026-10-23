@@ -60,8 +60,10 @@ struct VenturesContent: View {
 private struct BigMeetingCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
-    var offer o: BigMeeting.Offer
+    var o: BigMeeting.Offer
     @State private var pending: PendingAction?
+
+    init(engine: GameEngine, offer: BigMeeting.Offer) { self.engine = engine; self.o = offer }
 
     var body: some View {
         let cur = engine.homeCurrency
@@ -145,8 +147,10 @@ private struct FoundedStartups: View {
 private struct FoundedCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
-    var startup f: Startups.Founded
+    var f: Startups.Founded
     @State private var pending: PendingAction?
+
+    init(engine: GameEngine, startup: Startups.Founded) { self.engine = engine; self.f = startup }
 
     var body: some View {
         let cur = engine.homeCurrency

@@ -39,7 +39,7 @@ struct BankContent: View {
                 borrowing(e, cur)
                 companyLoans(e)
             }
-            .sheet(item: $repaying) { l in RepayLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
+            .sheet(item: $repaying) { l in RepayPersonalLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
             .confirmAction($pending)
         }
     }
@@ -212,7 +212,7 @@ struct BankContent: View {
 }
 
 /// Pay back part or all of one loan: presets for one instalment, half and everything, with the balance after.
-struct RepayLoanSheet: View {
+struct RepayPersonalLoanSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
     var loanID: Int
