@@ -1,9 +1,5 @@
 {
  "trades": {
-  "courier": {
-   "Dc": 3648.1389,
-   "capD": 3840.1462
-  },
   "wh3pl": {
    "Dc": 6454.0679,
    "capD": 7593.0211
@@ -17,39 +13,39 @@
    "capD": 1881.2886
   },
   "skires": {
-   "Dc": 2533.0748,
-   "capD": 2980.088
+   "Dc": 3039.6898,
+   "capD": 3576.1056
   },
   "indoorski": {
    "Dc": 5752.4423,
    "capD": 6767.5792
   },
   "farm": {
-   "Dc": 45.7616,
-   "capD": 48.1701
+   "Dc": 63.151,
+   "capD": 66.4747
   }
  },
  "demandLevel": {
   "boutique": 4.7,
   "brewery": 2.98,
-  "cardealer": 2.48,
-  "carrepair": 3.1,
-  "factory": 1.96,
+  "cardealer": 3.1,
+  "carrepair": 4.0,
+  "factory": 2.3,
   "grocery": 2.22,
-  "hardware": 1.98,
-  "hotel": 1.98,
+  "hardware": 2.3,
+  "hotel": 2.3,
   "kiosk": 2.27,
   "pcbang": 5.28,
   "dental": 5.4,
   "vineyard": 14.0,
-  "courier": 4.9,
   "wh3pl": 5.04,
   "farm": 3.78,
-  "casino": 1.9,
+  "casino": 2.3,
   "skires": 2.08,
   "shipping": 1.85,
   "airline": 4.2,
   "indoorski": 5.0,
-  "furniture": 4.2
+  "furniture": 5.0,
+  "courier": 3.8
  }
 }

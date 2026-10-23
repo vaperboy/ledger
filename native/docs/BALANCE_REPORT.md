@@ -190,3 +190,42 @@ the licence wait) gives, for the trades compared with the original:
 Most trades with premises moved up by 5 to 25 points, so the verdict "no trade makes you rich quickly" still stands in money
 terms but the capital-heavy trades listed as losing money (grocery, hardware, car repair) are much closer to break-even. The
 full table was not regenerated; run the probe to refresh it.
+
+## Session 6 balance pass
+
+`testCapitalHeavyTradesEarnModestReturns` failed (6 of 16 capital-heavy trades lost money; limit 3). Probe: 3 seeds, UK, 3 years.
+
+**Structural bug found (courier).** `PersonalEquipment.needed` took the bikes a courier already has off the vans needed from
+`eq.bike.n`, but bikes are vehicles stored in `veh`, so the count was always 0. Every courier (plus owner) then "needed" a van,
+the 2 vans the standard set-up buys covered half of that need, and the van part cut the company's capacity to 50 percent
+(663 against 1324 parcels a week) while the wages of the full team were paid. This was the structural -12% (and why the earlier
+pass needed demand x2 and capacity x1.2 to reach +13%). Fixed (`CapacityModel.equipmentCount`). With the fix the old courier
+tuning gave +74%, so it was withdrawn: capacity back to the original numbers, demand level 3.8 (original 2.45).
+Checked and found not structural: late interest (only on unpaid bills), country loan rate, credit factor (0.96 to 1.03),
+rival strength factor (0.88 to 1.1), leased vehicles; vehicle upkeep and depreciation are in real-world ranges.
+
+**The rest is parameter fit, not mechanics.** Cardealer, carrepair, factory, casino, furniture, hardware, hotel, skires and farm
+sat at -5% to +2% because costs the calibration does not know about (random fines such as inspection fines of 20% of a week's
+revenue, incident losses of up to 10% of a year's revenue on a farm, loan interest) eat the 3 to 7% design margin. Their
+`demandLevel` (and, for the space- or capacity-bound farm and ski resort, `Dc`/`capD`) was raised by 1.2 to 1.6x; no bonus or
+special case was added.
+
+| Trade | Before | After | Change in `trade_tuning.json` |
+|---|---:|---:|---|
+| cardealer | -5% | 6% | demandLevel 2.48 to 3.1 |
+| carrepair | -5% | 9% | 3.1 to 4.0 (very sensitive: 4.3 gives 27%) |
+| factory | -1% | 9% | 1.96 to 2.3 |
+| courier | -7% (-12% at original values) | 10% | bug fix; tuning withdrawn, demandLevel 3.8 |
+| casino | -3% | 5% | 1.9 to 2.3 |
+| furniture | -2% | 8% | 4.2 to 5.0 |
+| farm | -1% | -2% (0 to +1% in two of three seeds) | Dc, capD x1.38 (space-bound); incident losses up to 2 M in 3 years |
+| hardware | 2% | 4% | 1.98 to 2.3 |
+| hotel | 2% | 7% | 1.98 to 2.3 |
+| skires | 1% | 13% | Dc, capD x1.2; lumpy (-2% to +13% by seed) |
+| grocery, boutique, brewery, kiosk, vineyard, wh3pl | 20, 15, 7, 36, 10, 8% | unchanged | |
+| airline | 4% (first year -29 M) | 4% | unchanged; opens and survives |
+
+`BalanceGuardTests` passes in full (farm is still around zero, so one trade loses money, limit 3). Highest returns are the small
+kiosk (36%) and grocery (20%), far below the 50% ceiling. Not fixed: a ski resort's reputation falls to single digits over three
+years in the probe because serious complaints go to the owner and the probe never answers them; the farm's yearly result swings
+with random incident losses.
