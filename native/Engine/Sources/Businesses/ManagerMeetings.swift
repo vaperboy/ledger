@@ -516,7 +516,7 @@ extension ManagerModel {
             c.status.isLive && c.managerID != nil && s.people[c.managerID!] != nil && (companyID == nil || c.id == companyID)
         }
         if cos.isEmpty { return .none }
-        let fresh = cos.filter { $0.value("meetW").isNull || Double(s.week) - $0.num("meetW") >= 3 }
+        let fresh = cos.filter { !CounterpartMeeting.isCoolingDown(lastWeek: $0.value("meetW").isNull ? nil : $0.num("meetW"), now: s.week, weeks: 3) }
         if fresh.isEmpty { return .wait }
         for c in fresh { meetOne(&s, companyID: c.id, goal: goal, tone: tone, data: data, marketing: marketing) }
         return .ok(fresh.count)

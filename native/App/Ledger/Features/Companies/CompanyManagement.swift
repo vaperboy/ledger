@@ -357,7 +357,7 @@ struct ManagerSheet: View {
 
     @ViewBuilder private func hire(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let title = e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager"
-        let fee = cur.scaledPrice(15000)
+        let fee = ManagerModel.searchFee(currency: cur)
         VStack(alignment: .leading, spacing: 4) {
             Text("Hire a \(title.lowercased())").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
             RoleScopeBadge(role: co.name, scope: "store")

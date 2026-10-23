@@ -239,7 +239,7 @@ extension ManagerModel {
     public static func searchTeam(_ s: inout GameState, companyID: Int, key: String, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), key == "ceo" || key == "reg" || teamRoles.contains(where: { $0.key == key }) else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard s.companies[ci].cash >= fee || Payments.liquid(s) >= fee else { return nil }
         Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Executive search: \(slotTitle(s, s.companies[ci], key, data: data))")
         let f = key == "ceo" ? 2.4 : key == "reg" ? 1.6 : teamRoles.first { $0.key == key }!.payFactor
@@ -334,7 +334,7 @@ extension ManagerModel {
     /// Search for a chain or group executive; the agency is paid by the player (group) or the first store. Original: `MR56` in org_chart.js, `genExec`.
     public static func searchExecutive(_ s: inout GameState, level: ExecLevel, data: GameData) -> [Person]? {
         let cur = playerCurrency(s, data)
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard Payments.liquid(s) >= fee else { return nil }
         Payments.playerPays(&s, fee, label: "Executive search: \(level.title)")
         return (0..<3).map { _ in

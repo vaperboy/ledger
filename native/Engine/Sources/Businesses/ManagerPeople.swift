@@ -62,11 +62,15 @@ extension ManagerModel {
         return p
     }
 
+    /// What every executive search costs (manager, team role, chain or group executive; the App's button labels read this too).
+    /// 15,000 at the reference level, scaled by the country's price level.
+    public static func searchFee(currency cur: Currency) -> Double { cur.scaledPrice(15000) }
+
     /// Executive search: a fee, and four candidates, three of the trade's own type. Original: `ACT.mgrsearch`.
     public static func search(_ s: inout GameState, companyID: Int, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), let bd = data.catalog[s.companies[ci].type] else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard s.companies[ci].cash >= fee || Payments.liquid(s) >= fee else { return nil }
         Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Executive search")
         let co = s.companies[ci]
@@ -229,13 +233,14 @@ extension ManagerModel {
     public static func meet(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return false }
         let co = s.companies[ci]
-        if !co.value("meetW").isNull, Double(s.week) - co.num("meetW") < 4 { return false }
-        s.companies[ci].set("meetW", s.week)
-        let cur = World(state: s, data: data).currency(co)
-        let line = co.monthlyHistory.last.map { "Last month: revenue \(cur.short($0.revenue)), profit \(cur.short($0.profit))." } ?? "It is too early to say how it is going."
-        s.addMessage(kind: "info", from: n.name, title: "Re: \(co.name)",
-                     body: "Thanks for taking the time. \(line) We are using \(Int(jsRound(co.value("lastW")["util"].double * 100)))% of our capacity.", companyID: co.id, tone: "n", status: "done")
-        return true
+        let last: Double? = co.value("meetW").isNull ? nil : co.num("meetW")
+        return CounterpartMeeting.meet(&s, lastWeek: last, cost: nil, label: "") { t in
+            t.companies[ci].set("meetW", t.week)
+            let cur = World(state: t, data: data).currency(co)
+            let line = co.monthlyHistory.last.map { "Last month: revenue \(cur.short($0.revenue)), profit \(cur.short($0.profit))." } ?? "It is too early to say how it is going."
+            t.addMessage(kind: "info", from: n.name, title: "Re: \(co.name)",
+                         body: "Thanks for taking the time. \(line) We are using \(Int(jsRound(co.value("lastW")["util"].double * 100)))% of our capacity.", companyID: co.id, tone: "n", status: "done")
+        } == .ok
     }
 
     /// How much experience a manager keeps when moved from one business to another. Original: `moveLoss`.
