@@ -58,7 +58,7 @@ public enum PersonalEquipment {
         var w = Double(people(co, bd, roles: rl.roles))
         if co.staff.isEmpty && !ownerWorks(co) { return max(e.isRequired ? 1 : 0, std != 0 ? min(std, 1) : 0) }
         if bd.id == "estate" && e.id == "car" { w -= Double(co.staff.filter { $0.flag("ownCar") && $0.role == "estate" }.count) }
-        if bd.id == "courier" && e.id == "van" { w -= min(w, Double(co.value("eq")["bike"]["n"].double)) }
+        if bd.id == "courier" && e.id == "van", let bike = bd.equipment.first(where: { $0.id == "bike" }) { w -= min(w, CapacityModel.equipmentCount(co, bike)) }
         return w > 0 ? (w / rl.peoplePerUnit).rounded(.up) : 0
     }
 
