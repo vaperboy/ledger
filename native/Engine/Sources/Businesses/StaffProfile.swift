@@ -108,8 +108,7 @@ public enum StaffProfile {
               let mood = mood(s, companyID: companyID, staffID: staffID, data: data) else { return nil }
         let t = data.catalog.tables
         let skill = StaffModel.skill(m, person: n, salesRoles: t.salesRoles)
-        let w = World(state: s, data: data)
-        let sev = w.terminationCost(co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), onNotice: m.noticeWeeks > 0)
+        let sev = Dismissal.quote(s, companyID: companyID, staffID: staffID, data: data)?.total ?? 0
         let market = marketPay(s, co, m, data: data)
         let gap = (market * (0.7 + n.skill / 160) - m.monthlyWage) / max(1, m.monthlyWage)
         let hours = m.weeklyHours ?? StaffModel.fullWeekHours
@@ -152,7 +151,7 @@ public enum StaffProfile {
         s.note("\(name) attended \"\(c.name)\" at \(s.companies[i].name): \(msg).", tone: gain > 0 ? "good" : "n", companyID: companyID)
         if poach, let id = staffID {
             s.note("\(name) was poached by a competitor after the course.", tone: "bad", companyID: companyID)
-            Hiring.fire(id, from: companyID, state: &s, data: data, withCause: true)
+            Dismissal.dismiss(&s, companyID: companyID, staffID: id, reason: .resignation, data: data)
         }
         return .done(msg)
     }
@@ -181,24 +180,11 @@ public enum StaffProfile {
 
     public struct DismissResult: Equatable, Sendable { public var severance: Double; public var claimedUnfairDismissal: Bool; public var compensation: Double }
 
-    /// Let someone go. Without two warnings on file they may claim unfair dismissal. Original: `ACT.firestaff`.
+    /// Let someone go. Without two warnings on file they may claim unfair dismissal. Original: `ACT.firestaff`. The rule is `Dismissal.dismiss`.
     @discardableResult
     public static func dismiss(_ s: inout GameState, companyID: Int, staffID: Int, data: GameData) -> DismissResult? {
-        guard let i = s.companyIndex(companyID), let m = s.companies[i].staff.first(where: { $0.id == staffID }) else { return nil }
-        let just = isDocumented(m)
-        let tenure = Double(s.week - m.hiredWeek)
-        let unfair = !just && World(state: s, data: data).labour(s.companies[i]).canClaimUnfairDismissal(tenureWeeks: tenure) && s.random.chance(!m.value("flag").isNull ? 0.35 : 0.55)
-        let name = s.people[staffID]?.name ?? "A team member"
-        let wage = m.monthlyWage
-        let sev = Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: just)
-        var comp = 0.0
-        if unfair {
-            let cur = World(state: s, data: data).currency(s.companies[i])
-            comp = cur.roundedStep(s.random.range(wage * 2, wage * 4), about: 100)
-            Payments.companyPays(&s, companyID: companyID, amount: comp, category: "fine", label: "Unfair dismissal settlement")
-            s.note("\(name) claimed unfair dismissal. \(s.companies[i].name) paid \(cur.display(comp)) in compensation.", tone: "bad", companyID: companyID)
-        }
-        return DismissResult(severance: sev, claimedUnfairDismissal: unfair, compensation: comp)
+        guard let o = Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, data: data) else { return nil }
+        return DismissResult(severance: o.paid, claimedUnfairDismissal: o.claimedUnfairDismissal, compensation: o.compensation)
     }
 
     /// Cut the weakest performers to save costs; the mood of the rest drops. Original: `ACT.logo`.
@@ -208,7 +194,7 @@ public enum StaffProfile {
         let t = data.catalog.tables
         let ranked = s.companies[i].staff.sorted { StaffModel.skill($0, person: s.people[$0.id], salesRoles: t.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: t.salesRoles) }
         let gone = ranked.prefix(max(0, n)).map { $0.id }
-        for id in gone { Hiring.fire(id, from: companyID, state: &s, data: data) }
+        for id in gone { Dismissal.dismiss(&s, companyID: companyID, staffID: id, reason: .redundancy, data: data) }
         s.companies[i].set("mood", max(0, (s.companies[i].value("mood").isNull ? 60 : s.companies[i].num("mood")) - 6))
         s.note("\(s.companies[i].name) laid off \(gone.count) \(gone.count == 1 ? "person" : "people").", companyID: companyID)
         return gone
@@ -218,11 +204,10 @@ public enum StaffProfile {
     public static func layoffPreview(_ s: GameState, companyID: Int, count n: Int, data: GameData) -> (names: [String], savesPerMonth: Double, severance: Double) {
         guard let co = s.company(companyID) else { return ([], 0, 0) }
         let t = data.catalog.tables
-        let world = World(state: s, data: data)
-        let emp = world.country(co).employerSocial
+        let emp = World(state: s, data: data).country(co).employerSocial
         let pick = co.staff.sorted { StaffModel.skill($0, person: s.people[$0.id], salesRoles: t.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: t.salesRoles) }.prefix(max(0, n))
         let saves = pick.reduce(0) { $0 + $1.monthlyWage * (1 + emp) }
-        let sev = pick.reduce(0) { $0 + world.terminationCost(co, monthlyWage: $1.monthlyWage, tenureWeeks: Double(s.week - $1.hiredWeek), onNotice: $1.noticeWeeks > 0) }
+        let sev = Dismissal.quote(s, companyID: companyID, staffIDs: pick.map { $0.id }, reason: .redundancy, data: data)
         return (pick.map { $0.id }.compactMap { s.people[$0]?.name }, saves, sev)
     }
 
@@ -234,7 +219,7 @@ public enum StaffProfile {
         guard data.catalog.tables.salesRoles.contains(s.companies[i].staff[k].role), ["fix", "mix", "com"].contains(mode) else { return .notSales }
         if mode == "com" && n.num("sec") > 0.65 && s.random.chance(0.6) {
             s.note("\(n.name) will not work on commission only and resigns.", tone: "bad", companyID: companyID)
-            Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: true)
+            Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, reason: .resignation, data: data)
             return .resigned
         }
         let rate = mode == "fix" ? 0 : mode == "mix" ? 0.03 : 0.06
