@@ -109,6 +109,20 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 - Country rules: start in two countries and compare wages, notice and tax.
 - Balance feel: play 3 years of a shop, a contractor, a rental company.
 
+### 9.B Life stories and what you can fund (stage 2, background)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9.B1 | Start screen: pick a country, read "Your story" | Start-up loan and Heir each show cash, debt and monthly repayment (or "no debt"), business owned, credit; numbers change with the country | | NOT TESTED | | |
+| T9.B2 | Choose Heir, pick the family cafe city, Begin | Game opens with an open cafe in that city, a small team, only the savings in your account, no loan on the Finance screen | | NOT TESTED | | |
+| T9.B3 | Heir: play one month | No errors; the cafe trades; statement shows the inheritance lines once | | NOT TESTED | | |
+| T9.B4 | Choose Start-up loan (default), Begin | Same as before: loan equals the cash, no company | | NOT TESTED | | |
+| T9.B5 | Quit to menu, Continue an Heir game | Loads with the cafe, story unchanged | | NOT TESTED | | |
+| T9.B6 | Phone > New company at game start | Leads with trades you can fully fund, cheapest first, each with its start cost; a line says how much you have | | NOT TESTED | | |
+| T9.B7 | Turn on "Show everything" | Every trade listed; unaffordable ones show "X short"; banned ones show the reason; none is disabled | | NOT TESTED | | |
+| T9.B8 | Open an unaffordable trade | Detail cost equals the list cost (same size and form); registering is still allowed | | NOT TESTED | | |
+| T9.B9 | Search a trade name | Finds it whether or not it is affordable | | NOT TESTED | | |
+| T9.B10 | Add savings (or earn money), reopen New company | More trades appear in the funded list | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

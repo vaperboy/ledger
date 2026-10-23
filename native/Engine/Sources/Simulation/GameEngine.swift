@@ -49,7 +49,7 @@ public struct GameEngine {
 
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
-    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30) throws -> GameEngine {
+    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647
@@ -62,7 +62,8 @@ public struct GameEngine {
         json["uid"] = 1000; json["week"] = 0; json["day"] = 0; json["country"] = .string(country.code)
         json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName), "age": .number(Double(min(110, max(1, age)))),
                                   "city": .string(cityID ?? country.cities[0].id), "skill": .object([:])])
-        json["cash"] = .number(loan); json["cash0"] = .number(loan); json["flow"] = .object([:]); json["sav"] = .object(["bal": 0])
+        let startCash = story == .loan ? loan : 0   // other stories are funded through the ledger, so no loan record is ever made and removed
+        json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:]); json["sav"] = .object(["bal": 0])
         json["loans"] = .array([]); json["credit"] = 62; json["overdraft"] = 0
         json["overdraftLimit"] = .number(currency.scaledPrice(25000))
         json["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
@@ -80,16 +81,24 @@ public struct GameEngine {
         json["over"] = .null; json["settings"] = .object(["adv": 1, "confirm": 1]); json["flags"] = .object([:])
         json["dmode"] = 1
         var state = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(JSONValue.object(json)))
-        var l = Loan(raw: [:])
-        l.id = state.makeID(); l.kind = "start"; l.name = "Start-up loan"; l.balance = loan; l.set("rate", 0); l.margin = 0.045
-        l.termMonths = country.startLoanTermMonths; l.companyID = 0; l.startWeek = 0; l.isGuaranteed = false
-        l.monthlyPayment = Loans.annuity(principal: loan, yearlyRate: state.economy.policyRate + 0.045, months: Double(country.startLoanTermMonths))
-        state.loans.append(l)
+        if story == .loan {
+            var l = Loan(raw: [:])
+            l.id = state.makeID(); l.kind = "start"; l.name = "Start-up loan"; l.balance = loan; l.set("rate", 0); l.margin = 0.045
+            l.termMonths = country.startLoanTermMonths; l.companyID = 0; l.startWeek = 0; l.isGuaranteed = false
+            l.monthlyPayment = Loans.annuity(principal: loan, yearlyRate: state.economy.policyRate + 0.045, months: Double(country.startLoanTermMonths))
+            state.loans.append(l)
+        }
         state.economy.set("rate0", state.economy.policyRate)
         PlayerGoals.startFirstSteps(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
-        state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
+        if story == .loan {
+            state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
+        } else {
+            let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
+            guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }
+            state.note("Welcome to Ledger. The family café is yours, open and trading, with \(currency.display(state.cash)) in savings and no loan.", tone: "good")
+        }
         let bank = country.pack["authorities"]["cb"].string
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
         var engine = GameEngine(state: state, data: data, events: events, marketing: marketing)
