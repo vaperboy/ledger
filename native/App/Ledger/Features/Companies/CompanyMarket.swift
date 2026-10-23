@@ -263,21 +263,23 @@ struct RivalSheet: View {
             }
             .ledgerBackground()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .confirmationDialog("What should it become?", isPresented: Binding(get: { pendingPrice != nil }, set: { if !$0 { pendingPrice = nil } }), titleVisibility: .visible) {
-                if let p = pendingPrice, let e = store.engine {
-                    Button("Its own company") { pendingPrice = nil; buy(p) }
-                    Button("Your branch") { absorb(p, .branch) }
-                    Button("Merge into your company (extra 8%)") { absorb(p, .merge) }
-                    Button("Close it down (extra 12%)") { absorb(p, .shut) }
-                    if e.state.company(companyID)?.value("fr")["on"].bool == true {
-                        Button("Franchise office, owner stays") { absorb(p, .franchiseOldOwner) }
-                        Button("Franchise office, new franchisee") { absorb(p, .franchiseNewOwner) }
+            .sheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price })) { p in
+                AcquisitionSheet(companyID: companyID, rivalID: rivalID, price: p.price) { kind in
+                    switch kind {
+                    case .own: pendingPrice = nil; buy(p.price)
+                    case .branch: absorb(p.price, .branch)
+                    case .merge: absorb(p.price, .merge)
+                    case .shut: absorb(p.price, .shut)
+                    case .franchiseOldOwner: absorb(p.price, .franchiseOldOwner)
+                    case .franchiseNewOwner: absorb(p.price, .franchiseNewOwner)
+                    case .ownBank: buyWithBank(p.price)
                     }
-                    if e.ownBank != nil, e.ownBankRoom() >= p * 0.2 { Button("Its own company, 70% from my own bank") { buyWithBank(p) } }
                 }
-            } message: { Text("A branch carries your name from day one. Merging brings their customers and some staff over; closing removes a rival (a big market share can draw the competition authority).") }
+            }
         }
     }
+
+    private struct PriceID: Identifiable { var price: Double; var id: Double { price } }
 
     private func absorb(_ price: Double, _ how: RivalAbsorb.How) {
         pendingPrice = nil
