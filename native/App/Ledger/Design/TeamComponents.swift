@@ -143,7 +143,7 @@ enum AuthorityWords {
 }
 
 /// Picks an authority level, with what it means under the picker.
-struct AuthorityPicker: View {
+struct AuthorityLevelPicker: View {
     var level: Int
     var set: (Int) -> Void
     var body: some View {

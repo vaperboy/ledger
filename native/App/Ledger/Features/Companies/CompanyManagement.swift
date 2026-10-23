@@ -201,7 +201,7 @@ struct ManagerSheet: View {
         let lvl = Int(auth["lvl"].double)
         LedgerSection("Decides") {
             VStack(alignment: .leading, spacing: 10) {
-                AuthorityPicker(level: lvl) { v in
+                AuthorityLevelPicker(level: lvl) { v in
                     store.act { $0.setManagerAuthority(companyID: co.id, level: v) }
                     store.show("\(m.name) now \(GameEngine.authorityText(level: v)).", tone: "n")
                 }

@@ -89,7 +89,7 @@ struct TeamSlotSheet: View {
         if slot.key == "ceo" {
             LedgerSection("Decides") {
                 VStack(alignment: .leading, spacing: 10) {
-                    AuthorityPicker(level: slot.level) { l in
+                    AuthorityLevelPicker(level: slot.level) { l in
                         store.act { $0.setTeamAuthority(companyID: co.id, level: l) }
                         store.show("\(p.name) now \(GameEngine.authorityText(level: l)).", tone: "n")
                     }
