@@ -1,5 +1,14 @@
 # Master checklist (single source of truth)
 
+## CURRENT STATUS (verified, 23 Oct 2026)
+- **Engine:** compiles on Swift 6.0.3 (Linux) and macOS CI; full engine suite 279/279 green (`cd native/Engine && swift test`, about 9 min).
+- **App:** builds for the iOS simulator in CI (`app-build`); iPhone, iPad and iOS 26 screenshot tours pass. Navigation is Company / Team / Group / Projects / Inbox.
+- **Stage 1 mechanics:** every action in the original is covered (engine, screen, or presentation-only); see MISSING_ACTIONS.md. Rival-run energy firms, oil/salmon fairs and club investors do not exist in the original (nothing to port).
+- **Stage 2 connections:** de-duplicated stakes/big meeting, holding-routed sale proceeds, per-country loan rates and labour rules, abroad compliance, living rivals, event chains, misconduct and political decisions, cash-stress consequences (late interest, loan arrears/call, VAT overdue).
+- **Stage 4 balance (this session):** capital-heavy trades fixed (courier equipment bug, farm fire cap, trade tuning); BalanceGuardTests green. Airline opens and survives (ROI about 4%, large first-year loss).
+- **Left, all data/judgement not code:** (1) figures marked unverified in docs/TAX_SOURCES.md (MX corporate/IVA/IMSS, LT VAT, several 2026 minimum wages and notice/severance statutes); (2) Mexican severance is now much more expensive (12.9+ weeks) - check feel; (3) app icon, bundle id, signing, installable build (Apple/user); (4) `tools/parity_map.py` is stale vs the hand-edited parity docs; (5) the `engine-tests` CI job is now strict (pipefail), so a failing test turns CI red; (6) design pass per screen (Stage 3) is user-led.
+
+
 Status words: **DONE** (logic works and was quick-checked), **PARTIAL** (works, listed gaps), **NOT STARTED**, **BLOCKED** (waits on the user or an outside thing).
 "Different names": things that exist in code under another name are counted DONE/PARTIAL, not missing (see `MISSING_ACTIONS.md` for the exact missing ids).
 
@@ -88,6 +97,6 @@ Current screens are **first versions**, functional only. Ivory Ledger style is c
 - Left: board seats/stakes have no standalone Group view; iPad company table; policy rate on consumer demand only for rate-sensitive trades; FX on repatriation (not in original); minimum wage/hours/income tax traced in the tax-country pass (data has no statutory minimum wage, see TAX_SOURCES; owner-salary withholding, severance and VAT/corporate tax now follow the company's own country, `CompanyCountryRulesTests`); airline lease economics follow the original (balance question for stage 4).
 - MUST DO on a Mac: build, `swift test`, fix compile errors, re-baseline golden tests (random streams changed by removing duplicate big-meeting weekly, tenders, rivals), then UI polish and balance (stage 4).
 
-## BLOCKED: toolchain (manual step required)
+## RESOLVED: toolchain (Swift 6.0.3 installed at /opt/swift in the cloud session after the network allowlist change)
 - No Swift toolchain on the cloud host and the sandbox proxy denies swift.org (403). Needs the user to add `download.swift.org` / `swift.org` under Allowed domains (cloud environment settings > Network access), or to run on a Mac: `cd native/Engine && swift test`, then build the app in Xcode (needs Swift 5.10+; `nonisolated(unsafe)` is used).
 - Until then every Swift change from the web session is unbuilt: only hand-compiled by reviewer passes.
