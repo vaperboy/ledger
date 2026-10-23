@@ -9,6 +9,8 @@ Category key: **A** generic reusable template (list/detail/form/confirm sheet/KP
 market/rival cards, finance book, catalogue), **C** individually designed special screen, **D** verified obsolete/duplicate (evidence cited;
 "missing from native" is never D). Status: Done / Partial / Missing / Unreachable (engine exists, no route).
 
+> **Status note (23 Oct 2026):** the Done/Partial/Missing counts below predate the UI pass. What is still to do, and why, is tracked in `IMPLEMENTATION_ROADMAP.md`; what has been tried by hand is in `HANDS_ON_TEST_PLAN.md`. This file stays the screen inventory; update its status columns only.
+
 ## Summary
 
 | | Rows | A | B | C | D | Done | Partial | Missing | Unreachable | n/a |

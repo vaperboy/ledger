@@ -1,5 +1,7 @@
 # Master checklist (single source of truth)
 
+> Open work is tracked in `IMPLEMENTATION_ROADMAP.md` (KEEP / ADAPT / REMOVE / DEFER / ALREADY DONE, with dependencies); hands-on app tests in `HANDS_ON_TEST_PLAN.md`. This file stays the status log.
+
 ## CURRENT STATUS (verified, 23 Oct 2026)
 - **Engine:** compiles on Swift 6.0.3 (Linux) and macOS CI; full engine suite 279/279 green (`cd native/Engine && swift test`, about 9 min).
 - **App:** builds for the iOS simulator in CI (`app-build`); iPhone, iPad and iOS 26 screenshot tours pass. Navigation is Company / Team / Group / Projects / Inbox.
