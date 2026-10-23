@@ -203,6 +203,16 @@ public extension GameEngine {
 
     // MARK: Payroll
 
+    /// Change a company's pay day (1, 5, 10, 12, 15, 20, 25, 28 or 0 = last day). The change is queued until this month's payroll is paid.
+    @discardableResult
+    mutating func setPayday(companyID: Int, day: Int) -> Payday.PaydayChange {
+        var r = Payday.PaydayChange.noCompany
+        update { s, _, _ in
+            r = Payday.setPayday(&s, companyID: companyID, day: day, today: Payday.dayNumber(week: s.week, day: s.day))
+        }
+        return r
+    }
+
     /// Who runs payroll at a company: the owner (approves each month), the accountant, or the manager.
     mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) {
         update { s, _, _ in
