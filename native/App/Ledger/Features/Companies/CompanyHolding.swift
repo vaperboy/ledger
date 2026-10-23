@@ -17,6 +17,8 @@ struct CompanyHolding: View {
         let o = engine.holdingOverview(companyID: company.id)
         let free = engine.companiesForHolding
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            // The holding's own management (its managing director): the holding has no staff list, so its roster lives here.
+            CompanyTeamRoster(engine: engine, company: company)
             if let o {
                 LedgerSection("Consolidated") {
                     VStack(alignment: .leading, spacing: 0) {
@@ -150,7 +152,7 @@ struct NewHoldingView: View {
                     Button("Create the holding company") {
                         let r = store.act { $0.createHolding(name: name, companies: Array(picked)) }
                         switch r {
-                        case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.tab = .company; store.openCompanyID = id
+                        case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.openCompany(id)
                         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.short(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
                         default: store.show("Not possible.", tone: "warn")
                         }

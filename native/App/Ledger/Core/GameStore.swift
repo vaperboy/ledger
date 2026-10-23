@@ -191,11 +191,19 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation
 
+    /// The one way to open a company from anywhere outside the Company tab: switches to Company and opens that company,
+    /// on `section` when it has one. The request is consumed by `CompaniesView`, so it cannot leak into a later visit.
+    func openCompany(_ id: Int, section: CompanySection? = nil) {
+        companySection = section
+        openCompanyID = id
+        tab = .company
+    }
+
     func go(_ action: Suggestion.Action) {
         Haptics.tap()
         switch action {
         case .openMessage(let id): openMessageID = id; tab = .inbox
-        case .openCompany(let id): openCompanyID = id; tab = .company
+        case .openCompany(let id): openCompany(id)
         case .openLoans: moneySection = .bank; tab = .group
         case .openInvest: moneySection = .invest; tab = .group
         case .openTax: moneySection = .taxes; tab = .group

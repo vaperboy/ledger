@@ -3,135 +3,283 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Team tab: every person who works for you in one list, grouped by the company they belong to, each with a role and a scope badge
-/// (store, chain, region, group). A row opens the owning company's Team section, where hiring, promotion, pay and letting go happen.
+/// The Team tab: the management hierarchy and what needs the owner, not a roster of every worker in every store.
+/// - "Needs you": decisions, wages at risk, companies nobody runs, managers leaving or failing, staff trouble where you run the company.
+/// - "Handled by your managers": the same kind of trouble inside companies a manager runs (for information, folded away).
+/// - "Above the stores": group managing director, chain CEOs, chain and regional managers (managed in Group and in each chain).
+/// - "Who runs each company": one line per company with who runs it, staff and wages; it opens that company's own Team section.
+/// Searching lists matching employees across all companies; a result opens the company the person belongs to.
+/// Every row opens the record on this tab's own navigation stack, so Back returns here. Hiring, pay, promotion and letting go
+/// stay in Company > Team (one home); chain and group posts stay in Group and the chain's section.
 struct TeamView: View {
     @EnvironmentObject var store: GameStore
-    @State private var filter = "all"
-
-    struct Entry: Identifiable {
-        var id: String
-        var name: String
-        var role: String
-        var scope: String
-        var wage: Double
-        var companyID: Int?
-    }
-
-    private static let scopes = ["all", "store", "chain", "region", "group"]
+    @State private var path: [CompanyRoute] = []
+    @State private var query = ""
+    @State private var showDelegated = false
 
     var body: some View {
-        NavigationStack {
-            if let e = store.engine {
-                let cos = e.state.companies.filter { $0.status.isLive }
-                let groupEntries = groupLevel(e)
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Theme.Space.l) {
-                        Text("Team").font(.serifTitle(28))
-                        SectionTabs(items: Self.scopes, title: { $0.prefix(1).uppercased() + $0.dropFirst() }, selection: $filter).padding(.horizontal, -Theme.Space.margin)
-                        let shownGroup = groupEntries.filter { filter == "all" || $0.scope == filter }
-                        if !shownGroup.isEmpty {
-                            LedgerSection("Group and chains") {
-                                VStack(spacing: 0) {
-                                    ForEach(Array(shownGroup.enumerated()), id: \.element.id) { n, en in
-                                        if n > 0 { Hairline() }
-                                        Button { store.tab = .group; Haptics.tap() } label: { row(en, e, nil) }.buttonStyle(.plain)
-                                    }
-                                }
+        NavigationStack(path: $path) {
+            Group {
+                if let e = store.engine {
+                    let o = e.teamOverview()
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: Theme.Space.l) {
+                            header(o, e)
+                            if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                                searchResults(e)
+                            } else {
+                                needsYou(o, e)
+                                delegated(o, e)
+                                aboveTheStores(e)
+                                companies(o, e)
                             }
                         }
-                        ForEach(cos, id: \.id) { co in
-                            let list = entries(co, e).filter { filter == "all" || $0.scope == filter }
-                            if !list.isEmpty {
-                                LedgerSection(title: co.name, trailing: { Text("\(e.tradeName(co)) · \(e.cityName(co))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                                    VStack(spacing: 0) {
-                                        ForEach(Array(list.enumerated()), id: \.element.id) { n, en in
-                                            if n > 0 { Hairline() }
-                                            Button { openTeam(co.id) } label: { row(en, e, co) }.buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if cos.isEmpty && groupEntries.isEmpty {
-                            Text("No one works for you yet. Open a company, then hire from its Team section.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                        .frame(maxWidth: 900).frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+            }
+            .ledgerBackground()
+            .navigationTitle("Team")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .searchable(text: $query, prompt: "Find anyone who works for you")
+            .navigationDestination(for: CompanyRoute.self) { route in
+                switch route {
+                case .company(let id): CompanyDetailView(companyID: id)
+                case .companyAt(let id, let sec): CompanyDetailView(companyID: id, initialSection: sec)
+                case .newCompany: NewCompanyView()
+                case .market: MarketView()
+                }
+            }
+        }
+    }
+
+    // MARK: Header
+
+    private func header(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        let byManagers = o.companies.filter { $0.delegated }.count
+        let staff = o.companies.reduce(0) { $0 + $1.staff }
+        let wages = o.companies.reduce(0) { $0 + $1.monthlyWages }
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("Team").font(.serifTitle(28))
+            if !o.companies.isEmpty {
+                Text("\(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(byManagers) run by managers · \(staff) staff · \(store.short(wages)) a month")
+                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    // MARK: Needs you / handled by managers
+
+    @ViewBuilder private func needsYou(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        let mine = o.issues.filter { $0.needsOwner }
+        LedgerSection(title: "Needs you", trailing: { Text(mine.isEmpty ? "nothing" : "\(mine.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            if mine.isEmpty {
+                Text(o.companies.isEmpty ? "No one works for you yet. Open a company, then hire from its Team section." : "Nothing needs you. Your managers have the rest in hand.")
+                    .font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(mine.prefix(12).enumerated()), id: \.element.id) { n, i in
+                        if n > 0 { Hairline() }
+                        Button { open(i, e) } label: { issueRow(i, e) }.buttonStyle(.plain)
+                    }
+                    if mine.count > 12 { Text("And \(mine.count - 12) more in the companies below.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func delegated(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        let theirs = o.issues.filter { !$0.needsOwner }
+        if !theirs.isEmpty {
+            LedgerSection(title: "Handled by your managers", trailing: {
+                Button(showDelegated ? "Hide" : "Show \(theirs.count)") { withAnimation { showDelegated.toggle() } }
+                    .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+            }) {
+                if showDelegated {
+                    VStack(spacing: 0) {
+                        ForEach(Array(theirs.enumerated()), id: \.element.id) { n, i in
+                            if n > 0 { Hairline() }
+                            Button { open(i, e) } label: { issueRow(i, e) }.buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
-                    .frame(maxWidth: 900).frame(maxWidth: .infinity)
+                } else {
+                    Text("Staff trouble inside companies a manager runs. It is their job; open one to look closer.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }
-                .scrollIndicators(.hidden)
-                .ledgerBackground()
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
             }
         }
     }
 
-    private func openTeam(_ id: Int) {
+    private func issueRow(_ i: TeamOverview.Issue, _ e: GameEngine) -> some View {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Circle().fill(i.severity >= 3 ? Theme.loss : i.severity == 2 ? Theme.caution : Theme.ivoryFaint).frame(width: 7, height: 7).padding(.top, 6)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(i.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                Text(i.needsOwner ? i.detail : "\(i.handledBy) · \(i.detail)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 6)
+            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
+        }
+        .padding(.vertical, 8).contentShape(Rectangle())
+    }
+
+    /// Opens the exact record an issue is about: the decision in the Inbox, or the company on the section where it is dealt with.
+    private func open(_ i: TeamOverview.Issue, _ e: GameEngine) {
         Haptics.tap()
-        store.companySection = .staff
-        store.openCompanyID = id
-        store.tab = .company
+        if i.kind == .decision, let m = i.messageID { store.openMessageID = m; store.tab = .inbox; return }
+        guard let id = i.companyID else { return }
+        let section: CompanySection
+        switch i.kind {
+        case .payroll, .cash: section = .finances
+        case .chainVacancy: section = .chain
+        default: section = .staff
+        }
+        path.append(.companyAt(id, section))
     }
 
-    @ViewBuilder private func row(_ en: Entry, _ e: GameEngine, _ co: Company?) -> some View {
-        HStack(spacing: Theme.Space.m) {
-            IconBadge(symbol: "person.fill", tint: Theme.ivoryMuted, size: 30)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(en.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(en.role).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                    Chip(text: en.scope, tint: en.scope == "store" ? Theme.ivoryMuted : Theme.gold)
+    // MARK: Above the stores
+
+    private struct Post: Identifiable { var id: String; var name: String; var role: String; var scope: String; var wage: Double; var chainID: Int? }
+
+    @ViewBuilder private func aboveTheStores(_ e: GameEngine) -> some View {
+        let posts = groupPosts(e)
+        if !posts.isEmpty {
+            LedgerSection(title: "Above the stores", trailing: { Text("managed in Group").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(posts.enumerated()), id: \.element.id) { n, p in
+                        if n > 0 { Hairline() }
+                        Button { openPost(p, e) } label: {
+                            HStack(spacing: Theme.Space.m) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(p.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    HStack(spacing: 6) {
+                                        Text(p.role).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                        Chip(text: p.scope, tint: Theme.gold)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                Text(store.short(p.wage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            }.padding(.vertical, 8).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
                 }
             }
-            Spacer(minLength: 8)
-            if en.wage > 0 {
-                Text(co.map { store.short(en.wage, in: $0) } ?? store.short(en.wage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-            }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
     }
 
-    private func roleName(_ id: String) -> String { id.prefix(1).uppercased() + id.dropFirst() }
-
-    /// The store manager, the management roles above the manager and the workers of one company.
-    private func entries(_ co: Company, _ e: GameEngine) -> [Entry] {
-        var out: [Entry] = []
-        if let mid = co.managerID, let p = e.state.people[mid] {
-            out.append(Entry(id: "m\(co.id)", name: p.name, role: co.type == "hold" ? "Manager" : "Store manager", scope: "store", wage: co.managerMonthlyWage, companyID: co.id))
-        }
-        for slot in e.teamSlots(companyID: co.id) where slot.personID != nil {
-            let scope = slot.key == "ceo" ? (co.type == "hold" ? "group" : "store") : (slot.key == "reg" ? "region" : "store")
-            out.append(Entry(id: "t\(co.id)-\(slot.id)", name: slot.personID.flatMap { e.state.people[$0]?.name } ?? slot.title, role: slot.title, scope: scope, wage: slot.monthlyWage, companyID: co.id))
-        }
-        for m in co.staff {
-            out.append(Entry(id: "s\(co.id)-\(m.id)", name: e.state.people[m.id]?.name ?? roleName(m.role), role: roleName(m.role), scope: "store", wage: m.monthlyWage, companyID: co.id))
-        }
-        return out
+    /// A chain post opens the chain (its first store's Chain section, where the chain's management is hired and set); a group post opens Group.
+    private func openPost(_ p: Post, _ e: GameEngine) {
+        Haptics.tap()
+        if let cid = p.chainID, let store0 = e.chainSummary(id: cid)?.stores.first?.id { path.append(.companyAt(store0, .chain)) }
+        else { store.tab = .group }
     }
 
-    /// Group managing director, chain CEOs and managers, regional managers: the posts that belong to no single company.
-    private func groupLevel(_ e: GameEngine) -> [Entry] {
-        var out: [Entry] = []
+    private func groupPosts(_ e: GameEngine) -> [Post] {
+        var out: [Post] = []
         let md = e.groupManagingDirector
         if !md.isNull, let p = e.state.people[md["npc"].int] {
-            out.append(Entry(id: "md", name: p.name, role: "Group managing director", scope: "group", wage: md["wage"].double, companyID: nil))
+            out.append(Post(id: "md", name: p.name, role: "Group managing director", scope: "group", wage: md["wage"].double, chainID: nil))
         }
         for ch in e.state.rest["chains"]?.array ?? [] {
             let rec = ch["ceo56"]
             if !rec.isNull, let p = e.state.people[rec["npc"].int] {
-                let chainName = ch["name"].string.isEmpty ? "Chain" : ch["name"].string
-                out.append(Entry(id: "cc\(ch["id"].int)", name: p.name, role: "Chain CEO · " + chainName, scope: "chain", wage: rec["wage"].double, companyID: nil))
+                let name = ch["name"].string.isEmpty ? "Chain" : ch["name"].string
+                out.append(Post(id: "cc\(ch["id"].int)", name: p.name, role: "Chain CEO · " + name, scope: "chain", wage: rec["wage"].double, chainID: ch["id"].int))
             }
         }
         for r in e.regionalManagers {
             guard let p = e.state.people[r["npc"].int] else { continue }
-            let scope = r["scope"].string
-            let isRegion = scope.split(separator: ":").count >= 3
-            out.append(Entry(id: "rm\(r["id"].int)", name: p.name, role: isRegion ? "Regional manager" : "Chain manager", scope: isRegion ? "region" : "chain", wage: r["wage"].double, companyID: nil))
+            let parts = r["scope"].string.split(separator: ":")
+            let chainID = parts.count >= 2 && parts[0] == "chain" ? Int(parts[1]) : nil
+            let isRegion = parts.count >= 3
+            out.append(Post(id: "rm\(r["id"].int)", name: p.name, role: isRegion ? "Regional manager" : (chainID == nil ? "Regional manager" : "Chain manager"),
+                            scope: isRegion || chainID == nil ? "region" : "chain", wage: r["wage"].double, chainID: chainID))
+        }
+        return out
+    }
+
+    // MARK: Companies
+
+    @ViewBuilder private func companies(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        if !o.companies.isEmpty {
+            let lines = o.companies.sorted { ($0.issues, $1.name) > ($1.issues, $0.name) }
+            LedgerSection(title: "Who runs each company", trailing: { Text("\(lines.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.element.id) { n, l in
+                        if n > 0 { Hairline() }
+                        Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e) }.buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func companyRow(_ l: TeamOverview.CompanyLine, _ e: GameEngine) -> some View {
+        HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(l.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(l.delegated ? "\(l.managedBy) · \((l.managerTitle ?? "manager").lowercased())\(authorityWord(l.authority))" : "You run it")
+                    .font(.system(size: 11)).foregroundStyle(l.delegated ? Theme.ivoryFaint : Theme.ivoryMuted).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(l.staff) staff").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                if l.issues > 0 { Text("\(l.issues) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+            }
+            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }
+        .padding(.vertical, 8).contentShape(Rectangle())
+    }
+
+    private func authorityWord(_ lvl: Int) -> String {
+        switch lvl { case 0: return " · asks you"; case 1: return " · within limits"; case 2: return " · full control"; default: return "" }
+    }
+
+    // MARK: Search across everyone
+
+    private struct Found: Identifiable { var id: String; var name: String; var role: String; var companyID: Int; var companyName: String }
+
+    @ViewBuilder private func searchResults(_ e: GameEngine) -> some View {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let found = everyone(e).filter { $0.name.lowercased().contains(q) || $0.role.lowercased().contains(q) || $0.companyName.lowercased().contains(q) }
+        LedgerSection(title: "Search", trailing: { Text("\(found.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            if found.isEmpty { Text("No one matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+            VStack(spacing: 0) {
+                ForEach(Array(found.prefix(100).enumerated()), id: \.element.id) { n, f in
+                    if n > 0 { Hairline() }
+                    Button { Haptics.tap(); path.append(.companyAt(f.companyID, .staff)) } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(f.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                Text("\(f.role) · \(f.companyName)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        }.padding(.vertical, 8).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func everyone(_ e: GameEngine) -> [Found] {
+        var out: [Found] = []
+        for co in e.state.companies where co.status.isLive {
+            if let mid = co.managerID, let p = e.state.people[mid] {
+                out.append(Found(id: "m\(co.id)", name: p.name, role: e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager", companyID: co.id, companyName: co.name))
+            }
+            for slot in e.teamSlots(companyID: co.id) {
+                if let pid = slot.personID, let p = e.state.people[pid] {
+                    out.append(Found(id: "t\(co.id)-\(slot.id)", name: p.name, role: slot.title, companyID: co.id, companyName: co.name))
+                }
+            }
+            for m in co.staff {
+                let role = m.role.prefix(1).uppercased() + m.role.dropFirst()
+                out.append(Found(id: "s\(co.id)-\(m.id)", name: e.state.people[m.id]?.name ?? role, role: role, companyID: co.id, companyName: co.name))
+            }
         }
         return out
     }

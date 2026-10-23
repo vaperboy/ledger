@@ -3,7 +3,11 @@ import GameCore
 import Businesses
 import Simulation
 
-enum CompanyRoute: Hashable { case company(Int), newCompany, market }
+enum CompanyRoute: Hashable {
+    case company(Int), newCompany, market
+    /// A company opened on one of its sections (from Team, Projects, Inbox or a deep link).
+    case companyAt(Int, CompanySection)
+}
 
 /// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
 /// Replaces the former separate Group tab, which listed the same companies again.
@@ -79,6 +83,7 @@ struct CompaniesView: View {
             .navigationDestination(for: CompanyRoute.self) { route in
                 switch route {
                 case .company(let id): CompanyDetailView(companyID: id)
+                case .companyAt(let id, let sec): CompanyDetailView(companyID: id, initialSection: sec)
                 case .newCompany: NewCompanyView()
                 case .market: MarketView()
                 }
@@ -101,7 +106,11 @@ struct CompaniesView: View {
     }
 
     private func openRequested() {
-        if let id = store.openCompanyID { path = [.company(id)]; store.openCompanyID = nil }
+        if let id = store.openCompanyID {
+            path = [store.companySection.map { .companyAt(id, $0) } ?? .company(id)]
+            store.openCompanyID = nil
+            store.companySection = nil
+        }
         if store.showNewCompany { path = [.newCompany]; store.showNewCompany = false }
     }
 }

@@ -42,9 +42,7 @@ struct ProjectsView: View {
 
     private func openProjects(_ id: Int) {
         Haptics.tap()
-        store.companySection = .projects
-        store.openCompanyID = id
-        store.tab = .company
+        store.openCompany(id, section: .projects)
     }
 
     private func row(_ co: Company, _ b: ProjectBoard) -> some View {

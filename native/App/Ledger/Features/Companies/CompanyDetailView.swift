@@ -20,6 +20,8 @@ enum CompanySection: String, CaseIterable, Hashable {
 struct CompanyDetailView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
+    /// The section to open on (set by the route, never by global state, so it cannot carry over to another company).
+    var initialSection: CompanySection? = nil
     @State private var section: CompanySection = .overview
 
     var body: some View {
@@ -31,6 +33,9 @@ struct CompanyDetailView: View {
                         HStack(spacing: 6) {
                             Text("\(e.tradeName(co)) · \(e.cityName(co)) · \(co.form == .limited ? "Ltd" : "Sole trader")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                             if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
+                        }
+                        if let context = contextLine(co, e) {
+                            Text(context).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         }
                     }
                     SectionTabs(items: sections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
@@ -63,14 +68,29 @@ struct CompanyDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if co.status == .setup { section = .setup }
-                if let want = store.companySection {
-                    if sections(co, e).contains(want) { section = want }
-                    store.companySection = nil
+                if let want = initialSection {
+                    let available = sections(co, e)
+                    // A holding has no staff list: its management lives in its own section.
+                    let target = (want == .staff && !available.contains(.staff) && available.contains(.holding)) ? .holding : want
+                    if available.contains(target) { section = target }
                 }
             }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
+    }
+
+    /// Where the company sits in the group: its chain, its holding, and who runs it day to day.
+    private func contextLine(_ co: Company, _ e: GameEngine) -> String? {
+        var parts: [String] = []
+        if let ch = e.chainOf(companyID: co.id) { parts.append("Store of " + (ch["name"].string.isEmpty ? "your chain" : ch["name"].string)) }
+        if co.holdingID != 0, let h = e.state.company(co.holdingID) { parts.append("Under " + h.name) }
+        if let boss = e.decisionChain(companyID: co.id).first {
+            parts.append("Run by \(boss.name), \(GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased())")
+        } else if co.status == .open && co.type != "hold" {
+            parts.append(co.ownerHours > 0 ? "Run by you" : "No one runs it")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func sections(_ co: Company, _ e: GameEngine) -> [CompanySection] {

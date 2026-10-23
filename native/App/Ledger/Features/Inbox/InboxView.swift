@@ -21,6 +21,13 @@ struct InboxView: View {
         }
     }
 
+    private func takeRequest(_ proxy: ScrollViewProxy) {
+        guard let id = store.openMessageID else { return }
+        tab = .all
+        store.openMessageID = nil
+        DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -44,9 +51,10 @@ struct InboxView: View {
                                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
                             }
-                            .onChange(of: store.openMessageID) { _, id in
-                                if let id { withAnimation { proxy.scrollTo(id, anchor: .top) }; store.openMessageID = nil }
-                            }
+                            // A deep link (from Team, a suggestion or a toast) can arrive before this tab was ever shown: take it on appear too,
+                            // and show every message so the requested one is not hidden by a filter.
+                            .onAppear { takeRequest(proxy) }
+                            .onChange(of: store.openMessageID) { _, _ in takeRequest(proxy) }
                         }
                     }
                 }
@@ -120,6 +128,11 @@ struct MessageCard: View {
                             }
                             Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                             Text(text(message.body)).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
+                                Button { store.openCompany(co.id) } label: {
+                                    Text("Open \(co.name) →").font(.caption.weight(.medium)).foregroundStyle(Theme.gold)
+                                }.buttonStyle(.plain).padding(.top, 2)
+                            }
                         }
                     }
                     if open {
