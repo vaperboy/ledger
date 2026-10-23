@@ -3,10 +3,10 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: ownership and structure (holdings, chains and franchises, group management, the market) and, as a second section,
+/// The Group tab: ownership and structure (what needs you, holdings, chains, franchises, group management, main office, boards) and, as a second section,
 /// the group's money (finance, bank, investments, taxes, costs, reports) which is `FinanceView` unchanged.
 struct GroupView: View {
-    enum Part: String, CaseIterable, Hashable { case structure = "Holdings", money = "Money" }
+    enum Part: String, CaseIterable, Hashable { case structure = "Structure", money = "Money" }
     @EnvironmentObject var store: GameStore
     @State private var path: [CompanyRoute] = []
     @State private var part: Part = .structure
@@ -37,52 +37,30 @@ struct GroupView: View {
         if store.moneySection != nil { part = .money }
     }
 
+    /// Decisions first, then the structure (holdings, chains, franchises), then the people and bodies above the companies:
+    /// group management, the main office, the boards. Company figures and comparisons stay under Company.
     @ViewBuilder private func structure(_ e: GameEngine) -> some View {
-        let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
-        let health = cos.map { e.companyHealth($0) }
+        let live = e.state.companies.filter { $0.type != "hold" && $0.status.isLive }
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                if !cos.isEmpty {
-                    GroupSummary(engine: e, rows: health, staff: cos.reduce(0) { $0 + $1.staff.count })
-                }
-                if cos.contains(where: { $0.status == .open }) {
-                    NavigationLink(value: CompanyRoute.market) {
-                        HStack {
-                            Text("Market, reviews and rivals").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 6).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                }
-                HostingSection(engine: e)
-                if cos.filter({ $0.status.isLive }).count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
-                else if !cos.isEmpty {
+                GroupAttention(engine: e)
+                GroupStructureOverview(engine: e)
+                if live.count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
+                else if !live.isEmpty {
                     LedgerSection("Group management") {
                         Text("A managing director for the whole group becomes possible once you own two running companies.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
-                if cos.contains(where: { $0.status.isLive }) { HeadOfficeSection(engine: e) }
-                if !e.holdingCompanies.isEmpty {
-                    LedgerSection("Holding companies") {
-                        VStack(spacing: 0) {
-                            ForEach(Array(e.holdingCompanies.enumerated()), id: \.element.id) { n, h in
-                                if n > 0 { Hairline() }
-                                NavigationLink(value: CompanyRoute.company(h.id)) {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(h.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                            Text("\(e.state.companies.filter { $0.holdingID == h.id && $0.status.isLive }.count) companies under it").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                        }
-                                        Spacer()
-                                        Text(store.short(Valuation.companyValue(h, state: e.state, trades: e.data.catalog), in: h)).font(.system(size: 13.5).monospacedDigit())
-                                    }.padding(.vertical, 9).contentShape(Rectangle())
-                                }.buttonStyle(.plain)
-                            }
-                        }
+                if !live.isEmpty { HeadOfficeSection(engine: e) }
+                BoardsGroupSection(engine: e) { moneyTo(.invest) }
+                if live.contains(where: { $0.status == .open }) {
+                    LedgerSection("Market") {
+                        NavigationLink(value: CompanyRoute.market) {
+                            GroupLinkRow(title: "Market, reviews and rivals", sub: "Rival groups and how your trades compare.")
+                        }.buttonStyle(.plain)
                     }
                 }
-                ChainsGroupSection(engine: e)
-                BoardsGroupSection(engine: e) { moneyTo(.invest) }
+                HostingSection(engine: e)
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
             .frame(maxWidth: 1100).frame(maxWidth: .infinity)

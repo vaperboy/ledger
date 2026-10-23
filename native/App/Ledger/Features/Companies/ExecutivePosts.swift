@@ -52,6 +52,16 @@ struct ExecutivePosts: View {
                     row(p, cur)
                 }
                 if chainID != nil { addRegional(cur) }
+                if chainID == nil, !engine.groupManagingDirector.isNull {
+                    let big = engine.state.rest["group"]?["big"].double ?? 0
+                    Hairline()
+                    Menu("Deals above \(big > 0 ? cur.short(big) : "any size") always come to you") {
+                        ForEach([0.0, 250_000, 1_000_000, 5_000_000, 20_000_000], id: \.self) { v in
+                            let amt = cur.scaledPrice(v)
+                            Button(v == 0 ? "No limit set" : cur.short(amt)) { store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }; store.show(v == 0 ? "No group limit." : "Deals above \(cur.short(amt)) come to you.") }
+                        }
+                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).padding(.top, 8)
+                }
             }
         }
         .confirmationDialog("Let \(releasing?.level.title.lowercased() ?? "them") go?", isPresented: Binding(get: { releasing != nil }, set: { if !$0 { releasing = nil } }), titleVisibility: .visible) {
@@ -81,14 +91,10 @@ struct ExecutivePosts: View {
             if person != nil {
                 let lvl = Int(p.rec["lvl"].double)
                 HStack(spacing: 16) {
-                    Menu(["Asks you", "Within limit", "Full control"][min(2, max(0, lvl))]) {
-                        ForEach(0..<3, id: \.self) { l in Button(["Asks you", "Within limit", "Full control"][l]) { store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) } } }
-                    }
-                    if lvl == 1 {
-                        Menu("Spend up to \(cur.short(p.rec["buy"].double))") {
-                            ForEach([50000.0, 100000, 250000, 600000, 2000000], id: \.self) { v in Button(cur.short(cur.scaledPrice(v))) { store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: cur.scaledPrice(v)) } } }
-                        }
-                    }
+                    AuthorityPicker(level: lvl, currency: cur, limit: p.rec["buy"].double,
+                                    limitSteps: [50000.0, 100000, 250000, 600000, 2000000].map { cur.scaledPrice($0) },
+                                    setLevel: { l in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) } },
+                                    setLimit: { v in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) } })
                     Spacer(minLength: 0)
                     Button("Let go") { releasing = p }.foregroundStyle(Theme.loss)
                 }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
