@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// A worker candidate in the shared hiring list: the shared `CandidateHireRow` (name, ask, offers, answer) with the worker-only controls
+/// A worker candidate in the shared hiring list: the shared `CandidateHireRow` (name, going rate, offers, answer) with the worker-only controls
 /// in its `extra` slot: the terms (full time, part time, seasonal, own car) and a paid trial week. The engine call is `GameEngine.hire(terms:)`.
 /// Worker candidates carry no reference-check mechanic in the engine, so none is offered here.
 struct WorkerHireRow: View {
@@ -34,15 +34,16 @@ struct WorkerHireRow: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let tried = !person.value("trialRes").isNull
+        let market = engine.marketWage(role: person.role, companyID: company.id)
         CandidateHireRow(person: person, currency: cur,
                          subtitle: "Says \(StaffProfile.band(person.claimedSkill).lowercased()) (\(Int(person.claimedSkill.rounded()))) · age \(person.age)",
-                         factors: [0.9, 1.0, 1.1], offer: { wage in hire(wage) }) {
+                         market: market, factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in hire(wage) }) {
             VStack(alignment: .leading, spacing: 6) {
                 SectionTabs(items: kinds, title: { $0.rawValue }, selection: $kind)
                 if tried {
                     Text("After a trial week their work looked like skill \(Int(person.num("trialRes").rounded())), give or take a few points.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
                 } else {
-                    Button("Paid trial week · \(cur.tidyShort(person.askingMonthlyWage / 4))") { trial() }.buttonStyle(QuietButtonStyle())
+                    Button("Paid trial week · \(cur.tidyShort(market / 4))") { trial() }.buttonStyle(QuietButtonStyle())
                 }
             }
         }

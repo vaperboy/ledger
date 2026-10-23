@@ -23,6 +23,17 @@ public enum Hiring {
 
     static func personName(_ c: Country, _ r: inout DeterministicRandom) -> String { r.pick(c.firstNames) + " " + r.pick(c.lastNames) }
 
+    /// What the job normally pays on this labour market: the role, the city, the economy and the country's pay spread, and nothing about the person.
+    /// This is where a pay discussion starts, from the employer's side. Experience and skill only decide whether someone takes it, wants more or would take less.
+    public static func marketWage(role: String, company co: Company?, state s: GameState, data: GameData) -> Double {
+        let w = World(state: s, data: data)
+        let base = w.catalog.tables.roles[role]?.baseMonthlyWage ?? 40000
+        let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
+        let cityWage = (co.flatMap { w.city($0 ) }?.wage) ?? 1
+        let spread = w.catalog.tables.roles[role] != nil ? Wages.paySpread(baseMonthlyWage: base, country: country) : 1
+        return roundTo(base * cityWage * w.inflationIndex * spread, step: 100)
+    }
+
     /// Make a new candidate for a role and store them on the labour market. Original: `genCand`.
     @discardableResult
     public static func generateCandidate(role: String, company co: Company?, tier requested: String? = nil, state s: inout GameState, data: GameData) -> Person {
@@ -63,7 +74,8 @@ public enum Hiring {
         p.role = role
         p.set("tier", tier); p.skill = skill; p.claimedSkill = claimSkill
         p.set("exp", exp); p.set("claimExp", claimExp); p.set("lie", lie)
-        p.askingMonthlyWage = ask
+        // people also differ in what they want apart from skill: some take the going rate gladly, some hold out for more
+        p.askingMonthlyWage = roundTo(ask * (0.92 + 0.16 * HashedRandom.first("ask:\(p.id)")), step: 100)
         if let t = trait { p.set("trait", t) }
         p.set("rel", rel); p.set("super", superOne); p.set("resume", resume)
         p.set("checked", 0); p.set("trial", 0); p.employerID = 0
@@ -115,11 +127,12 @@ public enum Hiring {
         public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
     }
 
-    /// A paid trial week (a quarter of the monthly ask) shows how good someone really is, give or take a few points.
+    /// A paid trial week (a quarter of the market wage for the role) shows how good someone really is, give or take a few points.
     /// Returns the skill seen, or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
-    public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState) -> Double? {
+    public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> Double? {
         guard var n = s.people[personID], n.employerID == 0, s.companyIndex(companyID) != nil else { return nil }
-        guard Payments.companyPays(&s, companyID: companyID, amount: jsRound(n.askingMonthlyWage / 4), category: "wages", label: "Trial week") else { return nil }
+        let trialCost = jsRound(marketWage(role: n.role, company: s.companies[s.companyIndex(companyID)!], state: s, data: data) / 4)
+        guard Payments.companyPays(&s, companyID: companyID, amount: trialCost, category: "wages", label: "Trial week") else { return nil }
         n.set("trial", 1)
         let seen = jsRound(n.skill + s.random.gauss() * 6)
         n.set("trialRes", seen)

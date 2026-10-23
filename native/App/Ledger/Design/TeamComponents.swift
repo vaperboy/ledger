@@ -57,13 +57,17 @@ struct CandidateHireRow<Extra: View>: View {
     var currency: Currency
     /// Defaults to "Age · years of experience · résumé".
     var subtitle: String? = nil
-    /// Multiples of the asking wage to offer (1.0 is exactly what they ask).
+    /// The going rate for the role. When set, the discussion starts from it: the row shows it instead of the person's asking wage (which stays
+    /// hidden) and offers are multiples of it, so the same rate is offered to anyone and skill decides who takes it.
+    var market: Double? = nil
+    /// Multiples of the asking wage (or of the market rate when `market` is set) to offer; 1.0 is that amount.
     var factors: [Double] = [1.0, 1.1]
     var offer: (Double) -> HireFeedback
     @ViewBuilder var extra: () -> Extra
     @State private var feedback: HireFeedback?
 
-    private func wage(_ f: Double) -> Double { f == 1 ? person.askingMonthlyWage : currency.roundedStep(person.askingMonthlyWage * f, about: 500) }
+    private var reference: Double { market ?? person.askingMonthlyWage }
+    private func wage(_ f: Double) -> Double { f == 1 ? reference : currency.roundedStep(reference * f, about: 500) }
     private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.tidyShort(wage(f)))" : "\(currency.tidyShort(wage(f))) (\(f > 1 ? "+" : "")\(Int(((f - 1) * 100).rounded()))%)" }
 
     var body: some View {
@@ -75,8 +79,8 @@ struct CandidateHireRow<Extra: View>: View {
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(currency.tidyShort(person.askingMonthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text("asks a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(currency.tidyShort(reference)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text(market == nil ? "asks a month" : "going rate a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
             extra()
@@ -94,7 +98,8 @@ struct CandidateHireRow<Extra: View>: View {
             if let feedback {
                 Text(feedback.text).font(.system(size: 11.5)).foregroundStyle(feedback.tint).fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("Below what they ask they may say no; above it they are more likely to stay.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(market == nil ? "Below what they ask they may say no; above it they are more likely to stay."
+                     : "You open at the going rate for the job. Some people take it gladly or for less; others want more, and a weak candidate may cost more than they are worth.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
             }
         }
         .padding(.vertical, 8)
@@ -111,8 +116,8 @@ struct CandidateHireRow<Extra: View>: View {
 }
 
 extension CandidateHireRow where Extra == EmptyView {
-    init(person: Person, currency: Currency, subtitle: String? = nil, factors: [Double] = [1.0, 1.1], offer: @escaping (Double) -> HireFeedback) {
-        self.init(person: person, currency: currency, subtitle: subtitle, factors: factors, offer: offer, extra: { EmptyView() })
+    init(person: Person, currency: Currency, subtitle: String? = nil, market: Double? = nil, factors: [Double] = [1.0, 1.1], offer: @escaping (Double) -> HireFeedback) {
+        self.init(person: person, currency: currency, subtitle: subtitle, market: market, factors: factors, offer: offer, extra: { EmptyView() })
     }
 }
 

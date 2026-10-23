@@ -242,10 +242,13 @@ public extension GameEngine {
     /// The months of the year a seasonal hire would be for by default: the busy months of the trade.
     func busyMonths(companyID: Int) -> [Int] { state.company(companyID).map { StaffTalks.busyMonths($0, data: data) } ?? [] }
 
+    /// What the job normally pays here at full time: the employer's opening offer in a pay discussion, the same for everyone in the role.
+    func marketWage(role: String, companyID: Int) -> Double { Hiring.marketWage(role: role, company: state.company(companyID), state: state, data: data) }
+
     /// Pay for a trial week and see what the person can really do. Original: `ACT.trial`.
     mutating func startTrialWeek(personID: Int, companyID: Int) -> Double? {
         var r: Double?
-        update { s, _, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s) }
+        update { s, data, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s, data: data) }
         return r
     }
     mutating func setStaffHours(companyID: Int, staffID: Int, hours: Double) -> StaffTalks.OfferResult {
