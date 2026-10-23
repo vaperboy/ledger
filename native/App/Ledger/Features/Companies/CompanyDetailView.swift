@@ -16,6 +16,14 @@ enum CompanySection: String, CaseIterable, Hashable {
     case chain = "Chain"
 }
 
+extension CompanySection {
+    /// The engine names sections by key ("operations", "staff", "finances", ...): the case name, not the title shown on the tab.
+    init?(key: String) {
+        guard let s = CompanySection.allCases.first(where: { "\($0)" == key }) else { return nil }
+        self = s
+    }
+}
+
 /// One company. Overview answers "how is it doing, why, and what to change"; the other sections are where the changes are made.
 struct CompanyDetailView: View {
     @EnvironmentObject var store: GameStore
@@ -38,7 +46,7 @@ struct CompanyDetailView: View {
                             Text(context).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         }
                     }
-                    SectionTabs(items: sections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
+                    SectionTabs(items: Self.availableSections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section)
                     case .projects: CompanyProjects(engine: e, company: co)
@@ -69,7 +77,7 @@ struct CompanyDetailView: View {
             .onAppear {
                 if co.status == .setup { section = .setup }
                 if let want = initialSection {
-                    let available = sections(co, e)
+                    let available = Self.availableSections(co, e)
                     // A holding has no staff list: its management lives in its own section.
                     let target = (want == .staff && !available.contains(.staff) && available.contains(.holding)) ? .holding : want
                     if available.contains(target) { section = target }
@@ -93,7 +101,8 @@ struct CompanyDetailView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    private func sections(_ co: Company, _ e: GameEngine) -> [CompanySection] {
+    /// The sections this company has (by family, status and type). Shared with the Overview so links only point at real sections.
+    static func availableSections(_ co: Company, _ e: GameEngine) -> [CompanySection] {
         let family = e.tradeInfo(companyID: co.id)?.family
         // Each family with a model of its own has a section of its own.
         var own: [CompanySection] = family == "rent" ? [.properties] : family == "fin" ? [.book] : family == "project" ? [.projects] : []
@@ -183,7 +192,7 @@ struct CompanyOverview: View {
                         Image(systemName: i.symbol).font(.system(size: 13)).foregroundStyle(Theme.tone(i.tone.rawValue) == Theme.ivoryMuted ? Theme.gold : Theme.tone(i.tone.rawValue)).frame(width: 18).padding(.top, 2)
                         Text(i.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
-                        if let target = i.section.flatMap({ CompanySection(rawValue: $0.capitalized) }) {
+                        if let target = i.section.flatMap({ CompanySection(key: $0) }), CompanyDetailView.availableSections(company, engine).contains(target) {
                             Button { withAnimation(.snappy(duration: 0.2)) { section = target }; Haptics.choose() } label: {
                                 Text("\(target.rawValue) →").font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize()
                             }.buttonStyle(.plain).padding(.top, 2)
