@@ -4,7 +4,8 @@ import Countries
 import Investments
 import Simulation
 
-/// Shares, crypto and funds: a section of the Money tab.
+/// Shares, crypto and funds, and your fund manager: a section of Group > Money. Startups, private equity and stakes in groups are
+/// ventures with their own workflows and live in the Projects tab; a summary row here opens them.
 struct InvestContent: View {
     @EnvironmentObject var store: GameStore
     @State private var kind: Brokerage.Kind = .stock
@@ -49,7 +50,7 @@ struct InvestContent: View {
                         }
                     }
                     FundManagerCard(engine: e)
-                    VenturesContent()
+                    VenturesLinkRow(engine: e)
                 }
                 .sheet(item: $selected) { q in TradeSheet(quote: q).presentationDetents([.medium, .large]) }
         }
@@ -96,7 +97,13 @@ struct TradeSheet: View {
                         if live.quantity > 0 {
                             HStack {
                                 ForEach([0.25, 0.5, 1.0], id: \.self) { f in
-                                    Button(f == 1 ? "Sell all" : "Sell \(Int(f * 100))%") { store.act { $0.sellInvestment(quote.kind, symbol: quote.symbol, fraction: f) }; Haptics.success() }
+                                    Button(f == 1 ? "Sell all" : "Sell \(Int(f * 100))%") {
+                                        let before = live.value
+                                        store.act { $0.sellInvestment(quote.kind, symbol: quote.symbol, fraction: f) }
+                                        let after = store.engine?.quotes(quote.kind).first { $0.id == quote.id }?.value ?? 0
+                                        if after < before { Haptics.success(); store.show("Sold \(cur.short(before - after)) of \(quote.symbol), less the broker fee.", tone: "good") }
+                                        else { Haptics.warning(); store.show("Nothing was sold: trading in \(quote.symbol) has stopped.", tone: "warn") }
+                                    }
                                         .buttonStyle(QuietButtonStyle(tint: Theme.roseGold))
                                 }
                             }
@@ -108,6 +115,34 @@ struct TradeSheet: View {
                 .navigationTitle(quote.symbol).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             }
+        }
+    }
+}
+
+/// What you hold in ventures (startups, private equity, stakes in groups), with a link to the Projects tab where they are managed.
+struct VenturesLinkRow: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+
+    var body: some View {
+        let cur = engine.homeCurrency
+        let founded = engine.foundedStartups.filter { $0.live }.reduce(0) { $0 + $1.valuation * $1.ownership / 100 }
+        let stakes = engine.startupStakes.filter { $0.live }.reduce(0) { $0 + $1.value }
+        let pe = engine.privateEquityFunds.filter { $0.live }.reduce(0) { $0 + $1.nav }
+        let groups = engine.bigMeetingStakes.reduce(0) { $0 + $1.value } + engine.groupStakes.reduce(0) { $0 + $1.value }
+        let total = founded + stakes + pe + groups
+        LedgerSection("Ventures") {
+            Button { store.tab = .projects; Haptics.tap() } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Startups, private equity and stakes").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text(total > 0 ? "Managed in Projects > Ventures" : "Found or back a startup, commit to a fund: Projects > Ventures").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    Spacer(minLength: 8)
+                    if total > 0 { Text(cur.short(total)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory) }
+                    Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }.padding(.vertical, 6).contentShape(Rectangle())
+            }.buttonStyle(.plain)
         }
     }
 }
