@@ -26,12 +26,15 @@ jobs:
         run: swift --version
       - name: Test the game engine
         working-directory: native/Engine
+        env:
+          LEDGER_PROGRESS: "1"
         run: |
           set -o pipefail
           # Release build with testing enabled: the same tests, several times faster (the long balance probes ran past what the
           # macOS runner allows a silent test process in a debug build).
           if ! swift test -c release -Xswiftc -enable-testing > test.log 2>&1; then
-            grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 60
+            grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 30
+            grep -n "PROGRESS" test.log | tail -n 8
             tail -n 40 test.log
             # A crashed test process leaves no XCTest output: print the macOS crash report's faulting thread.
             R=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 1)

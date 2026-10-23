@@ -37,7 +37,10 @@ final class BalanceProbeTests: XCTestCase {
                 _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
             }
         }
-        for _ in 0..<(years * 52 * 7) {
+        // LEDGER_PROGRESS: unbuffered progress on stderr, so a run that dies (CI) shows the trade, seed and day it reached.
+        let progress = ProcessInfo.processInfo.environment["LEDGER_PROGRESS"] != nil
+        for day in 0..<(years * 52 * 7) {
+            if progress && day % 28 == 0 { FileHandle.standardError.write("PROGRESS \(trade) seed \(seed) day \(day) inbox \(e.state.inbox.count) people \(e.state.people.count) companies \(e.state.companies.count)\n".data(using: .utf8)!) }
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             // Money the owner adds to keep a company alive counts as invested
