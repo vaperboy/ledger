@@ -71,7 +71,35 @@ public struct MarketingTables: Sendable {
     }
 }
 
+/// What a campaign commits you to, for the screen to show before it is confirmed. It never states a customer
+/// count or a reach: a campaign raises awareness by chance, it does not promise customers.
+public struct CampaignPlan: Equatable, Sendable {
+    /// Weeks you cannot cut the campaign (the channel's minimum, or what is left of the current lock)
+    public var lockedWeeks: Int
+    /// Weeks it will run, nil = until you stop it
+    public var weeks: Int?
+    /// Weekly budget times weeks, nil when it has no end date
+    public var totalCost: Double?
+    /// Last week the company worked at nearly full capacity: more awareness will not become more sales
+    public var nearCapacity: Bool
+    /// The chain runs this channel's marketing for the store
+    public var runByChain: Bool
+    public init(lockedWeeks: Int, weeks: Int?, totalCost: Double?, nearCapacity: Bool, runByChain: Bool) {
+        self.lockedWeeks = lockedWeeks; self.weeks = weeks; self.totalCost = totalCost; self.nearCapacity = nearCapacity; self.runByChain = runByChain
+    }
+}
+
 public enum Marketing {
+    /// True when the store's chain buys this channel for it (the chain's brand marketing, not "own"): the chain sets the
+    /// budget every week, so the store cannot change or cancel it. Stores add their own campaigns on other channels.
+    public static func runByChain(_ co: Company, channel: String, state s: GameState) -> Bool {
+        guard let ch = Chains.chain(s, of: co), ch["rules"]["mkt"].string != "own" else { return false }
+        return co.value("mk12").array.contains { $0.string == channel }
+    }
+
+    /// The campaign lengths offered (weeks), none shorter than the channel's own minimum. Original: the planner's `[4,12,26,52]`.
+    public static func lengthChoices(_ c: MarketingChannel) -> [Int] { [4, 12, 26, 52].filter { $0 >= c.minimumWeeks } }
+
     /// How the weekly awareness fades. Original: `awareDecayCore`, then the step 'local_prices awareDecay':
     /// a company that spends nothing on marketing is forgotten 4% faster.
     public static func decay(_ co: Company) -> Double {
@@ -122,8 +150,13 @@ public enum Marketing {
         // Campaigns end on their date.
         var mkt = co.value("mkt")
         var mktEnd = co.value("mktEnd")
-        for (k, endWeek) in mktEnd.object where Double(s.week) >= endWeek.double {
-            mkt = removing(mkt, k); mktEnd = removing(mktEnd, k)
+        for (k, endWeek) in mktEnd.object {
+            // An end date outlives nothing: a campaign that was cut or replaced leaves no stale date behind.
+            if mkt[k].isNull { mktEnd = removing(mktEnd, k); continue }
+            if Double(s.week) >= endWeek.double {
+                mkt = removing(mkt, k); mktEnd = removing(mktEnd, k)
+                s.note("\(co.name): the \(tables.channels[k]?.name ?? "marketing") campaign has run its length and stopped.", tone: "n", companyID: co.id)
+            }
         }
         co.set("mkt", mkt); co.set("mktEnd", mktEnd)
         var gain = 0.0, spend = 0.0

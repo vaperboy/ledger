@@ -69,27 +69,51 @@ public extension GameEngine {
     }
 
     /// Start, change or stop a marketing campaign. A campaign cannot be cut before its minimum length.
-    /// Original: `setMkt`.
-    mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double) -> ActionResult {
+    /// `weeks`: how long it runs from now (at least the channel's minimum); 0 = until you stop it; nil = a new campaign
+    /// runs until stopped and a running one keeps its end date. Original: `setMkt` + the planner's `plgo`.
+    mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int? = nil) -> ActionResult {
         var result = ActionResult.done
         let channels = marketing.channels
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), let c = channels[channel] else { result = .refused("unknown channel"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
+            if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
             var mkt = s.companies[i].value("mkt")
+            var mktEnd = s.companies[i].value("mktEnd")
             let cur = mkt[channel]
+            if let w = weeks, w > 0, weeklyBudget > 0 {
+                if w < c.minimumWeeks { result = .refused("this channel needs at least \(c.minimumWeeks) weeks"); return }
+                if !cur.isNull, !cur["lock"].isNull, Double(s.week + w) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
+            }
             if weeklyBudget <= 0 {
                 if !cur.isNull, !cur["lock"].isNull, Double(s.week) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
                 mkt = Marketing.removing(mkt, channel)
+                mktEnd = Marketing.removing(mktEnd, channel)
             } else if !cur.isNull {
                 if weeklyBudget < cur["b"].double, !cur["lock"].isNull, Double(s.week) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
                 mkt[channel]["b"] = .number(weeklyBudget)
             } else {
                 mkt[channel] = .object(["b": .number(weeklyBudget), "since": .number(Double(s.week)), "lock": .number(Double(s.week + c.minimumWeeks))])
+                mktEnd = Marketing.removing(mktEnd, channel)
+            }
+            if weeklyBudget > 0, let w = weeks {
+                if w > 0 { mktEnd[channel] = .number(Double(s.week + w)) } else { mktEnd = Marketing.removing(mktEnd, channel) }
             }
             s.companies[i].set("mkt", mkt)
+            s.companies[i].set("mktEnd", mktEnd)
         }
         return result
+    }
+
+    /// What starting this campaign commits you to; shown before the player confirms. Nil for an unknown company or channel.
+    func campaignPlan(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int?) -> CampaignPlan? {
+        guard let co = state.company(companyID), let c = marketing.channels[channel] else { return nil }
+        let cur = co.value("mkt")[channel]
+        let left = cur.isNull || cur["lock"].isNull ? 0 : max(0, Int(cur["lock"].double) - state.week)
+        let w = (weeks ?? 0) > 0 ? weeks : nil
+        let util = co.value("lastW")["util"].double
+        return CampaignPlan(lockedWeeks: cur.isNull ? c.minimumWeeks : left, weeks: w, totalCost: w.map { weeklyBudget * Double($0) },
+                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state))
     }
 
     // MARK: People
