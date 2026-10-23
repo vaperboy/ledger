@@ -13,6 +13,12 @@ public enum Knobs {
         return knob.options.indices.contains(selected) ? [knob.options[selected]] : []
     }
 
+    /// A multi-choice knob is stored as a bit mask (bit n = option n is on). The new mask with one option switched on or off.
+    public static func mask(_ mask: Int, option: Int, on: Bool) -> Int {
+        guard option >= 0, option < 62 else { return mask }
+        return on ? mask | (1 << option) : mask & ~(1 << option)
+    }
+
     public static func documentOK(_ co: Company, _ id: String) -> Bool {
         co.value("docs")[id]["st"].string == "ok"
     }

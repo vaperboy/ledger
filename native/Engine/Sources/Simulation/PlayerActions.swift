@@ -53,6 +53,21 @@ public extension GameEngine {
         }
     }
 
+    /// Switch one add-on of a multi-choice knob on or off. Several add-ons can run together: the knob is a bit mask,
+    /// so this sets or clears that option's bit and leaves the others alone.
+    @discardableResult
+    mutating func toggleKnobOption(companyID: Int, knob: String, option: Int, on: Bool) -> ActionResult {
+        var result = ActionResult.done
+        update { s, data, _ in
+            guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
+                  let k = bd.knobs.first(where: { $0.id == knob }), k.isMulti, k.options.indices.contains(option) else { result = .refused("not a choice of this business"); return }
+            var all = s.companies[i].value("knob")
+            all[knob] = .number(Double(Knobs.mask(all[knob].int, option: option, on: on)))
+            s.companies[i].set("knob", all)
+        }
+        return result
+    }
+
     /// Start, change or stop a marketing campaign. A campaign cannot be cut before its minimum length.
     /// Original: `setMkt`.
     mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double) -> ActionResult {

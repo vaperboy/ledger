@@ -60,10 +60,19 @@ struct CompanyOperations: View {
                             SectionLabel(knob.name)
                             Text(knob.detail).font(.caption).foregroundStyle(Theme.ivoryMuted)
                             let current = company.value("knob")[knob.id].isNull ? knob.defaultIndex : company.value("knob")[knob.id].int
-                            Picker(knob.name, selection: Binding(get: { current }, set: { v in store.act { $0.setKnob(companyID: company.id, knob: knob.id, option: v) } })) {
-                                ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in Text(o.name).tag(i) }
-                            }.pickerStyle(.menu)
-                            if knob.options.indices.contains(current) { Text(knob.options[current].detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            if knob.isMulti {
+                                ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Toggle(o.name, isOn: Binding(get: { current & (1 << i) != 0 }, set: { on in store.act { $0.toggleKnobOption(companyID: company.id, knob: knob.id, option: i, on: on) } }))
+                                        Text(o.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                    }
+                                }
+                            } else {
+                                Picker(knob.name, selection: Binding(get: { current }, set: { v in store.act { $0.setKnob(companyID: company.id, knob: knob.id, option: v) } })) {
+                                    ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in Text(o.name).tag(i) }
+                                }.pickerStyle(.menu)
+                                if knob.options.indices.contains(current) { Text(knob.options[current].detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            }
                         }
                     }
                 }
