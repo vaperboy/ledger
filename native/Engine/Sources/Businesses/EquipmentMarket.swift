@@ -486,7 +486,7 @@ public enum EquipmentMarket {
         let q = one ? 1 : max(1, quantity)
         let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
         let total = unit * Double(q)
-        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, big: true) }
+        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
         var pay = payment
         if one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
         if pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }

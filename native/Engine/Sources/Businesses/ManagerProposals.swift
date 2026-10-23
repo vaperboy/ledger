@@ -130,7 +130,7 @@ extension ManagerModel {
         if co.awareness < 70 {
             let ch = bd.audience > 0.5 ? "google" : "meta"
             let cur0 = co.value("mkt")[ch]["b"].double
-            let steps: [Double] = marketingSteps(ch)
+            let steps: [Double] = marketingSteps(ch, cur)
             if let nx = steps.first(where: { $0 > cur0 }) {
                 out.append(ManagerProposal(kind: "mkt_more", title: "Spend more on \(ch == "google" ? "Google" : "Meta")", why: "We are not known enough locally. More people need to hear about us.", role: "", id: "",
                                            addedCost: nx - cur0, addedRevenue: (nx - cur0) * (1.1 + (70 - co.awareness) / 60) * (util < 0.9 ? 1 : 0.4), once: 0))
@@ -150,7 +150,9 @@ extension ManagerModel {
         scored.sort { $0.1 > $1.1 }
         return scored.prefix(3).map { $0.0 }
     }
-    static func marketingSteps(_ ch: String) -> [Double] { ch == "google" ? [500, 1500, 3000, 7000, 15000] : [300, 1000, 2500, 5000, 10000] }
+    static func marketingSteps(_ ch: String, _ cur: Currency) -> [Double] {
+        (ch == "google" ? [500, 1500, 3000, 7000, 15000] : [300, 1000, 2500, 5000, 10000]).map { cur.scaledPrice($0) }
+    }
 
     /// Call a meeting with one manager: they put proposals on the table as messages you answer. Original: `ACT.mtgo2`.
     @discardableResult

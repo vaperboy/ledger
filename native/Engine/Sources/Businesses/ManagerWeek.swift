@@ -371,7 +371,7 @@ extension ManagerModel {
             case "mkt_more":
                 let ch = bd.audience > 0.5 ? "google" : "meta"
                 var mkt = co.value("mkt")
-                let opts = marketing.channels[ch]?.budgetOptions ?? []
+                let opts = marketing.channels[ch]?.budgets(in: cur) ?? []
                 if let next = opts.first(where: { $0 > mkt[ch]["b"].double }) {
                     if mkt[ch].isNull { mkt[ch] = .object(["b": .number(next), "since": .number(Double(s.week)), "lock": .number(Double(s.week + (marketing.channels[ch]?.minimumWeeks ?? 4)))]) }
                     else { mkt[ch]["b"] = .number(next) }
@@ -384,7 +384,7 @@ extension ManagerModel {
                     let lock = mkt[ch]["lock"].isNull ? 0 : mkt[ch]["lock"].double
                     if Double(s.week) < lock { say = "Some of it is locked in for now." }
                     else {
-                        let lower = (marketing.channels[ch]?.budgetOptions ?? []).reversed().first(where: { $0 < mkt[ch]["b"].double }) ?? 0
+                        let lower = (marketing.channels[ch]?.budgets(in: cur) ?? []).reversed().first(where: { $0 < mkt[ch]["b"].double }) ?? 0
                         if lower > 0 { mkt[ch]["b"] = .number(lower) } else { mkt = Marketing.removing(mkt, ch) }
                         s.companies[ci].set("mkt", mkt)
                         say = "I cut \(marketing.channels[ch]?.name ?? ch) to " + (lower > 0 ? "\(cur.display(lower)) a week." : "nothing.")

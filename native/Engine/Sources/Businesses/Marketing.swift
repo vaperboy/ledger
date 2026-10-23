@@ -29,6 +29,11 @@ public struct MarketingChannel: Sendable {
     public var isPrimeTime: Bool
     public var isNational: Bool
     public var onlyInCountry: String?
+
+    /// The weekly budget presets in this country's money (written at the reference price level; 0 stays 0).
+    public func budgets(in cur: Currency) -> [Double] { budgetOptions.map { $0 == 0 ? 0 : cur.scaledPrice($0) } }
+    /// The budget at which returns flatten, at this country's price level.
+    public func scale(in cur: Currency) -> Double { scale * cur.country.costIndex }
 }
 
 public struct MarketingTables: Sendable {
@@ -137,7 +142,7 @@ public enum Marketing {
             guard !paused, let c = tables.channels[k] else { continue }
             let aud = bd.audience
             let fit = (1 - aud) * (c.localShare == 0 ? 0.5 : c.localShare) + aud * (c.businessShare == 0 ? 0.5 : c.businessShare)
-            let sc = c.scale * max(0.4, min(8, scale * 0.9))
+            let sc = c.scale(in: w.currency(co)) * max(0.4, min(8, scale * 0.9))
             var eff = c.efficiency * (1 - exp(-m["b"].double / sc)) * (0.45 + fit)
             if c.isHighVariance {
                 if c.isPrimeTime { eff *= s.random.chance(0.18) ? 1.7 : (s.random.chance(0.6) ? 0.55 : 0.9) }
@@ -201,7 +206,7 @@ public enum Marketing {
         var fit = 0.0
         for k in hooks {
             if let m = co.value("mkt")[k] as JSONValue?, !m.isNull, let c = tables.channels[k] {
-                fit += min(1, m["b"].double / (c.scale * 0.7)) * (c.isHighVariance ? 1.4 : 1)
+                fit += min(1, m["b"].double / (c.scale(in: w.currency(co)) * 0.7)) * (c.isHighVariance ? 1.4 : 1)
             }
         }
         if primeTimeActive { fit += 1.2 }

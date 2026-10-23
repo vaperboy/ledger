@@ -84,8 +84,10 @@ public enum Suppliers {
     public static func bumpPublic(_ s: inout GameState, _ id: String, by d: Double) { bump(&s, id, by: d) }
 
     /// Buying something makes the relationship grow a little. Original: `vbuy`.
-    static func recordPurchase(_ s: inout GameState, vendorID id: String?, amount: Double, big: Bool = false) {
-        guard let id = id, amount > 0 else { return }
+    static func recordPurchase(_ s: inout GameState, vendorID id: String?, amount local: Double, priceIndex: Double = 1, big: Bool = false) {
+        guard let id = id, local > 0 else { return }
+        // The thresholds are at the reference price level: the same order is as big a deal in any country.
+        let amount = local / max(0.01, priceIndex)
         bump(&s, id, by: big ? min(3.5, max(0.3, amount / 120000)) : min(0.15, max(0.01, amount.squareRoot() / 4000)))
     }
 
@@ -192,7 +194,7 @@ public enum Suppliers {
     /// The company's weekly buying from its goods supplier warms the relationship. Original: `vbuy(ctx.gd.v.id, cogs)`.
     static func recordGoods(_ s: inout GameState, companyIndex i: Int, cogs: Double, data: GameData) {
         guard cogs > 0, let v = goodsVendor(s, company: s.companies[i], data: data) else { return }
-        recordPurchase(&s, vendorID: v.id, amount: cogs)
+        recordPurchase(&s, vendorID: v.id, amount: cogs, priceIndex: data.countries.resolve(s.companies[i].countryCode, orHome: s.homeCountryCode).costIndex)
     }
 
     // MARK: Choosing (actions)

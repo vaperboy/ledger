@@ -50,7 +50,7 @@ struct CompanyMarketing: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 Button("Off") { set(ch.id, 0) }.buttonStyle(QuietButtonStyle(tint: budget == 0 ? Theme.gold : Theme.ivoryFaint))
-                                ForEach(ch.budgetOptions, id: \.self) { b in
+                                ForEach(ch.budgets(in: cur), id: \.self) { b in
                                     Button(cur.short(b) + "/wk") { set(ch.id, b) }.buttonStyle(QuietButtonStyle(tint: budget == b ? Theme.gold : Theme.ivoryMuted))
                                 }
                             }
