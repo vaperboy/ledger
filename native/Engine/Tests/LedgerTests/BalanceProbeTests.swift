@@ -11,6 +11,15 @@ import Investments
 final class BalanceProbeTests: XCTestCase {
     struct Outcome { var trade: String; var invested: Double; var profitY1: Double; var profitY3: Double; var value: Double; var cash: Double; var status: String; var staff: Int }
 
+    /// Runs `body` in its own autorelease pool where there is one (Apple platforms); plain call elsewhere.
+    static func drained(_ body: () -> Void) {
+        #if canImport(ObjectiveC)
+        autoreleasepool(invoking: body)
+        #else
+        body()
+        #endif
+    }
+
     static func play(trade: String, country: String = "UK", seed: Int, years: Int = 3, aggressive: Bool = false) throws -> Outcome? {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
         var id = 0, invested = 0.0
@@ -40,14 +49,26 @@ final class BalanceProbeTests: XCTestCase {
         // LEDGER_PROGRESS: unbuffered progress on stderr, so a run that dies (CI) shows the trade, seed and day it reached.
         let progress = ProcessInfo.processInfo.environment["LEDGER_PROGRESS"] != nil
         for day in 0..<(years * 52 * 7) {
-            if progress && day % 28 == 0 { FileHandle.standardError.write("PROGRESS \(trade) seed \(seed) day \(day) inbox \(e.state.inbox.count) people \(e.state.people.count) companies \(e.state.companies.count)\n".data(using: .utf8)!) }
-            e.nextDay()
-            for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            // Money the owner adds to keep a company alive counts as invested
-            if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
-                let top = -co.cash + 100_000
-                e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
-                invested += top
+            if progress && day % 28 == 0 {
+                var ru = rusage()
+                #if os(Linux)
+                getrusage(RUSAGE_SELF.rawValue, &ru)
+                #else
+                getrusage(RUSAGE_SELF, &ru)
+                #endif
+                FileHandle.standardError.write("PROGRESS \(trade) seed \(seed) day \(day) maxrss \(ru.ru_maxrss) inbox \(e.state.inbox.count) people \(e.state.people.count)\n".data(using: .utf8)!)
+            }
+            // One simulated day per autorelease pool: on Apple platforms Foundation objects made inside a long loop are otherwise only
+            // freed when the test method returns, and the runner kills a test process that grows for minutes (SIGKILL, no message).
+            BalanceProbeTests.drained {
+                e.nextDay()
+                for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                // Money the owner adds to keep a company alive counts as invested
+                if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
+                    let top = -co.cash + 100_000
+                    e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
+                    invested += top
+                }
             }
         }
         guard let co = e.state.company(id) else { return nil }
