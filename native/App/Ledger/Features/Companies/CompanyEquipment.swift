@@ -33,6 +33,8 @@ private enum EquipmentTab: String, CaseIterable, Hashable { case needed = "Neede
 struct CompanyEquipmentScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
+    /// Opened from the setup checklist's premises row: start on the choice of premises.
+    var opensOnPremises = false
     @State private var tab: EquipmentTab = .needed
     @State private var pending: Pending? = nil
     @State private var pendingListing: CompanySetup.Listing? = nil
@@ -81,6 +83,7 @@ struct CompanyEquipmentScreen: View {
             .ledgerBackground()
             .navigationTitle("Equipment")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if opensOnPremises && tabs.contains(.premises) { tab = .premises } }
             .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
             } message: { Text(pendingMessage) }

@@ -122,48 +122,6 @@ struct PeriodPicker: View {
     }
 }
 
-// MARK: Your companies
-
-/// The companies at a glance, best earners first: a dot for health, profit and cash on one line each; a tap opens the company.
-struct EmpireCard: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var body: some View {
-        let cos = engine.state.liveCompanies.filter { $0.type != "hold" }
-        if !cos.isEmpty {
-            let rows = cos.map { (co: $0, h: engine.companyHealth($0)) }.sorted { $0.h.profitTTM > $1.h.profitTTM }
-            LedgerSection(title: "Companies", trailing: {
-                Text("Profit 12 mo  ·  Cash").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-            }) {
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.prefix(5).enumerated()), id: \.element.co.id) { i, r in
-                        Button { store.go(.openCompany(r.co.id)) } label: {
-                            HStack(spacing: 10) {
-                                Circle().fill(HealthChip.tint(r.h.label)).frame(width: 6, height: 6)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(r.co.name).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                    Text(engine.tradeName(r.co) + (r.h.bottleneck.map { " · limited by " + $0.lowercased() } ?? "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                                }
-                                Spacer(minLength: 8)
-                                Text(store.short(r.h.profitTTM, in: r.co)).font(.system(size: 14).monospacedDigit()).foregroundStyle(r.h.profitTTM < 0 ? Theme.loss : Theme.ivory)
-                                    .frame(minWidth: 62, alignment: .trailing)
-                                Text(store.short(r.co.cash, in: r.co)).font(.system(size: 13).monospacedDigit()).foregroundStyle(r.co.cash < 0 ? Theme.loss : Theme.ivoryMuted).frame(minWidth: 60, alignment: .trailing)
-                            }
-                            .padding(.vertical, 9)
-                            .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                        if i < min(rows.count, 5) - 1 { Hairline() }
-                    }
-                    if rows.count > 5 {
-                        Button { store.tab = .company } label: { Text("All \(rows.count) companies  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }
-                            .buttonStyle(.plain).padding(.top, 6).frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: Next day
 
 /// The one filled control on the screen: a champagne pill at the bottom right, the week's progress at the left.

@@ -133,7 +133,7 @@ struct CompanyFinanceBook: View {
         switch store.act({ $0.setInsuranceProduct(companyID: company.id, product: p.id, offered: !p.isOffered) }) {
         case .ok?: Haptics.success(); store.show(p.isOffered ? "Stopped selling." : "Applied for approval.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the approval fee.", tone: "warn")
-        default: break
+        default: store.show("That product cannot be changed now.", tone: "warn")
         }
     }
 
@@ -141,7 +141,7 @@ struct CompanyFinanceBook: View {
         switch store.act({ $0.verifySalesperson(companyID: company.id, personID: personID, product: p.id) }) {
         case .ok?: Haptics.success(); store.show("Verification started: a few weeks.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the verification.", tone: "warn")
-        default: break
+        default: store.show("That salesperson cannot be verified for this product.", tone: "warn")
         }
     }
 }

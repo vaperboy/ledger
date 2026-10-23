@@ -14,6 +14,7 @@ struct CompanyClub: View {
     @State private var part: Part = .season
     @State private var candidates: [FootballModel.Coach] = []
     @State private var hiringKind = "coach"
+    @State private var pending: PendingAction?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -32,6 +33,7 @@ struct CompanyClub: View {
                 Text("This club has no league data yet.").font(.caption).foregroundStyle(Theme.ivoryFaint)
             }
         }
+        .confirmAction($pending)
     }
 
     private func form(_ r: String) -> some View {
@@ -115,7 +117,13 @@ struct CompanyClub: View {
                                     Text("Age \(cd.age) · \(cd.quality) · asks \(cur.short(cd.wage)) a week").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()
-                                Button("Hire") { store.act { $0.hireCoach(companyID: company.id, coach: cd, kind: hiringKind) }; candidates = []; Haptics.success() }.buttonStyle(QuietButtonStyle())
+                                Button("Hire…") {
+                                    let kind = hiringKind
+                                    pending = PendingAction(title: "Hire \(cd.name)?", message: "\(cur.display(cd.wage)) a week for a \(kind == "coach" ? "manager" : "assistant manager") of quality \(cd.quality). Whoever holds the post now is replaced.", button: "Hire") {
+                                        store.act { $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }
+                                        candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(kind == "coach" ? "manager" : "assistant manager").", tone: "good")
+                                    }
+                                }.buttonStyle(QuietButtonStyle())
                             }.padding(.vertical, 8)
                         }
                         Button("Cancel") { candidates = [] }.font(.caption).foregroundStyle(Theme.ivoryFaint).buttonStyle(.plain).padding(.top, 6)
@@ -134,7 +142,11 @@ struct CompanyClub: View {
                     Text(p.map { "\($0.name)\($0.interim ? " (interim)" : "") · \($0.quality) · \(cur.short($0.wage)) a week" } ?? "Vacant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer()
-                if p != nil { Button("Dismiss") { store.act { $0.dismissCoach(companyID: company.id, kind: kind) }; Haptics.warning() }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
+                if let p { Button("Dismiss…") {
+                    pending = PendingAction(title: "Dismiss \(p.name)?", message: kind == "coach" ? "The assistant steps in until you hire a new manager. Results can suffer in between." : "The club has no assistant until you hire one.", button: "Dismiss", destructive: true) {
+                        store.act { $0.dismissCoach(companyID: company.id, kind: kind) }; Haptics.warning(); store.show("\(p.name) has gone.", tone: "n")
+                    }
+                }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
                 Button(p == nil ? "Find one" : "Replace") {
                     hiringKind = kind
                     candidates = store.act { $0.clubCandidates(companyID: company.id, kind: kind) } ?? []
@@ -159,11 +171,14 @@ struct CompanyClub: View {
                                 Text("\(cur.short(engine.signingFee(companyID: company.id, tier: i))) fee, written off over three years · about +\(String(format: "%.1f", t.strength)) strength").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
-                            Button("Sign") {
-                                switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
-                                case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
-                                case .closed?: store.show("The transfer window is closed.", tone: "warn")
-                                default: store.show("Not enough cash in the club.", tone: "warn")
+                            Button("Sign…") {
+                                let fee = engine.signingFee(companyID: company.id, tier: i)
+                                pending = PendingAction(title: "Sign a \(t.name.lowercased())?", message: "\(cur.display(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.short(company.cash)).", button: "Sign") {
+                                    switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
+                                    case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
+                                    case .closed?: store.show("The transfer window is closed.", tone: "warn")
+                                    default: store.show("The club needs \(cur.short(fee)) in cash.", tone: "warn")
+                                    }
                                 }
                             }.buttonStyle(QuietButtonStyle()).disabled(w.name == nil)
                         }.padding(.vertical, 9)
@@ -190,7 +205,12 @@ struct CompanyClub: View {
                                         Text("\(cur.short(o.weekly)) a week · \(o.years) year\(o.years == 1 ? "" : "s")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
                                     Spacer()
-                                    Button("Sign") { if store.act({ $0.signSponsor(companyID: company.id, slot: slot.key, offerID: o.id) }) == .ok { Haptics.success() } }.buttonStyle(QuietButtonStyle())
+                                    Button("Sign…") {
+                                        pending = PendingAction(title: "Sign \(o.name)?", message: "\(cur.display(o.weekly)) a week for \(o.years) year\(o.years == 1 ? "" : "s") as your \(slot.title.lowercased()). You cannot take another offer for this slot until it ends.", button: "Sign") {
+                                            if store.act({ $0.signSponsor(companyID: company.id, slot: slot.key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
+                                            else { store.show("That offer is no longer available.", tone: "warn") }
+                                        }
+                                    }.buttonStyle(QuietButtonStyle())
                                 }.padding(.vertical, 8)
                             }
                         } else {

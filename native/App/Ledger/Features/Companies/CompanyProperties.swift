@@ -184,19 +184,21 @@ struct CompanyProperties: View {
     }
 
     private func sell(_ p: PropertyRow) {
-        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 { Haptics.success(); store.show("Sold.", tone: "good") }
+        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 { Haptics.success(); store.show("Sold for \(engine.currency(for: company).short(net)) after costs.", tone: "good") }
+        else { Haptics.warning(); store.show("The property could not be sold.", tone: "warn") }
     }
 
     private func renovate(_ p: PropertyRow) {
         switch store.act({ $0.renovateProperty(companyID: company.id, propertyID: p.id) }) {
         case .ok?: Haptics.success(); store.show("Renovated: better condition, higher value.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
-        default: break
+        default: store.show("It cannot be renovated now.", tone: "warn")
         }
     }
 
     private func lease(_ p: PropertyRow, _ o: TenantOffer) {
         if store.act({ $0.leaseSpace(companyID: company.id, propertyID: p.id, offerIndex: o.index) }) == true { Haptics.success(); store.show("Leased.", tone: "good") }
+        else { Haptics.warning(); store.show("That tenant is no longer interested.", tone: "warn") }
     }
 
     private func sellBuilding(_ p: PropertyRow, _ o: TenantOffer) {

@@ -34,11 +34,13 @@ struct CompanyEnergy: View {
     var company: Company
     @State private var megawatts = 10.0
     @State private var confirmDrill = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if company.type == "power" { plant } else { oil }
         }
+        .confirmAction($pending)
     }
 
     // MARK: Power
@@ -69,9 +71,12 @@ struct CompanyEnergy: View {
                     }
                     Text("About \(cur.short(perMW * megawatts)) now (\(cur.short(perMW)) per MW). New capacity takes \(buildWeeks) weeks to build and only then produces. Output follows the weather and the season.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    Button("Order \(Int(megawatts)) MW") {
-                        if store.act({ $0.orderTurbines(companyID: company.id, megawatts: megawatts) }) == true { Haptics.success(); store.show("Ordered. Construction has started.", tone: "good") }
-                        else { Haptics.warning(); store.show("The company does not have that much cash.", tone: "warn") }
+                    Button("Order \(Int(megawatts)) MW…") {
+                        let mw = megawatts
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.display(perMW * mw)) is paid from company cash (it has \(cur.short(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order") {
+                            if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
+                            else { Haptics.warning(); store.show("The company does not have \(cur.short(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
+                        }
                     }.buttonStyle(QuietButtonStyle())
                 }
             }
@@ -119,10 +124,13 @@ struct CompanyEnergy: View {
                                 Text(cur.short(engine.oilStakePrice(thousandBarrels: k))).font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
-                            Button("Buy") {
-                                switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
-                                case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
-                                default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
+                            Button("Buy…") {
+                                let cost = engine.oilStakePrice(thousandBarrels: k)
+                                pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: "\(cur.display(cost)) from company cash (it has \(cur.short(company.cash))). The field produces right away, and the barrels run out over time.", button: "Buy stake") {
+                                    switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
+                                    case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
+                                    default: Haptics.warning(); store.show("The company needs \(cur.short(cost)) in cash.", tone: "warn")
+                                    }
                                 }
                             }.buttonStyle(QuietButtonStyle())
                         }

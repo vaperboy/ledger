@@ -12,11 +12,11 @@ enum CompanyRoute: Hashable {
 /// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
 /// Replaces the former separate Group tab, which listed the same companies again.
 struct CompaniesView: View {
-    enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
+    enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var path: [CompanyRoute] = []
-    @State private var sort: Sort = .profit
+    @State private var sort: Sort = .attention
     /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
     @State private var query = ""
     @State private var chainFilter = "all"
@@ -125,11 +125,24 @@ struct CompaniesView: View {
 
     private func order(_ a: (co: Company, h: CompanyHealth), _ b: (co: Company, h: CompanyHealth)) -> Bool {
         switch sort {
+        case .attention:
+            let ra = Self.urgency(a.co, a.h), rb = Self.urgency(b.co, b.h)
+            return ra != rb ? ra < rb : a.h.profitTTM < b.h.profitTTM
         case .profit: return a.h.profitTTM > b.h.profitTTM
         case .revenue: return a.h.revenueTTM > b.h.revenueTTM
         case .cash: return a.co.cash > b.co.cash
         case .name: return a.co.name < b.co.name
         }
+    }
+
+    /// 0 is most urgent: out of cash, struggling or short of runway come before healthy companies; closed and setting up sit in between.
+    static func urgency(_ co: Company, _ h: CompanyHealth) -> Int {
+        if co.status == .setup { return 2 }
+        if co.status == .closed { return 3 }
+        if co.cash < 0 || h.label == "Struggling" { return 0 }
+        if let w = h.runwayWeeks, w < 8 { return 0 }
+        if h.label == "Tight" { return 1 }
+        return 4
     }
 
     private func openRequested() {
@@ -197,7 +210,7 @@ struct CompanyTable: View {
         Card(padding: 0, rule: false) {
             Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: 0) {
                 GridRow {
-                    ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Staff", "Limited by"], id: \.self) { h in
+                    ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Run by", "Staff", "Limited by"], id: \.self) { h in
                         Text(h).font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
@@ -215,6 +228,7 @@ struct CompanyTable: View {
                         num(r.h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "–")
                         num(store.short(r.co.cash, in: r.co), r.co.cash < 0 ? Theme.loss : Theme.ivory)
                         num(RunwayText.of(r.h), r.h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryMuted)
+                        Text(RunBy.name(engine, r.co)).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                         num("\(r.co.staff.count)")
                         Text(r.h.bottleneck ?? "–").font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                     }
@@ -278,6 +292,7 @@ struct CompanyRow: View {
                 HStack(spacing: 0) {
                     Text(engine.tradeName(co) + " · ").foregroundStyle(Theme.ivoryFaint)
                     if co.status == .open { Text(h.label).foregroundStyle(HealthChip.tint(h.label)) } else { Text(co.status == .setup ? "Setting up" : co.status.rawValue.capitalized).foregroundStyle(Theme.ivoryMuted) }
+                    Text(" · " + RunBy.name(engine, co)).foregroundStyle(Theme.ivoryFaint)
                 }
                 .font(.system(size: 11)).lineLimit(1)
             }
@@ -289,5 +304,14 @@ struct CompanyRow: View {
         }
         .padding(.vertical, 9)
         .contentShape(Rectangle())
+    }
+}
+
+/// Who runs a company day to day, in two words for list rows: the manager (or the boss above), "You", or "No one".
+enum RunBy {
+    static func name(_ e: GameEngine, _ co: Company) -> String {
+        guard co.status.isLive, co.type != "hold" else { return "–" }
+        if let b = e.decisionChain(companyID: co.id).first { return b.name }
+        return co.ownerHours > 0 ? "You" : (co.status == .open ? "No one" : "–")
     }
 }
