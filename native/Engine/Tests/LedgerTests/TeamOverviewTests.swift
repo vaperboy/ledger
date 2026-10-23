@@ -121,5 +121,82 @@ final class TeamOverviewTests: XCTestCase {
         XCTAssertEqual(d.count, 1)
         XCTAssertEqual(d.first?.companyID, id)
         XCTAssertNotNil(d.first?.messageID)
+        XCTAssertEqual(d.first?.beyondAuthority, false, "an ordinary decision is not an escalation")
+    }
+
+    func testManagersRequestAboveTheirAuthorityIsMarked() throws {
+        var e = try ChainsTests.engine("UK")
+        let id = ChainsTests.start(&e, "cafe")
+        open(&e, id)
+        try hireManager(&e, id)
+        let name = try XCTUnwrap(e.state.company(id)?.managerID.flatMap { e.state.people[$0]?.name })
+        e.update { s, _, _ in s.addMessage(kind: "ask", from: name, title: "Buy an oven", body: "", companyID: id, tone: "n", status: "open", options: [.option("Approve"), .option("Decline")], action: "prop") }
+        let d = try XCTUnwrap(e.teamOverview().issues.first { $0.kind == .decision && $0.title == "Buy an oven" })
+        XCTAssertTrue(d.beyondAuthority)
+        XCTAssertTrue(d.needsOwner)
+        XCTAssertTrue(d.detail.hasPrefix(name), "says who asked")
+    }
+
+    func testVacanciesListStoreChainAndGroupPosts() throws {
+        var e = try ChainsTests.engine("UK")
+        let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
+        open(&e, a, ownerHours: 0); open(&e, b, ownerHours: 40)
+        let o = e.teamOverview()
+        let store = o.vacancies.first { $0.id == "mgr-\(a)" }
+        if e.state.company(a)?.staff.isEmpty == false {
+            XCTAssertEqual(store?.scope, "store")
+            XCTAssertEqual(store?.needed, true, "no one runs it")
+            XCTAssertEqual(o.vacancies.first?.needed, true, "needed posts come first")
+        }
+        XCTAssertNil(o.vacancies.first { $0.id == "mgr-\(b)" }, "the owner runs it")
+        XCTAssertEqual(o.vacancies.first { $0.id == "md" }?.scope, "group", "two companies make room for a group managing director")
+        XCTAssertEqual(o.vacancies.first { $0.id == "md" }?.needed, false)
+        try hireManager(&e, a)
+        XCTAssertNil(e.teamOverview().vacancies.first { $0.id == "mgr-\(a)" })
+    }
+
+    func testChainPostsAreVacanciesUntilFilled() throws {
+        var e = try ChainsTests.engine("NO")
+        let first = ChainsTests.start(&e, "cafe")
+        ChainsTests.season(&e, first)
+        let chain = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
+        open(&e, first)
+        let o = e.teamOverview()
+        XCTAssertEqual(o.vacancies.first { $0.id == "chainmgr-\(chain)" }?.scope, "chain")
+        XCTAssertNotNil(o.vacancies.first { $0.id == "ceo56-\(chain)" })
+        XCTAssertEqual(o.companies.first { $0.id == first }?.chainName, "Test Cafe")
+    }
+
+    func testScorecardsAndProfitShareAndDuties() throws {
+        var e = try ChainsTests.engine("UK")
+        let id = ChainsTests.start(&e, "cafe")
+        open(&e, id)
+        XCTAssertNil(e.managerProfitBonusPreview(companyID: id, share: 0.1), "no manager, no profit share")
+        XCTAssertTrue(e.managerDuties(companyID: id).isEmpty)
+        try hireManager(&e, id)
+        let o = e.teamOverview()
+        let line = try XCTUnwrap(o.companies.first { $0.id == id })
+        XCTAssertNotNil(line.score)
+        XCTAssertNotNil(line.managerQuality)
+        XCTAssertEqual(o.scorecards.map { $0.id }, [id])
+        XCTAssertEqual(o.scorecards.first?.score, e.managerScorecard(companyID: id)?.score)
+
+        let p0 = try XCTUnwrap(e.managerProfitBonusPreview(companyID: id, share: 0.1))
+        XCTAssertGreaterThanOrEqual(p0.monthlyCost, 0)
+        e.setManagerProfitBonus(companyID: id, share: 0.5)
+        XCTAssertEqual(e.managerProfitBonusPreview(companyID: id, share: 0)?.current, 0.3, "the engine caps the share at 30%")
+
+        XCTAssertEqual(e.managerDuties(companyID: id).first?.manager, true, "the manager looks after it by default")
+        e.setManagerDuty(companyID: id, duty: "prem", manager: false)
+        XCTAssertEqual(e.managerDuties(companyID: id).first?.manager, false)
+    }
+
+    func testFiftyCompaniesStayCheap() throws {
+        var e = try ChainsTests.engine("UK")
+        let ids = (0..<50).map { _ in ChainsTests.start(&e, "cafe") }
+        for id in ids { open(&e, id, ownerHours: 0) }
+        let o = e.teamOverview()
+        XCTAssertEqual(Set(o.companies.map { $0.id }).intersection(ids).count, 50)
+        XCTAssertEqual(Set(o.vacancies.map { $0.id }).count, o.vacancies.count, "vacancy ids are unique")
     }
 }
