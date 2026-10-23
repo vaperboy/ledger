@@ -7,6 +7,8 @@ The one place that says what is still to do and why. It does not replace the inv
 Updated: 23 Oct 2026, at commit 1da0ac8 (native-swiftui). Source of every item: the engine/screen audits of this session, the agent
 reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-checked after the UI pass.
 
+**Binding rules:** `SIMULATION_RULES.md` (no artificial caps/floors, balance the causes, sales methods with real consequences, respect chain/franchise structure) and `DESIGN_RULES.md`.
+
 **Classes**
 - **KEEP**: build it as the original/owner intends.
 - **ADAPT**: build it, but differently from the original (reason given).
@@ -46,6 +48,23 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 | B12 | Ledger Pro store and skins (11 ids) | DEFER | Commercial layer; owner's decision. | Apple account |
 | B13 | Crisis centre, org chart, payroll and bills page, personal rival screen, business paper screen | UNVERIFIED | Listed missing in the screen inventory; the UI pass added bills/payroll report, paper and weather pages. Re-check each before building. | none |
 
+## Stage 2 decisions (23 Oct 2026; design notes in `design/stage2/`, each lists purpose, interactions, structure and tests)
+| ID | Item | Decision | Why |
+|---|---|---|---|
+| B8 | Pay day change | BUILD (batch 2A) | A real cash-flow timing choice; the engine has `PayrollConfig.day`, only the setter and the original's "applies after this month's payroll" rule are missing. |
+| B9 | Confirm-before-spend | BUILD, ADAPT (2A) | One money-size threshold in Settings (default: always ask); destructive/irreversible actions never skippable. App-only. |
+| B10 | Web analytics | REMOVE | In-game sparkline toggle with no cost or effect; `trf` is already recorded, show the trend without a switch. |
+| B7 | Manager focus plans | DEFER | Overlaps authority levels, duties, budget, profit share and targets; if wanted later, a "Direction" setting biasing decisions. |
+| B6 | Deal of the week | REMOVE | Personal-wealth nudge already covered by distressed-rival decision, markets, supplier/equipment deals; adds no decision. |
+| B4a | How-you-sell option bug (index vs bitmask in `Knobs`) | BUILD FIRST (2B) | Defect: several add-ons cannot run together. |
+| B4b | Campaign duration | BUILD (2B) | `weekly` already ends campaigns at `mktEnd`; nothing sets it. Never ports the original's "reach N people" figure. |
+| B5 | How-you-sell changeover | BUILD (2B) | One-off cost, transition weeks with reduced capacity, document check; no guaranteed gain; chain knob rules become mandatory and shown locked in the store view; franchise standards optional fields. Bound by SIMULATION_RULES 3 and 4. |
+| B3 | Prime-time TV | BUILD, ADAPT (2B) | One data-driven channel named from each country's `media.prime`; replaces the 23 per-country entries; managers never pick it. |
+| B4c | Age targeting | DEFER | The trade data has no customer-age profile; needs authored per-trade data (not invented). |
+| B2 | Life stories | BUILD loan + heir (2C); student and kid DEFER | Real numbers on the start screen; student/kid need an owner decision on cash and severance. |
+| B1 | Trade unlock gate | DEFER; BUILD affordability filter (2C) | A hard gate would block content arbitrarily; the New company list instead sorts/filters by what the player can fund. |
+| - | Typed age, start city | REMOVE | Age only affects credit after 60; city is chosen with the first company (heir story sets its own). |
+
 ## C. Engine works, screen missing or thin
 | ID | Item | Class | Rationale | Depends on |
 |---|---|---|---|---|
@@ -82,12 +101,20 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 | E4 | FX on repatriating foreign profit | REMOVE | The original has no such mechanic; cash is held in accounting units. | none |
 | E5 | Overtime paid to hourly staff only; hours/notice per country not traced for all 23 | DEFER | Check after the dismissal merge (A1). | A1 |
 
-## F. Economy and balance (owner: not yet)
+## F. Economy and balance (owner: not yet; bound by SIMULATION_RULES.md)
+Review of past balance work against the rules (23 Oct): the changes below were fitted to ROI ranges or cap a loss and must be re-examined for their *cause*, not
+kept just because tests pass. Test ranges (BalanceGuardTests) may only detect suspicious results, never limit outcomes.
 | ID | Item | Class | Rationale | Depends on |
 |---|---|---|---|---|
-| F1 | Car dealer structural loss (about −14% mean over 18 seeds) | DEFER | Owner said no balancing yet; analysis exists (BALANCE_REPORT). | owner go |
-| F2 | High seed variance (grocery, hardware, courier, 3PL, car repair) | DEFER | Bound single-event losses as the farm fix did. | owner go |
-| F3 | Balance guard checks only 2 seeds | DEFER | Use 5+ seeds and the median. | F1 |
+| F0a | Farm: fire/theft loss capped at weeks of revenue (`events.json` `min(eqv*0.22, wk*6)`) | ADAPT | A cap on a loss is a symptom fix. Find why an uninsured total loss is not modelled (property insurance, recovery, partial damage) and model that mechanism explicitly. | cause analysis |
+| F0b | Courier/other trades: `demandLevel`/`Dc` tuned until ROI sat in a band (trade_tuning.json) | ADAPT | Fitted to a target range. Keep the courier equipment bug fix (a real defect); re-derive demand from the trade's market (customers, price, capacity) rather than the ROI band. | cause analysis |
+| F0c | `BalanceGuardTests` ROI bands and 'nothing above ~50%' | ADAPT | Keep as detectors that report, not as gates that force tuning; add multi-seed distribution output. | F3 |
+
+| ID | Item | Class | Rationale | Depends on |
+|---|---|---|---|---|
+| F1 | Car dealer structural loss (about −14% mean over 18 seeds) | DEFER | Trace one losing seed month by month to the cause (stock financing, depreciation of stock, margins, demand) and compare with the original model; fix the formula, not the result. Owner said no balancing yet. | owner go |
+| F2 | High seed variance (grocery, hardware, courier, 3PL, car repair) | DEFER | Find what draws dominate (events, fines, rival entry, key-account loss) and whether each is a real mechanism with a real size; keep legitimate high and low outcomes (SIMULATION_RULES 2); model missing constraints (insurance, diversification, working capital) instead of capping. | owner go |
+| F3 | Balance guard checks only 2 seeds | DEFER | Run many seeds and print the distribution as a detector; no pass/fail band that forces tuning. | F1 |
 | F4 | Kiosk returns may be too easy; airline ~4% with large first-year loss | DEFER | Review with F1. | F1 |
 | F5 | Rival-run energy firms, oil/salmon fairs, club investors | REMOVE | Do not exist in the original; nothing to port. | none |
 | F6 | Tender draws change the shared random stream | DEFER | Re-check golden baselines when balancing. | F1 |

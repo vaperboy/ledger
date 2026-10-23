@@ -293,7 +293,7 @@ extension ManagerModel {
         if key == "ceo" { rec = t["ceo"] } else if key == "reg" { rec = regionals(s).first { $0["id"].int == regionalID } ?? .null } else { rec = t["heads"][key] }
         guard let n = person(s, rec) else { return false }
         let social = World(state: s, data: data).country(co).employerSocial
-        Payments.companyPays(&s, companyID: companyID, amount: rec["wage"].double * (1 + social), category: "wages", label: "Severance: \(slotTitle(s, co, key, data: data))")
+        Dismissal.book(&s, payer: .company(companyID), severance: Dismissal.monthOfPay(wage: rec["wage"].double, employerSocial: social), labels: .post(slotTitle(s, co, key, data: data)))
         var p = n; p.employerID = 0; s.people[n.id] = p
         if key == "ceo" { t["ceo"] = .null }
         else if key == "reg" {
@@ -403,7 +403,7 @@ extension ManagerModel {
         default: rec = regionals(s).first { $0["id"].int == regionalID } ?? .null
         }
         guard let n = person(s, rec) else { return false }
-        Payments.playerPays(&s, rec["wage"].double * (1 + 0.14), label: "Severance: \(level.title)")
+        Dismissal.book(&s, payer: .player, severance: Dismissal.monthOfPay(wage: rec["wage"].double, employerSocial: 0.14), labels: .post(level.title))
         var p = n; p.employerID = 0; s.people[n.id] = p
         switch level {
         case .md: s.rest["org56"] = (s.rest["org56"] ?? .object([:])).with("md", .null)

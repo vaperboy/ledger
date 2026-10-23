@@ -1,6 +1,6 @@
 # Design rules for screen work (binding for every design agent)
 
-Owner's rules, collected in one place. Each agent works on ONE category only and reads this file first.
+Owner's rules, collected in one place. Engine behaviour, balance and sales methods are also bound by `SIMULATION_RULES.md`. Each agent works on ONE category only and reads this file first.
 
 ## Where things live (one primary home per feature)
 - **Company** (tab): the company list (with comparisons) and one company's operations: overview, store operations, its finances, its own staff.

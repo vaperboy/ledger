@@ -198,7 +198,7 @@ public enum Stories {
             hof.insert(.object(["n": .string(n?.name ?? "A colleague"), "t": .string(text), "w": .number(Double(s.week))]), at: 0)
             if hof.count > 40 { hof.removeLast(hof.count - 40) }
             s.rest["hof28"] = .array(hof)
-            Hiring.fire(id, from: co.id, state: &s, data: data, withCause: true)
+            Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, data: data)
             s.note("\(n?.name ?? "A colleague") has retired from \(co.name). You need to hire a replacement.", tone: "n", companyID: co.id)
         default: break
         }
