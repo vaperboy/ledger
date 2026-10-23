@@ -16,6 +16,10 @@ struct TeamView: View {
     @State private var path: [CompanyRoute] = []
     @State private var query = ""
     @State private var showDelegated = false
+    @State private var showAllVacancies = false
+    @State private var showAllScores = false
+    @State private var openGroups: Set<String> = []
+    @State private var closedGroups: Set<String> = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -29,6 +33,8 @@ struct TeamView: View {
                                 searchResults(e)
                             } else {
                                 needsYou(o, e)
+                                vacancies(o, e)
+                                performance(o, e)
                                 delegated(o, e)
                                 aboveTheStores(e)
                                 companies(o, e)
@@ -52,14 +58,24 @@ struct TeamView: View {
     // MARK: Header
 
     private func header(_ o: TeamOverview, _ e: GameEngine) -> some View {
-        let byManagers = o.companies.filter { $0.delegated }.count
+        let live = o.companies.filter { !$0.isHolding }
+        let byManagers = live.filter { $0.delegated }.count
         let staff = o.companies.reduce(0) { $0 + $1.staff }
         let wages = o.companies.reduce(0) { $0 + $1.monthlyWages }
-        return VStack(alignment: .leading, spacing: 4) {
+        let needed = o.vacancies.filter { $0.needed }.count
+        let mine = o.issues.filter { $0.needsOwner }.count
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Team").font(.serifTitle(28))
-            if !o.companies.isEmpty {
-                Text("\(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(byManagers) run by managers · \(staff) staff · \(store.short(wages)) a month")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            if o.companies.isEmpty {
+                Text("No companies yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            } else {
+                KeyFigures(items: [
+                    .init(label: "Need you", value: "\(mine)", tint: mine > 0 ? Theme.caution : Theme.ivory, sub: mine == 0 ? "all in hand" : "decisions and trouble"),
+                    .init(label: "Run by managers", value: "\(byManagers) of \(live.count)", sub: "\(live.count - byManagers) by you"),
+                    .init(label: "Posts to fill", value: "\(o.vacancies.count)", tint: needed > 0 ? Theme.loss : Theme.ivory, sub: needed > 0 ? "\(needed) needed now" : "none urgent"),
+                ])
+                Text("\(staff) staff in \(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(store.short(wages)) a month in wages")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
@@ -110,7 +126,7 @@ struct TeamView: View {
             Circle().fill(i.severity >= 3 ? Theme.loss : i.severity == 2 ? Theme.caution : Theme.ivoryFaint).frame(width: 7, height: 7).padding(.top, 6)
             VStack(alignment: .leading, spacing: 2) {
                 Text(i.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Text(i.needsOwner ? i.detail : "\(i.handledBy) · \(i.detail)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(i.beyondAuthority ? "Above their authority · \(i.detail)" : i.needsOwner ? i.detail : "\(i.handledBy) · \(i.detail)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
@@ -130,6 +146,85 @@ struct TeamView: View {
         default: section = .staff
         }
         path.append(.companyAt(id, section))
+    }
+
+    // MARK: Vacancies
+
+    @ViewBuilder private func vacancies(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        if !o.vacancies.isEmpty {
+            let limit = 5
+            let shown = showAllVacancies ? o.vacancies : Array(o.vacancies.prefix(limit))
+            LedgerSection(title: "Posts to fill", trailing: { Text("\(o.vacancies.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { n, v in
+                        if n > 0 { Hairline() }
+                        Button { openVacancy(v) } label: {
+                            HStack(alignment: .top, spacing: Theme.Space.m) {
+                                Circle().fill(v.needed ? Theme.loss : Theme.ivoryFaint).frame(width: 7, height: 7).padding(.top, 6)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(v.place).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    RoleScopeBadge(role: v.title, scope: v.scope)
+                                    Text(v.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer(minLength: 6)
+                                Text(v.needed ? "needed" : "optional").font(.system(size: 11)).foregroundStyle(v.needed ? Theme.loss : Theme.ivoryFaint).padding(.top, 2)
+                                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
+                            }.padding(.vertical, 8).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                    if o.vacancies.count > limit {
+                        Button(showAllVacancies ? "Show fewer" : "Show all \(o.vacancies.count)") { withAnimation { showAllVacancies.toggle() } }
+                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    /// A store or company post opens that company's Team section (hiring happens there); a chain post opens its Chain section; a group post opens Group.
+    private func openVacancy(_ v: TeamOverview.Vacancy) {
+        Haptics.tap()
+        if v.scope == "chain", let id = v.companyID { path.append(.companyAt(id, .chain)) }
+        else if let id = v.companyID { path.append(.companyAt(id, .staff)) }
+        else { store.tab = .group }
+    }
+
+    // MARK: Manager performance
+
+    @ViewBuilder private func performance(_ o: TeamOverview, _ e: GameEngine) -> some View {
+        if !o.scorecards.isEmpty {
+            let lines = Dictionary(o.companies.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            let limit = 5
+            let shown = showAllScores ? o.scorecards : Array(o.scorecards.prefix(limit))
+            LedgerSection(title: "Manager performance", trailing: { Text(o.scorecards.count > 1 ? "weakest first" : "1 manager").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { n, c in
+                        if n > 0 { Hairline() }
+                        Button { Haptics.tap(); path.append(.companyAt(c.id, .staff)) } label: {
+                            HStack(spacing: Theme.Space.m) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(c.managerName).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    Text("\(c.companyName)\(lines[c.id].map { authorityWord($0.authority) } ?? "")\((lines[c.id]?.managerLeaving ?? false) ? " · leaving" : "")")
+                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("\(c.score)").font(.system(size: 14).monospacedDigit()).foregroundStyle(c.score < 35 ? Theme.loss : c.score < 50 ? Theme.caution : c.score >= 65 ? Theme.gain : Theme.ivory)
+                                    Text(CompanyManagement.scoreWord(c.score)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            }.padding(.vertical, 8).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                    if o.scorecards.count > limit {
+                        Button(showAllScores ? "Show fewer" : "Show all \(o.scorecards.count)") { withAnimation { showAllScores.toggle() } }
+                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 8)
+                    }
+                    Text("Scorecard 0 to 100 from margin, reputation, quality, mistakes, paperwork and targets. Open a manager to coach, limit or replace them.")
+                        .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
+                }
+            }
+        }
     }
 
     // MARK: Above the stores
@@ -199,13 +294,77 @@ struct TeamView: View {
     @ViewBuilder private func companies(_ o: TeamOverview, _ e: GameEngine) -> some View {
         if !o.companies.isEmpty {
             let lines = o.companies.sorted { ($0.issues, $1.name) > ($1.issues, $0.name) }
+            let grouped = lines.count >= 10
             LedgerSection(title: "Who runs each company", trailing: { Text("\(lines.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(spacing: 0) {
-                    ForEach(Array(lines.enumerated()), id: \.element.id) { n, l in
-                        if n > 0 { Hairline() }
-                        Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e) }.buttonStyle(.plain)
+                if !grouped {
+                    VStack(spacing: 0) {
+                        ForEach(Array(lines.enumerated()), id: \.element.id) { n, l in
+                            if n > 0 { Hairline() }
+                            Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e) }.buttonStyle(.plain)
+                        }
+                    }
+                } else {
+                    let groups = groupLines(lines)
+                    VStack(spacing: 0) {
+                        ForEach(Array(groups.enumerated()), id: \.element.key) { n, g in
+                            if n > 0 { Hairline() }
+                            companyGroup(g, e)
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private struct LineGroup { var key: String; var title: String; var kind: String; var lines: [TeamOverview.CompanyLine] }
+
+    /// Chains first, then holdings, then everything else, each with its companies.
+    private func groupLines(_ lines: [TeamOverview.CompanyLine]) -> [LineGroup] {
+        var order: [String] = []
+        var map: [String: LineGroup] = [:]
+        for l in lines {
+            var k = "solo", t = "Single companies", kind = "single"
+            if let c = l.chainID { k = "c\(c)"; t = l.chainName ?? "Chain"; kind = "chain" }
+            else if let h = l.holdingID { k = "h\(h)"; t = l.holdingName ?? "Holding"; kind = "holding" }
+            else if l.isHolding { k = "h\(l.id)"; t = l.name; kind = "holding" }
+            if map[k] == nil { map[k] = LineGroup(key: k, title: t, kind: kind, lines: []); order.append(k) }
+            map[k]?.lines.append(l)
+        }
+        let rank = ["chain": 0, "holding": 1, "single": 2]
+        return order.compactMap { map[$0] }.sorted { (rank[$0.kind] ?? 3, $0.title) < (rank[$1.kind] ?? 3, $1.title) }
+    }
+
+    private func isOpen(_ g: LineGroup) -> Bool {
+        if openGroups.contains(g.key) { return true }
+        if closedGroups.contains(g.key) { return false }
+        return g.lines.contains { $0.issues > 0 } || g.lines.count <= 3
+    }
+
+    @ViewBuilder private func companyGroup(_ g: LineGroup, _ e: GameEngine) -> some View {
+        let open = isOpen(g)
+        let needs = g.lines.reduce(0) { $0 + $1.issues }
+        let byMgr = g.lines.filter { $0.delegated }.count
+        let weak = g.lines.filter { ($0.score ?? 100) < 35 }.count
+        Button {
+            withAnimation {
+                if open { openGroups.remove(g.key); closedGroups.insert(g.key) } else { closedGroups.remove(g.key); openGroups.insert(g.key) }
+            }
+        } label: {
+            HStack(spacing: Theme.Space.m) {
+                Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).frame(width: 14)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(g.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    Text("\(g.lines.count) \(g.lines.count == 1 ? "company" : "companies") · \(byMgr) with a boss\(weak > 0 ? " · \(weak) weak" : "")")
+                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer(minLength: 8)
+                if needs > 0 { Text("\(needs) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+            }.padding(.vertical, 9).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+        if open {
+            ForEach(g.lines) { l in
+                Hairline()
+                Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e).padding(.leading, 26) }.buttonStyle(.plain)
             }
         }
     }
@@ -214,12 +373,13 @@ struct TeamView: View {
         HStack(spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(l.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(l.delegated ? "\(l.managedBy) · \((l.managerTitle ?? "manager").lowercased())\(authorityWord(l.authority))" : "You run it")
+                Text(l.delegated ? "\(l.managedBy) · \((l.managerTitle ?? "manager").lowercased())\(authorityWord(l.authority))\(l.managerLeaving ? " · leaving" : "")" : "You run it")
                     .font(.system(size: 11)).foregroundStyle(l.delegated ? Theme.ivoryFaint : Theme.ivoryMuted).lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(l.staff) staff").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(l.isHolding ? "holding" : "\(l.staff) staff").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                if let sc = l.score { Text("score \(sc)").font(.system(size: 11)).foregroundStyle(sc < 35 ? Theme.loss : Theme.ivoryFaint) }
                 if l.issues > 0 { Text("\(l.issues) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }
             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
