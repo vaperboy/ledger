@@ -9,6 +9,8 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 
 **Binding rules:** `SIMULATION_RULES.md` (no artificial caps/floors, balance the causes, sales methods with real consequences, respect chain/franchise structure) and `DESIGN_RULES.md`.
 
+**Audit (23 Oct 2026):** own companies as suppliers/add-ons, company cars, staff benefits and commission pay (what exists, defects, proposed batches): `design/stage2/own_companies_cars_perks_commission.md`.
+
 **Classes**
 - **KEEP**: build it as the original/owner intends.
 - **ADAPT**: build it, but differently from the original (reason given).
