@@ -64,8 +64,10 @@ final class BalanceProbeTests: XCTestCase {
         print("BAL trade | invested k | profit y1 k | profit y3 k | y3 ROI | value k | value/invested | status")
         for t in trades where only == nil || only!.contains(t) {
             var outs: [Outcome] = []
-            for seed in [11, 12, 13] { if let o = try Self.play(trade: t, country: country, seed: seed, aggressive: aggressive) { outs.append(o) } }
+            let seeds = ProcessInfo.processInfo.environment["LEDGER_SEEDS"]?.split(separator: ",").compactMap { Int($0) } ?? [11, 12, 13]
+            for seed in seeds { if let o = try Self.play(trade: t, country: country, seed: seed, aggressive: aggressive) { outs.append(o) } }
             guard !outs.isEmpty else { continue }
+            if ProcessInfo.processInfo.environment["LEDGER_PERSEED"] != nil { print("BAL   \(t) per seed ROI:", outs.map { String(format: "%.1f%%", $0.profitY3 / $0.invested * 100) }.joined(separator: " ")) }
             func avg(_ f: (Outcome) -> Double) -> Double { outs.map(f).reduce(0, +) / Double(outs.count) }
             let inv = avg { $0.invested }, y1 = avg { $0.profitY1 }, y3 = avg { $0.profitY3 }, v = avg { $0.value }
             print(String(format: "BAL %@ | %.0f | %.0f | %.0f | %.0f%% | %.0f | %.1fx | %@ | staff %.0f", t, inv / 1000, y1 / 1000, y3 / 1000, y3 / inv * 100, v / 1000, v / inv,
@@ -78,7 +80,7 @@ extension BalanceProbeTests {
     /// LEDGER_TRACE=<trade>: what holds a company back, week by week.
     func testPrintTrace() throws {
         guard let trade = ProcessInfo.processInfo.environment["LEDGER_TRACE"] else { return }
-        var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: 11)
+        var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: Int(ProcessInfo.processInfo.environment["LEDGER_SEED"] ?? "11")!)
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
@@ -112,6 +114,7 @@ extension BalanceProbeTests {
         }
         if let co = e.state.company(id), let bd = e.data.catalog[co.type] {
             let y = co.books.lastYear
+            print("TRACE monthly profit k:", co.monthlyHistory.map { Int($0.profit / 1000) })
             print("TRACE last year books:", y.sorted { $0.key < $1.key }.map { "\($0.key)=\(Int($0.value / 1000))k" })
             print("TRACE calib: normalDemand=\(Int(bd.normalDemand)) cap=\(Int(bd.normalCapacity)) F=\(Int(bd.weeklyFixedCosts)) vc=\(bd.variableCostShare) margin=\(bd.margin) ticket=\(bd.ticket) size=\(co.size)")
         }

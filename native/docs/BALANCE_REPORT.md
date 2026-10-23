@@ -229,3 +229,15 @@ special case was added.
 kiosk (36%) and grocery (20%), far below the 50% ceiling. Not fixed: a ski resort's reputation falls to single digits over three
 years in the probe because serious complaints go to the owner and the probe never answers them; the farm's yearly result swings
 with random incident losses.
+
+**Follow-up (farm, car repair, ski resort).** Probe: 5 seeds (11 to 15), UK, 3 years, ROI per seed.
+- Farm: the cause of the swing was one uninsured premises fire (`g_fire`, loss = 22 percent of equipment value, about 1.5 M on 6.8 M of
+  tractors, harvester and barn, against about 100 k of weekly revenue). The standard set-up buys no property insurance, and in 2 of 5
+  seeds one fire erased a year. Fix in `events.json`: fire and theft losses are capped at 6 and 2 weeks of typical revenue
+  (`min(eqv * 0.22, wk * 6)`, `min(eqv * 0.06, wk * 2)`); property insurance still pays all but the excess. Farm before: -5, 5.5, -5, 7, 11
+  (avg 3%); after: 9.6, 5.5, 3.2, 6.8, 13.3 (avg 8%). Hotel (5%) and casino (6%) are barely affected.
+- Car repair: no runaway or feedback found. Capacity (about 20 cars a week) is above demand (10 to 16), reputation and awareness are flat, and
+  wages plus rent are about 45 percent of revenue, so profit is plain operating leverage: +29 percent demand (3.1 to 4.0) roughly triples
+  the profit. The seed spread (-10 to +28, avg 12) comes from random events (ransomware, fines). demandLevel left at 4.0.
+- Ski resort: 5 seeds gave 11 to 16 percent (avg 14), no longer lumpy; no unbounded seasonality found. Unchanged.
+- Probe: `LEDGER_SEEDS=11,12,13` and `LEDGER_PERSEED=1` print per-seed ROI; `LEDGER_SEED` picks the trace seed.
