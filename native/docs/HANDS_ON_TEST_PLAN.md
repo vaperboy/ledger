@@ -108,6 +108,14 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 - Acquisitions, ventures, expand abroad, boards, head office.
 - Country rules: start in two countries and compare wages, notice and tax.
 - Balance feel: play 3 years of a shop, a contractor, a rental company.
+- Pay day and confirm threshold (stage 2, controls). Status of each row: NOT TESTED.
+  - 9.P1 Company > Finances > Payroll and bills, company with staff, this month's payroll unpaid. Steps: tap another pay day, confirm. Expected: "Queue the change" dialog names this month's pay date and the first date on the new day; after confirming the card shows the pending change; old day stays until payroll runs, then the new day applies. NOT TESTED.
+  - 9.P2 Same screen after payday has passed (month paid). Steps: choose an earlier day (e.g. the 1st). Expected: change applies at once, first pay date is next month, this month is not paid again. NOT TESTED.
+  - 9.P3 Advance days over 3 months across a change. Expected: exactly one "Payday" message per month, none skipped; wages owed accrue weekly; cash drops once per payday. NOT TESTED.
+  - 9.P4 Choose "Last day": row says wages fall the same day as rent and supplier bills. Company with no staff: card says nothing to pay. Late wages: note says the change waits. NOT TESTED.
+  - 9.P5 Month-end bills leave on the last day of the month and payday on the chosen day (not on the 1st). NOT TESTED.
+  - 9.C1 Settings > How much I decide > Ask before spending, default "Always ask": job ad / executive search show the confirmation. NOT TESTED.
+  - 9.C2 Raise the step above the fee: job ad / executive search run at once and the toast says what was paid. Dismissals, wind-up, closing, selling, loans, dividends still ask at every setting. Restart the app: setting kept; export/import a save: setting not in the save. NOT TESTED.
 
 ### 9.B Life stories and what you can fund (stage 2, background)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |

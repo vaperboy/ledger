@@ -130,10 +130,10 @@ struct TeamSlotSheet: View {
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
                                             message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",
-                                            button: "Search for \(cur.tidyShort(fee))") {
+                                            button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur) {
                         if let list = store.act({ $0.searchTeam(companyID: co.id, key: slot.key) }) ?? nil {
                             candidates = list.map { $0.id }; Haptics.tap()
-                            store.show(list.isEmpty ? "The search found no one." : "\(list.count) candidates found.", tone: list.isEmpty ? "warn" : "n")
+                            store.show((list.isEmpty ? "The search found no one." : "\(list.count) candidates found.") + " Search paid: \(cur.tidyShort(fee)).", tone: list.isEmpty ? "warn" : "n")
                         } else { store.show("Not enough cash for the search.", tone: "warn") }
                     }
                 }.buttonStyle(QuietButtonStyle())

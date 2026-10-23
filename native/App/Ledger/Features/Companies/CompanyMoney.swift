@@ -7,7 +7,7 @@ import Simulation
 
 /// The parts of a company's Finances section. Summary answers "is the money all right"; the others are where it is handled.
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
-    case summary = "Summary", accounts = "Accounts", loans = "Loans", owners = "You and owners", settings = "Settings"
+    case summary = "Summary", accounts = "Accounts", payroll = "Payroll and bills", loans = "Loans", owners = "You and owners", settings = "Settings"
 }
 
 /// One company's money: the shared financial summary, then accounts, loans, owner money and the company's legal settings.
@@ -25,6 +25,7 @@ struct CompanyMoney: View {
             switch part {
             case .summary: CompanyMoneySummary(engine: engine, company: company, part: $part)
             case .accounts: CompanyAccounts(engine: engine, company: company)
+            case .payroll: CompanyPayroll(engine: engine, company: company)
             case .loans: CompanyLoans(engine: engine, company: company)
             case .owners: CompanyOwnerMoney(engine: engine, company: company)
             case .settings: CompanySettings(engine: engine, company: company)
@@ -79,6 +80,7 @@ struct CompanyMoneySummary: View {
             LedgerSection("Handle the money") {
                 VStack(spacing: 0) {
                     jump("Accounts", "Profit and loss, balance sheet, cash flow, tax, transactions", .accounts)
+                    jump("Payroll and bills", "Pay day, what falls due, rent and supplier bills", .payroll)
                     jump("Loans", engine.state.loans.contains { $0.companyID == company.id } ? "Borrow more, repay early" : "Borrow for this company", .loans)
                     jump("You and owners", "Put money in, take it out, salary, shares, selling", .owners)
                     jump("Settings", "Legal form, name, closing for a while, winding up", .settings)
