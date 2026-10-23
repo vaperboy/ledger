@@ -48,6 +48,23 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 | B12 | Ledger Pro store and skins (11 ids) | DEFER | Commercial layer; owner's decision. | Apple account |
 | B13 | Crisis centre, org chart, payroll and bills page, personal rival screen, business paper screen | UNVERIFIED | Listed missing in the screen inventory; the UI pass added bills/payroll report, paper and weather pages. Re-check each before building. | none |
 
+## Stage 2 decisions (23 Oct 2026; design notes in `design/stage2/`, each lists purpose, interactions, structure and tests)
+| ID | Item | Decision | Why |
+|---|---|---|---|
+| B8 | Pay day change | BUILD (batch 2A) | A real cash-flow timing choice; the engine has `PayrollConfig.day`, only the setter and the original's "applies after this month's payroll" rule are missing. |
+| B9 | Confirm-before-spend | BUILD, ADAPT (2A) | One money-size threshold in Settings (default: always ask); destructive/irreversible actions never skippable. App-only. |
+| B10 | Web analytics | REMOVE | In-game sparkline toggle with no cost or effect; `trf` is already recorded, show the trend without a switch. |
+| B7 | Manager focus plans | DEFER | Overlaps authority levels, duties, budget, profit share and targets; if wanted later, a "Direction" setting biasing decisions. |
+| B6 | Deal of the week | REMOVE | Personal-wealth nudge already covered by distressed-rival decision, markets, supplier/equipment deals; adds no decision. |
+| B4a | How-you-sell option bug (index vs bitmask in `Knobs`) | BUILD FIRST (2B) | Defect: several add-ons cannot run together. |
+| B4b | Campaign duration | BUILD (2B) | `weekly` already ends campaigns at `mktEnd`; nothing sets it. Never ports the original's "reach N people" figure. |
+| B5 | How-you-sell changeover | BUILD (2B) | One-off cost, transition weeks with reduced capacity, document check; no guaranteed gain; chain knob rules become mandatory and shown locked in the store view; franchise standards optional fields. Bound by SIMULATION_RULES 3 and 4. |
+| B3 | Prime-time TV | BUILD, ADAPT (2B) | One data-driven channel named from each country's `media.prime`; replaces the 23 per-country entries; managers never pick it. |
+| B4c | Age targeting | DEFER | The trade data has no customer-age profile; needs authored per-trade data (not invented). |
+| B2 | Life stories | BUILD loan + heir (2C); student and kid DEFER | Real numbers on the start screen; student/kid need an owner decision on cash and severance. |
+| B1 | Trade unlock gate | DEFER; BUILD affordability filter (2C) | A hard gate would block content arbitrarily; the New company list instead sorts/filters by what the player can fund. |
+| - | Typed age, start city | REMOVE | Age only affects credit after 60; city is chosen with the first company (heir story sets its own). |
+
 ## C. Engine works, screen missing or thin
 | ID | Item | Class | Rationale | Depends on |
 |---|---|---|---|---|
