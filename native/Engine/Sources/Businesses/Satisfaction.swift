@@ -64,15 +64,6 @@ public enum Satisfaction {
         if l.count > 30 { l.removeLast(l.count - 30); s.companies[i].set("compl", .array(l)) }
     }
 
-    /// The owner answers an open complaint. Returns nil if there is no such open complaint, else whether an apology was accepted
-    /// (true for a refund). Original: `ACT.complres`.
-    public static func answerComplaint(_ s: inout GameState, companyID: Int, complaintID: Int, answer: Answer, data: GameData) -> Bool? {
-        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
-              let k = s.companies[i].value("compl").array.firstIndex(where: { $0["id"].int == complaintID && $0["st"].string == "open" }) else { return nil }
-        let ok = resolve(&s, i, bd, complaintAt: k, answer, good: nil, data: data)
-        return answer == .refund ? true : answer == .sorry ? (ok ?? false) : false
-    }
-
     /// Open complaints of a company, newest first, for the list on the company screen.
     public static func openComplaints(_ co: Company) -> [JSONValue] { co.value("compl").array.filter { $0["st"].string == "open" } }
 
