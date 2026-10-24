@@ -21,12 +21,10 @@ public enum AutoStaff {
                 if idx == 0 && bd.ownerFTE >= 1 && co.managerID == nil && co.ownerHours >= 20 { target = max(0, target - 1) }
                 let have = co.staff.filter { $0.role == st.role && $0.noticeWeeks <= 0 }.count
                 guard have < target else { continue }
-                let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+                let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data)
                 guard !cands.isEmpty else { break }
-                let pick = Hiring.bestValue(cands)
-                let cur = context.currency(co.countryCode, s)
-                let offer = cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
-                if Hiring.hire(pick.id, into: co.id, monthlyWage: offer, state: &s, data: data) == .ok {
+                // as cheaply as possible for the best talent: the company's manager (else the owner) weighs the candidates and bargains (AutoHire)
+                if let pick = AutoHire.hireWorker(role: st.role, companyID: co.id, candidates: cands, state: &s, data: data) {
                     let roleName = data.catalog.tables.roles[st.role]?.name ?? st.role
                     s.note("\(co.name): \(pick.name) hired as \(roleName.lowercased()) to fill a gap in the team.", tone: "n", companyID: co.id)
                 }

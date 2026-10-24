@@ -25,6 +25,39 @@ extension ManagerModel {
     static let resumes = ["Previously ran a business unit.", "Former operations lead at a regional chain.", "Started as staff and rose to manager.",
                           "Consultant turned operator.", "Managed a competitor for years."]
 
+    /// What a manager's job starts from at the reference economy: it grows with the people they run. Candidates ask a multiple of it by skill,
+    /// age and experience (`generateCandidate`); the going rate is what the job pays before anything about the person.
+    static func payBase(heads: Double) -> Double { 40000 + min(60000, heads * 2200) }
+
+    /// What a manager of this skill, age group and experience asks: the base for the company's size by skill, age group and experience, in this
+    /// city and economy. Candidates are made with it; whoever weighs them (`AutoHire`) uses it to judge what a given skill is worth.
+    static func askingPay(heads: Double, skill: Double, tier: String, experience exp: Double, cityWage: Double, inflation: Double) -> Double {
+        var pay = payBase(heads: heads) * (0.85 + skill / 400) * (tier == "senior" ? 1.1 : tier == "young" ? 0.86 : 1) * cityWage * inflation
+        pay *= 0.82 + 0.18 * min(1, exp / 9)
+        return pay
+    }
+
+    /// The going monthly rate for a store manager at this company: its size, its city and the economy, and nothing about the person.
+    /// This is where a manager's pay discussion starts, from the employer's side.
+    public static func managerGoingRate(company co: Company?, state s: GameState, data: GameData) -> Double {
+        let w = World(state: s, data: data)
+        let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
+        let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
+        let cur = Currency(country: country, rates: w.rates)
+        return cur.roundedStep(payBase(heads: Double(co?.staff.count ?? 3)) * cityWage * w.inflationIndex, about: 500)
+    }
+    /// An assistant manager is paid this share of what a manager asks.
+    static let assistantPayShare = 0.5
+    public static func assistantGoingRate(company co: Company?, state s: GameState, data: GameData) -> Double {
+        let w = World(state: s, data: data)
+        let country = co.map { w.country($0) } ?? w.countries[s.homeCountryCode]!
+        return Currency(country: country, rates: w.rates).roundedStep(managerGoingRate(company: co, state: s, data: data) * assistantPayShare, about: 500)
+    }
+    /// What a post on the management team pays relative to a manager: the managing director, a regional manager, or a department head.
+    static func teamPayFactor(_ key: String) -> Double {
+        key == "ceo" ? 2.4 : key == "reg" ? 1.6 : teamRoles.first { $0.key == key }?.payFactor ?? 1
+    }
+
     /// A manager on the labour market. Original: `genManager` with the round 22 pay step.
     @discardableResult
     public static func generateCandidate(company co: Company?, type: String, state s: inout GameState, data: GameData) -> Person {
@@ -42,8 +75,7 @@ extension ManagerModel {
         let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
         let heads = Double(co?.staff.count ?? 3)
         let skill = (st["ops"]! + st["people"]! + st["sales"]! + st["fin"]!) / 4
-        var pay = (40000 + min(60000, heads * 2200)) * (0.85 + skill / 400) * (tier == "senior" ? 1.1 : tier == "young" ? 0.86 : 1) * cityWage * w.inflationIndex
-        pay *= 0.82 + 0.18 * min(1, exp / 9)
+        let pay = askingPay(heads: heads, skill: skill, tier: tier, experience: exp, cityWage: cityWage, inflation: w.inflationIndex)
         let cur = Currency(country: country, rates: w.rates)
         var p = Person(raw: [:])
         p.id = s.makeID()
@@ -139,7 +171,8 @@ extension ManagerModel {
 
     // MARK: Hiring, leaving, authority
 
-    public enum HireResult: Equatable { case ok, taken, refused, needsPremises }
+    /// As `Hiring.HireResult`: `refused` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
+    public enum HireResult: Equatable { case ok, taken, refused, needsPremises, countered(Negotiation.Counter), walkedAway }
 
     /// Make a person the company's manager: they run it, the owner steps back to no hours. Original: `hireManagerCore` plus the round 22
     /// steps (a baseline to be measured against, routine authority from the first day).
@@ -176,17 +209,24 @@ extension ManagerModel {
         return max(0, h.reduce(0) { $0 + $1.profit } / Double(max(1, min(3, h.count)))) * share * 0.7
     }
 
-    /// Offer the job. A lower offer is more likely to be refused. Original: `hireManager`.
+    /// Offer the job. At or above what the person would settle for (hidden) they accept; below it they counter, refuse an insult or walk away
+    /// (the shared `Negotiation`; managers have more patience than workers). Original: `hireManager`.
     public static func hire(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage proposed: Double, profitBonus bonus: Double = 0, data: GameData) -> HireResult {
-        guard let ci = s.companyIndex(companyID), let n = s.people[personID], let bd = data.catalog[s.companies[ci].type] else { return .refused }
-        if n.employerID != 0 { return .taken }
-        let wage = max(proposed, World(state: s, data: data).minimumWage(s.companies[ci]))   // never below the minimum wage
-        let ask = max(1, n.askingMonthlyWage)
+        guard let ci = s.companyIndex(companyID), let n0 = s.people[personID], let bd = data.catalog[s.companies[ci].type] else { return .refused }
+        if n0.employerID != 0 { return .taken }
+        let w = World(state: s, data: data)
+        let wage = max(proposed, w.minimumWage(s.companies[ci]))   // never below the minimum wage
         // a share of the profit counts towards the package (a manager weighs it at 70% of what the last months' profit would pay)
         let share = clamp(bonus, 0, 0.3)
-        let offered = wage + bonusWorth(s.companies[ci], share)
-        let p = clamp((offered / ask - 0.88) / 0.14, 0, 1)
-        if offered < ask && !s.random.chance(p) { return .refused }
+        let worth = bonusWorth(s.companies[ci], share)
+        let offered = wage + worth
+        switch Hiring.answer(personID: personID, employer: companyID, rank: "manager", offer: offered, currency: w.currency(s.companies[ci]), about: 500, state: &s).answer {
+        case .refuse: return .refused
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(Negotiation.Counter(amount: max(c.amount - worth, 0), isFinal: c.isFinal))
+        case .accept: break
+        }
+        guard let n = s.people[personID] else { return .refused }
         appoint(&s, companyIndex: ci, person: n, wage: wage, data: data)
         s.companies[ci].managerProfitBonus = share
         s.note("\(n.name) is now \(title(bd).lowercased()) of \(s.companies[ci].name).", tone: "good", companyID: companyID)
@@ -326,20 +366,34 @@ extension ManagerModel {
             let st = n.value("stats")
             n.set("asst", true)
             n.skill = jsRound((st["ops"].double + st["people"].double) / 2)
-            n.askingMonthlyWage = cur.roundedStep(n.askingMonthlyWage * 0.5, about: 500)
+            n.askingMonthlyWage = cur.roundedStep(n.askingMonthlyWage * assistantPayShare, about: 500)
             n.set("exp", max(0, jsRound(n.num("exp") * 0.6)))
             s.people[n.id] = n
             return n
         }
     }
 
-    public enum OfferResult: Equatable { case ok, refused, taken }
+    /// The answer to an offer for a management post: `refused` is an insult with no figure named, `countered` names their own figure,
+    /// `walkedAway` means the person took another job.
+    public enum OfferResult: Equatable { case ok, refused, taken, countered(Negotiation.Counter), walkedAway }
+
+    /// Maps the shared answer of a pay talk to the result of a management offer; `.accept` is not mapped (the caller carries on).
+    static func offerResult(_ a: Negotiation.Answer) -> OfferResult? {
+        switch a {
+        case .accept: return nil
+        case .refuse: return .refused
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(c)
+        }
+    }
 
     /// Original: `hireAsst`.
-    public static func hireAssistant(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage w: Double) -> OfferResult {
-        guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return .refused }
-        if n.employerID != 0 { return .taken }
-        if w < n.askingMonthlyWage * 0.9 || (w < n.askingMonthlyWage && s.random.chance(0.5)) { return .refused }
+    public static func hireAssistant(_ s: inout GameState, personID: Int, companyID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
+        guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
+        if n0.employerID != 0 { return .taken }
+        let reply = Hiring.answer(personID: personID, employer: companyID, rank: "assistant", offer: w, currency: World(state: s, data: data).currency(s.companies[ci]), about: 500, state: &s)
+        if let r = offerResult(reply.answer) { return r }
+        guard var n = s.people[personID] else { return .refused }
         n.employerID = companyID
         s.people[personID] = n
         s.companies[ci].set("asst", .object(["npc": .number(Double(personID)), "wage": .number(w), "duties": .array([]), "w0": .number(Double(s.week))]))

@@ -188,16 +188,29 @@ public enum Headquarters {
         }
     }
 
-    public enum HireResult: Equatable, Sendable { case ok, refuse, taken, blocked(RoomResult) }
+    /// `refuse` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
+    public enum HireResult: Equatable, Sendable { case ok, refuse, taken, blocked(RoomResult), countered(Negotiation.Counter), walkedAway }
 
-    /// Offer the job. Below what they ask they may say no. Original: `hireHQnpc`.
+    /// The going monthly rate for a main-office role: the role's pay at the player's price level, and what the player's fame adds. What a person asks
+    /// on top of it follows their skill.
+    public static func goingRate(role: String, state s: GameState, data: GameData) -> Double {
+        guard let r = self.role(role, data) else { return 0 }
+        return ManagerModel.playerCurrency(s, data).roundedStep(ManagerModel.playerCurrency(s, data).scaledPrice(r.monthlyPay) * fameSalary(fame(s, data)), about: 100)
+    }
+
+    /// Offer the job. At or above what they would settle for they accept; below it they counter, refuse or walk away (head-office posts are
+    /// senior ones, so they have patience). Original: `hireHQnpc`.
     public static func hire(_ s: inout GameState, role: String, personID: Int, monthlyWage wage: Double, data: GameData) -> HireResult {
         let r = room(s, role: role, data: data)
-        guard r == .ok, var n = s.people[personID] else { return .blocked(r) }
-        if n.employerID != 0 { return .taken }
-        if wage < n.askingMonthlyWage * 0.82 && !s.random.chance(0.1) { return .refuse }
-        let p = clamp((wage / max(1, n.askingMonthlyWage) - 0.86) / 0.18, 0, 1)
-        if !s.random.chance(p) && wage < n.askingMonthlyWage { return .refuse }
+        guard r == .ok, let n0 = s.people[personID] else { return .blocked(r) }
+        if n0.employerID != 0 { return .taken }
+        switch Hiring.answer(personID: personID, employer: -3, rank: "headOffice", offer: wage, currency: ManagerModel.playerCurrency(s, data), about: 100, state: &s).answer {
+        case .refuse: return .refuse
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(c)
+        case .accept: break
+        }
+        guard var n = s.people[personID] else { return .refuse }
         n.employerID = -3
         s.people[personID] = n
         var o = office(s)

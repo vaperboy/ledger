@@ -59,7 +59,7 @@ public enum Hiring {
         let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
         let spread = Wages.paySpread(baseMonthlyWage: base, country: country)
         let perkAsk = 1 - 0.04 * pull
-        let ask = roundTo(base * cityWage * T.ask * (0.55 + skill / 110 + (lie ? 0.05 : 0)) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk * (co.map { Rivals.hiringPressure(s, $0) } ?? 1), step: 100)
+        let ask = roundTo(base * cityWage * T.ask * skillCurve(skill, lie: lie) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk * (co.map { Rivals.hiringPressure(s, $0) } ?? 1), step: 100)
         let trait: String? = s.random.chance(0.14 * (1 - 0.4 * pull)) ? s.random.pick(traits) : nil
         let rel = clamp(s.random.range(0.55, 1) - (trait != nil ? 0.12 : 0), 0.3, 1)
         let name = personName(country, &s.random)
@@ -111,7 +111,10 @@ public enum Hiring {
         return out
     }
 
-    public enum HireResult: Equatable { case ok, taken, refused }
+    /// `ok`: hired. `taken`: has another job. `refused`: the offer was an insult, no figure named. `countered`: they name their own figure
+    /// (a hire at that wage is accepted; it may be an unrealistic one, which is for the player to judge). `walkedAway`: patience gone, the person
+    /// took another job and is no longer on the market.
+    public enum HireResult: Equatable { case ok, taken, refused, countered(Negotiation.Counter), walkedAway }
 
     /// What kind of job is offered: full time (hours 0), part time or seasonal (months 1-12), and the pay basis of a full-timer
     /// (nil = the custom for the job). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS` (engine/people/people.js).
@@ -144,27 +147,98 @@ public enum Hiring {
     public static func bestValue(_ cands: [Person]) -> Person {
         let able = cands.filter { $0.skill >= 35 }
         let pool = able.isEmpty ? cands : able
-        return pool.max { (0.5 + $0.skill / 100) / max(1, $0.askingMonthlyWage) < (0.5 + $1.skill / 100) / max(1, $1.askingMonthlyWage) } ?? cands[0]
+        return pool.max { valueScore(skill: $0.skill, price: $0.askingMonthlyWage) < valueScore(skill: $1.skill, price: $1.askingMonthlyWage) } ?? cands[0]
     }
 
-    /// Make an offer. The lower it is against what the person asks, the likelier a refusal. Original: `hireWorkerCore`.
+    /// How much skill a wage buys: the one measure of "skill for the money" (a baseline of 0.5 so that a weak person is worth something).
+    static func valueScore(skill: Double, price: Double) -> Double { (0.5 + skill / 100) / max(1, price) }
+
+    /// The pay basis a hire gets and what the person makes of an offer on it: a fixed salary where hours are the custom, or hours for
+    /// someone who would rather have a salary, is worth a little more or less to them than the same figure on the other basis.
+    static func payBasis(_ n: Person, terms: Terms, fixedSalaryRoles: Set<String>) -> (basis: String, factor: Double) {
+        let part = terms.isPartTime
+        let basis = part ? "hour" : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
+        let wantsFixed = HashedRandom.first("fix:\(n.id)") < (n.age < 26 ? 0.55 : 0.8)
+        let factor = basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed && !part ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
+        return (basis, factor)
+    }
+
+    /// How asking pay rises with skill (a candidate who exaggerates asks a little extra). Candidates are made with it, and whoever weighs
+    /// them (`AutoHire`) uses the same curve to judge what someone of a given skill is worth.
+    static func skillCurve(_ skill: Double, lie: Bool = false) -> Double { 0.55 + skill / 110 + (lie ? 0.05 : 0) }
+    /// What someone of this age group and skill would ask, as a multiple of the going rate for the job.
+    static func askCurve(tier: String, skill: Double) -> Double { tiers[tier]!.ask * skillCurve(skill) }
+
+    /// The age group of a person (the groups do not overlap).
+    static func tier(forAge age: Int) -> String { age <= tiers["young"]!.age.1 ? "young" : age <= tiers["mid"]!.age.1 ? "mid" : "senior" }
+
+    /// The employer id of someone who took a job somewhere else while the talk went on: no longer on the market.
+    public static let goneElsewhere = -9
+
+    // MARK: The candidate's side of a pay talk (every kind of hire uses it)
+
+    /// What a person would say in a pay talk, from their hidden ask: they open at it and settle for a little less, by temperament. `factor`
+    /// is how an offer converts into what they value (pay basis, a profit share): the figures are returned in offer units.
+    public static func position(for n: Person, factor f: Double = 1) -> Negotiation.Position {
+        let f = f > 0 ? f : 1
+        return Negotiation.position(opening: n.askingMonthlyWage / f, direction: .higher, temperament: temperament(of: n), key: "\(n.id)")
+    }
+
+    public static func temperament(of n: Person) -> Negotiation.Temperament {
+        Negotiation.temperament(personality: n.str("pers").isEmpty ? nil : n.str("pers"), key: "\(n.id)")
+    }
+
+    /// The person answers an offer made by `employer` for a post of `rank` (see `Negotiation`). Keeps the talk on the person's record, ends it on
+    /// an accept, and on a walk away takes the person off the market and says so. The caller does the rest of the hire after an accept and must
+    /// read the person again after this call.
+    public static func answer(personID: Int, employer: Int, rank: String, offer: Double, factor: Double = 1, currency: Currency, about: Double,
+                              state s: inout GameState) -> Negotiation.Response {
+        guard var n = s.people[personID] else { return Negotiation.Response(.refuse) }
+        var talk = Negotiation.State.resume(n, party: employer, week: s.week)
+        let r = Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
+                                    week: s.week, currency: currency, about: about, random: &s.random)
+        switch r.answer {
+        case .accept: Negotiation.State().store(in: &n)
+        case .walkAway:
+            Negotiation.State().store(in: &n)
+            n.employerID = goneElsewhere
+            s.note("\(n.name) lost patience and took another job.", tone: "n", companyID: max(0, employer))
+        case .counter, .refuse: talk.store(in: &n)
+        }
+        s.people[personID] = n
+        return r
+    }
+
+    /// The same question with nothing changed on the person: what would they answer to this offer? Used by someone who weighs several people
+    /// before choosing one (`AutoHire`); the talk is kept in `talk`. It uses the game's random numbers like the real thing.
+    public static func probe(_ n: Person, offer: Double, factor: Double = 1, rank: String, talk: inout Negotiation.State, currency: Currency, about: Double,
+                             state s: inout GameState) -> Negotiation.Response {
+        Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
+                            week: s.week, currency: currency, about: about, random: &s.random)
+    }
+
+    /// Make an offer. At or above what the person would settle for (hidden from the player) they accept; below it they counter, refuse an insult,
+    /// or, when their patience for this kind of post is gone, walk away. Original: `hireWorkerCore` (the answer is the shared `Negotiation`).
     public static func hire(_ personID: Int, into companyID: Int, monthlyWage offered: Double, state s: inout GameState, data: GameData,
                             terms: Terms = Terms(), fixedSalaryRoles: Set<String> = Hiring.fixedSalaryNorm) -> HireResult {
-        guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return .refused }
-        if n.employerID != 0 { return .taken }
+        guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
+        if n0.employerID != 0 { return .taken }
         // No offer goes below the minimum pay of the company's country; a lower one is raised to it (pay is per full-time week).
         let world = World(state: s, data: data)
         let wage0 = max(offered, world.minimumWage(s.companies[ci]))
-        if wage0 > offered { s.note("The offer to \(n.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
+        if wage0 > offered { s.note("The offer to \(n0.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
         let part = terms.isPartTime
-        let basis = part ? "hour" : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
-        var wage = wage0
-        let wantsFixed = HashedRandom.first("fix:\(personID)") < (n.age < 26 ? 0.55 : 0.8)
-        wage *= basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed && !part ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
-        let ask = n.askingMonthlyWage
-        if wage < ask * 0.82 && !s.random.chance(0.1) { return .refused }
-        let p = clamp((wage / ask - 0.86) / 0.18, 0, 1)
-        if !s.random.chance(p) && wage < ask { return .refused }
+        let (basis, factor) = payBasis(n0, terms: terms, fixedSalaryRoles: fixedSalaryRoles)
+        let wage = wage0 * factor
+        let reply = answer(personID: personID, employer: companyID, rank: "worker", offer: wage0, factor: factor,
+                           currency: world.currency(s.companies[ci]), about: 100, state: &s)
+        switch reply.answer {
+        case .refuse: return .refused
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(c)
+        case .accept: break
+        }
+        guard var n = s.people[personID] else { return .refused }
         n.employerID = companyID
         s.people[personID] = n
         var m = StaffMember(raw: [:])

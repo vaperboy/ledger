@@ -418,7 +418,7 @@ public extension GameEngine {
     }
     mutating func hireDataAnalyst(personID: Int, monthlyWage: Double) -> MarketMap.HQHire {
         var r = MarketMap.HQHire.refused
-        update { s, _, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage) }
+        update { s, d, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage, data: d) }
         return r
     }
     mutating func fireDataAnalyst() { update { s, _, _ in MarketMap.fireDataAnalyst(&s) } }

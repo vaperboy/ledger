@@ -286,24 +286,38 @@ public enum MarketMap {
     public static func dataAnalystCandidates(_ s: inout GameState, count: Int = 4, data: GameData) -> [Person] {
         (0..<count).map { _ in
             var p = Hiring.generateCandidate(role: dataAnalystRole, company: nil, state: &s, data: data)
-            let w = World(state: s, data: data)
-            p.askingMonthlyWage = (dataAnalystBase(data) * (0.55 + p.skill / 110) * w.inflationIndex / 100).rounded() * 100
+            p.askingMonthlyWage = analystPay(state: s, data: data, skillFactor: 0.55 + p.skill / 110)
             s.people[p.id] = p
             return p
         }
     }
 
-    public enum HQHire: Equatable { case ok, refused, taken, have }
+    /// `refused` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
+    public enum HQHire: Equatable { case ok, refused, taken, have, countered(Negotiation.Counter), walkedAway }
 
-    /// Hire the data analyst into the head office; an offer well under the ask is refused. Original: `hireHQnpc`.
-    public static func hireDataAnalyst(_ s: inout GameState, personID: Int, monthlyWage wage: Double) -> HQHire {
+    /// The going monthly rate of a data analyst: the role's base pay in this economy, before anything about the person.
+    public static func dataAnalystGoingRate(state s: GameState, data: GameData) -> Double {
+        analystPay(state: s, data: data, skillFactor: 1)
+    }
+
+    /// The analyst's pay: the role's base times a skill factor (1 = the going rate), in this economy, to the hundred.
+    static func analystPay(state s: GameState, data: GameData, skillFactor: Double) -> Double {
+        (dataAnalystBase(data) * skillFactor * World(state: s, data: data).inflationIndex / 100).rounded() * 100
+    }
+
+    /// Hire the data analyst into the head office. At or above what they would settle for they accept; below it they counter, refuse or walk away.
+    /// Original: `hireHQnpc`.
+    public static func hireDataAnalyst(_ s: inout GameState, personID: Int, monthlyWage wage: Double, data: GameData) -> HQHire {
         if hasDataAnalyst(s) { return .have }
+        guard let n0 = s.people[personID] else { return .refused }
+        if n0.employerID != 0 { return .taken }
+        switch Hiring.answer(personID: personID, employer: -3, rank: "analyst", offer: wage, currency: ManagerModel.playerCurrency(s, data), about: 100, state: &s).answer {
+        case .refuse: return .refused
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(c)
+        case .accept: break
+        }
         guard var n = s.people[personID] else { return .refused }
-        if n.employerID != 0 { return .taken }
-        let ask = n.askingMonthlyWage
-        if wage < ask * 0.82, !s.random.chance(0.1) { return .refused }
-        let p = clamp((wage / max(1, ask) - 0.86) / 0.18, 0, 1)
-        if !s.random.chance(p), wage < ask { return .refused }
         n.employerID = -3
         s.people[personID] = n
         var office = s.rest["office"] ?? .object(["tier": "home", "since": .number(Double(s.week)), "staff": .array([])])

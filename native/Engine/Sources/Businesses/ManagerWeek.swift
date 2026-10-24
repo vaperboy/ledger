@@ -151,11 +151,9 @@ extension ManagerModel {
                 return
             }
             var f = fl; f["rep22"] = .number(Double(s.week)); s.companies[ci].set("flags", f)
-            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, state: &s, data: data)
             guard !cands.isEmpty else { return }
-            let pick = cands[min(cands.count - 1, Int(Double(cands.count) * (0.35 + q * 0.4)))]
-            let cur = World(state: s, data: data).currency(co)
-            if Hiring.hire(pick.id, into: co.id, monthlyWage: cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100), state: &s, data: data) == .ok {
+            if let pick = AutoHire.hireWorker(role: role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: mgr), state: &s, data: data) {
                 s.note("\(mgr.name) hired \(pick.name) (\(r.name.lowercased())) at \(co.name): the post was empty.", tone: "n", companyID: co.id)
             }
             return
@@ -265,10 +263,9 @@ extension ManagerModel {
         let co = s.companies[ci]
         switch dp.kind {
         case "hire":
-            var cands = Hiring.search(role: dp.role, company: co, mode: .ads, state: &s, data: data)
-            cands.sort { a, b in (a.claimedSkill - a.askingMonthlyWage / 1500) > (b.claimedSkill - b.askingMonthlyWage / 1500) }
-            guard let c = cands.first else { return }
-            if Hiring.hire(c.id, into: co.id, monthlyWage: c.askingMonthlyWage, state: &s, data: data) == .ok {
+            let cands = Hiring.search(role: dp.role, company: co, mode: .ads, state: &s, data: data)
+            guard !cands.isEmpty else { return }
+            if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
                 s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)
             }
         case "eq", "veh", "space": buyForProposal(&s, ci, dp, n, data: data)
