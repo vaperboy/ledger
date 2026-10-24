@@ -82,6 +82,19 @@ public extension GameEngine {
         return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
     }
 
+    /// A read-only before/after estimate of that change (customers, capacity, price, sales, what is left after direct costs), as ranges
+    /// over the weeks ahead, worked out by the engine's own demand, price, capacity and cost functions. Nil where the trade has no
+    /// ordinary weekly sales model. `option` is an option index, or the bit mask of a multi-choice knob.
+    func knobChangePreview(companyID: Int, knob: String, option: Int) -> KnobPreview? {
+        KnobChange.preview(state, data, marketing: marketing, companyID: companyID, knob: knob, value: option)
+    }
+
+    /// The same estimate for switching one add-on of a multi-choice knob on or off.
+    func knobTogglePreview(companyID: Int, knob: String, option: Int, on: Bool) -> KnobPreview? {
+        guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
+        return knobChangePreview(companyID: companyID, knob: knob, option: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
+    }
+
     /// Who fixes this knob for the company (its chain's standard, its franchise agreement), or nil when the owner decides.
     func knobGovernedBy(companyID: Int, knob: String) -> String? { state.company(companyID).flatMap { KnobChange.governedBy(state, $0, knob: knob) } }
 
