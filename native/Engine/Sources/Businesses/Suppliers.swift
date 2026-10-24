@@ -81,6 +81,15 @@ public enum Suppliers {
         s.rest["vr"] = vr
     }
 
+    /// A supplier thinks less of you (late payment, walking out of a talk). The relationship falls by `d` points and stays at zero or above.
+    static func dock(_ s: inout GameState, _ id: String, by d: Double) {
+        guard var vr = s.rest["vr"], !vr[id].isNull else { return }
+        var o = vr[id]
+        o["r"] = .number(max(0, o["r"].double - d))
+        vr[id] = o
+        s.rest["vr"] = vr
+    }
+
     public static func bumpPublic(_ s: inout GameState, _ id: String, by d: Double) { bump(&s, id, by: d) }
 
     /// Buying something makes the relationship grow a little. Original: `vbuy`.
@@ -178,7 +187,10 @@ public enum Suppliers {
         let cls = co.value("src")["c"].isNull ? 1 : co.value("src")["c"].int
         let c = classes.indices.contains(cls) ? classes[cls] : classes[1]
         guard let v = goodsVendor(s, company: co, data: data) else { return (c.cost, c.quality, nil) }
-        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - v.discount), 0.7, 1.4), c.quality + v.quality * 10, v)
+        // A negotiated price (`SupplyDeals`) and the payment terms agreed (`SupplyTerms`) change the price; both exist only when the player set them.
+        let deal = SupplyDeals.dealDiscount(co, scope: "goods", vendorID: v.id, week: s.week)
+        let terms = SupplyTerms.goodsTerm(s, co, data: data)?.priceEffect ?? 0
+        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - v.discount - deal) * (1 + terms), 0.7, 1.4), c.quality + v.quality * 10, v)
     }
 
     /// Who services the equipment, if anyone is chosen; the discount cuts repair bills. Original: `fixPick`, `fixDisc`.
@@ -188,7 +200,10 @@ public enum Suppliers {
         if let a = agreement(s, scope: "fix") { return vendor(s, id: a, scope: "fix", data: data) }
         return nil
     }
-    public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double { repairVendor(s, company: co, data: data)?.discount ?? 0 }
+    public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double {
+        guard let v = repairVendor(s, company: co, data: data) else { return 0 }
+        return v.discount + SupplyDeals.dealDiscount(co, scope: "fix", vendorID: v.id, week: s.week)
+    }
 
     /// The company's weekly buying from its goods supplier warms the relationship. Original: `vbuy(ctx.gd.v.id, cogs)`.
     static func recordGoods(_ s: inout GameState, companyIndex i: Int, cogs: Double, data: GameData) {

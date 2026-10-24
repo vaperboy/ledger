@@ -147,6 +147,11 @@ private struct AccountRow: View {
                     Text(account.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                     Text("\(Rivals.relationshipWord(account.relationship)) · since week \(account.sinceWeek) · paid you \(cur.tidyShort(account.totalPaid))")
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    if account.owed > 0 || account.lateRun > 0 {
+                        Text((account.owed > 0 ? "Still owes you \(cur.tidyShort(account.owed)) on invoices" : "Nothing owed now")
+                             + (account.lateRun > 0 ? " · paid late \(account.lateRun) time\(account.lateRun == 1 ? "" : "s") in a row. Late payment earns interest where the country allows it." : ""))
+                            .font(.system(size: 11)).foregroundStyle(account.lateRun > 0 ? Theme.caution : Theme.ivoryFaint)
+                    }
                     let profile = engine.keyAccountProfile(account)
                     Text("Runs a \(profile.tradeName.lowercased())" + (profile.inputName.map { profile.canBuy ? ". You can buy \($0.lowercased()) from them." : ". Get to know them to buy \($0.lowercased()) from them." } ?? ""))
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)

@@ -136,6 +136,7 @@ public enum Chains {
                     s.note("\(s.companies[i].name) joined \(ch["name"].string) but keeps its own way of selling: \(why)", tone: "warn", companyID: companyID)
                 }
             }
+            SupplyDeals.applyChainRules(&s, d, storeID: companyID)
         }
     }
 
@@ -540,6 +541,7 @@ public enum Chains {
         reachWeek(&s, data: data)
         Franchising.weekly(&s, data: data, context: fc)
         IntercompanySupply.weekly(&s, data: data)
+        SupplyTerms.weekly(&s, data: data, context: fc)   // invoices fall due: paid, or late with interest and consequences
         AccountSupply.weekly(&s)   // inputs bought from your business customers
         RivalAbsorb.weekly(&s)     // a matched price ends, a site beside a rival takes its customers
         ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)   // management team, boards, chain bosses, group loans, the office

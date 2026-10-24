@@ -144,6 +144,18 @@ public extension GameEngine {
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
             add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, essential: true, company: co.id)
+            // Supplier invoices on terms (`SupplyTerms`): one line for each week something falls due and each supplier; overdue ones are due today.
+            let weekStart = Payday.dayNumber(week: s.week, day: 0)
+            var groups: [String: (name: String, day: Int, amount: Double, late: Bool)] = [:]
+            for inv in SupplyTerms.invoices(s, buyer: co.id) {
+                let key = "\(inv.providerName)|\(inv.dueWeek)"
+                var g = groups[key] ?? (inv.providerName, weekStart + max(0, inv.dueWeek - s.week) * 7, 0, false)
+                g.amount += inv.amount; g.late = g.late || inv.dueWeek < s.week || inv.lateWeeks > 0
+                groups[key] = g
+            }
+            for (key, g) in groups.sorted(by: { $0.value.day != $1.value.day ? $0.value.day < $1.value.day : $0.key < $1.key }) {
+                add("inv\(co.id)|\(key)", "Invoice · \(g.name) · \(co.name)", g.late ? "Overdue: carries late interest until paid" : "Paid in full on the due date if the account can cover it", g.amount, g.day, essential: true, company: co.id)
+            }
             let taxOwed = co.payables["tax"] ?? 0
             if co.taxDue, taxOwed > 1 {
                 let due = Payday.dayNumber(week: co.taxDueWeek, day: 0)

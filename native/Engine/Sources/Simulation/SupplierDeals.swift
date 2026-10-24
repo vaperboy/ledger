@@ -11,20 +11,6 @@ import Businesses
 
 public enum SupplierProviderKind: String, Equatable, Sendable { case outside, outsideVendor, ownCompany, businessCustomer, repairVendor, noneFixed }
 
-/// What choosing an option does. One engine action, `switchSupplier`, carries it out.
-public enum SupplierSwitch: Equatable, Sendable {
-    /// A named outside supplier of goods ("auto" lets the manager or market choose).
-    case goodsVendor(String)
-    /// A named outside repair supplier ("auto" = none fixed).
-    case repairVendor(String)
-    /// Back to outside suppliers (for an input that your own companies could supply).
-    case outside
-    case ownCompany(Int, mode: String)
-    case businessCustomer(Int)
-}
-
-public enum SupplierSwitchResult: Equatable, Sendable { case ok, notAllowed, notKnownWell, unknown }
-
 public struct SupplierOption: Identifiable, Equatable, Sendable {
     public var id: String
     public var kind: SupplierProviderKind
@@ -52,6 +38,22 @@ public struct SupplierOption: Identifiable, Equatable, Sendable {
     public var risks: [String]
     /// Why this option cannot be chosen now.
     public var blocked: String?
+    /// An outside supplier: the price can be negotiated (a talk through the shared Negotiation module).
+    public var negotiable = false
+    /// The extra discount a negotiated deal gives while it lasts (current supplier only).
+    public var dealExtra: Double?
+    /// The supplier will not talk until this week (they ended the last talk).
+    public var coolingUntil: Int?
+}
+
+/// One way to pay for an input.
+public struct PaymentTermChoice: Identifiable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var detail: String
+    public var isCurrent: Bool
+    /// Why it is not offered now.
+    public var blocked: String?
 }
 
 public struct SupplierInput: Identifiable, Equatable, Sendable {
@@ -64,6 +66,10 @@ public struct SupplierInput: Identifiable, Equatable, Sendable {
     public var options: [SupplierOption]
     /// Set when no provider of your own exists: what kind of company would provide it.
     public var noOwnProvider: String?
+    /// How the input is paid for now and the other ways (goods from an outside supplier; an own company supplying it). Empty when there is no choice.
+    public var paymentTerms: [PaymentTermChoice] = []
+    /// Set when the chain's rule fixes this input for the company.
+    public var governedBy: String?
 }
 
 public extension GameEngine {
@@ -75,7 +81,40 @@ public extension GameEngine {
         if Suppliers.hasGoods(bd, co) { out.append(supplierGoodsInput(co, bd)) }
         if !bd.equipment.isEmpty { out.append(supplierRepairInput(co)) }
         for k in IntercompanySupply.kindsFor(co) { out.append(supplierKindInput(co, k)) }
+        for n in out.indices {
+            out[n].governedBy = SupplyDeals.governedBy(state, co, input: out[n].id)
+            out[n].paymentTerms = supplierPaymentTerms(co, input: out[n].id)
+            for m in out[n].options.indices where out[n].options[m].kind == .outsideVendor || out[n].options[m].kind == .repairVendor {
+                guard let vid = out[n].options[m].vendorID else { continue }
+                out[n].options[m].negotiable = out[n].governedBy == nil
+                out[n].options[m].coolingUntil = SupplyDeals.coolUntil(co, vendorID: vid, week: state.week)
+                if out[n].options[m].isCurrent, let d = SupplyDeals.deal(co, input: out[n].id, week: state.week), d.vendorID == vid { out[n].options[m].dealExtra = d.extraDiscount }
+            }
+            out[n].current = out[n].options.first { $0.isCurrent }
+        }
         return out
+    }
+
+    private func supplierPaymentTerms(_ co: Company, input: String) -> [PaymentTermChoice] {
+        func pct(_ x: Double) -> String { String(format: "%.1f%%", abs(x) * 100) }
+        if input == "goods" {
+            guard let v = Suppliers.goodsVendor(state, company: co, data: data) else { return [] }
+            let agreed = SupplyTerms.agreedGoodsTerm(co)
+            let active = SupplyTerms.goodsTerm(state, co, data: data)?.id ?? "monthly"
+            return SupplyTerms.vendorTerms.map { t in
+                var detail = t.isMonthEnd ? "Bills are paid on the last day of the month, as usual." : t.days == 0 ? "Each delivery is paid on the spot." : "Each delivery is invoiced and paid \(t.days) days later."
+                if t.priceEffect < 0 { detail += " \(pct(t.priceEffect)) off the price for paying at once." }
+                if t.priceEffect > 0 { detail += " \(pct(t.priceEffect)) added to the price for the credit." }
+                let blocked: String? = v.relationship >= t.minRelationship ? nil : "\(v.name) offers this only to \(Suppliers.relationshipWord(t.minRelationship).lowercased()) contacts or closer."
+                return PaymentTermChoice(id: t.id, name: t.name, detail: detail, isCurrent: t.id == active && (agreed != nil || t.isMonthEnd), blocked: blocked)
+            }
+        }
+        guard let k = IntercompanySupply.kind(input), let l = IntercompanySupply.link(state, buyer: co.id, kind: k.id) else { return [] }
+        let cur = l.termsID ?? "weekly"
+        return SupplyTerms.groupTerms.map { t in
+            PaymentTermChoice(id: t.id, name: t.name, detail: t.days == 0 ? "Settled between the two companies' books every week." : "Invoiced weekly; the buyer owes it and the supplier holds the receivable until it is paid \(t.days) days later. Late payment carries interest.",
+                              isCurrent: t.id == cur, blocked: nil)
+        }
     }
 
     /// Lighter read for chain level: the name of the provider each input uses today, by input id.
@@ -214,38 +253,46 @@ public extension GameEngine {
                              current: options.first { $0.isCurrent }, options: options, noOwnProvider: none)
     }
 
-    // MARK: The one action
+    // MARK: The actions
 
-    /// Switch the provider of one input. `input` is the id from `supplierInputs`.
+    /// Switch the provider of one input at the supplier's list terms. `input` is the id from `supplierInputs`. A store whose chain fixes the input
+    /// cannot switch on its own (the chain's rule does it, `setChainSupplier`).
     @discardableResult
     mutating func switchSupplier(companyID: Int, input: String, to change: SupplierSwitch) -> SupplierSwitchResult {
         var r = SupplierSwitchResult.unknown
         update { s, d, _ in
             guard let co = s.company(companyID), co.status.isLive else { return }
-            switch change {
-            case .goodsVendor(let id):
-                guard input == "goods", id == "auto" || Suppliers.candidates(s, company: co, scope: "goods", data: d).contains(where: { $0.id == id }) else { r = .notAllowed; return }
-                Suppliers.chooseGoodsVendor(&s, companyID: companyID, vendorID: id); r = .ok
-            case .repairVendor(let id):
-                guard input == "repair", id == "auto" || Suppliers.candidates(s, company: co, scope: "fix", data: d).contains(where: { $0.id == id }) else { r = .notAllowed; return }
-                Suppliers.chooseRepairVendor(&s, companyID: companyID, vendorID: id); r = .ok
-            case .outside:
-                guard IntercompanySupply.kind(input) != nil else { r = .notAllowed; return }
-                IntercompanySupply.clearSupplier(&s, buyer: companyID, kind: input)
-                AccountSupply.clear(&s, buyer: companyID, kind: input); r = .ok
-            case .ownCompany(let sid, let mode):
-                guard let k = IntercompanySupply.kind(input), IntercompanySupply.suppliers(s, for: co, kind: k).contains(where: { $0.id == sid }) else { r = .notAllowed; return }
-                r = IntercompanySupply.setSupplier(&s, buyer: companyID, kind: input, supplier: sid, mode: mode) ? .ok : .notAllowed
-            case .businessCustomer(let aid):
-                guard IntercompanySupply.kind(input) != nil else { r = .notAllowed; return }
-                switch AccountSupply.set(&s, buyer: companyID, kind: input, accountID: aid, data: d) {
-                case .ok: r = .ok
-                case .notKnownWell: r = .notKnownWell
-                case .notAllowed: r = .notAllowed
-                case .unknownAccount: r = .unknown
-                }
-            }
+            if SupplyDeals.governedBy(s, co, input: input) != nil { r = .governed; return }
+            r = SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change)
         }
         return r
     }
+
+    /// Ask an outside supplier for an extra discount (a share: 0.02 = two points) and use them. Own companies, business customers and "outside"
+    /// need no talk. The answer is an agreement, the supplier's own figure to accept or counter, a refusal, or the end of the talks.
+    @discardableResult
+    mutating func negotiateSupplier(companyID: Int, input: String, vendorID: String, ask: Double) -> SupplyDeals.Talk {
+        var r = SupplyDeals.Talk.notAllowed
+        update { s, d, _ in r = SupplyDeals.negotiate(&s, d, companyID: companyID, input: input, vendorID: vendorID, ask: ask) }
+        return r
+    }
+
+    /// How the company pays its goods supplier (nil or "monthly" = the usual monthly bill).
+    @discardableResult
+    mutating func setGoodsPaymentTerms(companyID: Int, term: String?) -> Bool {
+        var ok = false
+        update { s, d, _ in ok = SupplyTerms.setGoodsTerm(&s, companyID: companyID, term: term, data: d) }
+        return ok
+    }
+
+    /// How the company pays one of your own companies that supplies an input (nil or "weekly" = settled every week).
+    @discardableResult
+    mutating func setSupplyPaymentTerms(companyID: Int, input: String, term: String?) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = IntercompanySupply.setTerms(&s, buyer: companyID, kind: input, term: term) }
+        return ok
+    }
+
+    /// Open supplier invoices of a company (what it owes on terms), oldest due first.
+    func supplierInvoices(companyID: Int) -> [SupplyTerms.Invoice] { SupplyTerms.invoices(state, buyer: companyID) }
 }

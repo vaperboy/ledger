@@ -64,7 +64,10 @@ public enum IntercompanySupply {
         public var lastPriceFactor: Double
         /// Saved by the buyer since the link started
         public var saved: Double
+        /// How the buyer pays: nil = settled weekly, else a terms id ("net14", "net30").
+        public var termsID: String?
         init(_ j: JSONValue) {
+            termsID = j["tm"].isNull ? nil : j["tm"].string
             id = j["id"].int; kindID = j["k"].string; buyerID = j["b"].int; supplierID = j["s"].int; mode = j["mode"].string
             lastSpend = j["last"]["x"].double; lastShare = j["last"]["f"].isNull ? 1 : j["last"]["f"].double; lastPriceFactor = j["last"]["pf"].isNull ? 1 : j["last"]["pf"].double
             saved = j["sum"].double
@@ -128,6 +131,18 @@ public enum IntercompanySupply {
         return true
     }
 
+    /// Agree how the buyer pays an own-company supplier: nil or "weekly" = settled each week (as always), "net14" / "net30" = on invoice.
+    @discardableResult
+    public static func setTerms(_ s: inout GameState, buyer: Int, kind kid: String, term: String?) -> Bool {
+        var L = rawLinks(s)
+        guard let k = L.firstIndex(where: { $0["b"].int == buyer && $0["k"].string == kid }) else { return false }
+        if term == nil || term == "weekly" { var o = L[k].object; o.removeValue(forKey: "tm"); L[k] = .object(o) }
+        else if let t = term, SupplyTerms.groupTerm(t) != nil { L[k]["tm"] = .string(t) }
+        else { return false }
+        s.rest["l27"] = .array(L)
+        return true
+    }
+
     /// Back to outside suppliers. Original: `ACT.ch27off`.
     public static func clearSupplier(_ s: inout GameState, buyer: Int, kind kid: String) {
         s.rest["l27"] = .array(rawLinks(s).filter { !($0["b"].int == buyer && $0["k"].string == kid) })
@@ -178,16 +193,27 @@ public enum IntercompanySupply {
             let got = x * f
             // the buyer: what it paid outside before, against what it pays the group now
             let diff = got * (1 - pf)
-            if diff > 0 {
-                Payments.companyReceives(&s, companyID: b.id, amount: diff, category: nil, label: nil)
-                Payments.book(&s, companyID: b.id, category: K.category, amount: -jsRound(diff))
-            } else if diff < 0 {
-                Payments.companyPays(&s, companyID: b.id, amount: -diff, category: K.category, label: nil)
-            }
-            // the supplier: sales to the group and the goods that go into them
-            if got > 0 {
-                Payments.companyReceives(&s, companyID: sp.id, amount: got * pf, category: "rev", label: nil)
+            if let terms = SupplyTerms.groupTerm(l["tm"].string), terms.days > 0, got > 0 {
+                // On credit (`SupplyTerms`): the outside purchase the buyer would have paid is replaced by an invoice from the supplier. The buyer
+                // owes it and the supplier holds the receivable; the cash moves between them when it falls due.
+                Payments.companyReceives(&s, companyID: b.id, amount: got, category: nil, label: nil)
+                Payments.book(&s, companyID: b.id, category: K.category, amount: -jsRound(got))
+                SupplyTerms.issue(&s, buyer: b.id, provider: sp.id, vendorID: "", name: sp.name, kind: K.id, amount: got * pf, weeks: terms.weeks)
+                Payments.book(&s, companyID: b.id, category: K.category, amount: jsRound(got * pf))
+                Payments.book(&s, companyID: sp.id, category: "rev", amount: jsRound(got * pf))
                 Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
+            } else {
+                if diff > 0 {
+                    Payments.companyReceives(&s, companyID: b.id, amount: diff, category: nil, label: nil)
+                    Payments.book(&s, companyID: b.id, category: K.category, amount: -jsRound(diff))
+                } else if diff < 0 {
+                    Payments.companyPays(&s, companyID: b.id, amount: -diff, category: K.category, label: nil)
+                }
+                // the supplier: sales to the group and the goods that go into them
+                if got > 0 {
+                    Payments.companyReceives(&s, companyID: sp.id, amount: got * pf, category: "rev", label: nil)
+                    Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
+                }
             }
             // what it could not deliver is bought outside at a premium, and customers notice
             if f < 0.98 {
