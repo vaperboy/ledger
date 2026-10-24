@@ -38,6 +38,8 @@ struct ProjectsView: View {
         }
     }
 
+    private static func soonest(_ a: ProjectTimeline, _ b: ProjectTimeline) -> Bool { (a.dueWeek ?? Int.max) < (b.dueWeek ?? Int.max) }
+
     private func openTenders(_ rows: [(co: Company, board: ProjectBoard)]) -> Int {
         rows.reduce(0) { $0 + $1.board.tenders.filter { $0.qualifies && $0.myBid == nil }.count }
     }
@@ -49,10 +51,9 @@ struct ProjectsView: View {
         let q = search.trimmingCharacters(in: .whitespaces)
         let all = e.projectTimelines()
         let shown = q.isEmpty ? all : all.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.companyName.localizedCaseInsensitiveContains(q) || $0.subtitle.localizedCaseInsensitiveContains(q) }
-        func soonest(_ a: ProjectTimeline, _ b: ProjectTimeline) -> Bool { (a.dueWeek ?? Int.max) < (b.dueWeek ?? Int.max) }
-        let needs = shown.filter { $0.delayed || ($0.kind == .tender && ($0.dueWeek ?? Int.max) - week <= 2) }.sorted(by: soonest)
-        let tenders = shown.filter { $0.kind == .tender && !needs.contains($0) }.sorted(by: soonest)
-        let underWay = shown.filter { $0.kind != .tender && !needs.contains($0) }.sorted(by: soonest)
+        let needs = shown.filter { $0.delayed || ($0.kind == .tender && ($0.dueWeek ?? Int.max) - week <= 2) }.sorted(by: Self.soonest)
+        let tenders = shown.filter { $0.kind == .tender && !needs.contains($0) }.sorted(by: Self.soonest)
+        let underWay = shown.filter { $0.kind != .tender && !needs.contains($0) }.sorted(by: Self.soonest)
         if rows.isEmpty {
             LedgerSection("Company projects and tenders") {
                 Text("Project companies (builders, agencies, developers) list their jobs, tenders and developments here. None of your companies takes projects yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)

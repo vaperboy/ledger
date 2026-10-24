@@ -131,8 +131,9 @@ struct ProjectTimelineDetail: View {
         } else if let b = l.costBudget {
             out.append(.init(label: "Cost to bid", value: store.short(b, in: co)))
         }
-        out.append(.init(label: "Next date", value: l.dueWeek.map { GameCalendar.dateString(week: $0) } ?? "None set", sub: l.dueWeek.map { dueText($0, now: now) } ?? "no fixed date",
-                         tint: (l.dueWeek.map { $0 - now <= 2 } ?? false) ? Theme.caution : Theme.ivory))
+        let soon = (l.dueWeek.map { $0 - now <= 2 } ?? false)
+        out.append(.init(label: "Next date", value: l.dueWeek.map { GameCalendar.dateString(week: $0) } ?? "None set", tint: soon ? Theme.caution : Theme.ivory,
+                         sub: l.dueWeek.map { dueText($0, now: now) } ?? "no fixed date"))
         return out
     }
 
