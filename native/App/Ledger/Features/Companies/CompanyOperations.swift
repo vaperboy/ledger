@@ -57,7 +57,9 @@ struct CompanyOperations: View {
                 CompanyHowYouSell(engine: engine, company: company, trade: trade)
             }
             CompanySourcing(engine: engine, company: company)
+            CompanyWorkplaceSection(engine: engine, company: company)
             EquipmentEntryRow(company: company)
+            CoverageEntryRow(engine: engine, company: company)
             CompanyOtherSections(engine: engine, company: company)
         }
     }

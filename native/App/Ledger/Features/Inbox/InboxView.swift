@@ -16,6 +16,7 @@ struct InboxView: View {
     @State private var byCompany = false
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
+    @State private var path: [CompanyRoute] = []
 
     static let page = 60
 
@@ -47,7 +48,7 @@ struct InboxView: View {
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""
-            return [m.title, m.body, m.from, co].contains { e.localized($0, companyID: m.companyID).lowercased().contains(q) }
+            return [m.title, m.body, m.from, co].contains { e.displayText($0, companyID: m.companyID).lowercased().contains(q) }
         }
     }
 
@@ -114,17 +115,17 @@ struct InboxView: View {
     private func ask(_ message: Message, _ index: Int) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
-        let label = e.localized(opt["l"].string, companyID: message.companyID)
+        let label = e.displayText(opt["l"].string, companyID: message.companyID)
         // Payroll approvals are routine: answered at once. Every other decision is confirmed with what it does.
         if message.actionID.hasPrefix("pay29") { answer(message, index, label); return }
         var lines: [String] = []
-        let d = e.localized(opt["d"].string, companyID: message.companyID)
+        let d = e.displayText(opt["d"].string, companyID: message.companyID)
         if !d.isEmpty { lines.append(d) }
         lines += MessageCard.preview(e, message, opt)
         if index == 0 || message.options.count == 1 { lines += e.messageFacts(message) }
         let where_ = message.companyID != 0 ? (e.state.company(message.companyID)?.name ?? "") : ""
         pending = PendingAction(title: label + (where_.isEmpty ? "" : " · " + where_),
-                                message: lines.isEmpty ? e.localized(message.title, companyID: message.companyID) : lines.joined(separator: "\n"),
+                                message: lines.isEmpty ? e.displayText(message.title, companyID: message.companyID) : lines.joined(separator: "\n"),
                                 button: label) { answer(message, index, label) }
     }
 
@@ -136,7 +137,7 @@ struct InboxView: View {
 
     private func takeRequest(_ proxy: ScrollViewProxy) {
         guard let id = store.openMessageID else { return }
-        tab = .all; query = ""; companyFilter = nil
+        tab = .all; query = ""; companyFilter = nil; path = []
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         store.openMessageID = nil
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
@@ -145,7 +146,7 @@ struct InboxView: View {
     // MARK: Body
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if let e = store.engine {
                     let list = filtered(e)
@@ -184,6 +185,9 @@ struct InboxView: View {
             .onChange(of: query) { _, _ in limit = Self.page }
             .confirmAction($pending)
             .ledgerBackground()
+            .companyRouteDestinations()
+            .routeRequests(for: .inbox, path: $path)
+            .returnBar(for: .inbox)
             .navigationTitle("Inbox")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -255,7 +259,7 @@ struct MessageCard: View {
     /// Asks to answer with an option (the Inbox confirms it first).
     var ask: (Message, Int) -> Void
 
-    private func text(_ s: String) -> String { store.engine?.localized(s, companyID: message.companyID) ?? s }
+    private func text(_ s: String) -> String { store.engine?.displayText(s, companyID: message.companyID) ?? s }
 
     /// The effects of an option, in the currency of the company it concerns.
     static func preview(_ e: GameEngine, _ message: Message, _ option: JSONValue) -> [String] {
@@ -332,7 +336,7 @@ struct MessageCard: View {
                                 let sec = Self.section(for: message)
                                 Button { store.openCompany(co.id, section: sec) } label: {
                                     Text("Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "") + " →").font(.caption.weight(.medium)).foregroundStyle(Theme.gold)
-                                }.buttonStyle(.plain).padding(.top, 2)
+                                }.buttonStyle(.plain).padding(.top, 2).accessibilityIdentifier("open-company-link")
                             }
                         }
                     }

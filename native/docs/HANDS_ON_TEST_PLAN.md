@@ -132,6 +132,20 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9B.10 | Marketing > last channel "Prime-time TV ..." in two countries | Named from that country's own broadcast moment; budgets bigger in more populous countries; independent shop gets little for the money | | NOT TESTED | | |
 | T9B.11 | Team a marketing manager and leave it running for months | Manager never starts Prime-time TV | | NOT TESTED | | |
 
+### 9.S Suppliers (stage 3, suppliers)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9S.1 | Open a cafe (or hotel) > Operations > Suppliers | One section listing Goods, Repairs (if equipment) and each service own companies could supply; each row names the current provider, price vs market, reliability and yearly saving/cost | | NOT TESTED | | |
+| T9S.2 | Tap Goods, pick a different outside supplier | Confirmation shows price, discount, quality, terms, delivery, risks and saving vs now; after confirming a toast says who now provides it and the row updates | | NOT TESTED | | |
+| T9S.3 | Take a supplier to lunch twice within four weeks | Confirmation shows the cost; first works and raises the relationship/discount, second says to wait; cash drops once | | NOT TESTED | | |
+| T9S.4 | Hotel with no cleaning company of yours, tap Cleaning | Locked line names the kind of company that would provide it (a cleaning company in the same city); no create button; outside option current | | NOT TESTED | | |
+| T9S.5 | Add a cleaning company, wait for it to open, tap Cleaning on the hotel, choose it at cost plus 10% | Three price modes listed with saving per year; confirm; row shows "Yours"; 20 weeks later the books still balance | | NOT TESTED | | |
+| T9S.6 | Same input, choose Outside suppliers | Link removed, toast; the supplier company's page no longer lists "Supplies <hotel>" | | NOT TESTED | | |
+| T9S.7 | Company > Chain: no second "Supply from your own companies" card | A single link row to Operations > Suppliers; it opens that section | | NOT TESTED | | |
+| T9S.8 | Chain with 3+ stores > chain page > Suppliers | Usual provider per input with "n of m stores"; stores that differ listed as exceptions, each opening that store's Operations; says each store chooses | | NOT TESTED | | |
+| T9S.9 | Business customer that runs a cleaning trade but you barely know | Listed greyed with "get to know them better"; cannot be chosen; after a better relationship it can | | NOT TESTED | | |
+| T9S.10 | Group > People you buy from still shows lunch and the board goods deal | Board agreement text appears in each company's Suppliers section | | NOT TESTED | | |
+
 ### 9.B Life stories and what you can fund (stage 2, background)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
 |---|---|---|---|---|---|---|
@@ -178,6 +192,40 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9G.9 | Giving back with too little cash | Button disabled with "Short by ..." | | NOT TESTED | | |
 | T9G.10 | Start a foundation, advance a year | Confirmation warns it is permanent; Foundation shows endowment and given; a message arrives yearly | | NOT TESTED | | |
 | T9G.11 | Market > Groups > Open profile | Rival group profile shows owner, strategy, ambition, sites, cash/debt words, trades, countries, overlap with your companies, moves; Back returns to Market | | NOT TESTED | | |
+
+### 9.V Navigation, labels and money text (stage 3, nav)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9V.1 | Inbox > a message with "Open <company> ->"; then Back | Company opens on the Inbox's own stack; Back returns to the Inbox at the same place, not the Company list. Automated: NavigationBackTests.testBackFromInboxCompanyLinkReturnsToInbox (skipped if the showcase game has no such message) | | NOT TESTED | | |
+| T9V.2 | Projects > Work > a row; then Back | Company opens on its Projects section; Back returns to Projects. Automated: testBackFromProjectsReturnsToProjects (skipped in the showcase game: no project company) | | NOT TESTED | | |
+| T9V.3 | Company tab (Home) > a suggestion that opens a company; then Back | Back returns to Home. Automated: testBackFromHomeSuggestionReturnsToHome (skipped if no such suggestion) | | NOT TESTED | | |
+| T9V.4 | Team > a vacancy, a decision or a company row; then Back. Group > a chain or holding row; Back. Group > Money > Reports > a company line; Back | Each returns to the screen it was opened from | | NOT TESTED | | |
+| T9V.5 | Company tab > a suggestion or "Read the full report" (goes to Group > Money); and Company > Needs you > Decide (goes to Inbox) | The destination tab shows "Back to Company" at the top; tapping it returns to the Company tab where you were. Switching tabs by hand removes the bar | | NOT TESTED | | |
+| T9V.6 | More > News > a company link | The More sheet closes and the company opens on the tab behind it; Back returns there | | NOT TESTED | | |
+| T9V.7 | Group > Money | Screen title is "Group money" (not "Money"); the segment is still "Money" | | NOT TESTED | | |
+| T9V.8 | Home key figures vs Group > Money > Overview (T6.4/T4.7) | Home says "Personal cash" (cash + savings). Money says "Cash across group" and, under it, "of which personal cash and savings" equal to Home's figure; the difference is the cash in your companies. Company > Finances says "Company cash" | | NOT TESTED | | |
+| T9V.9 | Read Inbox messages and News with amounts over 10,000 | Written "£11k", "£2.5M", never "£11 k"; names such as "Mr M Smith" unchanged | | NOT TESTED | | |
+| T9V.10 | iPad sidebar | Team's icon lines up with the other tabs' titles | | NOT TESTED | | |
+
+### 9.C Company screens: creation flow, insurance, advisers, payroll, working from home (stage 3, company)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9.C1 | Company > + > pick a cafe | Top figures: start-up cost, what you have, and "Left for you" (or "Short by"). Below: city, legal form, size, name, premises, cost lines, risks, then "Review and start" | | NOT TESTED | | |
+| T9.C2 | In Premises pick the cheapest place, then the dearest; switch Rent to Buy | Premises line and total change each time; Buy shows price, down payment and the 15-year mortgage; "Left in your accounts" falls | | NOT TESTED | | |
+| T9.C3 | Review and start with a rented place | Confirmation states total, cash into the company, what you keep, the place, and the risk. After Start the company opens with that place (Equipment > Premises shows it) | | NOT TESTED | | |
+| T9.C4 | Same with Buy | Company owns the place (no rent), a commercial mortgage appears under its Loans | | NOT TESTED | | |
+| T9.C5 | Sole trader with very little cash | "Short by" shown, risk text says opening waits for money; if the account cannot cover registration and capital the button is disabled with the amount missing | | NOT TESTED | | |
+| T9.C6 | New company for a home trade (consultancy, plumber) | Premises says it starts at home with no rent; no place list | | NOT TESTED | | |
+| T9.C7 | A trade with franchise brands: open it, tab "Under a brand" | Brands for that trade with fee, strength, units; Apply, Meet, Start with this deal work as in Franchises; start screen shows left-over cash, risks and asks to confirm | | NOT TESTED | | |
+| T9.C8 | Company > Operations > Insurance and advisers (no insurer) | Policies are locked with "choose an insurer first"; tapping one shows that message | | NOT TESTED | | |
+| T9.C9 | Hire an insurer, switch on a policy, switch it off | Each asks first with the monthly cost; summary figures and the Operations row update; dropping the insurer asks and warns | | NOT TESTED | | |
+| T9.C10 | Hire a law firm and change the accountant (also a firm of your own, if you own one) | Fee per month shown before confirming; old one is dropped; accountant no longer appears as a separate block in Operations | | NOT TESTED | | |
+| T9.C11 | Operations of a home-trade company with 4+ people working at home | "Where you work" warns that morale and quality slip; "Find a workshop/office" lists places with rent, deposit, price | | NOT TESTED | | |
+| T9.C12 | Rent one with enough company cash; try with too little cash | Confirmation lists what leaves now; after: "Rented ..." and the section shows the place. With too little cash the button is disabled with "needs X more" | | NOT TESTED | | |
+| T9.C13 | Work from home again | Confirmation states the deposit returned (or sale value less mortgage); cash changes by that amount | | NOT TESTED | | |
+| T9.C14 | Finances > Payroll and bills, owner-run company with staff | "Payroll run" shows next pay day, amount, cash; "Approve this month's payroll" asks, then says approved; the same Inbox approval message does not pay twice | | NOT TESTED | | |
+| T9.C15 | Change who runs payroll to the accountant, then manager (company without a manager) | Fees shown per month; manager is locked with "Needs a manager first"; change confirmed and reported | | NOT TESTED | | |
+| T9.C16 | Let pay day pass without approving, then Run payroll now | Staff are paid, result reports amount paid and any shortfall | | NOT TESTED | | |
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

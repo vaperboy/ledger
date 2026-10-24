@@ -72,14 +72,14 @@ struct SidebarShell: View {
                 }
                 Section {
                     ForEach(AppTab.allCases) { tab in
-                        Label(tab.title, systemImage: tab.symbol)
+                        SidebarLabel(title: tab.title, symbol: tab.symbol)
                             .badge(tab == .inbox ? store.unreadCount : 0)
                             .tag(tab)
                     }
                 }
                 Section("More") {
                     ForEach(PhoneDestination.allCases, id: \.self) { d in
-                        Button { store.openMore(d) } label: { Label(d.title, systemImage: d.symbol) }
+                        Button { store.openMore(d) } label: { SidebarLabel(title: d.title, symbol: d.symbol) }
                     }
                 }
                 // While the More sheet is up, its own rows (Stats, Settings, ...) are the ones to reach.

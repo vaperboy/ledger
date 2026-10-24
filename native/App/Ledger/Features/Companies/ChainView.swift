@@ -353,36 +353,6 @@ struct ChainRulesSection: View {
     }
 }
 
-/// Supply between your own companies that touches the chain: who supplies which store, and how much arrives.
-struct ChainSupplyOverview: View {
-    var engine: GameEngine
-    var summary: Chains.Summary
-    var currency: Currency
-
-    var body: some View {
-        let ids = Set(summary.stores.map { $0.id })
-        let links = engine.supplyLinks().filter { ids.contains($0.buyerID) || ids.contains($0.supplierID) }
-        LedgerSection(title: "Supply from your own companies", trailing: { Text("\(links.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                if links.isEmpty {
-                    Text("No store buys from one of your own companies. Switch an input to your own supplier in a store's Chain section; the group keeps the margin.")
-                        .font(.caption).foregroundStyle(Theme.ivoryFaint)
-                }
-                ForEach(Array(links.enumerated()), id: \.element.id) { n, l in
-                    if n > 0 { Hairline() }
-                    let buyer = engine.state.company(l.buyerID)?.name ?? "Store"
-                    let supplier = engine.state.company(l.supplierID)?.name ?? "Supplier"
-                    NavigationLink(value: CompanyRoute.companyAt(l.buyerID, .chain)) {
-                        GroupLinkRow(title: "\(supplier) → \(buyer)",
-                                     sub: "\(IntercompanySupply.kind(l.kindID)?.name ?? l.kindID) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered",
-                                     trailing: currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr",
-                                     subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
-                    }.buttonStyle(.plain)
-                }
-            }
-        }
-    }
-}
 
 /// A new store under the chain's name and rules.
 struct ChainNewStore: View {

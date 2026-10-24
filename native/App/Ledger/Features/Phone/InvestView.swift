@@ -132,7 +132,7 @@ struct VenturesLinkRow: View {
         let groups = engine.bigMeetingStakes.reduce(0) { $0 + $1.value } + engine.groupStakes.reduce(0) { $0 + $1.value }
         let total = founded + stakes + pe + groups
         LedgerSection("Ventures") {
-            Button { store.tab = .projects; Haptics.tap() } label: {
+            Button { store.jump(to: .projects); Haptics.tap() } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Startups, private equity and stakes").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)

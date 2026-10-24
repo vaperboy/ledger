@@ -9,12 +9,13 @@ struct ProjectsView: View {
     enum Part: String, CaseIterable, Hashable { case work = "Work", ventures = "Ventures" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .work
+    @State private var path: [CompanyRoute] = []
     @State private var search = ""
 
     @State private var showAll = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             if let e = store.engine {
                 let rows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
                 ScrollView {
@@ -34,6 +35,9 @@ struct ProjectsView: View {
                 .ledgerBackground()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
+                .companyRouteDestinations()
+                .routeRequests(for: .projects, path: $path)
+                .returnBar(for: .projects)
             }
         }
     }
@@ -102,7 +106,7 @@ struct ProjectsView: View {
                     if list.isEmpty { Text("No company matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(list.enumerated()), id: \.element.co.id) { n, r in
                         if n > 0 { Hairline() }
-                        Button { openProjects(r.co.id) } label: { row(r.co, r.board) }.buttonStyle(.plain)
+                        Button { openProjects(r.co.id) } label: { row(r.co, r.board) }.buttonStyle(.plain).accessibilityIdentifier("open-project-company")
                     }
                 }
             }

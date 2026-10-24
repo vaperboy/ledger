@@ -52,6 +52,7 @@ struct SuggestionRow: View {
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
+            .accessibilityIdentifier({ if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" } }())
     }
     private var color: Color {
         switch item.tone { case .bad: return Theme.loss; case .warn: return Theme.caution; case .good: return Theme.gain; case .neutral: return Theme.gold }
