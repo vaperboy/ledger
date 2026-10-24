@@ -132,6 +132,20 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9B.10 | Marketing > last channel "Prime-time TV ..." in two countries | Named from that country's own broadcast moment; budgets bigger in more populous countries; independent shop gets little for the money | | NOT TESTED | | |
 | T9B.11 | Team a marketing manager and leave it running for months | Manager never starts Prime-time TV | | NOT TESTED | | |
 
+### 9.S Suppliers (stage 3, suppliers)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9S.1 | Open a cafe (or hotel) > Operations > Suppliers | One section listing Goods, Repairs (if equipment) and each service own companies could supply; each row names the current provider, price vs market, reliability and yearly saving/cost | | NOT TESTED | | |
+| T9S.2 | Tap Goods, pick a different outside supplier | Confirmation shows price, discount, quality, terms, delivery, risks and saving vs now; after confirming a toast says who now provides it and the row updates | | NOT TESTED | | |
+| T9S.3 | Take a supplier to lunch twice within four weeks | Confirmation shows the cost; first works and raises the relationship/discount, second says to wait; cash drops once | | NOT TESTED | | |
+| T9S.4 | Hotel with no cleaning company of yours, tap Cleaning | Locked line names the kind of company that would provide it (a cleaning company in the same city); no create button; outside option current | | NOT TESTED | | |
+| T9S.5 | Add a cleaning company, wait for it to open, tap Cleaning on the hotel, choose it at cost plus 10% | Three price modes listed with saving per year; confirm; row shows "Yours"; 20 weeks later the books still balance | | NOT TESTED | | |
+| T9S.6 | Same input, choose Outside suppliers | Link removed, toast; the supplier company's page no longer lists "Supplies <hotel>" | | NOT TESTED | | |
+| T9S.7 | Company > Chain: no second "Supply from your own companies" card | A single link row to Operations > Suppliers; it opens that section | | NOT TESTED | | |
+| T9S.8 | Chain with 3+ stores > chain page > Suppliers | Usual provider per input with "n of m stores"; stores that differ listed as exceptions, each opening that store's Operations; says each store chooses | | NOT TESTED | | |
+| T9S.9 | Business customer that runs a cleaning trade but you barely know | Listed greyed with "get to know them better"; cannot be chosen; after a better relationship it can | | NOT TESTED | | |
+| T9S.10 | Group > People you buy from still shows lunch and the board goods deal | Board agreement text appears in each company's Suppliers section | | NOT TESTED | | |
+
 ### 9.B Life stories and what you can fund (stage 2, background)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
 |---|---|---|---|---|---|---|
