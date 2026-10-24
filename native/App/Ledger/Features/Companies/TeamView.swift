@@ -52,6 +52,8 @@ struct TeamView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .searchable(text: $query, prompt: "Find anyone who works for you")
             .companyRouteDestinations()
+            .routeRequests(for: .team, path: $path)
+            .returnBar(for: .team)
         }
     }
 
@@ -186,7 +188,7 @@ struct TeamView: View {
         Haptics.tap()
         if v.scope == "chain", let id = v.companyID { path.append(.companyAt(id, .chain)) }
         else if let id = v.companyID { path.append(.companyAt(id, .staff)) }
-        else { store.tab = .group }
+        else { store.jump(to: .group) }
     }
 
     // MARK: Manager performance
@@ -262,7 +264,7 @@ struct TeamView: View {
     private func openPost(_ p: Post, _ e: GameEngine) {
         Haptics.tap()
         if let cid = p.chainID, let store0 = e.chainSummary(id: cid)?.stores.first?.id { path.append(.companyAt(store0, .chain)) }
-        else { store.tab = .group }
+        else { store.jump(to: .group) }
     }
 
     private func groupPosts(_ e: GameEngine) -> [Post] {

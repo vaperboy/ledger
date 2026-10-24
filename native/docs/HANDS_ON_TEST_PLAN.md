@@ -164,6 +164,20 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
 | T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
 
+### 9.V Navigation, labels and money text (stage 3, nav)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9V.1 | Inbox > a message with "Open <company> ->"; then Back | Company opens on the Inbox's own stack; Back returns to the Inbox at the same place, not the Company list. Automated: NavigationBackTests.testBackFromInboxCompanyLinkReturnsToInbox (skipped if the showcase game has no such message) | | NOT TESTED | | |
+| T9V.2 | Projects > Work > a row; then Back | Company opens on its Projects section; Back returns to Projects. Automated: testBackFromProjectsReturnsToProjects (skipped in the showcase game: no project company) | | NOT TESTED | | |
+| T9V.3 | Company tab (Home) > a suggestion that opens a company; then Back | Back returns to Home. Automated: testBackFromHomeSuggestionReturnsToHome (skipped if no such suggestion) | | NOT TESTED | | |
+| T9V.4 | Team > a vacancy, a decision or a company row; then Back. Group > a chain or holding row; Back. Group > Money > Reports > a company line; Back | Each returns to the screen it was opened from | | NOT TESTED | | |
+| T9V.5 | Company tab > a suggestion or "Read the full report" (goes to Group > Money); and Company > Needs you > Decide (goes to Inbox) | The destination tab shows "Back to Company" at the top; tapping it returns to the Company tab where you were. Switching tabs by hand removes the bar | | NOT TESTED | | |
+| T9V.6 | More > News > a company link | The More sheet closes and the company opens on the tab behind it; Back returns there | | NOT TESTED | | |
+| T9V.7 | Group > Money | Screen title is "Group money" (not "Money"); the segment is still "Money" | | NOT TESTED | | |
+| T9V.8 | Home key figures vs Group > Money > Overview (T6.4/T4.7) | Home says "Personal cash" (cash + savings). Money says "Cash across group" and, under it, "of which personal cash and savings" equal to Home's figure; the difference is the cash in your companies. Company > Finances says "Company cash" | | NOT TESTED | | |
+| T9V.9 | Read Inbox messages and News with amounts over 10,000 | Written "£11k", "£2.5M", never "£11 k"; names such as "Mr M Smith" unchanged | | NOT TESTED | | |
+| T9V.10 | iPad sidebar | Team's icon lines up with the other tabs' titles | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

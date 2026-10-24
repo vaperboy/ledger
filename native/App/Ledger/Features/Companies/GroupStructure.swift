@@ -115,7 +115,7 @@ struct GroupStructureOverview: View {
         franchiseSection(franchisors, franchised, chains: chains)
         if !alone.isEmpty {
             LedgerSection("Standing alone") {
-                Button { store.tab = .company; Haptics.choose() } label: {
+                Button { store.jump(to: .company); Haptics.choose() } label: {
                     GroupLinkRow(title: "\(alone.count) \(alone.count == 1 ? "company" : "companies") outside a chain",
                                  sub: alone.prefix(3).map { $0.name }.joined(separator: ", ") + (alone.count > 3 ? "…" : "") + " · compared under Company")
                 }.buttonStyle(.plain)

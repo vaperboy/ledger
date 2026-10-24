@@ -78,7 +78,7 @@ struct NetWorthSection: View {
             changeLine(week: week, month: month)
             NetWorthChart(engine: engine, days: days).padding(.top, 6)
             KeyFigures(items: [
-                .init(label: "Cash", value: store.short(nw.personal)),
+                .init(label: CashWording.personal, value: store.short(nw.personal)),
                 .init(label: "Invested", value: store.short(nw.investments)),
                 .init(label: "Companies", value: store.short(nw.companies)),
                 .init(label: "Debt", value: owed > 0 ? "−" + store.short(owed) : store.short(0), tint: owed > 0 ? Theme.loss : Theme.ivory),

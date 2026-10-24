@@ -39,6 +39,13 @@ enum PhoneDestination: Hashable, CaseIterable { case news, stats, activity, luxu
 /// The sections of the Money tab.
 enum MoneySection: String, CaseIterable, Hashable { case overview = "Overview", bank = "Bank", invest = "Invest", taxes = "Taxes", costs = "Costs", reports = "Reports" }
 
+/// "Push this onto the stack of this tab": the one shape of a deep link to a company.
+struct RouteRequest: Equatable {
+    let id = UUID()
+    var tab: AppTab
+    var route: CompanyRoute
+}
+
 struct Toast: Identifiable, Equatable {
     let id = UUID()
     var text: String
@@ -54,13 +61,15 @@ final class GameStore: ObservableObject {
     @Published private(set) var isAdvancing = false
 
     // Navigation requests from anywhere (e.g. a suggestion card)
-    @Published var tab: AppTab = .company
-    @Published var openCompanyID: Int?
+    @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnTab = nil } } }
+    /// Set while the player is on a tab they were sent to by a link; that tab shows "Back to <returnTab>".
+    @Published private(set) var returnTab: AppTab?
+    /// A company or record to push onto the navigation stack of `tab` (the tab it was requested from). Taken by `routeRequests`.
+    @Published var routeRequest: RouteRequest?
+    private var jumping = false
     @Published var phoneDestination: PhoneDestination? { didSet { if phoneDestination != nil { showPhone = true } } }
     /// The sheet with news, stats, activity, luxury, settings and the rest (opened from the toolbar of Company and Group).
     @Published var showPhone = false
-    /// Open this section of the company named by `openCompanyID` (Team, Projects, ...).
-    @Published var companySection: CompanySection?
     @Published var moneySection: MoneySection?
     /// Open the Reports section on this report (set by the Home prompt).
     @Published var reportRequest: ReportRef?
@@ -215,7 +224,7 @@ final class GameStore: ObservableObject {
     }
 
     func show(_ text: String, tone: String = "n") {
-        let t = Toast(text: text, tone: tone)
+        let t = Toast(text: text.tidyText, tone: tone)
         toast = t
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_200_000_000)
@@ -225,19 +234,38 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation
 
-    /// The one way to open a company from anywhere outside the Company tab: switches to Company and opens that company,
-    /// on `section` when it has one. The request is consumed by `CompaniesView`, so it cannot leak into a later visit.
+    /// The one way to open a company (or one of its sections) from anywhere: it is pushed onto the navigation stack of the tab the
+    /// player is on (Company, Team, Group, Projects or Inbox), so Back returns to the screen they came from. The More sheet is closed
+    /// first, so a link from it lands on the tab behind it. The request is consumed by that tab (`routeRequests`), so it cannot leak.
     func openCompany(_ id: Int, section: CompanySection? = nil) {
-        companySection = section
-        openCompanyID = id
-        tab = .company
+        showPhone = false
+        let route: CompanyRoute
+        if let section { route = .companyAt(id, section) } else { route = .company(id) }
+        routeRequest = RouteRequest(tab: tab, route: route)
+    }
+
+    /// Switches to another tab for a link that cannot be pushed (a message in the Inbox, a Money section, New company) and remembers
+    /// where the player came from; the destination shows "Back to <tab>". Switching tabs by hand clears it.
+    func jump(to destination: AppTab) {
+        showPhone = false
+        guard destination != tab else { return }
+        let from = tab
+        jumping = true; tab = destination; jumping = false
+        returnTab = from
+    }
+
+    /// Back to the tab a link came from.
+    func returnToOrigin() {
+        guard let back = returnTab else { return }
+        jumping = true; tab = back; jumping = false
+        returnTab = nil
     }
 
     /// Opens one message in the Inbox. `InboxView` takes the request on appear and on change, so it works whether or not
     /// the Inbox was built before.
     func openMessage(_ id: Int) {
         openMessageID = id
-        tab = .inbox
+        jump(to: .inbox)
     }
 
     /// Opens the More sheet, on `destination` when given (from the toolbar menu or the iPad sidebar).
@@ -248,8 +276,8 @@ final class GameStore: ObservableObject {
 
     /// Drops every pending navigation request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
-        tab = .company
-        openCompanyID = nil; companySection = nil; moneySection = nil; reportRequest = nil
+        jumping = true; tab = .company; jumping = false; returnTab = nil
+        routeRequest = nil; moneySection = nil; reportRequest = nil
         openMessageID = nil; phoneDestination = nil; showPhone = false; showNewCompany = false
     }
 
@@ -258,10 +286,10 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id): openCompany(id)
-        case .openLoans: moneySection = .bank; tab = .group
-        case .openInvest: moneySection = .invest; tab = .group
-        case .openTax: moneySection = .taxes; tab = .group
-        case .newCompany: showNewCompany = true; tab = .company
+        case .openLoans: moneySection = .bank; jump(to: .group)
+        case .openInvest: moneySection = .invest; jump(to: .group)
+        case .openTax: moneySection = .taxes; jump(to: .group)
+        case .newCompany: showNewCompany = true; jump(to: .company)
         }
     }
 

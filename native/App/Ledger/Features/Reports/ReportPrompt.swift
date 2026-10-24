@@ -29,7 +29,7 @@ struct ReportPromptSection: View {
                     Button {
                         store.reportRequest = ReportRef(kind: r.kind, id: r.id)
                         store.moneySection = .reports
-                        store.tab = .group
+                        store.jump(to: .group)
                         store.act { $0.dismissReportPrompt(r) }
                     } label: {
                         Text("Read the full report  →").font(.system(size: 12)).foregroundStyle(Theme.gold)

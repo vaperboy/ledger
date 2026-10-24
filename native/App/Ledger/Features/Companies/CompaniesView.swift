@@ -89,8 +89,9 @@ struct CompaniesView: View {
             .companyRouteDestinations()
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
             .phoneToolbar()
+            .routeRequests(for: .company, path: $path)
+            .returnBar(for: .company)
             .onAppear { openRequested() }
-            .onChange(of: store.openCompanyID) { _, _ in openRequested() }
             .onChange(of: store.showNewCompany) { _, _ in openRequested() }
         }
     }
@@ -146,11 +147,6 @@ struct CompaniesView: View {
     }
 
     private func openRequested() {
-        if let id = store.openCompanyID {
-            path = [store.companySection.map { .companyAt(id, $0) } ?? .company(id)]
-            store.openCompanyID = nil
-            store.companySection = nil
-        }
         if store.showNewCompany { path = [.newCompany]; store.showNewCompany = false }
     }
 }
