@@ -16,6 +16,9 @@ struct CompanySourcing: View {
     var company: Company
     @State private var open: String?
     @State private var pending: PendingAction?
+    /// The last answer of a supplier in a price talk, and the last extra discount asked, by option id (kept under the row like a hiring offer).
+    @State private var talks: [String: HireFeedback] = [:]
+    @State private var lastAsk: [String: Double] = [:]
     private let classNames = Suppliers.goodsClassNames
 
     var body: some View {
@@ -88,6 +91,13 @@ struct CompanySourcing: View {
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("The quality class changes the cost and the quality of everything you buy; the prices below are for the class chosen.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
+                if let why = input.governedBy {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "lock.fill").font(.system(size: 11)).foregroundStyle(Theme.caution)
+                        Text(why + " Change it at the chain, or release the rule there so each store decides.").font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
                 if let none = input.noOwnProvider {
                     HStack(alignment: .top, spacing: 6) {
                         Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
@@ -133,7 +143,7 @@ struct CompanySourcing: View {
     @ViewBuilder private func optionRow(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Button {
-                guard o.blocked == nil, !o.isCurrent else { return }
+                guard o.blocked == nil, !o.isCurrent, input.governedBy == nil else { return }
                 confirm(input, o, cur: cur)
             } label: {
                 HStack(alignment: .firstTextBaseline) {
@@ -154,6 +164,8 @@ struct CompanySourcing: View {
             }.buttonStyle(.plain)
             Text(o.terms + " · " + o.reliability).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if let b = o.blocked { Text(b).font(.system(size: 11)).foregroundStyle(Theme.caution) }
+            if let x = o.dealExtra { Text("Negotiated: \(pct(x)) extra off while the deal lasts.").font(.system(size: 11)).foregroundStyle(Theme.gain) }
+            if o.negotiable, o.blocked == nil { negotiationRow(input, o) }
             if let next = o.nextLevel, o.kind != .ownCompany, o.kind != .outside {
                 Text("Better terms ahead: \(next)").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
             }
@@ -182,9 +194,99 @@ struct CompanySourcing: View {
             case .ok?: Haptics.success(); store.show("\(o.name) now provides \(input.title.lowercased()).", tone: "good")
             case .notKnownWell?: Haptics.warning(); store.show("They do not know you well enough yet. Get to know them better first.", tone: "warn")
             case .notAllowed?: Haptics.warning(); store.show("That provider is no longer available for this company.", tone: "warn")
+            case .governed?: Haptics.warning(); store.show("The chain fixes this input for all its stores.", tone: "warn")
             default: Haptics.warning(); store.show("Nothing changed.", tone: "warn")
             }
         }
+    }
+
+    // MARK: Payment terms
+
+    @ViewBuilder private func paymentTermsBlock(_ input: SupplierInput) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Payment terms").font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
+            ForEach(input.paymentTerms) { t in
+                Button {
+                    guard !t.isCurrent, t.blocked == nil else { return }
+                    confirmTerms(input, t)
+                } label: {
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack {
+                            Text(t.name).font(.system(size: 13, weight: t.isCurrent ? .semibold : .regular)).foregroundStyle(t.blocked != nil ? Theme.ivoryFaint : t.isCurrent ? Theme.gold : Theme.ivory)
+                            Spacer(minLength: 8)
+                            if t.isCurrent { Text("Current").font(.system(size: 11)).foregroundStyle(Theme.gold) }
+                        }
+                        Text(t.blocked ?? t.detail).font(.system(size: 11)).foregroundStyle(t.blocked != nil ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+            Text("Buying on credit is a debt: it falls due on its date, shows under what falls due, and if the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
+                .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        }.padding(.vertical, 4)
+    }
+
+    private func confirmTerms(_ input: SupplierInput, _ t: PaymentTermChoice) {
+        pending = PendingAction(title: "Pay by \(t.name.lowercased()) for \(input.title.lowercased())?", message: t.detail, button: "Use these terms") {
+            let ok: Bool? = input.id == "goods"
+                ? store.act({ $0.setGoodsPaymentTerms(companyID: company.id, term: t.id) })
+                : store.act({ $0.setSupplyPaymentTerms(companyID: company.id, input: input.id, term: t.id) })
+            if ok == true { Haptics.success(); store.show("Payment terms: \(t.name).", tone: "good") }
+            else { Haptics.warning(); store.show("The supplier does not offer those terms now.", tone: "warn") }
+        }
+    }
+
+    // MARK: Negotiating a supplier's price
+
+    @ViewBuilder private func negotiationRow(_ input: SupplierInput, _ o: SupplierOption) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let until = o.coolingUntil {
+                Text("They ended the last talk. They will talk again from week \(until).").font(.system(size: 11)).foregroundStyle(Theme.caution)
+            } else if let counter = talks[o.id]?.counterAmount {
+                HStack(spacing: 10) {
+                    Button("Accept \(pct(counter)) off") { ask(input, o, counter) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                    Menu("Counter") {
+                        ForEach([0.25, 0.5, 0.75], id: \.self) { share in
+                            let a = ((lastAsk[o.id] ?? counter) + (counter - (lastAsk[o.id] ?? counter)) * share) / 0.005
+                            Button(pct(a.rounded(.down) * 0.005) + " off") { ask(input, o, a.rounded(.down) * 0.005) }
+                        }
+                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivoryMuted)
+                    Button("Walk away") { talks[o.id] = .declined("You left the table. They may talk again later if you come back.") }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                    Spacer(minLength: 0)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Text(o.isCurrent ? "Renegotiate" : "Negotiate").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    ForEach(SupplyTerms.asks, id: \.self) { a in
+                        Button("\(pct(a)) off") { ask(input, o, a) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            if let f = talks[o.id] { Text(f.text).font(.system(size: 11.5)).foregroundStyle(f.tint).fixedSize(horizontal: false, vertical: true) }
+            else { Text("Ask for more off the price. The better they know you the more they can give and the longer they listen; ask too much and they may walk out.")
+                .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+        }
+    }
+
+    private func pct(_ x: Double) -> String { x * 100 == (x * 100).rounded() ? "\(Int((x * 100).rounded()))%" : String(format: "%.1f%%", x * 100) }
+
+    private func ask(_ input: SupplierInput, _ o: SupplierOption, _ amount: Double) {
+        guard let vid = o.vendorID else { return }
+        lastAsk[o.id] = amount
+        let talk = store.act { $0.negotiateSupplier(companyID: company.id, input: input.id, vendorID: vid, ask: amount) }
+        let fb: HireFeedback
+        switch talk {
+        case .agreed(let x)?: fb = .hired(x > 0 ? "\(o.name) agrees to \(pct(x)) extra off and is now your supplier." : "\(o.name) is now your supplier at list terms.")
+        case .countered(let c)?: fb = .countered(c.amount, c.isFinal ? "\(o.name) says \(pct(c.amount)) off is as far as they will go." : "\(o.name) would give \(pct(c.amount)) off.")
+        case .refused?: fb = .declined("\(o.name) took that as an insult and named no figure. Ask for less.")
+        case .walkedAway(let until)?: fb = .unavailable("\(o.name) lost patience and ended the talks. They will talk again from week \(until).")
+        case .cooling(let until)?: fb = .unavailable("\(o.name) will not talk until week \(until).")
+        case .notNeeded(let why)?: fb = .declined(why)
+        case .notAllowed?: fb = .unavailable("That supplier is not available, or the chain fixes this input.")
+        case nil: fb = .unavailable("No game is loaded.")
+        }
+        talks[o.id] = fb
+        if fb.isHired { Haptics.success(); store.show(fb.text, tone: "good") } else { Haptics.warning() }
     }
 
     private func lunch(_ vendorID: String, name: String) {

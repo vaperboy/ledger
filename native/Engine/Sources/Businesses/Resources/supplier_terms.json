@@ -1,0 +1,44 @@
+{
+  "about": "Payment terms, late-payment consequences and supplier-deal negotiation (SupplyTerms.swift, SupplyDeals.swift). Every number is a behaviour or a rate, never a money amount. Design values (not taken from any source) unless a country entry says otherwise: a country can set its own late-payment rule under countries.json > commerce > latePayment.",
+  "vendorTerms": [
+    { "id": "cod",     "name": "Cash on delivery", "days": 0,  "priceEffect": -0.015, "minRelationship": 0 },
+    { "id": "monthly", "name": "Month end",        "days": -1, "priceEffect": 0,      "minRelationship": 0 },
+    { "id": "net30",   "name": "30 days",          "days": 30, "priceEffect": 0.01,   "minRelationship": 36 },
+    { "id": "net60",   "name": "60 days",          "days": 60, "priceEffect": 0.025,  "minRelationship": 64 }
+  ],
+  "groupTerms": [
+    { "id": "weekly", "name": "Settled weekly", "days": 0 },
+    { "id": "net14",  "name": "14 days",        "days": 14 },
+    { "id": "net30",  "name": "30 days",        "days": 30 }
+  ],
+  "late": {
+    "defaultMonthlyInterest": 0.02,
+    "relationshipHit": 4,
+    "dealLost": true,
+    "cutoffAfter": 3,
+    "windowWeeks": 26,
+    "cutoffLevelFirst": 1,
+    "cutoffLevelRepeat": 2,
+    "cutoffWeeks": 8,
+    "billMissRelationshipHit": 2
+  },
+  "customer": {
+    "lateChanceBase": 0.3,
+    "lateChanceRelationship": 0.25,
+    "weakEconomyFactor": 1.6,
+    "lateWeeks": [1, 6],
+    "relationshipHit": 1.5,
+    "repeatNotice": 3
+  },
+  "negotiation": {
+    "headroomBase": 0.01,
+    "headroomPerRelationship": 0.0004,
+    "patiencePerRelationship": 0.006,
+    "step": 0.005,
+    "asks": [0.01, 0.02, 0.03, 0.05],
+    "dealWeeks": 52,
+    "coolWeeks": 6,
+    "walkAwayRelationshipHit": 3,
+    "rank": "manager"
+  }
+}

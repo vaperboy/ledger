@@ -40,8 +40,8 @@ public enum Payday {
         }
         return d
     }
-    /// Monthly late interest on rent and supplier bills left unpaid.
-    static let lateInterestRate = 0.02
+    /// Monthly late interest on rent and supplier bills left unpaid: the country's own rule when its data has one, else the game's default
+    /// (`SupplyTerms.lateMonthlyRate`).
     static func billDate(year y: Int, month m: Int) -> Int { GameCalendar.daysFromCivil(year: y, month: m + 1, day: lastDay(y, m)) }
 
     // MARK: Per-company settings (stored as `pr29` in the company)
@@ -294,7 +294,7 @@ public enum Payday {
 
     /// Rent and supplier bills on the last day of the month. Original: `payBills`.
     @discardableResult
-    static func payBills(_ s: inout GameState, _ i: Int, today t: Int, context: FinanceContext) -> (paid: Double, short: Double) {
+    static func payBills(_ s: inout GameState, _ i: Int, today t: Int, context: FinanceContext, data: GameData? = nil) -> (paid: Double, short: Double) {
         var co = s.companies[i]
         var left = max(0, co.cash + context.overdraftRoom(co, s))
         var short = 0.0, paid = 0.0
@@ -302,7 +302,7 @@ public enum Payday {
         // Late interest on what was left unpaid last month (rent and suppliers): added to the supplier bill, booked as interest.
         let overdue = (cfg.arrears["rent"] ?? 0) + (cfg.arrears["other"] ?? 0)
         let carried = min(overdue, (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0))
-        let lateFee = jsRound(carried * lateInterestRate)
+        let lateFee = jsRound(carried * SupplyTerms.lateMonthlyRate(country: context.country(of: co, s), policyRate: s.economy.policyRate))
         if lateFee > 0 {
             co.addPayable("other", lateFee)
             var b = co.books; b.add("int", lateFee); co.books = b
@@ -336,6 +336,8 @@ public enum Payday {
         s.companies[i] = co
         let wasCut = co.int("supCut")
         if short > context.currency(co.countryCode, s).scaledPrice(1500) {
+            // The suppliers you could not pay think less of you (the relationship their discounts come from).
+            if let d = data { SupplyTerms.billsMissed(&s, companyIndex: i, data: d) }
             cfg.billShortMonths += 1
             if cfg.billShortMonths == 1 {
                 let cur = context.currency(co.countryCode, s)
@@ -346,13 +348,16 @@ public enum Payday {
         } else { cfg.billShortMonths = 0 }
         // Repeated misses: suppliers tighten terms (2 months: stock only against cash in the account) and then stop delivering stock (3 months).
         let level = cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
-        s.companies[i].set("supCut", level)
-        if level > wasCut {
-            s.addMessage(from: co.name, title: level == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
-                         body: level == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
+        // Bills and invoices each cut suppliers off; stock buying reads the stricter of the two (`SupplyTerms.refreshCut`).
+        if level > 0 || s.companies[i].raw["supCutB"] != nil { s.companies[i].set("supCutB", level); if level == 0 { s.companies[i].raw.removeValue(forKey: "supCutB") } }
+        let level2 = max(level, SupplyTerms.invoiceCutLevel(s.companies[i], week: s.week))
+        s.companies[i].set("supCut", level2)
+        if level2 > wasCut {
+            s.addMessage(from: co.name, title: level2 == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
+                         body: level2 == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
                                           : "Suppliers refuse new stock until the overdue bills are paid. Sales will suffer.",
                          companyID: co.id, tone: "bad")
-        } else if level == 0 && wasCut > 0 {
+        } else if level2 == 0 && wasCut > 0 {
             s.addMessage(from: co.name, title: "Suppliers deliver normally again", body: "The overdue bills at \(co.name) are paid. Suppliers are back on normal terms.", companyID: co.id, tone: "good")
         }
         s.companies[i].set("pr29", cfg.json)
@@ -488,13 +493,13 @@ public enum Payday {
             if cfg.billsMonth < mi - 1 {
                 cfg.billsMonth = mi - 1
                 s.companies[i].set("pr29", cfg.json)
-                payBills(&s, i, today: t, context: context)
+                payBills(&s, i, today: t, context: context, data: data)
             }
             cfg = config(s.companies[i], today: t)
             if cfg.billsMonth < mi && t >= bd2 {
                 cfg.billsMonth = mi
                 s.companies[i].set("pr29", cfg.json)
-                payBills(&s, i, today: t, context: context)
+                payBills(&s, i, today: t, context: context, data: data)
             }
         }
         // One approval message for all companies that need it.

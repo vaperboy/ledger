@@ -134,6 +134,7 @@ public extension GameEngine {
         let p = co.payables
         var b: Double = p["wages"] ?? 0
         b += p["other"] ?? 0
+        b += p["inv"] ?? 0
         b += p["rent"] ?? 0
         b += max(0, co.vatBalance)
         b += p["tax"] ?? 0

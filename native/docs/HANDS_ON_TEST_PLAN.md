@@ -146,6 +146,25 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9S.9 | Business customer that runs a cleaning trade but you barely know | Listed greyed with "get to know them better"; cannot be chosen; after a better relationship it can | | NOT TESTED | | |
 | T9S.10 | Group > People you buy from still shows lunch and the board goods deal | Board agreement text appears in each company's Suppliers section | | NOT TESTED | | |
 
+### 9.T Supplier terms: chain supplier rule, payment terms, price talks (stage 3, supplier-terms)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9T.1 | Chain with 3+ cafes > chain page > Suppliers > Set a chain-wide provider > Goods > pick a supplier > confirm | Confirmation lists how many stores switch, which cannot and why; afterwards a "Chain rule · Goods" block with a Mandatory chip and "n of m stores follow it" | | NOT TESTED | | |
+| T9T.2 | Open one of those stores > Operations > Suppliers > Goods and tap another supplier | A lock line says the chain sets this; the option does not switch | | NOT TESTED | | |
+| T9T.3 | Chain page > "Each store decides" on the rule, confirm | Rule block disappears; the store can switch its supplier again; stores keep the provider they had | | NOT TESTED | | |
+| T9T.4 | Chain of restaurants, own cleaning company in the same city but one restaurant in another city (or an own company with no spare capacity): set the cleaning rule to the own company | The far store (or all stores when the cleaner is full) is listed under the rule as keeping its own with the reason; the rest switch | | NOT TESTED | | |
+| T9T.5 | A franchised unit inside the chain when the rule is set | The unit is not switched and the rule text says franchised units decide themselves | | NOT TESTED | | |
+| T9T.6 | Open a new store into the chain after a rule is set | The new store follows the rule (or a note says why not) | | NOT TESTED | | |
+| T9T.7 | Hotel buys cleaning from your own company > Cleaning > Payment terms > 30 days | Confirmation explains the invoice; later the hotel's Finance > what falls due lists "Invoice · <supplier>" rows by due date; the balance sheet shows the debt on the hotel and a customer debt on the cleaner | | NOT TESTED | | |
+| T9T.8 | Let the hotel's account run dry before an invoice falls due | Message "Late payment"; the invoice grows with interest each week; when money is back it is paid and the lines go | | NOT TESTED | | |
+| T9T.9 | Cafe with a supplier you know well > Goods > Payment terms | 60 days is offered only to close contacts (greyed with the reason otherwise); cash on delivery shows a small discount, longer terms a small charge | | NOT TESTED | | |
+| T9T.10 | Cafe on 30-day terms, stop paying for 6+ weeks | Supplier cools (relationship falls), the negotiated price is withdrawn, then "Suppliers want cash", then "Suppliers stop delivering"; paying and keeping to terms later restores normal delivery | | NOT TESTED | | |
+| T9T.11 | Goods > an outside supplier > "2% off" in the row | The supplier accepts, counters with its own figure (Accept / Counter / Walk away appear under the row) or refuses; asking far too much ends the talks and shows when they will talk again | | NOT TESTED | | |
+| T9T.12 | Same ask to a supplier you know well and to a stranger | The friend gives more and listens for more rounds | | NOT TESTED | | |
+| T9T.13 | Own company as supplier | No price talk is offered (the price is the mode you pick) | | NOT TESTED | | |
+| T9T.14 | Company with a business customer > Customers | The customer's line shows what they still owe; a slow payer shows "paid late n times in a row"; cash comes in weeks after the sale | | NOT TESTED | | |
+| T9T.15 | Save and reload with invoices open, a negotiated deal and a chain rule | All three are still there and the books balance | | NOT TESTED | | |
+
 ### 9.B Life stories and what you can fund (stage 2, background)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
 |---|---|---|---|---|---|---|

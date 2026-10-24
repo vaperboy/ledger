@@ -36,6 +36,9 @@ public enum KeyAccounts {
         public var totalPaid: Double
         /// The trade it runs (a cleaner, a bakery, a web agency ...). Original: `acc39`, `a.t`.
         public var tradeID: String
+        /// What they still owe you on invoices, and how many of their last invoices in a row came in late (`SupplyTerms`).
+        public var owed = 0.0
+        public var lateRun = 0
     }
 
     /// What the account sells, and whether you know them well enough to buy from them in your supply chain.
@@ -65,11 +68,13 @@ public enum KeyAccounts {
     }
 
     public static func accounts(_ co: Company) -> [Account] {
-        co.value("accts").array.map {
-            Account(id: $0["id"].int, name: $0["name"].string, share: $0["f"].double, relationship: $0["rel"].double, sinceWeek: $0["w0"].int,
-                    discount: $0["disc"].int, lastMeeting: $0["meet"].isNull ? nil : $0["meet"].int, lastUnits: $0["lastU"].double,
-                    totalUnits: $0["tu"].double, totalPaid: $0["tr"].double,
-                    tradeID: $0["t"].isNull ? tradeFor(id: $0["id"].int, known: { _ in true }) : $0["t"].string)
+        let owing = co.receivables
+        return co.value("accts").array.map { a -> Account in
+            Account(id: a["id"].int, name: a["name"].string, share: a["f"].double, relationship: a["rel"].double, sinceWeek: a["w0"].int,
+                    discount: a["disc"].int, lastMeeting: a["meet"].isNull ? nil : a["meet"].int, lastUnits: a["lastU"].double,
+                    totalUnits: a["tu"].double, totalPaid: a["tr"].double,
+                    tradeID: a["t"].isNull ? tradeFor(id: a["id"].int, known: { _ in true }) : a["t"].string,
+                    owed: owing.filter { $0.int("ac") == a["id"].int }.reduce(0) { $0 + $1.amount }, lateRun: a["lc"].int)
         }
     }
 
