@@ -9,6 +9,7 @@ struct ProjectsView: View {
     enum Part: String, CaseIterable, Hashable { case work = "Work", ventures = "Ventures" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .work
+    @State private var path: [CompanyRoute] = []
     @State private var search = ""
 
     private struct Item: Identifiable {
@@ -23,7 +24,7 @@ struct ProjectsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             if let e = store.engine {
                 let rows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
                 ScrollView {
@@ -43,6 +44,9 @@ struct ProjectsView: View {
                 .ledgerBackground()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
+                .companyRouteDestinations()
+                .routeRequests(for: .projects, path: $path)
+                .returnBar(for: .projects)
             }
         }
     }
@@ -136,7 +140,7 @@ struct ProjectsView: View {
                 }
                 Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }.padding(.vertical, 9).contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(.plain).accessibilityIdentifier("open-project-company")
     }
 
     private func openProjects(_ id: Int) {

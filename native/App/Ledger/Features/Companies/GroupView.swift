@@ -26,6 +26,8 @@ struct GroupView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .companyRouteDestinations()
+            .routeRequests(for: .group, path: $path)
+            .returnBar(for: .group)
             .phoneToolbar()
             .onAppear { takeMoneyRequest() }
             .onChange(of: store.moneySection) { _, _ in takeMoneyRequest() }
@@ -34,7 +36,7 @@ struct GroupView: View {
 
     /// A deep link to a Money section (bank, invest, taxes, reports) switches to Money; `FinanceView` then picks the section.
     private func takeMoneyRequest() {
-        if store.moneySection != nil { part = .money }
+        if store.moneySection != nil { part = .money; path = [] }
     }
 
     /// Decisions first, then the structure (holdings, chains, franchises), then the people and bodies above the companies:
