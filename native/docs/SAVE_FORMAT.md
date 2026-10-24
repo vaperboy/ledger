@@ -47,3 +47,5 @@ Add the accessor on the record type (for example in `GameCore/State/Company.swif
 the old value must be changed — add a step to `NativeMigrations.steps`.
 
 The last-50-actions pass (`AccountSupply`, `RivalAbsorb`, `OfficeChecks`) saves in the original's own names, so legacy saves and native saves are the same shape and need no migration: `rest["l39"]` (links to business customers), `flags.match27`, `flags.brand27`, `branch.of` and `branch.r` on a company, `uc27.resp` on a rival, `lastRev` on a company.
+
+Open negotiations (stage 2): a talk that is still open is kept under the key `neg` on the record it concerns, and the key exists only while a talk is open: `{p: party (the employer), n: offers answered, o: last offer, c: standing counter, w: week}`. It is on a candidate (`npcs`), on a rival owner (`mk.<key>.riv[]`), on a sale offer and in the data of a pay-raise message. A candidate who lost patience and took another job has `hired: -9`. Saves without the key load as before.

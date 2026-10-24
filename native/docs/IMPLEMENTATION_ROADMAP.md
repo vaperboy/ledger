@@ -131,3 +131,19 @@ kept just because tests pass. Test ranges (BalanceGuardTests) may only detect su
 | G3 | Screenshot tour covers few screens | KEEP | Extend the UI tour to staff profile, loans, acquisition, ventures, boards. | none |
 | G4 | Apple release: icon, bundle id, signing, installable build | DEFER | Needs the owner's Apple account. | owner |
 | G5 | CI fixed: engine tests as release on macos-15, app-build parallel | ALREADY DONE | Run 40001739437 green (engine, app, 3 screenshot tours). | none |
+
+## H. Negotiation (stage 2, branch stage2/negotiation; engine tests in NegotiationTests / AutoHireTests; screens NOT TESTED by hand: HANDS_ON_TEST_PLAN 9.N)
+One module, `Businesses/Negotiation.swift` (data: `Resources/negotiation.json`), answers an offer with accept, counter, refuse or walk away; patience rises with the level of the post and with the person's temperament; some counters are unrealistic at a data rate; an open talk is kept under the key `neg` on its record. Automatic hiring is one function (`AutoHire.swift`).
+| Discussion | On Negotiation? | Why / why not |
+|---|---|---|
+| Worker hire (`Hiring.hire`), store manager, assistant, team heads, group/chain executives, head-office roles, data analyst | YES | Employer opens at the going rate (`GameEngine.goingRate(for:)`), the ask stays hidden, counters on the shared row. |
+| Automatic hiring (replacement policy, manager `keepTeam`, manager proposals, seasonal crews, first team of a company, boss filling a store manager, executive finding a manager) | YES (`AutoHire`) | Opens low, meets counters inside a walk-away value, weighs several, reads true skill; the better the hirer the better the result. Staff moving with an acquired rival are not a hire discussion and stay as they were. |
+| Pay-raise request from staff (smaller option) | YES | Counters in a new message; workers are not patient. |
+| Selling a company (buyer price talk) | YES | Was already a patience loop; now the shared module. |
+| Offer to buy a rival | YES | Was a fixed counter and a lock after three lowballs; now counters, patience and the lock on walk away. |
+| Fund-manager fee | NO | Published fee per candidate, nothing is refused. |
+| Board seat fee | NO | The screen only offers the published fee; the engine's refusal cannot be reached from a screen. |
+| Group bids and investor offers ("Ask for more", "Counter once") | NO | One fixed choice in the inbox with no amount to name; the chance model stays. Needs an amount field first. |
+| Manager's yearly raise (Grant / Decline), part-time / full-time / seasonal offers | NO | Yes or no on a wish, not a figure. |
+| Franchise brand terms and franchise applicants | NO | Already have counters, rounds and locks of their own over several terms at once (fee, royalty, cover, rent); the shared module is one figure. Candidate for a later merge. |
+| Suppliers, landlord, key accounts, bank loans | NO | There is no accept-or-refuse discussion today: catalogue prices, accept / decline messages, and a loan limit. |
