@@ -252,40 +252,8 @@ public extension GameEngine {
         update { s, data, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s, data: data) }
         return r
     }
-    mutating func setStaffHours(companyID: Int, staffID: Int, hours: Double) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, _, _ in r = StaffTalks.setStaffHours(&s, companyID: companyID, staffID: staffID, hours: hours) }
-        return r
-    }
-    mutating func offerFullTime(companyID: Int, staffID: Int) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, d, _ in r = StaffTalks.offerFullTime(&s, companyID: companyID, staffID: staffID, data: d) }
-        return r
-    }
-    mutating func offerPartTime(companyID: Int, staffID: Int, hours: Double = 20) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, _, _ in r = StaffTalks.offerPartTime(&s, companyID: companyID, staffID: staffID, hours: hours) }
-        return r
-    }
-    @discardableResult mutating func toggleSeason(companyID: Int, staffID: Int, season: String) -> Bool {
-        var r = false
-        update { s, _, _ in r = StaffTalks.toggleSeason(&s, companyID: companyID, staffID: staffID, season: season) }
-        return r
-    }
-    @discardableResult mutating func offerFixedSalary(companyID: Int, staffID: Int) -> Bool {
-        var r = false
-        update { s, d, _ in r = StaffTalks.offerFixedSalary(&s, companyID: companyID, staffID: staffID, data: d) }
-        return r
-    }
-    // setPayModel and toggleOwnCar live in CompanyTabActions and PremisesActions (one wrapper each).
     /// Roles that sell and can be paid by commission.
     var salesRoles: Set<String> { data.catalog.tables.salesRoles }
-    /// Why a person turned down an offer, in words.
-    func refusalReason(companyID: Int, staffID: Int, want: String) -> String {
-        guard let m = state.company(companyID)?.staff.first(where: { $0.id == staffID }) else { return "" }
-        return StaffTalks.wishWhy(m, name: state.people[staffID]?.name ?? "", want: want)
-    }
-
     // MARK: Chains, complaints, premises, accountant, development
 
     @discardableResult mutating func lendWorker(from: Int, to: Int, role: String) -> Bool {

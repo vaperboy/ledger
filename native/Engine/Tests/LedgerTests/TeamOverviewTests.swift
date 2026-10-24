@@ -183,7 +183,8 @@ final class TeamOverviewTests: XCTestCase {
 
         let p0 = try XCTUnwrap(e.managerProfitBonusPreview(companyID: id, share: 0.1))
         XCTAssertGreaterThanOrEqual(p0.monthlyCost, 0)
-        e.setManagerProfitBonus(companyID: id, share: 0.5)
+        let mgr = try XCTUnwrap(e.state.company(id)?.managerID)
+        XCTAssertTrue(e.contractPropose(companyID: id, personID: mgr, proposal: .init(.bonus, amount: 0.5)).changedTerms)
         XCTAssertEqual(e.managerProfitBonusPreview(companyID: id, share: 0)?.current, 0.3, "the engine caps the share at 30%")
 
         XCTAssertEqual(e.managerDuties(companyID: id).first?.manager, true, "the manager looks after it by default")

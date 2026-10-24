@@ -125,7 +125,6 @@ public extension GameEngine {
     var managersDueMeeting: [Company] { ManagerModel.managersDueMeeting(state) }
     func weeksSinceMeeting(companyID: Int) -> Int { state.company(companyID).map { ManagerModel.weeksSinceMeeting($0, week: state.week) } ?? 0 }
     mutating func setManagerDuty(companyID: Int, duty: String, manager: Bool) { update { s, _, _ in ManagerModel.setManagerDuty(&s, companyID: companyID, duty: duty, manager: manager) } }
-    mutating func setManagerProfitBonus(companyID: Int, share: Double) { update { s, _, _ in ManagerModel.setManagerProfitBonus(&s, companyID: companyID, share: share) } }
     func personReport(companyID: Int, personID: Int) -> ManagerModel.PersonReport? { ManagerModel.personReport(state, companyID: companyID, personID: personID, data: data) }
 
     // MARK: Chains: money between stores, requests

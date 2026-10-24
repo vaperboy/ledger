@@ -193,9 +193,24 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.N9 | Store manager (Company > Management), assistant manager, head-office data analyst (Market map) | Going rate shown and counters work the same way | | NOT TESTED | | |
 | T9.N10 | Make a counter, close the app, reopen, offer the same again | The talk continues (same round); after about 8 game weeks without talking it starts afresh | | NOT TESTED | | |
 | T9.N11 | Automatic replacement on, let a worker leave, advance a few weeks | A replacement is hired within the week, at or below the going rate for their skill; the note names them. A store with a strong manager hires cheaper / better than one run by the owner | | NOT TESTED | | |
-| T9.N12 | Inbox: a worker asks for a raise, answer with the smaller option | They may counter (a new message with their figure, "Meet in the middle", "Not now"); after a few rounds they stop talking | | NOT TESTED | | |
+| T9.N12 | Inbox: a worker asks for a raise (superseded by 9.C10-9.C13: employees no longer refuse a raise) | See 9.C | | NOT TESTED | | |
 | T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
 | T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
+
+### 9.G Group and Projects (stage 3, groupprojects)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9G.1 | Group > Structure with 3+ companies, some in a chain, a holding, a franchise, some alone | "Stand alone" lists only companies in none of those, each with trade, city, health, value and yearly profit; tap opens the company; Back returns to Group | | NOT TESTED | | |
+| T9G.2 | 9+ stand-alone companies | Search box appears; list shows 8 with "Show all"; worst profit first | | NOT TESTED | | |
+| T9G.3 | Franchisor with applicants: Group > Structure > Franchises | Applicants listed under the franchisor row; tapping opens the same talk as Company > Chain; an offer there shows in both places | | NOT TESTED | | |
+| T9G.4 | Projects tab with a builder, event agency or developer | "Under way" rows show milestone dots, next date, what blocks; tender closing within 2 weeks and held jobs appear under "Needs you" | | NOT TESTED | | |
+| T9G.5 | Open a project row | Detail shows contract/cost so far or paid so far, milestones with dates, what is in the way, "If it runs late" with the money at stake; "Open company > Projects" works and Back returns | | NOT TESTED | | |
+| T9G.6 | Developer: advance through zoning, build, sell | Stage dots and dates follow the engine; a delayed build shows the held-up message | | NOT TESTED | | |
+| T9G.7 | No project company | Real empty state; a project company with nothing booked shows the "nothing under way" text | | NOT TESTED | | |
+| T9G.8 | Group > Giving back > pick city, Give | Confirmation names cost, standing and legacy gain, always asks; after confirming cash drops once, mark appears, toast reports; same gift in same city shows "Done" | | NOT TESTED | | |
+| T9G.9 | Giving back with too little cash | Button disabled with "Short by ..." | | NOT TESTED | | |
+| T9G.10 | Start a foundation, advance a year | Confirmation warns it is permanent; Foundation shows endowment and given; a message arrives yearly | | NOT TESTED | | |
+| T9G.11 | Market > Groups > Open profile | Rival group profile shows owner, strategy, ambition, sites, cash/debt words, trades, countries, overlap with your companies, moves; Back returns to Market | | NOT TESTED | | |
 
 ### 9.V Navigation, labels and money text (stage 3, nav)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
@@ -210,6 +225,45 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9V.8 | Home key figures vs Group > Money > Overview (T6.4/T4.7) | Home says "Personal cash" (cash + savings). Money says "Cash across group" and, under it, "of which personal cash and savings" equal to Home's figure; the difference is the cash in your companies. Company > Finances says "Company cash" | | NOT TESTED | | |
 | T9V.9 | Read Inbox messages and News with amounts over 10,000 | Written "£11k", "£2.5M", never "£11 k"; names such as "Mr M Smith" unchanged | | NOT TESTED | | |
 | T9V.10 | iPad sidebar | Team's icon lines up with the other tabs' titles | | NOT TESTED | | |
+
+### 9.C Company screens: creation flow, insurance, advisers, payroll, working from home (stage 3, company)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9.C1 | Company > + > pick a cafe | Top figures: start-up cost, what you have, and "Left for you" (or "Short by"). Below: city, legal form, size, name, premises, cost lines, risks, then "Review and start" | | NOT TESTED | | |
+| T9.C2 | In Premises pick the cheapest place, then the dearest; switch Rent to Buy | Premises line and total change each time; Buy shows price, down payment and the 15-year mortgage; "Left in your accounts" falls | | NOT TESTED | | |
+| T9.C3 | Review and start with a rented place | Confirmation states total, cash into the company, what you keep, the place, and the risk. After Start the company opens with that place (Equipment > Premises shows it) | | NOT TESTED | | |
+| T9.C4 | Same with Buy | Company owns the place (no rent), a commercial mortgage appears under its Loans | | NOT TESTED | | |
+| T9.C5 | Sole trader with very little cash | "Short by" shown, risk text says opening waits for money; if the account cannot cover registration and capital the button is disabled with the amount missing | | NOT TESTED | | |
+| T9.C6 | New company for a home trade (consultancy, plumber) | Premises says it starts at home with no rent; no place list | | NOT TESTED | | |
+| T9.C7 | A trade with franchise brands: open it, tab "Under a brand" | Brands for that trade with fee, strength, units; Apply, Meet, Start with this deal work as in Franchises; start screen shows left-over cash, risks and asks to confirm | | NOT TESTED | | |
+| T9.C8 | Company > Operations > Insurance and advisers (no insurer) | Policies are locked with "choose an insurer first"; tapping one shows that message | | NOT TESTED | | |
+| T9.C9 | Hire an insurer, switch on a policy, switch it off | Each asks first with the monthly cost; summary figures and the Operations row update; dropping the insurer asks and warns | | NOT TESTED | | |
+| T9.C10 | Hire a law firm and change the accountant (also a firm of your own, if you own one) | Fee per month shown before confirming; old one is dropped; accountant no longer appears as a separate block in Operations | | NOT TESTED | | |
+| T9.C11 | Operations of a home-trade company with 4+ people working at home | "Where you work" warns that morale and quality slip; "Find a workshop/office" lists places with rent, deposit, price | | NOT TESTED | | |
+| T9.C12 | Rent one with enough company cash; try with too little cash | Confirmation lists what leaves now; after: "Rented ..." and the section shows the place. With too little cash the button is disabled with "needs X more" | | NOT TESTED | | |
+| T9.C13 | Work from home again | Confirmation states the deposit returned (or sale value less mortgage); cash changes by that amount | | NOT TESTED | | |
+| T9.C14 | Finances > Payroll and bills, owner-run company with staff | "Payroll run" shows next pay day, amount, cash; "Approve this month's payroll" asks, then says approved; the same Inbox approval message does not pay twice | | NOT TESTED | | |
+| T9.C15 | Change who runs payroll to the accountant, then manager (company without a manager) | Fees shown per month; manager is locked with "Needs a manager first"; change confirmed and reported | | NOT TESTED | | |
+| T9.C16 | Let pay day pass without approving, then Run payroll now | Staff are paid, result reports amount paid and any shortfall | | NOT TESTED | | |
+
+### 9.C Contract discussion (stage 2, contracts) — screens NOT TESTED by hand (engine tests: ContractTalkTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.C1 | Company > Team > open a worker > "Contract discussion…" | One sheet with the topics Pay rise, Promotion, Hours, Pay basis, Bonus plan, Benefits, Notice, Move; unavailable ones are greyed with the reason. No separate raise menu, Promote or Contract and pay buttons remain on the profile | | NOT TESTED | | |
+| T9.C2 | Pay rise 3% / 6% / 10% | "What it means" shows cost a month with employer charges, chance they hand in notice within a year before and after, the country's minimum pay. Confirm: they take it at once, never refuse | | NOT TESTED | | |
+| T9.C3 | Promotion: choose a post, offer about half of what they ask | They answer with a higher figure (never a refusal); after a few rounds they take the post at what you offered and are unhappy | | NOT TESTED | | |
+| T9.C4 | Hours: set hours, offer full time to a part-timer, change seasons | Preview shows pay and hours; a person who wants part time says why in words | | NOT TESTED | | |
+| T9.C5 | Pay basis (seller): fixed, salary and commission, commission only | Commission only shows base 0; a security-minded person is warned they may resign | | NOT TESTED | | |
+| T9.C6 | Bonus plan: manager profit share, seller commission rate | Shows the monthly cost at recent profit; a profit share cannot be cut here | | NOT TESTED | | |
+| T9.C7 | Benefits: switch a perk on, give an estate agent an own car | Preview says it covers the whole company, shows cost and fewer people leaving; mileage cost for the car | | NOT TESTED | | |
+| T9.C8 | Notice: +4, +8, +12 weeks; later let the person go without cause | Dismissal confirmation shows the extra notice pay | | NOT TESTED | | |
+| T9.C9 | Move: a worker to another store of the chain, a manager to a company without one | Pay moves with them; the cost is unchanged; the old store is left short | | NOT TESTED | | |
+| T9.C10 | Inbox: a worker asks for a raise / promotion / shorter hours | Three buttons only: Agree, Delay, Decline. Agree gives what they ask | | NOT TESTED | | |
+| T9.C11 | Decline a request | The preview first showed the higher chance they leave; afterwards the profile mood says turned down | | NOT TESTED | | |
+| T9.C12 | Delay a request and do not answer for 4 weeks | They feel turned down (note in the activity log) | | NOT TESTED | | |
+| T9.C13 | Open a request, answer with a lower figure, close the app, reopen | The talk is still open at the same round | | NOT TESTED | | |
+| T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
+| T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

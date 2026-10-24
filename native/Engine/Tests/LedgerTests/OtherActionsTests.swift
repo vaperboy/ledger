@@ -32,7 +32,7 @@ final class OtherActionsTests: XCTestCase {
         let wage20 = m.monthlyWage
         // More hours, more pay (pay follows hours) unless the person studies and cannot.
         if m.num("maxH", 60) >= 30 {
-            XCTAssertEqual(e.setStaffHours(companyID: id, staffID: a, hours: 30), .ok)
+            XCTAssertTrue(e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, amount: 30, choice: "hours")).changedTerms)
             m = e.state.company(id)!.staff.first { $0.id == a }!
             XCTAssertEqual(m.monthlyWage, wage20 * 30 / 20, accuracy: 1e-6)
         }
@@ -43,13 +43,15 @@ final class OtherActionsTests: XCTestCase {
         let s = e.state.company(id)!.staff.first { $0.id == b }!
         XCTAssertTrue(s.isOffSeason)
         XCTAssertFalse(StaffTalks.seasonText(Array(other)).isEmpty)
-        XCTAssertTrue(e.toggleSeason(companyID: id, staffID: b, season: "summer"))
+        XCTAssertTrue(e.contractPropose(companyID: id, personID: b, proposal: .init(.hours, choice: "season:summer")).changedTerms)
         // Going full time is refused when it is not the work the person wants; once it works, hours and seasons are gone.
-        var results = Set<String>()
-        for _ in 0..<1 { results.insert("\(e.offerFullTime(companyID: id, staffID: a))") }
-        XCTAssertTrue(results.isSubset(of: ["ok", "refused", "student"]))
-        if results.contains("ok") { XCTAssertNil(e.state.company(id)!.staff.first { $0.id == a }!.weeklyHours) }
-        XCTAssertEqual(e.offerPartTime(companyID: id, staffID: a), .already)
+        let full = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, choice: "full"))
+        switch full {
+        case .agreed: XCTAssertNil(e.state.company(id)!.staff.first { $0.id == a }!.weeklyHours)
+        case .unwilling, .notPossible: break   // not the work they want, or a student: said in words
+        default: XCTFail("going full time is agreed, or the person is unwilling: \(full)")
+        }
+        if case .notPossible = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, choice: "part")) {} else { XCTFail("part time all year is for seasonal workers") }
     }
 
     func testTrialWeekPaysAndReveals() throws {

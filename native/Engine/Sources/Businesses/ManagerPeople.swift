@@ -247,12 +247,13 @@ extension ManagerModel {
         s.companies[ci].ownerHours = 40
     }
 
-    /// Give a raise (the "Give raise" button: 8 %). Original: `ACT.mgrraise` in ui/company/people.js.
-    public static func raiseManager(_ s: inout GameState, companyID: Int, data: GameData) {
-        guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil else { return }
+    /// Give the manager a raise (the contract talk's pay rise; the original's button gave 8 %, which still lifts the mood by the full 8 points).
+    /// Original: `ACT.mgrraise` in ui/company/people.js.
+    public static func raiseManager(_ s: inout GameState, companyID: Int, percent: Double = 0.08, data: GameData) {
+        guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil, percent > 0 else { return }
         let cur = World(state: s, data: data).currency(s.companies[ci])
-        s.companies[ci].managerMonthlyWage = cur.roundedStep(s.companies[ci].managerMonthlyWage * 1.08, about: 100)
-        s.companies[ci].set("mood", min(100, mood(s.companies[ci]) + 8))
+        s.companies[ci].managerMonthlyWage = cur.roundedStep(s.companies[ci].managerMonthlyWage * (1 + percent), about: 100)
+        s.companies[ci].set("mood", min(100, mood(s.companies[ci]) + 8 * min(1, percent / 0.08)))
     }
 
     static func mood(_ co: Company) -> Double { co.value("mood").isNull ? 60 : co.num("mood") }

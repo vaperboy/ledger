@@ -515,6 +515,7 @@ struct MarketView: View {
                             .font(.system(size: 12)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryMuted)
                         Text("Ambition: \(g.ambition)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                         let mine = e.rivalsOfGroup(g.id)
+                        NavigationLink { RivalGroupProfileView(groupID: g.id) } label: { Text("Open profile  ›").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
                         if !mine.isEmpty { Text("In your markets: " + mine.map { $0.rival.name }.joined(separator: ", ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
                         ForEach(Array(g.moves.prefix(3).enumerated()), id: \.offset) { _, m in
                             Text("Week \(m.week): \(m.text)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

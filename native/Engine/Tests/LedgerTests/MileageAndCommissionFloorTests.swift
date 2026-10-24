@@ -5,7 +5,8 @@ import Businesses
 import Employees
 import Simulation
 
-/// Stage 2 defects from the audit of cars, perks and commission: mileage booked twice, and commission-only pay below the minimum wage.
+/// Stage 2 defects from the audit of cars, perks and commission: mileage booked twice. Owner rule: commission only means NOTHING in base pay,
+/// whatever the minimum wage; "mix" keeps a real base and "fix" keeps its wage, both never under the minimum.
 final class MileageAndCommissionFloorTests: XCTestCase {
     private func estate(_ code: String, seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
@@ -36,7 +37,7 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         var (e, id) = try estate("UK")
         let pid = try hireAgent(&e, id)
         var withCar = e, without = e
-        XCTAssertEqual(withCar.toggleOwnCar(companyID: id, staffID: pid), true)
+        XCTAssertTrue(withCar.contractPropose(companyID: id, personID: pid, proposal: .init(.benefits, amount: 1, choice: "ownCar")).changedTerms)
         XCTAssertFalse(without.state.company(id)!.staff.first { $0.id == pid }!.flag("ownCar"))
         let weekly = World(state: e.state, data: e.data).currency(e.state.company(id)!).scaledPrice(4500) * 12 / 52
         func oth(_ g: GameEngine) -> Double { g.state.company(id)!.books.year["oth"] ?? 0 }
@@ -64,13 +65,18 @@ final class MileageAndCommissionFloorTests: XCTestCase {
             s.people[pid]!.set("sec", 0.1)
             var flags = s.company(id)!.value("flags"); flags["noquit"] = 1; s.companies[s.companyIndex(id)!].set("flags", flags)
         }
-        XCTAssertEqual(e.setPayModel(companyID: id, staffID: pid, mode: mode), .changed, code)
+        XCTAssertTrue(e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: mode)).changedTerms, code)
         func check(_ note: String) {
             let w = World(state: e.state, data: e.data)
             let co = e.state.company(id)!
             guard let m = co.staff.first(where: { $0.id == pid }) else { return }   // left by chance during the 26 weeks
             let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
-            XCTAssertGreaterThanOrEqual(m.monthlyWage, floor - 0.5, "\(code) \(mode) \(note): base \(m.monthlyWage) under minimum \(floor)")
+            if mode == "com" {
+                XCTAssertEqual(m.monthlyWage, 0, "\(code) commission only \(note): base pay must be nothing, was \(m.monthlyWage)")
+            } else {
+                XCTAssertGreaterThanOrEqual(m.monthlyWage, floor - 0.5, "\(code) \(mode) \(note): base \(m.monthlyWage) under minimum \(floor)")
+                XCTAssertGreaterThan(m.monthlyWage, 0, "\(code) \(mode) keeps a real base")
+            }
             XCTAssertEqual(m.commissionMode, mode == "fix" ? "fix" : mode)
         }
         check("after setting")
@@ -80,7 +86,7 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         guard mode != "fix" else { return }
     }
 
-    func testCommissionOnlyAndMixNeverFallBelowTheMinimumWageInSeveralCountries() throws {
+    func testCommissionOnlyHasNoBaseAndMixAndFixKeepTheMinimumWageInSeveralCountries() throws {
         for code in ["UK", "US", "MX", "PL"] {
             for mode in ["com", "mix", "fix"] {
                 try payModelFloor(code, mode: mode, hours: nil)
@@ -89,8 +95,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         }
     }
 
-    /// Commission still accrues on top of the floor: the smoothed commission feeds `commEma` once the seller has sales.
-    func testCommissionStillAccruesOnTopOfTheFloor() throws {
+    /// Commission still accrues with no base: the smoothed commission feeds `commEma` once the seller has sales.
+    func testCommissionStillAccruesWithNoBase() throws {
         var (e, id) = try estate("UK", seed: 3)
         let pid = try hireAgent(&e, id)
         e.update { s, _, _ in
@@ -98,7 +104,7 @@ final class MileageAndCommissionFloorTests: XCTestCase {
             var flags = s.company(id)!.value("flags"); flags["noquit"] = 1; s.companies[s.companyIndex(id)!].set("flags", flags)
             Ledger.move(&s, .company(id), 5_000_000, why: "Test funds")
         }
-        XCTAssertEqual(e.setPayModel(companyID: id, staffID: pid, mode: "com"), .changed)
+        XCTAssertTrue(e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: "com")).changedTerms)
         var accrued = 0.0, weeks = 0
         for _ in 0..<(26 * 7) {
             e.nextDay()
@@ -108,7 +114,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         }
         let co = try XCTUnwrap(e.state.company(id))
         let m = try XCTUnwrap(co.staff.first { $0.id == pid })
-        XCTAssertGreaterThanOrEqual(m.monthlyWage, World(state: e.state, data: e.data).minimumWage(co) - 0.5)
+        _ = co
+        XCTAssertEqual(m.monthlyWage, 0, "commission only stays without a base after 26 weeks")
         XCTAssertGreaterThan(accrued, 0, "commission accrued")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }

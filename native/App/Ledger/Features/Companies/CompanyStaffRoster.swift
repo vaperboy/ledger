@@ -155,7 +155,7 @@ struct StaffProfileView: View {
     var companyID: Int
     var staffID: Int
     @State private var pending: PendingAction?
-    @State private var promoting: StaffMember?
+    @State private var discussing = false
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let p = e.staffProfile(companyID: companyID, staffID: staffID) {
@@ -177,7 +177,7 @@ struct StaffProfileView: View {
             .ledgerBackground()
             .navigationTitle(co.name).navigationBarTitleDisplayMode(.inline)
             .confirmAction($pending)
-            .sheet(item: $promoting) { m in PromotionSheet(engine: e, company: co, member: m).environmentObject(store) }
+            .sheet(isPresented: $discussing) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
         } else {
             Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -224,18 +224,13 @@ struct StaffProfileView: View {
     @ViewBuilder private func actions(_ e: GameEngine, _ co: Company, _ m: StaffMember, _ p: StaffProfile.Profile, _ cur: Currency) -> some View {
         LedgerSection("What you can do") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
+                if let talk = e.contractTalk(personID: staffID), talk.isRequest {
+                    Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
+                }
+                Button("Contract discussion…") { discussing = true }.buttonStyle(GoldButtonStyle())
                 HStack {
-                    Menu("Give a raise") {
-                        ForEach([3, 6, 10], id: \.self) { pct in
-                            Button("\(pct)% · \(cur.tidyShort(p.monthlyWage * Double(pct) / 100)) more a month") { raise(pct, p, cur) }
-                        }
-                    }.buttonStyle(QuietButtonStyle())
                     if p.problem != nil { Button("Talk to them") { talk(p) }.buttonStyle(QuietButtonStyle()) }
                     Button("Written warning") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
-                }
-                HStack {
-                    Button("Promote…") { promoting = m }.buttonStyle(QuietButtonStyle())
-                    Menu("Contract and pay") { StaffContractMenu(engine: e, company: co, member: m) }.buttonStyle(QuietButtonStyle())
                 }
                 if !StaffExtras.missing(m).isEmpty {
                     Button("Paperwork done (\(StaffExtras.missing(m).count))") { store.act { $0.completePaperwork(companyID: companyID, personID: staffID) }; Haptics.success(); store.show("Paperwork done.", tone: "good") }
@@ -252,14 +247,6 @@ struct StaffProfileView: View {
                 Button("Let go…") { confirmDismiss(p, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
             }
         }
-    }
-
-    private func raise(_ pct: Int, _ p: StaffProfile.Profile, _ cur: Currency) {
-        let before = store.engine?.state.company(companyID)?.staff.first { $0.id == staffID }?.monthlyWage ?? p.monthlyWage
-        store.act { $0.raise(personID: staffID, companyID: companyID, percent: Double(pct) / 100) }
-        let after = store.engine?.state.company(companyID)?.staff.first { $0.id == staffID }?.monthlyWage ?? before
-        if after > before { Haptics.success(); store.show("\(p.name) now earns \(cur.display(after)) a month.", tone: "good") }
-        else { Haptics.warning(); store.show("The raise was not given.", tone: "warn") }
     }
 
     private func talk(_ p: StaffProfile.Profile) {
