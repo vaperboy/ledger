@@ -375,7 +375,7 @@ struct ManagerSheet: View {
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
             CandidateHireRow(person: p, currency: cur, subtitle: "Age \(p.age) · \(String(format: "%g", p.num("exp"))) yr · \(ManagerModel.typeTitles[p.str("mtype")] ?? "Manager")",
-                             factors: [1.0, 1.1, 1.25], offer: { wage in
+                             market: e.goingRate(for: .manager, companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in
                 let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: co.id, monthlyWage: wage) }, name: p.name, company: co.name)
                 if fb.isHired { candidates = []; store.show(fb.text, tone: "good") }
                 return fb
@@ -512,7 +512,7 @@ struct AssistantSheet: View {
         }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Place a job ad to see applicants." : "Everyone has taken another job. Place a new ad.") { p in
-            CandidateHireRow(person: p, currency: cur) { wage in
+            CandidateHireRow(person: p, currency: cur, market: e.goingRate(for: .assistant, companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
                 var fb = HireFeedback.from(store.act { $0.hireAssistant(personID: p.id, companyID: co.id, monthlyWage: wage) }, name: p.name, role: "Assistant manager")
                 if fb.isHired { candidates = []; fb = .hired("\(p.name) is your assistant manager. Pick their two jobs."); store.show(fb.text, tone: "good") }
                 return fb

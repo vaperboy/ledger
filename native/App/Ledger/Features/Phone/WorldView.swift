@@ -229,16 +229,9 @@ struct DataAnalystCard: View {
                         }
                         if !candidates.isEmpty {
                             CandidateHireList(people: candidates, emptyText: "") { p in
-                                CandidateHireRow(person: p, currency: e.homeCurrency, subtitle: "Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)") { wage in
-                                    let r = store.act { $0.hireDataAnalyst(personID: p.id, monthlyWage: wage) }
-                                    let feedback: HireFeedback
-                                    switch r {
-                                    case .ok?: feedback = .hired("\(p.name) starts as your data analyst.")
-                                    case .refused?: feedback = .declined("\(p.name) found that a bit low. Offer more or pick someone else.")
-                                    case .taken?: feedback = .unavailable("\(p.name) took another job.")
-                                    case .have?: feedback = .unavailable("You already have a data analyst.")
-                                    case nil: feedback = .unavailable("No game is loaded.")
-                                    }
+                                CandidateHireRow(person: p, currency: e.homeCurrency, subtitle: "Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)",
+                                                 market: e.goingRate(for: .analyst), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
+                                    let feedback = HireFeedback.from(store.act { $0.hireDataAnalyst(personID: p.id, monthlyWage: wage) }, name: p.name)
                                     if feedback.isHired { candidates = []; store.show(feedback.text, tone: "good") }
                                     return feedback
                                 }

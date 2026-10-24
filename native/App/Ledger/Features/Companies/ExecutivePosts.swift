@@ -114,7 +114,7 @@ struct ExecutivePosts: View {
 
     @ViewBuilder private func candidateList(_ p: Post, _ cur: Currency) -> some View {
         CandidateHireList(people: candidates.compactMap { engine.state.people[$0] }, emptyText: "Everyone on the shortlist has taken another job. Search again.") { c in
-            CandidateHireRow(person: c, currency: cur) { wage in hire(p, c, wage) }
+            CandidateHireRow(person: c, currency: cur, market: engine.goingRate(for: .executive(p.level)), factors: [0.9, 1.0, 1.15, 1.3]) { wage in hire(p, c, wage) }
         }
     }
 

@@ -141,7 +141,7 @@ struct TeamSlotSheet: View {
         }
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
-            CandidateHireRow(person: p, currency: cur) { wage in
+            CandidateHireRow(person: p, currency: cur, market: e.goingRate(for: .team(key: slot.key), companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
                 let r = store.act { $0.hireTeam(companyID: co.id, key: slot.key, personID: p.id, monthlyWage: wage) }
                 let fb = HireFeedback.from(r, name: p.name, role: slot.title)
                 if fb.isHired { candidates = []; store.show(fb.text, tone: "good") }

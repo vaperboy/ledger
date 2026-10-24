@@ -168,7 +168,7 @@ struct SuccessorSection: View {
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
                 CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
-                    CandidateHireRow(person: p, currency: cur, factors: [1.0, 1.1, 1.25], offer: { wage in
+                    CandidateHireRow(person: p, currency: cur, market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in
                         let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }, name: p.name, company: company.name)
                         if fb.isHired { store.show(fb.text, tone: "good") }
                         return fb
