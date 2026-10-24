@@ -59,8 +59,9 @@ public enum StaffRoutine {
             if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
                 overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked)
             }
-            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base).
-            do {
+            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base of "mix").
+            // Commission only has no base and is never lifted.
+            if m.commissionMode != "com" {
                 let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
                 if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
             }
