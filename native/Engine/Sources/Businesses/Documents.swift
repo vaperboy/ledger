@@ -69,6 +69,17 @@ public enum Documents {
         return jsRound(Currency.nicePrice(c / fx) * fx)
     }
 
+    /// How many weeks an application takes for this company: the document's own weeks, longer abroad (the country's bureaucracy, shorter
+    /// with a head office there), shorter for an owner-run law practice. What `apply` waits and what a quote shows are the same number.
+    public static func waitWeeks(_ id: String, definition dd: Definition, company co: Company, _ w: World) -> Int {
+        let s = w.state
+        var weeks = Double(dd.weeks)
+        if co.countryCode != s.homeCountryCode { weeks = (weeks * w.country(co).bureaucracy * (s.hasHeadOffice("cd_" + co.countryCode) ? 0.6 : 1.4)).rounded(.up) }
+        if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
+        if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
+        return Int(weeks)
+    }
+
     public enum ApplyResult: Equatable { case ok, alreadyHeld, notEnoughCash, pickAccountant }
 
     /// Apply for a document: pay the fee, wait the weeks. Original: `applyDoc`.
@@ -82,11 +93,7 @@ public enum Documents {
         if id == "accountant_agreement" && co.value("acc").isNull { return .pickAccountant }
         let fee = cost(id, company: co, bd, w)
         if fee > 0 && co.cash < fee { return .notEnoughCash }
-        let abroad = co.countryCode != s.homeCountryCode
-        var weeks = Double(dd.weeks)
-        if abroad { weeks = (weeks * w.country(co).bureaucracy * (s.hasHeadOffice("cd_" + co.countryCode) ? 0.6 : 1.4)).rounded(.up) }
-        if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
-        if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
+        let weeks = Double(waitWeeks(id, definition: dd, company: co, w))
         if fee > 0 { Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Application: \(dd.name)") }
         var docs = s.companies[i].value("docs")
         docs[id] = .object(["st": .string(weeks <= 0 ? "ok" : "applied"), "done": .number(Double(s.week) + weeks), "w0": .number(Double(s.week))])
