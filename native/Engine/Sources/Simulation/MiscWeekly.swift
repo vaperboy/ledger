@@ -9,6 +9,7 @@ import Businesses
 enum MiscWeekly {
     static func run(_ s: inout GameState, data: GameData, context: FinanceContext) {
         StaffProfile.trackWeek(&s)
+        ContractTalk.weekly(&s, data: data)
         PremisesExtras.weekly(&s, data: data)
         Luxury.ownerWeek(&s)
         Luxury.riskChecks(&s, data: data)

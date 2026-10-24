@@ -49,10 +49,4 @@ public extension GameEngine {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return false }
         return PersonalEquipment.offersOwnCar(co, bd)
     }
-    /// Switch someone between the company car and their own car with mileage. Returns the new state (true: own car).
-    @discardableResult mutating func toggleOwnCar(companyID: Int, staffID: Int) -> Bool? {
-        var r: Bool?
-        update { s, _, _ in r = PersonalEquipment.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
-        return r
-    }
 }

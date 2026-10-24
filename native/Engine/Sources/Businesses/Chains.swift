@@ -229,11 +229,11 @@ public enum Chains {
 
     /// Lend the least skilled person of a role from one store of a chain to another. Original: `ACT.ch12lend`.
     @discardableResult
-    public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, data: GameData) -> Bool {
+    public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, staffID: Int? = nil, data: GameData) -> Bool {
         guard let a = s.companyIndex(fromID), let b = s.companyIndex(toID), a != b,
               let ca = chain(s, of: s.companies[a]), let cb = chain(s, of: s.companies[b]), ca["id"].int == cb["id"].int else { return false }
         let tables = data.catalog.tables
-        let pick = s.companies[a].staff.filter { $0.role == role }
+        let pick = s.companies[a].staff.filter { staffID == nil ? $0.role == role : $0.id == staffID }   // a named person (the contract talk), else the least skilled of the role
             .min { StaffModel.skill($0, person: s.people[$0.id], salesRoles: tables.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: tables.salesRoles) }
         guard let m = pick else { return false }
         s.companies[a].staff = s.companies[a].staff.filter { $0.id != m.id }

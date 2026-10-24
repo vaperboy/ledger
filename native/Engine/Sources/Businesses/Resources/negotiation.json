@@ -24,6 +24,14 @@
   "overreach": [0.25, 0.8],
   "insult": 0.7,
   "memoryWeeks": 8,
+  "contract": {
+    "about": "Contract discussions with a person who already works for you (ContractTalk.swift). Behaviour only, no money: pay figures come from the person's pay, the going rate and the country's labour data.",
+    "delayWeeks": 4,
+    "noticeExtraWeeks": [4, 8, 12],
+    "promotionAsk": { "tenureWeeks": 52, "skill": 60, "everyWeeks": 26, "personalities": ["driven"] },
+    "hoursAsk": { "tired": 60, "everyWeeks": 26, "keepShare": 0.75, "minHours": 10 },
+    "yearWeeks": 52
+  },
   "autoHire": {
     "owner": { "reading": 0.35, "push": 0.3, "breadth": 0.4 },
     "experienceFull": 12,

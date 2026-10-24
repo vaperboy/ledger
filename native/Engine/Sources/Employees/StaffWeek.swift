@@ -8,6 +8,8 @@ public enum StaffEvent: Equatable, Sendable {
     case leave(staffID: Int)          // notice period over: gone
     case payAsk(staffID: Int)
     case fixedSalaryAsk(staffID: Int)
+    case promotionAsk(staffID: Int)
+    case hoursAsk(staffID: Int)
     case problem(staffID: Int, trait: String)
 }
 

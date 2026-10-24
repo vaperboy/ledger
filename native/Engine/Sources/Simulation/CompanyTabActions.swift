@@ -101,14 +101,4 @@ public extension GameEngine {
         update { s, d, _ in r = StaffProfile.layOff(&s, companyID: companyID, count: count, data: d) }
         return r
     }
-    @discardableResult mutating func setPayModel(companyID: Int, staffID: Int, mode: String) -> StaffProfile.PayResult {
-        var r = StaffProfile.PayResult.unknown
-        update { s, d, _ in r = StaffProfile.setPayModel(&s, companyID: companyID, staffID: staffID, mode: mode, data: d) }
-        return r
-    }
-    @discardableResult mutating func setCommissionRate(companyID: Int, staffID: Int, rate: Double) -> Bool {
-        var r = false
-        update { s, _, _ in r = StaffProfile.setCommissionRate(&s, companyID: companyID, staffID: staffID, rate: rate) }
-        return r
-    }
 }
