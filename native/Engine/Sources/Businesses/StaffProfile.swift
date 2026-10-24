@@ -226,8 +226,10 @@ public enum StaffProfile {
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
         let mk = cur.roundedStep(marketPay(s, co, co.staff[k], data: data) * (0.7 + n.skill / 160), about: 100)
+        // The base pay (all of it for "fix", the fixed part for "mix" and "com") never goes under the country's minimum wage for the contracted hours.
+        let floor = World(state: s, data: data).minimumWage(co, hours: co.staff[k].weeklyHours ?? StaffModel.fullWeekHours).rounded(.up)
         var st = co.staff
-        st[k].monthlyWage = mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : mode == "mix" ? cur.roundedStep(mk * 0.6, about: 100) : 0
+        st[k].monthlyWage = max(floor, mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : mode == "mix" ? cur.roundedStep(mk * 0.6, about: 100) : 0)
         st[k].set("pay", .object(["m": .string(mode), "rate": .number(rate)]))
         st[k].set("commEma", 0)
         s.companies[i].staff = st

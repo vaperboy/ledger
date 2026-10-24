@@ -59,8 +59,8 @@ public enum StaffRoutine {
             if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
                 overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked)
             }
-            // The minimum wage moves with inflation: pay that has fallen under it is lifted.
-            if paidByWage {
+            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base).
+            do {
                 let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
                 if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
             }
@@ -87,9 +87,6 @@ public enum StaffRoutine {
         s.companies[i] = co
         for (id, p) in changedPeople { s.people[id] = p }
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
-        // Agents who use their own car are paid mileage. Original: vehicle week (features/company/realistic_buying.js).
-        let ownCars = co.staff.filter { $0.num("ownCar") != 0 && !$0.isOffSeason }.count
-        if ownCars > 0 { Payments.companyPays(&s, companyID: co.id, amount: w.currency(co).scaledPrice(4500) * 12 / 52 * Double(ownCars), category: "oth", label: "Mileage for own cars") }
         if lifted > 0 { s.note("\(lifted) \(lifted == 1 ? "person's pay was" : "people's pay was") raised to the new minimum wage at \(co.name).", companyID: co.id) }
         if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerSocial), category: "wages", label: "Overtime pay") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
