@@ -438,8 +438,8 @@ final class ContractTalkTests: XCTestCase {
     }
 
     func testPromotionRequestFromAnAmbitiousWorker() throws {
-        var (e, id) = try shop("estate")
-        let pid = hire(&e, id, role: "estate", pers: "driven")
+        var (e, id) = try shop()
+        let pid = hire(&e, id, pers: "driven")
         e.update { s, _, _ in
             let ci = s.companyIndex(id)!
             let k = s.companies[ci].staff.firstIndex { $0.id == pid }!
@@ -449,12 +449,12 @@ final class ContractTalkTests: XCTestCase {
         let ev = ContractTalk.requestTrigger(member(e, id, pid)!, e.state.people[pid]!, company: e.state.company(id)!, week: e.state.week, salesRoles: e.salesRoles, tenure: 60)
         XCTAssertEqual(ev, .promotionAsk(staffID: pid))
         ask(&e, id, pid, .promotion)
-        guard let talk = e.contractTalk(personID: pid) else { throw XCTSkip("no higher role in this trade") }
+        let talk = try XCTUnwrap(e.contractTalk(personID: pid), "a driven, skilled worker asks for the next role")
         XCTAssertEqual(talk.proposal.topic, .promotion)
         guard case .counter(let want, _, _) = e.contractRespond(companyID: id, personID: pid, decision: .counter(talk.proposal.amount * 0.5)) else { return XCTFail("they ask for more") }
         XCTAssertGreaterThanOrEqual(want, talk.proposal.amount * 0.5)
         guard case .agreed = e.contractRespond(companyID: id, personID: pid, decision: .accept) else { return XCTFail("accept") }
-        XCTAssertNotEqual(member(e, id, pid)?.role, "estate")
+        XCTAssertNotEqual(member(e, id, pid)?.role, "barista")
     }
 
     // MARK: Delegation and saves
