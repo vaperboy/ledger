@@ -53,7 +53,30 @@ public extension GameEngine {
         update { s, d, _ in Chains.join(&s, chainID: chainID, companyID: companyID, rename: rename, data: d) }
     }
 
-    mutating func setChainRule(chainID: Int, rule: Chains.Rule) { update { s, _, _ in Chains.setRule(&s, chainID: chainID, rule: rule) } }
+    /// The trade a chain runs (its "how you sell" choices are the chain's to standardise).
+    func chainTrade(chainID: Int) -> Trade? { Chains.chain(state, id: chainID).flatMap { data.catalog[$0["type"].string] } }
+
+    /// What a chain-wide standard for a knob would cost each store (a single-choice option index, or the bit mask of a multi-choice knob).
+    func chainKnobPlan(chainID: Int, knob: String, value: Int) -> Chains.KnobStandardPlan? { Chains.knobStandardPlan(state, chainID: chainID, knob: knob, value: value, data: data) }
+
+    /// Make it the chain's mandatory standard; each store changes over on its own terms. Returns who changed and who could not.
+    @discardableResult
+    mutating func setChainKnob(chainID: Int, knob: String, value: Int) -> Chains.KnobStandardPlan {
+        var out = Chains.KnobStandardPlan(lines: [])
+        update { s, d, _ in out = Chains.setKnobStandard(&s, chainID: chainID, knob: knob, value: value, data: d) }
+        return out
+    }
+
+    /// Leave this choice to each store.
+    mutating func releaseChainKnob(chainID: Int, knob: String) { update { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) } }
+
+    mutating func setChainRule(chainID: Int, rule: Chains.Rule) {
+        update { s, d, _ in
+            // A new knob standard is a changeover for every store it governs, not a silent overwrite.
+            if case .knob(let id, let o) = rule { Chains.setKnobStandard(&s, chainID: chainID, knob: id, value: o, data: d) }
+            else { Chains.setRule(&s, chainID: chainID, rule: rule) }
+        }
+    }
     mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) { update { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) } }
 
     mutating func openChainStore(chainID: Int, cityID: String, size: Double) -> Result<Int, CompanySetup.StartError> {
