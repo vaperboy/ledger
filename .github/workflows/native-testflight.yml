@@ -4,6 +4,9 @@ name: Native iOS TestFlight upload
 # Needs these repository secrets (Settings > Secrets and variables > Actions): see native/docs/TESTFLIGHT.md
 #   APPLE_TEAM_ID, IOS_BUNDLE_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64
 on:
+  # Runs when this branch is pushed (a workflow can only be started by name from the default branch).
+  push:
+    branches: [ testflight-build ]
   workflow_dispatch:
     inputs:
       ref:
@@ -16,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || github.ref }}
       - name: Check the secrets are set
         env:
           T: ${{ secrets.APPLE_TEAM_ID }}

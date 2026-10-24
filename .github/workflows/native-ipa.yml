@@ -3,6 +3,9 @@ name: Native iOS unsigned IPA (for sideloading)
 # Manual only. Builds the app without signing and uploads Ledger-unsigned.ipa as a downloadable artifact.
 # The IPA must be signed on your side (Sideloadly or AltStore with a free Apple ID); see native/docs/SIDELOAD.md.
 on:
+  # Runs when this branch is pushed (a workflow can only be started by name from the default branch).
+  push:
+    branches: [ ipa-build ]
   workflow_dispatch:
     inputs:
       ref:
@@ -15,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || github.ref }}
       - name: Use the newest installed Xcode
         run: |
           X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)

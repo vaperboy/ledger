@@ -15,7 +15,7 @@ I (the assistant) cannot create Apple accounts, keys or secrets. These steps are
 5. In App Store Connect > your app > TestFlight, add yourself as an **internal tester** (your Apple ID must be on the team).
 
 ## Each build
-GitHub > Actions > "Native iOS TestFlight upload" > Run workflow (default branch `native-swiftui`). When it finishes, App Store Connect processes the build (10 to 30 minutes), then the TestFlight app on your phone offers it. The build number is the workflow run number.
+Push the code to the trigger branch: `git push origin native-swiftui:testflight-build --force` (or ask the assistant), then watch Actions > "Native iOS TestFlight upload". When it finishes, App Store Connect processes the build (10 to 30 minutes), then the TestFlight app on your phone offers it. The build number is the workflow run number.
 
 ## Known limits
 - The app icon is a plain placeholder (gold L on dark) so uploads validate; replace `AppIcon.png` when you have a real one.
