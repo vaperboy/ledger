@@ -61,7 +61,7 @@ extension ManagerModel {
         return SeasonalPlan(role: role, months: ms, count: n, monthlyCost: marketWage(s, co, role: role, data: data) * 0.67 * Double(n))
     }
 
-    /// Hire seasonal workers from the people the manager knows: the middle of the cheaper half of the asks, a little over the ask.
+    /// Hire seasonal workers from the people the manager knows, weighed and bargained with by `AutoHire`.
     /// Returns how many said yes. Original: `hireSeasonal`.
     @discardableResult
     public static func hireSeasonalCrew(_ s: inout GameState, companyID: Int, role: String, months: [Int], count: Int, hours: Double = 25, data: GameData) -> Int {

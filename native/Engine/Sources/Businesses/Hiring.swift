@@ -229,7 +229,6 @@ public enum Hiring {
         if wage0 > offered { s.note("The offer to \(n0.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
         let part = terms.isPartTime
         let (basis, factor) = payBasis(n0, terms: terms, fixedSalaryRoles: fixedSalaryRoles)
-        let wage = wage0 * factor
         let reply = answer(personID: personID, employer: companyID, rank: "worker", offer: wage0, factor: factor,
                            currency: world.currency(s.companies[ci]), about: 100, state: &s)
         switch reply.answer {
