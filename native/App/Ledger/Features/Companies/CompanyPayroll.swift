@@ -17,6 +17,7 @@ struct CompanyPayroll: View {
         let o = engine.financeOverview(companyID: company.id)
         let due = o.upcoming.filter { $0.id == "pay\(company.id)" || $0.id == "bills\(company.id)" }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            CompanyPayrollRun(engine: engine, company: company)
             if let info = engine.paydayInfo(companyID: company.id) {
                 paydaySection(info)
             }

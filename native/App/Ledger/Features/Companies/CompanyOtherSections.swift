@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// Small flat sections of a company that belong to no bigger screen: customer complaints, developing something new, giving up the
-/// premises, changing the accountant. Placed at the end of Operations. Ivory Ledger rows, no boxes.
+/// Small flat sections of a company that belong to no bigger screen: customer complaints, developing something new, (giving up premises and changing the
+/// accountant moved to Workplace and Insurance and advisers). Placed at the end of Operations. Ivory Ledger rows, no boxes.
 struct CompanyOtherSections: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -15,8 +15,6 @@ struct CompanyOtherSections: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             complaints
             development
-            premises
-            accountant
         }
     }
 
@@ -92,45 +90,6 @@ struct CompanyOtherSections: View {
         case .notEnoughCash?: store.show("Not enough cash in the company.", tone: "warn")
         case .busy?: store.show("One project at a time.", tone: "warn")
         default: store.show("Not possible right now.", tone: "warn")
-        }
-    }
-
-    // MARK: Premises and accountant
-
-    @ViewBuilder private var premises: some View {
-        let prem = company.value("prem")
-        if company.status == .open, engine.tradeInfo(companyID: company.id)?.premisesKind == "home", prem["m2"].double > 0 {
-            LedgerSection("Premises") {
-                HStack {
-                    Text(prem["owned"].bool ? "You own this place" : "Rented place").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Spacer()
-                    Button("Work from home again") {
-                        if store.act({ $0.giveUpPremises(companyID: company.id) }) == true { Haptics.success(); store.show("Everyone works from home again.", tone: "n") }
-                    }.buttonStyle(QuietButtonStyle())
-                }
-                Text(prem["owned"].bool ? "The building is sold at today's value and the mortgage paid off." : "The deposit comes back.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }
-        }
-    }
-
-    @ViewBuilder private var accountant: some View {
-        let choices = engine.accountantChoices(companyID: company.id)
-        if choices.count > 1, company.status.isLive {
-            let cur = engine.currency(for: company)
-            LedgerSection("Accountant") {
-                ForEach(Array(choices.enumerated()), id: \.offset) { n, a in
-                    if n > 0 { Hairline() }
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(a.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("\(cur.tidyShort(a.fee)) a month · rated \(String(format: "%.1f", a.rating))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        if a.current { Chip(text: "Yours", tint: Theme.gain) }
-                        else { Button("Hire") { if store.act({ $0.changeAccountant(companyID: company.id, accountantID: a.id) }) == true { store.show("Accountant hired.", tone: "good") } }.buttonStyle(QuietButtonStyle()) }
-                    }
-                }
-            }
         }
     }
 }

@@ -164,6 +164,26 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
 | T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
 
+### 9.C Company screens: creation flow, insurance, advisers, payroll, working from home (stage 3, company)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9.C1 | Company > + > pick a cafe | Top figures: start-up cost, what you have, and "Left for you" (or "Short by"). Below: city, legal form, size, name, premises, cost lines, risks, then "Review and start" | | NOT TESTED | | |
+| T9.C2 | In Premises pick the cheapest place, then the dearest; switch Rent to Buy | Premises line and total change each time; Buy shows price, down payment and the 15-year mortgage; "Left in your accounts" falls | | NOT TESTED | | |
+| T9.C3 | Review and start with a rented place | Confirmation states total, cash into the company, what you keep, the place, and the risk. After Start the company opens with that place (Equipment > Premises shows it) | | NOT TESTED | | |
+| T9.C4 | Same with Buy | Company owns the place (no rent), a commercial mortgage appears under its Loans | | NOT TESTED | | |
+| T9.C5 | Sole trader with very little cash | "Short by" shown, risk text says opening waits for money; if the account cannot cover registration and capital the button is disabled with the amount missing | | NOT TESTED | | |
+| T9.C6 | New company for a home trade (consultancy, plumber) | Premises says it starts at home with no rent; no place list | | NOT TESTED | | |
+| T9.C7 | A trade with franchise brands: open it, tab "Under a brand" | Brands for that trade with fee, strength, units; Apply, Meet, Start with this deal work as in Franchises; start screen shows left-over cash, risks and asks to confirm | | NOT TESTED | | |
+| T9.C8 | Company > Operations > Insurance and advisers (no insurer) | Policies are locked with "choose an insurer first"; tapping one shows that message | | NOT TESTED | | |
+| T9.C9 | Hire an insurer, switch on a policy, switch it off | Each asks first with the monthly cost; summary figures and the Operations row update; dropping the insurer asks and warns | | NOT TESTED | | |
+| T9.C10 | Hire a law firm and change the accountant (also a firm of your own, if you own one) | Fee per month shown before confirming; old one is dropped; accountant no longer appears as a separate block in Operations | | NOT TESTED | | |
+| T9.C11 | Operations of a home-trade company with 4+ people working at home | "Where you work" warns that morale and quality slip; "Find a workshop/office" lists places with rent, deposit, price | | NOT TESTED | | |
+| T9.C12 | Rent one with enough company cash; try with too little cash | Confirmation lists what leaves now; after: "Rented ..." and the section shows the place. With too little cash the button is disabled with "needs X more" | | NOT TESTED | | |
+| T9.C13 | Work from home again | Confirmation states the deposit returned (or sale value less mortgage); cash changes by that amount | | NOT TESTED | | |
+| T9.C14 | Finances > Payroll and bills, owner-run company with staff | "Payroll run" shows next pay day, amount, cash; "Approve this month's payroll" asks, then says approved; the same Inbox approval message does not pay twice | | NOT TESTED | | |
+| T9.C15 | Change who runs payroll to the accountant, then manager (company without a manager) | Fees shown per month; manager is locked with "Needs a manager first"; change confirmed and reported | | NOT TESTED | | |
+| T9.C16 | Let pay day pass without approving, then Run payroll now | Staff are paid, result reports amount paid and any shortfall | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|
