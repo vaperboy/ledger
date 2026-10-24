@@ -96,6 +96,33 @@ final class HireOnePathTests: XCTestCase {
         XCTAssertFalse(e.state.company(id)!.staff.first { $0.id == b }!.value("seas").isNull)
     }
 
+    // MARK: One answer for every kind of hire, one door for automatic hiring
+
+    /// Every kind of hire asks the candidate through `Hiring.answer` (the shared Negotiation); nobody keeps a private acceptance rule any more.
+    func testEveryKindOfHireAnswersThroughTheSharedNegotiation() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Businesses")
+        for file in ["ManagerPeople.swift", "ManagerTeam.swift", "Headquarters.swift", "MarketMap.swift"] {
+            let text = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            XCTAssertTrue(text.contains("Hiring.answer("), "\(file) asks the candidate through Hiring.answer")
+            XCTAssertFalse(text.contains("/ 0.14, 0, 1)") || text.contains("/ 0.18, 0, 1)"), "\(file) has its own acceptance ramp")
+        }
+        let hiring = try String(contentsOf: root.appendingPathComponent("Hiring.swift"), encoding: .utf8)
+        XCTAssertFalse(hiring.contains("s.random.chance(p)"), "Hiring.hire has no private acceptance ramp")
+    }
+
+    /// Automatic hiring (policy, manager, seasonal, set-up, boss) offers through `AutoHire` only; the only other direct callers of `Hiring.hire` are
+    /// the engine's player action, the acquisition of a rival's staff and the faithful-to-the-original set-up used by the comparison tests.
+    func testAutomaticHiringHasOneDoor() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources")
+        var callers: [String] = []
+        for case let url as URL in FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)! where url.pathExtension == "swift" {
+            if try String(contentsOf: url, encoding: .utf8).contains("Hiring.hire(") { callers.append(url.lastPathComponent) }
+        }
+        XCTAssertTrue(Set(callers).isSubset(of: ["AutoHire.swift", "MiscActions.swift", "RivalAbsorb.swift", "CompanySetup.swift"]), "\(callers)")
+        XCTAssertTrue(callers.contains("AutoHire.swift"))
+        XCTAssertFalse(callers.contains("AutoStaff.swift") || callers.contains("ManagerWeek.swift") || callers.contains("ManagerSeasonal.swift"))
+    }
+
     // MARK: Only one function makes staff records
 
     func testOnlyHiringHireCreatesStaffFromACandidate() throws {

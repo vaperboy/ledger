@@ -373,7 +373,7 @@ extension ManagerModel {
     public static func hireExecutive(_ s: inout GameState, level: ExecLevel, personID: Int, monthlyWage w: Double, chainID: Int?, city: String?, data: GameData) -> OfferResult {
         guard let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
-        let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 1000, state: &s)
+        let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
         let cur = playerCurrency(s, data)
