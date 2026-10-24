@@ -196,7 +196,7 @@ public enum Hiring {
         guard var n = s.people[personID] else { return Negotiation.Response(.refuse) }
         var talk = Negotiation.State.resume(n, party: employer, week: s.week)
         let r = Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
-                                    week: s.week, currency: currency, about: about, random: &s.random)
+                                    week: s.week, step: currency.stepSize(about: about), random: &s.random)
         switch r.answer {
         case .accept: Negotiation.State().store(in: &n)
         case .walkAway:
@@ -214,7 +214,7 @@ public enum Hiring {
     public static func probe(_ n: Person, offer: Double, factor: Double = 1, rank: String, talk: inout Negotiation.State, currency: Currency, about: Double,
                              state s: inout GameState) -> Negotiation.Response {
         Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
-                            week: s.week, currency: currency, about: about, random: &s.random)
+                            week: s.week, step: currency.stepSize(about: about), random: &s.random)
     }
 
     /// Make an offer. At or above what the person would settle for (hidden from the player) they accept; below it they counter, refuse an insult,

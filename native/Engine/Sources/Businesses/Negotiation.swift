@@ -141,6 +141,13 @@ public enum Negotiation {
         return Position(opening: opening, reservation: reservation, direction: direction)
     }
 
+    /// The same from the other end: the figure it would settle for is known (`reservation`, from the caller's own rules), and it opens a little beyond it.
+    public static func position(reservation: Double, direction: Direction, temperament t: Temperament, key: String) -> Position {
+        let share = t.reservation.lowerBound + (t.reservation.upperBound - t.reservation.lowerBound) * HashedRandom.first("res:\(key)")
+        let opening = direction == .higher ? reservation / max(share, 0.01) : reservation * share
+        return Position(opening: opening, reservation: reservation, direction: direction)
+    }
+
     // MARK: A talk that is open
 
     public struct State: Equatable, Sendable {
@@ -178,10 +185,10 @@ public enum Negotiation {
     // MARK: The answer
 
     /// Answer one offer. `state` is updated (a round used, the standing counter); when the answer is accept or walk away the caller
-    /// closes the talk (`State()`), and on a walk away tells the player in words. `currency`/`about` round a counter to a tidy figure
+    /// closes the talk (`State()`), and on a walk away tells the player in words. `step` is the tidy step a counter is rounded to,
     /// in the other side's favour, so accepting it is always accepted.
     public static func respond(offer: Double, position p: Position, temperament t: Temperament, rank: String, state: inout State, week: Int,
-                               currency: Currency, about: Double, random: inout DeterministicRandom) -> Response {
+                               step: Double, random: inout DeterministicRandom) -> Response {
         if p.accepts(offer) { return Response(.accept) }
         let patience = patience(rank: rank, temperament: t)
         if state.round >= patience { return Response(.walkAway) }
@@ -201,7 +208,6 @@ public enum Negotiation {
             let extra = random.range(tables.overreach.lowerBound, tables.overreach.upperBound)
             figure = p.direction == .higher ? figure * (1 + extra) : figure / (1 + extra)
         }
-        let step = currency.stepSize(about: about)
         figure = p.direction == .higher ? (figure / step).rounded(.up) * step : (figure / step).rounded(.down) * step
         state.counter = figure
         return Response(.counter(Counter(amount: figure, isFinal: isFinal)), unrealistic: unrealistic)

@@ -11,7 +11,7 @@ final class NegotiationTests: XCTestCase {
 
     private func respond(_ offer: Double, _ p: Negotiation.Position, _ t: Negotiation.Temperament, rank: String = "worker",
                          state: inout Negotiation.State, random: inout DeterministicRandom) -> Negotiation.Response {
-        Negotiation.respond(offer: offer, position: p, temperament: t, rank: rank, state: &state, week: 5, currency: cur, about: 100, random: &random)
+        Negotiation.respond(offer: offer, position: p, temperament: t, rank: rank, state: &state, week: 5, step: cur.stepSize(about: 100), random: &random)
     }
     private var steady: Negotiation.Temperament { Negotiation.temperament(id: "steady")! }
 
