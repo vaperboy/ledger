@@ -114,6 +114,8 @@ struct CompanyManagement: View {
 
 /// The store manager's sheet: performance, what they decide, duties, profit share, talks and pay, replacing them; or hiring one.
 struct ManagerSheet: View {
+    @State private var discussing: ContractTalk.Topic?
+    @State private var discussingOpen = false
     @EnvironmentObject var store: GameStore
     var companyID: Int
     @Binding var candidates: [Int]
@@ -131,6 +133,9 @@ struct ManagerSheet: View {
             }
         }
         .confirmAction($pending)
+        .sheet(isPresented: Binding(get: { discussing != nil || discussingOpen }, set: { if !$0 { discussing = nil; discussingOpen = false } })) {
+            if let mid = store.engine?.state.company(companyID)?.managerID { ContractDiscussionView(companyID: companyID, personID: mid, startTopic: discussing).environmentObject(store) }
+        }
     }
 
     // MARK: Managing the manager
@@ -266,36 +271,14 @@ struct ManagerSheet: View {
                     FlatRow(label: "Average monthly profit, last 3 months", value: cur.tidyShort(pv.averageMonthlyProfit), rule: false)
                     if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.tidyShort(pv.monthlyCost)) a month") }
                     if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.tidyShort(pv.lastPaid)) }
-                    Menu {
-                        ForEach([0.0, 0.05, 0.1, 0.15, 0.2, 0.3], id: \.self) { x in
-                            Button(x == 0 ? "No profit share" : "\(Int(x * 100))%") { askShare(x, co, m, cur) }
-                        }
-                    } label: {
-                        Text(pv.current > 0 ? "Change the share" : "Offer a profit share").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    }
+                    Button(pv.current > 0 ? "Change the share in the contract discussion" : "Offer a profit share in the contract discussion") { discussing = .bonus }
+                        .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                 }
             }
         }
     }
 
-    private func askShare(_ x: Double, _ co: Company, _ m: Person, _ cur: Currency) {
-        guard let pv = store.engine?.managerProfitBonusPreview(companyID: co.id, share: x) else { return }
-        let pct = Int((x * 100).rounded())
-        pending = PendingAction(
-            title: x == 0 ? "Stop \(m.name)'s profit share?" : "Give \(m.name) \(pct)% of profit?",
-            message: x == 0
-                ? "Saves about \(cur.tidyShort(pv.averageMonthlyProfit * pv.current)) a month at recent profit. They lose part of their pay, which they will not like."
-                : "Cost: about \(cur.tidyShort(pv.monthlyCost)) a month at the recent average profit of \(cur.tidyShort(pv.averageMonthlyProfit)), employer costs included; more in a good month, nothing in a loss month. Benefit: their pay follows the profit, and the share moves with them if you move them. Risk: you pay it on profit they did not make.",
-            button: x == 0 ? "Stop the share" : "Set \(pct)%") {
-                store.act { $0.setManagerProfitBonus(companyID: co.id, share: x) }
-                let now = store.engine?.state.company(co.id)?.managerProfitBonus ?? -1
-                if abs(now - min(0.3, x)) < 0.0001 { store.show(x == 0 ? "No profit share now." : "\(m.name) now gets \(pct)% of each month's profit.", tone: "good"); Haptics.success() }
-                else { store.show("The share could not be set.", tone: "warn") }
-            }
-    }
-
     @ViewBuilder private func talks(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        let free = e.state.companies.filter { $0.id != co.id && $0.managerID == nil && $0.status.isLive && $0.type != "hold" && $0.type != "club" }
         LedgerSection("Talk and pay") {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 16) {
@@ -311,33 +294,10 @@ struct ManagerSheet: View {
                             }
                         }
                     }
-                    Button("Give a raise") {
-                        let next = cur.roundedStep(co.managerMonthlyWage * 1.08, about: 100)
-                        pending = PendingAction(title: "Give \(m.name) a raise?",
-                                                message: "Cost: their pay goes from \(cur.tidyShort(co.managerMonthlyWage)) to about \(cur.tidyShort(next)) a month. Benefit: a happier manager is less likely to leave or slack. Risk: pay only goes up.",
-                                                button: "Raise to \(cur.tidyShort(next))") {
-                            store.act { $0.giveManagerRaise(companyID: companyID) }
-                            let now = store.engine?.state.company(companyID)?.managerMonthlyWage ?? 0
-                            store.show("Raise given: now \(cur.tidyShort(now)) a month.", tone: "good"); Haptics.success()
-                        }
-                    }
+                    Button("Contract discussion…") { discussing = nil; discussingOpen = true }
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: 16) {
-                    if !free.isEmpty {
-                        Menu("Move to…") {
-                            ForEach(free) { c in
-                                Button(c.name) {
-                                    pending = PendingAction(title: "Move \(m.name) to \(c.name)?",
-                                                            message: "\(c.name) gets a manager, with their pay and any profit share. \(co.name) is left without a store manager until you hire one.",
-                                                            button: "Move") {
-                                        let ok = store.act { $0.moveManager(from: co.id, to: c.id) } ?? false
-                                        store.show(ok ? "\(m.name) now manages \(c.name)." : "Could not move them.", tone: ok ? "good" : "warn")
-                                    }
-                                }
-                            }
-                        }
-                    }
                     Spacer(minLength: 0)
                     Button("Replace") {
                         pending = PendingAction(title: "Dismiss \(m.name)?",
@@ -517,74 +477,6 @@ struct AssistantSheet: View {
                 if fb.isHired { candidates = []; fb = .hired("\(p.name) is your assistant manager. Pick their two jobs."); store.show(fb.text, tone: "good") }
                 return fb
             }
-        }
-    }
-}
-
-/// The promotion talk: the posts a person could fill, what they would ask, and a counter if the offer is close.
-/// Original: ACT.p11offer and the promotion page (features/people/worker_roles_and_promotions.js).
-struct PromotionSheet: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
-    var engine: GameEngine
-    var company: Company
-    var member: StaffMember
-    @State private var post: ManagerModel.PromotionPost?
-    @State private var offer = 0.0
-    @State private var reply = ""
-
-    var body: some View {
-        let cur = engine.currency(for: company)
-        let name = engine.state.people[member.id]?.name ?? "This person"
-        let posts = engine.promotionPosts(companyID: company.id, personID: member.id)
-        PeopleSheet(title: "Promotion") {
-            Text("Promote \(name)").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            LedgerSection("Promote to") {
-                VStack(spacing: 0) {
-                    if posts.isEmpty { Text("No higher post fits right now.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
-                    ForEach(Array(posts.enumerated()), id: \.element.id) { n, p in
-                        if n > 0 { Hairline() }
-                        Button { post = p; offer = p.ask; reply = "" } label: {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(p.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(p.place) · will ask about \(cur.tidyShort(p.ask)) a month").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                                Spacer()
-                                Image(systemName: post?.id == p.id ? "checkmark" : "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }.padding(.vertical, 9).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                    }
-                }
-            }
-            if let post {
-                LedgerSection("Your offer for \(post.title.lowercased())") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Now \(cur.tidyShort(member.monthlyWage)) a month.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        HStack(spacing: 12) {
-                            ForEach([0.9, 1.0, 1.1], id: \.self) { f in
-                                Button("\(Int(f * 100))% · \(cur.tidyShort(cur.roundedStep(post.ask * f, about: 500)))") { offer = cur.roundedStep(post.ask * f, about: 500) }
-                                    .buttonStyle(QuietButtonStyle())
-                            }
-                        }
-                        AmountField(title: "Monthly salary", currency: cur, amount: $offer)
-                        Button("Send offer · \(cur.tidyShort(offer))") { send(post, cur) }.buttonStyle(GoldButtonStyle())
-                        if !reply.isEmpty { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                    }
-                }
-            }
-        }
-    }
-
-    private func send(_ post: ManagerModel.PromotionPost, _ cur: Currency) {
-        let r = store.act { $0.offerPromotion(companyID: company.id, personID: member.id, post: post.id, monthlyWage: offer) }
-        switch r {
-        case .accepted(let text)?: Haptics.success(); store.show(text, tone: "good"); dismiss()
-        case .counter(let want, let text)?: reply = text; offer = want; Haptics.tap()
-        case .tooLow(let text)?: reply = text; Haptics.warning()
-        case .declinedForGood(let text)?: reply = text; store.show(text, tone: "warn"); dismiss()
-        case .unavailable(let text)?: reply = text
-        case nil: store.show("No game is loaded.", tone: "warn")
         }
     }
 }

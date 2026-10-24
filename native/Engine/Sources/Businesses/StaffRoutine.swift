@@ -59,22 +59,22 @@ public enum StaffRoutine {
             if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
                 overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked)
             }
-            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base).
-            do {
+            // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base of "mix").
+            // Commission only has no base and is never lifted.
+            if m.commissionMode != "com" {
                 let floor = w.minimumWage(co, hours: m.weeklyHours ?? StaffModel.fullWeekHours)
                 if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
             }
             let base = tables.roles[m.role]?.baseMonthlyWage ?? 40000
             let market = (w.city(co).map { Wages.market(baseMonthlyWage: base, country: country, city: $0, economy: s.economy, week: s.week, rates: w.rates) } ?? base) * m.partTimeShare
-            let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
-            let gap = clamp((market * (0.7 + n.skill / 160) - effectivePay) / market, -0.2, 0.4)
+            let gap = StaffRoutine.payGap(market: market, person: n, member: m)
             payGap = max(payGap, gap)
             let tenure = Double(s.week - (m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week))
             let odds = StaffWeek.quitOdds(family: bd.family, tradeID: co.type, staff: m, person: n, payGap: gap, tenure: tenure,
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
             if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
             probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
-            if s.random.chance(odds * StaffPerks.quitFactor(co, m) * (1 - 0.13 * co.value("tm")["hr"].double)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }   // an HR manager (ManagerTeam)
+            if s.random.chance(quitChance(odds: odds, company: co, member: m)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }
             if let trait = n.trait, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
                s.random.chance((s.hasHeadOffice("hr") ? 0.012 : 0.02) * (hasLead ? 0.6 : 1)) {
                 m.set("flag", trait)
@@ -91,6 +91,18 @@ public enum StaffRoutine {
         if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerSocial), category: "wages", label: "Overtime pay") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
+    }
+
+    /// How far a person's pay (base plus the commission they really earn) is under what the job pays for their skill: -0.2 to 0.4. The one formula of the
+    /// weekly pass and of the contract talk's quit-risk preview.
+    static func payGap(market: Double, person n: Person, member m: StaffMember) -> Double {
+        let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
+        return clamp((market * (0.7 + n.skill / 160) - effectivePay) / market, -0.2, 0.4)
+    }
+
+    /// The weekly chance that this person hands in notice: the odds of `StaffWeek.quitOdds`, eased by the company's perks and by an HR manager (ManagerTeam).
+    static func quitChance(odds: Double, company co: Company, member m: StaffMember) -> Double {
+        odds * StaffPerks.quitFactor(co, m) * (1 - 0.13 * co.value("tm")["hr"].double)
     }
 
     /// Book what the paperwork and commission checks found: fines, lost reputation, and the notes.
@@ -121,7 +133,7 @@ public enum StaffRoutine {
         switch e {
         case .quit(let id):
             guard var m = co.staff.first(where: { $0.id == id }), m.noticeWeeks == 0 else { return }
-            m.noticeWeeks = m.hiredWeek < s.week - 52 ? 8 : 4
+            m.noticeWeeks = (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx")   // plus the extra notice agreed in a contract talk
             co.staff = co.staff.map { $0.id == id ? m : $0 }
             s.companies[i] = co
             s.note("\(name(id)) handed in notice at \(co.name) and leaves in \(m.noticeWeeks) weeks.", tone: "bad", companyID: co.id)
@@ -143,6 +155,10 @@ public enum StaffRoutine {
             StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: false, data: data)
         case .fixedSalaryAsk(let id):
             StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: true, data: data)
+        case .promotionAsk(let id):
+            ContractTalk.employeeAsks(&s, companyIndex: i, staffID: id, topic: .promotion, data: data)
+        case .hoursAsk(let id):
+            ContractTalk.employeeAsks(&s, companyIndex: i, staffID: id, topic: .hours, data: data)
         }
     }
 

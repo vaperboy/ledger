@@ -32,9 +32,12 @@ extension ManagerModel {
         // A year in the role: a raise is asked for
         if (s.week - started) % 52 == 51 && s.random.chance(0.7) {
             let ask = cur.roundedStep(co.managerMonthlyWage * 0.06, about: 100)
+            var request = ContractTalk.Talk(opener: .employee, proposal: ContractTalk.Proposal(.payRise, amount: 0.06), week: s.week)
+            request.ask = 0.06; request.reason = "A year in the role."
+            ContractTalk.store(request, &s, personID: mid)
             s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a raise at \(co.name)", body: "A year in the role, they want +\(cur.display(ask)) per month (6%).",
                          companyID: co.id, tone: "n", status: "open",
-                         options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Decline", "They may leave")],
+                         options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Delay \(ContractTalk.delayWeeks) weeks", "If you do not answer, they feel turned down."), .option("Decline", "They may leave")],
                          action: "mgrraise", data: .object(["ask": .number(ask)]), expiresWeek: s.week + 3)
         }
         // Unhappy managers and rival offers
@@ -115,7 +118,7 @@ extension ManagerModel {
             let target = yearOn && mk0 <= m.monthlyWage * (1 + felt) ? cur.roundedStep(m.monthlyWage * (1 + felt + (1 - q) * 0.01), about: 100)
                 : max(m.monthlyWage + 100, cur.roundedStep(m.monthlyWage + (mk0 - m.monthlyWage) * (1 - 0.55 * q), about: 100))
             let d = target - m.monthlyWage
-            if lvl >= 2 || (lvl == 1 && d <= co.value("auth")["hire"].double) {
+            if ContractTalk.managerMayDecide(co, extraMonthly: d) {
                 let had = m.noticeWeeks > 0
                 StaffTalks.raise(&s, companyIndex: ci, staffID: m.id, percent: target / m.monthlyWage - 1, data: data)
                 if had { s.note("\(nn.name) withdrew the notice after the raise.", tone: "good", companyID: co.id) }
@@ -297,15 +300,17 @@ extension ManagerModel {
             if idx == 0 {
                 s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["ask"].double
                 s.companies[ci].set("mood", min(100, mood(co) + 8))
+                if let mid = co.managerID { ContractTalk.close(&s, personID: mid) }
+            } else if idx == 1 {   // delay: an answer is due; the weekly contract pass counts a missed one as a decline
+                if let mid = co.managerID, var talk = ContractTalk.openTalk(s, personID: mid) { talk.delayUntil = s.week + ContractTalk.delayWeeks; ContractTalk.store(talk, &s, personID: mid) }
             } else {
-                s.companies[ci].set("mood", max(0, mood(co) - 10))
-                if s.random.chance(0.55) { resign(&s, companyIndex: ci, why: "without the raise I have to look elsewhere") }
+                declineManagerRaise(&s, companyIndex: ci)
+                if let mid = co.managerID { ContractTalk.close(&s, personID: mid) }
             }
         case "mgrpoach":
             if idx == 0 {
-                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double
+                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double   // matching the offer: they stay (nobody turns down more pay for the same job)
                 s.companies[ci].set("mood", min(100, mood(co) + 6))
-                if s.random.chance(0.12) { resign(&s, companyIndex: ci, why: "the rival's offer was too good to turn down", to: "a rival group") }
             } else { resign(&s, companyIndex: ci, why: "a rival made me an offer", to: "a rival group") }
         default:
             let kind = d["t"].string
@@ -322,6 +327,12 @@ extension ManagerModel {
             }
             exec(&s, ci, dp, n, quality(s.companies[ci], bd, people: s.people), data: data)
         }
+    }
+
+    /// The old consequence of turning a manager's raise down: the mood drops and they may resign.
+    static func declineManagerRaise(_ s: inout GameState, companyIndex ci: Int) {
+        s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 10))
+        if s.random.chance(0.55) { resign(&s, companyIndex: ci, why: "without the raise I have to look elsewhere") }
     }
 
     // MARK: Asking the manager

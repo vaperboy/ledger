@@ -107,12 +107,15 @@ public enum PersonalEquipment {
 
     // MARK: Weekly costs
 
+    /// What one agent on their own car is paid a month for mileage (the contract talk shows it before you agree).
+    public static func mileagePerMonth(_ cur: Currency) -> Double { cur.scaledPrice(4500) }
+
     /// Mileage for people on their own car, and the fuel cost of bigger vans for couriers and hauliers. Original: `postWeek` lines.
     static func weeklyCosts(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
         let own = co.staff.filter { $0.flag("ownCar") }.count
-        if own > 0 { Payments.companyPays(&s, companyID: co.id, amount: cur.scaledPrice(4500) * 12 / 52 * Double(own), category: "oth") }
+        if own > 0 { Payments.companyPays(&s, companyID: co.id, amount: mileagePerMonth(cur) * 12 / 52 * Double(own), category: "oth") }
         if bd.id == "courier" || bd.id == "trucking" {
             let veh = data.catalog.tables.raw["VEH"]
             for v in co.value("veh").array {

@@ -60,8 +60,14 @@ public enum Dismissal {
     /// The quote for letting this member of staff go now. `reason` nil: judged by their warnings (`reasonForDismissing`).
     public static func quote(_ s: GameState, companyID: Int, staffID: Int, reason: Reason? = nil, noticeServed: Bool = false, data: GameData) -> Quote? {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }) else { return nil }
-        return quote(World(state: s, data: data), co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: reason ?? reasonForDismissing(m),
-                     onNotice: noticeServed || m.noticeWeeks > 0, age: s.people[staffID].map { Double($0.age) })
+        let world = World(state: s, data: data), why = reason ?? reasonForDismissing(m), onNotice = noticeServed || m.noticeWeeks > 0
+        var q = quote(world, co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: why, onNotice: onNotice, age: s.people[staffID].map { Double($0.age) })
+        // Extra notice agreed in a contract talk (ContractTalk, key "nx") is owed on top, in the cases where the country's law owes notice at all.
+        let extra = Double(m.int("nx"))
+        if extra > 0, !onNotice, world.labour(co).noticeReasons.contains(why.rawValue) {
+            q.notice += m.monthlyWage * 12 / 52 * extra * (1 + world.country(co).employerSocialRate(monthlyWage: m.monthlyWage))
+        }
+        return q
     }
 
     /// The summed quote for several people under one reason (the layoff card).

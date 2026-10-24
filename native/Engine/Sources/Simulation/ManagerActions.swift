@@ -58,8 +58,6 @@ public extension GameEngine {
         return sev
     }
 
-    mutating func giveManagerRaise(companyID: Int) { update { s, data, _ in ManagerModel.raiseManager(&s, companyID: companyID, data: data) } }
-
     mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) {
         update { s, _, _ in ManagerModel.setAuthority(&s, companyID: companyID, level: level, buy: buy, pay: pay, ad: ad) }
     }
@@ -67,12 +65,6 @@ public extension GameEngine {
     mutating func meetManager(companyID: Int) -> Bool {
         var ok = false
         update { s, data, _ in ok = ManagerModel.meet(&s, companyID: companyID, data: data) }
-        return ok
-    }
-
-    mutating func moveManager(from: Int, to: Int) -> Bool {
-        var ok = false
-        update { s, data, _ in ok = ManagerModel.move(&s, fromCompanyID: from, toCompanyID: to, data: data) }
         return ok
     }
 
@@ -107,16 +99,4 @@ public extension GameEngine {
     }
 
     mutating func dismissAssistant(companyID: Int) { update { s, data, _ in ManagerModel.fireAssistant(&s, companyID: companyID, data: data) } }
-
-    // Promotions
-
-    func promotionPosts(companyID: Int, personID: Int) -> [ManagerModel.PromotionPost] {
-        ManagerModel.promotionPosts(state, companyID: companyID, personID: personID, data: data)
-    }
-
-    mutating func offerPromotion(companyID: Int, personID: Int, post: String, monthlyWage: Double, terms: ManagerModel.PromotionTerms = .init()) -> ManagerModel.PromotionOutcome {
-        var r = ManagerModel.PromotionOutcome.unavailable("")
-        update { s, data, _ in r = ManagerModel.offerPromotion(&s, companyID: companyID, personID: personID, post: post, monthlyWage: monthlyWage, terms: terms, data: data) }
-        return r
-    }
 }

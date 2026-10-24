@@ -174,7 +174,7 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.N9 | Store manager (Company > Management), assistant manager, head-office data analyst (Market map) | Going rate shown and counters work the same way | | NOT TESTED | | |
 | T9.N10 | Make a counter, close the app, reopen, offer the same again | The talk continues (same round); after about 8 game weeks without talking it starts afresh | | NOT TESTED | | |
 | T9.N11 | Automatic replacement on, let a worker leave, advance a few weeks | A replacement is hired within the week, at or below the going rate for their skill; the note names them. A store with a strong manager hires cheaper / better than one run by the owner | | NOT TESTED | | |
-| T9.N12 | Inbox: a worker asks for a raise, answer with the smaller option | They may counter (a new message with their figure, "Meet in the middle", "Not now"); after a few rounds they stop talking | | NOT TESTED | | |
+| T9.N12 | Inbox: a worker asks for a raise (superseded by 9.C10-9.C13: employees no longer refuse a raise) | See 9.C | | NOT TESTED | | |
 | T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
 | T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
 
@@ -226,6 +226,25 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Finances > Payroll and bills, owner-run company with staff | "Payroll run" shows next pay day, amount, cash; "Approve this month's payroll" asks, then says approved; the same Inbox approval message does not pay twice | | NOT TESTED | | |
 | T9.C15 | Change who runs payroll to the accountant, then manager (company without a manager) | Fees shown per month; manager is locked with "Needs a manager first"; change confirmed and reported | | NOT TESTED | | |
 | T9.C16 | Let pay day pass without approving, then Run payroll now | Staff are paid, result reports amount paid and any shortfall | | NOT TESTED | | |
+
+### 9.C Contract discussion (stage 2, contracts) — screens NOT TESTED by hand (engine tests: ContractTalkTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.C1 | Company > Team > open a worker > "Contract discussion…" | One sheet with the topics Pay rise, Promotion, Hours, Pay basis, Bonus plan, Benefits, Notice, Move; unavailable ones are greyed with the reason. No separate raise menu, Promote or Contract and pay buttons remain on the profile | | NOT TESTED | | |
+| T9.C2 | Pay rise 3% / 6% / 10% | "What it means" shows cost a month with employer charges, chance they hand in notice within a year before and after, the country's minimum pay. Confirm: they take it at once, never refuse | | NOT TESTED | | |
+| T9.C3 | Promotion: choose a post, offer about half of what they ask | They answer with a higher figure (never a refusal); after a few rounds they take the post at what you offered and are unhappy | | NOT TESTED | | |
+| T9.C4 | Hours: set hours, offer full time to a part-timer, change seasons | Preview shows pay and hours; a person who wants part time says why in words | | NOT TESTED | | |
+| T9.C5 | Pay basis (seller): fixed, salary and commission, commission only | Commission only shows base 0; a security-minded person is warned they may resign | | NOT TESTED | | |
+| T9.C6 | Bonus plan: manager profit share, seller commission rate | Shows the monthly cost at recent profit; a profit share cannot be cut here | | NOT TESTED | | |
+| T9.C7 | Benefits: switch a perk on, give an estate agent an own car | Preview says it covers the whole company, shows cost and fewer people leaving; mileage cost for the car | | NOT TESTED | | |
+| T9.C8 | Notice: +4, +8, +12 weeks; later let the person go without cause | Dismissal confirmation shows the extra notice pay | | NOT TESTED | | |
+| T9.C9 | Move: a worker to another store of the chain, a manager to a company without one | Pay moves with them; the cost is unchanged; the old store is left short | | NOT TESTED | | |
+| T9.C10 | Inbox: a worker asks for a raise / promotion / shorter hours | Three buttons only: Agree, Delay, Decline. Agree gives what they ask | | NOT TESTED | | |
+| T9.C11 | Decline a request | The preview first showed the higher chance they leave; afterwards the profile mood says turned down | | NOT TESTED | | |
+| T9.C12 | Delay a request and do not answer for 4 weeks | They feel turned down (note in the activity log) | | NOT TESTED | | |
+| T9.C13 | Open a request, answer with a lower figure, close the app, reopen | The talk is still open at the same round | | NOT TESTED | | |
+| T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
+| T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

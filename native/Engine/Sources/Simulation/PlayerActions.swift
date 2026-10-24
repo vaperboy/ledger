@@ -186,13 +186,6 @@ public extension GameEngine {
         }
     }
 
-    mutating func raise(personID: Int, companyID: Int, percent: Double) {
-        update { s, data, _ in
-            guard let i = s.companyIndex(companyID) else { return }
-            StaffTalks.raise(&s, companyIndex: i, staffID: personID, percent: percent, data: data)
-        }
-    }
-
     // MARK: Money
 
     mutating func takeLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?) -> Banking.LoanOfferResult {

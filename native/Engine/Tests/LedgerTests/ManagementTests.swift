@@ -66,10 +66,12 @@ final class ManagementTests: XCTestCase {
         let c = e.searchWorkers(companyID: id, role: roles[0], mode: .agency)
         let w = c[0]
         XCTAssertEqual(e.hire(personID: w.id, companyID: id, monthlyWage: w.askingMonthlyWage * 1.3), .ok)
-        let posts = e.promotionPosts(companyID: id, personID: w.id)
+        let posts = ManagerModel.promotionPosts(e.state, companyID: id, personID: w.id, data: e.data)
         guard let post = posts.first(where: { $0.kind == "mgr" && $0.companyID == id }) else { return XCTFail("no manager post") }
-        if case .tooLow = e.offerPromotion(companyID: id, personID: w.id, post: post.id, monthlyWage: post.ask * 0.5) {} else { XCTFail("a low offer is refused") }
-        guard case .accepted = e.offerPromotion(companyID: id, personID: w.id, post: post.id, monthlyWage: post.ask) else { return XCTFail("fair offer should be accepted") }
+        // a low offer is answered with a counter (they ask for more), never with a refusal
+        guard case .counter(let ask, _, _) = e.contractPropose(companyID: id, personID: w.id, proposal: .init(.promotion, amount: post.ask * 0.5, choice: post.id)) else { return XCTFail("a low offer gets a counter") }
+        XCTAssertGreaterThanOrEqual(ask, post.ask * 0.5)
+        guard case .agreed = e.contractPropose(companyID: id, personID: w.id, proposal: .init(.promotion, amount: max(ask, post.ask), choice: post.id)) else { return XCTFail("fair offer should be accepted") }
         XCTAssertEqual(e.state.company(id)?.managerID, w.id)
         XCTAssertFalse(e.state.company(id)!.staff.contains { $0.id == w.id })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
