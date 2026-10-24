@@ -9,21 +9,34 @@ import Businesses
 /// The engine's answer to a job offer in words, so every hiring screen reports it the same way.
 enum HireFeedback: Equatable {
     case hired(String)
-    /// Too low this time; a better offer may work.
+    /// An insult or a flat no this time; a better offer may work.
     case declined(String)
-    /// Gone or not possible (took another job, no premises, no cash).
+    /// Gone or not possible (took another job, lost patience, no premises, no cash).
     case unavailable(String)
+    /// They name their own figure (a monthly wage in accounting units): accept it, counter, or walk away. The engine may make it a fair one or not;
+    /// the going rate shown on the row is what to judge it against.
+    case countered(Double, String)
 
-    var text: String { switch self { case .hired(let t), .declined(let t), .unavailable(let t): return t } }
+    var text: String { switch self { case .hired(let t), .declined(let t), .unavailable(let t), .countered(_, let t): return t } }
     var isHired: Bool { if case .hired = self { return true } else { return false } }
-    var tint: Color { switch self { case .hired: return Theme.gain; case .declined: return Theme.caution; case .unavailable: return Theme.loss } }
+    var counterAmount: Double? { if case .countered(let a, _) = self { return a } else { return nil } }
+    var tint: Color { switch self { case .hired: return Theme.gain; case .declined, .countered: return Theme.caution; case .unavailable: return Theme.loss } }
+
+    /// The words for a counter, the same on every screen.
+    static func counter(_ c: Negotiation.Counter, name: String) -> HireFeedback {
+        .countered(c.amount, c.isFinal ? "\(name) says this is as low as they will go." : "\(name) would take the job for this much.")
+    }
+    static func insulted(_ name: String) -> HireFeedback { .declined("\(name) took that as an insult and named no figure. Come closer to the going rate or pick someone else.") }
+    static func lostPatience(_ name: String) -> HireFeedback { .unavailable("\(name) lost patience and took another job.") }
 
     /// For the management offers (assistant, team posts, executives).
     static func from(_ r: ManagerModel.OfferResult?, name: String, role: String) -> HireFeedback {
         switch r {
         case .ok?: return .hired("\(name) starts as \(role.lowercased()).")
-        case .refused?: return .declined("\(name) found that a bit low. Offer more or pick someone else.")
+        case .refused?: return insulted(name)
         case .taken?: return .unavailable("\(name) took another job.")
+        case .countered(let c)?: return counter(c, name: name)
+        case .walkedAway?: return lostPatience(name)
         case nil: return .unavailable("No game is loaded.")
         }
     }
@@ -32,8 +45,10 @@ enum HireFeedback: Equatable {
     static func from(_ r: Hiring.HireResult?, name: String) -> HireFeedback {
         switch r {
         case .ok?: return .hired("\(name) has joined.")
-        case .refused?: return .declined("\(name) turned that offer down. Try a higher one.")
+        case .refused?: return insulted(name)
         case .taken?: return .unavailable("\(name) took another job.")
+        case .countered(let c)?: return counter(c, name: name)
+        case .walkedAway?: return lostPatience(name)
         case nil: return .unavailable("No game is loaded.")
         }
     }
@@ -42,9 +57,37 @@ enum HireFeedback: Equatable {
     static func from(_ r: ManagerModel.HireResult?, name: String, company: String) -> HireFeedback {
         switch r {
         case .ok?: return .hired("\(name) now runs \(company).")
-        case .refused?: return .declined("\(name) declined. A better offer may change their mind.")
+        case .refused?: return insulted(name)
         case .taken?: return .unavailable("\(name) took another job.")
         case .needsPremises?: return .unavailable("A manager needs premises to run the team from. Rent a place first.")
+        case .countered(let c)?: return counter(c, name: name)
+        case .walkedAway?: return lostPatience(name)
+        case nil: return .unavailable("No game is loaded.")
+        }
+    }
+
+    /// For a main-office role (`hireOffice`).
+    static func from(_ r: Headquarters.HireResult?, name: String, role: String) -> HireFeedback {
+        switch r {
+        case .ok?: return .hired("\(name) joins as \(role.lowercased()). Complete the paperwork.")
+        case .refuse?: return insulted(name)
+        case .taken?: return .unavailable("\(name) took another job.")
+        case .countered(let c)?: return counter(c, name: name)
+        case .walkedAway?: return lostPatience(name)
+        case .blocked(_)?: return .unavailable("There is no room for that role.")
+        case nil: return .unavailable("No game is loaded.")
+        }
+    }
+
+    /// For the head-office data analyst (`hireDataAnalyst`).
+    static func from(_ r: MarketMap.HQHire?, name: String) -> HireFeedback {
+        switch r {
+        case .ok?: return .hired("\(name) starts as your data analyst.")
+        case .refused?: return insulted(name)
+        case .taken?: return .unavailable("\(name) took another job.")
+        case .have?: return .unavailable("You already have a data analyst.")
+        case .countered(let c)?: return counter(c, name: name)
+        case .walkedAway?: return lostPatience(name)
         case nil: return .unavailable("No game is loaded.")
         }
     }
@@ -65,10 +108,19 @@ struct CandidateHireRow<Extra: View>: View {
     var offer: (Double) -> HireFeedback
     @ViewBuilder var extra: () -> Extra
     @State private var feedback: HireFeedback?
+    @State private var lastOffer: Double = 0
 
     private var reference: Double { market ?? person.askingMonthlyWage }
     private func wage(_ f: Double) -> Double { f == 1 ? reference : currency.roundedStep(reference * f, about: 500) }
     private func label(_ f: Double) -> String { f == 1 ? "Offer \(currency.tidyShort(wage(f)))" : "\(currency.tidyShort(wage(f))) (\(f > 1 ? "+" : "")\(Int(((f - 1) * 100).rounded()))%)" }
+
+    /// Make an offer and keep the answer under the row.
+    private func submit(_ amount: Double) {
+        lastOffer = amount
+        let r = offer(amount)
+        feedback = r
+        if r.isHired { Haptics.success() } else { Haptics.warning() }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -84,25 +136,43 @@ struct CandidateHireRow<Extra: View>: View {
                 }
             }
             extra()
-            HStack(spacing: 10) {
-                ForEach(factors, id: \.self) { f in
-                    Button(label(f)) {
-                        let r = offer(wage(f))
-                        feedback = r
-                        if r.isHired { Haptics.success() } else { Haptics.warning() }
+            if let counter = feedback?.counterAmount {
+                counterControls(counter)
+            } else {
+                HStack(spacing: 10) {
+                    ForEach(factors, id: \.self) { f in
+                        Button(label(f)) { submit(wage(f)) }
+                            .buttonStyle(QuietButtonStyle(tint: f == 1 ? Theme.gold : Theme.ivoryMuted))
                     }
-                    .buttonStyle(QuietButtonStyle(tint: f == 1 ? Theme.gold : Theme.ivoryMuted))
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
             }
             if let feedback {
                 Text(feedback.text).font(.system(size: 11.5)).foregroundStyle(feedback.tint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(market == nil ? "Below what they ask they may say no; above it they are more likely to stay."
-                     : "You open at the going rate for the job. Some people take it gladly or for less; others want more, and a weak candidate may cost more than they are worth.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                     : "You open at the going rate for the job. Some people take it gladly or for less; others want more and may name their own figure, and a weak candidate may cost more than they are worth. Push too hard and they walk away.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
             }
         }
         .padding(.vertical, 8)
+    }
+
+    /// Their counter: take it, answer with a figure between your last offer and theirs, or leave the table.
+    @ViewBuilder private func counterControls(_ counter: Double) -> some View {
+        HStack(spacing: 10) {
+            Button("Accept \(currency.tidyShort(counter))") { submit(counter) }
+                .buttonStyle(QuietButtonStyle(tint: Theme.gold))
+            Menu("Counter") {
+                ForEach([0.25, 0.5, 0.75], id: \.self) { share in
+                    let amount = currency.roundedStep(lastOffer + (counter - lastOffer) * share, about: 500)
+                    Button("\(currency.tidyShort(amount))") { submit(amount) }
+                }
+            }
+            .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivoryMuted)
+            Button("Walk away") { feedback = .declined("You left the table. They may talk again later if you come back.") }
+                .buttonStyle(QuietButtonStyle(tint: Theme.loss))
+            Spacer(minLength: 0)
+        }
     }
 
     private var defaultSubtitle: String {

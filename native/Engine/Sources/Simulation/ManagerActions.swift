@@ -95,7 +95,7 @@ public extension GameEngine {
 
     mutating func hireAssistant(personID: Int, companyID: Int, monthlyWage: Double) -> ManagerModel.OfferResult {
         var r = ManagerModel.OfferResult.refused
-        update { s, _, _ in r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage) }
+        update { s, d, _ in r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, data: d) }
         return r
     }
 

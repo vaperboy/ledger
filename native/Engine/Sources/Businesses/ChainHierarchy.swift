@@ -57,12 +57,19 @@ extension ManagerModel {
 
     /// A store without a manager gets one from the boss. Original: `fillManager`.
     @discardableResult
-    static func fillManager(_ s: inout GameState, companyID: Int, by: String, why: String, data: GameData) -> Person? {
+    static func fillManager(_ s: inout GameState, companyID: Int, by: String, why: String, boss: Person? = nil, data: GameData) -> Person? {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID == nil, s.companies[ci].status == .open || s.companies[ci].status == .setup, let bd = data.catalog[s.companies[ci].type] else { return nil }
-        let n = generateCandidate(company: s.companies[ci], type: bd.managerType, state: &s, data: data)
-        guard hire(&s, personID: n.id, companyID: companyID, monthlyWage: jsRound(n.askingMonthlyWage * 1.05), data: data) == .ok else { return nil }
-        s.note((by.isEmpty ? "\(n.name) was appointed" : "\(by) appointed \(n.name)") + " as manager of \(s.companies[ci].name)" + (why.isEmpty ? "" : " after \(why)") + ".", tone: "n", companyID: companyID)
-        return n
+        // The boss looks at what an executive search turns up (three of the trade's own kind, one general), bargains with each, and takes the best value
+        // (AutoHire); if nobody comes to terms they look again, up to three times.
+        for _ in 0..<3 {
+            var found = (0..<3).map { _ in generateCandidate(company: s.companies[ci], type: bd.managerType, state: &s, data: data) }
+            found.append(generateCandidate(company: s.companies[ci], type: "gen", state: &s, data: data))
+            guard let deal = AutoHire.bestManagerDeal(candidates: found, companyID: companyID, hirer: boss.map { AutoHire.hirer(person: $0) }, state: &s, data: data),
+                  hire(&s, personID: deal.person.id, companyID: companyID, monthlyWage: deal.price, data: data) == .ok, let n = s.people[deal.person.id] else { continue }
+            s.note((by.isEmpty ? "\(n.name) was appointed" : "\(by) appointed \(n.name)") + " as manager of \(s.companies[ci].name)" + (why.isEmpty ? "" : " after \(why)") + ".", tone: "n", companyID: companyID)
+            return n
+        }
+        return nil
     }
 
     /// How a request looks to the boss: 1 yes, -1 no, 0 a close call. Original: `merit`.
@@ -125,7 +132,7 @@ extension ManagerModel {
         guard let boss = L.first(where: { $0.level >= 1 }) ?? L.first else { return false }
         let who = "\(boss.name) (\(titleFor(co, kind: boss.kind, data: data, state: s)))"
         let cur = World(state: s, data: data).currency(co)
-        if kind == "mgr" { return fillManager(&s, companyID: companyID, by: who, why: "the last manager left", data: data) != nil }
+        if kind == "mgr" { return fillManager(&s, companyID: companyID, by: who, why: "the last manager left", boss: s.people[boss.personID], data: data) != nil }
         if kind == "cash" {
             if let from = sisterCash(&s, to: co, need: max(cur.scaledPrice(30000), weekCost(s, co, data: data) * 6), data: data) {
                 s.note("\(who) moved money from \(from.name) to \(co.name): its cash was running out.", tone: "n", companyID: companyID)
@@ -279,7 +286,7 @@ extension ManagerModel {
             }
             if cm != nil, person(s, cm!) != nil {
                 for c in Chains.stores(s, Chains.chain(s, id: id)!) where c.managerID == nil && (c.status == .open || c.status == .setup) {
-                    fillManager(&s, companyID: c.id, by: "\(person(s, cm!)?.name ?? "The chain manager") (chain manager)", why: "the store had no manager", data: data)
+                    fillManager(&s, companyID: c.id, by: "\(person(s, cm!)?.name ?? "The chain manager") (chain manager)", why: "the store had no manager", boss: person(s, cm!), data: data)
                 }
             }
         }

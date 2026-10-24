@@ -250,7 +250,8 @@ struct HoldingFinanceManagerCard: View {
                 Text("An agency checks references; with the others the paperwork is yours to verify.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             } else {
                 CandidateHireList(people: found, emptyText: "Nobody to meet now.") { c in
-                    CandidateHireRow(person: c, currency: cur, subtitle: "Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill\(c.flag("checked") ? " · references checked" : "")") { wage in hire(c, wage) }
+                    CandidateHireRow(person: c, currency: cur, subtitle: "Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill\(c.flag("checked") ? " · references checked" : "")",
+                                     market: engine.goingRate(for: .office(role: "fin")), factors: [0.9, 1.0, 1.15, 1.3]) { wage in hire(c, wage) }
                 }
             }
         } else {
@@ -265,13 +266,7 @@ struct HoldingFinanceManagerCard: View {
 
     /// The same main-office hire as Group > Main office (`hireOffice`), reported in the same words.
     private func hire(_ c: Person, _ wage: Double) -> HireFeedback {
-        let feedback: HireFeedback
-        switch store.act({ $0.hireOffice(role: "fin", personID: c.id, monthlyWage: wage) }) {
-        case .ok?: feedback = .hired("\(c.name) joins as finance manager. Complete the paperwork.")
-        case .refuse?: feedback = .declined("\(c.name) found that a bit low. Offer more or pick someone else.")
-        case .taken?: feedback = .unavailable("\(c.name) took another job.")
-        default: feedback = .unavailable("There is no room for that role.")
-        }
+        let feedback = HireFeedback.from(store.act { $0.hireOffice(role: "fin", personID: c.id, monthlyWage: wage) }, name: c.name, role: "Finance manager")
         if feedback.isHired { found = [] }
         store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
         return feedback

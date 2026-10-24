@@ -146,6 +146,24 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.B9 | Search a trade name | Finds it whether or not it is affordable | | NOT TESTED | | |
 | T9.B10 | Add savings (or earn money), reopen New company | More trades appear in the funded list | | NOT TESTED | | |
 
+### 9.N Negotiation: counter offers, patience, automatic hiring (stage 2, negotiation)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9.N1 | Company > Team > Find workers, open a candidate | Row shows "going rate a month" (never their asking wage); offers 90 / 100 / 115 / 130% of it | | NOT TESTED | | |
+| T9.N2 | Offer 90% to a strong (high claimed skill) candidate | They answer with their own figure and buttons Accept <amount>, Counter, Walk away. Text says "would take the job for this much" | | NOT TESTED | | |
+| T9.N3 | Tap Accept on the counter | Hired at exactly that wage; the wage appears on the staff row; money booked once | | NOT TESTED | | |
+| T9.N4 | Tap Counter, pick an amount; repeat until the text says "as low as they will go" | Each round is answered (hired, a new counter, or a flat no); the last counter is marked final | | NOT TESTED | | |
+| T9.N5 | After "as low as they will go" offer less again | "<name> lost patience and took another job"; the candidate disappears from the list | | NOT TESTED | | |
+| T9.N6 | Offer far below the going rate (the 25% Counter amounts after a high counter) | "took that as an insult and named no figure"; a round of patience is used | | NOT TESTED | | |
+| T9.N7 | Over several candidates, note counters far above the going rate | Now and then a counter is much higher than the going rate (unrealistic); the player can still refuse it or walk away | | NOT TESTED | | |
+| T9.N8 | Team > a vacant department head (executive search, hire); Group > executive posts; Main office roles | Same row: going rate shown, counter / accept / walk away. A senior post (group managing director) takes more rounds before the person walks away than a worker | | NOT TESTED | | |
+| T9.N9 | Store manager (Company > Management), assistant manager, head-office data analyst (Market map) | Going rate shown and counters work the same way | | NOT TESTED | | |
+| T9.N10 | Make a counter, close the app, reopen, offer the same again | The talk continues (same round); after about 8 game weeks without talking it starts afresh | | NOT TESTED | | |
+| T9.N11 | Automatic replacement on, let a worker leave, advance a few weeks | A replacement is hired within the week, at or below the going rate for their skill; the note names them. A store with a strong manager hires cheaper / better than one run by the owner | | NOT TESTED | | |
+| T9.N12 | Inbox: a worker asks for a raise, answer with the smaller option | They may counter (a new message with their figure, "Meet in the middle", "Not now"); after a few rounds they stop talking | | NOT TESTED | | |
+| T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
+| T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

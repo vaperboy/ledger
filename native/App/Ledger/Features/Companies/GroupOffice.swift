@@ -142,6 +142,7 @@ struct HeadOfficeSection: View {
     @ViewBuilder private func candidate(_ p: Person, role: Headquarters.Role) -> some View {
         let ref = references[p.id] ?? (p.flag("checked") ? OfficeChecks.reference(p) : nil)
         CandidateHireRow(person: p, currency: engine.homeCurrency, subtitle: "Age \(p.age) · says \(StaffProfile.band(p.claimedSkill).lowercased())",
+                         market: engine.goingRate(for: .office(role: role.id)), factors: [0.9, 1.0, 1.15, 1.3],
                          offer: { wage in hire(role, p, wage) }) {
             if let ref {
                 Text("References: really \(ref.skillBand.lowercased()), \(String(format: "%g", ref.experience)) yr" + (ref.matchesCV ? ". Matches the CV." : ". The CV does not match."))
@@ -162,13 +163,7 @@ struct HeadOfficeSection: View {
 
     /// The engine's answer in the words every hiring screen uses; the shared row shows it under the candidate.
     private func hire(_ role: Headquarters.Role, _ p: Person, _ wage: Double) -> HireFeedback {
-        let feedback: HireFeedback
-        switch store.act({ $0.hireOffice(role: role.id, personID: p.id, monthlyWage: wage) }) {
-        case .ok?: feedback = .hired("\(p.name) joins as \(role.title.lowercased()). Complete the paperwork.")
-        case .refuse?: feedback = .declined("\(p.name) found that a bit low. Offer more or pick someone else.")
-        case .taken?: feedback = .unavailable("\(p.name) took another job.")
-        default: feedback = .unavailable("There is no room for that role.")
-        }
+        let feedback = HireFeedback.from(store.act { $0.hireOffice(role: role.id, personID: p.id, monthlyWage: wage) }, name: p.name, role: role.title)
         if feedback.isHired { candidates = []; searchRole = nil }
         store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
         return feedback

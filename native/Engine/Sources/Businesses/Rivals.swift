@@ -755,23 +755,33 @@ public enum Rivals {
             return .ignore("\(r.owner) never replies to your offer.")
         }
         let need = (listed ? 0.95 : 1.55) * (1.1 - r.relationship / 400)
-        if mult >= need {
+        // The owner answers through the shared Negotiation, in multiples of the value: it would sell at `need`, opens a little above it, has the patience
+        // of a deal (three lowball offers used to end contact), and may now and then counter with a figure out of reach.
+        let temper = Negotiation.temperament(personality: nil, key: "rival:\(rivalID)")
+        var talk = raw["neg"].isNull ? Negotiation.State() : Negotiation.State(json: raw["neg"])
+        if talk.isOpen && s.week - talk.week > Negotiation.memoryWeeks { talk = Negotiation.State() }   // an old talk is forgotten
+        let position = Negotiation.position(reservation: need, direction: .higher, temperament: temper, key: "rival:\(rivalID)")
+        let reply = Negotiation.respond(offer: mult, position: position, temperament: temper, rank: "deal", state: &talk, week: s.week, step: 0.01, random: &s.random)
+        func keep(_ t: Negotiation.State) { mutate(&s, key: k, id: rivalID) { $0["neg"] = t.isOpen ? t.json : .null } }
+        switch reply.answer {
+        case .accept:
+            keep(Negotiation.State())
             if scale != 1 { price = roundTo(price / scale, 1000) }
             return .accept(price: price, message: "\(r.owner) accepts: \"\(listed ? "Good timing. I was ready to step back." : "Not what I planned, but that price is hard to refuse.")\"")
-        }
-        if mult >= need * 0.85 {
-            let p2 = roundTo(V * need / scale, 1000)
+        case .counter(let c):
+            keep(talk)
+            let p2 = roundTo(V * c.amount / scale, 1000)
             mutate(&s, key: k, id: rivalID) { $0["rel"] = .number(max(0, $0["rel"].double - 1)) }
-            return .counter(price: p2, message: "\(r.owner) counters: \"I would sell at \(cur.display(p2)). Not a krone less.\"")
+            return .counter(price: p2, message: "\(r.owner) counters: \"I would sell at \(cur.display(p2)). \(c.isFinal ? "Not a krone less." : "We can talk.")\"")
+        case .walkAway:
+            keep(Negotiation.State())
+            let until = s.week + 26
+            mutate(&s, key: k, id: rivalID) { rr in rr["lock"] = .number(Double(until)); rr["rel"] = .number(max(0, rr["rel"].double - (listed ? 3 : 6))) }
+            return .reject("\(r.owner) is fed up with the haggling and ends contact for now.")
+        case .refuse:
+            keep(talk)
+            mutate(&s, key: k, id: rivalID) { rr in rr["rel"] = .number(max(0, rr["rel"].double - (listed ? 3 : 6))) }
         }
-        var lockUntil: Int?
-        let wk = s.week
-        mutate(&s, key: k, id: rivalID) { rr in
-            rr["ign"] = .number(rr["ign"].double + 1)
-            rr["rel"] = .number(max(0, rr["rel"].double - (listed ? 3 : 6)))
-            if rr["ign"].double >= 3 { rr["lock"] = .number(Double(wk + 26)); lockUntil = wk + 26 }
-        }
-        if lockUntil != nil { return .reject("\(r.owner) is fed up with lowball offers and ends contact for now.") }
         return .reject("\(r.owner) turns you down: \"\(listed ? "That is well below what this business is worth." : "It is not for sale.")\"")
     }
 }

@@ -61,12 +61,19 @@ public struct Currency: Sendable {
     /// Round to a tidy step in local money about `n` accounting units in size (exactly `n` in the reference
     /// country). Wages, prices and offers use it so every country sees round local numbers. Original: `rnl(v, n)`.
     public func roundedStep(_ v: Double, about n: Double) -> Double {
+        let st = localStep(about: n)
+        if rate == 1 && st == n { return jsRound(v / n) * n }
+        return jsRound(v / rate / st) * st * rate
+    }
+
+    /// The step `roundedStep` rounds to, in accounting units. Lets a caller round a figure UP or DOWN to a tidy amount.
+    public func stepSize(about n: Double) -> Double { localStep(about: n) * rate }
+
+    private func localStep(about n: Double) -> Double {
         let s = n / rate
         let p = pow(10, log10(s).rounded(.down))
         let m = s / p
-        let st = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p
-        if rate == 1 && st == n { return jsRound(v / n) * n }
-        return jsRound(v / rate / st) * st * rate
+        return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p
     }
 
     /// Scale a reference-economy price to this country's price level and round it tidily. Original: `KC(v, country)`.

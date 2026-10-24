@@ -61,7 +61,7 @@ extension ManagerModel {
         return SeasonalPlan(role: role, months: ms, count: n, monthlyCost: marketWage(s, co, role: role, data: data) * 0.67 * Double(n))
     }
 
-    /// Hire seasonal workers from the people the manager knows: the middle of the cheaper half of the asks, a little over the ask.
+    /// Hire seasonal workers from the people the manager knows, weighed and bargained with by `AutoHire`.
     /// Returns how many said yes. Original: `hireSeasonal`.
     @discardableResult
     public static func hireSeasonalCrew(_ s: inout GameState, companyID: Int, role: String, months: [Int], count: Int, hours: Double = 25, data: GameData) -> Int {
@@ -69,12 +69,9 @@ extension ManagerModel {
         var got = 0
         for _ in 0..<max(1, count) {
             let co = s.companies[ci]
-            let cands = Hiring.search(role: role, company: co, mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+            let cands = Hiring.search(role: role, company: co, mode: .network, state: &s, data: data)
             guard !cands.isEmpty else { break }
-            let pick = cands[Int(Double(cands.count) * 0.4)]
-            let cur = World(state: s, data: data).currency(co)
-            let wage = cur.roundedStep(pick.askingMonthlyWage * 1.03, about: 100)
-            if Hiring.hire(pick.id, into: companyID, monthlyWage: wage, state: &s, data: data, terms: Hiring.Terms(hours: hours, seasonMonths: months)) == .ok { got += 1 }
+            if AutoHire.hireWorker(role: role, companyID: companyID, candidates: cands, terms: Hiring.Terms(hours: hours, seasonMonths: months), state: &s, data: data) != nil { got += 1 }
         }
         return got
     }

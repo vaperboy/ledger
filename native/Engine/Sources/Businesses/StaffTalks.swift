@@ -130,7 +130,10 @@ public enum StaffTalks {
             if idx == 0, let k = s.companies[i].staff.first(where: { $0.id == sid }) { raise(&s, companyIndex: i, staffID: sid, percent: max(0, d["w"].double / k.monthlyWage - 1), data: data) }
             else { markDenied(&s, companyIndex: i, staffID: sid) }
         } else if d["t"].string == "payask" {
-            if idx == 0 || idx == 1 { raise(&s, companyIndex: i, staffID: sid, percent: idx == 0 ? d["big"].double : d["small"].double, data: data) }
+            // First option: what they asked for (or, after a counter, their counter): always accepted. Second option: your own figure, which they
+            // answer through the shared Negotiation (accept, counter, refuse, or lose patience). Third: not now.
+            if idx == 0 { raise(&s, companyIndex: i, staffID: sid, percent: d["big"].double, data: data) }
+            else if idx == 1 { negotiateRaise(&s, companyIndex: i, staffID: sid, offer: d["cm"].bool ? d["mid"].double : d["small"].double, asked: d, data: data) }
             else { markDenied(&s, companyIndex: i, staffID: sid) }
         } else if d["t"].string == "fixask" {
             if idx == 0 {
@@ -139,6 +142,40 @@ public enum StaffTalks {
                     var st = s.companies[i].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[i].staff = st
                 }
             } else { markDenied(&s, companyIndex: i, staffID: sid) }
+        }
+    }
+
+    /// Your own figure for a raise they asked for. Their opening is what they asked; they would settle for a little less (by temperament); a figure
+    /// under that gets a counter (a new message, with a figure halfway to offer next), an insult is refused, and after a few rounds (workers are not
+    /// patient) they stop talking. Pay in percent: the step of a counter is half a point.
+    static func negotiateRaise(_ s: inout GameState, companyIndex i: Int, staffID: Int, offer: Double, asked d: JSONValue, data: GameData) {
+        guard let n = s.people[staffID], let m = s.companies[i].staff.first(where: { $0.id == staffID }) else { return }
+        let co = s.companies[i]
+        let cur = World(state: s, data: data).currency(co)
+        let opening = d["open"].isNull ? d["big"].double : d["open"].double
+        let t = Hiring.temperament(of: n)
+        let position = Negotiation.position(opening: opening, direction: .higher, temperament: t, key: "raise:\(staffID)")
+        var talk = d["neg"].isNull ? Negotiation.State() : Negotiation.State(json: d["neg"])
+        let reply = Negotiation.respond(offer: offer, position: position, temperament: t, rank: "worker", state: &talk, week: s.week, step: 0.005, random: &s.random)
+        switch reply.answer {
+        case .accept: raise(&s, companyIndex: i, staffID: staffID, percent: offer, data: data)
+        case .counter(let c):
+            let mid = ((offer + c.amount) / 2 / 0.005).rounded() * 0.005
+            var nd = d
+            nd["big"] = .number(c.amount); nd["mid"] = .number(mid); nd["open"] = .number(opening); nd["cm"] = true; nd["neg"] = talk.json
+            s.addMessage(kind: "ask", from: n.name, title: "\(n.name) answers about pay at \(co.name)",
+                         body: c.isFinal ? "That is not enough for me. +\(Int((c.amount * 100).rounded()))% is the lowest I can accept." : "I was hoping for a bit more than that. Could we say +\(Int((c.amount * 100).rounded()))%?",
+                         companyID: co.id, tone: "n", status: "open",
+                         options: [.option("+\(String(format: "%.1f", c.amount * 100))%", "+\(cur.display(m.monthlyWage * c.amount))/month"),
+                                   .option("+\(String(format: "%.1f", mid * 100))%", c.isFinal ? "Probably too low" : "Meet in the middle"),
+                                   .option("Not now", "Disappointed. They may start looking around.")],
+                         action: "staffx", data: nd, expiresWeek: s.week + 3)
+        case .refuse:
+            s.note("\(n.name) took that offer as an insult.", tone: "bad", companyID: co.id)
+            markDenied(&s, companyIndex: i, staffID: staffID)
+        case .walkAway:
+            s.note("\(n.name) will not talk about pay any more for now.", tone: "bad", companyID: co.id)
+            markDenied(&s, companyIndex: i, staffID: staffID)
         }
     }
 

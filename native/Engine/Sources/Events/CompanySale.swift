@@ -198,26 +198,45 @@ public enum CompanySale {
 
     public enum TalkResult: Equatable { case unchanged, agreed(Double), stretched(Double), refused, walkedAway }
 
-    /// Name your price. At or below the offer: they ask you to sign. Up to their limit: they agree. A little above: they stretch half way
-    /// and lose patience. Far above: they lose two patience. At zero they walk away. Original: `ACT.salecounter`.
+    /// Name your price. At or below the offer: they ask you to sign. Up to their limit: they agree. Above it the buyer answers through the shared
+    /// `Negotiation` (it is a buyer, so it wants the price down): it stretches towards a figure it can pay, usually one it can really pay and now and then
+    /// an unrealistic one that does not move the offer; an insulting ask is refused; and when its patience is gone it walks away. Original: `ACT.salecounter`.
     @discardableResult
     public static func talkCounter(_ s: inout GameState, companyID: Int, offerID: Int, price: Double) -> TalkResult {
         guard let l = listing(s, companyID: companyID), let o = l.offers.first(where: { $0.id == offerID }) else { return .unchanged }
         let ask = (price / 1000).rounded() * 1000
         let mx = o.maxPrice > 0 ? o.maxPrice : (o.price * (1 + s.random.range(o.kind == "rival" || o.kind == "fund" ? 0.06 : 0.02, o.kind == "rival" ? 0.22 : 0.14)) / 1000).rounded() * 1000
-        var newPrice = o.price, pat = o.patience, result = TalkResult.unchanged, reply = ""
+        var newPrice = o.price, result = TalkResult.unchanged, reply = ""
+        var talk = Negotiation.State()
+        var walked = false
+        let t = Negotiation.temperament(personality: nil, key: "sale:\(offerID)")
+        let patience = Negotiation.patience(rank: "deal", temperament: t)
+        var left = o.patience
         if ask <= o.price { reply = "That is what we offered. Shall we sign?" }
-        else if ask <= mx { newPrice = ask; reply = "Fine. \(Int(ask)) it is."; result = .agreed(ask) }
-        else if ask <= mx * 1.1 { newPrice = min(mx, ((o.price + mx) / 2 / 1000).rounded() * 1000); pat -= 1; reply = "We can stretch to \(Int(newPrice)). That is about as far as we go."; result = .stretched(newPrice) }
-        else { pat -= 2; reply = "That is far above what it is worth to us."; result = .refused }
-        updateOffer(&s, companyID: companyID, offerID: offerID) { off in
-            var talk = off["talk"].array
-            talk.append(.object(["me": 1, "t": .string("I want \(Int(ask)).")]))
-            talk.append(.object(["me": 0, "t": .string(reply)]))
-            off["talk"] = .array(talk)
-            off["max"] = .number(mx); off["price"] = .number(newPrice); off["pat"] = .number(Double(pat))
+        else {
+            let stored = s.rest["sales"]?.array.first(where: { $0["co"].int == companyID })?["offers"].array.first(where: { $0["id"].int == offerID })?["neg"] ?? .null
+            if !stored.isNull { talk = Negotiation.State(json: stored) }
+            let position = Negotiation.Position(opening: o.price, reservation: mx, direction: .lower)
+            let reply0 = Negotiation.respond(offer: ask, position: position, temperament: t, rank: "deal", state: &talk, week: s.week, step: 1000, random: &s.random)
+            left = max(0, patience - talk.round)
+            switch reply0.answer {
+            case .accept: newPrice = ask; reply = "Fine. \(Int(ask)) it is."; result = .agreed(ask); talk = Negotiation.State()
+            case .counter(let c):
+                if reply0.unrealistic || c.amount <= o.price { reply = "We stay at \(Int(o.price)). That is what it is worth to us."; result = .refused }
+                else { newPrice = min(mx, c.amount); reply = "We can stretch to \(Int(newPrice)). That is about as far as we go."; result = .stretched(newPrice) }
+            case .refuse: reply = "That is far above what it is worth to us."; result = .refused
+            case .walkAway: walked = true
+            }
         }
-        if pat <= 0 {
+        updateOffer(&s, companyID: companyID, offerID: offerID) { off in
+            var tl = off["talk"].array
+            tl.append(.object(["me": 1, "t": .string("I want \(Int(ask)).")]))
+            tl.append(.object(["me": 0, "t": .string(walked ? "I have heard enough. We are done." : reply)]))
+            off["talk"] = .array(tl)
+            off["max"] = .number(mx); off["price"] = .number(newPrice); off["pat"] = .number(Double(left))
+            if talk.isOpen { off["neg"] = talk.json } else { off["neg"] = .null }
+        }
+        if walked {
             decline(&s, companyID: companyID, offerID: offerID)
             s.note("\(o.buyer) walked away.", tone: "n", companyID: companyID)
             return .walkedAway

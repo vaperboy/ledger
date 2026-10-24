@@ -251,7 +251,7 @@ extension ManagerModel {
         var tail = ""
         // someone who moves up appoints their own successor
         if let had = had {
-            if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
+            if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
         }
         if shares { tail = giveShares(&s, companyID: co.id, personID: n.id, percent: u.sharesPercent) }
         return "\(first) is now \(post.title)." + tail
@@ -340,10 +340,15 @@ extension ManagerModel {
             }
             if d.contains("hire"), let need = L.first(where: { $0.managerID == nil && $0.staff.count >= 2 && !(Double(s.week) - $0.value("flags")["f11"].double < 8 && !$0.value("flags")["f11"].isNull) }), let bd = data.catalog[need.type] {
                 var f = need.value("flags"); f["f11"] = .number(Double(s.week)); if let i = s.companyIndex(need.id) { s.companies[i].set("flags", f) }
-                let m = generateCandidate(company: need, type: bd.managerType, state: &s, data: data)
+                // the executive looks at a few people, bargains with each (AutoHire) and brings the owner the best deal, at the wage already agreed
+                var found = (0..<3).map { _ in generateCandidate(company: need, type: bd.managerType, state: &s, data: data) }
+                found.append(generateCandidate(company: need, type: "gen", state: &s, data: data))
+                if let deal = AutoHire.bestManagerDeal(candidates: found, companyID: need.id, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
+                let m = deal.person
                 let cur = World(state: s, data: data).currency(need)
-                s.addMessage(kind: "ask", from: n.name, title: "I found a manager for \(need.name)", body: "\(m.name), \(m.age), \(String(format: "%g", m.num("exp"))) years of experience. Asks \(cur.display(m.askingMonthlyWage)) a month. I checked the references.",
-                             companyID: need.id, tone: "n", status: "open", options: [.option("Hire at \(cur.short(m.askingMonthlyWage))"), .option("No thanks")], action: "mfind11", data: .object(["n": .number(Double(m.id))]), expiresWeek: s.week + 3)
+                s.addMessage(kind: "ask", from: n.name, title: "I found a manager for \(need.name)", body: "\(m.name), \(m.age), \(String(format: "%g", m.num("exp"))) years of experience. I talked pay through and we agreed \(cur.display(deal.price)) a month. I checked the references.",
+                             companyID: need.id, tone: "n", status: "open", options: [.option("Hire at \(cur.short(deal.price))"), .option("No thanks")], action: "mfind11", data: .object(["n": .number(Double(m.id)), "w": .number(deal.price)]), expiresWeek: s.week + 3)
+                }
             }
             let rep = n.value("k11")["rep"].string, me = GameCalendar.isMonthEnd(week: s.week)
             let bad = L.filter { ($0.monthlyHistory.last?.profit ?? 0) < 0 }
