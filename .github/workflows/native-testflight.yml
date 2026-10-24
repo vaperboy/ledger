@@ -1,0 +1,81 @@
+name: Native iOS TestFlight upload
+
+# Manual only. Builds a signed archive of the native app and uploads it to App Store Connect (TestFlight).
+# Needs these repository secrets (Settings > Secrets and variables > Actions): see native/docs/TESTFLIGHT.md
+#   APPLE_TEAM_ID, IOS_BUNDLE_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit to build
+        default: native-swiftui
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Check the secrets are set
+        env:
+          T: ${{ secrets.APPLE_TEAM_ID }}
+          B: ${{ secrets.IOS_BUNDLE_ID }}
+          K: ${{ secrets.ASC_KEY_ID }}
+          I: ${{ secrets.ASC_ISSUER_ID }}
+          P: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          for v in T B K I P; do if [ -z "${!v}" ]; then echo "Missing secret for $v (see native/docs/TESTFLIGHT.md)"; exit 1; fi; done
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Write the App Store Connect key
+        env:
+          P: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          K: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          echo "$P" | base64 --decode > ~/private_keys/AuthKey_$K.p8
+      - name: Archive
+        working-directory: native/App
+        env:
+          T: ${{ secrets.APPLE_TEAM_ID }}
+          B: ${{ secrets.IOS_BUNDLE_ID }}
+          K: ${{ secrets.ASC_KEY_ID }}
+          I: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive -project Ledger.xcodeproj -scheme Ledger -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath $RUNNER_TEMP/Ledger.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_$K.p8 -authenticationKeyID $K -authenticationKeyIssuerID $I \
+            DEVELOPMENT_TEAM=$T PRODUCT_BUNDLE_IDENTIFIER=$B CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            | tail -n 40
+      - name: Export and upload to TestFlight
+        working-directory: native/App
+        env:
+          T: ${{ secrets.APPLE_TEAM_ID }}
+          K: ${{ secrets.ASC_KEY_ID }}
+          I: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          cat > $RUNNER_TEMP/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$T</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath $RUNNER_TEMP/Ledger.xcarchive -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_$K.p8 -authenticationKeyID $K -authenticationKeyIssuerID $I | tail -n 40
