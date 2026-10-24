@@ -61,6 +61,12 @@ struct GroupView: View {
                     }
                 }
                 HostingSection(engine: e)
+                LedgerSection("Giving back") {
+                    NavigationLink { GivingView() } label: {
+                        GroupLinkRow(title: "Gifts, sponsorships and your foundation",
+                                     sub: "\(e.givingMarks.count) \(e.givingMarks.count == 1 ? "mark" : "marks")" + (e.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
+                    }.buttonStyle(.plain)
+                }
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
             .frame(maxWidth: 1100).frame(maxWidth: .infinity)

@@ -164,6 +164,21 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.N13 | Sell a company: open a buyer, name a price above their offer several times | Buyer stretches, now and then refuses outright; after a few rounds it walks away (patience dots fall) | | NOT TESTED | | |
 | T9.N14 | Meet a rival owner, offer to buy at a low multiple several times | Counters, then "ends contact for now" and the owner does not answer for about half a year | | NOT TESTED | | |
 
+### 9.G Group and Projects (stage 3, groupprojects)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9G.1 | Group > Structure with 3+ companies, some in a chain, a holding, a franchise, some alone | "Stand alone" lists only companies in none of those, each with trade, city, health, value and yearly profit; tap opens the company; Back returns to Group | | NOT TESTED | | |
+| T9G.2 | 9+ stand-alone companies | Search box appears; list shows 8 with "Show all"; worst profit first | | NOT TESTED | | |
+| T9G.3 | Franchisor with applicants: Group > Structure > Franchises | Applicants listed under the franchisor row; tapping opens the same talk as Company > Chain; an offer there shows in both places | | NOT TESTED | | |
+| T9G.4 | Projects tab with a builder, event agency or developer | "Under way" rows show milestone dots, next date, what blocks; tender closing within 2 weeks and held jobs appear under "Needs you" | | NOT TESTED | | |
+| T9G.5 | Open a project row | Detail shows contract/cost so far or paid so far, milestones with dates, what is in the way, "If it runs late" with the money at stake; "Open company > Projects" works and Back returns | | NOT TESTED | | |
+| T9G.6 | Developer: advance through zoning, build, sell | Stage dots and dates follow the engine; a delayed build shows the held-up message | | NOT TESTED | | |
+| T9G.7 | No project company | Real empty state; a project company with nothing booked shows the "nothing under way" text | | NOT TESTED | | |
+| T9G.8 | Group > Giving back > pick city, Give | Confirmation names cost, standing and legacy gain, always asks; after confirming cash drops once, mark appears, toast reports; same gift in same city shows "Done" | | NOT TESTED | | |
+| T9G.9 | Giving back with too little cash | Button disabled with "Short by ..." | | NOT TESTED | | |
+| T9G.10 | Start a foundation, advance a year | Confirmation warns it is permanent; Foundation shows endowment and given; a message arrives yearly | | NOT TESTED | | |
+| T9G.11 | Market > Groups > Open profile | Rival group profile shows owner, strategy, ambition, sites, cash/debt words, trades, countries, overlap with your companies, moves; Back returns to Market | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

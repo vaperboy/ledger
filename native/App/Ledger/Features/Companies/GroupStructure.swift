@@ -88,6 +88,8 @@ struct GroupStructureOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     @State private var openBrand: String?
+    @State private var aloneQuery = ""
+    @State private var aloneAll = false
 
     var body: some View {
         let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
@@ -95,7 +97,7 @@ struct GroupStructureOverview: View {
         let chains = engine.chainSummaries
         let franchisors = live.filter { engine.isFranchisor(companyID: $0.id) }
         let franchised = live.filter { !$0.value("franchise").isNull }
-        let alone = live.filter { $0.value("chain").isNull && $0.value("franchise").isNull }
+        let alone = live.filter { $0.value("chain").isNull && $0.value("franchise").isNull && $0.holdingID == 0 && !engine.isFranchisor(companyID: $0.id) }
         let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
         LedgerSection("Structure") {
             VStack(alignment: .leading, spacing: 0) {
@@ -105,7 +107,7 @@ struct GroupStructureOverview: View {
                     .init(label: "Chains", value: "\(chains.count)", sub: "\(chains.reduce(0) { $0 + $1.stores.count }) \(chains.reduce(0) { $0 + $1.stores.count } == 1 ? "store" : "stores")"),
                     .init(label: "Your franchise units", value: "\(units)", sub: "run by others"),
                     .init(label: "Franchisee", value: "\(franchised.count)", sub: "under a brand"),
-                    .init(label: "Stand alone", value: "\(alone.count)", sub: "no chain"),
+                    .init(label: "Stand alone", value: "\(alone.count)", sub: "no chain, franchise or holding"),
                 ])
                 if live.isEmpty { Text("Start a company to build a group.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8) }
             }
@@ -113,12 +115,40 @@ struct GroupStructureOverview: View {
         holdingsSection(holdings, live: live)
         chainsSection(chains)
         franchiseSection(franchisors, franchised, chains: chains)
+        standAloneSection(alone)
+    }
+
+    // MARK: Stand alone
+
+    /// Companies that belong to no chain, franchise or holding: key figures per company, opened in place (Back returns here).
+    @ViewBuilder private func standAloneSection(_ alone: [Company]) -> some View {
         if !alone.isEmpty {
-            LedgerSection("Standing alone") {
-                Button { store.tab = .company; Haptics.choose() } label: {
-                    GroupLinkRow(title: "\(alone.count) \(alone.count == 1 ? "company" : "companies") outside a chain",
-                                 sub: alone.prefix(3).map { $0.name }.joined(separator: ", ") + (alone.count > 3 ? "…" : "") + " · compared under Company")
-                }.buttonStyle(.plain)
+            let q = aloneQuery.trimmingCharacters(in: .whitespaces)
+            let rows = alone.map { (co: $0, h: engine.companyHealth($0)) }
+                .filter { q.isEmpty || $0.co.name.localizedCaseInsensitiveContains(q) || engine.cityName($0.co).localizedCaseInsensitiveContains(q) || engine.tradeName($0.co).localizedCaseInsensitiveContains(q) }
+                .sorted { $0.h.profitTTM < $1.h.profitTTM }
+            let cap = aloneAll || !q.isEmpty ? rows.count : 8
+            LedgerSection(title: "Stand alone", trailing: { Text("\(alone.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if alone.count > 8 {
+                        TextField("Name, city or trade", text: $aloneQuery).textFieldStyle(.plain).font(.system(size: 13.5)).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .padding(.vertical, 8).overlay(alignment: .bottom) { Hairline() }
+                    }
+                    if rows.isEmpty { Text("No company matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).padding(.vertical, 8) }
+                    ForEach(Array(rows.prefix(cap).enumerated()), id: \.element.co.id) { n, r in
+                        if n > 0 { Hairline() }
+                        NavigationLink(value: CompanyRoute.company(r.co.id)) {
+                            GroupLinkRow(title: r.co.name,
+                                         sub: "\(engine.tradeName(r.co)) · \(engine.cityName(r.co)) · \(r.h.label) · value \(store.short(r.h.value, in: r.co))",
+                                         trailing: store.short(r.h.profitTTM, in: r.co) + " / yr", tint: r.h.profitTTM < 0 ? Theme.loss : Theme.ivory,
+                                         subTint: r.h.label == "Struggling" || r.h.label == "Tight" ? Theme.caution : Theme.ivoryFaint)
+                        }.buttonStyle(.plain)
+                    }
+                    if rows.count > 8 && q.isEmpty {
+                        Button(aloneAll ? "Show fewer" : "Show all \(rows.count)") { aloneAll.toggle() }.font(.system(size: 12)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 6)
+                    }
+                    Text("Profit is the last twelve months. Comparisons across all companies stay under Company.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
             }
         }
     }
@@ -226,6 +256,21 @@ struct GroupStructureOverview: View {
             NavigationLink { ChainView(chainID: chain.id) } label: { row }.buttonStyle(.plain)
         } else {
             NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) { row }.buttonStyle(.plain)
+        }
+        // Applicants open the same talk as under Company > Chain: one record, one set of actions (offer, accept, walk away).
+        let cur = engine.currency(for: c)
+        ForEach(engine.franchiseApplicants(companyID: c.id)) { a in
+            NavigationLink { FranchiseTalkView(companyID: c.id, applicantID: a.id) } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(a.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                        Text("Applicant · \(engine.data.countries.city(a.cityID, preferring: c.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))")
+                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Text("Talk  ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
+                }.padding(.vertical, 8).padding(.leading, Theme.Space.m).contentShape(Rectangle())
+            }.buttonStyle(.plain)
         }
     }
 

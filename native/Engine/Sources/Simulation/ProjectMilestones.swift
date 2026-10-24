@@ -45,6 +45,7 @@ public struct ProjectTimeline: Identifiable, Equatable, Sendable {
     public var ifLate: String
     /// The money that the "if late" sentence is about (still to be paid, loan outstanding, tied up), in the company's currency.
     public var atStake: Double?
+    public var atStakeLabel: String
     /// True when the engine records a delay on it.
     public var delayed: Bool
 }
@@ -80,7 +81,7 @@ public extension GameEngine {
                     progress: nil, value: t.worth, costSoFar: nil, costBudget: t.bidCost, receivedSoFar: nil,
                     blocking: nil,
                     ifLate: "After the closing date you can no longer bid. Writing a bid costs money even when you lose.",
-                    atStake: t.bidCost, delayed: false))
+                    atStake: t.bidCost, atStakeLabel: "Cost of a bid", delayed: false))
             }
             for t in board.myTenders where t.outcome == nil {
                 out.append(ProjectTimeline(
@@ -94,7 +95,7 @@ public extension GameEngine {
                     progress: nil, value: t.worth, costSoFar: t.bidCost, costBudget: t.bidCost, receivedSoFar: nil,
                     blocking: "Waiting for the buyer's decision.",
                     ifLate: "Nothing to do until the decision. You can withdraw the bid before then.",
-                    atStake: nil, delayed: false))
+                    atStake: nil, atStakeLabel: "", delayed: false))
             }
         }
         return out
@@ -146,7 +147,7 @@ public extension GameEngine {
         return ProjectTimeline(id: "j\(co.id)-\(j.id)", companyID: co.id, companyName: co.name, kind: kind, title: row.title, subtitle: j.client,
                                startWeek: j.startWeek, dueWeek: board.isEvent ? row.dueWeek : nil, stages: stages, progress: progress, value: j.contractValue,
                                costSoFar: nil, costBudget: nil, receivedSoFar: j.paid, blocking: blocking, ifLate: late,
-                               atStake: board.isEvent ? nil : max(0, j.contractValue - j.paid), delayed: j.delay > 0)
+                               atStake: board.isEvent ? nil : max(0, j.contractValue - j.paid), atStakeLabel: "Still to be paid", delayed: j.delay > 0)
     }
 
     private func developmentTimeline(_ co: Company, _ p: ProjectBoard.DevelopmentRow, spent: Double, overrun: Double, buildWeeks: Int, now: Int) -> ProjectTimeline {
@@ -172,6 +173,6 @@ public extension GameEngine {
         return ProjectTimeline(id: "d\(co.id)-\(p.id)", companyID: co.id, companyName: co.name, kind: .development, title: p.name, subtitle: "\(p.units) units",
                                startWeek: nil, dueWeek: readyWeek, stages: stages, progress: progress, value: p.unitPrice * Double(p.units) * p.priceMultiplier,
                                costSoFar: p.land + spent,
-                               costBudget: p.land + p.build + overrun, receivedSoFar: p.revenue > 0 ? p.revenue : nil, blocking: blocking, ifLate: late, atStake: p.loanBalance > 0 ? p.loanBalance : p.workInProgress, delayed: p.delayWeeks > 0)
+                               costBudget: p.land + p.build + overrun, receivedSoFar: p.revenue > 0 ? p.revenue : nil, blocking: blocking, ifLate: late, atStake: p.loanBalance > 0 ? p.loanBalance : p.workInProgress, atStakeLabel: p.loanBalance > 0 ? "Construction loan outstanding" : "Tied up in land and building", delayed: p.delayWeeks > 0)
     }
 }
