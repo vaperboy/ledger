@@ -169,16 +169,6 @@ public extension GameEngine {
         return out
     }
 
-    /// `ownCar`: the person uses their own car and you pay mileage instead of providing a company car (estate agents). Original: `ACT.offer` + `carc`.
-    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, ownCar: Bool = false) -> Hiring.HireResult {
-        var r = Hiring.HireResult.refused
-        update { s, data, _ in
-            r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data)
-            if r == .ok && ownCar { PersonalEquipment.toggleOwnCar(&s, companyID: companyID, staffID: personID, set: true) }
-        }
-        return r
-    }
-
     @discardableResult
     mutating func fire(personID: Int, companyID: Int) -> Double {
         var sev = 0.0
@@ -281,6 +271,16 @@ public extension GameEngine {
     mutating func setPolicy(_ policy: ManagementPolicy) { update { s, _, _ in s.policy = policy } }
 
     // MARK: Payroll
+
+    /// Change a company's pay day (1, 5, 10, 12, 15, 20, 25, 28 or 0 = last day). The change is queued until this month's payroll is paid.
+    @discardableResult
+    mutating func setPayday(companyID: Int, day: Int) -> Payday.PaydayChange {
+        var r = Payday.PaydayChange.noCompany
+        update { s, _, _ in
+            r = Payday.setPayday(&s, companyID: companyID, day: day, today: Payday.dayNumber(week: s.week, day: s.day))
+        }
+        return r
+    }
 
     /// Who runs payroll at a company: the owner (approves each month), the accountant, or the manager.
     mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) {

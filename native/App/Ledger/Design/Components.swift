@@ -457,21 +457,60 @@ enum TradeSymbol {
 
 /// A consequential action waiting for confirmation: what it is, what it costs or changes, and what to run.
 /// One shared confirmation instead of a hand-written dialog per button.
+///
+/// `amount` (in `currency`) is the money the action spends. Only a reversible spend that supplies it can skip the question, when the
+/// player chose a size under which they do not want to be asked (Settings, "How much I decide"). Anything `destructive` (dismissals,
+/// wind-up, sales, closing, anything irreversible) and anything without an amount always asks.
 struct PendingAction: Identifiable {
     let id = UUID()
     var title: String
     var message: String
     var button: String
     var destructive = false
+    var amount: Double? = nil
+    var currency: Currency? = nil
     var run: () -> Void
 }
 
+/// The one money-size rule for confirmations. A device preference, not game state: it is not in the save and never travels with it.
+enum ConfirmThreshold {
+    /// Reference-economy sizes (scaled to the spend's own currency like every price). Step 0 = always ask.
+    static let sizes: [Double] = [0, 500, 2_000, 10_000, 50_000, 250_000]
+    static let key = "askBelowStep"
+    static var step: Int {
+        get { min(max(UserDefaults.standard.integer(forKey: key), 0), sizes.count - 1) }
+        set { UserDefaults.standard.set(min(max(newValue, 0), sizes.count - 1), forKey: key) }
+    }
+
+    /// True when `p` may run without asking. Pure so it can be tested as a decision table.
+    static func skips(_ p: PendingAction, step: Int) -> Bool {
+        decide(destructive: p.destructive, amount: p.amount, limit: p.currency.map { limit(step: step, currency: $0) })
+    }
+    static func skips(_ p: PendingAction) -> Bool { skips(p, step: step) }
+
+    static func decide(destructive: Bool, amount: Double?, limit: Double?) -> Bool {
+        guard !destructive, let amount, let limit, limit > 0 else { return false }
+        return amount < limit
+    }
+    /// The size in this currency under which the player is not asked (0 = always asked).
+    static func limit(step: Int, currency: Currency) -> Double {
+        let i = min(max(step, 0), sizes.count - 1)
+        return sizes[i] == 0 ? 0 : currency.scaledPrice(sizes[i])
+    }
+}
+
 extension View {
-    /// Shows `pending` as a confirmation dialog; confirming runs it, cancelling drops it.
+    /// Shows `pending` as a confirmation dialog; confirming runs it, cancelling drops it. A reversible spend under the player's chosen
+    /// size runs at once instead (its own result message says what was spent); destructive and irreversible actions always ask.
     func confirmAction(_ pending: Binding<PendingAction?>) -> some View {
-        confirmationDialog(pending.wrappedValue?.title ?? "", isPresented: Binding(get: { pending.wrappedValue != nil }, set: { if !$0 { pending.wrappedValue = nil } }),
+        confirmationDialog(pending.wrappedValue?.title ?? "",
+                           isPresented: Binding(get: { pending.wrappedValue.map { !ConfirmThreshold.skips($0) } ?? false },
+                                                set: { if !$0 { pending.wrappedValue = nil } }),
                            titleVisibility: .visible, presenting: pending.wrappedValue) { p in
             Button(p.button, role: p.destructive ? .destructive : nil) { p.run(); pending.wrappedValue = nil }
         } message: { p in Text(p.message) }
+        .onChange(of: pending.wrappedValue?.id) { _, _ in
+            if let p = pending.wrappedValue, ConfirmThreshold.skips(p) { pending.wrappedValue = nil; p.run() }
+        }
     }
 }

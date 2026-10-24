@@ -9,6 +9,8 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 
 **Binding rules:** `SIMULATION_RULES.md` (no artificial caps/floors, balance the causes, sales methods with real consequences, respect chain/franchise structure) and `DESIGN_RULES.md`.
 
+**Audit (23 Oct 2026):** own companies as suppliers/add-ons, company cars, staff benefits and commission pay (what exists, defects, proposed batches): `design/stage2/own_companies_cars_perks_commission.md`.
+
 **Classes**
 - **KEEP**: build it as the original/owner intends.
 - **ADAPT**: build it, but differently from the original (reason given).
@@ -102,6 +104,8 @@ reports, and the "missing" list of 23 Oct. Items marked UNVERIFIED were not re-c
 | E5 | Overtime paid to hourly staff only; hours/notice per country not traced for all 23 | DEFER | Check after the dismissal merge (A1). | A1 |
 
 ## F. Economy and balance (owner: not yet; bound by SIMULATION_RULES.md)
+
+**Known guard failure (Stage 4 input, not tuned):** `BalanceGuardTests.testAirlineAndShippingSurvive` passed at 17f260c and fails at 205dd3f+ (shipping -26.7% a year against a -25% band). The only change in between is the hidden personal ask variation and market-rate trial week (Hiring.swift), so shipping sits on the edge of its band and small wage shifts tip it. Investigate the cause (shipping staffing/wage share) in Stage 4 before touching numbers; do not move the band to hide it.
 Review of past balance work against the rules (23 Oct): the changes below were fitted to ROI ranges or cap a loss and must be re-examined for their *cause*, not
 kept just because tests pass. Test ranges (BalanceGuardTests) may only detect suspicious results, never limit outcomes.
 | ID | Item | Class | Rationale | Depends on |
