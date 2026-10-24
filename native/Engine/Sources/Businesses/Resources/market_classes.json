@@ -1,0 +1,30 @@
+{
+ "_doc": "Which trades sell to the better-off (docs/CITY_DATA.md). need = how much household income, in multiples of the reference median wage and before the price position, a household needs to buy this regularly (everyday goods 0, a luxury boutique 1.4, a new car 2.2). lean = how strongly the number of potential customers follows the share of households that can afford it: demand x (share in the city / share in the country) ^ lean. Trades not listed are everyday trades: only the city's size counts for them.",
+ "base": 0.85,
+ "positionExponent": 2.4,
+ "demandFloor": 0.08,
+ "demandCeiling": 3,
+ "rivalDensityFloor": 0.15,
+ "rivalDensityCeiling": 3,
+ "rivalCapBoost": 0.12,
+ "rivalStrengthBoost": 0.2,
+ "awarenessCeilingDrop": 14,
+ "trades": {
+  "boutique": { "need": 1.4, "lean": 1.0 },
+  "cardealer": { "need": 2.2, "lean": 1.1 },
+  "hotel": { "need": 1.3, "lean": 0.7 },
+  "casino": { "need": 1.6, "lean": 0.8 },
+  "restaurant": { "need": 1.0, "lean": 0.5 },
+  "nightclub": { "need": 1.1, "lean": 0.5 },
+  "airline": { "need": 1.4, "lean": 0.5 },
+  "skires": { "need": 1.5, "lean": 0.8 },
+  "indoorski": { "need": 1.3, "lean": 0.6 },
+  "vineyard": { "need": 1.4, "lean": 0.6 },
+  "furniture": { "need": 1.4, "lean": 0.6 },
+  "estate": { "need": 1.6, "lean": 0.7 },
+  "photo": { "need": 1.1, "lean": 0.4 },
+  "dental": { "need": 1.0, "lean": 0.3 },
+  "fun": { "need": 0.9, "lean": 0.3 },
+  "carrental": { "need": 1.0, "lean": 0.3 }
+ }
+}
