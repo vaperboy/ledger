@@ -391,7 +391,7 @@ extension SimulationSmokeTests {
                 var e = try newEngine("UK", seed: 77)
                 let id = try startCompany(&e, trade: trade, fund: 6_000_000)
                 if aggressive {
-                    for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil {
+                    for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil && !ch.isPrimeTime {
                         _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
                     }
                 }

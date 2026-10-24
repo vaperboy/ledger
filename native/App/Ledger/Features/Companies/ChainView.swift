@@ -275,6 +275,7 @@ struct ChainRulesSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var chainID: Int
+    @State private var pending: PendingAction?
 
     var body: some View {
         let rules = engine.chainRules(chainID: chainID)
@@ -298,8 +299,51 @@ struct ChainRulesSection: View {
                 SectionTabs(items: ["own", "light", "normal", "heavy"], title: { ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"][$0] ?? $0 },
                             selection: Binding(get: { rules["mkt"].string.isEmpty ? "own" : rules["mkt"].string }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) } }))
                     .padding(.horizontal, -Theme.Space.margin)
-                Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise. Business choices and opening hours follow the chain.")
+                Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                if let trade = engine.chainTrade(chainID: chainID) {
+                    ForEach(trade.knobs.filter { !$0.isMulti }, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    /// A chain standard for one way of selling: mandatory for the stores while set (they see it locked), or left to each store.
+    private func knobStandard(_ knob: Knob, _ current: JSONValue) -> some View {
+        let cur = engine.homeCurrency
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    Button("Each store decides") {
+                        if current.isNull { return }
+                        pending = PendingAction(title: "Leave \(knob.name) to each store?", message: "Stores keep what they sell by now and can change it themselves, each paying its own changeover.", button: "Leave to stores") {
+                            store.act { $0.releaseChainKnob(chainID: chainID, knob: knob.id) }
+                            store.show("\(knob.name) is now each store's choice.", tone: "good")
+                        }
+                    }.buttonStyle(QuietButtonStyle(tint: current.isNull ? Theme.gold : Theme.ivoryMuted))
+                    ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
+                        Button(o.name) { askStandard(knob, i, cur) }.buttonStyle(QuietButtonStyle(tint: !current.isNull && current.int == i ? Theme.gold : Theme.ivoryMuted))
+                    }
+                }
+            }
+        }
+    }
+
+    private func askStandard(_ knob: Knob, _ option: Int, _ cur: Currency) {
+        guard let plan = engine.chainKnobPlan(chainID: chainID, knob: knob.id, value: option) else { return }
+        let name = knob.options[option].name
+        var lines = ["Every store sells by \(name) from now on and cannot choose otherwise."]
+        if plan.changing == 0 && plan.exceptions == 0 { lines.append("Every store already does.") }
+        else {
+            lines.append("\(plan.changing) store\(plan.changing == 1 ? "" : "s") change over: \(cur.tidyShort(plan.totalCost)) in all, paid by the stores, with a few weeks at reduced capacity each.")
+            if plan.exceptions > 0 { lines.append("\(plan.exceptions) cannot right now and keep what they have: " + plan.lines.filter { $0.changes && $0.reason != nil }.map { "\($0.storeName) (\($0.reason ?? ""))" }.joined(separator: "; ")) }
+        }
+        lines.append("No guarantee: it can win or lose customers and margin.")
+        pending = PendingAction(title: "Make \(name) the chain standard?", message: lines.joined(separator: "\n"), button: plan.totalCost > 0 ? "Change for \(cur.tidyShort(plan.totalCost))" : "Set standard") {
+            if let done = store.act({ $0.setChainKnob(chainID: chainID, knob: knob.id, value: option) }) {
+                store.show("\(name) is the standard. \(done.changing) changed over, \(done.exceptions) could not.", tone: done.exceptions > 0 ? "warn" : "good")
             }
         }
     }

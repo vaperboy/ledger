@@ -42,7 +42,7 @@ final class BalanceProbeTests: XCTestCase {
             }
         }
         if aggressive {
-            for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil {
+            for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil && !ch.isPrimeTime {
                 _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
             }
         }

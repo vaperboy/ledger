@@ -54,19 +54,7 @@ struct CompanyOperations: View {
                 }
             }
             if let trade, !trade.knobs.isEmpty {
-                ForEach(trade.knobs, id: \.id) { knob in
-                    Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            SectionLabel(knob.name)
-                            Text(knob.detail).font(.caption).foregroundStyle(Theme.ivoryMuted)
-                            let current = company.value("knob")[knob.id].isNull ? knob.defaultIndex : company.value("knob")[knob.id].int
-                            Picker(knob.name, selection: Binding(get: { current }, set: { v in store.act { $0.setKnob(companyID: company.id, knob: knob.id, option: v) } })) {
-                                ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in Text(o.name).tag(i) }
-                            }.pickerStyle(.menu)
-                            if knob.options.indices.contains(current) { Text(knob.options[current].detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                        }
-                    }
-                }
+                CompanyHowYouSell(engine: engine, company: company, trade: trade)
             }
             CompanySourcing(engine: engine, company: company)
             EquipmentEntryRow(company: company)

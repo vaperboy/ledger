@@ -129,6 +129,81 @@ public enum Chains {
             s.companies[i].name = storeName(s, chain: ch, s.companies[i], data: d)
         }
         applyRules(&s, chain: ch, companyIndex: i)
+        // An open store joining a chain changes over to its standards like any other change; one that cannot keeps its choice.
+        if let d = data, s.companies[i].status == .open {
+            for (k, v) in ch["rules"]["knob"].object where s.companies[i].value("knob")[k].int != v.int {
+                if case .refused(let why) = KnobChange.apply(&s, d, companyID: companyID, knob: k, value: v.int, byChain: true) {
+                    s.note("\(s.companies[i].name) joined \(ch["name"].string) but keeps its own way of selling: \(why)", tone: "warn", companyID: companyID)
+                }
+            }
+        }
+    }
+
+    /// One store's line in a chain-wide change of a standard.
+    public struct KnobStandardLine: Equatable, Sendable {
+        public var storeID: Int
+        public var storeName: String
+        /// False when the store already follows the standard
+        public var changes: Bool
+        public var cost: Double
+        public var weeks: Int
+        /// Why this store cannot take the standard (it keeps its current choice)
+        public var reason: String?
+    }
+
+    public struct KnobStandardPlan: Equatable, Sendable {
+        public var lines: [KnobStandardLine]
+        public init(lines: [KnobStandardLine]) { self.lines = lines }
+        /// What the stores that can change will pay in all
+        public var totalCost: Double { lines.filter { $0.changes && $0.reason == nil }.reduce(0) { $0 + $1.cost } }
+        public var exceptions: Int { lines.filter { $0.changes && $0.reason != nil }.count }
+        public var changing: Int { lines.filter { $0.changes && $0.reason == nil }.count }
+    }
+
+    /// What making `value` the chain's standard for a knob would cost each store. Nothing is changed.
+    public static func knobStandardPlan(_ s: GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan? {
+        guard let ch = chain(s, id: chainID), data.catalog[ch["type"].string]?.knobs.contains(where: { $0.id == knob }) == true else { return nil }
+        var lines: [KnobStandardLine] = []
+        for c in stores(s, ch) {
+            guard let q = KnobChange.quote(s, data, companyID: c.id, knob: knob, value: value, byChain: true) else { continue }
+            let same = (c.value("knob")[knob].isNull ? (data.catalog[c.type]?.knobs.first { $0.id == knob }?.defaultIndex ?? 0) : c.value("knob")[knob].int) == value
+            lines.append(KnobStandardLine(storeID: c.id, storeName: c.name, changes: !same, cost: q.totalCost, weeks: q.transitionWeeks, reason: same ? nil : q.blocked))
+        }
+        return KnobStandardPlan(lines: lines)
+    }
+
+    /// Make `value` the chain's mandatory standard for a knob and have every store it governs change over to it. A store that
+    /// cannot (no cash, licence refused, still changing over) keeps its choice and is reported, never silently overridden.
+    /// Running it again later retries the stores that still differ.
+    @discardableResult
+    public static func setKnobStandard(_ s: inout GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan {
+        guard var ch = chain(s, id: chainID), let plan0 = knobStandardPlan(s, chainID: chainID, knob: knob, value: value, data: data) else { return KnobStandardPlan(lines: []) }
+        ch["rules"]["knob"][knob] = .number(Double(value))
+        save(&s, ch)
+        var lines = plan0.lines
+        for n in lines.indices where lines[n].changes {
+            let id = lines[n].storeID
+            guard let i = s.companyIndex(id) else { continue }
+            if s.companies[i].status != .open {
+                var k = s.companies[i].value("knob"); k[knob] = .number(Double(value)); s.companies[i].set("knob", k)
+                lines[n].reason = nil
+                continue
+            }
+            if case .refused(let why) = KnobChange.apply(&s, data, companyID: id, knob: knob, value: value, byChain: true) {
+                lines[n].reason = why
+                s.note("\(lines[n].storeName) keeps its way of selling: \(why)", tone: "warn", companyID: id)
+            } else { lines[n].reason = nil }
+        }
+        return KnobStandardPlan(lines: lines)
+    }
+
+    /// Give the choice back to the stores: the chain no longer fixes this knob.
+    public static func releaseKnobStandard(_ s: inout GameState, chainID: Int, knob: String) {
+        guard var ch = chain(s, id: chainID) else { return }
+        var k = ch["rules"]["knob"].object
+        k.removeValue(forKey: knob)
+        ch["rules"]["knob"] = .object(k)
+        save(&s, ch)
     }
 
     /// A place in a chain that is short of a role, and a sister store that has one more than it needs. Original: the "Short of staff" list.
@@ -172,9 +247,13 @@ public enum Chains {
     static func applyRules(_ s: inout GameState, chain ch: JSONValue, companyIndex i: Int) {
         let R = ch["rules"], o = s.companies[i].value("off")
         s.companies[i].priceLevel = clamp(R["price"].double + o["price"].double, -3, 3)
-        var knob = s.companies[i].value("knob")
-        for (k, v) in R["knob"].object { knob[k] = v }
-        s.companies[i].set("knob", knob)
+        // A store that is not open yet takes the chain's standard as it opens. An open store changes over (cost, weeks, licences)
+        // when the standard changes (`setKnobStandard`), so the weekly turn never rewrites its choices silently.
+        if s.companies[i].status != .open {
+            var knob = s.companies[i].value("knob")
+            for (k, v) in R["knob"].object { knob[k] = v }
+            s.companies[i].set("knob", knob)
+        }
         s.companies[i].set("stockPol", o["stock"].isNull ? R["stockPol"].double : o["stock"].double)
     }
 

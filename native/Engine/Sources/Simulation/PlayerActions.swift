@@ -45,7 +45,8 @@ public extension GameEngine {
     mutating func setMaintenance(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].maintenance = min(2, max(0, level)) } } }
     mutating func setStockPolicy(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].set("stockPol", min(2, max(0, level))) } } }
 
-    /// Choose a business option (a "knob"), e.g. the café concept. Needs the documents the option requires.
+    /// Write a business option (a "knob") directly, free of any changeover. For tests and set-up only: a player changes how
+    /// the business sells with `changeKnob` / `toggleKnobOption`, which cost something and respect chain and franchise rules.
     mutating func setKnob(companyID: Int, knob: String, option: Int) {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
@@ -53,28 +54,106 @@ public extension GameEngine {
         }
     }
 
+    /// Switch one add-on of a multi-choice knob on or off. Several add-ons can run together: the knob is a bit mask,
+    /// so this sets or clears that option's bit and leaves the others alone. An add-on that needs a licence applies for it
+    /// (fee paid now); a chain standard or franchise agreement that fixes the knob refuses.
+    @discardableResult
+    mutating func toggleKnobOption(companyID: Int, knob: String, option: Int, on: Bool) -> ActionResult {
+        var result = ActionResult.done
+        update { s, data, _ in
+            guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type],
+                  let k = bd.knobs.first(where: { $0.id == knob }), k.isMulti, k.options.indices.contains(option) else { result = .refused("not a choice of this business"); return }
+            let now = KnobChange.currentValue(s.companies[i], k)
+            let mask = Knobs.mask(now, option: option, on: on)
+            if mask == now { return }
+            if case .refused(let why) = KnobChange.apply(&s, data, companyID: companyID, knob: knob, value: mask) { result = .refused(why) }
+        }
+        return result
+    }
+
+    /// What changing a single-choice knob to option `option` (or a multi-choice knob to the bit mask `option`) costs and commits you to.
+    func knobChangeQuote(companyID: Int, knob: String, option: Int) -> KnobChangeQuote? {
+        KnobChange.quote(state, data, companyID: companyID, knob: knob, value: option)
+    }
+
+    /// The same for switching one add-on of a multi-choice knob on or off.
+    func knobToggleQuote(companyID: Int, knob: String, option: Int, on: Bool) -> KnobChangeQuote? {
+        guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
+        return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
+    }
+
+    /// Who fixes this knob for the company (its chain's standard, its franchise agreement), or nil when the owner decides.
+    func knobGovernedBy(companyID: Int, knob: String) -> String? { state.company(companyID).flatMap { KnobChange.governedBy(state, $0, knob: knob) } }
+
+    /// Change how the business sells (a single-choice knob): pays the changeover and any licences, then trades at reduced
+    /// capacity for a few weeks. Nothing is promised about the result.
+    @discardableResult
+    mutating func changeKnob(companyID: Int, knob: String, option: Int) -> KnobChangeOutcome {
+        var out = KnobChangeOutcome.refused("not a choice of this business")
+        update { s, data, _ in
+            guard let co = s.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), !k.isMulti else { return }
+            out = KnobChange.apply(&s, data, companyID: companyID, knob: knob, value: option)
+        }
+        return out
+    }
+
     /// Start, change or stop a marketing campaign. A campaign cannot be cut before its minimum length.
-    /// Original: `setMkt`.
-    mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double) -> ActionResult {
+    /// `weeks`: how long it runs from now (at least the channel's minimum); 0 = until you stop it; nil = a new campaign
+    /// runs until stopped and a running one keeps its end date. Original: `setMkt` + the planner's `plgo`.
+    mutating func setCampaign(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int? = nil) -> ActionResult {
         var result = ActionResult.done
         let channels = marketing.channels
-        update { s, _, _ in
+        update { s, data, _ in
             guard let i = s.companyIndex(companyID), let c = channels[channel] else { result = .refused("unknown channel"); return }
+            if c.offered(in: World(state: s, data: data).country(s.companies[i])) == nil { result = .refused("not available in this country"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
+            if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
             var mkt = s.companies[i].value("mkt")
+            var mktEnd = s.companies[i].value("mktEnd")
             let cur = mkt[channel]
+            if let w = weeks, w > 0, weeklyBudget > 0 {
+                if w < c.minimumWeeks { result = .refused("this channel needs at least \(c.minimumWeeks) weeks"); return }
+                if !cur.isNull, !cur["lock"].isNull, Double(s.week + w) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
+            }
             if weeklyBudget <= 0 {
                 if !cur.isNull, !cur["lock"].isNull, Double(s.week) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
                 mkt = Marketing.removing(mkt, channel)
+                mktEnd = Marketing.removing(mktEnd, channel)
             } else if !cur.isNull {
                 if weeklyBudget < cur["b"].double, !cur["lock"].isNull, Double(s.week) < cur["lock"].double { result = .refused("locked for \(Int(cur["lock"].double) - s.week) more weeks"); return }
                 mkt[channel]["b"] = .number(weeklyBudget)
             } else {
                 mkt[channel] = .object(["b": .number(weeklyBudget), "since": .number(Double(s.week)), "lock": .number(Double(s.week + c.minimumWeeks))])
+                mktEnd = Marketing.removing(mktEnd, channel)
+            }
+            if weeklyBudget > 0, let w = weeks {
+                if w > 0 { mktEnd[channel] = .number(Double(s.week + w)) } else { mktEnd = Marketing.removing(mktEnd, channel) }
             }
             s.companies[i].set("mkt", mkt)
+            s.companies[i].set("mktEnd", mktEnd)
         }
         return result
+    }
+
+    /// The channels this company can buy, as its country offers them (a country-media channel carries the country's own name).
+    /// The prime-time channel comes last; managers never pick it (they choose search or social ads only).
+    func marketingChannels(companyID: Int) -> [MarketingChannel] {
+        guard let co = state.company(companyID) else { return [] }
+        let country = World(state: state, data: data).country(co)
+        return marketing.channels.values.compactMap { $0.offered(in: country) }
+            .filter { $0.onlyInCountry == nil || $0.onlyInCountry == co.countryCode }
+            .sorted { $0.isPrimeTime != $1.isPrimeTime ? !$0.isPrimeTime : $0.name < $1.name }
+    }
+
+    /// What starting this campaign commits you to; shown before the player confirms. Nil for an unknown company or channel.
+    func campaignPlan(companyID: Int, channel: String, weeklyBudget: Double, weeks: Int?) -> CampaignPlan? {
+        guard let co = state.company(companyID), let c = marketing.channels[channel] else { return nil }
+        let cur = co.value("mkt")[channel]
+        let left = cur.isNull || cur["lock"].isNull ? 0 : max(0, Int(cur["lock"].double) - state.week)
+        let w = (weeks ?? 0) > 0 ? weeks : nil
+        let util = co.value("lastW")["util"].double
+        return CampaignPlan(lockedWeeks: cur.isNull ? c.minimumWeeks : left, weeks: w, totalCost: w.map { weeklyBudget * Double($0) },
+                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state))
     }
 
     // MARK: People
