@@ -97,12 +97,15 @@ public extension GameEngine {
 
     private func supplierPaymentTerms(_ co: Company, input: String) -> [PaymentTermChoice] {
         func pct(_ x: Double) -> String { String(format: "%.1f%%", abs(x) * 100) }
-        if input == "goods" {
-            guard let v = Suppliers.goodsVendor(state, company: co, data: data) else { return [] }
-            let agreed = SupplyTerms.agreedGoodsTerm(co)
-            let active = SupplyTerms.goodsTerm(state, co, data: data)?.id ?? "monthly"
+        if input == "goods" || input == "repair" {
+            let repair = input == "repair"
+            guard let v = repair ? Suppliers.repairVendor(state, company: co, data: data) : Suppliers.goodsVendor(state, company: co, data: data) else { return [] }
+            let agreed = repair ? SupplyTerms.agreedRepairTerm(co) : SupplyTerms.agreedGoodsTerm(co)
+            let active = (repair ? SupplyTerms.repairTerm(state, co, data: data) : SupplyTerms.goodsTerm(state, co, data: data))?.id ?? "monthly"
+            let thing = repair ? "Each repair and upkeep bill" : "Each delivery"
             return SupplyTerms.vendorTerms.map { t in
-                var detail = t.isMonthEnd ? "Bills are paid on the last day of the month, as usual." : t.days == 0 ? "Each delivery is paid on the spot." : "Each delivery is invoiced and paid \(t.days) days later."
+                var detail = t.isMonthEnd ? (repair ? "Repair and upkeep bills are paid as they fall due, as usual." : "Bills are paid on the last day of the month, as usual.")
+                    : t.days == 0 ? "\(thing) is paid on the spot." : "\(thing) is invoiced and paid \(t.days) days later."
                 if t.priceEffect < 0 { detail += " \(pct(t.priceEffect)) off the price for paying at once." }
                 if t.priceEffect > 0 { detail += " \(pct(t.priceEffect)) added to the price for the credit." }
                 let blocked: String? = v.relationship >= t.minRelationship ? nil : "\(v.name) offers this only to \(Suppliers.relationshipWord(t.minRelationship).lowercased()) contacts or closer."
@@ -293,6 +296,14 @@ public extension GameEngine {
     mutating func setGoodsPaymentTerms(companyID: Int, term: String?) -> Bool {
         var ok = false
         update { s, d, _ in ok = SupplyTerms.setGoodsTerm(&s, companyID: companyID, term: term, data: d) }
+        return ok
+    }
+
+    /// How the company pays its repair supplier (nil or "monthly" = as the bill comes).
+    @discardableResult
+    mutating func setRepairPaymentTerms(companyID: Int, term: String?) -> Bool {
+        var ok = false
+        update { s, d, _ in ok = SupplyTerms.setRepairTerm(&s, companyID: companyID, term: term, data: d) }
         return ok
     }
 

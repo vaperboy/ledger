@@ -136,6 +136,58 @@ public enum SupplyTerms {
         return true
     }
 
+    // MARK: Repair terms (the same terms as goods, with the repair supplier)
+
+    /// The terms id agreed with the repair supplier (nil = paid as the upkeep falls due, as always).
+    public static func agreedRepairTerm(_ co: Company) -> String? {
+        let v = co.value("pterm")["fix"]
+        return v.isNull ? nil : v.string
+    }
+
+    /// The repair terms that apply now: agreed, and still offered by the chosen repair supplier at today's relationship.
+    public static func repairTerm(_ s: GameState, _ co: Company, data: GameData) -> Term? {
+        guard let id = agreedRepairTerm(co), let t = vendorTerm(id), !t.isMonthEnd else { return nil }
+        guard let v = Suppliers.repairVendor(s, company: co, data: data), v.relationship >= t.minRelationship else { return nil }
+        return t
+    }
+
+    /// Agree terms with the repair supplier. nil or "monthly" go back to paying as the bill comes.
+    @discardableResult
+    public static func setRepairTerm(_ s: inout GameState, companyID: Int, term id: String?, data: GameData) -> Bool {
+        guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
+        var tm = s.companies[i].value("pterm")
+        if id == nil || id == "monthly" {
+            if !tm.isNull { var o = tm.object; o.removeValue(forKey: "fix"); if o.isEmpty { s.companies[i].raw.removeValue(forKey: "pterm") } else { s.companies[i].set("pterm", .object(o)) } }
+            return true
+        }
+        guard let id, let t = vendorTerm(id), let v = Suppliers.repairVendor(s, company: s.companies[i], data: data), v.relationship >= t.minRelationship else { return false }
+        if tm.isNull { tm = .object([:]) }
+        tm["fix"] = .string(id)
+        s.companies[i].set("pterm", tm)
+        return true
+    }
+
+    /// Pay a repair or upkeep bill (`amount` is after the supplier's discount) on the agreed terms: at once with the cash discount, or as an
+    /// invoice that falls due later. The cost is booked now in either case. Returns false if it had to be paid now and the cash was not there.
+    @discardableResult
+    static func payRepairs(_ s: inout GameState, companyIndex i: Int, amount: Double, label: String?, data: GameData) -> Bool {
+        guard amount > 0 else { return true }
+        let co = s.companies[i]
+        guard let t = repairTerm(s, co, data: data) else {
+            Payments.companyPays(&s, companyID: co.id, amount: amount, category: "oth", label: label)
+            return true
+        }
+        let price = amount * (1 + t.priceEffect)
+        if t.days == 0 {
+            Payments.companyPays(&s, companyID: co.id, amount: price, category: "oth", label: label)
+            return true
+        }
+        let v = Suppliers.repairVendor(s, company: co, data: data)
+        Payments.book(&s, companyID: co.id, category: "oth", amount: jsRound(price))
+        issue(&s, buyer: co.id, provider: 0, vendorID: v?.id ?? "", name: v?.name ?? "Repair supplier", kind: "fix", amount: price, weeks: t.weeks)
+        return true
+    }
+
     // MARK: Invoices
 
     public struct Invoice: Equatable, Identifiable, Sendable {
@@ -331,6 +383,17 @@ public enum SupplyTerms {
 
     /// Terms that the supplier no longer offers (the relationship fell) lapse; purchases go back to the monthly bill.
     static func lapseTerms(_ s: inout GameState, data: GameData) {
+        for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm")["fix"].isNull {
+            let co = s.companies[i]
+            guard let id = agreedRepairTerm(co), let t = vendorTerm(id) else { continue }
+            let v = Suppliers.repairVendor(s, company: co, data: data)
+            if v == nil || v!.relationship < t.minRelationship {
+                _ = setRepairTerm(&s, companyID: co.id, term: nil, data: data)
+                s.addMessage(from: co.name, title: "\(v?.name ?? "Your repair supplier") ends your \(t.name.lowercased()) terms",
+                             body: "\(co.name) no longer has the standing for \(t.name.lowercased()) with \(v?.name ?? "its repair supplier"). Repairs go back to being paid as the bill comes. Better relations bring the terms back.",
+                             companyID: co.id, tone: "bad")
+            }
+        }
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm").isNull {
             let co = s.companies[i]
             guard let id = agreedGoodsTerm(co), let t = vendorTerm(id) else { continue }

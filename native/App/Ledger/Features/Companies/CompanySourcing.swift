@@ -229,6 +229,7 @@ struct CompanySourcing: View {
         pending = PendingAction(title: "Pay by \(t.name.lowercased()) for \(input.title.lowercased())?", message: t.detail, button: "Use these terms") {
             let ok: Bool? = input.id == "goods"
                 ? store.act({ $0.setGoodsPaymentTerms(companyID: company.id, term: t.id) })
+                : input.id == "repair" ? store.act({ $0.setRepairPaymentTerms(companyID: company.id, term: t.id) })
                 : store.act({ $0.setSupplyPaymentTerms(companyID: company.id, input: input.id, term: t.id) })
             if ok == true { Haptics.success(); store.show("Payment terms: \(t.name).", tone: "good") }
             else { Haptics.warning(); store.show("The supplier does not offer those terms now.", tone: "warn") }
