@@ -191,7 +191,8 @@ final class NegotiationTests: XCTestCase {
         var n = 0
         while n < 40 { let r = e.hireManager(personID: m.id, companyID: id, monthlyWage: 1000); if r == .walkedAway { break }; XCTAssertEqual(r, .refused); n += 1 }
         rounds["manager"] = n
-        // group managing director
+        // group managing director (a post of the group office, which the owner sets up first)
+        XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
         guard let md = e.searchExecutive(.md)?.first else { return XCTFail("exec") }
         e.update { s, _, _ in var p = s.people[md.id]!; p.set("pers", "steady"); p.askingMonthlyWage = 10_000_000; s.people[p.id] = p }
         n = 0

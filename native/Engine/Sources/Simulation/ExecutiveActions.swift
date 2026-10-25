@@ -44,6 +44,12 @@ public extension GameEngine {
     mutating func setGroupLimit(_ amount: Double) { update { s, _, _ in ManagerModel.setGroupLimit(&s, amount: amount) } }
     var regionalManagers: [JSONValue] { ManagerModel.regionals(state) }
     var groupManagingDirector: JSONValue { state.rest["org56"]?["md"] ?? .null }
+    /// The owner has set up a group office (`rentOffice`); group-level posts exist only from then on.
+    var groupOfficeEstablished: Bool { Headquarters.established(state) }
+    /// Who employs the group office's people: a holding with spare cash, else the office the owner set up.
+    var groupOfficeEmployer: String { Headquarters.employerName(state, data) }
+    /// What the group office costs a month now (0 before it is set up).
+    var groupOfficeMonthlyCost: Double { Headquarters.monthlyCost(state, data) }
 
     // MARK: Boards
 

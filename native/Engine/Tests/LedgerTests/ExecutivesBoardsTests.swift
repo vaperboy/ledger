@@ -57,6 +57,8 @@ final class ExecutivesBoardsTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 13)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
         guard let cand = e.searchExecutive(.md)?.first else { return XCTFail("search") }
+        XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.25), .refused, "the group office comes first")
+        XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
         XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.25), .ok)
         XCTAssertFalse(e.groupManagingDirector.isNull)
         e.setExecutiveAuthority(.md, authority: 2)

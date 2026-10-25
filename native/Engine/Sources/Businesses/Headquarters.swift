@@ -42,6 +42,33 @@ public enum Headquarters {
     public static func tier(_ s: GameState, _ data: GameData) -> Tier? { tiers(data).first { $0.id == office(s)["tier"].string } }
     public static func has(_ s: GameState, _ role: String) -> Bool { s.hasHeadOffice(role) }
 
+    /// The group office is something the owner sets up (`rentOffice` writes `set`); until then no group-level post exists.
+    /// A new game carries a free home-office record from day one (the owner's own desk), which is not a group office. Older saves count as
+    /// set up when the office has people or a rented tier, or a group managing director already exists.
+    public static func established(_ s: GameState) -> Bool {
+        let o = office(s)
+        if o.isNull { return false }
+        if !o["set"].isNull || o["tier"].string != "home" || !o["staff"].array.isEmpty { return true }
+        let md = s.rest["org56"]?["md"] ?? .null
+        return !md.isNull && s.people[md["npc"].int] != nil
+    }
+
+    /// What the office costs a month: rent and the employer cost of its staff (the amount `monthly` pays).
+    public static func monthlyCost(_ s: GameState, _ data: GameData) -> Double {
+        guard let t = tier(s, data) else { return 0 }
+        return staff(s).reduce(rent(s, tier: t, cityID: office(s)["city"].string, data: data) * 1.02) { $0 + $1["wage"].double * 1.14 }
+    }
+
+    /// The holding that pays for the group office, if one has cash to spare (`payHeadOffice` uses the same choice); else nil: the owner pays.
+    static func officePayer(_ s: GameState, amount: Double) -> Company? {
+        s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > amount * 3 })
+    }
+
+    /// Who employs the people of the group office: a holding with spare cash, else the group office the owner set up.
+    public static func employerName(_ s: GameState, _ data: GameData) -> String {
+        officePayer(s, amount: max(1, monthlyCost(s, data)))?.name ?? "Your group office"
+    }
+
     // MARK: Fame
 
     /// How well known you are decides who applies and what they ask. Original: `fame`.
@@ -90,7 +117,7 @@ public enum Headquarters {
             Payments.playerPays(&s, cost, label: "Office move: first month deposit")
         }
         s.rest["office"] = .object(["tier": .string(id), "city": .string(city), "since": .number(Double(s.week)), "staff": old["staff"].isNull ? .array([]) : old["staff"],
-                                    "rep": old["rep"].isNull ? .object(["freq": 4, "detail": "short", "only": "managed"]) : old["rep"], "perfAuto": old["perfAuto"]])
+                                    "rep": old["rep"].isNull ? .object(["freq": 4, "detail": "short", "only": "managed"]) : old["rep"], "perfAuto": old["perfAuto"], "set": .number(Double(s.week))])
         return .ok
     }
     static func desksUsedOutsideStaff(_ s: GameState) -> Int { desksUsed(s) - staff(s).count }
@@ -132,7 +159,7 @@ public enum Headquarters {
     public enum RoomResult: String, Equatable, Sendable { case ok, office, bad, locked, have, homeoffice, desks }
 
     public static func room(_ s: GameState, role: String, data: GameData) -> RoomResult {
-        if office(s).isNull { return .office }
+        if !established(s) { return .office }
         if self.role(role, data) == nil { return .bad }
         if !unlocked(s, role, data) { return .locked }
         if has(s, role) { return .have }
@@ -262,7 +289,7 @@ public enum Headquarters {
     static func payHeadOffice(_ s: inout GameState, _ amt: Double, label: String) {
         let a = jsRound(amt)
         if a <= 0 { return }
-        if let h = s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > a * 3 }) {
+        if let h = officePayer(s, amount: a) {
             Payments.companyPays(&s, companyID: h.id, amount: a, category: "wages", label: label)
             return
         }

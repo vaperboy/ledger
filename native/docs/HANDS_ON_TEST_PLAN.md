@@ -279,7 +279,6 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
 | T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
-<<<<<<< HEAD
 ### 9.P Staff pay and benefits (branch fix/staff-pay) — screens NOT TESTED by hand (engine tests: StaffPerkCatalogueTests, WorkerBonusTests, StaffExpensesTests, PayPlansTests, ManagedRequestsTests, FixedTermTests)
 | ID | Steps | Expected | Result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
@@ -296,7 +295,6 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.P11 | Contract discussion > Contract term | Permanent / fixed term / renew; preview says what ending costs under the country's rules (nothing where the data lists none) | | NOT TESTED | | |
 | T9.P12 | Four weeks before a fixed term ends | Inbox asks: renew or let it end; letting it end removes them on the date with the cost shown | | NOT TESTED | | |
 | T9.P13 | Company with a manager: a tired worker | An hours request is decided by the manager inside their authority (activity note), or reaches the Inbox naming the manager | | NOT TESTED | | |
-=======
 | T9.MS1 | Company > Operations > How you sell: tap another single choice | Confirmation shows changeover cost and weeks first, then an estimate for the next 8 weeks (customers wanting to buy, customers served, average sale, sales, left after direct costs) as low-to-high ranges with the average, a "ranges overlap" warning when it may change little, and "No guarantee" | | NOT TESTED | | |
 | T9.MS2 | Same, on a trade with no weekly sales model (property, finance) | "No estimate is available for this kind of business" and the on-paper data lines instead | | NOT TESTED | | |
 | T9.MS3 | Switch an add-on on then off | Each shows the estimate and a Drop/Add button; an add-on needing a licence says the figures assume it is approved | | NOT TESTED | | |
@@ -307,7 +305,21 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.MS8 | National-brand unit with no local campaign for a few weeks | Weekly payment to the franchisor includes the required local share as extra brand-fund contribution; spending locally reduces it | | NOT TESTED | | |
 | T9.MS9 | Chain page > rules: add-ons of a multi-choice knob | Tap add-ons into the chain's set; confirmation says every store offers exactly this set; stores that could not follow are listed under the knob | | NOT TESTED | | |
 | T9.MS10 | Barber with "hair products at the till": rating very low vs high | Extra sales follow the rating, none for a badly rated shop | | NOT TESTED | | |
->>>>>>> origin/native-swiftui
+
+### 9.O Who employs whom: group office is optional (fix/org-structure) — screens NOT TESTED by hand (engine tests: TeamOverviewStructureTests, TeamOverviewTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.O1 | New game, start two cafes (no chain, no holding). Open Team | No "Group managing director", no main-office roles under Management; only each company's own posts (store manager, department heads once the company is big enough) | | NOT TESTED | | |
+| T9.O2 | Same game, Group tab | No "Group management" block. "Group office" shows one row "Set up a group office (optional)" with what it gives, the free home office and the cost of larger ones; no list of vacancies, no "Opens with N companies" rows | | NOT TESTED | | |
+| T9.O3 | Tap the row, pick Home office | Confirmation shows cost (free), benefit and risk before "Set up". After it: group office rows appear (personal assistant to find; other roles only when unlocked), and "Group managing director" appears on Group and as an open post on Team with "Employer: Your group office" | | NOT TESTED | | |
+| T9.O4 | Group office with roles not yet unlocked | One plain line "Open later, as the group grows: In-house lawyer (3 companies), ..." (same unlock rules as before); no row per locked role | | NOT TESTED | | |
+| T9.O5 | Hire the group managing director or a personal assistant | Team > Management lists them with role + "group" badge and "Employed by Your group office" (or the holding's name when a holding with spare cash carries the office) | | NOT TESTED | | |
+| T9.O6 | A company grows past 25 people | HR manager (and Finance, Operations at their existing thresholds) appear as open posts "Employer: <that company>", scope company; never as group posts | | NOT TESTED | | |
+| T9.O7 | A chain of 2+ stores | Chain manager is an open post "Employer: <chain name>", scope chain; a chain CEO from 5 stores; hired people show "Employed by <chain name>" | | NOT TESTED | | |
+| T9.O8 | A holding with two companies | Holding's managing director post is scope group, employer the holding; it does not require a group office | | NOT TESTED | | |
+| T9.O9 | Team: "Handled by your managers" | A row with a chevron under Needs you, not a separate heading; tap opens/closes the list | | NOT TESTED | | |
+| T9.O10 | Team and Group: every row that opens something or fills a post | Has a chevron or a gold "Fill ›", "Set up ›", "Find ›", "Move ›" cue; plain information is plain text | | NOT TESTED | | |
+
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
