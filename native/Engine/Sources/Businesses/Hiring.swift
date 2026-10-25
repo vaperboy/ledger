@@ -254,6 +254,8 @@ public enum Hiring {
         // Someone who needs security does not take a fixed-term job (see FixedTerm.wantsPermanent).
         let term = FixedTerm.termChoices.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
         if term > 0, FixedTerm.wantsPermanent(n) { return .planRefused }
+        // A first fixed term longer than the country's maximum is not offered (optional labour data; none by default).
+        if term > 0, FixedTerm.renewalBlock(World(state: s, data: data).labour(s.companies[ci]), StaffMember(raw: [:]), weeks: term, now: s.week) != nil { return .planRefused }
         n.employerID = companyID
         s.people[personID] = n
         var m = StaffMember(raw: [:])

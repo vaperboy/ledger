@@ -593,6 +593,7 @@ public enum ContractTalk {
             }
             guard p.choice.hasPrefix("fixed:"), let weeks = Int(p.choice.dropFirst(6)), FixedTerm.termChoices.contains(weeks) else { return .notPossible("That is not a contract term you can agree.") }
             if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { return .unwilling("\(name) wants security and will not take a fixed-term job in place of a permanent one.") }
+            if let why = FixedTerm.renewalBlock(World(state: s, data: data).labour(co), m, weeks: weeks, now: s.week) { return .notPossible(why) }
             _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: weeks)
             let end = s.companies[sub.ci].staff.first { $0.id == id }.flatMap { FixedTerm.endWeek($0) } ?? 0
             return .ok("\(name) is on a fixed term until week \(end).")
