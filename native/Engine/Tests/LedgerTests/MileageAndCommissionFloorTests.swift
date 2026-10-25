@@ -39,7 +39,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         var withCar = e, without = e
         XCTAssertTrue(withCar.contractPropose(companyID: id, personID: pid, proposal: .init(.benefits, amount: 1, choice: "ownCar")).changedTerms)
         XCTAssertFalse(without.state.company(id)!.staff.first { $0.id == pid }!.flag("ownCar"))
-        let weekly = World(state: e.state, data: e.data).currency(e.state.company(id)!).scaledPrice(4500) * 12 / 52
+        let w0 = World(state: e.state, data: e.data), co0 = e.state.company(id)!
+        let weekly = PersonalEquipment.mileagePerMonth(w0.currency(co0), country: w0.country(co0), e.data.catalog["estate"]!, tables: e.data.catalog.tables) * 12 / 52
         func oth(_ g: GameEngine) -> Double { g.state.company(id)!.books.year["oth"] ?? 0 }
         var measured = 0
         for _ in 0..<4 {

@@ -18,7 +18,7 @@ struct WorkerHireRow: View {
         case full = "Full time", part = "Part time, 20 h", seasonal = "Seasonal", ownCar = "Own car"
     }
 
-    private var kinds: [Kind] { person.role == "estate" ? [.full, .part, .seasonal, .ownCar] : [.full, .part, .seasonal] }
+    private var kinds: [Kind] { engine.offersOwnCar(companyID: company.id, role: person.role) ? [.full, .part, .seasonal, .ownCar] : [.full, .part, .seasonal] }
 
     private var terms: Hiring.Terms {
         switch kind {

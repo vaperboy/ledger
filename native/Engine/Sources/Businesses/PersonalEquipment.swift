@@ -34,7 +34,7 @@ public enum PersonalEquipment {
 
     /// Original: `ruleOf`. Laptops and workstations go with every person.
     public static func rule(_ bd: Trade, _ e: EquipmentSpec, tables: TradeTables) -> Rule? {
-        if let r = table[bd.id + ":" + e.id] { return r }
+        if let r = table[bd.id + ":" + e.id] ?? e.personalRule { return r }
         if e.vehicleModels == nil, EquipmentMarket.kind(e, tradeID: bd.id, tables: tables) == "it" {
             let n = e.name.lowercased()
             if n.contains("laptop") || n.contains("workstation") { return Rule(roles: ["*"], peoplePerUnit: 1, workWithout: 0.25) }
@@ -57,7 +57,7 @@ public enum PersonalEquipment {
         guard let rl = rule(bd, e, tables: tables) else { return e.isRequired ? max(1, std) : std }
         var w = Double(people(co, bd, roles: rl.roles))
         if co.staff.isEmpty && !ownerWorks(co) { return max(e.isRequired ? 1 : 0, std != 0 ? min(std, 1) : 0) }
-        if bd.id == "estate" && e.id == "car" { w -= Double(co.staff.filter { $0.flag("ownCar") && $0.role == "estate" }.count) }
+        if e.allowsOwnCar { w -= Double(co.staff.filter { $0.flag("ownCar") && rl.roles.contains($0.role) }.count) }
         if bd.id == "courier" && e.id == "van", let bike = bd.equipment.first(where: { $0.id == "bike" }) { w -= min(w, CapacityModel.equipmentCount(co, bike)) }
         return w > 0 ? (w / rl.peoplePerUnit).rounded(.up) : 0
     }
@@ -107,15 +107,23 @@ public enum PersonalEquipment {
 
     // MARK: Weekly costs
 
-    /// What one agent on their own car is paid a month for mileage (the contract talk shows it before you agree).
-    public static func mileagePerMonth(_ cur: Currency) -> Double { cur.scaledPrice(4500) }
+    /// What one person on their own car is paid a month for mileage (the contract talk shows it before you agree). Where the country's data has a
+    /// mileage rate it is the trade's business kilometres times that rate; otherwise the game's flat figure.
+    public static func mileagePerMonth(_ cur: Currency, country: Country, _ bd: Trade, tables: TradeTables) -> Double {
+        if let rate = country.vehicleRules.mileagePerKm { return VehicleRunning.kmPerWeek(bd, tables: tables) * 52 / 12 * rate }
+        return cur.scaledPrice(4500)
+    }
 
     /// Mileage for people on their own car, and the fuel cost of bigger vans for couriers and hauliers. Original: `postWeek` lines.
     static func weeklyCosts(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData) {
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
+        VehicleRunning.payCharges(&s, companyIndex: i, data: data)
         let own = co.staff.filter { $0.flag("ownCar") }.count
-        if own > 0 { Payments.companyPays(&s, companyID: co.id, amount: mileagePerMonth(cur) * 12 / 52 * Double(own), category: "oth") }
+        if own > 0 {
+            let w = World(state: s, data: data)
+            Payments.companyPays(&s, companyID: co.id, amount: mileagePerMonth(cur, country: w.country(co), bd, tables: data.catalog.tables) * 12 / 52 * Double(own), category: "oth", label: "Mileage for own cars")
+        }
         if bd.id == "courier" || bd.id == "trucking" {
             let veh = data.catalog.tables.raw["VEH"]
             for v in co.value("veh").array {
@@ -157,8 +165,14 @@ public enum PersonalEquipment {
 
     // MARK: Own car or company car
 
-    /// Does this trade let a salesperson use their own car? Original: `carOffer`.
-    public static func offersOwnCar(_ co: Company, _ bd: Trade) -> Bool { bd.id == "estate" }
+    /// Roles of this trade that may use their own car instead of a company car: the roles a vehicle marked `o` in the trade's data is assigned to
+    /// (the estate agent's car, the sales rep's car, the visiting professional's car). Original: `carOffer`, which was estate agents only.
+    public static func ownCarRoles(_ bd: Trade, tables: TradeTables) -> [String] {
+        bd.equipment.filter { $0.allowsOwnCar }.flatMap { rule(bd, $0, tables: tables)?.roles ?? [] }
+    }
+    public static func canUseOwnCar(role: String, _ bd: Trade, tables: TradeTables) -> Bool { ownCarRoles(bd, tables: tables).contains(role) }
+    /// Does this trade let any of its people use their own car?
+    public static func offersOwnCar(_ co: Company, _ bd: Trade, tables: TradeTables) -> Bool { !ownCarRoles(bd, tables: tables).isEmpty }
 
     /// Switch a person between a company car and their own car with mileage. Original: `ACT.carallow`.
     @discardableResult

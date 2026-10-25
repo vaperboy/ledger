@@ -245,7 +245,8 @@ public enum Hiring {
         m.hiredWeek = s.week; m.payBasis = basis; m.lastRaiseWeek = s.week
         m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0); m.set("onb", .object([:]))
         if part { StaffTalks.applyPartTime(&m, terms: terms, week: s.week) }
-        else if terms.ownCar, m.role == "estate" { m.set("ownCar", 1) }
+        else if terms.ownCar { m.set("ownCar", 1) }
+        if m.flag("ownCar"), let bd = data.catalog[s.companies[ci].type], !PersonalEquipment.canUseOwnCar(role: m.role, bd, tables: data.catalog.tables) { m.set("ownCar", 0) }
         onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)

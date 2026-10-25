@@ -276,7 +276,7 @@ final class ContractTalkTests: XCTestCase {
         guard case .agreed = e.contractPropose(companyID: id, personID: b, proposal: .init(.benefits, amount: 0, choice: "perk:health")) else { return XCTFail("off") }
         XCTAssertFalse(StaffPerks.isOn(e.state.company(id)!, "health"))
         let car = e.contractPreview(companyID: id, personID: a, proposal: .init(.benefits, amount: 1, choice: "ownCar"))
-        XCTAssertEqual(car.costPerMonth, PersonalEquipment.mileagePerMonth(cur), accuracy: 0.01)
+        XCTAssertEqual(car.costPerMonth, PersonalEquipment.mileagePerMonth(cur, country: World(state: e.state, data: e.data).country(co), e.data.catalog["estate"]!, tables: e.data.catalog.tables), accuracy: 0.01)
         guard case .agreed = e.contractPropose(companyID: id, personID: a, proposal: .init(.benefits, amount: 1, choice: "ownCar")) else { return XCTFail("car") }
         XCTAssertTrue(member(e, id, a)!.flag("ownCar"))
         let cafeHand = try shop()
