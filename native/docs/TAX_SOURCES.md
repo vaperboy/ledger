@@ -210,3 +210,21 @@ wages already existed (`Payday.lateDay`) and are unchanged.
 Edit `Engine/Sources/Countries/Resources/countries.json` (`tax`, `vat`, `companies`), update `dataBasis.note` and `checked`, add the
 changed pair to `FoundationTests.correctedBrackets` (or the other skip sets) with the new value in
 `testCorrectedTaxFiguresArePinned`, and list the change in the table above.
+
+## Vehicle data block (`vehicles` in countries.json), October 2026
+
+Only figures read on an official page are filled in; every other field of every other country is left empty, which keeps the mechanism inactive (neutral) there.
+
+| Country | Field | Value | Source |
+|---|---|---|---|
+| UK | `mileagePerKm` | GBP 0.34175 (= 55p per mile / 1.609344) | HMRC approved mileage allowance, "Tax: rates per business mile", cars and vans, first 10,000 miles: 55p from 6 April 2026 (45p before) https://www.gov.uk/expenses-and-benefits-business-travel-mileage/rules-for-tax . The 25p rate above 10,000 miles is not modelled |
+| UK | `roadTaxPerYear.car` | GBP 200 | Vehicle tax rates, standard rate for cars registered from 1 April 2017 (second payment onwards), single 12 month payment GBP 200 https://www.gov.uk/vehicle-tax-rate-tables . First-year CO2-based rates and the supplement for cars over GBP 40,000 are not modelled; van, truck and bus rates not entered |
+| US | `mileagePerKm` | USD 0.47226 (= 76 cents per mile / 1.609344) | IRS standard mileage rates, business use 76 cents per mile for 1 July to 31 December 2026 (72 cents for January to June) https://www.irs.gov/tax-professionals/standard-mileage-rates . A federal rate; states differ |
+
+**Gaps (empty, mechanism inactive, nothing invented):**
+* `fuelPerLitre` in all 23 countries: no official source was read; the game uses its reference litre price scaled to each country's price level.
+* `motorInsuranceShare` / `motorInsurancePerVehicle` in all 23 countries: motor premiums are market prices, not statutory rates; no average per country was sourced.
+* `bik` (company car benefit in kind) in all 23 countries. UK: the appropriate percentage depends on CO2 and fuel type (and rises each April), so a single share would be wrong; DE (1% of list price a month), NL, NO, SE, FR, IE and others were not looked up.
+* `roadTaxPerYear` for vans, trucks, buses (UK) and for every class in the other 22 countries.
+* `mileagePerKm` in the other 21 countries (for instance DE, SE, NO have statutory/tax-free per-km rates that were not looked up).
+
