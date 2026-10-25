@@ -53,4 +53,41 @@ final class ProjectMilestonesTests: XCTestCase {
         let lines = try check("realdev", years: 2)
         XCTAssertTrue(lines.contains { $0.kind == .development }, "a developer with a manager should have a development under way")
     }
+
+    /// Jobs taken on carry the week they are planned to finish (start week plus the engine's own planned weeks); the read model shows it,
+    /// and a job from an older save, with no such key, has no date.
+    func testJobsCarryAFinishDateAndOldJobsHaveNone() throws {
+        let (_, e, id) = try ProjectTradeTests.play("construction", seed: 7, years: 1)
+        let lines = e.projectTimelines().filter { $0.companyID == id && $0.kind == .job }
+        XCTAssertFalse(lines.isEmpty, "a builder has jobs after a year")
+        let raw = try XCTUnwrap(e.state.company(id)).value("fm")["jobs"].array.map { ProjectModel.Job(raw: $0.object) }
+        for j in raw {
+            XCTAssertFalse(j.value("due").isNull, "job \(j.id) has a finish week")
+            XCTAssertEqual(j.dueWeek, j.startWeek + j.weeks)
+            let line = try XCTUnwrap(lines.first { $0.id == "j\(id)-\(j.id)" })
+            XCTAssertEqual(line.dueWeek, j.dueWeek)
+            XCTAssertEqual(line.stages.last?.name, "Finished")
+            XCTAssertEqual(line.stages.last?.week, j.dueWeek)
+            XCTAssertEqual(line.overdueWeeks, max(0, e.state.week - j.dueWeek))
+        }
+        // An older save has jobs without the key: no date, nothing invented.
+        var old = e
+        old.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var fm = s.companies[i].value("fm")
+            fm["jobs"] = .array(fm["jobs"].array.map { var o = $0.object; o.removeValue(forKey: "due"); return .object(o) })
+            s.companies[i].set("fm", fm)
+        }
+        for l in old.projectTimelines().filter({ $0.companyID == id && $0.kind == .job }) {
+            XCTAssertNil(l.dueWeek); XCTAssertNil(l.stages.last?.week); XCTAssertEqual(l.overdueWeeks, 0)
+        }
+    }
+
+    func testEventsKeepTheirOwnDate() throws {
+        let (_, e, id) = try ProjectTradeTests.play("event", seed: 7, years: 1)
+        let board = try XCTUnwrap(e.projectBoard(companyID: id))
+        for l in e.projectTimelines().filter({ $0.companyID == id && $0.kind == .event }) {
+            XCTAssertEqual(l.dueWeek, (board.jobs + board.queuedJobs).first { "j\(id)-\($0.id)" == l.id }?.dueWeek)
+        }
+    }
 }

@@ -48,6 +48,8 @@ public struct ProjectTimeline: Identifiable, Equatable, Sendable {
     public var atStakeLabel: String
     /// True when the engine records a delay on it.
     public var delayed: Bool
+    /// Weeks past the planned finish of a job still open (0 when it is not late or the job has no recorded finish).
+    public var overdueWeeks: Int = 0
 }
 
 public extension GameEngine {
@@ -144,10 +146,14 @@ public extension GameEngine {
                 ? "You are paid in full only when it is finished, so a late finish delays everything still to come."
                 : "The last part is paid only when it is finished, so a late finish delays that cash."
         }
+        // A job's planned finish is recorded when it is taken on; a job from an older save has none and shows none.
+        let planned: Int? = (!board.isEvent && !j.value("due").isNull) ? j.dueWeek : nil
+        if let planned, !board.isEvent, let last = stages.indices.last { stages[last].week = planned }
         return ProjectTimeline(id: "j\(co.id)-\(j.id)", companyID: co.id, companyName: co.name, kind: kind, title: row.title, subtitle: j.client,
-                               startWeek: j.startWeek, dueWeek: board.isEvent ? row.dueWeek : nil, stages: stages, progress: progress, value: j.contractValue,
+                               startWeek: j.startWeek, dueWeek: board.isEvent ? row.dueWeek : planned, stages: stages, progress: progress, value: j.contractValue,
                                costSoFar: nil, costBudget: nil, receivedSoFar: j.paid, blocking: blocking, ifLate: late,
-                               atStake: board.isEvent ? nil : max(0, j.contractValue - j.paid), atStakeLabel: "Still to be paid", delayed: j.delay > 0)
+                               atStake: board.isEvent ? nil : max(0, j.contractValue - j.paid), atStakeLabel: "Still to be paid", delayed: j.delay > 0,
+                               overdueWeeks: planned.map { max(0, now - $0) } ?? 0)
     }
 
     private func developmentTimeline(_ co: Company, _ p: ProjectBoard.DevelopmentRow, spent: Double, overrun: Double, buildWeeks: Int, now: Int) -> ProjectTimeline {
