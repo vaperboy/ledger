@@ -66,6 +66,8 @@ public enum StaffProfile {
         public var bonusPlan: String? = nil
         public var bonusPaidThisYear = 0.0
         public var bonusMonthlyAverage = 0.0
+        /// The expense reimbursements paid for them (phone, uniform, training, travel).
+        public var expenses: [String] = []
     }
 
     public struct Course: Equatable, Sendable { public var id: String; public var name: String; public var cost: Double; public var maxGain: Double }
@@ -133,7 +135,8 @@ public enum StaffProfile {
                        severance: sev, compensationRange: (m.monthlyWage * 2)...(m.monthlyWage * 4), courses: courses(co, data: data),
                        commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: t.salesRoles.contains(m.role),
                        perks: StaffPerks.perks(for: m, in: co).map { $0.name }, perksWorth: StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co)),
-                       bonusPlan: WorkerBonus.level(of: m)?.name, bonusPaidThisYear: m.num("bnYtd"), bonusMonthlyAverage: m.num("bnEma"))
+                       bonusPlan: WorkerBonus.level(of: m)?.name, bonusPaidThisYear: m.num("bnYtd"), bonusMonthlyAverage: m.num("bnEma"),
+                       expenses: StaffExpenses.on(m).map { $0.name })
     }
 
     static func isDocumented(_ m: StaffMember) -> Bool { m.int("warn") >= 2 || m.str("flag") == "theft" }

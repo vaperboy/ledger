@@ -179,7 +179,7 @@ public enum StaffRoutine {
             let hired = m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week
             let age = n.age + (s.week - hired) / 52
             let ageF: Double = age < 25 ? 1.35 : age < 35 ? 1.1 : age < 50 ? 0.85 : age < 60 ? 0.6 : 0.35
-            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * ageF, -10, max(30, (n.potential ?? n.skill) - n.skill))
+            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * ageF * StaffExpenses.learnFactor(m), -10, max(30, (n.potential ?? n.skill) - n.skill))
             staff[idx] = m
         }
         co.staff = staff

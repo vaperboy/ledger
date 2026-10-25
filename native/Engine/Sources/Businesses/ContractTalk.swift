@@ -267,6 +267,12 @@ public enum ContractTalk {
                     out.append(Choice(id: "perk:\(p.id):\(g.id)", title: "\(p.name) for \(g.name.lowercased()) only" + (gon ? " (on)" : ""), detail: "Only this group of people. " + p.detail, on: gon))
                 }
             }
+            if let m = sub.member {
+                for x in StaffExpenses.items(forRole: m.role) {
+                    let on = StaffExpenses.isOn(m, x.id)
+                    out.append(Choice(id: "exp:\(x.id)", title: x.name + (on ? " (on)" : ""), detail: "For \(sub.person.name.split(separator: " ").first.map(String.init) ?? "them") only, about \(cur.display(cur.scaledPrice(x.monthlyCost))) a month, booked as an expense, not wages. " + x.detail, on: on))
+                }
+            }
             if let m = sub.member, m.role == "estate" {
                 out.append(Choice(id: "ownCar", title: m.flag("ownCar") ? "Give a company car" : "Own car and mileage", detail: "Mileage is paid each month for an own car.", on: m.flag("ownCar")))
             }
@@ -338,6 +344,7 @@ public enum ContractTalk {
         var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * (1 + c.employerSocialRate(monthlyWage: $1.monthlyWage)) }
         if co.managerID != nil { sum += co.managerMonthlyWage * (1 + c.employerSocialRate(monthlyWage: co.managerMonthlyWage)) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
         sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerSocialRate(monthlyWage: m.monthlyWage)) } ?? 0) }
+        sum += StaffExpenses.monthlyCost(co, currency: cur)
         sum += StaffPerks.totalMonthlyCost(co, currency: cur)
         sum += PersonalEquipment.mileagePerMonth(cur) * Double(co.staff.filter { $0.flag("ownCar") }.count)
         return sum
@@ -422,7 +429,10 @@ public enum ContractTalk {
             if sub.isManager { c.lines.append("Profit share: \(Int((p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
             else { c.lines.append("Commission: \(Int((p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
         case .benefits:
-            if let (perk, group) = perkChoice(p.choice) {
+            if p.choice.hasPrefix("exp:"), let x = StaffExpenses.item(String(p.choice.dropFirst(4))) {
+                c.lines.append("Paid back every month against their work costs: \(cur.display(cur.scaledPrice(x.monthlyCost))). Booked as an expense, not wages" + (StaffExpenses.carriesEmployerCharge(w.country(co), item: x.id) ? ", with the employer's social charge because the country treats it as a taxable benefit." : "; the country's data gives no tax rule for it, so it is treated neutrally."))
+                if x.learnBoost > 0 { c.lines.append("They learn on the job about \(Int((x.learnBoost * 100).rounded()))% faster while it is paid.") }
+            } else if let (perk, group) = perkChoice(p.choice) {
                 let people = group.map { StaffPerks.people(co, group: $0) } ?? StaffPerks.eligibleCount(co, perk)
                 c.peers.append("It covers \(group == nil ? "everyone it applies to" : "that group"): \(people) \(people == 1 ? "person" : "people"), not just \(first).")
                 c.peers.append("People leave about \(Int(((1 - perk.quitFactor) * 100).rounded()))% less while it is on.")
@@ -540,6 +550,11 @@ public enum ContractTalk {
                 guard sub.member?.role == "estate" else { return .notPossible("Only estate agents use a car for work.") }
                 _ = PersonalEquipment.toggleOwnCar(&s, companyID: co.id, staffID: id, set: p.amount != 0)
                 return .ok(p.amount != 0 ? "\(name) uses their own car; mileage is paid." : "\(name) drives a company car.")
+            }
+            if p.choice.hasPrefix("exp:") {
+                let xid = String(p.choice.dropFirst(4))
+                guard let x = StaffExpenses.item(xid), StaffExpenses.set(&s, companyID: co.id, staffID: id, item: xid, on: p.amount != 0) else { return .notPossible("That expense does not exist for their job.") }
+                return .ok("\(x.name) is now \(p.amount != 0 ? "paid" : "stopped") for \(name).")
             }
             guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
             guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
