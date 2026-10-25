@@ -227,7 +227,7 @@ public extension GameEngine {
                 options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
                                               priceFactor: pf, yearlyVsMarket: spend * (1 - pf), yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil,
                                               vendorID: nil, quality: nil, reliability: delivered ?? "Not measured until it delivers",
-                                              terms: "\(m.name), settled weekly between the two companies' books, no VAT; never above the outside price",
+                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed if the buyer is registered); never above the outside price",
                                               delivery: k.local ? "Same city" : "Same country", risks: risks, blocked: nil))
             }
         }

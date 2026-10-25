@@ -8,7 +8,7 @@ import Finance
 /// (and uses its capacity), the group keeps the margin, and supply is steadier, until the supplier struggles: then the buyer
 /// pays for emergency supply and its reputation suffers. Original: features/company/intercompany_supply.js (`R27`).
 /// The links are saved in `rest["l27"]`. As in the original, a sale between your companies is booked as revenue of the supplier
-/// and a lower cost of the buyer, without VAT; the profit tax of each company follows from its own books.
+/// and a lower cost of the buyer, with VAT as on any sale in the country (`transferVat`); the profit tax of each company follows from its own books.
 /// Not ported: the 'supply from inside' protection against outside supplier events, the 25%-of-capital limit on lending from your own bank.
 public enum IntercompanySupply {
     public struct Kind: Equatable, Sendable {
@@ -171,16 +171,37 @@ public enum IntercompanySupply {
     /// Capacity a supplier holds back for the group (units a week). Original: `co.int27u`.
     public static func heldBack(_ c: Company) -> Double { c.num("int27u") }
 
+    /// VAT on a sale between two of your companies in the same country: a taxable supply like any other. The supplier charges its country's rate for
+    /// its trade (nothing below its registration threshold, nothing where the country has a sales tax instead, which does not tax a sale for resale)
+    /// and owes it; the buyer pays it and reclaims it, unless it is itself below the threshold, in which case it is a cost. Returns the VAT.
+    /// The transfer price cap (never above the outside price) is `priceFactor`; cross-border supply is not offered (same country only), and
+    /// transfer-pricing rules beyond that cap are not modelled (KNOWN_GAPS.md).
+    @discardableResult
+    static func transferVat(_ s: inout GameState, supplier sp: Company, buyerIndex bi: Int, net: Double, data: GameData, _ w: World, cashNow: Bool) -> Double {
+        guard net > 0, let sbd = data.catalog[sp.type], !w.country(sp).usesSalesTax else { return 0 }
+        let vat = jsRound(net * Vat.rate(sp, sbd, w))
+        guard vat > 0, let si = s.companyIndex(sp.id) else { return 0 }
+        s.companies[si].vatBalance += Double(vat)
+        if cashNow {
+            Ledger.moveRaw(&s, .company(sp.id), Double(vat))
+            Ledger.moveRaw(&s, .company(s.companies[bi].id), -Double(vat))
+        }
+        if Vat.isExempt(s.companies[bi], w) {
+            var b = s.companies[bi].books; b.add("oth", Double(vat)); s.companies[bi].books = b
+        } else {
+            s.companies[bi].vatBalance -= Double(vat)
+        }
+        return Double(vat)
+    }
+
     static func weekly(_ s: inout GameState, data: GameData) {
         guard !rawLinks(s).isEmpty || s.companies.contains(where: { $0.num("int27u") > 0 }) else { return }
         let titanCut = Ambitions.supplyCostCut(s, data)
         // tickets are worked out before anything moves (they read the whole state)
         var tickets: [Int: Double] = [:]
-        do {
-            let w = World(state: s, data: data)
-            for c in s.companies where c.status == .open {
-                if let bd = data.catalog[c.type], rawLinks(s).contains(where: { $0["s"].int == c.id }) { tickets[c.id] = Pricing.ticket(c, bd, w) }
-            }
+        let w0 = World(state: s, data: data)
+        for c in s.companies where c.status == .open {
+            if let bd = data.catalog[c.type], rawLinks(s).contains(where: { $0["s"].int == c.id }) { tickets[c.id] = Pricing.ticket(c, bd, w0) }
         }
         var used: [Int: Double] = [:]
         var kept: [JSONValue] = []
@@ -216,7 +237,8 @@ public enum IntercompanySupply {
                 // owes it and the supplier holds the receivable; the cash moves between them when it falls due.
                 Payments.companyReceives(&s, companyID: b.id, amount: got, category: nil, label: nil)
                 Payments.book(&s, companyID: b.id, category: K.category, amount: -jsRound(got))
-                SupplyTerms.issue(&s, buyer: b.id, provider: sp.id, vendorID: "", name: sp.name, kind: K.id, amount: got * pf, weeks: terms.weeks)
+                let vat = transferVat(&s, supplier: sp, buyerIndex: bi, net: got * pf, data: data, w0, cashNow: false)
+                SupplyTerms.issue(&s, buyer: b.id, provider: sp.id, vendorID: "", name: sp.name, kind: K.id, amount: got * pf + vat, weeks: terms.weeks)
                 Payments.book(&s, companyID: b.id, category: K.category, amount: jsRound(got * pf))
                 Payments.book(&s, companyID: sp.id, category: "rev", amount: jsRound(got * pf))
                 Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
@@ -231,6 +253,7 @@ public enum IntercompanySupply {
                 if got > 0 {
                     Payments.companyReceives(&s, companyID: sp.id, amount: got * pf, category: "rev", label: nil)
                     Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
+                    transferVat(&s, supplier: sp, buyerIndex: bi, net: got * pf, data: data, w0, cashNow: true)
                 }
             }
             // what it could not deliver is bought outside at a premium, and customers notice
