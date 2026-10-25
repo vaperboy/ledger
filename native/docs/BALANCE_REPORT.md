@@ -241,3 +241,23 @@ with random incident losses.
   the profit. The seed spread (-10 to +28, avg 12) comes from random events (ransomware, fines). demandLevel left at 4.0.
 - Ski resort: 5 seeds gave 11 to 16 percent (avg 14), no longer lumpy; no unbounded seasonality found. Unchanged.
 - Probe: `LEDGER_SEEDS=11,12,13` and `LEDGER_PERSEED=1` print per-seed ROI; `LEDGER_SEED` picks the trace seed.
+
+## Manager targets: nil fix (fix/open-engine)
+
+`ManagerTargets.current` used to return `.null` instead of nil, so every managed company was treated as having monthly targets all the time
+(demand lift for a manager chasing a bonus, rating care, "standing"), and the first targets of a newly managed company were only set at a
+month end. After the fix those only apply in months that have targets. Nothing was retuned. Probe: `LEDGER_MGRPROBE=1 swift test -c release
+--filter ManagedTargetsProbeTests` (managed UK company, standard set-up, manager hired at the start, 8 seeds 11 to 18, 2 years; the figures
+are year 2, averages per company, game accounting units):
+
+| Trade (8 seeds) | Revenue before | after | Profit before | after | Rating before | after | Weeks with targets (of 104) before | after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| cafe | 3 952 472 | 4 221 792 | 37 206 | 32 896 | 3.563 | 3.587 | 91.9 | 64.2 |
+| bakery | 14 558 850 | 14 948 726 | 3 418 094 | 3 848 263 | 3.575 | 3.613 | 97.5 | 70.1 |
+| gym | 7 332 338 | 7 290 203 | 2 123 600 | 2 037 551 | 3.587 | 3.600 | 84.8 | 57.5 |
+| barber | 2 193 150 | 2 308 266 | -14 856 | 97 122 | 3.575 | 3.588 | 85.8 | 55.9 |
+| all 32 | 7 009 202 | 7 192 247 (+2.6%) | 1 391 011 | 1 503 958 (+8.1%) | 3.575 | 3.597 | 90.0 | 61.9 |
+
+Reading: revenue and rating are within seed noise per trade (n=8, the sign is mixed: gym -0.6%, bakery +2.7%, barber +5.2%, cafe +6.8%), so
+no balance conclusion is drawn from the pooled +2.6% / +8.1%. The one clear change is structural: months with targets fell from about 90 to
+about 62 of 104 weeks (before, "targets" never ended; now they exist only in months that have them).

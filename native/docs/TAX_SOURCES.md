@@ -233,3 +233,12 @@ Only figures read on an official page are filled in; every other field of every 
 * `roadTaxPerYear` for vans, trucks, buses (UK) and for every class in the other 22 countries.
 * `mileagePerKm` in the other 21 countries (for instance DE, SE, NO have statutory/tax-free per-km rates that were not looked up).
 
+## Fixed-term contracts: maximum duration (fix/open-engine)
+
+`labour.fixedTermMaxWeeks` (longest total time on successive fixed terms with one employer) and `labour.fixedTermMaxRenewals` are optional fields
+of a country's labour block; empty means no limit and no automatic conversion (the game default). **No country has a value.** The session that built
+this had no network access to the statute sites, and nothing was entered from memory. To source next, where a statutory cap is known to exist:
+Germany (TzBfG section 14), France (Code du travail L1242-8, L1243-13), Spain (Estatuto de los Trabajadores art. 15), Italy (D.Lgs. 81/2015 art. 19),
+the Netherlands (BW 7:668a), Poland (Kodeks pracy art. 25(1)); the EU framework is Directive 1999/70/EC. These references are leads, not verified.
+Fixed-term indemnities at the end of a term (some countries) are a separate gap (`expiry` in `severanceReasons`).
+
