@@ -205,6 +205,8 @@ during probation or in an at-will country; part-timers' pay and the minimum are 
 only to hourly staff (not fixed-salary or commission staff) for hours above the standard or agreed week; wage claims for unpaid
 wages already existed (`Payday.lateDay`) and are unchanged.
 
+Late-payment interest and intercompany VAT (fix/money-supply): no new country figure was added. The late-payment rule stays the game default (2% a month, `supplier_terms.json`) because no statutory rate was verified for any country; a country can still set `commerce.latePayment`. Sales between your own companies in one country use the country's existing VAT rates and registration threshold (no new data); cross-border supply and transfer-pricing rules are not modelled (KNOWN_GAPS.md).
+
 ## How to update
 
 Edit `Engine/Sources/Countries/Resources/countries.json` (`tax`, `vat`, `companies`), update `dataBasis.note` and `checked`, add the

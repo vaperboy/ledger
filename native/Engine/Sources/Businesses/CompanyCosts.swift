@@ -182,7 +182,7 @@ public enum CompanyCosts {
         if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel") }
         if upkeep > 0 {
             let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
-            Payments.companyPays(&s, companyID: co.id, amount: upkeep * (1 - fixDisc), category: "oth")
+            SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)   // on the repair terms agreed (SupplyTerms)
         }
     }
 

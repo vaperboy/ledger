@@ -82,7 +82,7 @@ public extension GameEngine {
         if !bd.equipment.isEmpty { out.append(supplierRepairInput(co)) }
         for k in IntercompanySupply.kindsFor(co) { out.append(supplierKindInput(co, k)) }
         for n in out.indices {
-            out[n].governedBy = SupplyDeals.governedBy(state, co, input: out[n].id)
+            out[n].governedBy = SupplyDeals.governedBy(state, co, input: out[n].id, data: data)
             out[n].paymentTerms = supplierPaymentTerms(co, input: out[n].id)
             for m in out[n].options.indices where out[n].options[m].kind == .outsideVendor || out[n].options[m].kind == .repairVendor {
                 guard let vid = out[n].options[m].vendorID else { continue }
@@ -97,12 +97,15 @@ public extension GameEngine {
 
     private func supplierPaymentTerms(_ co: Company, input: String) -> [PaymentTermChoice] {
         func pct(_ x: Double) -> String { String(format: "%.1f%%", abs(x) * 100) }
-        if input == "goods" {
-            guard let v = Suppliers.goodsVendor(state, company: co, data: data) else { return [] }
-            let agreed = SupplyTerms.agreedGoodsTerm(co)
-            let active = SupplyTerms.goodsTerm(state, co, data: data)?.id ?? "monthly"
+        if input == "goods" || input == "repair" {
+            let repair = input == "repair"
+            guard let v = repair ? Suppliers.repairVendor(state, company: co, data: data) : Suppliers.goodsVendor(state, company: co, data: data) else { return [] }
+            let agreed = repair ? SupplyTerms.agreedRepairTerm(co) : SupplyTerms.agreedGoodsTerm(co)
+            let active = (repair ? SupplyTerms.repairTerm(state, co, data: data) : SupplyTerms.goodsTerm(state, co, data: data))?.id ?? "monthly"
+            let thing = repair ? "Each repair and upkeep bill" : "Each delivery"
             return SupplyTerms.vendorTerms.map { t in
-                var detail = t.isMonthEnd ? "Bills are paid on the last day of the month, as usual." : t.days == 0 ? "Each delivery is paid on the spot." : "Each delivery is invoiced and paid \(t.days) days later."
+                var detail = t.isMonthEnd ? (repair ? "Repair and upkeep bills are paid as they fall due, as usual." : "Bills are paid on the last day of the month, as usual.")
+                    : t.days == 0 ? "\(thing) is paid on the spot." : "\(thing) is invoiced and paid \(t.days) days later."
                 if t.priceEffect < 0 { detail += " \(pct(t.priceEffect)) off the price for paying at once." }
                 if t.priceEffect > 0 { detail += " \(pct(t.priceEffect)) added to the price for the credit." }
                 let blocked: String? = v.relationship >= t.minRelationship ? nil : "\(v.name) offers this only to \(Suppliers.relationshipWord(t.minRelationship).lowercased()) contacts or closer."
@@ -207,22 +210,30 @@ public extension GameEngine {
         let acctLink = AccountSupply.link(state, buyer: co.id, kind: k.id)
         let cogs = k.category == "cogs"
         let outsideRisk = cogs ? ["Exposed to outside supplier events: price rises, failures, cut deliveries."] : []
+        // A delivery service: the add-on's data says how reliable an outside courier is (the share of orders that reach the customer).
+        let dway = k.delivered ? IntercompanySupply.deliveryWay(co.type, data.balance) : nil
+        let outsideRel = dway.map { "Outside courier: \(Int((($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
         var options: [SupplierOption] = []
-        options.append(SupplierOption(id: "out", kind: .outside, name: "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
+        options.append(SupplierOption(id: "out", kind: .outside, name: k.delivered ? "Outside courier" : "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
                                       priceFactor: 1, yearlyVsMarket: 0, yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
-                                      quality: nil, reliability: "Market supply", terms: "Market price, paid as you buy", delivery: "Whoever the market offers", risks: outsideRisk, blocked: nil))
+                                      quality: nil, reliability: outsideRel ?? "Market supply",
+                                      terms: k.delivered ? "Market price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Market price, paid as you buy",
+                                      delivery: k.delivered ? "Orders that are not delivered bring no customers" : "Whoever the market offers", risks: outsideRisk, blocked: nil))
         for sp in IntercompanySupply.suppliers(state, for: co, kind: k) {
             for m in IntercompanySupply.modes {
                 let pf = IntercompanySupply.priceFactor(mode: m.id, supplier: sp, data: data, perkCut: Ambitions.supplyCostCut(state, data))
                 let isCur = link?.supplierID == sp.id && link?.mode == m.id
                 var risks = ["If \(sp.name) is short of people or closes, you pay for emergency supply (+20%) and below 80% delivered your reputation suffers."]
                 if !k.noCapacity { risks.append("\(sp.name) holds back part of its own capacity for you.") }
+                if SupplyTerms.ownSupplierStrained(state, buyer: co.id, supplier: sp.id) {
+                    risks.append("\(co.name) has left \(sp.name) unpaid for \(SupplyTerms.ownLateWeeks(state, buyer: co.id, supplier: sp.id)) weeks, so it delivers only part of what it could. Pay what is overdue.")
+                }
                 if m.id != "mkt" && pf >= 1 { risks.append("\(sp.name) runs at no margin today, so this mode gives no saving yet.") }
                 let delivered: String? = isCur ? link.map { "\(Int(($0.lastShare * 100).rounded()))% delivered last week" } : nil
                 options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
                                               priceFactor: pf, yearlyVsMarket: spend * (1 - pf), yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil,
                                               vendorID: nil, quality: nil, reliability: delivered ?? "Not measured until it delivers",
-                                              terms: "\(m.name), settled weekly between the two companies' books, no VAT; never above the outside price",
+                                              terms: "\(m.name), settled weekly between the two companies' books, VAT as on any sale in the country (reclaimed if the buyer is registered); never above the outside price",
                                               delivery: k.local ? "Same city" : "Same country", risks: risks, blocked: nil))
             }
         }
@@ -249,7 +260,13 @@ public extension GameEngine {
             none = "None of your companies provides this yet. A " + (names.isEmpty ? "matching" : names.joined(separator: " or a ")) + " company of yours"
                 + (k.local ? " in the same city" : " in the same country") + " could."
         }
-        return SupplierInput(id: k.id, title: k.name, what: "A service or input this trade buys; one of your own companies can provide it", yearlySpend: spend,
+        var what = "A service or input this trade buys; one of your own companies can provide it"
+        if k.delivered {
+            let on = co.value("sw33")["on"]["platform"].bool
+            what = "Couriers that take delivery orders to customers. The delivery add-on only brings customers for the orders that get delivered, and you pay for each delivery. "
+                + (on ? "The add-on is on." : "The add-on is off, so nothing is delivered and nothing is paid.")
+        }
+        return SupplierInput(id: k.id, title: k.name, what: what, yearlySpend: spend,
                              current: options.first { $0.isCurrent }, options: options, noOwnProvider: none)
     }
 
@@ -262,6 +279,11 @@ public extension GameEngine {
         var r = SupplierSwitchResult.unknown
         update { s, d, _ in
             guard let co = s.company(companyID), co.status.isLive else { return }
+            // a franchise agreement that names the supplier: that supplier is allowed, nothing else
+            if let std = SupplyDeals.franchiseStandard(co, input: input) {
+                r = std == change ? SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change) : .governed
+                return
+            }
             if SupplyDeals.governedBy(s, co, input: input) != nil { r = .governed; return }
             r = SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change)
         }
@@ -282,6 +304,14 @@ public extension GameEngine {
     mutating func setGoodsPaymentTerms(companyID: Int, term: String?) -> Bool {
         var ok = false
         update { s, d, _ in ok = SupplyTerms.setGoodsTerm(&s, companyID: companyID, term: term, data: d) }
+        return ok
+    }
+
+    /// How the company pays its repair supplier (nil or "monthly" = as the bill comes).
+    @discardableResult
+    mutating func setRepairPaymentTerms(companyID: Int, term: String?) -> Bool {
+        var ok = false
+        update { s, d, _ in ok = SupplyTerms.setRepairTerm(&s, companyID: companyID, term: term, data: d) }
         return ok
     }
 

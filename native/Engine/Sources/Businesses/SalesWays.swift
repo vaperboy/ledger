@@ -49,6 +49,12 @@ public enum SalesWays {
             switch way.kind {
             case "platform":
                 detail = "About \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, \(Int(jsRound((way.options["fee"] ?? 0.2) * 100)))% commission on them"
+                if (way.options["deliv"] ?? 0) > 0, let dk = IntercompanySupply.deliveryKind {
+                    let share = dk.buyers[co.type] ?? 0
+                    let fill = IntercompanySupply.deliveryFill(s, buyer: co, way: way)
+                    detail = "Up to \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, only for the orders that get delivered (\(Int(jsRound(fill * 100)))% now). "
+                        + "\(Int(jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% marketplace commission plus delivery at \(Int(jsRound(share * 100)))% of those orders; set the courier under Suppliers"
+                }
             case "members":
                 detail = (on ? "\(Int(jsRound(sw["mem"].double))) members" : "Not offered") + ", perks cost 2% of sales"
             case "emergency":
@@ -112,8 +118,24 @@ public enum SalesWays {
         let id = co.id
 
         if let pl = way("platform"), on["platform"].bool, rev > 0 {
-            let lift = pl.options["lift"] ?? 0.2
-            Payments.companyPays(&s, companyID: id, amount: rev * lift / (1 + lift) * (pl.options["fee"] ?? 0.2), category: "oth")
+            var lift = pl.options["lift"] ?? 0.2
+            var fee = pl.options["fee"] ?? 0.2
+            var delivery = 0.0
+            if let dk = IntercompanySupply.deliveryKind, (pl.options["deliv"] ?? 0) > 0 {
+                // A delivery app's fee covers the marketplace and the courier. The courier is now an input of the business (`IntercompanySupply`):
+                // the customers it brings follow how much of the delivery is supplied, and its cost is booked as that input.
+                lift *= IntercompanySupply.deliveryFill(s, buyer: co, way: pl)
+                delivery = dk.buyers[co.type] ?? 0
+                fee = max(0, fee - delivery)
+            }
+            let brought = rev * lift / (1 + lift)
+            Payments.companyPays(&s, companyID: id, amount: brought * fee, category: "oth")
+            if delivery > 0, let dk = IntercompanySupply.deliveryKind {
+                Payments.companyPays(&s, companyID: id, amount: brought * delivery, category: dk.category)
+                s.companies[i].set("dlvRev", brought)
+            }
+        } else if s.companies[i].raw["dlvRev"] != nil {
+            s.companies[i].raw.removeValue(forKey: "dlvRev")
         }
         if way("members") != nil {
             let mem = sw["mem"].double
