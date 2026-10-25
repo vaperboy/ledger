@@ -107,13 +107,24 @@ public enum SupplyDeals {
     }
 
     /// Who governs this input for the company, if anyone. A franchised unit is bound only where its agreement says so.
-    public static func governedBy(_ s: GameState, _ co: Company, input: String) -> String? {
-        guard let ch = Chains.chain(s, of: co), !ch["rules"]["sup"][input].isNull else { return nil }
+    public static func governedBy(_ s: GameState, _ co: Company, input: String, data: GameData? = nil) -> String? {
         let f = co.value("franchise")
-        if f["fran"].bool {
-            return f["supStd"][input].isNull ? nil : "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) fixes this."
+        // a franchise agreement that fixes the supplier binds the unit whether or not it is in a chain
+        if f["fran"].bool, let std = franchiseStandard(co, input: input) {
+            var who = ""
+            if case .goodsVendor(let id) = std, let d = data, let v = Suppliers.vendor(s, id: id, data: d) { who = ": \(v.name)" }
+            return "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) requires its approved supplier for this" + who + "."
         }
+        guard let ch = Chains.chain(s, of: co), !ch["rules"]["sup"][input].isNull else { return nil }
+        if f["fran"].bool { return nil }
         return "\(ch["name"].string) sets this for all its stores."
+    }
+
+    /// The provider a franchise agreement requires for this input, if it names one (`franchise.supStd`).
+    public static func franchiseStandard(_ co: Company, input: String) -> SupplierSwitch? {
+        let f = co.value("franchise")
+        guard f["fran"].bool, !f["supStd"][input].isNull else { return nil }
+        return decode(f["supStd"][input])
     }
 
     public struct ChainLine: Equatable, Identifiable, Sendable {
@@ -182,6 +193,7 @@ public enum SupplyDeals {
             let same = isCurrent(s, co, input: input, change)
             var reason: String? = nil
             if free { reason = "A franchised unit: its agreement does not cover this, so it decides." }
+            else if let std = franchiseStandard(co, input: input), std != change { reason = governedBy(s, co, input: input, data: d) }
             else if !same { reason = problem(s, d, store: co, input: input, change, committed: &committed) }
             lines.append(ChainLine(storeID: co.id, storeName: co.name, changes: !same, reason: reason, free: free))
         }
@@ -223,7 +235,8 @@ public enum SupplyDeals {
     static func applyChainRules(_ s: inout GameState, _ d: GameData, storeID: Int) {
         guard let co = s.company(storeID), let ch = Chains.chain(s, of: co) else { return }
         for input in ch["rules"]["sup"].object.keys.sorted() {
-            guard let c = decode(ch["rules"]["sup"][input]), let cur = s.company(storeID), governedBy(s, cur, input: input) != nil, !isCurrent(s, cur, input: input, c) else { continue }
+            guard let c = decode(ch["rules"]["sup"][input]), let cur = s.company(storeID), governedBy(s, cur, input: input) != nil, !isCurrent(s, cur, input: input, c),
+                  franchiseStandard(cur, input: input).map({ $0 == c }) ?? true else { continue }
             var committed: [Int: Double] = [:]
             if let why = problem(s, d, store: cur, input: input, c, committed: &committed) {
                 s.note("\(cur.name) joined \(ch["name"].string) but keeps its own supplier for \(inputTitle(input)): \(why)", tone: "warn", companyID: storeID)

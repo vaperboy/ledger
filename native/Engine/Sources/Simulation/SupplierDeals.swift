@@ -82,7 +82,7 @@ public extension GameEngine {
         if !bd.equipment.isEmpty { out.append(supplierRepairInput(co)) }
         for k in IntercompanySupply.kindsFor(co) { out.append(supplierKindInput(co, k)) }
         for n in out.indices {
-            out[n].governedBy = SupplyDeals.governedBy(state, co, input: out[n].id)
+            out[n].governedBy = SupplyDeals.governedBy(state, co, input: out[n].id, data: data)
             out[n].paymentTerms = supplierPaymentTerms(co, input: out[n].id)
             for m in out[n].options.indices where out[n].options[m].kind == .outsideVendor || out[n].options[m].kind == .repairVendor {
                 guard let vid = out[n].options[m].vendorID else { continue }
@@ -279,6 +279,11 @@ public extension GameEngine {
         var r = SupplierSwitchResult.unknown
         update { s, d, _ in
             guard let co = s.company(companyID), co.status.isLive else { return }
+            // a franchise agreement that names the supplier: that supplier is allowed, nothing else
+            if let std = SupplyDeals.franchiseStandard(co, input: input) {
+                r = std == change ? SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change) : .governed
+                return
+            }
             if SupplyDeals.governedBy(s, co, input: input) != nil { r = .governed; return }
             r = SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change)
         }

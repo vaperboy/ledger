@@ -1,0 +1,6 @@
+{
+  "about": "Supplier standards a franchise agreement can fix (FranchiseBrands.applyToCompany writes them to the franchise record as supStd). Each entry: the input it fixes (goods, repair or a supply kind id), the trades whose brands require it, the lowest brand tier that does (1 local ... 4 global), and what it fixes: 'approved' = the brand's approved supplier, one named outside supplier picked from the franchisee's candidates for that brand (the franchisor's own supply chain). Design values: no real brand contract is quoted. Nothing is fixed for a trade that is not listed.",
+  "supplierStandards": [
+    { "input": "goods", "trades": ["cafe", "restaurant", "foodtruck", "bakery"], "minTier": 2, "standard": "approved" }
+  ]
+}

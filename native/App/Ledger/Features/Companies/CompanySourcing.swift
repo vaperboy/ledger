@@ -94,7 +94,7 @@ struct CompanySourcing: View {
                 if let why = input.governedBy {
                     HStack(alignment: .top, spacing: 6) {
                         Image(systemName: "lock.fill").font(.system(size: 11)).foregroundStyle(Theme.caution)
-                        Text(why + " Change it at the chain, or release the rule there so each store decides.").font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                        Text(why + (why.contains("franchise agreement") ? " Only the franchisor can change it." : " Change it at the chain, or release the rule there so each store decides.")).font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
@@ -194,7 +194,7 @@ struct CompanySourcing: View {
             case .ok?: Haptics.success(); store.show("\(o.name) now provides \(input.title.lowercased()).", tone: "good")
             case .notKnownWell?: Haptics.warning(); store.show("They do not know you well enough yet. Get to know them better first.", tone: "warn")
             case .notAllowed?: Haptics.warning(); store.show("That provider is no longer available for this company.", tone: "warn")
-            case .governed?: Haptics.warning(); store.show("The chain fixes this input for all its stores.", tone: "warn")
+            case .governed?: Haptics.warning(); store.show("A chain rule or your franchise agreement fixes this input.", tone: "warn")
             default: Haptics.warning(); store.show("Nothing changed.", tone: "warn")
             }
         }
