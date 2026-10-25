@@ -131,8 +131,11 @@ public enum Hiring {
         public var payPlan: String? = nil
         /// The commission share of the plan; 0 = the plan's usual one.
         public var commissionRate = 0.0
-        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0) {
+        /// A fixed-term contract of this many weeks (one of `FixedTerm.termChoices`); 0 = permanent.
+        public var fixedTermWeeks = 0
+        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0, fixedTermWeeks: Int = 0) {
             self.hours = hours; self.seasonMonths = seasonMonths; self.basis = basis; self.ownCar = ownCar; self.payPlan = payPlan; self.commissionRate = commissionRate
+            self.fixedTermWeeks = fixedTermWeeks
         }
         public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
     }
@@ -248,6 +251,9 @@ public enum Hiring {
         // A pay plan on commission: allowed for a job the data lets sell in this trade; someone who wants security may not take commission only.
         let plan: String? = (!part && (terms.payPlan == "mix" || terms.payPlan == "com") && PayPlans.eligible(role: n.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles)) ? terms.payPlan : nil
         if plan == "com", n.num("sec") > 0.65, s.random.chance(0.6) { return .planRefused }
+        // Someone who needs security does not take a fixed-term job (see FixedTerm.wantsPermanent).
+        let term = FixedTerm.termChoices.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
+        if term > 0, FixedTerm.wantsPermanent(n) { return .planRefused }
         n.employerID = companyID
         s.people[personID] = n
         var m = StaffMember(raw: [:])
@@ -262,6 +268,7 @@ public enum Hiring {
             if plan == "com" { m.monthlyWage = 0 }   // commission only has no base
             if PayPlans.isExtra(role: m.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles) { m.set("ppx", 1) }
         }
+        if term > 0 { m.set("ft", s.week + term); m.set("ftl", term) }
         onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)

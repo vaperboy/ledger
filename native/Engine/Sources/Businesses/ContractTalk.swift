@@ -23,7 +23,7 @@ import Finance
 /// An open talk is kept on the person under the key `ctalk`, so a saved game keeps it; the key exists only while a talk is open.
 public enum ContractTalk {
     public enum Topic: String, CaseIterable, Sendable {
-        case payRise, promotion, hours, payBasis, bonus, benefits, notice, move
+        case payRise, promotion, hours, payBasis, bonus, benefits, term, notice, move
         public var title: String {
             switch self {
             case .payRise: return "Pay rise"
@@ -32,6 +32,7 @@ public enum ContractTalk {
             case .payBasis: return "Pay basis"
             case .bonus: return "Bonus plan"
             case .benefits: return "Benefits"
+            case .term: return "Contract term"
             case .notice: return "Notice"
             case .move: return "Move"
             }
@@ -197,6 +198,7 @@ public enum ContractTalk {
             _ = onPlan
             out.append(info(.bonus, true, ""))
             out.append(info(.benefits, true, ""))
+            out.append(info(.term, true, ""))
             out.append(info(.notice, true, ""))
             let sisters = Chains.chain(s, of: co).map { Chains.stores(s, $0).filter { $0.id != co.id && $0.status.isLive }.count } ?? 0
             out.append(info(.move, sisters > 0, "There is no other store in this chain."))
@@ -205,6 +207,7 @@ public enum ContractTalk {
             out.append(info(.payBasis, false, "A manager is paid a salary and a profit share."))
             out.append(info(.bonus, true, ""))
             out.append(info(.benefits, true, ""))
+            out.append(info(.term, false, "A manager's contract term is set by the labour rules."))
             out.append(info(.notice, false, "A manager's notice is set by the labour rules."))
             out.append(info(.move, !freeCompanies(s, except: companyID, data: data).isEmpty, "Every other company already has a manager."))
         }
@@ -222,6 +225,15 @@ public enum ContractTalk {
         let cur = World(state: s, data: data).currency(co)
         switch topic {
         case .payRise, .notice: return []
+        case .term:
+            guard let m = sub.member else { return [] }
+            let end = FixedTerm.endWeek(m)
+            var out = [Choice(id: "perm", title: "Permanent" + (end == nil ? " (now)" : ""), detail: "No end date. Ending it later follows the labour rules for dismissal and resignation.", on: end == nil)]
+            for w in FixedTerm.termChoices {
+                out.append(Choice(id: "fixed:\(w)", title: (end == nil ? "Fixed term of \(w) weeks" : "Renew for \(w) more weeks"),
+                                  detail: end == nil ? "Ends on its date unless you renew it." : "Added to the end date (week \(end ?? 0)).", on: nil))
+            }
+            return out
         case .bonus:
             guard let m = sub.member else { return [] }
             var out = WorkerBonus.levels.map { l in
@@ -441,6 +453,18 @@ public enum ContractTalk {
                     if worth > 0 { c.lines.append("Perks they count as pay: \(cur.display(worth)) a month in all.") }
                 }
             } else if p.choice == "ownCar" { c.lines.append("Mileage is paid each month: \(cur.display(PersonalEquipment.mileagePerMonth(cur))).") }
+        case .term:
+            if let m = sub.member {
+                if p.choice == "perm" { c.lines.append("Permanent: no end date.") }
+                else if let end = after?.member.flatMap({ FixedTerm.endWeek($0) }) {
+                    c.lines.append("Fixed term until week \(end) (\(end - s.week) weeks from now). \(first) is asked about renewal \(FixedTerm.reviewWindowWeeks(lab)) weeks before.")
+                    let end0 = lab.termination(tenureWeeks: Double(end - m.hiredWeek), reason: .expiry, age: Double(sub.person.age))
+                    c.labour.append(end0.noticeWeeks + end0.severanceWeeks > 0
+                                    ? "When it ends on its date the labour rules require: \(Int(end0.noticeWeeks.rounded())) weeks of notice and \(Int(end0.severanceWeeks.rounded())) weeks of severance."
+                                    : "When it ends on its date nothing is owed: the country's labour data lists no notice or severance for the end of a fixed term.")
+                    if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { c.risks.append("\(first) wants security and may not take a fixed-term job.") }
+                }
+            }
         case .notice:
             if let m = sub.member {
                 let years = Double(s.week - m.hiredWeek)
@@ -559,6 +583,18 @@ public enum ContractTalk {
             guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
             guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
             return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for " + (group.flatMap { StaffPerks.roleGroup($0)?.name.lowercased() } ?? "the company") + ".")
+        case .term:
+            guard let m = sub.member else { return .notPossible("Not for a manager.") }
+            if p.choice == "perm" {
+                guard FixedTerm.isFixed(m) else { return .notPossible("The contract is permanent already.") }
+                _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: nil)
+                return .ok("\(name) is on a permanent contract now.")
+            }
+            guard p.choice.hasPrefix("fixed:"), let weeks = Int(p.choice.dropFirst(6)), FixedTerm.termChoices.contains(weeks) else { return .notPossible("That is not a contract term you can agree.") }
+            if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { return .unwilling("\(name) wants security and will not take a fixed-term job in place of a permanent one.") }
+            _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: weeks)
+            let end = s.companies[sub.ci].staff.first { $0.id == id }.flatMap { FixedTerm.endWeek($0) } ?? 0
+            return .ok("\(name) is on a fixed term until week \(end).")
         case .notice:
             guard sub.member != nil else { return .notPossible("Not for a manager.") }
             let weeks = Int(max(0, p.amount))
