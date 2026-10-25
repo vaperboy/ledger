@@ -265,6 +265,23 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
 | T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
+### 9.P Staff pay and benefits (branch fix/staff-pay) — screens NOT TESTED by hand (engine tests: StaffPerkCatalogueTests, WorkerBonusTests, StaffExpensesTests, PayPlansTests, ManagedRequestsTests, FixedTermTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.P1 | Company > Team > Perks card | Each perk shows cost, "fewer leave among those it covers"; perks that can go to several groups show one chip per role group (manager and team leads, sellers, everyone else) with the head count; the company car only has the manager group | | NOT TESTED | | |
+| T9.P2 | Switch lunch on for one group, then for the others | Each switch asks first with cost, benefit and risk; the cost line follows the people covered; with every group on the card shows the plain "On" | | NOT TESTED | | |
+| T9.P3 | Open a worker's profile with perks on | Mood lists "looked after: ..." and the Record shows Perks with what they are worth a month | | NOT TESTED | | |
+| T9.P4 | Contract discussion > Benefits | Perks, a perk for this person's group only, and the expense items that exist for their job (phone, uniform, training, travel); preview shows the cost and that expenses are not wages | | NOT TESTED | | |
+| T9.P5 | Contract discussion > Bonus plan on a barista | None / Standard / High with a likely monthly cost; a warning if the company has no monthly targets; confirm, the profile shows the plan | | NOT TESTED | | |
+| T9.P6 | Play to a month end with targets met | Inbox/activity shows targets; the staff profile shows "paid this year"; payroll cost includes employer charges on the bonus | | NOT TESTED | | |
+| T9.P7 | Hire a seller: pay plan row (Salary / Salary and commission / Commission only) and commission share | Shown only for jobs that sell on commission in this trade; a security-minded candidate may say no to commission only | | NOT TESTED | | |
+| T9.P8 | Hire a candidate: Contract row (Permanent / 26 / 52 / 104 weeks) | Fixed term shows the end week in the profile; a candidate who wants security declines it | | NOT TESTED | | |
+| T9.P9 | Hiring row after a counter: "Your figure" stepper, "Type an exact figure", the 25/50/75% menu | Any figure can be sent; the answer appears under the row | | NOT TESTED | | |
+| T9.P10 | Contract discussion, an open request or their last word | "Meet them part way" quarter/half/three-quarter buttons fill the editor; the stepper or field takes an exact figure | | NOT TESTED | | |
+| T9.P11 | Contract discussion > Contract term | Permanent / fixed term / renew; preview says what ending costs under the country's rules (nothing where the data lists none) | | NOT TESTED | | |
+| T9.P12 | Four weeks before a fixed term ends | Inbox asks: renew or let it end; letting it end removes them on the date with the cost shown | | NOT TESTED | | |
+| T9.P13 | Company with a manager: a tired worker | An hours request is decided by the manager inside their authority (activity note), or reaches the Inbox naming the manager | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

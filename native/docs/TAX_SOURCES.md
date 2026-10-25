@@ -205,6 +205,10 @@ during probation or in an at-will country; part-timers' pay and the minimum are 
 only to hourly staff (not fixed-salary or commission staff) for hours above the standard or agreed week; wage claims for unpaid
 wages already existed (`Payday.lateDay`) and are unchanged.
 
+## Staff expense reimbursement and bonuses (branch fix/staff-pay)
+
+No statutory source was checked for how phone, uniform, training and travel reimbursements are taxed, nor for payroll tax on bonuses, so no country carries a `staffExpenses` entry and the game treats them neutrally (an expense with no employer charge). The mechanism exists: `staffExpenses.<item id>.employerCharge: true` in a country's data books the employer's social charge on that reimbursement. Bonuses are paid through payroll at the same employer factor as wages; a different rule for bonuses (for example a flat supplementary rate) is not modelled. Fixed-term contracts: no country's labour block lists notice or severance for the end of a fixed term (`expiry`), so none is charged.
+
 ## How to update
 
 Edit `Engine/Sources/Countries/Resources/countries.json` (`tax`, `vat`, `companies`), update `dataBasis.note` and `checked`, add the
