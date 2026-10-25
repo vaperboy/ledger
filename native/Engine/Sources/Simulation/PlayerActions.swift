@@ -121,6 +121,7 @@ public extension GameEngine {
             if c.offered(in: World(state: s, data: data).country(s.companies[i])) == nil { result = .refused("not available in this country"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
             if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
+            if weeklyBudget > 0, let why = FranchiseStandards.campaignRefusal(s.companies[i], channel: channel) { result = .refused(why); return }
             var mkt = s.companies[i].value("mkt")
             var mktEnd = s.companies[i].value("mktEnd")
             let cur = mkt[channel]
@@ -166,7 +167,8 @@ public extension GameEngine {
         let w = (weeks ?? 0) > 0 ? weeks : nil
         let util = co.value("lastW")["util"].double
         return CampaignPlan(lockedWeeks: cur.isNull ? c.minimumWeeks : left, weeks: w, totalCost: w.map { weeklyBudget * Double($0) },
-                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state))
+                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state),
+                            blocked: FranchiseStandards.campaignRefusal(co, channel: channel))
     }
 
     // MARK: People

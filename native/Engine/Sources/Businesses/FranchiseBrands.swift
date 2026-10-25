@@ -442,6 +442,19 @@ public enum FranchiseBrands {
             "brand": .number(b.strength), "std": .number(b.standard), "cover": .number(Double(t.cover)), "bld": .number(Double(t.building)),
             "term": .number(Double(b.termYears)), "w0": .number(Double(s.week)),
         ]))
+        // What the brand dictates about how the unit sells and how it may market locally: written once, at the grant.
+        if let bd = data.catalog[s.companies[i].type] {
+            let std = FranchiseStandards.knobStandards(brand: b, trade: bd)
+            var f = s.companies[i].value("franchise")
+            if !std.isEmpty {
+                f["knobStd"] = .object(std.mapValues { .number(Double($0)) })
+                var knobs = s.companies[i].value("knob")
+                for (k, v) in std { knobs[k] = .number(Double(v)) }
+                s.companies[i].set("knob", knobs)
+            }
+            if let lm = FranchiseStandards.localMarketing(brand: b) { f["localMkt"] = lm }
+            s.companies[i].set("franchise", f)
+        }
         if let p = t.premises { s.companies[i].set("landlord", .object(["co": .number(Double(p.companyID)), "pid": .number(Double(p.propertyID))])) }
         s.companies[i].reputation = max(s.companies[i].reputation, 38 + Double(b.tier) * 6)
         s.companies[i].awareness = max(s.companies[i].awareness, 25 + b.strength * 0.55)

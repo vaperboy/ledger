@@ -59,7 +59,7 @@ public enum KnobChange {
         }
         let f = co.value("franchise")
         if f["fran"].bool, !f["knobStd"][id].isNull {
-            return "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) fixes this."
+            return "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) fixes this: the brand dictates how its units sell."
         }
         return nil
     }
