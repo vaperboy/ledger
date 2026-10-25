@@ -70,7 +70,7 @@ public enum CompanySetup {
 
     static let premisesWords = ["Properties", "Estates", "Commercial", "Real Estate", "Holdings", "Property Group"]
 
-    /// Six places to rent, from a back street unit to a central location; a new list every half year. Original: `premListings`.
+    /// Five places to rent (the original's `PL_TIERS`), from a back street unit to a central location; a new list every half year. Original: `premListings`.
     public static func listings(for co: Company, _ bd: Trade, _ w: World) -> [Listing] {
         if PremisesExtras.isHomeTrade(bd) { return PremisesExtras.listings(co, bd, w) }   // a trade that started at home looks for a workshop or office
         guard let kind = bd.premisesKind, kind != "none", kind != "home" else { return [] }

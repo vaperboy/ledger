@@ -64,6 +64,47 @@ final class ChainsTests: XCTestCase {
         XCTAssertNotNil(e.state.company(id))
     }
 
+    /// A franchised unit can be started with a place of the player's choice: the plan prices the pick (plus the entry fee), and the unit
+    /// ends up in exactly that place, bought or rented, still a franchisee of the brand.
+    func testFranchisedUnitStartsInTheChosenPremises() throws {
+        func prepared() throws -> (GameEngine, FranchiseBrands.Brand) {
+            var e = try Self.engine()
+            let brand = try XCTUnwrap(["cafe", "gym", "barber", "bakery"].lazy.compactMap { t in
+                FranchiseBrands.brands(t, country: "NO", World(state: e.state, data: e.data)).first { $0.openness == "open" }
+            }.first { e.data.catalog[$0.tradeID]?.premisesKind.map { $0 != "none" && $0 != "home" } ?? false })
+            XCTAssertEqual(e.applyToFranchiseBrand(brand.id, country: "NO"), .ok)
+            for _ in 0..<(4 * 7) { e.nextDay() }
+            let n = try XCTUnwrap(e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()))
+            e.signFranchiseTerms(brand.id, terms: try XCTUnwrap(n.terms))
+            return (e, brand)
+        }
+        let (e0, brand) = try prepared()
+        let city = e0.state.player.cityID
+        let std = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city, form: .limited))
+        XCTAssertEqual(std.plan.premisesKind, .place)
+        XCTAssertGreaterThan(std.plan.options.count, 2)
+        XCTAssertGreaterThan(std.fee, 0)
+        let other = try XCTUnwrap(std.plan.options.first { $0.index != std.plan.standardIndex })
+        let picked = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city, form: .limited, pick: .init(listingIndex: other.index, buy: false)))
+        XCTAssertEqual(picked.plan.premisesCost, other.rentUpfront, accuracy: 0.5)
+        for buy in [false, true] {
+            var (e, _) = try prepared()
+            let r = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, form: .limited, name: "Unit", pick: .init(listingIndex: other.index, buy: buy), fundWith: 3_000_000_000)
+            guard case .success(let out) = r else { return XCTFail("\(r)") }
+            XCTAssertEqual(out.premises, .ok)
+            let co = try XCTUnwrap(e.state.company(out.companyID))
+            XCTAssertEqual(co.value("franchise")["brandId"].string, brand.id)
+            XCTAssertEqual(co.value("prem")["owned"].bool, buy)
+            XCTAssertEqual(co.value("prem")["m2"].double, other.squareMetres, accuracy: 0.5)
+            XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        }
+        // No pick: the old call and the new one with no pick agree on the standard place.
+        var (a, _) = try prepared(), (b, _) = try prepared()
+        guard case .success(let ida) = a.startFranchisedCompany(brandID: brand.id, cityID: city, form: .limited, name: "U", fundWith: 3_000_000_000),
+              case .success(let outb) = b.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, form: .limited, name: "U", pick: nil, fundWith: 3_000_000_000) else { return XCTFail("start") }
+        XCTAssertEqual(a.state.company(ida)?.value("prem"), b.state.company(outb.companyID)?.value("prem"))
+    }
+
     func testChainOpensStoresAndRunsOnSharedRules() throws {
         var e = try Self.engine()
         let first = Self.start(&e, "cafe")
