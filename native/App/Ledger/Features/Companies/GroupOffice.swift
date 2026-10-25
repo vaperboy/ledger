@@ -19,34 +19,45 @@ struct HeadOfficeSection: View {
     @State private var report: [ManagerModel.AnalystLine] = []
 
     var body: some View {
-        let tier = engine.officeTier
-        let staff = engine.officeStaff
-        LedgerSection(title: "Main office", trailing: { Text(tier?.name ?? "None").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        // A new game carries a free home-office record; it is not a group office until the owner sets it up.
+        let established = engine.groupOfficeEstablished
+        let tier = established ? engine.officeTier : nil
+        let staff = established ? engine.officeStaff : []
+        LedgerSection(title: "Group office", trailing: { Text(tier?.name ?? "optional").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(tier?.name ?? "No main office").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text(tier.map { "\(staff.count) of \($0.desks) desks · \(store.short(engine.officeRent(tier: $0))) a month" } ?? "Rent one to hire people who work for the whole group.")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Menu(tier == nil ? "Rent" : "Move") {
-                        ForEach(engine.officeTiers) { t in
-                            Button("\(t.name) · \(store.short(engine.officeRent(tier: t))) a month · \(t.desks) desks") { confirmRent(t, moving: tier != nil) }
+                if let tier {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(tier.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                            Text("\(staff.count) of \(tier.desks) desks · \(store.short(engine.officeRent(tier: tier))) a month · people here are employed by \(engine.groupOfficeEmployer)")
+                                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                         }
-                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                }.padding(.vertical, 8)
-                if tier != nil {
+                        Spacer(minLength: 8)
+                        Menu {
+                            ForEach(engine.officeTiers) { t in
+                                Button("\(t.name) · \(store.short(engine.officeRent(tier: t))) a month · \(t.desks) desks") { confirmRent(t, moving: true) }
+                            }
+                        } label: { Text("Move  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold) }
+                    }.padding(.vertical, 8)
                     ForEach(Array(staff.enumerated()), id: \.offset) { _, x in
                         Hairline()
                         staffRow(x)
                     }
-                    ForEach(engine.officeRoles.filter { r in !staff.contains { $0["role"].string == r.id } }) { r in
+                    let open = engine.officeRoles.filter { r in !staff.contains { $0["role"].string == r.id } }
+                    ForEach(open.filter { engine.officeRoom(role: $0.id) != .locked }) { r in
                         Hairline()
                         roleRow(r)
                     }
+                    // Roles that are not open yet are one plain line, not a row each: nothing to tap, nothing to fill.
+                    let later = open.filter { engine.officeRoom(role: $0.id) == .locked }
+                    if !later.isEmpty {
+                        Text("Open later, as the group grows: " + later.map { "\($0.title) (\(Headquarters.unlockText($0.id)))" }.joined(separator: ", ") + ".")
+                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
+                    }
+                } else {
+                    setUpRow
                 }
-                if let rh = engine.rightHand { Hairline(); rightHand(rh) }
+                if let rh = engine.rightHand, established { Hairline(); rightHand(rh) }
                 if engine.state.hasHeadOffice("ana") { Hairline(); analyst }
                 if tier != nil { Hairline(); reviews }
                 if engine.state.companies.contains(where: { $0.status.isLive && $0.managerID != nil }) { Hairline(); dueMeetings; Hairline(); meeting }
@@ -56,18 +67,57 @@ struct HeadOfficeSection: View {
         SuppliersGroupSection(engine: engine)
     }
 
+    // MARK: Setting the office up (optional)
+
+    /// One row, not a list of vacancies: separate companies need no group office. Choosing a size opens the confirmation with its cost.
+    @ViewBuilder private var setUpRow: some View {
+        let paid = engine.officeTiers.filter { engine.officeRent(tier: $0) > 0 }.map { engine.officeRent(tier: $0) }.min()
+        Menu {
+            ForEach(engine.officeTiers) { t in
+                Button("\(t.name) · \(engine.officeRent(tier: t) > 0 ? store.short(engine.officeRent(tier: t)) + " a month" : "free") · \(t.desks) \(t.desks == 1 ? "desk" : "desks")") { confirmRent(t, moving: false) }
+            }
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Set up a group office (optional)").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(setUpText(cheapestPaid: paid))
+                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Text("Set up  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+            }.padding(.vertical, 8).contentShape(Rectangle())
+        }
+    }
+
+    private func setUpText(cheapestPaid: Double?) -> String {
+        var t = "Your companies run without one. A group office is where you hire people who serve all of them: a personal assistant, then as the group grows shared HR, accounts, legal and analysts, and a group managing director. A home office is free"
+        if let c = cheapestPaid { t += "; larger offices from \(store.short(c)) a month" }
+        return t + ", plus each salary, paid by you or by a holding with spare cash."
+    }
+
     // MARK: Office and staff
 
     private func confirmRent(_ t: Headquarters.Tier, moving: Bool) {
         let cost = engine.officeRent(tier: t)
-        pending = PendingAction(title: moving ? "Move to \(t.name)?" : "Rent \(t.name)?",
-                                message: "\(store.short(cost)) a month for \(t.desks) desks, paid by a holding with spare cash or by you." + (moving ? " Moving costs the first month now as a deposit; your office staff move with you." : " The people who work there are hired one by one after that."),
-                                button: moving ? "Move" : "Rent") { rent(t) }
+        let price = cost > 0 ? "\(store.short(cost)) a month" : "Free"
+        let who = "paid by a holding with spare cash, otherwise by you"
+        let desks = "\(t.desks) \(t.desks == 1 ? "desk" : "desks")"
+        let message: String
+        if moving {
+            message = "\(price) for \(desks), \(who). Moving costs the first month now as a deposit; your office staff move with you."
+        } else {
+            var m = "Cost: \(price) for \(desks)"
+            if cost > 0 { m += ", \(who); the first month is paid now as a deposit" }
+            m += ", plus the salary of everyone you hire there. Benefit: you can hire your personal assistant and, as the group grows, shared staff and a group managing director. "
+            m += "Risk: rent and salaries run every month whether or not they pay off. Your companies keep running without it."
+            message = m
+        }
+        pending = PendingAction(title: moving ? "Move to \(t.name)?" : "Set up a \(t.name.lowercased()) as your group office?", message: message, button: moving ? "Move" : "Set up") { rent(t) }
     }
 
     private func rent(_ t: Headquarters.Tier) {
         switch store.act({ $0.rentOffice(tier: t.id) }) {
-        case .ok?: Haptics.success(); store.show("\(t.name) rented.", tone: "good")
+        case .ok?: Haptics.success(); store.show("\(t.name) is now your group office.", tone: "good")
         case .desks?: store.show("Too many people for that office.", tone: "warn")
         case .notEnoughCash?: store.show("Not enough cash for the deposit.", tone: "warn")
         default: store.show("That office is not available.", tone: "warn")
@@ -81,7 +131,7 @@ struct HeadOfficeSection: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(x["name"].string).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text(engine.officeRoles.first { $0.id == x["role"].string }?.title ?? x["role"].string).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text((engine.officeRoles.first { $0.id == x["role"].string }?.title ?? x["role"].string) + " · group · employed by \(engine.groupOfficeEmployer)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     let does = engine.officeRoleResult(role: x["role"].string)
                     if !does.isEmpty { Text(does).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
                 }
@@ -96,7 +146,7 @@ struct HeadOfficeSection: View {
                 Button("Let go") {
                     let name = x["name"].string
                     pending = PendingAction(title: "Let \(name) go?", message: "What they do for the group stops at once. " + engine.officeRoleResult(role: x["role"].string), button: "Let go", destructive: true) {
-                        store.act { $0.fireOffice(personID: id) }; Haptics.warning(); store.show("\(name) has left the main office.")
+                        store.act { $0.fireOffice(personID: id) }; Haptics.warning(); store.show("\(name) has left the group office.")
                     }
                 }.foregroundStyle(Theme.loss)
             }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
@@ -109,17 +159,19 @@ struct HeadOfficeSection: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(r.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text(room == .locked ? "Opens with " + Headquarters.unlockText(r.id) : r.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(r.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 if room == .ok {
-                    Menu("Find") {
+                    Menu {
                         Button("Ask around (free)") { search(r.id, .network) }
                         Button("Job ad") { search(r.id, .ad) }
                         Button("Agency (checked)") { search(r.id, .agency) }
-                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+                    } label: { Text("Find  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold) }
                 } else if room == .desks {
                     Text("No free desk").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                } else if room == .homeoffice {
+                    Text("Needs a bigger office").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
                 }
             }
             if searchRole == r.id {

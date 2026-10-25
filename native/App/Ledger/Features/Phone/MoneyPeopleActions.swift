@@ -216,9 +216,9 @@ struct HoldingFinanceManagerCard: View {
 
     private func blockedText(_ r: Headquarters.RoomResult) -> String {
         switch r {
-        case .office: return "Rent a main office first."
-        case .homeoffice: return "A home office has no room for one. Upgrade the main office."
-        case .desks: return "The main office has no free desk."
+        case .office: return "Set up a group office first (Group tab, Group office)."
+        case .homeoffice: return "A home office has no room for one. Upgrade the group office."
+        case .desks: return "The group office has no free desk."
         case .locked: return "Needs a holding company."
         default: return "Not possible right now."
         }
@@ -285,7 +285,7 @@ struct HoldingFinanceManagerCard: View {
                 Text("Cost: none beyond their pay, which you already pay. Benefit: cash above \(cur.tidyShort(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better. Risk: the index fund can fall, and selling it costs 0.66%.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 if staffEntry != nil { Button(on ? "Take it back" : "Let the finance manager run it") { confirm = true }.buttonStyle(QuietButtonStyle()) }
-                else { Text("You have no finance manager. Hire one for the main office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+                else { Text("You have no finance manager. Hire one for the group office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
                 hireFlow
             }
         }
@@ -297,7 +297,7 @@ struct HoldingFinanceManagerCard: View {
         .confirmationDialog(on ? "Run \(company.name) yourself again?" : "Let the finance manager run \(company.name)?", isPresented: $confirm, titleVisibility: .visible) {
             Button(on ? "Take it back" : "Hand it over") {
                 if let now = store.act({ $0.toggleHoldingFinanceManager(holdingID: company.id) }) ?? nil { Haptics.success(); store.show(now ? "Handed over." : "You run it yourself again.", tone: "n") }
-                else { store.show("Hire a finance manager in the main office first.", tone: "warn") }
+                else { store.show("Hire a finance manager in the group office first.", tone: "warn") }
             }
         }
     }

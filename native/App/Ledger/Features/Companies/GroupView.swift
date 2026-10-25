@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: ownership and structure (what needs you, holdings, chains, franchises, group management, main office, boards) and, as a second section,
+/// The Group tab: ownership and structure (what needs you, holdings, chains, franchises, the group office (optional), boards) and, as a second section,
 /// the group's money (finance, bank, investments, taxes, costs, reports) which is `FinanceView` unchanged.
 struct GroupView: View {
     enum Part: String, CaseIterable, Hashable { case structure = "Structure", money = "Money" }
@@ -47,27 +47,25 @@ struct GroupView: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 GroupAttention(engine: e)
                 GroupStructureOverview(engine: e)
-                if live.count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
-                else if !live.isEmpty {
-                    LedgerSection("Group management") {
-                        Text("A managing director for the whole group becomes possible once you own two running companies.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                    }
-                }
+                // Group-level posts exist only after the owner has set up a group office (Group office section below).
+                if e.groupOfficeEstablished && live.count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
                 if !live.isEmpty { HeadOfficeSection(engine: e) }
                 BoardsGroupSection(engine: e) { moneyTo(.invest) }
-                if live.contains(where: { $0.status == .open }) {
-                    LedgerSection("Market") {
-                        NavigationLink(value: CompanyRoute.market) {
-                            GroupLinkRow(title: "Market, reviews and rivals", sub: "Rival groups and how your trades compare.")
+                HostingSection(engine: e)
+                // One section for the two single-link rows, rather than a heading and divider each.
+                LedgerSection("More") {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if live.contains(where: { $0.status == .open }) {
+                            NavigationLink(value: CompanyRoute.market) {
+                                GroupLinkRow(title: "Market, reviews and rivals", sub: "Rival groups and how your trades compare.")
+                            }.buttonStyle(.plain)
+                            Hairline()
+                        }
+                        NavigationLink { GivingView() } label: {
+                            GroupLinkRow(title: "Gifts, sponsorships and your foundation",
+                                         sub: "\(e.givingMarks.count) \(e.givingMarks.count == 1 ? "mark" : "marks")" + (e.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
                         }.buttonStyle(.plain)
                     }
-                }
-                HostingSection(engine: e)
-                LedgerSection("Giving back") {
-                    NavigationLink { GivingView() } label: {
-                        GroupLinkRow(title: "Gifts, sponsorships and your foundation",
-                                     sub: "\(e.givingMarks.count) \(e.givingMarks.count == 1 ? "mark" : "marks")" + (e.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
-                    }.buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
