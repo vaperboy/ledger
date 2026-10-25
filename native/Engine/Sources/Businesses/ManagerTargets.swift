@@ -293,13 +293,23 @@ public enum ManagerTargets {
             }
             return
         }
+        var hitsByCompany: [Int: Int] = [:]
         var res: [(String, JSONValue)] = [], talks: [String] = [], years: [(name: String, rev: Double, profit: Double, budget: (Double, Double), okR: Bool, okP: Bool, bonus: Double, yr: Int)] = [], asks: [Int] = []
         for ci in live {
-            guard let r = judge(&s, ci, data: data), s.companies[ci].managerID != nil else { continue }
+            guard let r = judge(&s, ci, data: data) else { continue }
+            hitsByCompany[s.companies[ci].id] = r["n"].int
+            guard s.companies[ci].managerID != nil else { continue }
             res.append((s.companies[ci].name, r))
             if r["n"].int <= 1 { let line = talk(&s, ci, r, data: data); if !line.isEmpty { talks.append(line) } }
         }
-        if GameCalendar.isYearEnd(week: s.week) { for ci in live { if let y = yearEnd(&s, ci) { years.append(y) } } }
+        if GameCalendar.isYearEnd(week: s.week) {
+            for ci in live {
+                let y = yearEnd(&s, ci)
+                if let y { years.append(y) }
+                WorkerBonus.yearEnd(&s, ci, budgetMet: y.map { $0.okR && $0.okP } ?? false)   // the staff's year-end bonus, on the same budget
+            }
+        }
+        for ci in live { WorkerBonus.monthEnd(&s, ci, hits: hitsByCompany[s.companies[ci].id]) }
         // Next month: a budget for the coming year where there is none, then the targets.
         let nm = mi(s) + 1, yr = yearOf(nm)
         for ci in live {

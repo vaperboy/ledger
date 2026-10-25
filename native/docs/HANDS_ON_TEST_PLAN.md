@@ -279,6 +279,24 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
 | T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
+<<<<<<< HEAD
+### 9.P Staff pay and benefits (branch fix/staff-pay) — screens NOT TESTED by hand (engine tests: StaffPerkCatalogueTests, WorkerBonusTests, StaffExpensesTests, PayPlansTests, ManagedRequestsTests, FixedTermTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.P1 | Company > Team > Perks card | Each perk shows cost, "fewer leave among those it covers"; perks that can go to several groups show one chip per role group (manager and team leads, sellers, everyone else) with the head count; the company car only has the manager group | | NOT TESTED | | |
+| T9.P2 | Switch lunch on for one group, then for the others | Each switch asks first with cost, benefit and risk; the cost line follows the people covered; with every group on the card shows the plain "On" | | NOT TESTED | | |
+| T9.P3 | Open a worker's profile with perks on | Mood lists "looked after: ..." and the Record shows Perks with what they are worth a month | | NOT TESTED | | |
+| T9.P4 | Contract discussion > Benefits | Perks, a perk for this person's group only, and the expense items that exist for their job (phone, uniform, training, travel); preview shows the cost and that expenses are not wages | | NOT TESTED | | |
+| T9.P5 | Contract discussion > Bonus plan on a barista | None / Standard / High with a likely monthly cost; a warning if the company has no monthly targets; confirm, the profile shows the plan | | NOT TESTED | | |
+| T9.P6 | Play to a month end with targets met | Inbox/activity shows targets; the staff profile shows "paid this year"; payroll cost includes employer charges on the bonus | | NOT TESTED | | |
+| T9.P7 | Hire a seller: pay plan row (Salary / Salary and commission / Commission only) and commission share | Shown only for jobs that sell on commission in this trade; a security-minded candidate may say no to commission only | | NOT TESTED | | |
+| T9.P8 | Hire a candidate: Contract row (Permanent / 26 / 52 / 104 weeks) | Fixed term shows the end week in the profile; a candidate who wants security declines it | | NOT TESTED | | |
+| T9.P9 | Hiring row after a counter: "Your figure" stepper, "Type an exact figure", the 25/50/75% menu | Any figure can be sent; the answer appears under the row | | NOT TESTED | | |
+| T9.P10 | Contract discussion, an open request or their last word | "Meet them part way" quarter/half/three-quarter buttons fill the editor; the stepper or field takes an exact figure | | NOT TESTED | | |
+| T9.P11 | Contract discussion > Contract term | Permanent / fixed term / renew; preview says what ending costs under the country's rules (nothing where the data lists none) | | NOT TESTED | | |
+| T9.P12 | Four weeks before a fixed term ends | Inbox asks: renew or let it end; letting it end removes them on the date with the cost shown | | NOT TESTED | | |
+| T9.P13 | Company with a manager: a tired worker | An hours request is decided by the manager inside their authority (activity note), or reaches the Inbox naming the manager | | NOT TESTED | | |
+=======
 | T9.MS1 | Company > Operations > How you sell: tap another single choice | Confirmation shows changeover cost and weeks first, then an estimate for the next 8 weeks (customers wanting to buy, customers served, average sale, sales, left after direct costs) as low-to-high ranges with the average, a "ranges overlap" warning when it may change little, and "No guarantee" | | NOT TESTED | | |
 | T9.MS2 | Same, on a trade with no weekly sales model (property, finance) | "No estimate is available for this kind of business" and the on-paper data lines instead | | NOT TESTED | | |
 | T9.MS3 | Switch an add-on on then off | Each shows the estimate and a Drop/Add button; an add-on needing a licence says the figures assume it is approved | | NOT TESTED | | |
@@ -289,6 +307,7 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.MS8 | National-brand unit with no local campaign for a few weeks | Weekly payment to the franchisor includes the required local share as extra brand-fund contribution; spending locally reduces it | | NOT TESTED | | |
 | T9.MS9 | Chain page > rules: add-ons of a multi-choice knob | Tap add-ons into the chain's set; confirmation says every store offers exactly this set; stores that could not follow are listed under the knob | | NOT TESTED | | |
 | T9.MS10 | Barber with "hair products at the till": rating very low vs high | Extra sales follow the rating, none for a badly rated shop | | NOT TESTED | | |
+>>>>>>> origin/native-swiftui
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

@@ -55,6 +55,8 @@ public struct LabourRules: Equatable, Sendable {
     public var fundFineReasons: Set<String> = [TerminationReason.redundancy.rawValue, TerminationReason.unjustified.rawValue]
     /// Notice (weeks) owed in a mass layoff where the country has such a law (0 = none); only applied when the caller says it is a mass layoff.
     public var massLayoffNoticeWeeks = 0.0
+    /// Weeks before a fixed term ends by which the employer must say whether it will be renewed (0 = the game's default review time applies).
+    public var fixedTermNoticeWeeks = 0.0
 
     public init() {}
 
@@ -75,6 +77,7 @@ public struct LabourRules: Equatable, Sendable {
         fundRate = n("fundRate"); fundFineRate = n("fundFineRate")
         if !j["fundFineReasons"].isNull { fundFineReasons = Set(j["fundFineReasons"].array.map { $0.string }) }
         massLayoffNoticeWeeks = n("massLayoffNoticeWeeks")
+        fixedTermNoticeWeeks = n("fixedTermNoticeWeeks")
     }
 
     public init(country: Country) { self.init(code: country.code) }
@@ -111,7 +114,9 @@ public struct LabourRules: Equatable, Sendable {
 
     /// Why the job ends. Notice, severance and the termination fine are owed or not by reason (`severanceReasons`, `noticeReasons`,
     /// `fundFineReasons` in the country data): a dismissal for cause or a resignation owes nothing in most countries.
-    public enum TerminationReason: String, Sendable { case redundancy, unjustified, forCause, resignation }
+    public enum TerminationReason: String, Sendable { case redundancy, unjustified, forCause, resignation
+        /// A fixed-term contract running out on its date. A country owes notice or severance for it only by listing "expiry" in `noticeReasons` / `severanceReasons`.
+        case expiry }
 
     public struct Termination: Equatable, Sendable {
         public var noticeWeeks: Double

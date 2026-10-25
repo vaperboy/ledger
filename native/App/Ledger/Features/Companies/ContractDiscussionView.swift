@@ -83,6 +83,7 @@ struct ContractDiscussionView: View {
                     Text(requestFigure(talk, cur)).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
                     if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     consequenceLines(pv, cur)
+                    partWay(talk, cur)
                     HStack(spacing: 10) {
                         Button("Agree") { answer(.accept, e, n, cur, pv) }.buttonStyle(QuietButtonStyle())
                         if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
@@ -98,8 +99,34 @@ struct ContractDiscussionView: View {
             }
         } else if talk.proposal.amount > 0 {
             LedgerSection("\(first(n))'s last word") {
-                Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                    partWay(talk, cur)
+                }
             }
+        }
+    }
+
+    /// Quick counters between your last offer and their ask (a quarter, half, three quarters of the way); the editor below takes any exact figure.
+    @ViewBuilder private func partWay(_ t: ContractTalk.Talk, _ cur: Currency) -> some View {
+        let p = t.proposal
+        if [.payRise, .promotion, .hours].contains(p.topic), p.amount > 0 {
+            let from = t.offered > 0 ? t.offered : (p.topic == .hours ? p.amount : 0)
+            HStack(spacing: 8) {
+                Text("Meet them part way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                ForEach([0.25, 0.5, 0.75], id: \.self) { share in
+                    let v = from + (p.amount - from) * share
+                    Button(p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500))) {
+                        topic = p.topic
+                        switch p.topic {
+                        case .payRise: percent = max(0.005, (v * 200).rounded() / 200)
+                        case .promotion: pay = cur.roundedStep(v, about: 500)
+                        default: hours = max(5, v.rounded()); choice = "hours"
+                        }
+                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                }
+            }
+            Text("Or set an exact figure below with the stepper or the field.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }
     }
 
@@ -153,10 +180,19 @@ struct ContractDiscussionView: View {
                     if choice == "hours" { Stepper("\(Int(hours)) hours a week", value: $hours, in: 5...60, step: 5).font(.system(size: 13)).foregroundStyle(Theme.ivory) }
                 case .payBasis:
                     pick(options)
-                    if choice == "mix" || choice == "com" { steps([0.02, 0.03, 0.05, 0.08, 0.12], current: rate) { rate = $0 }; Text("Commission: \(Int((rate * 100).rounded()))% of their sales.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+                    if choice == "mix" || choice == "com" { steps(PayPlans.rateSteps, current: rate) { rate = $0 }; Text("Commission: \(Int((rate * 100).rounded()))% of their sales.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
                 case .bonus:
-                    Text(isManager ? "A share of each month's profit, on top of the salary. A share is not cut here." : "Their commission share of their own sales.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
-                    steps(isManager ? [0.05, 0.1, 0.15, 0.2, 0.3] : [0.02, 0.03, 0.05, 0.08, 0.12], current: rate) { rate = $0 }
+                    if !isManager && !options.isEmpty {
+                        Text("A bonus plan is paid through payroll with the employer's charges, like wages: a share for every target the company meets, a year-end bonus when the budget is met, and a reward for the better half of the team in a month without a loss.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        pick(options)
+                        if choice == "commission" { steps(PayPlans.rateSteps, current: rate) { rate = $0 } }
+                    } else {
+                        Text(isManager ? "A share of each month's profit, on top of the salary. A share is not cut here." : "Their commission share of their own sales.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
+                        steps(isManager ? [0.05, 0.1, 0.15, 0.2, 0.3] : PayPlans.rateSteps, current: rate) { rate = $0 }
+                    }
+                case .term:
+                    Text("A permanent contract has no end date. A fixed term ends on its date unless you renew it; you are asked a few weeks before. Someone who wants security may not take a fixed term.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    pick(options)
                 case .benefits:
                     pick(options)
                     if let on = options.first(where: { $0.id == choice })?.on { Text(on ? "It is on now: confirming switches it off." : "It is off now: confirming switches it on.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
@@ -211,7 +247,8 @@ struct ContractDiscussionView: View {
         case .promotion: return .init(.promotion, amount: pay, choice: choice, terms: .init(authority: authority))
         case .hours: return .init(.hours, amount: hours, choice: choice.isEmpty ? "hours" : choice)
         case .payBasis: return .init(.payBasis, amount: (choice == "mix" || choice == "com") ? rate : 0, choice: choice)
-        case .bonus: return .init(.bonus, amount: rate)
+        case .bonus: return choice.hasPrefix("plan:") ? .init(.bonus, choice: choice) : .init(.bonus, amount: rate)
+        case .term: return .init(.term, choice: choice)
         case .benefits:
             let on = e.contractChoices(companyID: companyID, personID: personID, topic: .benefits).first { $0.id == choice }?.on ?? false
             return .init(.benefits, amount: on ? 0 : 1, choice: choice)

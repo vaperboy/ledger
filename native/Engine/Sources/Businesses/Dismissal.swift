@@ -102,6 +102,23 @@ public enum Dismissal {
         return Outcome(quote: q, claimedUnfairDismissal: claims, compensation: comp)
     }
 
+    // MARK: A fixed term running out
+
+    /// The job ends on the date of a fixed term. What is owed is the country's data for the reason `expiry` (nothing where it lists none); notice is not
+    /// paid again when the owner already said in time that the term would end (`noticeGiven`). Returns nil when the person is not on the payroll.
+    @discardableResult
+    public static func expire(_ s: inout GameState, companyID: Int, staffID: Int, noticeGiven: Bool, data: GameData) -> Quote? {
+        guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return nil }
+        let m = s.companies[ci].staff[k]
+        var q = quote(World(state: s, data: data), s.companies[ci], monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: .expiry,
+                      age: s.people[staffID].map { Double($0.age) })
+        if noticeGiven { q.notice = 0 }
+        s.companies[ci].staff.remove(at: k)
+        if var p = s.people[staffID] { p.employerID = 0; s.people[staffID] = p }
+        book(&s, payer: .company(companyID), notice: q.notice, severance: q.severance, fine: q.fine)
+        return q
+    }
+
     // MARK: Manager
 
     /// Dismiss (or, once the notice is worked, release) the company's manager: the same quote and booking as staff, under the manager's labels;

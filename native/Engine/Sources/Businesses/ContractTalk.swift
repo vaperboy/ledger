@@ -23,7 +23,7 @@ import Finance
 /// An open talk is kept on the person under the key `ctalk`, so a saved game keeps it; the key exists only while a talk is open.
 public enum ContractTalk {
     public enum Topic: String, CaseIterable, Sendable {
-        case payRise, promotion, hours, payBasis, bonus, benefits, notice, move
+        case payRise, promotion, hours, payBasis, bonus, benefits, term, notice, move
         public var title: String {
             switch self {
             case .payRise: return "Pay rise"
@@ -32,6 +32,7 @@ public enum ContractTalk {
             case .payBasis: return "Pay basis"
             case .bonus: return "Bonus plan"
             case .benefits: return "Benefits"
+            case .term: return "Contract term"
             case .notice: return "Notice"
             case .move: return "Move"
             }
@@ -189,13 +190,15 @@ public enum ContractTalk {
         let posts = ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).filter { $0.blocked.isEmpty }
         var out = [info(.payRise, true, ""), info(.promotion, !posts.isEmpty, "No higher post fits right now.")]
         if let m = sub.member {
-            let sales = data.catalog.tables.salesRoles.contains(m.role)
+            let sales = PayPlans.eligible(role: m.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles)
             let hourlyFullTime = m.payBasis == "hour" && m.weeklyHours == nil && !m.flag("seas")
             let onPlan = m.commissionMode == "mix" || m.commissionMode == "com"
             out.append(info(.hours, true, ""))
             out.append(info(.payBasis, sales || hourlyFullTime, "Already on a fixed salary, and not a selling job."))
-            out.append(info(.bonus, onPlan, sales ? "Put them on salary and commission, or commission only, first." : "This job has no bonus plan."))
+            _ = onPlan
+            out.append(info(.bonus, true, ""))
             out.append(info(.benefits, true, ""))
+            out.append(info(.term, true, ""))
             out.append(info(.notice, true, ""))
             let sisters = Chains.chain(s, of: co).map { Chains.stores(s, $0).filter { $0.id != co.id && $0.status.isLive }.count } ?? 0
             out.append(info(.move, sisters > 0, "There is no other store in this chain."))
@@ -204,6 +207,7 @@ public enum ContractTalk {
             out.append(info(.payBasis, false, "A manager is paid a salary and a profit share."))
             out.append(info(.bonus, true, ""))
             out.append(info(.benefits, true, ""))
+            out.append(info(.term, false, "A manager's contract term is set by the labour rules."))
             out.append(info(.notice, false, "A manager's notice is set by the labour rules."))
             out.append(info(.move, !freeCompanies(s, except: companyID, data: data).isEmpty, "Every other company already has a manager."))
         }
@@ -220,7 +224,25 @@ public enum ContractTalk {
         let co = s.companies[sub.ci]
         let cur = World(state: s, data: data).currency(co)
         switch topic {
-        case .payRise, .bonus, .notice: return []
+        case .payRise, .notice: return []
+        case .term:
+            guard let m = sub.member else { return [] }
+            let end = FixedTerm.endWeek(m)
+            var out = [Choice(id: "perm", title: "Permanent" + (end == nil ? " (now)" : ""), detail: "No end date. Ending it later follows the labour rules for dismissal and resignation.", on: end == nil)]
+            for w in FixedTerm.termChoices {
+                out.append(Choice(id: "fixed:\(w)", title: (end == nil ? "Fixed term of \(w) weeks" : "Renew for \(w) more weeks"),
+                                  detail: end == nil ? "Ends on its date unless you renew it." : "Added to the end date (week \(end ?? 0)).", on: nil))
+            }
+            return out
+        case .bonus:
+            guard let m = sub.member else { return [] }
+            var out = WorkerBonus.levels.map { l in
+                Choice(id: "plan:\(l.id)", title: l.name + (WorkerBonus.level(of: m)?.id == l.id || (l.isNone && WorkerBonus.level(of: m) == nil) ? " (now)" : ""),
+                       detail: l.isNone ? l.detail : l.detail + " About \(cur.display(WorkerBonus.expectedMonthly(l, wage: m.monthlyWage))) a month on their pay, before the employer's charges.",
+                       on: WorkerBonus.level(of: m)?.id == l.id)
+            }
+            if m.commissionMode == "mix" || m.commissionMode == "com" { out.append(Choice(id: "commission", title: "Commission share", detail: "Their share of their own sales.")) }
+            return out
         case .promotion:
             return ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).filter { $0.blocked.isEmpty }
                 .map { Choice(id: $0.id, title: $0.title, detail: "\($0.place) · they will ask about \(cur.display($0.ask)) a month", amount: $0.ask) }
@@ -239,15 +261,29 @@ public enum ContractTalk {
         case .payBasis:
             guard let m = sub.member else { return [] }
             var out: [Choice] = []
-            if data.catalog.tables.salesRoles.contains(m.role) {
+            if PayPlans.eligible(role: m.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles) {
                 out = [Choice(id: "fix", title: "Fixed salary", detail: "No commission."),
                        Choice(id: "mix", title: "Salary and commission", detail: "A lower salary with a share of their sales."),
                        Choice(id: "com", title: "Commission only", detail: "No base pay at all: they earn only their commission. Someone who wants security may refuse and resign.")]
             } else { out = [Choice(id: "salary", title: "Fixed monthly salary", detail: "Instead of pay by the hour.")] }
             return out
         case .benefits:
-            var out = StaffPerks.all.map { p in
-                Choice(id: "perk:\(p.id)", title: p.name + (StaffPerks.isOn(co, p.id) ? " (on)" : ""), detail: "For the whole company. " + p.detail, on: StaffPerks.isOn(co, p.id))
+            var out: [Choice] = []
+            let mine = StaffPerks.group(ofRole: sub.member?.role ?? "", isManager: sub.isManager)
+            for p in StaffPerks.all {
+                let on = StaffPerks.isOn(co, p.id), eligible = StaffPerks.eligibleGroups(p)
+                let who = eligible.count == 1 ? eligible[0].name : "everyone it applies to"
+                out.append(Choice(id: "perk:\(p.id)", title: p.name + (on ? " (on)" : ""), detail: "For \(who.lowercased()) in the company. " + p.detail, on: on))
+                if eligible.count > 1, let g = eligible.first(where: { $0.id == mine }) {
+                    let gon = StaffPerks.covers(co, p, group: g.id)
+                    out.append(Choice(id: "perk:\(p.id):\(g.id)", title: "\(p.name) for \(g.name.lowercased()) only" + (gon ? " (on)" : ""), detail: "Only this group of people. " + p.detail, on: gon))
+                }
+            }
+            if let m = sub.member {
+                for x in StaffExpenses.items(forRole: m.role) {
+                    let on = StaffExpenses.isOn(m, x.id)
+                    out.append(Choice(id: "exp:\(x.id)", title: x.name + (on ? " (on)" : ""), detail: "For \(sub.person.name.split(separator: " ").first.map(String.init) ?? "them") only, about \(cur.display(cur.scaledPrice(x.monthlyCost))) a month, booked as an expense, not wages. " + x.detail, on: on))
+                }
             }
             if let m = sub.member, m.role == "estate" {
                 out.append(Choice(id: "ownCar", title: m.flag("ownCar") ? "Give a company car" : "Own car and mileage", detail: "Mileage is paid each month for an own car.", on: m.flag("ownCar")))
@@ -258,6 +294,18 @@ public enum ContractTalk {
             guard let ch = Chains.chain(s, of: co) else { return [] }
             return Chains.stores(s, ch).filter { $0.id != co.id && $0.status.isLive }.map { Choice(id: "\($0.id)", title: $0.name, detail: "Same chain.") }
         }
+    }
+
+    static func fmtPct(_ x: Double) -> String { "\(String(format: "%g", (x * 100 * 10).rounded() / 10))%" }
+    static func fmtMonths(_ x: Double) -> String { x == 1 ? "1 month" : "\(String(format: "%g", x)) months" }
+
+    /// A benefit choice "perk:<id>" (the whole company) or "perk:<id>:<role group>".
+    static func perkChoice(_ choice: String) -> (StaffPerks.Perk, String?)? {
+        guard choice.hasPrefix("perk:") else { return nil }
+        let parts = choice.dropFirst(5).split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+        guard let p = StaffPerks.perk(parts[0]) else { return nil }
+        if parts.count > 1 { return StaffPerks.roleGroup(parts[1]) == nil ? nil : (p, parts[1]) }
+        return (p, nil)
     }
 
     // MARK: Who decides (delegation)
@@ -307,6 +355,8 @@ public enum ContractTalk {
         let w = World(state: s, data: data), c = w.country(co), cur = w.currency(co)
         var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * (1 + c.employerSocialRate(monthlyWage: $1.monthlyWage)) }
         if co.managerID != nil { sum += co.managerMonthlyWage * (1 + c.employerSocialRate(monthlyWage: co.managerMonthlyWage)) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
+        sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerSocialRate(monthlyWage: m.monthlyWage)) } ?? 0) }
+        sum += StaffExpenses.monthlyCost(co, currency: cur)
         sum += StaffPerks.totalMonthlyCost(co, currency: cur)
         sum += PersonalEquipment.mileagePerMonth(cur) * Double(co.staff.filter { $0.flag("ownCar") }.count)
         return sum
@@ -381,15 +431,40 @@ public enum ContractTalk {
                 c.lines.append("Commission only: no base pay; they earn only what they sell. Commission is paid on top of nothing, and it is not counted in the cost above.")
                 if sub.person.num("sec") > 0.65 { c.risks.append("\(first) wants security: likely to refuse and resign (about 6 in 10).") }
             } else if p.choice == "mix" || p.choice == "fix" { c.lines.append("Commission is paid on their sales on top of the salary" + (p.choice == "fix" ? " only if they stay on a plan." : ", and is not counted in the cost above.")) }
+        case .bonus where p.choice.hasPrefix("plan:"):
+            if let l = WorkerBonus.level(String(p.choice.dropFirst(5))), !l.isNone {
+                c.lines.append("Each month the company meets its targets: \(fmtPct(l.targetRate)) of their pay per target met. At year end with the budget met: \(fmtMonths(l.yearEndMonths)) of pay. Each month with no loss, if they are among the better half of the team: \(fmtPct(l.performanceRate)).")
+                c.lines.append("Paid through payroll, with the employer's charges like wages. The cost above is the amount it is likely to come to.")
+                if !WorkerBonus.hasTargets(co, week: s.week) { c.risks.append("This company has no monthly targets set, so the target bonus is not paid until it has.") }
+            }
         case .bonus:
             if sub.isManager { c.lines.append("Profit share: \(Int((p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
             else { c.lines.append("Commission: \(Int((p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
         case .benefits:
-            if p.choice.hasPrefix("perk:"), let perk = StaffPerks.perk(String(p.choice.dropFirst(5))) {
-                let people = perk.keysOnly ? StaffPerks.keyPeople(co) : StaffPerks.headcount(co)
-                c.peers.append("It covers everyone it applies to: \(people) \(people == 1 ? "person" : "people"), not just \(first).")
+            if p.choice.hasPrefix("exp:"), let x = StaffExpenses.item(String(p.choice.dropFirst(4))) {
+                c.lines.append("Paid back every month against their work costs: \(cur.display(cur.scaledPrice(x.monthlyCost))). Booked as an expense, not wages" + (StaffExpenses.carriesEmployerCharge(w.country(co), item: x.id) ? ", with the employer's social charge because the country treats it as a taxable benefit." : "; the country's data gives no tax rule for it, so it is treated neutrally."))
+                if x.learnBoost > 0 { c.lines.append("They learn on the job about \(Int((x.learnBoost * 100).rounded()))% faster while it is paid.") }
+            } else if let (perk, group) = perkChoice(p.choice) {
+                let people = group.map { StaffPerks.people(co, group: $0) } ?? StaffPerks.eligibleCount(co, perk)
+                c.peers.append("It covers \(group == nil ? "everyone it applies to" : "that group"): \(people) \(people == 1 ? "person" : "people"), not just \(first).")
                 c.peers.append("People leave about \(Int(((1 - perk.quitFactor) * 100).rounded()))% less while it is on.")
+                if let m = after?.member {
+                    let worth = StaffPerks.worthMonthly(t.companies[sub.ci], m, currency: cur)
+                    if worth > 0 { c.lines.append("Perks they count as pay: \(cur.display(worth)) a month in all.") }
+                }
             } else if p.choice == "ownCar" { c.lines.append("Mileage is paid each month: \(cur.display(PersonalEquipment.mileagePerMonth(cur))).") }
+        case .term:
+            if let m = sub.member {
+                if p.choice == "perm" { c.lines.append("Permanent: no end date.") }
+                else if let end = after?.member.flatMap({ FixedTerm.endWeek($0) }) {
+                    c.lines.append("Fixed term until week \(end) (\(end - s.week) weeks from now). \(first) is asked about renewal \(FixedTerm.reviewWindowWeeks(lab)) weeks before.")
+                    let end0 = lab.termination(tenureWeeks: Double(end - m.hiredWeek), reason: .expiry, age: Double(sub.person.age))
+                    c.labour.append(end0.noticeWeeks + end0.severanceWeeks > 0
+                                    ? "When it ends on its date the labour rules require: \(Int(end0.noticeWeeks.rounded())) weeks of notice and \(Int(end0.severanceWeeks.rounded())) weeks of severance."
+                                    : "When it ends on its date nothing is owed: the country's labour data lists no notice or severance for the end of a fixed term.")
+                    if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { c.risks.append("\(first) wants security and may not take a fixed-term job.") }
+                }
+            }
         case .notice:
             if let m = sub.member {
                 let years = Double(s.week - m.hiredWeek)
@@ -482,6 +557,10 @@ public enum ContractTalk {
             case .notSales: return .notPossible("Only selling jobs have a commission plan.")
             case .unknown: return .notPossible("They no longer work here.")
             }
+        case .bonus where p.choice.hasPrefix("plan:"):
+            guard sub.member != nil, let l = WorkerBonus.level(String(p.choice.dropFirst(5))) else { return .notPossible("That is not a bonus plan.") }
+            _ = WorkerBonus.set(&s, companyID: co.id, staffID: id, level: l.id)
+            return .ok(l.isNone ? "\(name) is on no bonus plan." : "\(name) is on the \(l.name.lowercased()).")
         case .bonus:
             if sub.isManager {
                 guard p.amount >= s.companies[sub.ci].managerProfitBonus else { return .notPossible("A profit share is not cut in a contract talk.") }
@@ -496,9 +575,26 @@ public enum ContractTalk {
                 _ = PersonalEquipment.toggleOwnCar(&s, companyID: co.id, staffID: id, set: p.amount != 0)
                 return .ok(p.amount != 0 ? "\(name) uses their own car; mileage is paid." : "\(name) drives a company car.")
             }
-            guard p.choice.hasPrefix("perk:"), let perk = StaffPerks.perk(String(p.choice.dropFirst(5))) else { return .notPossible("That is not a benefit.") }
-            if StaffPerks.isOn(s.companies[sub.ci], perk.id) != (p.amount != 0) { _ = StaffPerks.toggle(&s, companyID: co.id, perk: perk.id) }
-            return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for the company.")
+            if p.choice.hasPrefix("exp:") {
+                let xid = String(p.choice.dropFirst(4))
+                guard let x = StaffExpenses.item(xid), StaffExpenses.set(&s, companyID: co.id, staffID: id, item: xid, on: p.amount != 0) else { return .notPossible("That expense does not exist for their job.") }
+                return .ok("\(x.name) is now \(p.amount != 0 ? "paid" : "stopped") for \(name).")
+            }
+            guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
+            guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
+            return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for " + (group.flatMap { StaffPerks.roleGroup($0)?.name.lowercased() } ?? "the company") + ".")
+        case .term:
+            guard let m = sub.member else { return .notPossible("Not for a manager.") }
+            if p.choice == "perm" {
+                guard FixedTerm.isFixed(m) else { return .notPossible("The contract is permanent already.") }
+                _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: nil)
+                return .ok("\(name) is on a permanent contract now.")
+            }
+            guard p.choice.hasPrefix("fixed:"), let weeks = Int(p.choice.dropFirst(6)), FixedTerm.termChoices.contains(weeks) else { return .notPossible("That is not a contract term you can agree.") }
+            if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { return .unwilling("\(name) wants security and will not take a fixed-term job in place of a permanent one.") }
+            _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: weeks)
+            let end = s.companies[sub.ci].staff.first { $0.id == id }.flatMap { FixedTerm.endWeek($0) } ?? 0
+            return .ok("\(name) is on a fixed term until week \(end).")
         case .notice:
             guard sub.member != nil else { return .notPossible("Not for a manager.") }
             let weeks = Int(max(0, p.amount))
@@ -662,6 +758,13 @@ public enum ContractTalk {
         }
         s.companies[i].staff = st
         store(talk, &s, personID: staffID)
+        // With a manager in charge the request goes to the manager first: decided inside their authority (the same rule as leaving it to them), otherwise
+        // it comes to the owner through the same Inbox flow, saying who passed it on.
+        if topic == .promotion || topic == .hours, let mid = s.companies[i].managerID, let boss = s.people[mid] {
+            let r = leaveToManager(&s, companyID: co.id, personID: staffID, data: data)
+            if r.changedTerms { return }
+            body += " \(boss.name) could not decide this within their authority, so it comes to you."
+        }
         s.addMessage(kind: "ask", from: n.name, title: title, body: body, companyID: co.id, tone: "n", status: "open",
                      options: [.option("Agree", agree), .option("Delay \(rules.delayWeeks) weeks", "Say you will decide later. If you do not, they feel turned down."), .option("Decline", "Disappointed. They may start looking around.")],
                      action: "staffx", data: .object(["t": .string(kind), "sid": .number(Double(staffID)), "ask": .number(talk.proposal.amount), "post": .string(talk.proposal.choice)]), expiresWeek: s.week + 3)

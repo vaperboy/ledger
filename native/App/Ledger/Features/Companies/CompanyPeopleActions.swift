@@ -106,6 +106,7 @@ struct CompanyPerksCard: View {
     var engine: GameEngine
     var company: Company
     @State private var pending: StaffPerks.Perk?
+    @State private var pendingGroup: (perk: StaffPerks.Perk, group: StaffPerks.RoleGroup)?
 
     private func fewer(_ p: StaffPerks.Perk) -> Int { Int(((1 - p.quitFactor) * 100).rounded()) }
 
@@ -122,7 +123,8 @@ struct CompanyPerksCard: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                 Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                                Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                                Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave among those it covers").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                                groupChoices(p, cur)
                             }
                             Spacer(minLength: 8)
                             Button(on ? "On" : "Add") {
@@ -132,6 +134,19 @@ struct CompanyPerksCard: View {
                     }
                     let together = engine.staffPerksFewerLeavePercent(companyID: company.id)
                     if together > 0 { Text("Together \(Int(together.rounded()))% fewer people leave.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, 6) }
+                }
+            }
+            .confirmationDialog(pendingGroup.map { "Add \($0.perk.name.lowercased()) for \($0.group.name.lowercased())?" } ?? "", isPresented: Binding(get: { pendingGroup != nil }, set: { if !$0 { pendingGroup = nil } }), titleVisibility: .visible) {
+                if let pg = pendingGroup {
+                    Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: pg.perk.id, group: pg.group.id))) a month") {
+                        let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: pg.perk.id, group: pg.group.id) } ?? nil
+                        if r == true { Haptics.success(); store.show("\(pg.perk.name) added for \(pg.group.name.lowercased()).", tone: "good") } else { store.show("Not possible right now.", tone: "warn") }
+                        pendingGroup = nil
+                    }
+                }
+            } message: {
+                if let pg = pendingGroup {
+                    Text("Cost: paid every month for \(engine.staffPerkPeople(companyID: company.id, group: pg.group.id)) people in this group while it is on. Benefit: they leave about \(fewer(pg.perk))% less, and better applicants come for their jobs. Risk: a fixed cost in a bad month. Switch it off at any time.")
                 }
             }
             .confirmationDialog(pending.map { "Add \($0.name.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
@@ -147,6 +162,26 @@ struct CompanyPerksCard: View {
                     Text("Cost: paid every month while it is on. Benefit: \(fewer(p))% fewer people leave and better applicants come. Risk: it is a fixed cost in a bad month. Switch it off at any time.")
                 }
             }
+        }
+    }
+}
+
+extension CompanyPerksCard {
+    /// Who a perk is for: one chip per role group it may be given to (only where there is a choice), each switching it on or off for that group.
+    @ViewBuilder func groupChoices(_ p: StaffPerks.Perk, _ cur: Currency) -> some View {
+        let groups = engine.staffPerkGroups(perk: p.id)
+        if groups.count > 1 {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 6)], alignment: .leading, spacing: 6) {
+                ForEach(groups) { g in
+                    let covered = engine.staffPerkCovers(companyID: company.id, perk: p.id, group: g.id)
+                    let people = engine.staffPerkPeople(companyID: company.id, group: g.id)
+                    Button("\(g.name) (\(people))\(covered ? " · on" : "")") {
+                        if covered { let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id, group: g.id) } ?? nil; Haptics.tap(); if r == nil { store.show("Not possible right now.", tone: "warn") } }
+                        else if people > 0 { pendingGroup = (p, g) }
+                        else { store.show("Nobody is in this group at \(company.name) yet.", tone: "n") }
+                    }.buttonStyle(QuietButtonStyle(tint: covered ? Theme.gain : Theme.ivoryMuted))
+                }
+            }.padding(.top, 3)
         }
     }
 }

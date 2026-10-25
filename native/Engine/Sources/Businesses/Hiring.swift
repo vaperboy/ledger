@@ -50,7 +50,7 @@ public enum Hiring {
         let superOne = s.random.chance(["sales", "cardealer", "estate"].contains(role) ? 0.04 : 0.015)
         if superOne { skill = Double(s.random.int(88, 100)) }
         // a company with good perks draws better people, with fewer bad habits, who ask a little less (StaffPerks)
-        let pull = co.map { StaffPerks.pull($0) } ?? 0
+        let pull = co.map { StaffPerks.pull($0, role: role) } ?? 0
         if pull > 0 && !superOne { skill = min(97, skill + jsRound(pull * s.random.range(2, 7))) }
         let claimSkill = lie ? clamp(skill + Double(s.random.int(8, 28)), 0, 98) : clamp(skill + Double(s.random.int(-4, 4)), 0, 98)
         let claimExp = lie ? exp + Double(s.random.int(2, 8)) : exp
@@ -114,7 +114,9 @@ public enum Hiring {
     /// `ok`: hired. `taken`: has another job. `refused`: the offer was an insult, no figure named. `countered`: they name their own figure
     /// (a hire at that wage is accepted; it may be an unrealistic one, which is for the player to judge). `walkedAway`: patience gone, the person
     /// took another job and is no longer on the market.
-    public enum HireResult: Equatable { case ok, taken, refused, countered(Negotiation.Counter), walkedAway }
+    public enum HireResult: Equatable { case ok, taken, refused, countered(Negotiation.Counter), walkedAway
+        /// They would take the job on the pay figure but will not work on the pay plan offered (commission only, for someone who wants security); they stay on the market.
+        case planRefused }
 
     /// What kind of job is offered: full time (hours 0), part time or seasonal (months 1-12), and the pay basis of a full-timer
     /// (nil = the custom for the job). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS` (engine/people/people.js).
@@ -124,8 +126,16 @@ public enum Hiring {
         public var basis: String? = nil
         /// An estate agent who uses their own car for work, paid by mileage. Original: `ui.carc` ("own").
         public var ownCar = false
-        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false) {
-            self.hours = hours; self.seasonMonths = seasonMonths; self.basis = basis; self.ownCar = ownCar
+        /// The pay plan of a full-time seller: "mix" (the wage offered is the base salary, commission on top), "com" (commission only: no base at all; the
+        /// figure offered is the pay they expect to earn), or nil / "fix" for a plain salary. Only for jobs the data lets sell on commission.
+        public var payPlan: String? = nil
+        /// The commission share of the plan; 0 = the plan's usual one.
+        public var commissionRate = 0.0
+        /// A fixed-term contract of this many weeks (one of `FixedTerm.termChoices`); 0 = permanent.
+        public var fixedTermWeeks = 0
+        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0, fixedTermWeeks: Int = 0) {
+            self.hours = hours; self.seasonMonths = seasonMonths; self.basis = basis; self.ownCar = ownCar; self.payPlan = payPlan; self.commissionRate = commissionRate
+            self.fixedTermWeeks = fixedTermWeeks
         }
         public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
     }
@@ -238,6 +248,12 @@ public enum Hiring {
         case .accept: break
         }
         guard var n = s.people[personID] else { return .refused }
+        // A pay plan on commission: allowed for a job the data lets sell in this trade; someone who wants security may not take commission only.
+        let plan: String? = (!part && (terms.payPlan == "mix" || terms.payPlan == "com") && PayPlans.eligible(role: n.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles)) ? terms.payPlan : nil
+        if plan == "com", n.num("sec") > 0.65, s.random.chance(0.6) { return .planRefused }
+        // Someone who needs security does not take a fixed-term job (see FixedTerm.wantsPermanent).
+        let term = FixedTerm.termChoices.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
+        if term > 0, FixedTerm.wantsPermanent(n) { return .planRefused }
         n.employerID = companyID
         s.people[personID] = n
         var m = StaffMember(raw: [:])
@@ -246,6 +262,13 @@ public enum Hiring {
         m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0); m.set("onb", .object([:]))
         if part { StaffTalks.applyPartTime(&m, terms: terms, week: s.week) }
         else if terms.ownCar, m.role == "estate" { m.set("ownCar", 1) }
+        if let plan {
+            let rate = terms.commissionRate > 0 ? terms.commissionRate : (PayPlans.mode(plan)?.defaultRate ?? 0)
+            m.set("pay", .object(["m": .string(plan), "rate": .number(rate)])); m.set("commEma", 0)
+            if plan == "com" { m.monthlyWage = 0 }   // commission only has no base
+            if PayPlans.isExtra(role: m.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles) { m.set("ppx", 1) }
+        }
+        if term > 0 { m.set("ft", s.week + term); m.set("ftl", term) }
         onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)

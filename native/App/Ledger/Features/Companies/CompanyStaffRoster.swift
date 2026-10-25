@@ -213,6 +213,10 @@ struct StaffProfileView: View {
             VStack(spacing: 0) {
                 FlatRow(label: "Hours a week", value: "\(Int(p.hoursPerWeek.rounded()))", rule: false)
                 FlatRow(label: "Last raise", value: p.lastRaiseWeek.map { "\(max(0, (store.engine?.state.week ?? 0) - $0)) weeks ago" } ?? "never", sub: p.underpaid ? "Paid less than the job usually pays" : "")
+                if let plan = p.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: p.bonusPaidThisYear > 0 ? "\(cur.tidyShort(p.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
+                if !p.perks.isEmpty { FlatRow(label: "Perks", value: p.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(p.perksWorth)) a month to them, counted as pay") }
+                if !p.expenses.isEmpty { FlatRow(label: "Expenses paid", value: p.expenses.joined(separator: ", ")) }
+                FlatRow(label: "Contract", value: FixedTerm.endWeek(m).map { "Fixed term to week \($0)" } ?? "Permanent", sub: FixedTerm.endWeek(m).map { "\(max(0, $0 - (store.engine?.state.week ?? 0))) weeks left" } ?? "")
                 FlatRow(label: "Late this quarter", value: "\(p.lateThisQuarter)")
                 FlatRow(label: "Complaints this quarter", value: "\(p.complaintsThisQuarter)")
                 FlatRow(label: "Written warnings", value: "\(p.warnings)", sub: p.dismissalDocumented ? "Enough on file to let them go for cause" : "")
