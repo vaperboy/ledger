@@ -33,3 +33,7 @@ Owner's rules, collected in one place. Engine behaviour, balance and sales metho
 - Preserve gameplay mechanics, calculations, save compatibility and working features. No game rules in views.
 - Small, testable stages. Engine: `cd native/Engine && swift test --filter ...` (Swift 6.0.3 at /opt/swift). App: only builds on macOS CI (`.github/workflows/native-ios.yml`, jobs app-build and screenshots; screenshots are published to branches `ui-shots-*`).
 - Before finishing, check navigation, buttons, data updates and cross-screen links together. Report what changed, what was tested, and what remains; never claim success for anything not verified.
+
+## Scanning and tap cues (owner's rules, 25 Oct 2026)
+- **Dense screens must be easy to scan.** The game carries far more information than a normal finance app. Small uppercase section headings and thin dividers look refined, but too many of them make a long screen tiring. Give critical figures, warnings and decisions a stronger hierarchy (size, weight, colour, position); keep secondary data compact; do not give every group its own heading and divider.
+- **Interactive rows are unmistakable.** Minimal is fine, but the player must always know what can be tapped. A row that opens a company, hires a manager, changes a policy or reveals a report needs a clear cue (chevron, button style or accent), distinct from plain information rows. Important actions show their cost, consequences and the confirmation before committing (see Usability above).
