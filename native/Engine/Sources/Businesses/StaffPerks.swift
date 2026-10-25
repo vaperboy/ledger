@@ -47,7 +47,8 @@ public enum StaffPerks {
 
     /// What one perk costs a month in this company. Original: `perMonth`.
     public static func monthlyCost(_ co: Company, _ p: Perk, currency cur: Currency) -> Double {
-        cur.scaledPrice(p.monthlyCost) * Double(p.keysOnly ? keyPeople(co) : headcount(co))
+        if p.id == "car" { return CompanyCarPerk.monthlyCost(co, currency: cur) }   // the leases of the real cars (CompanyCarPerk)
+        return cur.scaledPrice(p.monthlyCost) * Double(p.keysOnly ? keyPeople(co) : headcount(co))
     }
     /// All perks that are on. Original: `PK.cost`.
     public static func totalMonthlyCost(_ co: Company, currency cur: Currency) -> Double {
@@ -68,13 +69,14 @@ public enum StaffPerks {
 
     /// Switch a perk on or off. Returns the new state, nil for an unknown company or perk. Original: `ACT.pk58t`.
     @discardableResult
-    public static func toggle(_ s: inout GameState, companyID: Int, perk id: String) -> Bool? {
+    public static func toggle(_ s: inout GameState, companyID: Int, perk id: String, data: GameData? = nil) -> Bool? {
         guard let i = s.companyIndex(companyID), perk(id) != nil else { return nil }
         var f = s.companies[i].value("perks58")
         if f.isNull { f = .object([:]) }
         let now = f[id].double == 0
         f[id] = .number(now ? 1 : 0)
         s.companies[i].set("perks58", f)
+        if id == "car" { if let data { CompanyCarPerk.sync(&s, companyIndex: i, data: data) } else if !now { CompanyCarPerk.release(&s, companyIndex: i) } }
         return now
     }
 
@@ -88,10 +90,11 @@ public enum StaffPerks {
     public static func weekly(_ s: inout GameState, data: GameData) {
         let w = World(state: s, data: data)
         for i in s.companies.indices where s.companies[i].status == .open && !s.companies[i].value("perks58").isNull {
+            CompanyCarPerk.sync(&s, companyIndex: i, data: data)   // the company-car perk is real leased cars: they bill themselves with the vehicles
             let co = s.companies[i]
             let on = onPerks(co)
             if on.isEmpty { continue }
-            let monthly = totalMonthlyCost(co, currency: w.currency(co))
+            let monthly = on.filter { $0.id != "car" }.reduce(0) { $0 + monthlyCost(co, $1, currency: w.currency(co)) }
             if monthly > 0 { Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52, category: "wages", label: "Staff perks") }
             let ease = (isOn(co, "gym") ? 1.0 : 0) + (isOn(co, "lunch") ? 0.5 : 0)
             if ease > 0 {

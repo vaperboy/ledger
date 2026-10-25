@@ -280,7 +280,7 @@ struct CompanyEquipmentScreen: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km · " + v.warranty + (v.daysInRepair > 0 ? " · in repair \(v.daysInRepair) days" : ""))
+                                Text((v.driver.isEmpty ? "" : "\(v.driver) · ") + modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km" + (v.fuelPerWeek > 0 ? " · fuel \(cur.tidyShort(v.fuelPerWeek))/wk" : "") + " · " + v.warranty + (v.daysInRepair > 0 ? " · in repair \(v.daysInRepair) days" : ""))
                                     .font(.system(size: 11)).foregroundStyle(v.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -289,6 +289,28 @@ struct CompanyEquipmentScreen: View {
                         }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { Hairline() } }
                     }
                     NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: n.equipmentID) } label: { Text("Buy, buy used or lease").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }.padding(.top, 8)
+                }
+            }
+        }
+        if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
+            LedgerSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
+                        FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
+                    }
+                    Text("Leased for the Company car perk (Team > Perks). They go back when the perk is switched off or the person leaves.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
+            }
+        }
+        let run = e.fleetRunningCosts(companyID: companyID)
+        if run.total > 0 {
+            LedgerSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
+                    if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
+                    if run.charges.insurance > 0 { FlatRow(label: "Motor insurance", value: cur.tidyShort(run.charges.insurance), sub: "", rule: true) }
+                    if run.charges.vehicleTax > 0 { FlatRow(label: "Vehicle tax", value: cur.tidyShort(run.charges.vehicleTax), sub: "", rule: true) }
+                    if run.charges.benefitCharge > 0 { FlatRow(label: "Charges on company cars", value: cur.tidyShort(run.charges.benefitCharge), sub: "Employer's share on the taxable benefit", rule: true) }
                 }
             }
         }
