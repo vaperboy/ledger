@@ -722,6 +722,13 @@ public enum ContractTalk {
         }
         s.companies[i].staff = st
         store(talk, &s, personID: staffID)
+        // With a manager in charge the request goes to the manager first: decided inside their authority (the same rule as leaving it to them), otherwise
+        // it comes to the owner through the same Inbox flow, saying who passed it on.
+        if topic == .promotion || topic == .hours, let mid = s.companies[i].managerID, let boss = s.people[mid] {
+            let r = leaveToManager(&s, companyID: co.id, personID: staffID, data: data)
+            if r.changedTerms { return }
+            body += " \(boss.name) could not decide this within their authority, so it comes to you."
+        }
         s.addMessage(kind: "ask", from: n.name, title: title, body: body, companyID: co.id, tone: "n", status: "open",
                      options: [.option("Agree", agree), .option("Delay \(rules.delayWeeks) weeks", "Say you will decide later. If you do not, they feel turned down."), .option("Decline", "Disappointed. They may start looking around.")],
                      action: "staffx", data: .object(["t": .string(kind), "sid": .number(Double(staffID)), "ask": .number(talk.proposal.amount), "post": .string(talk.proposal.choice)]), expiresWeek: s.week + 3)

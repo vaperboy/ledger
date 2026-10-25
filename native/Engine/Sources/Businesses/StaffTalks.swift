@@ -31,13 +31,16 @@ public enum StaffTalks {
     /// `perkShare` is what the company's perks are worth to the person as a share of the market pay: they count as pay, so a person looked after asks later.
     static func nextTalk(_ m: StaffMember, _ n: Person, company co: Company, gap rawGap: Double, perkShare: Double = 0, tenure ten: Double, week: Int, salesRoles: Set<String>) -> StaffEvent? {
         let gap = rawGap - perkShare
-        guard co.managerID == nil else { return nil }
-        let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
-        let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
-        if ten >= 13, gap > 0.06 || week - lastRaise >= 52, askW == nil || askW == 0 || week - askW! >= 13, m.noticeWeeks == 0 { return .payAsk(staffID: m.id) }
-        let fixAsk = m.raw["fixAskW"].flatMap { $0.isNull ? nil : $0.int }
-        if m.payBasis == "hour", (m.weeklyHours ?? 0) == 0, !m.flag("seas"), ten >= 26, skill(m, n, salesRoles: salesRoles) >= 55, !m.flag("flag") && m.raw["flag"] == nil,
-           wantsFixedSalary(n), fixAsk == nil || fixAsk == 0 || week - fixAsk! >= 26 { return .fixedSalaryAsk(staffID: m.id) }
+        // With a manager in charge the manager's monthly pay review (ManagerWeek.staffWork) holds the pay and fixed-salary talks; promotion and hours requests
+        // still arise and go to the manager first (ContractTalk.employeeAsks).
+        if co.managerID == nil {
+            let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
+            let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
+            if ten >= 13, gap > 0.06 || week - lastRaise >= 52, askW == nil || askW == 0 || week - askW! >= 13, m.noticeWeeks == 0 { return .payAsk(staffID: m.id) }
+            let fixAsk = m.raw["fixAskW"].flatMap { $0.isNull ? nil : $0.int }
+            if m.payBasis == "hour", (m.weeklyHours ?? 0) == 0, !m.flag("seas"), ten >= 26, skill(m, n, salesRoles: salesRoles) >= 55, !m.flag("flag") && m.raw["flag"] == nil,
+               wantsFixedSalary(n), fixAsk == nil || fixAsk == 0 || week - fixAsk! >= 26 { return .fixedSalaryAsk(staffID: m.id) }
+        }
         return ContractTalk.requestTrigger(m, n, company: co, week: week, salesRoles: salesRoles, tenure: ten)
     }
 
