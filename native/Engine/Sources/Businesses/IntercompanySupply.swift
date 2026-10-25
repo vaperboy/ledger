@@ -28,24 +28,15 @@ public enum IntercompanySupply {
         public var delivered = false
     }
 
-    public static let kinds: [Kind] = [
-        Kind(id: "clean", name: "Cleaning", suppliers: ["cleaning"], local: true, category: "oth", noCapacity: false, buyers: ["hotel": 0.035, "restaurant": 0.015, "cafe": 0.012, "gym": 0.02, "nightclub": 0.015, "casino": 0.015, "fun": 0.015, "grocery": 0.008, "boutique": 0.008, "hardware": 0.006, "cardealer": 0.008, "physio": 0.015, "law": 0.01, "acctfirm": 0.01, "cons": 0.01, "webdev": 0.008, "mktg": 0.008, "staffing": 0.006, "bank": 0.004, "insco": 0.004, "estate": 0.01, "barber": 0.012, "pets": 0.012, "drivsk": 0.006, "kiosk": 0.006]),
-        Kind(id: "build", name: "Building materials", suppliers: ["hardware"], local: false, category: "cogs", noCapacity: false, buyers: ["construction": 0.3, "realdev": 0.25, "electrician": 0.18, "plumber": 0.2, "handy": 0.15]),
-        Kind(id: "freight", name: "Freight", suppliers: ["trucking"], local: false, category: "cogs", noCapacity: false, buyers: ["factory": 0.05, "furniture": 0.05, "bakery": 0.03, "brewery": 0.05, "farm": 0.05, "salmon": 0.06, "grocery": 0.025, "hardware": 0.03, "cardealer": 0.015, "construction": 0.02]),
-        Kind(id: "parcel", name: "Parcel delivery", suppliers: ["courier"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.07, "boutique": 0.01, "pets": 0.005, "furniture": 0.01, "bakery": 0.01, "hardware": 0.01]),
-        Kind(id: "deliv", name: "Delivery to customers", suppliers: ["courier"], local: true, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.12, "cafe": 0.12, "kiosk": 0.10, "grocery": 0.08], delivered: true),
-        Kind(id: "bread", name: "Bread and pastries", suppliers: ["bakery"], local: true, category: "cogs", noCapacity: false, buyers: ["cafe": 0.06, "restaurant": 0.02, "hotel": 0.015, "grocery": 0.02, "kiosk": 0.03, "foodtruck": 0.03]),
-        Kind(id: "beer", name: "Beer", suppliers: ["brewery"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.03, "nightclub": 0.08, "hotel": 0.015, "grocery": 0.015, "fun": 0.02, "kiosk": 0.01]),
-        Kind(id: "produce", name: "Farm produce", suppliers: ["farm"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.04, "cafe": 0.02, "hotel": 0.02, "grocery": 0.04, "bakery": 0.04, "brewery": 0.03, "foodtruck": 0.03]),
-        Kind(id: "fish", name: "Fish", suppliers: ["salmon"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.03, "grocery": 0.02, "hotel": 0.01]),
-        Kind(id: "furn", name: "Furniture", suppliers: ["furniture"], local: false, category: "oth", noCapacity: false, buyers: ["hotel": 0.02, "restaurant": 0.008, "cafe": 0.008, "realdev": 0.03]),
-        Kind(id: "web", name: "Web and IT", suppliers: ["webdev"], local: false, category: "oth", noCapacity: false, buyers: ["webshop": 0.03, "boutique": 0.008, "hotel": 0.004, "mktg": 0.02, "bank": 0.01, "insco": 0.01, "staffing": 0.006]),
-        Kind(id: "ads", name: "Marketing services", suppliers: ["mktg"], local: false, category: "mkt", noCapacity: false, buyers: ["hotel": 0.015, "restaurant": 0.01, "gym": 0.015, "cardealer": 0.01, "webshop": 0.02, "boutique": 0.015, "fun": 0.01]),
-        Kind(id: "temp", name: "Temporary staff", suppliers: ["staffing"], local: true, category: "wages", noCapacity: false, buyers: ["hotel": 0.02, "restaurant": 0.015, "grocery": 0.01, "construction": 0.03, "factory": 0.02, "courier": 0.02, "event": 0.03, "fun": 0.015]),
-        Kind(id: "carserv", name: "Vehicle service and repairs", suppliers: ["carrepair"], local: true, category: "oth", noCapacity: false, buyers: ["taxi": 0.06, "courier": 0.04, "trucking": 0.05, "cardealer": 0.03, "handy": 0.008, "carclean": 0.01, "electrician": 0.008, "plumber": 0.008]),
-        Kind(id: "whouse", name: "Warehousing and fulfilment", suppliers: ["wh3pl"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.09, "boutique": 0.015, "hardware": 0.02, "furniture": 0.03, "brewery": 0.02, "grocery": 0.008]),
-        Kind(id: "power", name: "Electricity", suppliers: ["power"], local: false, category: "oth", noCapacity: true, buyers: ["factory": 0.04, "bakery": 0.03, "brewery": 0.03, "salmon": 0.03, "hotel": 0.02, "grocery": 0.015, "farm": 0.02, "casino": 0.01, "gym": 0.01]),
-    ]
+    /// The kinds, from `Resources/supply_kinds.json` (a new kind or trade is data only).
+    public static let kinds: [Kind] = {
+        guard let url = Bundle.module.url(forResource: "supply_kinds", withExtension: "json", subdirectory: "Resources"),
+              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [] }
+        return j["kinds"].array.map { k in
+            Kind(id: k["id"].string, name: k["name"].string, suppliers: k["suppliers"].array.map { $0.string }, local: k["local"].bool, category: k["category"].string,
+                 noCapacity: k["noCapacity"].bool, buyers: k["buyers"].object.mapValues { $0.double }, delivered: k["delivered"].bool)
+        }
+    }()
 
     public static func kind(_ id: String) -> Kind? { kinds.first { $0.id == id } }
     public static let modes: [(id: String, name: String)] = [("mkt", "Market price"), ("c10", "Cost + 10%"), ("cost", "At cost")]
