@@ -62,6 +62,10 @@ public enum StaffProfile {
         /// The company perks that apply to this person, and what they are worth to them a month (counted as pay).
         public var perks: [String] = []
         public var perksWorth = 0.0
+        /// The bonus plan they are on (nil: none), what it paid this year so far, and the average it has paid a month lately (counted as pay).
+        public var bonusPlan: String? = nil
+        public var bonusPaidThisYear = 0.0
+        public var bonusMonthlyAverage = 0.0
     }
 
     public struct Course: Equatable, Sendable { public var id: String; public var name: String; public var cost: Double; public var maxGain: Double }
@@ -89,12 +93,13 @@ public enum StaffProfile {
         // The perks that cover this person count as pay when they judge whether they are paid enough (not twice: their effect on quitting is the perk's own quit factor).
         let perkList = StaffPerks.perks(for: m, in: co)
         let perkWorth = StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co))
-        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + perkWorth
+        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma") + perkWorth
         let gap = (market * (0.7 + n.skill / 160) - eff) / max(1, market)
         let lr = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
         if m.happyUntilWeek != 0 && s.week < m.happyUntilWeek { good.append("pleased with a recent raise or their pay") }
         let fit = StaffWeek.fit(staff: m, tradeID: co.type)
         if fit <= 0.3 { good.append("really likes this kind of work") } else if fit >= 2 { bad.append("this job is not really for them") }
+        if let plan = WorkerBonus.level(of: m) { good.append("on the \(plan.name.lowercased())" + (m.num("bnEma") > 0 ? ": bonuses have been paid lately" : "")) }
         if !perkList.isEmpty { good.append("looked after: \(perkList.map { $0.name }.joined(separator: ", "))") }
         if gap > 0.1 { bad.append("paid less than the job usually pays") }
         let denied = m.int("denied")
@@ -127,7 +132,8 @@ public enum StaffProfile {
                        warnings: m.int("warn"), underpaid: gap > 0.1, newInRole: m.num("nr") > 0, dismissalDocumented: isDocumented(m),
                        severance: sev, compensationRange: (m.monthlyWage * 2)...(m.monthlyWage * 4), courses: courses(co, data: data),
                        commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: t.salesRoles.contains(m.role),
-                       perks: StaffPerks.perks(for: m, in: co).map { $0.name }, perksWorth: StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co)))
+                       perks: StaffPerks.perks(for: m, in: co).map { $0.name }, perksWorth: StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co)),
+                       bonusPlan: WorkerBonus.level(of: m)?.name, bonusPaidThisYear: m.num("bnYtd"), bonusMonthlyAverage: m.num("bnEma"))
     }
 
     static func isDocumented(_ m: StaffMember) -> Bool { m.int("warn") >= 2 || m.str("flag") == "theft" }

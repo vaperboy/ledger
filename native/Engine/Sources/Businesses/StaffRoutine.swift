@@ -97,7 +97,7 @@ public enum StaffRoutine {
     /// How far a person's pay (base plus the commission they really earn) is under what the job pays for their skill: -0.2 to 0.4. The one formula of the
     /// weekly pass and of the contract talk's quit-risk preview.
     static func payGap(market: Double, person n: Person, member m: StaffMember) -> Double {
-        let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
+        let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma")
         return clamp((market * (0.7 + n.skill / 160) - effectivePay) / market, -0.2, 0.4)
     }
 

@@ -194,7 +194,8 @@ public enum ContractTalk {
             let onPlan = m.commissionMode == "mix" || m.commissionMode == "com"
             out.append(info(.hours, true, ""))
             out.append(info(.payBasis, sales || hourlyFullTime, "Already on a fixed salary, and not a selling job."))
-            out.append(info(.bonus, onPlan, sales ? "Put them on salary and commission, or commission only, first." : "This job has no bonus plan."))
+            _ = onPlan
+            out.append(info(.bonus, true, ""))
             out.append(info(.benefits, true, ""))
             out.append(info(.notice, true, ""))
             let sisters = Chains.chain(s, of: co).map { Chains.stores(s, $0).filter { $0.id != co.id && $0.status.isLive }.count } ?? 0
@@ -220,7 +221,16 @@ public enum ContractTalk {
         let co = s.companies[sub.ci]
         let cur = World(state: s, data: data).currency(co)
         switch topic {
-        case .payRise, .bonus, .notice: return []
+        case .payRise, .notice: return []
+        case .bonus:
+            guard let m = sub.member else { return [] }
+            var out = WorkerBonus.levels.map { l in
+                Choice(id: "plan:\(l.id)", title: l.name + (WorkerBonus.level(of: m)?.id == l.id || (l.isNone && WorkerBonus.level(of: m) == nil) ? " (now)" : ""),
+                       detail: l.isNone ? l.detail : l.detail + " About \(cur.display(WorkerBonus.expectedMonthly(l, wage: m.monthlyWage))) a month on their pay, before the employer's charges.",
+                       on: WorkerBonus.level(of: m)?.id == l.id)
+            }
+            if m.commissionMode == "mix" || m.commissionMode == "com" { out.append(Choice(id: "commission", title: "Commission share", detail: "Their share of their own sales.")) }
+            return out
         case .promotion:
             return ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).filter { $0.blocked.isEmpty }
                 .map { Choice(id: $0.id, title: $0.title, detail: "\($0.place) · they will ask about \(cur.display($0.ask)) a month", amount: $0.ask) }
@@ -267,6 +277,9 @@ public enum ContractTalk {
             return Chains.stores(s, ch).filter { $0.id != co.id && $0.status.isLive }.map { Choice(id: "\($0.id)", title: $0.name, detail: "Same chain.") }
         }
     }
+
+    static func fmtPct(_ x: Double) -> String { "\(String(format: "%g", (x * 100 * 10).rounded() / 10))%" }
+    static func fmtMonths(_ x: Double) -> String { x == 1 ? "1 month" : "\(String(format: "%g", x)) months" }
 
     /// A benefit choice "perk:<id>" (the whole company) or "perk:<id>:<role group>".
     static func perkChoice(_ choice: String) -> (StaffPerks.Perk, String?)? {
@@ -324,6 +337,7 @@ public enum ContractTalk {
         let w = World(state: s, data: data), c = w.country(co), cur = w.currency(co)
         var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * (1 + c.employerSocialRate(monthlyWage: $1.monthlyWage)) }
         if co.managerID != nil { sum += co.managerMonthlyWage * (1 + c.employerSocialRate(monthlyWage: co.managerMonthlyWage)) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
+        sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerSocialRate(monthlyWage: m.monthlyWage)) } ?? 0) }
         sum += StaffPerks.totalMonthlyCost(co, currency: cur)
         sum += PersonalEquipment.mileagePerMonth(cur) * Double(co.staff.filter { $0.flag("ownCar") }.count)
         return sum
@@ -398,6 +412,12 @@ public enum ContractTalk {
                 c.lines.append("Commission only: no base pay; they earn only what they sell. Commission is paid on top of nothing, and it is not counted in the cost above.")
                 if sub.person.num("sec") > 0.65 { c.risks.append("\(first) wants security: likely to refuse and resign (about 6 in 10).") }
             } else if p.choice == "mix" || p.choice == "fix" { c.lines.append("Commission is paid on their sales on top of the salary" + (p.choice == "fix" ? " only if they stay on a plan." : ", and is not counted in the cost above.")) }
+        case .bonus where p.choice.hasPrefix("plan:"):
+            if let l = WorkerBonus.level(String(p.choice.dropFirst(5))), !l.isNone {
+                c.lines.append("Each month the company meets its targets: \(fmtPct(l.targetRate)) of their pay per target met. At year end with the budget met: \(fmtMonths(l.yearEndMonths)) of pay. Each month with no loss, if they are among the better half of the team: \(fmtPct(l.performanceRate)).")
+                c.lines.append("Paid through payroll, with the employer's charges like wages. The cost above is the amount it is likely to come to.")
+                if !WorkerBonus.hasTargets(co, week: s.week) { c.risks.append("This company has no monthly targets set, so the target bonus is not paid until it has.") }
+            }
         case .bonus:
             if sub.isManager { c.lines.append("Profit share: \(Int((p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
             else { c.lines.append("Commission: \(Int((p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
@@ -503,6 +523,10 @@ public enum ContractTalk {
             case .notSales: return .notPossible("Only selling jobs have a commission plan.")
             case .unknown: return .notPossible("They no longer work here.")
             }
+        case .bonus where p.choice.hasPrefix("plan:"):
+            guard sub.member != nil, let l = WorkerBonus.level(String(p.choice.dropFirst(5))) else { return .notPossible("That is not a bonus plan.") }
+            _ = WorkerBonus.set(&s, companyID: co.id, staffID: id, level: l.id)
+            return .ok(l.isNone ? "\(name) is on no bonus plan." : "\(name) is on the \(l.name.lowercased()).")
         case .bonus:
             if sub.isManager {
                 guard p.amount >= s.companies[sub.ci].managerProfitBonus else { return .notPossible("A profit share is not cut in a contract talk.") }
