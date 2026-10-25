@@ -52,4 +52,26 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertFalse(e.setTargets(companyID: id, mode: 1, bonus: 1))
         XCTAssertNil(e.targetStatus(companyID: 9999))
     }
+
+    /// `current` must be a real nil when the month has no targets (a `JSONValue` nil literal used to become `.null`, so every managed company counted as having targets).
+    func testNoTargetsThisMonthIsARealNil() throws {
+        var (e, id) = try managedCafe(seed: 5)
+        var co = try XCTUnwrap(e.state.company(id))
+        XCTAssertNil(ManagerTargets.current(co, week: e.state.week), "freshly managed: no history, no targets yet")
+        XCTAssertEqual(ManagerTargets.demandFactor(co, week: e.state.week), 1, "no targets, no chase for a bonus")
+        XCTAssertEqual(ManagerTargets.qualityCare(co, week: e.state.week), 0)
+        XCTAssertTrue(ManagerTargets.standing(co, week: e.state.week).isEmpty)
+        XCTAssertFalse(WorkerBonus.hasTargets(co, week: e.state.week))
+        run(&e, days: 14 * 7)
+        co = try XCTUnwrap(e.state.company(id))
+        let m = try XCTUnwrap(ManagerTargets.current(co, week: e.state.week), "after a few months the manager has this month's targets")
+        XCTAssertFalse(m.isNull)
+        XCTAssertGreaterThan(ManagerTargets.demandFactor(co, week: e.state.week), 1)
+        XCTAssertTrue(WorkerBonus.hasTargets(co, week: e.state.week))
+        // A month with no record (far ahead) is nil again.
+        XCTAssertNil(ManagerTargets.current(co, week: e.state.week + 20))
+        // Unmanaged company: never a chase.
+        let plain = ChainsTests.start(&e, "cafe")
+        XCTAssertEqual(ManagerTargets.demandFactor(try XCTUnwrap(e.state.company(plain)), week: e.state.week), 1)
+    }
 }

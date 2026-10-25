@@ -58,7 +58,9 @@ public enum ManagerTargets {
     /// This month's targets, if set for this month. Original: `cur`.
     public static func current(_ co: Company, week: Int) -> JSONValue? {
         let m = record(co)["m"]
-        return !m.isNull && m["mi"].int == GameCalendar.monthIndex(week: week) ? m : nil
+        // Return the optional explicitly: `JSONValue` is ExpressibleByNilLiteral, so a bare `cond ? m : nil` yields `.null`, never nil.
+        guard !m.isNull, m["mi"].int == GameCalendar.monthIndex(week: week) else { return Optional<JSONValue>.none }
+        return m
     }
 
     static func hasRating(_ co: Company) -> Bool { co.int("rvN") >= 10 }
