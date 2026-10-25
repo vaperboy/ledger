@@ -2,7 +2,7 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-import Businesses
+@testable import Businesses
 import Simulation
 
 /// Manager targets and the yearly budget: set by you, judged each month, bonuses paid through the books.
@@ -44,6 +44,12 @@ final class ManagerTargetsTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "bonuses go through the company's books")
         // The scorecard reads the same log.
         XCTAssertNotNil(e.runManagerScorecards().first { $0.id == id })
+    }
+
+    /// A month counter at or below zero (a hand-made history) must not index outside the twelve months.
+    func testMonthOfYearNeverLeavesTheTwelveMonths() {
+        for m in -30...30 { XCTAssertTrue((0..<12).contains(ManagerTargets.month0(m)), "\(m)") }
+        XCTAssertEqual(ManagerTargets.month0(1), 0); XCTAssertEqual(ManagerTargets.month0(13), 0); XCTAssertEqual(ManagerTargets.month0(0), 11)
     }
 
     func testNoTargetsWithoutHistoryOrForUnmanagedCompany() throws {
