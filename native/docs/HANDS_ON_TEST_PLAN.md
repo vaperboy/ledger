@@ -279,6 +279,7 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
 | T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
+<<<<<<< HEAD
 ### 9.P Staff pay and benefits (branch fix/staff-pay) — screens NOT TESTED by hand (engine tests: StaffPerkCatalogueTests, WorkerBonusTests, StaffExpensesTests, PayPlansTests, ManagedRequestsTests, FixedTermTests)
 | ID | Steps | Expected | Result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
@@ -295,6 +296,18 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.P11 | Contract discussion > Contract term | Permanent / fixed term / renew; preview says what ending costs under the country's rules (nothing where the data lists none) | | NOT TESTED | | |
 | T9.P12 | Four weeks before a fixed term ends | Inbox asks: renew or let it end; letting it end removes them on the date with the cost shown | | NOT TESTED | | |
 | T9.P13 | Company with a manager: a tired worker | An hours request is decided by the manager inside their authority (activity note), or reaches the Inbox naming the manager | | NOT TESTED | | |
+=======
+| T9.MS1 | Company > Operations > How you sell: tap another single choice | Confirmation shows changeover cost and weeks first, then an estimate for the next 8 weeks (customers wanting to buy, customers served, average sale, sales, left after direct costs) as low-to-high ranges with the average, a "ranges overlap" warning when it may change little, and "No guarantee" | | NOT TESTED | | |
+| T9.MS2 | Same, on a trade with no weekly sales model (property, finance) | "No estimate is available for this kind of business" and the on-paper data lines instead | | NOT TESTED | | |
+| T9.MS3 | Switch an add-on on then off | Each shows the estimate and a Drop/Add button; an add-on needing a licence says the figures assume it is approved | | NOT TESTED | | |
+| T9.MS4 | Change a choice, then watch the company for the quoted weeks | Reduced-capacity note lasts exactly the quoted weeks, gone the week after | | NOT TESTED | | |
+| T9.MS5 | A company abroad: add an add-on that needs a licence | The weeks shown for the licence are the slower abroad figure and match when it is approved | | NOT TESTED | | |
+| T9.MS6 | Start a franchised unit of a regional, national or global brand; open How you sell | The choices the brand fixes (menu, format, price tier) are locked with "Your franchise agreement with X fixes this"; add-ons stay free | | NOT TESTED | | |
+| T9.MS7 | Franchisee Marketing tab: a national-brand unit tries a channel outside its list; a global-brand unit tries any channel | Locked line with the reason ("does not allow local campaigns on this channel" / "reserves local marketing to the brand"); stopping a campaign still works | | NOT TESTED | | |
+| T9.MS8 | National-brand unit with no local campaign for a few weeks | Weekly payment to the franchisor includes the required local share as extra brand-fund contribution; spending locally reduces it | | NOT TESTED | | |
+| T9.MS9 | Chain page > rules: add-ons of a multi-choice knob | Tap add-ons into the chain's set; confirmation says every store offers exactly this set; stores that could not follow are listed under the knob | | NOT TESTED | | |
+| T9.MS10 | Barber with "hair products at the till": rating very low vs high | Extra sales follow the rating, none for a badly rated shop | | NOT TESTED | | |
+>>>>>>> origin/native-swiftui
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

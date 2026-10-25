@@ -82,6 +82,19 @@ public extension GameEngine {
         return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
     }
 
+    /// A read-only before/after estimate of that change (customers, capacity, price, sales, what is left after direct costs), as ranges
+    /// over the weeks ahead, worked out by the engine's own demand, price, capacity and cost functions. Nil where the trade has no
+    /// ordinary weekly sales model. `option` is an option index, or the bit mask of a multi-choice knob.
+    func knobChangePreview(companyID: Int, knob: String, option: Int) -> KnobPreview? {
+        KnobChange.preview(state, data, marketing: marketing, companyID: companyID, knob: knob, value: option)
+    }
+
+    /// The same estimate for switching one add-on of a multi-choice knob on or off.
+    func knobTogglePreview(companyID: Int, knob: String, option: Int, on: Bool) -> KnobPreview? {
+        guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.isMulti else { return nil }
+        return knobChangePreview(companyID: companyID, knob: knob, option: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
+    }
+
     /// Who fixes this knob for the company (its chain's standard, its franchise agreement), or nil when the owner decides.
     func knobGovernedBy(companyID: Int, knob: String) -> String? { state.company(companyID).flatMap { KnobChange.governedBy(state, $0, knob: knob) } }
 
@@ -108,6 +121,7 @@ public extension GameEngine {
             if c.offered(in: World(state: s, data: data).country(s.companies[i])) == nil { result = .refused("not available in this country"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
             if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
+            if weeklyBudget > 0, let why = FranchiseStandards.campaignRefusal(s.companies[i], channel: channel) { result = .refused(why); return }
             var mkt = s.companies[i].value("mkt")
             var mktEnd = s.companies[i].value("mktEnd")
             let cur = mkt[channel]
@@ -153,7 +167,8 @@ public extension GameEngine {
         let w = (weeks ?? 0) > 0 ? weeks : nil
         let util = co.value("lastW")["util"].double
         return CampaignPlan(lockedWeeks: cur.isNull ? c.minimumWeeks : left, weeks: w, totalCost: w.map { weeklyBudget * Double($0) },
-                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state))
+                            nearCapacity: util > 0.9, runByChain: Marketing.runByChain(co, channel: channel, state: state),
+                            blocked: FranchiseStandards.campaignRefusal(co, channel: channel))
     }
 
     // MARK: People

@@ -48,6 +48,7 @@ final class MainScreensTests: XCTestCase {
     }
 
     func scrollDown() { app.swipeUp(); sleep(1) }
+    func scrollUp() { app.swipeDown(); app.swipeDown(); app.swipeDown(); sleep(1) }
 
     func testMainScreens() {
         XCTAssertTrue(app.staticTexts["Net worth"].waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].waitForExistence(timeout: 5))
@@ -60,12 +61,14 @@ final class MainScreensTests: XCTestCase {
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("23-company-overview")
             scrollDown(); shot("24-company-overview-lower")
+            scrollUp()
             var n = 25
             for section in ["Team", "Finances", "Operations", "Marketing", "Customers", "Market", "Setup"] {
                 let b = app.buttons[section]
                 if b.exists && b.isHittable {
                     b.tap(); sleep(1); shot("\(n)-company-\(section.lowercased())"); n += 1
                     scrollDown(); shot("\(n)-company-\(section.lowercased())-lower"); n += 1
+                    scrollUp()
                     if section == "Operations" {
                         for sub in ["Suppliers", "Insurance", "Working from home"] where tap(sub) {
                             shot("\(n)-operations-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1

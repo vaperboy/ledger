@@ -56,6 +56,8 @@ struct CompanyMarketing: View {
                         }
                         if engine.campaignPlan(companyID: company.id, channel: ch.id, weeklyBudget: 1, weeks: nil)?.runByChain == true {
                             Text("Run by the chain: it sets this channel's budget for the store.").font(.caption2).foregroundStyle(Theme.caution)
+                        } else if let why = engine.campaignPlan(companyID: company.id, channel: ch.id, weeklyBudget: 1, weeks: nil)?.blocked {
+                            Label(why.prefix(1).uppercased() + why.dropFirst() + ".", systemImage: "lock.fill").font(.caption2).foregroundStyle(Theme.caution)
                         } else {
                             Text("Length").font(.caption).foregroundStyle(Theme.ivoryMuted)
                             ScrollView(.horizontal, showsIndicators: false) {

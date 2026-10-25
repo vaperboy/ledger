@@ -157,7 +157,8 @@ public enum SalesWays {
             if units > 0 { Payments.companyReceives(&s, companyID: id, amount: jsRound(units * 0.07 * tk * 0.5), category: "rev", label: nil) }
         }
         if let up = way("upsell"), on["upsell"].bool, rev > 0 {
-            let x = jsRound(rev * (up.options["u"] ?? 0.08))
+            // Customers only add to the bill when they are happy with the service: the extra follows how well the shop is rated, it is not a given.
+            let x = jsRound(rev * (up.options["u"] ?? 0.08) * rating)
             Payments.companyReceives(&s, companyID: id, amount: x, category: "rev", label: nil)
             Payments.companyPays(&s, companyID: id, amount: x * 0.35, category: "cogs")
         }
