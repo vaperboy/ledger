@@ -225,6 +225,9 @@ public extension GameEngine {
                 let isCur = link?.supplierID == sp.id && link?.mode == m.id
                 var risks = ["If \(sp.name) is short of people or closes, you pay for emergency supply (+20%) and below 80% delivered your reputation suffers."]
                 if !k.noCapacity { risks.append("\(sp.name) holds back part of its own capacity for you.") }
+                if SupplyTerms.ownSupplierStrained(state, buyer: co.id, supplier: sp.id) {
+                    risks.append("\(co.name) has left \(sp.name) unpaid for \(SupplyTerms.ownLateWeeks(state, buyer: co.id, supplier: sp.id)) weeks, so it delivers only part of what it could. Pay what is overdue.")
+                }
                 if m.id != "mkt" && pf >= 1 { risks.append("\(sp.name) runs at no margin today, so this mode gives no saving yet.") }
                 let delivered: String? = isCur ? link.map { "\(Int(($0.lastShare * 100).rounded()))% delivered last week" } : nil
                 options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,

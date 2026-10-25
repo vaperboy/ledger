@@ -22,6 +22,11 @@
     "cutoffWeeks": 8,
     "billMissRelationshipHit": 2
   },
+  "ownLate": {
+    "about": "Between your own companies nobody cuts anyone off. But a supplier of yours that has been left short-paid for this many weeks is flagged to you, and from then on keeps back part of its capacity for the group (the share it still delivers). Design values.",
+    "flagAfterWeeks": 4,
+    "capacityFactor": 0.8
+  },
   "customer": {
     "lateChanceBase": 0.3,
     "lateChanceRelationship": 0.25,

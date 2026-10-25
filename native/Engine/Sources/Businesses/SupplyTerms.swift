@@ -54,6 +54,7 @@ public enum SupplyTerms {
         var dealWeeks = 52, coolWeeks = 6
         var walkAwayHit = 3.0
         var rank = "manager"
+        var ownFlagAfter = 4, ownCapacityFactor = 0.8
     }
 
     static let tables: Tables = {
@@ -75,6 +76,7 @@ public enum SupplyTerms {
         let lw = c["lateWeeks"].array.map { $0.int }
         if lw.count == 2 { t.customerLate = lw[0]...max(lw[0], lw[1]) }
         t.repeatNotice = c["repeatNotice"].int
+        if !j["ownLate"].isNull { t.ownFlagAfter = j["ownLate"]["flagAfterWeeks"].int; t.ownCapacityFactor = j["ownLate"]["capacityFactor"].double }
         let n = j["negotiation"]
         t.headroomBase = n["headroomBase"].double; t.headroomPerRelationship = n["headroomPerRelationship"].double
         t.patiencePerRelationship = n["patiencePerRelationship"].double; t.step = n["step"].double
@@ -135,6 +137,19 @@ public enum SupplyTerms {
         s.companies[i].set("pterm", tm)
         return true
     }
+
+    // MARK: Short-paying your own companies
+
+    /// How many weeks the longest overdue invoice from this own supplier to this buyer has been late (0 = none).
+    public static func ownLateWeeks(_ s: GameState, buyer: Int, supplier: Int) -> Int {
+        raw(s).filter { $0["b"].int == buyer && $0["p"].int == supplier }.map { $0["l"].int }.max() ?? 0
+    }
+    /// An own supplier that has been short-paid this long is flagged and keeps back part of its capacity.
+    public static func ownSupplierStrained(_ s: GameState, buyer: Int, supplier: Int) -> Bool {
+        ownLateWeeks(s, buyer: buyer, supplier: supplier) >= tables.ownFlagAfter
+    }
+    /// The share of what it could carry that a short-paid own supplier still delivers.
+    public static var ownStrainFactor: Double { tables.ownCapacityFactor }
 
     // MARK: Repair terms (the same terms as goods, with the repair supplier)
 
@@ -341,6 +356,12 @@ public enum SupplyTerms {
                     let interest = jsRound(amount * rate)
                     if j["l"].int == 0 { lateEvent(&s, Invoice(j), buyerIndex: bi) }
                     j["l"] = .number(Double(j["l"].int + 1))
+                    if pid != 0, supplierLive, j["l"].int == tables.ownFlagAfter, let sp = s.company(pid) {
+                        // No cut-off between your own companies, but the group is told: the supplier has been waiting for its money.
+                        s.addMessage(from: co.name, title: "\(co.name) is short-paying \(sp.name)",
+                                     body: "\(co.name) has owed \(sp.name), another company of yours, for \(tables.ownFlagAfter) weeks. \(sp.name) now keeps back part of its capacity for the group until it is paid. Move cash between the companies or settle weekly.",
+                                     companyID: co.id, tone: "bad")
+                    }
                     if interest > 0 {
                         j["a"] = .number(amount + interest)
                         s.companies[bi].addPayable("inv", interest)

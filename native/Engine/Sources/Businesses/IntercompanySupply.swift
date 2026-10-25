@@ -226,8 +226,10 @@ public enum IntercompanySupply {
             if x <= 0 { l["last"] = .object(["x": 0, "f": 1, "w": .number(Double(s.week))]); kept[kept.count - 1] = l; continue }
             let ticket = tickets[sp.id] ?? 0
             let u = K.noCapacity ? 0 : (ticket > 0 ? x / ticket : 0)
-            let capB = sp.status == .open ? sp.value("lastW")["cap"].double + sp.num("int27u") : 0
-            let f = K.noCapacity ? (sp.status == .open ? 1.0 : 0) : (u > 0 ? clamp(capB / u, 0, 1) : 1)
+            // a supplier of yours that the buyer has left short-paid for long keeps back part of what it can carry (no cut-off between own companies)
+            let strain = SupplyTerms.ownSupplierStrained(s, buyer: b.id, supplier: sp.id) ? SupplyTerms.ownStrainFactor : 1
+            let capB = sp.status == .open ? (sp.value("lastW")["cap"].double + sp.num("int27u")) * strain : 0
+            let f = K.noCapacity ? (sp.status == .open ? strain : 0) : (u > 0 ? clamp(capB / u, 0, 1) : 1)
             let pf = priceFactor(mode: l["mode"].string, supplier: sp, data: data, perkCut: titanCut), vr = varRatio(sp, data: data)
             let got = x * f
             // the buyer: what it paid outside before, against what it pays the group now
