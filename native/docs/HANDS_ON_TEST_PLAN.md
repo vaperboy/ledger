@@ -165,6 +165,20 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9T.14 | Company with a business customer > Customers | The customer's line shows what they still owe; a slow payer shows "paid late n times in a row"; cash comes in weeks after the sale | | NOT TESTED | | |
 | T9T.15 | Save and reload with invoices open, a negotiated deal and a chain rule | All three are still there and the books balance | | NOT TESTED | | |
 
+### 9.M Money and supply: delivery, intercompany VAT, repair terms, franchise supplier locks (fix/money-supply)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| T9M.1 | Cafe or restaurant > Ways to sell > switch on the delivery app | The row says the lift applies only to delivered orders (a % now) and that the courier is set under Suppliers | | NOT TESTED | | |
+| T9M.2 | Same company > Operations > Suppliers > "Delivery to customers" | Outside courier is current, with its reliability and cost per delivered order; with an own courier company in the same city it is offered with Market price / Cost + 10% / At cost | | NOT TESTED | | |
+| T9M.3 | Switch delivery to your own courier company; look a few weeks later | The row shows % delivered; the courier books revenue; customers follow the delivered share; switching the add-on off ends the cost | | NOT TESTED | | |
+| T9M.4 | Courier company closes or is full | Delivery falls back to the outside courier's reliability; fewer customers from the add-on | | NOT TESTED | | |
+| T9M.5 | Bakery, hardware shop, webshop with an own courier company | "Parcel delivery" is listed under Suppliers for each | | NOT TESTED | | |
+| T9M.6 | Hotel buys cleaning from your own company (VAT country); check both companies' VAT | Supplier owes VAT on the transfer, the registered hotel reclaims it; a hotel below the VAT threshold shows it as a cost | | NOT TESTED | | |
+| T9M.7 | Cafe with a repair supplier you know well > Repairs and upkeep > Payment terms | Cash on delivery / 30 / 60 days like goods; upkeep appears as "Invoice" under what falls due; terms lapse with a message if the relationship falls | | NOT TESTED | | |
+| T9M.8 | Hotel owes your own cleaning company on 30-day terms and cannot pay for 4+ weeks | Message "<buyer> is short-paying <supplier>"; the cleaning option shows a risk line and delivers less; paying clears it | | NOT TESTED | | |
+| T9M.9 | Start a franchised cafe/restaurant/bakery from a regional or bigger brand | Goods > lock line names the brand and its approved supplier; other suppliers do not switch; the approved one is current | | NOT TESTED | | |
+| T9M.10 | Start a franchised gym or a local (tier 1) food brand | No supplier lock | | NOT TESTED | | |
+
 ### 9.B Life stories and what you can fund (stage 2, background)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
 |---|---|---|---|---|---|---|

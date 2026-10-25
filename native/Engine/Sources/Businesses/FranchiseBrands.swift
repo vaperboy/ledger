@@ -433,6 +433,30 @@ public enum FranchiseBrands {
         return w.currency(co).scaledPrice(g)
     }
 
+    /// The supplier standards brands of this trade and tier require (`Resources/franchise_standards.json`): input ids.
+    public static func requiredSupplierInputs(tradeID: String, tier: Int) -> [String] {
+        guard let url = Bundle.module.url(forResource: "franchise_standards", withExtension: "json", subdirectory: "Resources"),
+              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [] }
+        return j["supplierStandards"].array.filter { $0["standard"].string == "approved" && $0["trades"].array.contains { $0.string == tradeID } && tier >= $0["minTier"].int }.map { $0["input"].string }
+    }
+
+    /// Write the brand's required suppliers into the franchise record (`supStd`, only when the brand requires any) and put the store on them.
+    /// The approved supplier is picked the same way every time from the suppliers that serve the store, by the brand.
+    static func applySupplierStandards(_ s: inout GameState, companyIndex i: Int, brand b: Brand, data: GameData) {
+        for input in requiredSupplierInputs(tradeID: b.tradeID, tier: b.tier) where input == "goods" {
+            let list = Suppliers.candidates(s, company: s.companies[i], scope: "goods", data: data).sorted { $0.id < $1.id }
+            guard !list.isEmpty else { continue }
+            var h = HashedRandom("\(s.seed):supstd:\(b.id):\(input)")
+            let v = list[min(list.count - 1, Int(h.next() * Double(list.count)))]
+            var f = s.companies[i].value("franchise")
+            var std = f["supStd"].isNull ? JSONValue.object([:]) : f["supStd"]
+            std[input] = SupplyDeals.encode(.goodsVendor(v.id))
+            f["supStd"] = std
+            s.companies[i].set("franchise", f)
+            Suppliers.chooseGoodsVendor(&s, companyID: s.companies[i].id, vendorID: v.id)
+        }
+    }
+
     /// Put the brand's terms on a company that was just started: the franchise record, reputation and awareness of the brand,
     /// the franchisor's set-up support. Original: `applyBrand`.
     public static func applyToCompany(_ s: inout GameState, companyIndex i: Int, brand b: Brand, terms t: Terms, data: GameData) {
@@ -455,6 +479,7 @@ public enum FranchiseBrands {
             if let lm = FranchiseStandards.localMarketing(brand: b) { f["localMkt"] = lm }
             s.companies[i].set("franchise", f)
         }
+        applySupplierStandards(&s, companyIndex: i, brand: b, data: data)
         if let p = t.premises { s.companies[i].set("landlord", .object(["co": .number(Double(p.companyID)), "pid": .number(Double(p.propertyID))])) }
         s.companies[i].reputation = max(s.companies[i].reputation, 38 + Double(b.tier) * 6)
         s.companies[i].awareness = max(s.companies[i].awareness, 25 + b.strength * 0.55)

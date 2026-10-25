@@ -1,0 +1,331 @@
+[
+  {
+    "buyers" : {
+      "acctfirm" : 0.01,
+      "bank" : 0.004,
+      "barber" : 0.012,
+      "boutique" : 0.008,
+      "cafe" : 0.012,
+      "cardealer" : 0.008,
+      "casino" : 0.015,
+      "cons" : 0.01,
+      "drivsk" : 0.006,
+      "estate" : 0.01,
+      "fun" : 0.015,
+      "grocery" : 0.008,
+      "gym" : 0.02,
+      "hardware" : 0.006,
+      "hotel" : 0.035,
+      "insco" : 0.004,
+      "kiosk" : 0.006,
+      "law" : 0.01,
+      "mktg" : 0.008,
+      "nightclub" : 0.015,
+      "pets" : 0.012,
+      "physio" : 0.015,
+      "restaurant" : 0.015,
+      "staffing" : 0.006,
+      "webdev" : 0.008
+    },
+    "category" : "oth",
+    "delivered" : false,
+    "id" : "clean",
+    "local" : true,
+    "name" : "Cleaning",
+    "noCapacity" : false,
+    "suppliers" : [
+      "cleaning"
+    ]
+  },
+  {
+    "buyers" : {
+      "construction" : 0.3,
+      "electrician" : 0.18,
+      "handy" : 0.15,
+      "plumber" : 0.2,
+      "realdev" : 0.25
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "build",
+    "local" : false,
+    "name" : "Building materials",
+    "noCapacity" : false,
+    "suppliers" : [
+      "hardware"
+    ]
+  },
+  {
+    "buyers" : {
+      "bakery" : 0.03,
+      "brewery" : 0.05,
+      "cardealer" : 0.015,
+      "construction" : 0.02,
+      "factory" : 0.05,
+      "farm" : 0.05,
+      "furniture" : 0.05,
+      "grocery" : 0.025,
+      "hardware" : 0.03,
+      "salmon" : 0.06
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "freight",
+    "local" : false,
+    "name" : "Freight",
+    "noCapacity" : false,
+    "suppliers" : [
+      "trucking"
+    ]
+  },
+  {
+    "buyers" : {
+      "bakery" : 0.01,
+      "boutique" : 0.01,
+      "furniture" : 0.01,
+      "hardware" : 0.01,
+      "pets" : 0.005,
+      "webshop" : 0.07
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "parcel",
+    "local" : false,
+    "name" : "Parcel delivery",
+    "noCapacity" : false,
+    "suppliers" : [
+      "courier"
+    ]
+  },
+  {
+    "buyers" : {
+      "cafe" : 0.12,
+      "grocery" : 0.08,
+      "kiosk" : 0.1,
+      "restaurant" : 0.12
+    },
+    "category" : "cogs",
+    "delivered" : true,
+    "id" : "deliv",
+    "local" : true,
+    "name" : "Delivery to customers",
+    "noCapacity" : false,
+    "suppliers" : [
+      "courier"
+    ]
+  },
+  {
+    "buyers" : {
+      "cafe" : 0.06,
+      "foodtruck" : 0.03,
+      "grocery" : 0.02,
+      "hotel" : 0.015,
+      "kiosk" : 0.03,
+      "restaurant" : 0.02
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "bread",
+    "local" : true,
+    "name" : "Bread and pastries",
+    "noCapacity" : false,
+    "suppliers" : [
+      "bakery"
+    ]
+  },
+  {
+    "buyers" : {
+      "fun" : 0.02,
+      "grocery" : 0.015,
+      "hotel" : 0.015,
+      "kiosk" : 0.01,
+      "nightclub" : 0.08,
+      "restaurant" : 0.03
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "beer",
+    "local" : false,
+    "name" : "Beer",
+    "noCapacity" : false,
+    "suppliers" : [
+      "brewery"
+    ]
+  },
+  {
+    "buyers" : {
+      "bakery" : 0.04,
+      "brewery" : 0.03,
+      "cafe" : 0.02,
+      "foodtruck" : 0.03,
+      "grocery" : 0.04,
+      "hotel" : 0.02,
+      "restaurant" : 0.04
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "produce",
+    "local" : false,
+    "name" : "Farm produce",
+    "noCapacity" : false,
+    "suppliers" : [
+      "farm"
+    ]
+  },
+  {
+    "buyers" : {
+      "grocery" : 0.02,
+      "hotel" : 0.01,
+      "restaurant" : 0.03
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "fish",
+    "local" : false,
+    "name" : "Fish",
+    "noCapacity" : false,
+    "suppliers" : [
+      "salmon"
+    ]
+  },
+  {
+    "buyers" : {
+      "cafe" : 0.008,
+      "hotel" : 0.02,
+      "realdev" : 0.03,
+      "restaurant" : 0.008
+    },
+    "category" : "oth",
+    "delivered" : false,
+    "id" : "furn",
+    "local" : false,
+    "name" : "Furniture",
+    "noCapacity" : false,
+    "suppliers" : [
+      "furniture"
+    ]
+  },
+  {
+    "buyers" : {
+      "bank" : 0.01,
+      "boutique" : 0.008,
+      "hotel" : 0.004,
+      "insco" : 0.01,
+      "mktg" : 0.02,
+      "staffing" : 0.006,
+      "webshop" : 0.03
+    },
+    "category" : "oth",
+    "delivered" : false,
+    "id" : "web",
+    "local" : false,
+    "name" : "Web and IT",
+    "noCapacity" : false,
+    "suppliers" : [
+      "webdev"
+    ]
+  },
+  {
+    "buyers" : {
+      "boutique" : 0.015,
+      "cardealer" : 0.01,
+      "fun" : 0.01,
+      "gym" : 0.015,
+      "hotel" : 0.015,
+      "restaurant" : 0.01,
+      "webshop" : 0.02
+    },
+    "category" : "mkt",
+    "delivered" : false,
+    "id" : "ads",
+    "local" : false,
+    "name" : "Marketing services",
+    "noCapacity" : false,
+    "suppliers" : [
+      "mktg"
+    ]
+  },
+  {
+    "buyers" : {
+      "construction" : 0.03,
+      "courier" : 0.02,
+      "event" : 0.03,
+      "factory" : 0.02,
+      "fun" : 0.015,
+      "grocery" : 0.01,
+      "hotel" : 0.02,
+      "restaurant" : 0.015
+    },
+    "category" : "wages",
+    "delivered" : false,
+    "id" : "temp",
+    "local" : true,
+    "name" : "Temporary staff",
+    "noCapacity" : false,
+    "suppliers" : [
+      "staffing"
+    ]
+  },
+  {
+    "buyers" : {
+      "carclean" : 0.01,
+      "cardealer" : 0.03,
+      "courier" : 0.04,
+      "electrician" : 0.008,
+      "handy" : 0.008,
+      "plumber" : 0.008,
+      "taxi" : 0.06,
+      "trucking" : 0.05
+    },
+    "category" : "oth",
+    "delivered" : false,
+    "id" : "carserv",
+    "local" : true,
+    "name" : "Vehicle service and repairs",
+    "noCapacity" : false,
+    "suppliers" : [
+      "carrepair"
+    ]
+  },
+  {
+    "buyers" : {
+      "boutique" : 0.015,
+      "brewery" : 0.02,
+      "furniture" : 0.03,
+      "grocery" : 0.008,
+      "hardware" : 0.02,
+      "webshop" : 0.09
+    },
+    "category" : "cogs",
+    "delivered" : false,
+    "id" : "whouse",
+    "local" : false,
+    "name" : "Warehousing and fulfilment",
+    "noCapacity" : false,
+    "suppliers" : [
+      "wh3pl"
+    ]
+  },
+  {
+    "buyers" : {
+      "bakery" : 0.03,
+      "brewery" : 0.03,
+      "casino" : 0.01,
+      "factory" : 0.04,
+      "farm" : 0.02,
+      "grocery" : 0.015,
+      "gym" : 0.01,
+      "hotel" : 0.02,
+      "salmon" : 0.03
+    },
+    "category" : "oth",
+    "delivered" : false,
+    "id" : "power",
+    "local" : false,
+    "name" : "Electricity",
+    "noCapacity" : true,
+    "suppliers" : [
+      "power"
+    ]
+  }
+]
