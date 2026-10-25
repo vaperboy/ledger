@@ -107,6 +107,12 @@ struct CompanyPerksCard: View {
     var company: Company
     @State private var pending: StaffPerks.Perk?
 
+    private func recipientLine(_ r: CompanyCarPerk.Recipient, _ cur: Currency) -> String {
+        let role = r.role == "Manager" ? "manager" : "team lead"
+        guard let car = r.carName else { return "\(r.name) · \(role) · car arrives next week" }
+        return "\(r.name) · \(role) · \(car), lease \(cur.tidyShort(r.monthlyLease)) a month"
+    }
+
     private func fewer(_ p: StaffPerks.Perk) -> Int { Int(((1 - p.quitFactor) * 100).rounded()) }
 
     var body: some View {
@@ -125,8 +131,7 @@ struct CompanyPerksCard: View {
                                 Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
                                 if p.id == "car" && on {
                                     ForEach(engine.companyCarRecipients(companyID: company.id)) { r in
-                                        Text("\(r.name) · \(r.role == "Manager" ? "manager" : "team lead") · " + (r.carName.map { "\($0), lease \(cur.tidyShort(r.monthlyLease)) a month" } ?? "car arrives next week"))
-                                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                                        Text(recipientLine(r, cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
                                     }
                                 }
                             }

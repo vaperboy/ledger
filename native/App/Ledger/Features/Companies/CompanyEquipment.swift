@@ -280,7 +280,7 @@ struct CompanyEquipmentScreen: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text((v.driver.isEmpty ? "" : "\(v.driver) · ") + modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km" + (v.fuelPerWeek > 0 ? " · fuel \(cur.tidyShort(v.fuelPerWeek))/wk" : "") + " · " + v.warranty + (v.daysInRepair > 0 ? " · in repair \(v.daysInRepair) days" : ""))
+                                Text(vehicleLine(v, cur))
                                     .font(.system(size: 11)).foregroundStyle(v.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -292,6 +292,13 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
+        perkCars(owned, cur)
+        runningCosts(e, cur)
+        Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
+            .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
         if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
             LedgerSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -302,6 +309,9 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
         let run = e.fleetRunningCosts(companyID: companyID)
         if run.total > 0 {
             LedgerSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
@@ -314,8 +324,15 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
-        Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
-            .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    private func vehicleLine(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {
+        var line = v.driver.isEmpty ? "" : "\(v.driver) · "
+        line += modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km"
+        if v.fuelPerWeek > 0 { line += " · fuel \(cur.tidyShort(v.fuelPerWeek))/wk" }
+        line += " · " + v.warranty
+        if v.daysInRepair > 0 { line += " · in repair \(v.daysInRepair) days" }
+        return line
     }
 
     private func modeWord(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {
