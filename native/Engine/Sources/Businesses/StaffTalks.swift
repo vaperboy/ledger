@@ -21,7 +21,7 @@ public enum StaffTalks {
     /// Skill including what they have learned, minus the "not rested" penalty, plus the lift of commission. Original: `staffSkill`.
     static func skill(_ m: StaffMember, _ n: Person, salesRoles: Set<String>) -> Double {
         var v = n.skill + m.skillGain - (m.num("nr") > 0 ? 10 : 0)
-        if let mode = m.commissionMode, salesRoles.contains(m.role) { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
+        if let mode = m.commissionMode, salesRoles.contains(m.role) || m.flag("ppx") { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
         return clamp(v, 0, 100)
     }
 

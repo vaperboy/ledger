@@ -189,7 +189,7 @@ public enum ContractTalk {
         let posts = ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).filter { $0.blocked.isEmpty }
         var out = [info(.payRise, true, ""), info(.promotion, !posts.isEmpty, "No higher post fits right now.")]
         if let m = sub.member {
-            let sales = data.catalog.tables.salesRoles.contains(m.role)
+            let sales = PayPlans.eligible(role: m.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles)
             let hourlyFullTime = m.payBasis == "hour" && m.weeklyHours == nil && !m.flag("seas")
             let onPlan = m.commissionMode == "mix" || m.commissionMode == "com"
             out.append(info(.hours, true, ""))
@@ -249,7 +249,7 @@ public enum ContractTalk {
         case .payBasis:
             guard let m = sub.member else { return [] }
             var out: [Choice] = []
-            if data.catalog.tables.salesRoles.contains(m.role) {
+            if PayPlans.eligible(role: m.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles) {
                 out = [Choice(id: "fix", title: "Fixed salary", detail: "No commission."),
                        Choice(id: "mix", title: "Salary and commission", detail: "A lower salary with a share of their sales."),
                        Choice(id: "com", title: "Commission only", detail: "No base pay at all: they earn only their commission. Someone who wants security may refuse and resign.")]
