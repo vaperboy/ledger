@@ -62,11 +62,16 @@ final class StaffPerkCatalogueTests: XCTestCase {
         // 3 staff + the manager are the headcount; the manager and the one team lead hold the keys.
         XCTAssertEqual(StaffPerks.headcount(co), 4)
         XCTAssertEqual(StaffPerks.keyPeople(co), 2)
+        // The company car is no flat per-head figure any more: it is a leased car for each of the two key people (vehicle machinery).
+        let carCost = CompanyCarPerk.monthlyCost(e.state, co, data: e.data)
+        XCTAssertEqual(e.companyCarRecipients(companyID: id).compactMap { $0.carName }.count, 2)
+        XCTAssertGreaterThan(carCost, 0)
         for g in Self.golden {
-            XCTAssertEqual(e.staffPerkMonthlyCost(companyID: id, perk: g.0), cur.scaledPrice(g.2) * (g.5 ? 2 : 4), accuracy: 1e-6, g.0)
+            let expected = g.0 == "car" ? carCost : cur.scaledPrice(g.2) * (g.5 ? 2 : 4)
+            XCTAssertEqual(e.staffPerkMonthlyCost(companyID: id, perk: g.0), expected, accuracy: 1e-6, g.0)
         }
-        let monthly = Self.golden.reduce(0.0) { $0 + cur.scaledPrice($1.2) * ($1.5 ? 2 : 4) }
-        XCTAssertEqual(e.staffPerksMonthlyTotal(companyID: id), monthly, accuracy: 1e-6)
+        let monthly = Self.golden.filter { $0.0 != "car" }.reduce(0.0) { $0 + cur.scaledPrice($1.2) * ($1.5 ? 2 : 4) }
+        XCTAssertEqual(e.staffPerksMonthlyTotal(companyID: id), monthly + carCost, accuracy: 1e-6)
         let all = Self.golden.reduce(1.0) { $0 * $1.3 }
         XCTAssertEqual(e.staffPerksFewerLeavePercent(companyID: id), (1 - all) * 100, accuracy: 1e-9)
         let lead = co.staff[1], waiter = co.staff[0]
@@ -76,7 +81,7 @@ final class StaffPerkCatalogueTests: XCTestCase {
         let cash0 = co.cash
         e.update { s, d, _ in StaffPerks.weekly(&s, data: d) }
         let after = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(cash0 - after.cash, monthly * 12 / 52, accuracy: 1)
+        XCTAssertEqual(cash0 - after.cash, monthly * 12 / 52, accuracy: 1, "the car bills through its lease and fuel, not through the perk line")
         XCTAssertEqual(after.staff[0].tiredness, 20 - 1.5, accuracy: 1e-9)
         XCTAssertEqual(after.staff[1].tiredness, 10 - 1.5, accuracy: 1e-9)
         XCTAssertEqual(after.num("mood"), 50 + (0.25 + 0.2) * max(0, 1 - 50.0 / 85), accuracy: 1e-9)
