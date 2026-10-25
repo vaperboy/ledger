@@ -169,7 +169,11 @@ public enum DemandModel {
         let d0 = r.customers
         var f = 1.0
         func way(_ k: String) -> Balance.SalesWay? { ways.first { $0.kind == k } }
-        if let p = way("platform"), on["platform"].bool { f *= 1 + (p.options["lift"] ?? 0.2) }
+        if let p = way("platform"), on["platform"].bool {
+            // a delivery add-on only brings customers while the delivery is supplied (`IntercompanySupply.deliveryFill`)
+            let fill = (p.options["deliv"] ?? 0) > 0 ? IntercompanySupply.deliveryFill(w.state, buyer: co, way: p) : 1
+            f *= 1 + (p.options["lift"] ?? 0.2) * fill
+        }
         if way("members") != nil, on["members"].bool {
             let dc = max(0.3, bd.normalDemand * (w.city(co)?.demand ?? 1))
             f *= 1 + min(0.2, s["mem"].double / (dc * 6 + 1))
