@@ -207,10 +207,15 @@ public extension GameEngine {
         let acctLink = AccountSupply.link(state, buyer: co.id, kind: k.id)
         let cogs = k.category == "cogs"
         let outsideRisk = cogs ? ["Exposed to outside supplier events: price rises, failures, cut deliveries."] : []
+        // A delivery service: the add-on's data says how reliable an outside courier is (the share of orders that reach the customer).
+        let dway = k.delivered ? IntercompanySupply.deliveryWay(co.type, data.balance) : nil
+        let outsideRel = dway.map { "Outside courier: \(Int((($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
         var options: [SupplierOption] = []
-        options.append(SupplierOption(id: "out", kind: .outside, name: "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
+        options.append(SupplierOption(id: "out", kind: .outside, name: k.delivered ? "Outside courier" : "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
                                       priceFactor: 1, yearlyVsMarket: 0, yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
-                                      quality: nil, reliability: "Market supply", terms: "Market price, paid as you buy", delivery: "Whoever the market offers", risks: outsideRisk, blocked: nil))
+                                      quality: nil, reliability: outsideRel ?? "Market supply",
+                                      terms: k.delivered ? "Market price per delivered order (\(supplierPct(k.buyers[co.type] ?? 0)) of the order value), paid as you deliver" : "Market price, paid as you buy",
+                                      delivery: k.delivered ? "Orders that are not delivered bring no customers" : "Whoever the market offers", risks: outsideRisk, blocked: nil))
         for sp in IntercompanySupply.suppliers(state, for: co, kind: k) {
             for m in IntercompanySupply.modes {
                 let pf = IntercompanySupply.priceFactor(mode: m.id, supplier: sp, data: data, perkCut: Ambitions.supplyCostCut(state, data))
@@ -249,7 +254,13 @@ public extension GameEngine {
             none = "None of your companies provides this yet. A " + (names.isEmpty ? "matching" : names.joined(separator: " or a ")) + " company of yours"
                 + (k.local ? " in the same city" : " in the same country") + " could."
         }
-        return SupplierInput(id: k.id, title: k.name, what: "A service or input this trade buys; one of your own companies can provide it", yearlySpend: spend,
+        var what = "A service or input this trade buys; one of your own companies can provide it"
+        if k.delivered {
+            let on = co.value("sw33")["on"]["platform"].bool
+            what = "Couriers that take delivery orders to customers. The delivery add-on only brings customers for the orders that get delivered, and you pay for each delivery. "
+                + (on ? "The add-on is on." : "The add-on is off, so nothing is delivered and nothing is paid.")
+        }
+        return SupplierInput(id: k.id, title: k.name, what: what, yearlySpend: spend,
                              current: options.first { $0.isCurrent }, options: options, noOwnProvider: none)
     }
 

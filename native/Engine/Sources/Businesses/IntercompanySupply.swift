@@ -24,13 +24,16 @@ public enum IntercompanySupply {
         public var noCapacity: Bool
         /// Share of sales each buying trade spends on it
         public var buyers: [String: Double]
+        /// A delivery service: the spend is a share of the sales a delivery add-on brings, not of all sales (`weeklySpend`).
+        public var delivered = false
     }
 
     public static let kinds: [Kind] = [
         Kind(id: "clean", name: "Cleaning", suppliers: ["cleaning"], local: true, category: "oth", noCapacity: false, buyers: ["hotel": 0.035, "restaurant": 0.015, "cafe": 0.012, "gym": 0.02, "nightclub": 0.015, "casino": 0.015, "fun": 0.015, "grocery": 0.008, "boutique": 0.008, "hardware": 0.006, "cardealer": 0.008, "physio": 0.015, "law": 0.01, "acctfirm": 0.01, "cons": 0.01, "webdev": 0.008, "mktg": 0.008, "staffing": 0.006, "bank": 0.004, "insco": 0.004, "estate": 0.01, "barber": 0.012, "pets": 0.012, "drivsk": 0.006, "kiosk": 0.006]),
         Kind(id: "build", name: "Building materials", suppliers: ["hardware"], local: false, category: "cogs", noCapacity: false, buyers: ["construction": 0.3, "realdev": 0.25, "electrician": 0.18, "plumber": 0.2, "handy": 0.15]),
         Kind(id: "freight", name: "Freight", suppliers: ["trucking"], local: false, category: "cogs", noCapacity: false, buyers: ["factory": 0.05, "furniture": 0.05, "bakery": 0.03, "brewery": 0.05, "farm": 0.05, "salmon": 0.06, "grocery": 0.025, "hardware": 0.03, "cardealer": 0.015, "construction": 0.02]),
-        Kind(id: "parcel", name: "Parcel delivery", suppliers: ["courier"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.07, "boutique": 0.01, "pets": 0.005, "furniture": 0.01]),
+        Kind(id: "parcel", name: "Parcel delivery", suppliers: ["courier"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.07, "boutique": 0.01, "pets": 0.005, "furniture": 0.01, "bakery": 0.01, "hardware": 0.01]),
+        Kind(id: "deliv", name: "Delivery to customers", suppliers: ["courier"], local: true, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.12, "cafe": 0.12, "kiosk": 0.10, "grocery": 0.08], delivered: true),
         Kind(id: "bread", name: "Bread and pastries", suppliers: ["bakery"], local: true, category: "cogs", noCapacity: false, buyers: ["cafe": 0.06, "restaurant": 0.02, "hotel": 0.015, "grocery": 0.02, "kiosk": 0.03, "foodtruck": 0.03]),
         Kind(id: "beer", name: "Beer", suppliers: ["brewery"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.03, "nightclub": 0.08, "hotel": 0.015, "grocery": 0.015, "fun": 0.02, "kiosk": 0.01]),
         Kind(id: "produce", name: "Farm produce", suppliers: ["farm"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.04, "cafe": 0.02, "hotel": 0.02, "grocery": 0.04, "bakery": 0.04, "brewery": 0.03, "foodtruck": 0.03]),
@@ -109,13 +112,37 @@ public enum IntercompanySupply {
     }
 
     /// Weekly spend of a buyer on an input. Original: `spendOf`.
-    static func weeklySpend(_ b: Company, _ k: Kind) -> Double { max(0, b.lastWeekRevenue * (k.buyers[b.type] ?? 0)) }
+    /// A delivery service is paid on the orders the delivery add-on brought (`dlvRev`, kept by `SalesWays.weekly`).
+    static func weeklySpend(_ b: Company, _ k: Kind) -> Double { max(0, (k.delivered ? b.num("dlvRev") : b.lastWeekRevenue) * (k.buyers[b.type] ?? 0)) }
     /// What the buyer spends on it in a year, from its last three months. Original: `yearSpend`.
     public static func yearlySpend(_ b: Company, _ k: Kind) -> Double {
+        if k.delivered { return weeklySpend(b, k) * 52 }
         let h = b.monthlyHistory.suffix(3)
         let rv = h.reduce(0.0) { $0 + $1.revenue }
         let y = h.isEmpty ? b.lastWeekRevenue * 52 : rv / Double(h.count) * 12
         return max(0, y * (k.buyers[b.type] ?? 0))
+    }
+
+    // MARK: Delivery to customers
+
+    /// The delivery service, if the data has one.
+    public static var deliveryKind: Kind? { kinds.first { $0.delivered } }
+
+    /// The add-on of this trade that sells by delivery (a platform way whose data carries `deliv`), if it has one.
+    public static func deliveryWay(_ tradeID: String, _ balance: Balance) -> Balance.SalesWay? {
+        balance.salesWays[tradeID]?.first { $0.kind == "platform" && ($0.options["deliv"] ?? 0) > 0 }
+    }
+
+    /// Share of the add-on's orders that actually reach the customer. An outside courier delivers its reliability (`rel` in the add-on's data).
+    /// One of your own couriers delivers the share it had capacity for last week; what it could not carry goes to an outside courier.
+    /// Demand only grows by this share of the add-on's lift, so a delivery that is not supplied brings no customers.
+    public static func deliveryFill(_ s: GameState, buyer co: Company, way: Balance.SalesWay) -> Double {
+        let rel = clamp(way.options["rel"] ?? 1, 0, 1)
+        guard let k = deliveryKind,
+              let l = rawLinks(s).first(where: { $0["b"].int == co.id && $0["k"].string == k.id }),
+              let sp = s.company(l["s"].int), sp.status.isLive else { return rel }
+        let f = sp.status != .open ? 0 : l["last"]["f"].isNull ? 1 : clamp(l["last"]["f"].double, 0, 1)
+        return f + (1 - f) * rel
     }
 
     // MARK: Changing links
