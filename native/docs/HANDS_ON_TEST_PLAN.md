@@ -293,6 +293,17 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.O9 | Team: "Handled by your managers" | A row with a chevron under Needs you, not a separate heading; tap opens/closes the list | | NOT TESTED | | |
 | T9.O10 | Team and Group: every row that opens something or fills a post | Has a chevron or a gold "Fill ›", "Set up ›", "Find ›", "Move ›" cue; plain information is plain text | | NOT TESTED | | |
 
+| T9.MS1 | Company > Operations > How you sell: tap another single choice | Confirmation shows changeover cost and weeks first, then an estimate for the next 8 weeks (customers wanting to buy, customers served, average sale, sales, left after direct costs) as low-to-high ranges with the average, a "ranges overlap" warning when it may change little, and "No guarantee" | | NOT TESTED | | |
+| T9.MS2 | Same, on a trade with no weekly sales model (property, finance) | "No estimate is available for this kind of business" and the on-paper data lines instead | | NOT TESTED | | |
+| T9.MS3 | Switch an add-on on then off | Each shows the estimate and a Drop/Add button; an add-on needing a licence says the figures assume it is approved | | NOT TESTED | | |
+| T9.MS4 | Change a choice, then watch the company for the quoted weeks | Reduced-capacity note lasts exactly the quoted weeks, gone the week after | | NOT TESTED | | |
+| T9.MS5 | A company abroad: add an add-on that needs a licence | The weeks shown for the licence are the slower abroad figure and match when it is approved | | NOT TESTED | | |
+| T9.MS6 | Start a franchised unit of a regional, national or global brand; open How you sell | The choices the brand fixes (menu, format, price tier) are locked with "Your franchise agreement with X fixes this"; add-ons stay free | | NOT TESTED | | |
+| T9.MS7 | Franchisee Marketing tab: a national-brand unit tries a channel outside its list; a global-brand unit tries any channel | Locked line with the reason ("does not allow local campaigns on this channel" / "reserves local marketing to the brand"); stopping a campaign still works | | NOT TESTED | | |
+| T9.MS8 | National-brand unit with no local campaign for a few weeks | Weekly payment to the franchisor includes the required local share as extra brand-fund contribution; spending locally reduces it | | NOT TESTED | | |
+| T9.MS9 | Chain page > rules: add-ons of a multi-choice knob | Tap add-ons into the chain's set; confirmation says every store offers exactly this set; stores that could not follow are listed under the knob | | NOT TESTED | | |
+| T9.MS10 | Barber with "hair products at the till": rating very low vs high | Extra sales follow the rating, none for a badly rated shop | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

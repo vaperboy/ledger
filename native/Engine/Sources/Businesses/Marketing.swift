@@ -104,8 +104,10 @@ public struct CampaignPlan: Equatable, Sendable {
     public var nearCapacity: Bool
     /// The chain runs this channel's marketing for the store
     public var runByChain: Bool
-    public init(lockedWeeks: Int, weeks: Int?, totalCost: Double?, nearCapacity: Bool, runByChain: Bool) {
-        self.lockedWeeks = lockedWeeks; self.weeks = weeks; self.totalCost = totalCost; self.nearCapacity = nearCapacity; self.runByChain = runByChain
+    /// Why a local campaign on this channel is not allowed (a franchise agreement), nil when it is
+    public var blocked: String?
+    public init(lockedWeeks: Int, weeks: Int?, totalCost: Double?, nearCapacity: Bool, runByChain: Bool, blocked: String? = nil) {
+        self.lockedWeeks = lockedWeeks; self.weeks = weeks; self.totalCost = totalCost; self.nearCapacity = nearCapacity; self.runByChain = runByChain; self.blocked = blocked
     }
 }
 

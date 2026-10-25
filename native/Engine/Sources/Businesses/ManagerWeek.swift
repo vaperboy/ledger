@@ -279,7 +279,7 @@ extension ManagerModel {
         case "ad":
             let ch = (data.catalog[co.type]?.audience ?? 0) > 0.5 ? "google" : "meta"
             var mkt = co.value("mkt")
-            if mkt[ch].isNull {
+            if mkt[ch].isNull, FranchiseStandards.campaignRefusal(co, channel: ch) == nil {
                 mkt[ch] = .object(["b": .number(World(state: s, data: data).currency(co).scaledPrice(1500)), "since": .number(Double(s.week)), "lock": .number(Double(s.week + 4))])
                 s.companies[ci].set("mkt", mkt)
                 s.note("\(n.name) started ads for \(co.name).", tone: "n", companyID: co.id)
@@ -380,7 +380,8 @@ extension ManagerModel {
                 let ch = bd.audience > 0.5 ? "google" : "meta"
                 var mkt = co.value("mkt")
                 let opts = marketing.channels[ch]?.budgets(in: cur) ?? []
-                if let next = opts.first(where: { $0 > mkt[ch]["b"].double }) {
+                if let why = FranchiseStandards.campaignRefusal(co, channel: ch) { say = "We cannot: \(why)." }
+                else if let next = opts.first(where: { $0 > mkt[ch]["b"].double }) {
                     if mkt[ch].isNull { mkt[ch] = .object(["b": .number(next), "since": .number(Double(s.week)), "lock": .number(Double(s.week + (marketing.channels[ch]?.minimumWeeks ?? 4)))]) }
                     else { mkt[ch]["b"] = .number(next) }
                     s.companies[ci].set("mkt", mkt)

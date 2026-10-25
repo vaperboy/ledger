@@ -41,7 +41,7 @@ public enum KnobChangeOutcome: Equatable, Sendable {
 /// Effects on customers, prices, quality and costs still flow only through `Knobs.effect`; this adds a one-off payment and a
 /// temporary capacity modifier, no second demand path. Original: `changeover`, `hysGo`, `hysTog` (features/sales/how_you_sell.js).
 public enum KnobChange {
-    static let capacityDuringChangeover = 0.75
+    public static let capacityDuringChangeover = 0.75
 
     /// Transition weeks from how far the method moves: price level (t), demand pull (d) and quality (q). Original: `changeover`.
     static func transitionWeeks(from old: KnobOption?, to new: KnobOption) -> (weeks: Int, qualityUp: Bool) {
@@ -59,7 +59,7 @@ public enum KnobChange {
         }
         let f = co.value("franchise")
         if f["fran"].bool, !f["knobStd"][id].isNull {
-            return "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) fixes this."
+            return "Your franchise agreement with \(f["brandName"].isNull ? "the franchisor" : f["brandName"].string) fixes this: the brand dictates how its units sell."
         }
         return nil
     }
@@ -110,7 +110,7 @@ public enum KnobChange {
                     let st = co.value("docs")[id]["st"].string
                     guard st.isEmpty || st == "lapsed", !Documents.isSkipped(id, country: w.country(co)),
                           let dd = Documents.definition(id, country: w.country(co), tables: data.catalog.tables) else { continue }
-                    q.documents.append(.init(id: id, name: dd.name, fee: Documents.cost(id, company: co, bd, w), weeks: dd.weeks))
+                    q.documents.append(.init(id: id, name: dd.name, fee: Documents.cost(id, company: co, bd, w), weeks: Documents.waitWeeks(id, definition: dd, company: co, w)))
                 }
             }
         }
