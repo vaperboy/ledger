@@ -198,6 +198,22 @@ public enum Chains {
         return KnobStandardPlan(lines: lines)
     }
 
+    /// The chain's standard for a knob (an option index, or the bit mask of a multi-choice knob), nil when each store decides.
+    public static func knobStandard(_ s: GameState, chainID: Int, knob: String) -> Int? {
+        guard let ch = chain(s, id: chainID), !ch["rules"]["knob"][knob].isNull else { return nil }
+        return ch["rules"]["knob"][knob].int
+    }
+
+    /// Stores that do not follow the chain's standard for a knob right now (they could not change over). Empty when there is no standard.
+    public static func knobExceptions(_ s: GameState, chainID: Int, knob: String, data: GameData) -> [(storeID: Int, storeName: String, value: Int)] {
+        guard let std = knobStandard(s, chainID: chainID, knob: knob), let ch = chain(s, id: chainID),
+              let k = data.catalog[ch["type"].string]?.knobs.first(where: { $0.id == knob }) else { return [] }
+        return stores(s, ch).compactMap { c in
+            let v = KnobChange.currentValue(c, k)
+            return v == std ? nil : (storeID: c.id, storeName: c.name, value: v)
+        }
+    }
+
     /// Give the choice back to the stores: the chain no longer fixes this knob.
     public static func releaseKnobStandard(_ s: inout GameState, chainID: Int, knob: String) {
         guard var ch = chain(s, id: chainID) else { return }
