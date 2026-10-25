@@ -149,8 +149,11 @@ final class TeamOverviewTests: XCTestCase {
             XCTAssertEqual(o.vacancies.first?.needed, true, "needed posts come first")
         }
         XCTAssertNil(o.vacancies.first { $0.id == "mgr-\(b)" }, "the owner runs it")
-        XCTAssertEqual(o.vacancies.first { $0.id == "md" }?.scope, "group", "two companies make room for a group managing director")
-        XCTAssertEqual(o.vacancies.first { $0.id == "md" }?.needed, false)
+        XCTAssertNil(o.vacancies.first { $0.id == "md" }, "no group office yet, so no group post")
+        XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
+        let withOffice = e.teamOverview()
+        XCTAssertEqual(withOffice.vacancies.first { $0.id == "md" }?.scope, "group", "two companies and a group office make room for a group managing director")
+        XCTAssertEqual(withOffice.vacancies.first { $0.id == "md" }?.needed, false)
         try hireManager(&e, a)
         XCTAssertNil(e.teamOverview().vacancies.first { $0.id == "mgr-\(a)" })
     }
@@ -162,8 +165,11 @@ final class TeamOverviewTests: XCTestCase {
         let chain = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         open(&e, first)
         let o = e.teamOverview()
-        XCTAssertEqual(o.vacancies.first { $0.id == "chainmgr-\(chain)" }?.scope, "chain")
-        XCTAssertNotNil(o.vacancies.first { $0.id == "ceo56-\(chain)" })
+        XCTAssertNil(o.vacancies.first { $0.id == "chainmgr-\(chain)" }, "one store is not yet a chain that needs a chain manager")
+        if case .success(let second) = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1) {
+            open(&e, second)
+            XCTAssertEqual(e.teamOverview().vacancies.first { $0.id == "chainmgr-\(chain)" }?.scope, "chain", "from two stores a chain manager is offered")
+        }
         XCTAssertEqual(o.companies.first { $0.id == first }?.chainName, "Test Cafe")
     }
 

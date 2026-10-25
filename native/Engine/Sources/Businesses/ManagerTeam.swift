@@ -333,7 +333,7 @@ extension ManagerModel {
         var buy: Double { self == .md ? 2_000_000 : self == .ceo56 ? 600_000 : self == .chainmgr ? 250_000 : 80_000 }
         public var text: String {
             switch self {
-            case .md: return "Runs the whole group under you and approves what the chains cannot. Paid by all your companies."
+            case .md: return "Runs the whole group under you and approves what the chains cannot. Part of your group office; the pay is shared by your companies by revenue."
             case .ceo56: return "Sets the chain's strategy and takes it into new cities. Paid by the chain's stores."
             case .chainmgr: return "Keeps every store on the chain's rules, coaches the store managers, opens new stores where they are full. Paid by the chain's stores."
             case .region: return "Runs the chain's stores in one city and expands the ones that are too small. Paid by the chain's stores."
@@ -373,6 +373,8 @@ extension ManagerModel {
     public static func hireExecutive(_ s: inout GameState, level: ExecLevel, personID: Int, monthlyWage w: Double, chainID: Int?, city: String?, data: GameData) -> OfferResult {
         guard let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
+        // The group managing director belongs to the group office, which the owner sets up first (`Headquarters.rentOffice`).
+        if level == .md && !Headquarters.established(s) { return .refused }
         let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
