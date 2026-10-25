@@ -129,7 +129,7 @@ public enum CompanyWeek {
             paidDuringWeek = close.cashAlreadyTaken
         } else {
             units = min(D, cap)
-            units = max(0, min(cap, units * (1 + s.random.gauss() * 0.045)))
+            units = max(0, min(cap, units * (1 + s.random.gauss() * salesNoise)))
             units = unitsForSpecialModels(&s, i, bd, demand: D, capacity: cap, units: units, data: data)
             units = jsRound(min(units, cap) * 10) / 10
         }
@@ -140,12 +140,7 @@ public enum CompanyWeek {
         var co = s.companies[i]
         let managerQ = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.5
         let w = World(state: s, data: data)
-        var costRate = (bd.costOfSales + Knobs.effect(co, bd, "c", w, sum: true)) * (co.managerID != nil ? 1.04 - 0.08 * managerQ : 1) * goods.m
-            * DemandModel.modifier(co, "price") * DemandModel.modifier(co, "cogsup")
-        if bd.family == "project" { costRate /= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
-        if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
-        if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
-        costRate = max(0.01, costRate)
+        let costRate = costRate(co, bd, w, state: s, goods: goods)
         // Business customers share the shop with the walk-ins (key_accounts.js: acctDemand, acctRev).
         let acctOrders = KeyAccounts.orders(co, bd, privateDemand: D, capacity: cap, units: units, price: price, costRate: costRate)
         var walkInRev = rev
@@ -178,6 +173,21 @@ public enum CompanyWeek {
         Suppliers.recordGoods(&s, companyIndex: i, cogs: ctx.cogs, data: data)
         weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
     }
+
+    /// The share of sales that goes on goods and direct costs this week: the trade's cost of sales plus its choices, the manager,
+    /// the supplier class, the economy and events. One function for the week itself and for the "how you sell" preview.
+    static func costRate(_ co: Company, _ bd: Trade, _ w: World, state s: GameState, goods: (m: Double, q: Double)) -> Double {
+        let managerQ = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.5
+        var costRate = (bd.costOfSales + Knobs.effect(co, bd, "c", w, sum: true)) * (co.managerID != nil ? 1.04 - 0.08 * managerQ : 1) * goods.m
+            * DemandModel.modifier(co, "price") * DemandModel.modifier(co, "cogsup")
+        if bd.family == "project" { costRate /= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
+        if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
+        if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
+        return max(0.01, costRate)
+    }
+
+    /// Week-to-week spread of what a shop really sells around what demand and capacity allow (one standard deviation, as a share).
+    static let salesNoise = 0.045
 
     struct WeekContext {
         var units: Double, rev: Double, cogs: Double, D: Double, cap: Double, util: Double, price: Double

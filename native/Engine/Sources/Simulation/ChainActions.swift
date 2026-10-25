@@ -67,6 +67,12 @@ public extension GameEngine {
         return out
     }
 
+    /// The chain's standard for a knob (option index, or bit mask for add-ons); nil when each store decides.
+    func chainKnobStandard(chainID: Int, knob: String) -> Int? { Chains.knobStandard(state, chainID: chainID, knob: knob) }
+
+    /// Stores that do not follow the standard right now, with what they sell by.
+    func chainKnobExceptions(chainID: Int, knob: String) -> [(storeID: Int, storeName: String, value: Int)] { Chains.knobExceptions(state, chainID: chainID, knob: knob, data: data) }
+
     /// Leave this choice to each store.
     mutating func releaseChainKnob(chainID: Int, knob: String) { update { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) } }
 

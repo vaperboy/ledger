@@ -302,7 +302,7 @@ struct ChainRulesSection: View {
                 Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 if let trade = engine.chainTrade(chainID: chainID) {
-                    ForEach(trade.knobs.filter { !$0.isMulti }, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
+                    ForEach(trade.knobs, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
                 }
             }
         }
@@ -324,17 +324,39 @@ struct ChainRulesSection: View {
                         }
                     }.buttonStyle(QuietButtonStyle(tint: current.isNull ? Theme.gold : Theme.ivoryMuted))
                     ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
-                        Button(o.name) { askStandard(knob, i, cur) }.buttonStyle(QuietButtonStyle(tint: !current.isNull && current.int == i ? Theme.gold : Theme.ivoryMuted))
+                        if knob.isMulti {
+                            // Add-ons: the standard is the whole set. Tapping one adds it to, or drops it from, the set the chain fixes.
+                            let on = !current.isNull && current.int & (1 << i) != 0
+                            Button((on ? "In: " : "") + o.name) { askStandard(knob, Knobs.mask(current.isNull ? 0 : current.int, option: i, on: !on), cur) }
+                                .buttonStyle(QuietButtonStyle(tint: on ? Theme.gold : Theme.ivoryMuted))
+                        } else {
+                            Button(o.name) { askStandard(knob, i, cur) }.buttonStyle(QuietButtonStyle(tint: !current.isNull && current.int == i ? Theme.gold : Theme.ivoryMuted))
+                        }
                     }
                 }
+            }
+            let exceptions = engine.chainKnobExceptions(chainID: chainID, knob: knob.id)
+            if !exceptions.isEmpty {
+                Label("\(exceptions.count) store\(exceptions.count == 1 ? "" : "s") could not follow yet and keep what they have: " + exceptions.map { ex in
+                    ex.storeName + " (" + optionNames(knob, ex.value) + ")" }.joined(separator: "; ") + ".", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2).foregroundStyle(Theme.caution)
             }
         }
     }
 
+    /// What a choice is called: the option, or the add-ons that are on.
+    private func optionNames(_ knob: Knob, _ value: Int) -> String {
+        if knob.isMulti {
+            let on = knob.options.enumerated().filter { value & (1 << $0.offset) != 0 }.map { $0.element.name }
+            return on.isEmpty ? "no add-ons" : on.joined(separator: ", ")
+        }
+        return knob.options.indices.contains(value) ? knob.options[value].name : "-"
+    }
+
     private func askStandard(_ knob: Knob, _ option: Int, _ cur: Currency) {
         guard let plan = engine.chainKnobPlan(chainID: chainID, knob: knob.id, value: option) else { return }
-        let name = knob.options[option].name
-        var lines = ["Every store sells by \(name) from now on and cannot choose otherwise."]
+        let name = optionNames(knob, option)
+        var lines = [knob.isMulti ? "Every store offers exactly these add-ons from now on and cannot choose otherwise: \(name)." : "Every store sells by \(name) from now on and cannot choose otherwise."]
         if plan.changing == 0 && plan.exceptions == 0 { lines.append("Every store already does.") }
         else {
             lines.append("\(plan.changing) store\(plan.changing == 1 ? "" : "s") change over: \(cur.tidyShort(plan.totalCost)) in all, paid by the stores, with a few weeks at reduced capacity each.")
