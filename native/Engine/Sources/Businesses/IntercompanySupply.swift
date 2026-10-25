@@ -8,7 +8,7 @@ import Finance
 /// (and uses its capacity), the group keeps the margin, and supply is steadier, until the supplier struggles: then the buyer
 /// pays for emergency supply and its reputation suffers. Original: features/company/intercompany_supply.js (`R27`).
 /// The links are saved in `rest["l27"]`. As in the original, a sale between your companies is booked as revenue of the supplier
-/// and a lower cost of the buyer, without VAT; the profit tax of each company follows from its own books.
+/// and a lower cost of the buyer, with VAT as on any sale in the country (`transferVat`); the profit tax of each company follows from its own books.
 /// Not ported: the 'supply from inside' protection against outside supplier events, the 25%-of-capital limit on lending from your own bank.
 public enum IntercompanySupply {
     public struct Kind: Equatable, Sendable {
@@ -24,25 +24,19 @@ public enum IntercompanySupply {
         public var noCapacity: Bool
         /// Share of sales each buying trade spends on it
         public var buyers: [String: Double]
+        /// A delivery service: the spend is a share of the sales a delivery add-on brings, not of all sales (`weeklySpend`).
+        public var delivered = false
     }
 
-    public static let kinds: [Kind] = [
-        Kind(id: "clean", name: "Cleaning", suppliers: ["cleaning"], local: true, category: "oth", noCapacity: false, buyers: ["hotel": 0.035, "restaurant": 0.015, "cafe": 0.012, "gym": 0.02, "nightclub": 0.015, "casino": 0.015, "fun": 0.015, "grocery": 0.008, "boutique": 0.008, "hardware": 0.006, "cardealer": 0.008, "physio": 0.015, "law": 0.01, "acctfirm": 0.01, "cons": 0.01, "webdev": 0.008, "mktg": 0.008, "staffing": 0.006, "bank": 0.004, "insco": 0.004, "estate": 0.01, "barber": 0.012, "pets": 0.012, "drivsk": 0.006, "kiosk": 0.006]),
-        Kind(id: "build", name: "Building materials", suppliers: ["hardware"], local: false, category: "cogs", noCapacity: false, buyers: ["construction": 0.3, "realdev": 0.25, "electrician": 0.18, "plumber": 0.2, "handy": 0.15]),
-        Kind(id: "freight", name: "Freight", suppliers: ["trucking"], local: false, category: "cogs", noCapacity: false, buyers: ["factory": 0.05, "furniture": 0.05, "bakery": 0.03, "brewery": 0.05, "farm": 0.05, "salmon": 0.06, "grocery": 0.025, "hardware": 0.03, "cardealer": 0.015, "construction": 0.02]),
-        Kind(id: "parcel", name: "Parcel delivery", suppliers: ["courier"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.07, "boutique": 0.01, "pets": 0.005, "furniture": 0.01]),
-        Kind(id: "bread", name: "Bread and pastries", suppliers: ["bakery"], local: true, category: "cogs", noCapacity: false, buyers: ["cafe": 0.06, "restaurant": 0.02, "hotel": 0.015, "grocery": 0.02, "kiosk": 0.03, "foodtruck": 0.03]),
-        Kind(id: "beer", name: "Beer", suppliers: ["brewery"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.03, "nightclub": 0.08, "hotel": 0.015, "grocery": 0.015, "fun": 0.02, "kiosk": 0.01]),
-        Kind(id: "produce", name: "Farm produce", suppliers: ["farm"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.04, "cafe": 0.02, "hotel": 0.02, "grocery": 0.04, "bakery": 0.04, "brewery": 0.03, "foodtruck": 0.03]),
-        Kind(id: "fish", name: "Fish", suppliers: ["salmon"], local: false, category: "cogs", noCapacity: false, buyers: ["restaurant": 0.03, "grocery": 0.02, "hotel": 0.01]),
-        Kind(id: "furn", name: "Furniture", suppliers: ["furniture"], local: false, category: "oth", noCapacity: false, buyers: ["hotel": 0.02, "restaurant": 0.008, "cafe": 0.008, "realdev": 0.03]),
-        Kind(id: "web", name: "Web and IT", suppliers: ["webdev"], local: false, category: "oth", noCapacity: false, buyers: ["webshop": 0.03, "boutique": 0.008, "hotel": 0.004, "mktg": 0.02, "bank": 0.01, "insco": 0.01, "staffing": 0.006]),
-        Kind(id: "ads", name: "Marketing services", suppliers: ["mktg"], local: false, category: "mkt", noCapacity: false, buyers: ["hotel": 0.015, "restaurant": 0.01, "gym": 0.015, "cardealer": 0.01, "webshop": 0.02, "boutique": 0.015, "fun": 0.01]),
-        Kind(id: "temp", name: "Temporary staff", suppliers: ["staffing"], local: true, category: "wages", noCapacity: false, buyers: ["hotel": 0.02, "restaurant": 0.015, "grocery": 0.01, "construction": 0.03, "factory": 0.02, "courier": 0.02, "event": 0.03, "fun": 0.015]),
-        Kind(id: "carserv", name: "Vehicle service and repairs", suppliers: ["carrepair"], local: true, category: "oth", noCapacity: false, buyers: ["taxi": 0.06, "courier": 0.04, "trucking": 0.05, "cardealer": 0.03, "handy": 0.008, "carclean": 0.01, "electrician": 0.008, "plumber": 0.008]),
-        Kind(id: "whouse", name: "Warehousing and fulfilment", suppliers: ["wh3pl"], local: false, category: "cogs", noCapacity: false, buyers: ["webshop": 0.09, "boutique": 0.015, "hardware": 0.02, "furniture": 0.03, "brewery": 0.02, "grocery": 0.008]),
-        Kind(id: "power", name: "Electricity", suppliers: ["power"], local: false, category: "oth", noCapacity: true, buyers: ["factory": 0.04, "bakery": 0.03, "brewery": 0.03, "salmon": 0.03, "hotel": 0.02, "grocery": 0.015, "farm": 0.02, "casino": 0.01, "gym": 0.01]),
-    ]
+    /// The kinds, from `Resources/supply_kinds.json` (a new kind or trade is data only).
+    public static let kinds: [Kind] = {
+        guard let url = Bundle.module.url(forResource: "supply_kinds", withExtension: "json", subdirectory: "Resources"),
+              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [] }
+        return j["kinds"].array.map { k in
+            Kind(id: k["id"].string, name: k["name"].string, suppliers: k["suppliers"].array.map { $0.string }, local: k["local"].bool, category: k["category"].string,
+                 noCapacity: k["noCapacity"].bool, buyers: k["buyers"].object.mapValues { $0.double }, delivered: k["delivered"].bool)
+        }
+    }()
 
     public static func kind(_ id: String) -> Kind? { kinds.first { $0.id == id } }
     public static let modes: [(id: String, name: String)] = [("mkt", "Market price"), ("c10", "Cost + 10%"), ("cost", "At cost")]
@@ -109,13 +103,37 @@ public enum IntercompanySupply {
     }
 
     /// Weekly spend of a buyer on an input. Original: `spendOf`.
-    static func weeklySpend(_ b: Company, _ k: Kind) -> Double { max(0, b.lastWeekRevenue * (k.buyers[b.type] ?? 0)) }
+    /// A delivery service is paid on the orders the delivery add-on brought (`dlvRev`, kept by `SalesWays.weekly`).
+    static func weeklySpend(_ b: Company, _ k: Kind) -> Double { max(0, (k.delivered ? b.num("dlvRev") : b.lastWeekRevenue) * (k.buyers[b.type] ?? 0)) }
     /// What the buyer spends on it in a year, from its last three months. Original: `yearSpend`.
     public static func yearlySpend(_ b: Company, _ k: Kind) -> Double {
+        if k.delivered { return weeklySpend(b, k) * 52 }
         let h = b.monthlyHistory.suffix(3)
         let rv = h.reduce(0.0) { $0 + $1.revenue }
         let y = h.isEmpty ? b.lastWeekRevenue * 52 : rv / Double(h.count) * 12
         return max(0, y * (k.buyers[b.type] ?? 0))
+    }
+
+    // MARK: Delivery to customers
+
+    /// The delivery service, if the data has one.
+    public static var deliveryKind: Kind? { kinds.first { $0.delivered } }
+
+    /// The add-on of this trade that sells by delivery (a platform way whose data carries `deliv`), if it has one.
+    public static func deliveryWay(_ tradeID: String, _ balance: Balance) -> Balance.SalesWay? {
+        balance.salesWays[tradeID]?.first { $0.kind == "platform" && ($0.options["deliv"] ?? 0) > 0 }
+    }
+
+    /// Share of the add-on's orders that actually reach the customer. An outside courier delivers its reliability (`rel` in the add-on's data).
+    /// One of your own couriers delivers the share it had capacity for last week; what it could not carry goes to an outside courier.
+    /// Demand only grows by this share of the add-on's lift, so a delivery that is not supplied brings no customers.
+    public static func deliveryFill(_ s: GameState, buyer co: Company, way: Balance.SalesWay) -> Double {
+        let rel = clamp(way.options["rel"] ?? 1, 0, 1)
+        guard let k = deliveryKind,
+              let l = rawLinks(s).first(where: { $0["b"].int == co.id && $0["k"].string == k.id }),
+              let sp = s.company(l["s"].int), sp.status.isLive else { return rel }
+        let f = sp.status != .open ? 0 : l["last"]["f"].isNull ? 1 : clamp(l["last"]["f"].double, 0, 1)
+        return f + (1 - f) * rel
     }
 
     // MARK: Changing links
@@ -153,16 +171,37 @@ public enum IntercompanySupply {
     /// Capacity a supplier holds back for the group (units a week). Original: `co.int27u`.
     public static func heldBack(_ c: Company) -> Double { c.num("int27u") }
 
+    /// VAT on a sale between two of your companies in the same country: a taxable supply like any other. The supplier charges its country's rate for
+    /// its trade (nothing below its registration threshold, nothing where the country has a sales tax instead, which does not tax a sale for resale)
+    /// and owes it; the buyer pays it and reclaims it, unless it is itself below the threshold, in which case it is a cost. Returns the VAT.
+    /// The transfer price cap (never above the outside price) is `priceFactor`; cross-border supply is not offered (same country only), and
+    /// transfer-pricing rules beyond that cap are not modelled (KNOWN_GAPS.md).
+    @discardableResult
+    static func transferVat(_ s: inout GameState, supplier sp: Company, buyerIndex bi: Int, net: Double, data: GameData, _ w: World, cashNow: Bool) -> Double {
+        guard net > 0, let sbd = data.catalog[sp.type], !w.country(sp).usesSalesTax else { return 0 }
+        let vat = jsRound(net * Vat.rate(sp, sbd, w))
+        guard vat > 0, let si = s.companyIndex(sp.id) else { return 0 }
+        s.companies[si].vatBalance += Double(vat)
+        if cashNow {
+            Ledger.moveRaw(&s, .company(sp.id), Double(vat))
+            Ledger.moveRaw(&s, .company(s.companies[bi].id), -Double(vat))
+        }
+        if Vat.isExempt(s.companies[bi], w) {
+            var b = s.companies[bi].books; b.add("oth", Double(vat)); s.companies[bi].books = b
+        } else {
+            s.companies[bi].vatBalance -= Double(vat)
+        }
+        return Double(vat)
+    }
+
     static func weekly(_ s: inout GameState, data: GameData) {
         guard !rawLinks(s).isEmpty || s.companies.contains(where: { $0.num("int27u") > 0 }) else { return }
         let titanCut = Ambitions.supplyCostCut(s, data)
         // tickets are worked out before anything moves (they read the whole state)
         var tickets: [Int: Double] = [:]
-        do {
-            let w = World(state: s, data: data)
-            for c in s.companies where c.status == .open {
-                if let bd = data.catalog[c.type], rawLinks(s).contains(where: { $0["s"].int == c.id }) { tickets[c.id] = Pricing.ticket(c, bd, w) }
-            }
+        let w0 = World(state: s, data: data)
+        for c in s.companies where c.status == .open {
+            if let bd = data.catalog[c.type], rawLinks(s).contains(where: { $0["s"].int == c.id }) { tickets[c.id] = Pricing.ticket(c, bd, w0) }
         }
         var used: [Int: Double] = [:]
         var kept: [JSONValue] = []
@@ -187,8 +226,10 @@ public enum IntercompanySupply {
             if x <= 0 { l["last"] = .object(["x": 0, "f": 1, "w": .number(Double(s.week))]); kept[kept.count - 1] = l; continue }
             let ticket = tickets[sp.id] ?? 0
             let u = K.noCapacity ? 0 : (ticket > 0 ? x / ticket : 0)
-            let capB = sp.status == .open ? sp.value("lastW")["cap"].double + sp.num("int27u") : 0
-            let f = K.noCapacity ? (sp.status == .open ? 1.0 : 0) : (u > 0 ? clamp(capB / u, 0, 1) : 1)
+            // a supplier of yours that the buyer has left short-paid for long keeps back part of what it can carry (no cut-off between own companies)
+            let strain = SupplyTerms.ownSupplierStrained(s, buyer: b.id, supplier: sp.id) ? SupplyTerms.ownStrainFactor : 1
+            let capB = sp.status == .open ? (sp.value("lastW")["cap"].double + sp.num("int27u")) * strain : 0
+            let f = K.noCapacity ? (sp.status == .open ? strain : 0) : (u > 0 ? clamp(capB / u, 0, 1) : 1)
             let pf = priceFactor(mode: l["mode"].string, supplier: sp, data: data, perkCut: titanCut), vr = varRatio(sp, data: data)
             let got = x * f
             // the buyer: what it paid outside before, against what it pays the group now
@@ -198,7 +239,8 @@ public enum IntercompanySupply {
                 // owes it and the supplier holds the receivable; the cash moves between them when it falls due.
                 Payments.companyReceives(&s, companyID: b.id, amount: got, category: nil, label: nil)
                 Payments.book(&s, companyID: b.id, category: K.category, amount: -jsRound(got))
-                SupplyTerms.issue(&s, buyer: b.id, provider: sp.id, vendorID: "", name: sp.name, kind: K.id, amount: got * pf, weeks: terms.weeks)
+                let vat = transferVat(&s, supplier: sp, buyerIndex: bi, net: got * pf, data: data, w0, cashNow: false)
+                SupplyTerms.issue(&s, buyer: b.id, provider: sp.id, vendorID: "", name: sp.name, kind: K.id, amount: got * pf + vat, weeks: terms.weeks)
                 Payments.book(&s, companyID: b.id, category: K.category, amount: jsRound(got * pf))
                 Payments.book(&s, companyID: sp.id, category: "rev", amount: jsRound(got * pf))
                 Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
@@ -213,6 +255,7 @@ public enum IntercompanySupply {
                 if got > 0 {
                     Payments.companyReceives(&s, companyID: sp.id, amount: got * pf, category: "rev", label: nil)
                     Payments.companyPays(&s, companyID: sp.id, amount: got * vr, category: "cogs", label: nil)
+                    transferVat(&s, supplier: sp, buyerIndex: bi, net: got * pf, data: data, w0, cashNow: true)
                 }
             }
             // what it could not deliver is bought outside at a premium, and customers notice

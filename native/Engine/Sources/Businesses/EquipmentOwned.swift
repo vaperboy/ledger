@@ -98,8 +98,10 @@ public extension EquipmentMarket {
         let rec = s.companies[i].value("eq")[equipmentID]
         guard !rec.isNull else { return .notPossible }
         let c = jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: s.companies[i], data: data)))   // the repair supplier's discount (fixDisc)
-        if s.companies[i].cash < c { return .notEnoughCash }
-        Payments.companyPays(&s, companyID: companyID, amount: c, category: "oth", label: "Equipment service")
+        // on the repair terms agreed (`SupplyTerms`): paid now, or invoiced and paid later
+        let t = SupplyTerms.repairTerm(s, s.companies[i], data: data)
+        if (t == nil || t!.days == 0) && s.companies[i].cash < c * (1 + (t?.priceEffect ?? 0)) { return .notEnoughCash }
+        SupplyTerms.payRepairs(&s, companyIndex: i, amount: c, label: "Equipment service", data: data)
         // The record's condition rises; the units follow at the start of next week ('eqWeek.before').
         var eq = s.companies[i].value("eq")
         eq[equipmentID]["cond"] = .number(min(1, eq[equipmentID]["cond"].double + 0.3))
