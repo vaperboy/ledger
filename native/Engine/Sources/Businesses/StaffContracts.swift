@@ -41,7 +41,7 @@ extension StaffTalks {
             m.set("seas", .array(ms.map { .number(Double($0)) }))
             m.set("off", !ms.contains(month1(week)))
         }
-        if m.role == "estate", terms.ownCar { m.set("ownCar", 1) }
+        if terms.ownCar { m.set("ownCar", 1) }   // Hiring.hire drops it for a job that does not use a car
     }
 
     /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`.

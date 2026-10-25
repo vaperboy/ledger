@@ -14,18 +14,21 @@ public extension GameEngine {
     /// What one perk costs a month in this company (all the people it covers).
     func staffPerkMonthlyCost(companyID: Int, perk: String) -> Double {
         guard let co = state.company(companyID), let p = StaffPerks.perk(perk) else { return 0 }
+        if p.id == "car" { return CompanyCarPerk.monthlyCost(state, co, data: data) }   // leases and fuel of the real cars, also before they arrive
         return StaffPerks.monthlyCost(co, p, currency: World(state: state, data: data).currency(co))
     }
     func staffPerksMonthlyTotal(companyID: Int) -> Double {
         guard let co = state.company(companyID) else { return 0 }
-        return StaffPerks.totalMonthlyCost(co, currency: World(state: state, data: data).currency(co))
+        return StaffPerks.onPerks(co).reduce(0) { $0 + staffPerkMonthlyCost(companyID: companyID, perk: $1.id) }
     }
+    /// Who drives a company car while that perk is on, and the car each has (nil: it arrives with the next week's sync).
+    func companyCarRecipients(companyID: Int) -> [CompanyCarPerk.Recipient] { CompanyCarPerk.recipients(state, companyID: companyID) }
     /// Percent fewer people who leave, with the perks that are on.
     func staffPerksFewerLeavePercent(companyID: Int) -> Double { state.company(companyID).map { StaffPerks.fewerLeavePercent($0) } ?? 0 }
     /// Switch a perk on or off; returns whether it is now on.
     @discardableResult mutating func toggleStaffPerk(companyID: Int, perk: String) -> Bool? {
         var r: Bool?
-        update { s, _, _ in r = StaffPerks.toggle(&s, companyID: companyID, perk: perk) }
+        update { s, d, _ in r = StaffPerks.toggle(&s, companyID: companyID, perk: perk, data: d) }
         return r
     }
 
@@ -51,7 +54,10 @@ public extension GameEngine {
     /// Switch a perk on or off for one role group; returns whether that group is covered now.
     @discardableResult mutating func toggleStaffPerk(companyID: Int, perk: String, group: String) -> Bool? {
         var r: Bool?
-        update { s, _, _ in r = StaffPerks.toggle(&s, companyID: companyID, perk: perk, group: group) }
+        update { s, d, _ in
+            r = StaffPerks.toggle(&s, companyID: companyID, perk: perk, group: group)
+            if perk == "car", r == true, let i = s.companyIndex(companyID) { CompanyCarPerk.sync(&s, companyIndex: i, data: d) }   // the leased cars arrive at once
+        }
         return r
     }
 

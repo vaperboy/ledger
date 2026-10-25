@@ -108,6 +108,12 @@ struct CompanyPerksCard: View {
     @State private var pending: StaffPerks.Perk?
     @State private var pendingGroup: (perk: StaffPerks.Perk, group: StaffPerks.RoleGroup)?
 
+    private func recipientLine(_ r: CompanyCarPerk.Recipient, _ cur: Currency) -> String {
+        let role = r.role == "Manager" ? "manager" : "team lead"
+        guard let car = r.carName else { return "\(r.name) · \(role) · car arrives next week" }
+        return "\(r.name) · \(role) · \(car), lease \(cur.tidyShort(r.monthlyLease)) a month"
+    }
+
     private func fewer(_ p: StaffPerks.Perk) -> Int { Int(((1 - p.quitFactor) * 100).rounded()) }
 
     var body: some View {
@@ -125,6 +131,11 @@ struct CompanyPerksCard: View {
                                 Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave among those it covers").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
                                 groupChoices(p, cur)
+                                if p.id == "car" && on {
+                                    ForEach(engine.companyCarRecipients(companyID: company.id)) { r in
+                                        Text(recipientLine(r, cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                                    }
+                                }
                             }
                             Spacer(minLength: 8)
                             Button(on ? "On" : "Add") {
@@ -158,7 +169,9 @@ struct CompanyPerksCard: View {
                     }
                 }
             } message: {
-                if let p = pending {
+                if let p = pending, p.id == "car" {
+                    Text("Cost: a leased car for the manager and for each team lead; the lease and the fuel are paid every month while it is on, and the cars show in the fleet. Benefit: \(fewer(p))% fewer people leave and better applicants come. Risk: cars are a fixed cost in a bad month. Switch it off and the cars go back.")
+                } else if let p = pending {
                     Text("Cost: paid every month while it is on. Benefit: \(fewer(p))% fewer people leave and better applicants come. Risk: it is a fixed cost in a bad month. Switch it off at any time.")
                 }
             }

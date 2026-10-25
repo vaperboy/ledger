@@ -126,6 +126,8 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var conversionFee: Double
     public var companyForms: [String: String]
     public var leaveWeeks: Double
+    /// Fuel price, mileage rate, motor insurance, road tax and company-car benefit, where the data has sourced figures (empty otherwise).
+    public var vehicleRules: VehicleRules = .none
     public var firstNames: [String]
     public var lastNames: [String]
     public var companyNameStarts: [String]
@@ -239,6 +241,7 @@ extension Country {
         conversionFee = B(p["companies"]["conversionFee"].double)
         companyForms = p["companies"]["forms"].object.mapValues { $0.string }
         leaveWeeks = p["work"]["leaveWeeks"].double
+        vehicleRules = VehicleRules(pack: p)
         firstNames = p["names"]["first"].array.map { $0.string }
         lastNames = p["names"]["last"].array.map { $0.string }
         companyNameStarts = p["names"]["companyStart"].array.map { $0.string }

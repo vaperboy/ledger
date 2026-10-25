@@ -285,7 +285,7 @@ public enum ContractTalk {
                     out.append(Choice(id: "exp:\(x.id)", title: x.name + (on ? " (on)" : ""), detail: "For \(sub.person.name.split(separator: " ").first.map(String.init) ?? "them") only, about \(cur.display(cur.scaledPrice(x.monthlyCost))) a month, booked as an expense, not wages. " + x.detail, on: on))
                 }
             }
-            if let m = sub.member, m.role == "estate" {
+            if let m = sub.member, let bd = data.catalog[co.type], PersonalEquipment.canUseOwnCar(role: m.role, bd, tables: data.catalog.tables) {
                 out.append(Choice(id: "ownCar", title: m.flag("ownCar") ? "Give a company car" : "Own car and mileage", detail: "Mileage is paid each month for an own car.", on: m.flag("ownCar")))
             }
             return out
@@ -358,7 +358,7 @@ public enum ContractTalk {
         sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerSocialRate(monthlyWage: m.monthlyWage)) } ?? 0) }
         sum += StaffExpenses.monthlyCost(co, currency: cur)
         sum += StaffPerks.totalMonthlyCost(co, currency: cur)
-        sum += PersonalEquipment.mileagePerMonth(cur) * Double(co.staff.filter { $0.flag("ownCar") }.count)
+        if let bd = data.catalog[co.type] { sum += PersonalEquipment.mileagePerMonth(cur, country: c, bd, tables: data.catalog.tables) * Double(co.staff.filter { $0.flag("ownCar") }.count) }
         return sum
     }
 
@@ -452,7 +452,7 @@ public enum ContractTalk {
                     let worth = StaffPerks.worthMonthly(t.companies[sub.ci], m, currency: cur)
                     if worth > 0 { c.lines.append("Perks they count as pay: \(cur.display(worth)) a month in all.") }
                 }
-            } else if p.choice == "ownCar" { c.lines.append("Mileage is paid each month: \(cur.display(PersonalEquipment.mileagePerMonth(cur))).") }
+            } else if p.choice == "ownCar", let bd = data.catalog[co.type] { c.lines.append("Mileage is paid each month: \(cur.display(PersonalEquipment.mileagePerMonth(cur, country: World(state: s, data: data).country(co), bd, tables: data.catalog.tables))).") }
         case .term:
             if let m = sub.member {
                 if p.choice == "perm" { c.lines.append("Permanent: no end date.") }
@@ -571,7 +571,7 @@ public enum ContractTalk {
             return .ok("Commission is \(Int((p.amount * 100).rounded()))% of their sales.")
         case .benefits:
             if p.choice == "ownCar" {
-                guard sub.member?.role == "estate" else { return .notPossible("Only estate agents use a car for work.") }
+                guard let bd = data.catalog[co.type], let role = sub.member?.role, PersonalEquipment.canUseOwnCar(role: role, bd, tables: data.catalog.tables) else { return .notPossible("This job does not use a car for work.") }
                 _ = PersonalEquipment.toggleOwnCar(&s, companyID: co.id, staffID: id, set: p.amount != 0)
                 return .ok(p.amount != 0 ? "\(name) uses their own car; mileage is paid." : "\(name) drives a company car.")
             }
@@ -582,6 +582,7 @@ public enum ContractTalk {
             }
             guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
             guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
+            if perk.id == "car", p.amount != 0 { CompanyCarPerk.sync(&s, companyIndex: sub.ci, data: data) }   // the leased cars arrive at once
             return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for " + (group.flatMap { StaffPerks.roleGroup($0)?.name.lowercased() } ?? "the company") + ".")
         case .term:
             guard let m = sub.member else { return .notPossible("Not for a manager.") }

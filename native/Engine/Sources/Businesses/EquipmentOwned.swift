@@ -28,6 +28,10 @@ public extension EquipmentMarket {
         public var daysInRepair: Int
         public var monthlyLease: Double
         public var bookValue: Double
+        /// Who drives it, for a company-car perk car; empty otherwise.
+        public var driver: String = ""
+        /// Fuel the vehicle burns in a week at full use (0 where the fuel is carried in the cost of sales or the customer buys it).
+        public var fuelPerWeek: Double = 0
     }
 
     struct Owned: Identifiable, Equatable, Sendable {
@@ -59,12 +63,17 @@ public extension EquipmentMarket {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return [] }
         let tables = data.catalog.tables
         var out: [Owned] = []
+        let world = World(state: s, data: data), country = world.country(co), cur = world.currency(co)
+        func row(_ v: JSONValue, perk: Bool) -> VehicleRow {
+            let fuel = perk ? VehicleRunning.fuelPerKm(model: v["model"].string, tables: tables, country: country, currency: cur, fuelIndex: s.economy.fuel) * tables.raw["RUNNING"]["defaultKmPerWeek"].double
+                : VehicleRunning.weeklyFuel(model: v["model"].string, bd: bd, util: 1, tables: tables, country: country, currency: cur, fuelIndex: s.economy.fuel)
+            return VehicleRow(id: v["id"].int, name: v["name"].string, mode: v["mode"].string, kilometres: v["km"].int, warranty: warrantyText(v, week: s.week),
+                              wear: wearWord(seen(v)), seenCondition: seen(v), daysInRepair: v["down"].int, monthlyLease: v["lease"].double, bookValue: v["bv"].double,
+                              driver: v["driver"].string, fuelPerWeek: fuel)
+        }
         for e in bd.equipment where e.id != "fit" {
             if let _ = e.vehicleModels {
-                let rows = co.value("veh").array.filter { $0["eq"].string == e.id }.map { v in
-                    VehicleRow(id: v["id"].int, name: v["name"].string, mode: v["mode"].string, kilometres: v["km"].int, warranty: warrantyText(v, week: s.week),
-                               wear: wearWord(seen(v)), seenCondition: seen(v), daysInRepair: v["down"].int, monthlyLease: v["lease"].double, bookValue: v["bv"].double)
-                }
+                let rows = co.value("veh").array.filter { $0["eq"].string == e.id }.map { row($0, perk: false) }
                 if !rows.isEmpty { out.append(Owned(equipmentID: e.id, name: e.name, kind: "veh", count: Double(rows.count), leasedCount: 0, leaseMonthly: 0, units: [], vehicles: rows,
                                                     subscription: nil, licence: nil, subscriptionMonthly: 0, outdated: false, bookValue: rows.reduce(0) { $0 + $1.bookValue }, serviceCost: 0)) }
                 continue
@@ -87,6 +96,12 @@ public extension EquipmentMarket {
                              leaseMonthly: co.value("eqL")[e.id].double, units: units, vehicles: [], subscription: sub, licence: licence,
                              subscriptionMonthly: rec["sub"]["fee"].double, outdated: (rec["perf"].isNull ? 1 : rec["perf"].double) < 0.95 && !rec["soft"].isNull,
                              bookValue: rec["bv"].double, serviceCost: jsRound(rec["cost"].double * 0.04 * (1 - Suppliers.repairDiscount(s, company: co, data: data)))))
+        }
+        // Cars leased for the company-car perk are vehicles of their own, named after their driver (CompanyCarPerk)
+        let perkRows = co.value("veh").array.filter { !$0["perk"].isNull }.map { row($0, perk: true) }
+        if !perkRows.isEmpty {
+            out.append(Owned(equipmentID: CompanyCarPerk.equipmentID, name: "Company cars (perk)", kind: "veh", count: Double(perkRows.count), leasedCount: 0, leaseMonthly: 0, units: [], vehicles: perkRows,
+                             subscription: nil, licence: nil, subscriptionMonthly: 0, outdated: false, bookValue: 0, serviceCost: 0))
         }
         return out
     }

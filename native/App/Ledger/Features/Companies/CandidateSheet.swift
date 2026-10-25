@@ -28,7 +28,7 @@ struct WorkerHireRow: View {
     }
     private var sells: Bool { PayPlans.eligible(role: person.role, trade: company.type, salesRoles: engine.salesRoles) }
 
-    private var kinds: [Kind] { person.role == "estate" ? [.full, .part, .seasonal, .ownCar] : [.full, .part, .seasonal] }
+    private var kinds: [Kind] { engine.offersOwnCar(companyID: company.id, role: person.role) ? [.full, .part, .seasonal, .ownCar] : [.full, .part, .seasonal] }
 
     private var terms: Hiring.Terms {
         switch kind {

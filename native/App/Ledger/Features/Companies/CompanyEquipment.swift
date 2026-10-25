@@ -280,7 +280,7 @@ struct CompanyEquipmentScreen: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km · " + v.warranty + (v.daysInRepair > 0 ? " · in repair \(v.daysInRepair) days" : ""))
+                                Text(vehicleLine(v, cur))
                                     .font(.system(size: 11)).foregroundStyle(v.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -292,8 +292,47 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
+        perkCars(owned, cur)
+        runningCosts(e, cur)
         Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
+        if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
+            LedgerSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
+                        FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
+                    }
+                    Text("Leased for the Company car perk (Team > Perks). They go back when the perk is switched off or the person leaves.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
+        let run = e.fleetRunningCosts(companyID: companyID)
+        if run.total > 0 {
+            LedgerSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
+                    if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
+                    if run.charges.insurance > 0 { FlatRow(label: "Motor insurance", value: cur.tidyShort(run.charges.insurance), sub: "", rule: true) }
+                    if run.charges.vehicleTax > 0 { FlatRow(label: "Vehicle tax", value: cur.tidyShort(run.charges.vehicleTax), sub: "", rule: true) }
+                    if run.charges.benefitCharge > 0 { FlatRow(label: "Charges on company cars", value: cur.tidyShort(run.charges.benefitCharge), sub: "Employer's share on the taxable benefit", rule: true) }
+                }
+            }
+        }
+    }
+
+    private func vehicleLine(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {
+        var line = v.driver.isEmpty ? "" : "\(v.driver) · "
+        line += modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km"
+        if v.fuelPerWeek > 0 { line += " · fuel \(cur.tidyShort(v.fuelPerWeek))/wk" }
+        line += " · " + v.warranty
+        if v.daysInRepair > 0 { line += " · in repair \(v.daysInRepair) days" }
+        return line
     }
 
     private func modeWord(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {

@@ -279,6 +279,21 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.C14 | Manager with authority level 1: "Leave it to the manager" on a request above and below the pay limit | Above: it stays with you with the reason; below: the manager agrees it and a note says so | | NOT TESTED | | |
 | T9.C15 | Manager card | Profit share has no change menu (a link opens the discussion); no Give a raise, Move to… buttons | | NOT TESTED | | |
 
+### Vehicles and travel (branch fix/vehicles-travel)
+| ID | Do | Expect | Result | Status | Notes | Date |
+|---|---|---|---|---|---|---|
+| T9.V1 | Start a staffing agency, a marketing agency, a factory, a law firm, an engineering consultancy | Start-up estimate and Needed list include sales cars / cars for client visits; quick setup buys them | | NOT TESTED | | |
+| T9.V2 | Start a barber, a cafe, a web studio | No vehicle line anywhere (Needed, Fleet, running costs) | | NOT TESTED | | |
+| T9.V3 | Fleet tab of a plumber, a bakery, a staffing agency | Each vehicle row shows kilometres and "fuel x/wk"; a Running costs card shows fuel, leases (and country charges where the country has them) | | NOT TESTED | | |
+| T9.V4 | Fleet tab of a taxi or courier company | No separate fuel figure (their fuel is in the cost of sales) | | NOT TESTED | | |
+| T9.V5 | Team > Perks: look at Company car before switching on | Cost per month shown includes lease and fuel of one leased car per manager and team lead | | NOT TESTED | | |
+| T9.V6 | Switch Company car on | Confirmation names cost, benefit, risk; afterwards the perk row lists each recipient with their car and lease; the Fleet tab shows "Company cars (perk)" with the driver | | NOT TESTED | | |
+| T9.V7 | Hire a team lead while the perk is on, then let them go | A car appears for them within a week; it goes back when they leave; switching the perk off returns all cars | | NOT TESTED | | |
+| T9.V8 | Hire a sales rep in a staffing agency / factory: hire sheet and contract talk | "Own car" offered for sales reps (not for HR or operators); mileage shown per month; a UK company uses the UK per-km rate, a German one the game's flat figure | | NOT TESTED | | |
+| T9.V9 | Put one rep on an own car for 4 weeks | Mileage is booked once a week (Other costs rise by one week of mileage, not two); the company needs one car fewer | | NOT TESTED | | |
+| T9.V10 | UK company with company cars | Fleet running costs show vehicle tax for cars; other countries show none (no sourced figure) | | NOT TESTED | | |
+
+
 ### 9.P Staff pay and benefits (branch fix/staff-pay) — screens NOT TESTED by hand (engine tests: StaffPerkCatalogueTests, WorkerBonusTests, StaffExpensesTests, PayPlansTests, ManagedRequestsTests, FixedTermTests)
 | ID | Steps | Expected | Result | Status | Date | Notes |
 |---|---|---|---|---|---|---|

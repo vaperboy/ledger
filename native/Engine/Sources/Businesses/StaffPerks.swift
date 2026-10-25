@@ -134,6 +134,7 @@ public enum StaffPerks {
     /// What one perk costs a month in this company, for the people it covers (a perk that is off: what it would cost for everyone it may be given
     /// to, the figure shown before switching it on). Original: `perMonth`.
     public static func monthlyCost(_ co: Company, _ p: Perk, currency cur: Currency) -> Double {
+        if p.id == "car" { return CompanyCarPerk.monthlyCost(co, currency: cur) }   // the leases of the real cars (CompanyCarPerk)
         let on = p.groups.filter { covers(co, p, group: $0) }
         let groups = on.isEmpty ? p.groups : on
         let staff = co.staff.filter { groups.contains(group(ofRole: $0.role)) }
@@ -187,15 +188,18 @@ public enum StaffPerks {
         else if !state.values.contains(true) { f[id] = .number(0) }
         else { f[id] = .object(state.mapValues { .number($0 ? 1 : 0) }) }
         s.companies[i].set("perks58", f)
+        if id == "car", !isOn(s.companies[i], "car") { CompanyCarPerk.release(&s, companyIndex: i) }
         return true
     }
 
     /// Switch a perk on or off for the whole company. Returns the new state, nil for an unknown company or perk. Original: `ACT.pk58t`.
     @discardableResult
-    public static func toggle(_ s: inout GameState, companyID: Int, perk id: String) -> Bool? {
+    public static func toggle(_ s: inout GameState, companyID: Int, perk id: String, data: GameData? = nil) -> Bool? {
         guard let i = s.companyIndex(companyID), perk(id) != nil else { return nil }
         let now = !isOn(s.companies[i], id)
-        return set(&s, companyID: companyID, perk: id, on: now) ? now : nil
+        guard set(&s, companyID: companyID, perk: id, on: now) else { return nil }
+        if id == "car", now, let data { CompanyCarPerk.sync(&s, companyIndex: i, data: data) }   // the real cars arrive at once
+        return now
     }
 
     /// Switch a perk on or off for one role group only. Returns whether that group is covered now, nil when the company, the perk or the group
@@ -217,10 +221,11 @@ public enum StaffPerks {
     public static func weekly(_ s: inout GameState, data: GameData) {
         let w = World(state: s, data: data)
         for i in s.companies.indices where s.companies[i].status == .open && !s.companies[i].value("perks58").isNull {
+            CompanyCarPerk.sync(&s, companyIndex: i, data: data)   // the company-car perk is real leased cars: they bill themselves with the vehicles
             let co = s.companies[i]
             let on = onPerks(co)
             if on.isEmpty { continue }
-            let monthly = totalMonthlyCost(co, currency: w.currency(co))
+            let monthly = on.filter { $0.id != "car" }.reduce(0) { $0 + monthlyCost(co, $1, currency: w.currency(co)) }
             if monthly > 0 { Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52, category: "wages", label: "Staff perks") }
             if on.contains(where: { $0.tiredness > 0 }) {
                 var staff = s.companies[i].staff
