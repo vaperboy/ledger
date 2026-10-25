@@ -28,7 +28,9 @@ public enum StaffTalks {
     // MARK: Asking
 
     /// Should this person ask something this week? Returns the kind of talk. Original: inside `staffWeek`.
-    static func nextTalk(_ m: StaffMember, _ n: Person, company co: Company, gap: Double, tenure ten: Double, week: Int, salesRoles: Set<String>) -> StaffEvent? {
+    /// `perkShare` is what the company's perks are worth to the person as a share of the market pay: they count as pay, so a person looked after asks later.
+    static func nextTalk(_ m: StaffMember, _ n: Person, company co: Company, gap rawGap: Double, perkShare: Double = 0, tenure ten: Double, week: Int, salesRoles: Set<String>) -> StaffEvent? {
+        let gap = rawGap - perkShare
         guard co.managerID == nil else { return nil }
         let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
         let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }

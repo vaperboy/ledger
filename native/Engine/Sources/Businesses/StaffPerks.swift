@@ -6,9 +6,11 @@ import Finance
 /// Staff perks company by company, deals hosted on what you own, and rewards lent from it.
 /// Original: features/people/perks_and_hosting.js (`PK58`).
 ///
-/// * Perks (company car, gym, health insurance, a team trip, free lunch) cost a set amount a person a month, paid with the weekly
-///   wages; each makes people stay longer (quit odds, hooked in `StaffRoutine`), draws better applicants (`Hiring.generateCandidate`),
-///   eases long weeks (gym, lunch) and lifts the manager's mood (car, trips). Stored as `co.perks58` like the original.
+/// * Perks come from `Resources/staff_perks.json`: each has a cost a covered person a month (or a share of pay), the role groups it may be given
+///   to, and its effects: fewer people leave (`StaffRoutine`), better applicants for the roles it covers (`Hiring.generateCandidate`), long weeks
+///   that ease (`tiredness`), a happier manager (`managerMood`), and a worth that people count as pay (`worth`). A perk is switched on for the whole
+///   company or for single role groups; it is paid with the weekly wages. Stored as `co.perks58` like the original: `{id: 1}` is the whole company,
+///   `{id: {group: 1}}` is written only when a group is chosen on its own.
 /// * Hosting: an evening on your island, castle, yacht or jet costs money and counts for 13 weeks (`rest["host58"]`): a rival owner
 ///   takes your offers more seriously (`Rivals.proposeBuy`), buyers for what you sell come sooner and pay a little more
 ///   (`CompanySale.weekly`), franchise applicants come sooner and keener (`Franchising.applicantsWeek`).
@@ -16,66 +18,193 @@ import Finance
 public enum StaffPerks {
     // MARK: Perks
 
-    public struct Perk: Identifiable, Equatable, Sendable {
-        public var id: String, name: String, detail: String
-        /// Per person (per car for `keysOnly`) a month, at the reference price level.
-        public var monthlyCost: Double
-        /// Multiplies the weekly quit odds of the people it covers.
-        public var quitFactor: Double
-        /// How much it draws better applicants (0 to 1 over all perks).
-        public var pull: Double
-        /// Only the manager and team leads get it.
-        public var keysOnly: Bool
+    /// A group of roles a perk can be given to ("the manager and team leads", "everyone else").
+    public struct RoleGroup: Identifiable, Equatable, Sendable {
+        public var id: String, name: String
+        /// The company's manager belongs to this group.
+        public var includesManager: Bool
+        public var roles: Set<String>
+        /// Everyone no other group claims.
+        public var isRest: Bool
     }
 
-    public static let all: [Perk] = [
-        Perk(id: "car", name: "Company car", detail: "The manager and team leads drive one: they stay longer and the manager is happier.", monthlyCost: 5500, quitFactor: 0.82, pull: 0.15, keysOnly: true),
-        Perk(id: "gym", name: "Gym membership", detail: "Fitter people: long weeks wear them down less.", monthlyCost: 450, quitFactor: 0.95, pull: 0.15, keysOnly: false),
-        Perk(id: "health", name: "Health insurance", detail: "Private care: people feel looked after and better people apply.", monthlyCost: 650, quitFactor: 0.93, pull: 0.3, keysOnly: false),
-        Perk(id: "trips", name: "A team trip each year", detail: "A few days away together: people stay, and the manager is happier.", monthlyCost: 350, quitFactor: 0.9, pull: 0.2, keysOnly: false),
-        Perk(id: "lunch", name: "Free lunch", detail: "Lunch together every day: people stay and long days are easier.", monthlyCost: 1500, quitFactor: 0.94, pull: 0.25, keysOnly: false),
-    ]
-    public static func perk(_ id: String) -> Perk? { all.first { $0.id == id } }
+    public enum CostBasis: String, Sendable { case person, wage }
 
-    public static func isOn(_ co: Company, _ id: String) -> Bool { co.value("perks58")[id].double != 0 }
+    public struct Perk: Identifiable, Equatable, Sendable {
+        public var id: String, name: String, detail: String
+        /// Per covered person a month at the reference price level (a share of their monthly pay for `costBasis` wage).
+        public var monthlyCost: Double
+        public var costBasis: CostBasis
+        /// The role groups it may be given to.
+        public var groups: [String]
+        /// Multiplies the weekly quit odds of the people it covers.
+        public var quitFactor: Double
+        /// How much it draws better applicants for the roles it covers.
+        public var pull: Double
+        /// Weekly relief from tiredness for a covered worker.
+        public var tiredness: Double
+        /// Weekly lift of the manager's mood while the manager is covered.
+        public var managerMood: Double
+        /// The share of its cost that people count as pay.
+        public var worth: Double
+
+        /// Only the manager and the team leads can get it (the old flag of the five hard-coded perks).
+        public var keysOnly: Bool { groups == ["keys"] }
+    }
+
+    struct Catalogue: Sendable {
+        var groups: [RoleGroup] = []
+        var perks: [Perk] = []
+    }
+
+    static let catalogue: Catalogue = {
+        var c = Catalogue()
+        guard let url = Bundle.module.url(forResource: "staff_perks", withExtension: "json", subdirectory: "Resources"),
+              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return c }
+        c.groups = j["roleGroups"].array.map {
+            RoleGroup(id: $0["id"].string, name: $0["name"].string, includesManager: $0["manager"].bool, roles: Set($0["roles"].array.map { $0.string }), isRest: $0["rest"].bool)
+        }
+        c.perks = j["perks"].array.map {
+            Perk(id: $0["id"].string, name: $0["name"].string, detail: $0["detail"].string, monthlyCost: $0["monthlyCost"].double,
+                 costBasis: CostBasis(rawValue: $0["costBasis"].string) ?? .person, groups: $0["groups"].array.map { $0.string },
+                 quitFactor: $0["quitFactor"].isNull ? 1 : $0["quitFactor"].double, pull: $0["pull"].double, tiredness: $0["tiredness"].double,
+                 managerMood: $0["managerMood"].double, worth: $0["worth"].double)
+        }
+        return c
+    }()
+
+    public static var all: [Perk] { catalogue.perks }
+    public static var roleGroups: [RoleGroup] { catalogue.groups }
+    public static func perk(_ id: String) -> Perk? { all.first { $0.id == id } }
+    public static func roleGroup(_ id: String) -> RoleGroup? { roleGroups.first { $0.id == id } }
+
+    /// The role group of a role (or of the manager).
+    public static func group(ofRole role: String, isManager: Bool = false) -> String {
+        if isManager { return roleGroups.first { $0.includesManager }?.id ?? "" }
+        if let g = roleGroups.first(where: { $0.roles.contains(role) }) { return g.id }
+        return roleGroups.first { $0.isRest }?.id ?? ""
+    }
+    /// The groups a perk may be given to, as groups.
+    public static func eligibleGroups(_ p: Perk) -> [RoleGroup] { p.groups.compactMap { roleGroup($0) } }
+
+    // MARK: What is on, and for whom
+
+    /// Is the perk on for at least one role group?
+    public static func isOn(_ co: Company, _ id: String) -> Bool {
+        guard let p = perk(id) else { return false }
+        return p.groups.contains { covers(co, p, group: $0) }
+    }
     public static func onPerks(_ co: Company) -> [Perk] { all.filter { isOn(co, $0.id) } }
+
+    /// Is the perk on for this role group? The plain flag of the original covers every group the perk may be given to.
+    public static func covers(_ co: Company, _ p: Perk, group: String) -> Bool {
+        guard p.groups.contains(group) else { return false }
+        let f = co.value("perks58")[p.id]
+        if case .object(let o) = f { return o[group]?.double ?? 0 != 0 }
+        return f.double != 0
+    }
+    /// Is the perk on for the whole of who may get it?
+    public static func isOnForAll(_ co: Company, _ id: String) -> Bool {
+        guard let p = perk(id) else { return false }
+        return p.groups.allSatisfy { covers(co, p, group: $0) }
+    }
+    public static func covers(_ co: Company, _ p: Perk, member m: StaffMember) -> Bool { covers(co, p, group: group(ofRole: m.role)) }
+    public static func coversManager(_ co: Company, _ p: Perk) -> Bool { co.managerID != nil && covers(co, p, group: group(ofRole: "", isManager: true)) }
+
+    /// The perks that apply to this member of staff.
+    public static func perks(for m: StaffMember, in co: Company) -> [Perk] { all.filter { covers(co, $0, member: m) } }
 
     /// The manager and the team leads.
     public static func keyPeople(_ co: Company) -> Int { (co.managerID != nil ? 1 : 0) + co.staff.filter { $0.role == "lead" }.count }
     /// Everyone on the payroll, manager included.
     public static func headcount(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) }
+    /// How many people one role group has in this company (the manager in the group that holds the manager).
+    public static func people(_ co: Company, group: String) -> Int {
+        co.staff.filter { self.group(ofRole: $0.role) == group }.count + (coversManagerGroup(group) && co.managerID != nil ? 1 : 0)
+    }
+    static func coversManagerGroup(_ g: String) -> Bool { roleGroup(g)?.includesManager ?? false }
 
-    /// What one perk costs a month in this company. Original: `perMonth`.
+    /// How many people a perk covers now.
+    public static func covered(_ co: Company, _ p: Perk) -> Int {
+        p.groups.filter { covers(co, p, group: $0) }.reduce(0) { $0 + people(co, group: $1) }
+    }
+    /// How many people it would cover if it were on for everyone it may be given to.
+    public static func eligibleCount(_ co: Company, _ p: Perk) -> Int { p.groups.reduce(0) { $0 + people(co, group: $1) } }
+
+    /// What one perk costs a month in this company, for the people it covers (a perk that is off: what it would cost for everyone it may be given
+    /// to, the figure shown before switching it on). Original: `perMonth`.
     public static func monthlyCost(_ co: Company, _ p: Perk, currency cur: Currency) -> Double {
-        cur.scaledPrice(p.monthlyCost) * Double(p.keysOnly ? keyPeople(co) : headcount(co))
+        let on = p.groups.filter { covers(co, p, group: $0) }
+        let groups = on.isEmpty ? p.groups : on
+        let staff = co.staff.filter { groups.contains(group(ofRole: $0.role)) }
+        let managerIn = co.managerID != nil && groups.contains(group(ofRole: "", isManager: true))
+        switch p.costBasis {
+        case .person: return cur.scaledPrice(p.monthlyCost) * Double(staff.count + (managerIn ? 1 : 0))
+        case .wage: return p.monthlyCost * (staff.reduce(0) { $0 + $1.monthlyWage } + (managerIn ? co.managerMonthlyWage : 0))
+        }
     }
     /// All perks that are on. Original: `PK.cost`.
     public static func totalMonthlyCost(_ co: Company, currency cur: Currency) -> Double {
         onPerks(co).reduce(0) { $0 + monthlyCost(co, $1, currency: cur) }
     }
-    /// How much the perks draw better people to apply (0 to 1). Original: `PK.pull`.
-    public static func pull(_ co: Company) -> Double { min(1, onPerks(co).reduce(0) { $0 + $1.pull }) }
+    /// What the perks that cover this person are worth to them a month, counted as pay when they judge whether they are paid enough.
+    public static func worthMonthly(_ co: Company, _ m: StaffMember, currency cur: Currency) -> Double {
+        perks(for: m, in: co).reduce(0) { sum, p in
+            sum + p.worth * (p.costBasis == .person ? cur.scaledPrice(p.monthlyCost) : p.monthlyCost * m.monthlyWage)
+        }
+    }
+    /// How much the perks draw better people to apply, over all perks that are on. Original: `PK.pull`.
+    public static func pull(_ co: Company) -> Double { onPerks(co).reduce(0) { $0 + $1.pull } }
+    /// The same for applicants for one role: only the perks that cover that role's group draw them.
+    public static func pull(_ co: Company, role: String) -> Double {
+        let g = group(ofRole: role)
+        return all.filter { covers(co, $0, group: g) }.reduce(0) { $0 + $1.pull }
+    }
 
     /// Multiplier on one person's quit odds. Original: the 'quitF' step.
     public static func quitFactor(_ co: Company, _ m: StaffMember) -> Double {
         guard !co.value("perks58").isNull else { return 1 }
         var f = 1.0
-        for p in onPerks(co) where !p.keysOnly || m.role == "lead" { f *= p.quitFactor }
+        for p in perks(for: m, in: co) { f *= p.quitFactor }
         return f
     }
     /// Share of people that would leave, in percent fewer (for a screen line).
     public static func fewerLeavePercent(_ co: Company) -> Double { (1 - onPerks(co).reduce(1) { $0 * $1.quitFactor }) * 100 }
 
-    /// Switch a perk on or off. Returns the new state, nil for an unknown company or perk. Original: `ACT.pk58t`.
+    /// Set a perk on or off for the whole company (`group` nil) or for one role group. Returns false for an unknown company, perk or group, or when
+    /// the perk may not be given to that group. When every group it may go to is covered (or none), it is stored as the plain flag of the original.
+    @discardableResult
+    public static func set(_ s: inout GameState, companyID: Int, perk id: String, on: Bool, group g: String? = nil) -> Bool {
+        guard let i = s.companyIndex(companyID), let p = perk(id) else { return false }
+        if let g, !p.groups.contains(g) { return false }
+        let co = s.companies[i]
+        var state: [String: Bool] = [:]
+        for x in p.groups { state[x] = covers(co, p, group: x) }
+        if let g { state[g] = on } else { for x in p.groups { state[x] = on } }
+        var f = co.value("perks58")
+        if f.isNull { f = .object([:]) }
+        if state.values.allSatisfy({ $0 }) { f[id] = .number(1) }
+        else if !state.values.contains(true) { f[id] = .number(0) }
+        else { f[id] = .object(state.mapValues { .number($0 ? 1 : 0) }) }
+        s.companies[i].set("perks58", f)
+        return true
+    }
+
+    /// Switch a perk on or off for the whole company. Returns the new state, nil for an unknown company or perk. Original: `ACT.pk58t`.
     @discardableResult
     public static func toggle(_ s: inout GameState, companyID: Int, perk id: String) -> Bool? {
         guard let i = s.companyIndex(companyID), perk(id) != nil else { return nil }
-        var f = s.companies[i].value("perks58")
-        if f.isNull { f = .object([:]) }
-        let now = f[id].double == 0
-        f[id] = .number(now ? 1 : 0)
-        s.companies[i].set("perks58", f)
-        return now
+        let now = !isOn(s.companies[i], id)
+        return set(&s, companyID: companyID, perk: id, on: now) ? now : nil
+    }
+
+    /// Switch a perk on or off for one role group only. Returns whether that group is covered now, nil when the company, the perk or the group
+    /// is unknown or the perk may not be given to that group.
+    @discardableResult
+    public static func toggle(_ s: inout GameState, companyID: Int, perk id: String, group g: String) -> Bool? {
+        guard let i = s.companyIndex(companyID), let p = perk(id), p.groups.contains(g) else { return nil }
+        let now = !covers(s.companies[i], p, group: g)
+        return set(&s, companyID: companyID, perk: id, on: now, group: g) ? now : nil
     }
 
     static func playerCurrency(_ s: GameState, _ data: GameData) -> Currency {
@@ -93,16 +222,18 @@ public enum StaffPerks {
             if on.isEmpty { continue }
             let monthly = totalMonthlyCost(co, currency: w.currency(co))
             if monthly > 0 { Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52, category: "wages", label: "Staff perks") }
-            let ease = (isOn(co, "gym") ? 1.0 : 0) + (isOn(co, "lunch") ? 0.5 : 0)
-            if ease > 0 {
+            if on.contains(where: { $0.tiredness > 0 }) {
                 var staff = s.companies[i].staff
-                for k in staff.indices where staff[k].tiredness > 0 { staff[k].tiredness = max(0, staff[k].tiredness - ease) }
+                for k in staff.indices where staff[k].tiredness > 0 {
+                    let ease = perks(for: staff[k], in: co).reduce(0) { $0 + $1.tiredness }
+                    if ease > 0 { staff[k].tiredness = max(0, staff[k].tiredness - ease) }
+                }
                 s.companies[i].staff = staff
             }
-            if co.managerID != nil && (isOn(co, "car") || isOn(co, "trips")) {
+            let lift = on.filter { coversManager(co, $0) }.reduce(0) { $0 + $1.managerMood }
+            if co.managerID != nil && lift > 0 {
                 let mood = co.value("mood").isNull ? 60 : co.num("mood")
-                let lift = ((isOn(co, "car") ? 0.25 : 0) + (isOn(co, "trips") ? 0.2 : 0)) * max(0, 1 - mood / 85)
-                s.companies[i].set("mood", clamp(mood + lift, 0, 100))
+                s.companies[i].set("mood", clamp(mood + lift * max(0, 1 - mood / 85), 0, 100))
             }
             if isOn(co, "trips") && (s.week + co.id) % 52 == 30 && headcount(co) >= 2 {
                 s.note("The team at \(co.name) is away on its yearly trip.", tone: "good", companyID: co.id)

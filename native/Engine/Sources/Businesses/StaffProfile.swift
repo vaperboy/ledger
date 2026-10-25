@@ -59,6 +59,9 @@ public enum StaffProfile {
         public var commissionMode: String?
         public var commissionRate: Double
         public var isSalesRole: Bool
+        /// The company perks that apply to this person, and what they are worth to them a month (counted as pay).
+        public var perks: [String] = []
+        public var perksWorth = 0.0
     }
 
     public struct Course: Equatable, Sendable { public var id: String; public var name: String; public var cost: Double; public var maxGain: Double }
@@ -83,12 +86,16 @@ public enum StaffProfile {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let n = s.people[staffID] else { return nil }
         var good: [String] = [], bad: [String] = []
         let market = marketPay(s, co, m, data: data)
-        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
+        // The perks that cover this person count as pay when they judge whether they are paid enough (not twice: their effect on quitting is the perk's own quit factor).
+        let perkList = StaffPerks.perks(for: m, in: co)
+        let perkWorth = StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co))
+        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + perkWorth
         let gap = (market * (0.7 + n.skill / 160) - eff) / max(1, market)
         let lr = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
         if m.happyUntilWeek != 0 && s.week < m.happyUntilWeek { good.append("pleased with a recent raise or their pay") }
         let fit = StaffWeek.fit(staff: m, tradeID: co.type)
         if fit <= 0.3 { good.append("really likes this kind of work") } else if fit >= 2 { bad.append("this job is not really for them") }
+        if !perkList.isEmpty { good.append("looked after: \(perkList.map { $0.name }.joined(separator: ", "))") }
         if gap > 0.1 { bad.append("paid less than the job usually pays") }
         let denied = m.int("denied")
         if denied != 0 && s.week - denied < 26 { bad.append("was turned down for a raise \(s.week - denied) weeks ago") }
@@ -119,7 +126,8 @@ public enum StaffProfile {
                        problem: m.value("flag").isNull ? nil : m.str("flag"), mood: mood, lateThisQuarter: m.int("late"), complaintsThisQuarter: m.int("cmp"),
                        warnings: m.int("warn"), underpaid: gap > 0.1, newInRole: m.num("nr") > 0, dismissalDocumented: isDocumented(m),
                        severance: sev, compensationRange: (m.monthlyWage * 2)...(m.monthlyWage * 4), courses: courses(co, data: data),
-                       commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: t.salesRoles.contains(m.role))
+                       commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: t.salesRoles.contains(m.role),
+                       perks: StaffPerks.perks(for: m, in: co).map { $0.name }, perksWorth: StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co)))
     }
 
     static func isDocumented(_ m: StaffMember) -> Bool { m.int("warn") >= 2 || m.str("flag") == "theft" }

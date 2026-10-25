@@ -29,6 +29,32 @@ public extension GameEngine {
         return r
     }
 
+    /// The role groups a perk may be given to (who may get which perk).
+    func staffPerkGroups(perk: String) -> [StaffPerks.RoleGroup] { StaffPerks.perk(perk).map { StaffPerks.eligibleGroups($0) } ?? [] }
+    /// Is the perk on for this role group in this company?
+    func staffPerkCovers(companyID: Int, perk: String, group: String) -> Bool {
+        guard let co = state.company(companyID), let p = StaffPerks.perk(perk) else { return false }
+        return StaffPerks.covers(co, p, group: group)
+    }
+    /// How many people a role group has in this company.
+    func staffPerkPeople(companyID: Int, group: String) -> Int { state.company(companyID).map { StaffPerks.people($0, group: group) } ?? 0 }
+    /// What the perk costs a month for one role group alone, if it were on there.
+    func staffPerkMonthlyCost(companyID: Int, perk: String, group: String) -> Double {
+        guard let co = state.company(companyID), let p = StaffPerks.perk(perk) else { return 0 }
+        var only = p
+        only.groups = [group]
+        var probe = co
+        var f = probe.value("perks58"); if f.isNull { f = .object([:]) }
+        f[perk] = .number(1); probe.set("perks58", f)
+        return StaffPerks.monthlyCost(probe, only, currency: World(state: state, data: data).currency(co))
+    }
+    /// Switch a perk on or off for one role group; returns whether that group is covered now.
+    @discardableResult mutating func toggleStaffPerk(companyID: Int, perk: String, group: String) -> Bool? {
+        var r: Bool?
+        update { s, _, _ in r = StaffPerks.toggle(&s, companyID: companyID, perk: perk, group: group) }
+        return r
+    }
+
     // MARK: Hosting a deal on a yacht, jet, castle or island
     var hostingVenues: [Luxury.Piece] { StaffPerks.venues(state, data: data) }
     func hostingCost(pieceID: Int) -> Double? { StaffPerks.hostingCost(state, data: data, pieceID: pieceID) }

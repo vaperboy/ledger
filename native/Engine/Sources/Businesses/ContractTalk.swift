@@ -246,8 +246,16 @@ public enum ContractTalk {
             } else { out = [Choice(id: "salary", title: "Fixed monthly salary", detail: "Instead of pay by the hour.")] }
             return out
         case .benefits:
-            var out = StaffPerks.all.map { p in
-                Choice(id: "perk:\(p.id)", title: p.name + (StaffPerks.isOn(co, p.id) ? " (on)" : ""), detail: "For the whole company. " + p.detail, on: StaffPerks.isOn(co, p.id))
+            var out: [Choice] = []
+            let mine = StaffPerks.group(ofRole: sub.member?.role ?? "", isManager: sub.isManager)
+            for p in StaffPerks.all {
+                let on = StaffPerks.isOn(co, p.id), eligible = StaffPerks.eligibleGroups(p)
+                let who = eligible.count == 1 ? eligible[0].name : "everyone it applies to"
+                out.append(Choice(id: "perk:\(p.id)", title: p.name + (on ? " (on)" : ""), detail: "For \(who.lowercased()) in the company. " + p.detail, on: on))
+                if eligible.count > 1, let g = eligible.first(where: { $0.id == mine }) {
+                    let gon = StaffPerks.covers(co, p, group: g.id)
+                    out.append(Choice(id: "perk:\(p.id):\(g.id)", title: "\(p.name) for \(g.name.lowercased()) only" + (gon ? " (on)" : ""), detail: "Only this group of people. " + p.detail, on: gon))
+                }
             }
             if let m = sub.member, m.role == "estate" {
                 out.append(Choice(id: "ownCar", title: m.flag("ownCar") ? "Give a company car" : "Own car and mileage", detail: "Mileage is paid each month for an own car.", on: m.flag("ownCar")))
@@ -258,6 +266,15 @@ public enum ContractTalk {
             guard let ch = Chains.chain(s, of: co) else { return [] }
             return Chains.stores(s, ch).filter { $0.id != co.id && $0.status.isLive }.map { Choice(id: "\($0.id)", title: $0.name, detail: "Same chain.") }
         }
+    }
+
+    /// A benefit choice "perk:<id>" (the whole company) or "perk:<id>:<role group>".
+    static func perkChoice(_ choice: String) -> (StaffPerks.Perk, String?)? {
+        guard choice.hasPrefix("perk:") else { return nil }
+        let parts = choice.dropFirst(5).split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+        guard let p = StaffPerks.perk(parts[0]) else { return nil }
+        if parts.count > 1 { return StaffPerks.roleGroup(parts[1]) == nil ? nil : (p, parts[1]) }
+        return (p, nil)
     }
 
     // MARK: Who decides (delegation)
@@ -385,10 +402,14 @@ public enum ContractTalk {
             if sub.isManager { c.lines.append("Profit share: \(Int((p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
             else { c.lines.append("Commission: \(Int((p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
         case .benefits:
-            if p.choice.hasPrefix("perk:"), let perk = StaffPerks.perk(String(p.choice.dropFirst(5))) {
-                let people = perk.keysOnly ? StaffPerks.keyPeople(co) : StaffPerks.headcount(co)
-                c.peers.append("It covers everyone it applies to: \(people) \(people == 1 ? "person" : "people"), not just \(first).")
+            if let (perk, group) = perkChoice(p.choice) {
+                let people = group.map { StaffPerks.people(co, group: $0) } ?? StaffPerks.eligibleCount(co, perk)
+                c.peers.append("It covers \(group == nil ? "everyone it applies to" : "that group"): \(people) \(people == 1 ? "person" : "people"), not just \(first).")
                 c.peers.append("People leave about \(Int(((1 - perk.quitFactor) * 100).rounded()))% less while it is on.")
+                if let m = after?.member {
+                    let worth = StaffPerks.worthMonthly(t.companies[sub.ci], m, currency: cur)
+                    if worth > 0 { c.lines.append("Perks they count as pay: \(cur.display(worth)) a month in all.") }
+                }
             } else if p.choice == "ownCar" { c.lines.append("Mileage is paid each month: \(cur.display(PersonalEquipment.mileagePerMonth(cur))).") }
         case .notice:
             if let m = sub.member {
@@ -496,9 +517,9 @@ public enum ContractTalk {
                 _ = PersonalEquipment.toggleOwnCar(&s, companyID: co.id, staffID: id, set: p.amount != 0)
                 return .ok(p.amount != 0 ? "\(name) uses their own car; mileage is paid." : "\(name) drives a company car.")
             }
-            guard p.choice.hasPrefix("perk:"), let perk = StaffPerks.perk(String(p.choice.dropFirst(5))) else { return .notPossible("That is not a benefit.") }
-            if StaffPerks.isOn(s.companies[sub.ci], perk.id) != (p.amount != 0) { _ = StaffPerks.toggle(&s, companyID: co.id, perk: perk.id) }
-            return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for the company.")
+            guard let (perk, group) = perkChoice(p.choice) else { return .notPossible("That is not a benefit.") }
+            guard StaffPerks.set(&s, companyID: co.id, perk: perk.id, on: p.amount != 0, group: group) else { return .notPossible("\(perk.name) cannot be given to that group.") }
+            return .ok("\(perk.name) is now \(p.amount != 0 ? "on" : "off") for " + (group.flatMap { StaffPerks.roleGroup($0)?.name.lowercased() } ?? "the company") + ".")
         case .notice:
             guard sub.member != nil else { return .notPossible("Not for a manager.") }
             let weeks = Int(max(0, p.amount))

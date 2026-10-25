@@ -28,6 +28,9 @@ final class StaffPerkCatalogueTests: XCTestCase {
                 StaffMember(raw: ["id": 9002, "role": "lead", "wage": 40000, "w0": 0, "tired": 10]),
                 StaffMember(raw: ["id": 9003, "role": "barista", "wage": 31000, "w0": 0, "tired": 30]),
             ]
+            for (pid, role) in [(9001, "waiter"), (9002, "lead"), (9003, "barista")] {
+                s.people[pid] = Person(raw: ["id": .number(Double(pid)), "name": .string("Worker \(pid)"), "age": 30, "role": .string(role), "skill": 50, "hired": .number(Double(id))])
+            }
             if manager {
                 s.people[9100] = Person(raw: ["id": 9100, "name": "Anna Berg", "age": 40, "role": "mgr", "skill": 80])
                 s.companies[i].managerID = 9100
@@ -87,5 +90,75 @@ final class StaffPerkCatalogueTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.value("perks58")["gym"].double, 1, "the plain flag of the original, so an old save reads the same")
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "gym"), false)
         XCTAssertEqual(e.state.company(id)?.value("perks58")["gym"].double, 0)
+    }
+
+    // MARK: Per role group
+
+    func testAPerkCanGoToOneRoleGroupOnly() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
+        let id = try cafe(&e)
+        XCTAssertNil(e.toggleStaffPerk(companyID: id, perk: "car", group: "crew"), "a company car may not go to the crew")
+        XCTAssertNil(e.toggleStaffPerk(companyID: id, perk: "gym", group: "nobody"))
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "crew"), true)
+        let co = try XCTUnwrap(e.state.company(id))
+        let cur = World(state: e.state, data: e.data).currency(co)
+        // the crew are the waiter and the barista; the manager and the lead hold the keys and are not covered
+        XCTAssertEqual(e.staffPerkPeople(companyID: id, group: "crew"), 2)
+        XCTAssertEqual(e.staffPerkMonthlyCost(companyID: id, perk: "lunch"), cur.scaledPrice(1500) * 2, accuracy: 1e-6)
+        XCTAssertEqual(StaffPerks.quitFactor(co, co.staff[0]), 0.94, accuracy: 1e-12)
+        XCTAssertEqual(StaffPerks.quitFactor(co, co.staff[1]), 1, accuracy: 1e-12, "the lead is not covered")
+        XCTAssertEqual(StaffPerks.pull(co, role: "waiter"), 0.25, accuracy: 1e-12)
+        XCTAssertEqual(StaffPerks.pull(co, role: "lead"), 0, accuracy: 1e-12)
+        XCTAssertTrue(StaffPerks.isOn(co, "lunch"))
+        XCTAssertFalse(StaffPerks.isOnForAll(co, "lunch"))
+        // only the covered are eased (0.5 for lunch)
+        e.update { s, d, _ in StaffPerks.weekly(&s, data: d) }
+        let after = try XCTUnwrap(e.state.company(id))
+        XCTAssertEqual(after.staff[0].tiredness, 20 - 0.5, accuracy: 1e-9)
+        XCTAssertEqual(after.staff[1].tiredness, 10, accuracy: 1e-9)
+        // the other group too: the stored state goes back to the plain flag
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "keys"), true)
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "sales"), true)
+        XCTAssertEqual(e.state.company(id)?.value("perks58")["lunch"].double, 1)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
+    func testAGroupChoiceSurvivesASave() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
+        let id = try cafe(&e)
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "health", group: "keys"), true)
+        let data = try JSONEncoder().encode(e.state)
+        let back = try JSONDecoder().decode(GameState.self, from: data)
+        let co = try XCTUnwrap(back.company(id)), p = try XCTUnwrap(StaffPerks.perk("health"))
+        XCTAssertTrue(StaffPerks.covers(co, p, group: "keys"))
+        XCTAssertFalse(StaffPerks.covers(co, p, group: "crew"))
+    }
+
+    func testAPerkCostedOnPayIsAShareOfTheCoveredPay() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
+        let id = try cafe(&e)
+        var p = try XCTUnwrap(StaffPerks.perk("gym"))
+        p.costBasis = .wage; p.monthlyCost = 0.02
+        e.update { s, _, _ in _ = StaffPerks.set(&s, companyID: id, perk: "gym", on: true, group: "crew") }
+        let co = try XCTUnwrap(e.state.company(id))
+        let cur = World(state: e.state, data: e.data).currency(co)
+        XCTAssertEqual(StaffPerks.monthlyCost(co, p, currency: cur), 0.02 * (30000 + 31000), accuracy: 1e-6)
+    }
+
+    func testPerksCountAsPayInTheMoodAndTheContractTalk() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
+        let id = try cafe(&e)
+        let co0 = try XCTUnwrap(e.state.company(id))
+        let cur = World(state: e.state, data: e.data).currency(co0)
+        XCTAssertEqual(StaffPerks.worthMonthly(co0, co0.staff[0], currency: cur), 0)
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "health"), true)
+        XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "lunch", group: "crew"), true)
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertEqual(StaffPerks.worthMonthly(co, co.staff[0], currency: cur), cur.scaledPrice(650) * 0.8 + cur.scaledPrice(1500) * 0.9, accuracy: 1e-6)
+        XCTAssertEqual(StaffPerks.worthMonthly(co, co.staff[1], currency: cur), cur.scaledPrice(650) * 0.8, accuracy: 1e-6, "the lead has no lunch")
+        let mood = try XCTUnwrap(StaffProfile.mood(e.state, companyID: id, staffID: 9001, data: e.data))
+        XCTAssertTrue(mood.good.contains { $0.contains("Health insurance") && $0.contains("Free lunch") }, "\(mood.good)")
+        let lead = try XCTUnwrap(StaffProfile.mood(e.state, companyID: id, staffID: 9002, data: e.data))
+        XCTAssertTrue(lead.good.contains { $0.contains("Health insurance") && !$0.contains("Free lunch") }, "\(lead.good)")
     }
 }

@@ -50,7 +50,7 @@ public enum Hiring {
         let superOne = s.random.chance(["sales", "cardealer", "estate"].contains(role) ? 0.04 : 0.015)
         if superOne { skill = Double(s.random.int(88, 100)) }
         // a company with good perks draws better people, with fewer bad habits, who ask a little less (StaffPerks)
-        let pull = co.map { StaffPerks.pull($0) } ?? 0
+        let pull = co.map { StaffPerks.pull($0, role: role) } ?? 0
         if pull > 0 && !superOne { skill = min(97, skill + jsRound(pull * s.random.range(2, 7))) }
         let claimSkill = lie ? clamp(skill + Double(s.random.int(8, 28)), 0, 98) : clamp(skill + Double(s.random.int(-4, 4)), 0, 98)
         let claimExp = lie ? exp + Double(s.random.int(2, 8)) : exp

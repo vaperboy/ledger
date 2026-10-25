@@ -108,12 +108,13 @@ extension ManagerModel {
                 if let k = s.companies[ci].staff.firstIndex(where: { $0.id == m.id }) { var st = s.companies[ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[ci].staff = st }
                 s.note("\(n.name) moved \(nn.name) to a fixed salary at \(co.name).", tone: "n", companyID: co.id)
             }
-            let why: String? = m.noticeWeeks > 0 ? "has handed in notice" : (mk0 > m.monthlyWage * 1.25 ? "is paid far below market and may leave"
+            let paid = m.monthlyWage + StaffPerks.worthMonthly(co, m, currency: cur)   // perks that cover them count as pay
+            let why: String? = m.noticeWeeks > 0 ? "has handed in notice" : (mk0 > paid * 1.25 ? "is paid far below market and may leave"
                 : (lrW >= 52 && ten >= 52 ? "has had no raise for \(lrW >= 104 ? "\(lrW / 52) years" : "a year")"
-                   : (sk >= 68 && ten >= 26 && mk0 > m.monthlyWage * 1.04 ? "is one of your best and paid below market" : nil)))
+                   : (sk >= 68 && ten >= 26 && mk0 > paid * 1.04 ? "is one of your best and paid below market" : nil)))
             let yearOn = lrW >= 52 && ten >= 52 && m.noticeWeeks == 0
             let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
-            guard let reason = why, yearOn || mk0 > m.monthlyWage * 1.03, askW == nil || askW == 0 || s.week - askW! >= 12 else { continue }
+            guard let reason = why, yearOn || mk0 > paid * 1.03, askW == nil || askW == 0 || s.week - askW! >= 12 else { continue }
             let felt = StaffTalks.raiseNeeded(role: m.role, age: nn.age, tables: data.catalog.tables)
             let target = yearOn && mk0 <= m.monthlyWage * (1 + felt) ? cur.roundedStep(m.monthlyWage * (1 + felt + (1 - q) * 0.01), about: 100)
                 : max(m.monthlyWage + 100, cur.roundedStep(m.monthlyWage + (mk0 - m.monthlyWage) * (1 - 0.55 * q), about: 100))
