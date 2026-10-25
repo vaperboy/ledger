@@ -206,7 +206,7 @@ public enum DailyTrade {
         if n <= 0 { return }
         var staff = co.staff
         var weights: [(index: Int?, weight: Double)] = []
-        for (i, m) in staff.enumerated() where salesRoles.contains(m.role) {
+        for (i, m) in staff.enumerated() where PayPlans.sells(m, salesRoles: salesRoles) {
             weights.append((i, StaffModel.skill(m, person: people[m.id], salesRoles: salesRoles) + 10))
         }
         let sellsHere = !weights.isEmpty || bd.standardStaff.contains { salesRoles.contains($0.role) }
@@ -305,7 +305,7 @@ public enum DailyTrade {
         // Each seller's week of sales (for commission), reset for the new week.
         let salesRoles = data.catalog.tables.salesRoles
         var staff = co.staff
-        for k in staff.indices where salesRoles.contains(staff[k].role) {
+        for k in staff.indices where PayPlans.sells(staff[k], salesRoles: salesRoles) {
             let ws = staff[k].value("ws")
             let mine = (!ws.isNull && ws["w"].int == wk) ? ws : .object(["u": 0, "r": 0])
             staff[k].set("lw", .object(["w": .number(Double(s.week)), "u": .number(mine["u"].double), "r": .number(mine["r"].double)]))

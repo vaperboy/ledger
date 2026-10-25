@@ -342,9 +342,9 @@ final class ContractTalkTests: XCTestCase {
         let t = Dictionary(uniqueKeysWithValues: e.contractTopics(companyID: id, personID: pid).map { ($0.topic, $0) })
         XCTAssertEqual(Set(t.keys), Set(ContractTalk.Topic.allCases))
         XCTAssertTrue(t[.payRise]!.available && t[.hours]!.available && t[.benefits]!.available && t[.notice]!.available)
-        XCTAssertFalse(t[.bonus]!.available, "a barista has no bonus plan")
+        XCTAssertTrue(t[.bonus]!.available, "every worker can be put on a bonus plan (WorkerBonus)")
         XCTAssertFalse(t[.move]!.available, "no other store")
-        XCTAssertFalse(t[.bonus]!.why.isEmpty)
+        XCTAssertFalse(t[.move]!.why.isEmpty)
     }
 
     // MARK: Consequences shown before confirming

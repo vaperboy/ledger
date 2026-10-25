@@ -49,6 +49,7 @@ enum HireFeedback: Equatable {
         case .taken?: return .unavailable("\(name) took another job.")
         case .countered(let c)?: return counter(c, name: name)
         case .walkedAway?: return lostPatience(name)
+        case .planRefused?: return .declined("\(name) will not take the job on those terms (commission only, or a fixed term) but is still looking. Offer a salary or a permanent contract.")
         case nil: return .unavailable("No game is loaded.")
         }
     }
@@ -109,6 +110,8 @@ struct CandidateHireRow<Extra: View>: View {
     @ViewBuilder var extra: () -> Extra
     @State private var feedback: HireFeedback?
     @State private var lastOffer: Double = 0
+    /// The figure typed or stepped for a counter of your own (accounting units); 0 until set.
+    @State private var customCounter: Double = 0
 
     private var reference: Double { market ?? person.askingMonthlyWage }
     private func wage(_ f: Double) -> Double { f == 1 ? reference : currency.roundedStep(reference * f, about: 500) }
@@ -172,6 +175,22 @@ struct CandidateHireRow<Extra: View>: View {
             Button("Walk away") { feedback = .declined("You left the table. They may talk again later if you come back.") }
                 .buttonStyle(QuietButtonStyle(tint: Theme.loss))
             Spacer(minLength: 0)
+        }
+        customCounterControls(counter)
+    }
+
+    /// Your own figure for the counter: step it up or down, or type it. Any figure is allowed; the person answers it like any other offer.
+    @ViewBuilder private func customCounterControls(_ counter: Double) -> some View {
+        let step = currency.stepSize(about: 500)
+        let shown = customCounter > 0 ? customCounter : currency.roundedStep(lastOffer + (counter - lastOffer) * 0.5, about: 500)
+        VStack(alignment: .leading, spacing: 4) {
+            Stepper("Your figure: \(currency.tidyShort(shown)) a month", onIncrement: { customCounter = shown + step }, onDecrement: { customCounter = max(step, shown - step) })
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            DisclosureGroup("Type an exact figure") {
+                AmountField(title: "Monthly pay", currency: currency, amount: $customCounter)
+            }.font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            Button("Counter with \(currency.tidyShort(shown))") { submit(shown) }
+                .buttonStyle(QuietButtonStyle(tint: Theme.gold))
         }
     }
 

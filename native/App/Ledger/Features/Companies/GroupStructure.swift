@@ -48,7 +48,7 @@ struct GroupAttention: View {
         }
         let due = engine.managersDueMeeting.filter { $0.status == .open }
         if !due.isEmpty {
-            out.append(Item(id: "m", title: "\(due.count) \(due.count == 1 ? "manager has" : "managers have") not met you for 8 weeks or more", sub: "A manager left alone slowly works worse. Meet them under Main office below.", tint: Theme.caution, target: .none))
+            out.append(Item(id: "m", title: "\(due.count) \(due.count == 1 ? "manager has" : "managers have") not met you for 8 weeks or more", sub: "A manager left alone slowly works worse. Call a meeting under Group office below.", tint: Theme.caution, target: .none))
         }
         return out
     }
@@ -222,14 +222,13 @@ struct GroupStructureOverview: View {
         if !franchisors.isEmpty || !franchised.isEmpty || !brands.isEmpty {
             LedgerSection("Franchises") {
                 VStack(alignment: .leading, spacing: 0) {
-                    if !franchisors.isEmpty { Text("Your concept, run by others").capsLabel(Theme.ivoryFaint).padding(.vertical, 6) }
+                    if !franchisors.isEmpty { Text("Your concept, run by others").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6) }
                     ForEach(Array(franchisors.enumerated()), id: \.element.id) { n, c in
                         if n > 0 { Hairline() }
                         franchisorRow(c, chain: chains.first { $0.stores.contains { $0.id == c.id } })
                     }
                     if !franchised.isEmpty {
-                        if !franchisors.isEmpty { Hairline() }
-                        Text("You as franchisee").capsLabel(Theme.ivoryFaint).padding(.vertical, 6)
+                        Text("You as franchisee").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.top, franchisors.isEmpty ? 0 : 12).padding(.bottom, 6)
                     }
                     ForEach(Array(brandNames.enumerated()), id: \.element) { n, b in
                         if n > 0 { Hairline() }

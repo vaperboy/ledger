@@ -59,6 +59,15 @@ public enum StaffProfile {
         public var commissionMode: String?
         public var commissionRate: Double
         public var isSalesRole: Bool
+        /// The company perks that apply to this person, and what they are worth to them a month (counted as pay).
+        public var perks: [String] = []
+        public var perksWorth = 0.0
+        /// The bonus plan they are on (nil: none), what it paid this year so far, and the average it has paid a month lately (counted as pay).
+        public var bonusPlan: String? = nil
+        public var bonusPaidThisYear = 0.0
+        public var bonusMonthlyAverage = 0.0
+        /// The expense reimbursements paid for them (phone, uniform, training, travel).
+        public var expenses: [String] = []
     }
 
     public struct Course: Equatable, Sendable { public var id: String; public var name: String; public var cost: Double; public var maxGain: Double }
@@ -83,12 +92,17 @@ public enum StaffProfile {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let n = s.people[staffID] else { return nil }
         var good: [String] = [], bad: [String] = []
         let market = marketPay(s, co, m, data: data)
-        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
+        // The perks that cover this person count as pay when they judge whether they are paid enough (not twice: their effect on quitting is the perk's own quit factor).
+        let perkList = StaffPerks.perks(for: m, in: co)
+        let perkWorth = StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co))
+        let eff = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma") + perkWorth
         let gap = (market * (0.7 + n.skill / 160) - eff) / max(1, market)
         let lr = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
         if m.happyUntilWeek != 0 && s.week < m.happyUntilWeek { good.append("pleased with a recent raise or their pay") }
         let fit = StaffWeek.fit(staff: m, tradeID: co.type)
         if fit <= 0.3 { good.append("really likes this kind of work") } else if fit >= 2 { bad.append("this job is not really for them") }
+        if let plan = WorkerBonus.level(of: m) { good.append("on the \(plan.name.lowercased())" + (m.num("bnEma") > 0 ? ": bonuses have been paid lately" : "")) }
+        if !perkList.isEmpty { good.append("looked after: \(perkList.map { $0.name }.joined(separator: ", "))") }
         if gap > 0.1 { bad.append("paid less than the job usually pays") }
         let denied = m.int("denied")
         if denied != 0 && s.week - denied < 26 { bad.append("was turned down for a raise \(s.week - denied) weeks ago") }
@@ -119,7 +133,10 @@ public enum StaffProfile {
                        problem: m.value("flag").isNull ? nil : m.str("flag"), mood: mood, lateThisQuarter: m.int("late"), complaintsThisQuarter: m.int("cmp"),
                        warnings: m.int("warn"), underpaid: gap > 0.1, newInRole: m.num("nr") > 0, dismissalDocumented: isDocumented(m),
                        severance: sev, compensationRange: (m.monthlyWage * 2)...(m.monthlyWage * 4), courses: courses(co, data: data),
-                       commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: t.salesRoles.contains(m.role))
+                       commissionMode: m.commissionMode, commissionRate: m.commissionRate, isSalesRole: PayPlans.eligible(role: m.role, trade: co.type, salesRoles: t.salesRoles),
+                       perks: StaffPerks.perks(for: m, in: co).map { $0.name }, perksWorth: StaffPerks.worthMonthly(co, m, currency: World(state: s, data: data).currency(co)),
+                       bonusPlan: WorkerBonus.level(of: m)?.name, bonusPaidThisYear: m.num("bnYtd"), bonusMonthlyAverage: m.num("bnEma"),
+                       expenses: StaffExpenses.on(m).map { $0.name })
     }
 
     static func isDocumented(_ m: StaffMember) -> Bool { m.int("warn") >= 2 || m.str("flag") == "theft" }
@@ -216,13 +233,14 @@ public enum StaffProfile {
     /// Change a seller's pay model: "fix", "mix" (lower salary plus commission) or "com" (commission only). Original: `ACT.setpay`, `setPay`.
     public static func setPayModel(_ s: inout GameState, companyID: Int, staffID: Int, mode: String, data: GameData) -> PayResult {
         guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return .unknown }
-        guard data.catalog.tables.salesRoles.contains(s.companies[i].staff[k].role), ["fix", "mix", "com"].contains(mode) else { return .notSales }
+        let salesRoles = data.catalog.tables.salesRoles, role = s.companies[i].staff[k].role
+        guard PayPlans.eligible(role: role, trade: s.companies[i].type, salesRoles: salesRoles), ["fix", "mix", "com"].contains(mode) else { return .notSales }
         if mode == "com" && n.num("sec") > 0.65 && s.random.chance(0.6) {
             s.note("\(n.name) will not work on commission only and resigns.", tone: "bad", companyID: companyID)
             Dismissal.dismiss(&s, companyID: companyID, staffID: staffID, reason: .resignation, data: data)
             return .resigned
         }
-        let rate = mode == "fix" ? 0 : mode == "mix" ? 0.03 : 0.06
+        let rate = PayPlans.mode(mode)?.defaultRate ?? 0
         let co = s.companies[i]
         let cur = World(state: s, data: data).currency(co)
         let mk = cur.roundedStep(marketPay(s, co, co.staff[k], data: data) * (0.7 + n.skill / 160), about: 100)
@@ -230,8 +248,10 @@ public enum StaffProfile {
         // Commission only has NO base at all (owner rule): pay is the commission and nothing else, whatever the minimum wage.
         let floor = World(state: s, data: data).minimumWage(co, hours: co.staff[k].weeklyHours ?? StaffModel.fullWeekHours).rounded(.up)
         var st = co.staff
-        st[k].monthlyWage = mode == "com" ? 0 : max(floor, mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : cur.roundedStep(mk * 0.6, about: 100))
+        st[k].monthlyWage = mode == "com" ? 0 : max(floor, mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : cur.roundedStep(mk * (PayPlans.mode("mix")?.baseShare ?? 0.6), about: 100))
         st[k].set("pay", .object(["m": .string(mode), "rate": .number(rate)]))
+        // a job outside the general selling jobs counts as selling only while it is on a plan
+        if PayPlans.isExtra(role: role, trade: s.companies[i].type, salesRoles: salesRoles) { if mode == "fix" { st[k].raw.removeValue(forKey: "ppx") } else { st[k].set("ppx", 1) } }
         st[k].set("commEma", 0)
         s.companies[i].staff = st
         return .changed

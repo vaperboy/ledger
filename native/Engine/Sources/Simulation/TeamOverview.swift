@@ -48,6 +48,28 @@ public struct TeamOverview: Sendable {
         public var companyID: Int?
         public var chainID: Int?
         public var needed: Bool
+        /// Who would employ the person: the company, the chain, the holding, or the group office.
+        public var employer: String = ""
+    }
+
+    /// Someone in a management post above or beside the store managers, with the entity that employs them.
+    /// `scope` is store, company, chain, region or group (the badge every management list shows).
+    public struct Member: Identifiable, Sendable {
+        public var id: String
+        public var name: String
+        public var role: String
+        public var scope: String
+        public var employer: String
+        public var monthlyWage: Double
+        public var companyID: Int?
+        public var chainID: Int?
+    }
+
+    /// The group office the owner may set up: until then there are no group-level posts (no group managing director, no shared-service staff).
+    public struct GroupOffice: Sendable {
+        public var established: Bool
+        public var tierName: String?
+        public var employer: String
     }
 
     public struct Issue: Identifiable, Sendable {
@@ -76,6 +98,9 @@ public struct TeamOverview: Sendable {
     public var companies: [CompanyLine]
     public var issues: [Issue]
     public var vacancies: [Vacancy] = []
+    /// Department heads, chain, regional and group people, each with their scope and employer.
+    public var members: [Member] = []
+    public var groupOffice = GroupOffice(established: false, tierName: nil, employer: "Your group office")
     /// Scorecards of every store manager, weakest first.
     public var scorecards: [Headquarters.Scorecard] = []
 }
@@ -104,6 +129,7 @@ public extension GameEngine {
         var issues: [TeamOverview.Issue] = []
         var vacancies: [TeamOverview.Vacancy] = []
         var cards: [Headquarters.Scorecard] = []
+        var members: [TeamOverview.Member] = []
         let chains = s.rest["chains"]?.array ?? []
 
         for co in s.companies where co.status.isLive {
@@ -184,20 +210,29 @@ public extension GameEngine {
                 if co.managerID == nil && !ownerWorksThere && !co.staff.isEmpty {
                     vacancies.append(.init(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
                                            detail: bosses.isEmpty ? "No one runs it day to day." : "\(runner) oversees it from above, with no one on site.",
-                                           companyID: co.id, chainID: chainID, needed: bosses.isEmpty))
+                                           companyID: co.id, chainID: chainID, needed: bosses.isEmpty, employer: co.name))
                 } else if co.managerID != nil && !co.value("mgrNotice").isNull {
                     vacancies.append(.init(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
-                                           detail: "The manager is working their notice; a successor hired now can hand over.", companyID: co.id, chainID: chainID, needed: true))
+                                           detail: "The manager is working their notice; a successor hired now can hand over.", companyID: co.id, chainID: chainID, needed: true, employer: co.name))
                 }
             }
-            for slot in ManagerModel.teamSlots(s, companyID: co.id, data: data) where slot.personID == nil {
+            // Department heads and the managing director appear once the company's headcount justifies them (`ManagerModel.headsOK`, `mdOK`);
+            // whoever fills them is employed by the company itself (by the holding, for a holding's own leadership).
+            for slot in ManagerModel.teamSlots(s, companyID: co.id, data: data) {
                 let scope = slot.key == "reg" ? "region" : (slot.key == "ceo" && co.type == "hold") ? "group" : "company"
-                vacancies.append(.init(id: "slot-\(co.id)-\(slot.id)", title: slot.title, scope: scope, place: co.name, detail: slot.detail,
-                                       companyID: co.id, chainID: chainID, needed: false))
+                if let pid = slot.personID, let p = s.people[pid] {
+                    members.append(.init(id: "slot-\(co.id)-\(slot.id)", name: p.name, role: slot.title, scope: scope, employer: co.name,
+                                         monthlyWage: slot.monthlyWage, companyID: co.id, chainID: chainID))
+                } else {
+                    vacancies.append(.init(id: "slot-\(co.id)-\(slot.id)", title: slot.title, scope: scope, place: co.name, detail: slot.detail,
+                                           companyID: co.id, chainID: chainID, needed: false, employer: co.name))
+                }
             }
         }
 
-        // Chains: a chain of five or more stores with no one above the store managers needs someone; the other chain posts are open.
+        // Chains: the chain's own leadership is employed by the chain (its stores share the pay, `ManagerModel.groupMonthly`).
+        // A chain manager is offered from two stores (the rule in `ManagerPromotions`); a chain CEO from five, the size at which a chain
+        // with no one above the store managers counts as short. Such a chain needs someone above the stores.
         let regs = ManagerModel.regionals(s)
         for ch in chains {
             let id = ch["id"].int
@@ -211,22 +246,55 @@ public extension GameEngine {
                 issues.append(.init(id: "chainVacancy-\(id)", kind: .chainVacancy, companyID: stores.first?.id, chainID: id, messageID: nil,
                                     title: "\(name) has \(stores.count) stores and no chain manager", detail: "Every store reports straight to you.", severity: 1, handledBy: TeamOverview.you))
             }
-            if !hasChainManager {
-                vacancies.append(.init(id: "chainmgr-\(id)", title: "Chain manager", scope: "chain", place: name,
-                                       detail: "Oversees the \(stores.count) store\(stores.count == 1 ? "" : "s") so the store managers do not all report to you.",
-                                       companyID: stores.first?.id, chainID: id, needed: short))
+            if hasCEO, let p = s.people[ch["ceo56"]["npc"].int] {
+                members.append(.init(id: "cc\(id)", name: p.name, role: "Chain CEO", scope: "chain", employer: name, monthlyWage: ch["ceo56"]["wage"].double,
+                                     companyID: stores.first?.id, chainID: id))
             }
-            if !hasCEO {
+            for r in regs where r["scope"].string == "chain:\(id)" || r["scope"].string.hasPrefix("chain:\(id):") {
+                guard let p = s.people[r["npc"].int] else { continue }
+                let isRegion = r["scope"].string.split(separator: ":").count >= 3
+                members.append(.init(id: "rm\(r["id"].int)", name: p.name, role: isRegion ? "Regional manager" : "Chain manager", scope: isRegion ? "region" : "chain",
+                                     employer: name, monthlyWage: r["wage"].double, companyID: stores.first?.id, chainID: id))
+            }
+            if !hasChainManager && stores.count >= 2 {
+                vacancies.append(.init(id: "chainmgr-\(id)", title: "Chain manager", scope: "chain", place: name,
+                                       detail: "Oversees the \(stores.count) stores so the store managers do not all report to you.",
+                                       companyID: stores.first?.id, chainID: id, needed: short, employer: name))
+            }
+            if !hasCEO && stores.count >= 5 {
                 vacancies.append(.init(id: "ceo56-\(id)", title: "Chain CEO", scope: "chain", place: name, detail: "Runs the whole chain above the chain and store managers.",
-                                       companyID: stores.first?.id, chainID: id, needed: false))
+                                       companyID: stores.first?.id, chainID: id, needed: false, employer: name))
             }
         }
 
-        // The group: a managing director over everything once there is more than one company.
+        // The group office is the owner's choice. Before it exists there are no group-level posts, only each company's own.
+        // After it: the group managing director once there is more than one company, and each main-office role that is unlocked
+        // (the same `Headquarters.unlocked` rules as "Opens with N companies") and has a desk.
+        let established = Headquarters.established(s)
+        let groupEmployer = Headquarters.employerName(s, data)
         let md = s.rest["org56"]?["md"] ?? .null
-        if s.companies.filter({ $0.status.isLive }).count >= 2 && (md.isNull || s.people[md["npc"].int] == nil) {
-            vacancies.append(.init(id: "md", title: "Group managing director", scope: "group", place: "Your group",
-                                   detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false))
+        if !md.isNull, let p = s.people[md["npc"].int] {
+            members.append(.init(id: "md", name: p.name, role: "Group managing director", scope: "group", employer: groupEmployer, monthlyWage: md["wage"].double, companyID: nil, chainID: nil))
+        } else if established && s.companies.filter({ $0.status.isLive }).count >= 2 {
+            vacancies.append(.init(id: "md", title: "Group managing director", scope: "group", place: "Your group office",
+                                   detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false, employer: groupEmployer))
+        }
+        if let c = s.rest["group"]?["ceo"], !c.isNull, let p = s.people[c["npc"].int] {
+            members.append(.init(id: "gceo", name: p.name, role: "Group CEO", scope: "group", employer: groupEmployer, monthlyWage: c["wage"].double, companyID: nil, chainID: nil))
+        }
+        for r in regs where r["payCo"].isNull {
+            guard let p = s.people[r["npc"].int] else { continue }
+            members.append(.init(id: "rm\(r["id"].int)", name: p.name, role: "Regional manager", scope: "region", employer: groupEmployer, monthlyWage: r["wage"].double, companyID: nil, chainID: nil))
+        }
+        if established {
+            let roles = Headquarters.roles(data)
+            for x in Headquarters.staff(s) where s.people[x["id"].int] != nil {
+                members.append(.init(id: "hq-\(x["id"].int)", name: x["name"].string, role: roles.first { $0.id == x["role"].string }?.title ?? x["role"].string, scope: "group",
+                                     employer: groupEmployer, monthlyWage: x["wage"].double, companyID: nil, chainID: nil))
+            }
+            for r in roles where Headquarters.room(s, role: r.id, data: data) == .ok {
+                vacancies.append(.init(id: "hq-\(r.id)", title: r.title, scope: "group", place: "Your group office", detail: r.text, companyID: nil, chainID: nil, needed: false, employer: groupEmployer))
+            }
         }
 
         // Decisions not tied to a company.
@@ -237,7 +305,10 @@ public extension GameEngine {
 
         issues.sort { ($0.needsOwner ? 1 : 0, $0.severity) > ($1.needsOwner ? 1 : 0, $1.severity) }
         let rankedVacancies = vacancies.enumerated().sorted { ($0.element.needed ? 0 : 1, $0.offset) < ($1.element.needed ? 0 : 1, $1.offset) }.map { $0.element }
-        return TeamOverview(companies: lines, issues: issues, vacancies: rankedVacancies, scorecards: cards.sorted { ($0.score, $0.id) < ($1.score, $1.id) })
+        var out = TeamOverview(companies: lines, issues: issues, vacancies: rankedVacancies, scorecards: cards.sorted { ($0.score, $0.id) < ($1.score, $1.id) })
+        out.members = members
+        out.groupOffice = .init(established: established, tierName: established ? Headquarters.tier(s, data)?.name : nil, employer: groupEmployer)
+        return out
     }
 
     // MARK: The manager's profit share and duties (read-only previews for the screens)

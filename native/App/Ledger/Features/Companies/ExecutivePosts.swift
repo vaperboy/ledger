@@ -72,6 +72,13 @@ struct ExecutivePosts: View {
         } message: { Text("Severance of about a month's pay plus costs is paid now.") }
     }
 
+    /// The entity that employs these people: the chain for chain levels, otherwise the group office (or the holding that carries it).
+    private var employer: String {
+        guard let cid = chainID else { return engine.groupOfficeEmployer }
+        let name = engine.state.rest["chains"]?.array.first { $0["id"].int == cid }?["name"].string ?? ""
+        return name.isEmpty ? "your chain" : name
+    }
+
     private func cityLabel(_ id: String) -> String { engine.state.companies.first { $0.cityID == id }.map { engine.cityName($0) } ?? id }
 
     @ViewBuilder private func row(_ p: Post, _ cur: Currency) -> some View {
@@ -83,6 +90,7 @@ struct ExecutivePosts: View {
                         Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                         RoleScopeBadge(role: p.level == .md ? "Group managing director" : p.level.title, scope: p.scope)
                     }
+                    Text((person == nil ? "Would be employed by " : "Employed by ") + employer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     if person == nil { Text(p.level.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)

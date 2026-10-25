@@ -72,7 +72,8 @@ public enum StaffRoutine {
             let tenure = Double(s.week - (m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week))
             let odds = StaffWeek.quitOdds(family: bd.family, tradeID: co.type, staff: m, person: n, payGap: gap, tenure: tenure,
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
-            if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
+            let perkShare = market > 0 ? StaffPerks.worthMonthly(co, m, currency: w.currency(co)) / market : 0
+            if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, perkShare: perkShare, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
             probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
             if s.random.chance(quitChance(odds: odds, company: co, member: m)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }
             if let trait = n.trait, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
@@ -96,7 +97,7 @@ public enum StaffRoutine {
     /// How far a person's pay (base plus the commission they really earn) is under what the job pays for their skill: -0.2 to 0.4. The one formula of the
     /// weekly pass and of the contract talk's quit-risk preview.
     static func payGap(market: Double, person n: Person, member m: StaffMember) -> Double {
-        let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0)
+        let effectivePay = m.monthlyWage + ((m.commissionMode != nil && m.commissionMode != "fix") ? m.num("commEma") * 52 / 12 : 0) + m.num("bnEma")
         return clamp((market * (0.7 + n.skill / 160) - effectivePay) / market, -0.2, 0.4)
     }
 
@@ -178,7 +179,7 @@ public enum StaffRoutine {
             let hired = m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week
             let age = n.age + (s.week - hired) / 52
             let ageF: Double = age < 25 ? 1.35 : age < 35 ? 1.1 : age < 50 ? 0.85 : age < 60 ? 0.6 : 0.35
-            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * ageF, -10, max(30, (n.potential ?? n.skill) - n.skill))
+            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * ageF * StaffExpenses.learnFactor(m), -10, max(30, (n.potential ?? n.skill) - n.skill))
             staff[idx] = m
         }
         co.staff = staff

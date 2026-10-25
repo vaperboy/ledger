@@ -17,7 +17,7 @@ public enum CompanyCosts {
     static func commission(_ co: inout Company, _ bd: Trade, _ w: World) -> Double {
         let salesRoles = w.catalog.tables.salesRoles
         var staff = co.staff
-        let sellerIdx = staff.indices.filter { salesRoles.contains(staff[$0].role) }
+        let sellerIdx = staff.indices.filter { PayPlans.sells(staff[$0], salesRoles: salesRoles) }
         if sellerIdx.isEmpty { return 0 }
         let rev = co.lastWeekRevenue
         let skills = sellerIdx.map { StaffModel.skill(staff[$0], person: w.state.people[staff[$0].id], salesRoles: salesRoles) + 10 }
@@ -53,12 +53,15 @@ public enum CompanyCosts {
         if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
         gross *= f
         let cost = gross * country.employerCostFactor
-        co.addPayable("wages", cost)
-        var b = co.books; b.add("wages", cost); co.books = b
+        // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
+        let bonus = co.num("bnPend") * country.employerCostFactor
+        if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
+        co.addPayable("wages", cost + bonus)
+        var b = co.books; b.add("wages", cost + bonus); co.books = b
         co.lastWages = cost
         s.companies[i] = co
-        s.stats.wagesPaid += cost
-        return cost
+        s.stats.wagesPaid += cost + bonus
+        return cost + bonus
     }
 
     // MARK: Rent
