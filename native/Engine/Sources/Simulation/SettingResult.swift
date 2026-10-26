@@ -1,5 +1,7 @@
 import Foundation
 import GameCore
+import Businesses
+import Finance
 
 /// What a setting-style action did, so the screen can say so: `applied` (something changed), `unchanged` (it was already so, or
 /// the thing it refers to has gone) or `refused` with the reason to show the player.
