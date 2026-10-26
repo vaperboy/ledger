@@ -20,9 +20,20 @@ final class MainScreensTests: XCTestCase {
         add(a)
     }
 
+    /// Pops pushed screens until the tab bar is on screen (at most 6 times), so a sub-screen that did not return cannot strand the tour.
+    func ensureTabBar() {
+        var tries = 0
+        while !app.tabBars.firstMatch.buttons.firstMatch.isHittable && tries < 6 {
+            let before = app.navigationBars.count
+            goBack(); sleep(1); tries += 1
+            if before == 0 { break }
+        }
+    }
+
     func open(_ name: String) {
-        let tab = app.tabBars.buttons[name]
-        if tab.exists { tab.tap(); return }
+        ensureTabBar()
+        let tab = app.tabBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch
+        if tab.waitForExistence(timeout: 5) { tab.tap(); return }
         let row = app.buttons[name].firstMatch
         if row.exists { row.tap(); return }
         let t = app.staticTexts[name].firstMatch
@@ -72,22 +83,22 @@ final class MainScreensTests: XCTestCase {
                     if section == "Operations" {
                         for sub in ["Suppliers", "Insurance", "Working from home"] where tap(sub) {
                             shot("\(n)-operations-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
-                            goBack()
+                            if !app.buttons["Operations"].isHittable { goBack(); sleep(1) }
                         }
                     }
                     if section == "Finances" {
-                        for sub in ["Payroll and bills", "Accounts", "Loans"] where tap(sub) {
+                        for sub in ["Payroll", "Accounts", "Loans"] where tap(sub) {
                             shot("\(n)-finances-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
-                            goBack()
+                            // These are tabs inside the Finances page, not pushed screens: there is nothing to go back from.
                         }
                     }
                     if section == "Team" {
-                        if tap("Find workers") { shot("\(n)-team-find-workers"); n += 1; goBack() }
+                        if tap("Find workers") { shot("\(n)-team-find-workers"); n += 1; if !app.buttons["Team"].isHittable { goBack(); sleep(1) } }
                     }
                 }
             }
-            goBack()
         }
+        ensureTabBar()
 
         // Team tab and a person
         open("Team"); sleep(1); shot("40-team")
@@ -96,12 +107,12 @@ final class MainScreensTests: XCTestCase {
         // Group
         open("Group"); sleep(1); shot("45-group")
         scrollDown(); shot("46-group-lower")
-        if tap("Stand alone") { shot("47-group-stand-alone"); goBack() }
+        if tap("Stand alone") { shot("47-group-stand-alone"); ensureTabBar() }
 
         // Projects and Inbox detail
         open("Projects"); sleep(1); shot("50-projects")
         open("Inbox"); sleep(1); shot("52-inbox")
         let row = app.cells.firstMatch
-        if row.exists && row.isHittable { row.tap(); sleep(1); shot("53-inbox-message"); goBack() }
+        if row.exists && row.isHittable { row.tap(); sleep(1); shot("53-inbox-message"); ensureTabBar() }
     }
 }

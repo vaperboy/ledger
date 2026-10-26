@@ -47,6 +47,23 @@ struct FinanceView: View {
 
     // MARK: Overview
 
+    /// Engine notes by weight: real warnings with an icon and amber, the plain figure as a quiet line, the disclaimer as a footnote.
+    @ViewBuilder private func overviewNotes(_ notes: [String]) -> some View {
+        let warnings: [String] = notes.filter { $0.hasPrefix("The next 30 days") || $0.hasPrefix("This month costs more") }
+        let footnotes: [String] = notes.filter { $0.contains("game estimates") }
+        let plain: [String] = notes.filter { n in !warnings.contains(n) && !footnotes.contains(n) }
+        ForEach(warnings, id: \.self) { n in
+            Label { Text(n.tidyMoney).font(.caption).fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: "exclamationmark.triangle.fill") }
+                .foregroundStyle(Theme.caution)
+        }
+        ForEach(plain, id: \.self) { n in
+            Text(n.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+        }
+        ForEach(footnotes, id: \.self) { n in
+            Text(n).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     /// The answer first: can the next 30 days be paid? Then what is owed, what is due, and where the money goes.
     private func overview(_ e: GameEngine, _ o: FinanceOverview) -> some View {
         let short = o.shortfall > 0
@@ -63,11 +80,10 @@ struct FinanceView: View {
             KeyFigures(items: [
                 .init(label: CashWording.available(companyID: companyID), value: store.short(o.cashAvailable), tint: o.cashAvailable < 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Tax and VAT owed", value: store.short(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory),
-                companyID == nil ? .init(label: "Private", value: store.short(e.netWorth.personal), tint: Theme.ivoryMuted, sub: "not counted above")
+                companyID == nil ? .init(label: "Private", value: store.short(e.netWorth.personal), tint: Theme.ivoryMuted, sub: "cash and savings")
                                  : .init(label: "Profit, month", value: store.short(o.monthProfit), tint: Theme.change(o.monthProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.monthProfit)),
             ])
-            if companyID == nil { Text(CashWording.personalNote).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
-            ForEach(o.notes, id: \.self) { n in Text(n).font(.caption).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
+            overviewNotes(o.notes)
 
             LedgerSection("Upcoming payments") {
                 VStack(spacing: 0) {
@@ -146,7 +162,7 @@ struct FinanceView: View {
         let lines = yearly ? o.costsThisYear : o.costsThisMonth
         let total = yearly ? o.costTotalThisYear : o.costTotalThisMonth
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            SectionTabs(items: [false, true], title: { $0 ? "This year" : "This month" }, selection: $yearly).padding(.horizontal, -Theme.Space.margin)
+            SegmentedChoice(items: [false, true], title: { $0 ? "This year" : "This month" }, selection: $yearly)
             VStack(alignment: .leading, spacing: 4) {
                 Text(yearly ? "Business costs this year" : "Business costs this month").capsLabel()
                 Text(store.money(total)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)

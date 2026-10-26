@@ -46,14 +46,14 @@ struct CompanyOperations: View {
             LedgerSection("Upkeep") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Maintenance").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    SectionTabs(items: [0, 1, 2], title: { ["Minimal", "Normal", "Thorough"][$0] },
+                    SegmentedChoice(items: [0, 1, 2], title: { ["Minimal", "Normal", "Thorough"][$0] },
                                 selection: Binding(get: { company.maintenance }, set: { v in
                                     store.act { $0.setMaintenance(companyID: company.id, level: v) }
                                     store.saved("Maintenance: \(["minimal", "normal", "thorough"][min(2, max(0, v))])")
                                 }))
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, Theme.Space.xs)
-                    SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
+                    SegmentedChoice(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
                                 selection: Binding(get: { company.int("stockPol", 1) }, set: { v in
                                     store.act { $0.setStockPolicy(companyID: company.id, level: v) }
                                     store.saved("Stock: \(["lean", "balanced", "generous"][min(2, max(0, v))])")

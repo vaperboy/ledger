@@ -105,9 +105,9 @@ struct GroupStructureOverview: View {
                     .init(label: "Companies", value: "\(live.count)", sub: "\(Set(live.map { $0.cityID }).count) \(Set(live.map { $0.cityID }).count == 1 ? "city" : "cities")"),
                     .init(label: "Holdings", value: "\(holdings.count)", sub: "\(live.filter { $0.holdingID != 0 }.count) held"),
                     .init(label: "Chains", value: "\(chains.count)", sub: "\(chains.reduce(0) { $0 + $1.stores.count }) \(chains.reduce(0) { $0 + $1.stores.count } == 1 ? "store" : "stores")"),
-                    .init(label: "Your franchise units", value: "\(units)", sub: "run by others"),
-                    .init(label: "Franchisee", value: "\(franchised.count)", sub: "under a brand"),
-                    .init(label: "Stand alone", value: "\(alone.count)", sub: "no chain, franchise or holding"),
+                    .init(label: "Franchised out", value: "\(units)", sub: "run by others"),
+                    .init(label: "Franchise you hold", value: "\(franchised.count)", sub: "under a brand"),
+                    .init(label: "Stand alone", value: "\(alone.count)", sub: "no group link"),
                 ])
                 if live.isEmpty { Text("Start a company to build a group.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8) }
             }

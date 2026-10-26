@@ -204,16 +204,16 @@ struct LuxuryView: View {
             }
             if !uses.isEmpty && p.use != "museum" {
                 Text("Use").capsLabel(Theme.ivoryFaint).padding(.top, 8)
-                SectionTabs(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
+                SegmentedChoice(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in
-                                if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } })).padding(.horizontal, -Theme.Space.margin)
+                                if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } }))
                 if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"
-                SectionTabs(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
+                SegmentedChoice(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
                             selection: Binding(get: { open }, set: { v in
-                                if store.act({ $0.setCastleOpen(pieceID: p.id, open: v) }) != nil { store.saved(v ? "the castle is open for events." : "the castle is private.") } })).padding(.horizontal, -Theme.Space.margin)
+                                if store.act({ $0.setCastleOpen(pieceID: p.id, open: v) }) != nil { store.saved(v ? "the castle is open for events." : "the castle is private.") } }))
             }
             LendPieceSection(engine: e, piece: p)
             HStack(spacing: Theme.Space.m) {

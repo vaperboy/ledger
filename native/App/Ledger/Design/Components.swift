@@ -336,6 +336,8 @@ struct SectionTabs<T: Hashable>: View {
     var title: (T) -> String
     @Binding var selection: T
     var badge: (T) -> Int = { _ in 0 }
+    /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
+    var sub: Bool = false
 
     private var fixed: [T] {
         if let primary { let p = primary.filter { items.contains($0) }; return p.count < items.count ? p : items }
@@ -349,7 +351,7 @@ struct SectionTabs<T: Hashable>: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             ForEach(fixed, id: \.self) { item in
                 let on = selection == item
                 Button { selection = item; Haptics.choose() } label: {
@@ -372,19 +374,23 @@ struct SectionTabs<T: Hashable>: View {
             }
         }
         .padding(.horizontal, Theme.Space.margin)
-        .background(alignment: .bottom) { Hairline() }
+        .background(alignment: .bottom) { if !sub { Hairline() } }
     }
 
     private func cell(_ text: String, count: Int, on: Bool, more: Bool) -> some View {
         HStack(spacing: 3) {
-            Text(text).font(.system(size: 14, weight: on ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(sub ? text.uppercased() : text)
+                .font(.system(size: sub ? 11 : 14, weight: on ? .semibold : .regular))
+                .tracking(sub ? 0.6 : 0)
+                .lineLimit(1)
             if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             if count > 0 { countView(count) }
         }
         .foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
-        .frame(maxWidth: .infinity, minHeight: 44)
+        .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
+        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? Theme.hairline : Color.clear))
         .contentShape(Rectangle())
-        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
+        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
     }
 }
 
@@ -525,5 +531,34 @@ extension View {
         .onChange(of: pending.wrappedValue?.id) { _, _ in
             if let p = pending.wrappedValue, ConfirmThreshold.skips(p) { pending.wrappedValue = nil; p.run() }
         }
+    }
+}
+
+/// Compact segmented control for a choice made inside a page (Minimal / Normal / Thorough, Shares / Crypto / Funds). A filled
+/// track with the chosen option raised, so it never reads as page navigation (the underlined SectionTabs).
+struct SegmentedChoice<T: Hashable>: View {
+    var items: [T]
+    var title: (T) -> String
+    @Binding var selection: T
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(items, id: \.self) { item in
+                let on = selection == item
+                Button { selection = item; Haptics.choose() } label: {
+                    Text(title(item))
+                        .font(.system(size: 13, weight: on ? .semibold : .regular))
+                        .lineLimit(1).minimumScaleFactor(0.85)
+                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(on ? Theme.hairline : Color.clear))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? Theme.gold.opacity(0.7) : Color.clear, lineWidth: 1))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ivory.opacity(0.05)))
     }
 }

@@ -337,7 +337,10 @@ extension String {
     var tidyMoney: String {
         var t = self
         // A non-breaking space between digits is a thousands separator.
-        t = t.replacingOccurrences(of: "(?<=\\d)\u{00A0}(?=\\d)", with: ",", options: .regularExpression)
+        t = t.replacingOccurrences(of: "(?<=\\d)[\u{00A0}\u{202F}\u{2009}](?=\\d)", with: ",", options: .regularExpression)
+        // Engine sentences turn that separator into a plain space ("£7 745"): a currency symbol, then 1-3 digits, a space, 3 digits.
+        t = t.replacingOccurrences(of: "(?<=[£$€¥]\\d{1,3}) (?=\\d{3}(?!\\d))", with: ",", options: .regularExpression)
+        t = t.replacingOccurrences(of: "(?<=[£$€¥]\\d{1,3},\\d{3}) (?=\\d{3}(?!\\d))", with: ",", options: .regularExpression)
         for unit in ["k", "M", "bn"] {
             t = t.replacingOccurrences(of: "(?<=\\d) \(unit)\\b", with: unit, options: .regularExpression)
         }

@@ -185,7 +185,7 @@ struct ReportsContent: View {
         return LedgerSection("In short") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { _, s in
-                    Text(s).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                    Text(s.tidyMoney).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

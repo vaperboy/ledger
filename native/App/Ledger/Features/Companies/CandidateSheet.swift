@@ -50,7 +50,7 @@ struct WorkerHireRow: View {
                          subtitle: "Says \(StaffProfile.band(person.claimedSkill).lowercased()) (\(Int(person.claimedSkill.rounded()))) · age \(person.age)" + claims,
                          market: market, factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in hire(wage) }) {
             VStack(alignment: .leading, spacing: 6) {
-                SectionTabs(items: kinds, title: { $0.rawValue }, selection: $kind)
+                SegmentedChoice(items: kinds, title: { $0.rawValue }, selection: $kind)
                 if kind == .full || kind == .ownCar { contractTerms(cur) }
                 if tried {
                     Text("After a trial week their work looked like skill \(Int(person.num("trialRes").rounded())), give or take a few points.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
@@ -65,7 +65,7 @@ struct WorkerHireRow: View {
     @ViewBuilder private func contractTerms(_ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if sells {
-                SectionTabs(items: Plan.allCases, title: { $0.rawValue }, selection: $plan)
+                SegmentedChoice(items: Plan.allCases, title: { $0.rawValue }, selection: $plan)
                 if plan != .salary {
                     Text("Commission").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     WrapRow {

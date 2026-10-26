@@ -264,7 +264,7 @@ struct MessageCard: View {
     /// Asks to answer with an option (the Inbox confirms it first).
     var ask: (Message, Int) -> Void
 
-    private func text(_ s: String) -> String { store.engine?.displayText(s, companyID: message.companyID) ?? s }
+    private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
     /// The effects of an option, in the currency of the company it concerns.
     static func preview(_ e: GameEngine, _ message: Message, _ option: JSONValue) -> [String] {

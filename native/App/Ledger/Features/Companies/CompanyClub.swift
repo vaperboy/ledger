@@ -94,13 +94,11 @@ struct CompanyClub: View {
             LedgerSection("Budget") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Player wages, share of revenue").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    SectionTabs(items: [0.55, 0.65, 0.8], title: { "\(Int($0 * 100))%" },
+                    SegmentedChoice(items: [0.55, 0.65, 0.8], title: { "\(Int($0 * 100))%" },
                                 selection: wageBinding(c))
-                        .padding(.horizontal, -Theme.Space.margin)
                     Text("Ticket prices").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    SectionTabs(items: [-1, 0, 1], title: { ["Low", "Normal", "High"][$0 + 1] },
+                    SegmentedChoice(items: [-1, 0, 1], title: { ["Low", "Normal", "High"][$0 + 1] },
                                 selection: ticketBinding(c))
-                        .padding(.horizontal, -Theme.Space.margin)
                     Text("A bigger wage budget buys a stronger squad but eats the profit. Cheaper tickets fill the stadium and build the fan base.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }

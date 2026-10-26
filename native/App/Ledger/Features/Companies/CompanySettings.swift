@@ -125,7 +125,7 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    SectionTabs(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks).padding(.horizontal, -Theme.Space.margin)
+                    SegmentedChoice(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks)
                     if let notice {
                         Toggle(isOn: $giveUpRent) {
                             VStack(alignment: .leading, spacing: 1) {

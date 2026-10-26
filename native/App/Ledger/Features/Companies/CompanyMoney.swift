@@ -7,7 +7,7 @@ import Simulation
 
 /// The parts of a company's Finances section. Summary answers "is the money all right"; the others are where it is handled.
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
-    case summary = "Summary", accounts = "Accounts", payroll = "Payroll and bills", loans = "Loans", owners = "You and owners", settings = "Settings"
+    case summary = "Summary", accounts = "Accounts", payroll = "Payroll", loans = "Loans", owners = "You and owners", settings = "Settings"
 }
 
 /// One company's money: the shared financial summary, then accounts, loans, owner money and the company's legal settings.
@@ -21,7 +21,7 @@ struct CompanyMoney: View {
         let loans = engine.state.loans.filter { $0.companyID == company.id }.count
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             SectionTabs(items: CompanyMoneyPart.allCases, title: { $0.rawValue }, selection: $part,
-                        badge: { $0 == .loans ? loans : 0 }).padding(.horizontal, -Theme.Space.margin)
+                        badge: { $0 == .loans ? loans : 0 }, sub: true).padding(.horizontal, -Theme.Space.margin)
             switch part {
             case .summary: CompanyMoneySummary(engine: engine, company: company, part: $part)
             case .accounts: CompanyAccounts(engine: engine, company: company)

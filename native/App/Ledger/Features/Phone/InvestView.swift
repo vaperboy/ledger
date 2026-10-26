@@ -19,8 +19,7 @@ struct InvestContent: View {
             let mine = list.filter { $0.value > 0 }
             let rest = list.filter { $0.value <= 0 }
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                SectionTabs(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
-                    .padding(.horizontal, -Theme.Space.margin)
+                SegmentedChoice(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(kind == .stock ? "Your shares" : kind == .crypto ? "Your crypto" : "Your funds").capsLabel()
                     Text(cur.tidyDisplay(held)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)
@@ -129,9 +128,17 @@ struct TradeSheet: View {
         }
     }
 
+    /// Buying and selling shares is routine and reversible: it runs at once (the fee was previewed on the sheet) unless the amount is
+    /// large against cash, more than 10% of it, when the confirmation shows the cost and risk first.
+    private func submit(_ p: PendingAction, size: Double? = nil) {
+        let cash: Double = max(0, store.engine?.state.cash ?? 0)
+        let value: Double = size ?? p.amount ?? 0
+        if value > cash * 0.10 { pending = p } else { p.run() }
+    }
+
     private func buy(_ cur: Currency, _ fee: Double) {
         let a = amount
-        pending = PendingAction(title: "Buy \(cur.tidyShort(a)) of \(quote.symbol)?",
+        let p = PendingAction(title: "Buy \(cur.tidyShort(a)) of \(quote.symbol)?",
                                 message: "Paid from your current account with a broker fee of about \(cur.tidyDisplay(fee)). The price can fall as well as rise" + (quote.kind == .crypto ? "; crypto can lose most of its value" : "") + ". A gain is taxed at year end.",
                                 button: "Buy", amount: a, currency: cur) {
             switch store.act({ $0.buyInvestment(quote.kind, symbol: quote.symbol, amount: a) }) {
@@ -141,18 +148,20 @@ struct TradeSheet: View {
             default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
             }
         }
+        submit(p)
     }
 
     private func sell(_ live: Quote, _ f: Double, _ cur: Currency) {
         let proceeds = live.value * f
-        pending = PendingAction(title: f == 1 ? "Sell all of \(quote.symbol)?" : "Sell \(Int(f * 100))% of \(quote.symbol)?",
-                                message: "About \(cur.tidyDisplay(proceeds)) at today's price, less the broker fee. A gain is taxed at year end.", button: "Sell", destructive: true) {
+        let p = PendingAction(title: f == 1 ? "Sell all of \(quote.symbol)?" : "Sell \(Int(f * 100))% of \(quote.symbol)?",
+                                message: "About \(cur.tidyDisplay(proceeds)) at today's price, less the broker fee. A gain is taxed at year end.", button: "Sell") {
             let before = live.value
             store.act { $0.sellInvestment(quote.kind, symbol: quote.symbol, fraction: f) }
             let after = store.engine?.quotes(quote.kind).first { $0.id == quote.id }?.value ?? 0
             if after < before { Haptics.success(); store.show("Sold \(cur.tidyShort(before - after)) of \(quote.symbol), less the broker fee.", tone: "good") }
             else { Haptics.warning(); store.show("Nothing was sold: trading in \(quote.symbol) has stopped.", tone: "warn") }
         }
+        submit(p, size: proceeds)
     }
 }
 

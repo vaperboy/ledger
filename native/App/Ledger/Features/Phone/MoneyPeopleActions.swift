@@ -168,7 +168,7 @@ struct FundManagerCard: View {
                         }.buttonStyle(QuietButtonStyle())
                     } else {
                         Text("Mandate").capsLabel(Theme.ivoryFaint)
-                        SectionTabs(items: FinanceManager.Mandate.allCases, title: { $0.title }, selection: $mandate).padding(.horizontal, -Theme.Space.margin)
+                        SegmentedChoice(items: FinanceManager.Mandate.allCases, title: { $0.title }, selection: $mandate)
                         Text(note(mandate)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                         AmountField(title: "Amount to hand over", currency: cur, amount: $amount)
                         ForEach(Array(cands.enumerated()), id: \.element.id) { n, c in

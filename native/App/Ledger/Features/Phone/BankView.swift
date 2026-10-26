@@ -82,7 +82,7 @@ struct BankContent: View {
                     ListRow(symbol: "lock.fill", tint: Theme.gold, title: "Fixed deposit at \(Currency.percent(d.rate, decimals: 2))",
                             subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")", trailing: cur.tidyDisplay(d.balance))
                 }
-                SectionTabs(items: GameEngine.depositTermChoices, title: { "\($0) weeks" }, selection: $depositWeeks).padding(.horizontal, -Theme.Space.margin)
+                SegmentedChoice(items: GameEngine.depositTermChoices, title: { "\($0) weeks" }, selection: $depositWeeks)
                 KeyFigures(items: [
                     .init(label: "Rate", value: Currency.percent(q.yearlyRate, decimals: 2), sub: "a year, fixed"),
                     .init(label: "Interest at the end", value: amount > 0 ? cur.tidyShort(q.interest) : "–", tint: Theme.gain),
@@ -158,7 +158,7 @@ struct BankContent: View {
                 Text("A personal consumer loan, paid into your current account. What the bank lends depends on your credit (\(q.creditBand)), your income and what you already owe.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 AmountField(title: "Amount", currency: cur, amount: $borrow)
-                SectionTabs(items: GameEngine.loanTermChoices, title: { $0 % 12 == 0 ? "\($0 / 12) yr" : "\($0) mo" }, selection: $term).padding(.horizontal, -Theme.Space.margin)
+                SegmentedChoice(items: GameEngine.loanTermChoices, title: { $0 % 12 == 0 ? "\($0 / 12) yr" : "\($0) mo" }, selection: $term)
                 KeyFigures(items: [
                     .init(label: "Interest", value: Currency.percent(q.yearlyRate, decimals: 2), sub: "a year, moves with the bank rate"),
                     .init(label: "Each month", value: borrow > 0 ? cur.tidyShort(q.monthlyPayment) : "–", sub: "\(term) payments"),

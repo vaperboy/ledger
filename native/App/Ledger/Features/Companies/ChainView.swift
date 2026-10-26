@@ -327,8 +327,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }
             store.settle(r, "Chain ordering rule: \(names[min(2, max(0, v))].lowercased()).")
         })
-        return SectionTabs(items: [0, 1, 2], title: { names[$0] }, selection: binding)
-            .padding(.horizontal, -Theme.Space.margin)
+        return SegmentedChoice(items: [0, 1, 2], title: { names[$0] }, selection: binding)
     }
 
     private var payRule: some View {
@@ -340,8 +339,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
             store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.")
         })
-        return SectionTabs(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
-            .padding(.horizontal, -Theme.Space.margin)
+        return SegmentedChoice(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
     }
 
     private var marketingRule: some View {
@@ -351,8 +349,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }
             store.settle(r, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).")
         })
-        return SectionTabs(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
-            .padding(.horizontal, -Theme.Space.margin)
+        return SegmentedChoice(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
     }
 
     @ViewBuilder private var knobRules: some View {

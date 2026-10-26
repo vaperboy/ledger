@@ -72,7 +72,7 @@ struct TeamView: View {
                 Text("No companies yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             } else {
                 KeyFigures(items: [
-                    .init(label: "Need you", value: "\(mine)", tint: mine > 0 ? Theme.caution : Theme.ivory, sub: mine == 0 ? "all in hand" : "people matters"),
+                    .init(label: "Need you", value: "\(mine)", tint: mine > 0 ? Theme.caution : Theme.ivory, sub: mine == 0 ? "all in hand" : "matters"),
                     .init(label: "Run by managers", value: "\(byManagers) of \(live.count)", sub: "\(live.count - byManagers) by you"),
                     .init(label: "Posts to fill", value: "\(o.vacancies.count)", tint: needed > 0 ? Theme.loss : Theme.ivory, sub: needed > 0 ? "\(needed) needed now" : "none urgent"),
                 ])
