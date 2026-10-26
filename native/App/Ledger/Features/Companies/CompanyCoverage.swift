@@ -81,6 +81,8 @@ struct CompanyCoverageScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 if o.insurer == nil {
                     Text("Choose an insurer below first. Without one a policy cannot be switched on.").font(.caption).foregroundStyle(Theme.caution).padding(.bottom, 6)
+                } else {
+                    Text("Tap a policy to switch it on or off. The cost is shown before you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                 }
                 ForEach(Array(o.policies.enumerated()), id: \.element.id) { n, p in
                     if n > 0 { Hairline() }
@@ -127,7 +129,7 @@ struct CompanyCoverageScreen: View {
     // MARK: Providers
 
     @ViewBuilder private func providers(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ kind: Advisers.Kind, _ title: String, _ cur: Currency, empty: String) -> some View {
-        let current: AdviserOption? = kind == .insurer ? o.insurer : kind == .law ? o.lawFirm : o.accountant
+        let current: AdviserOption? = currentAdviser(kind, o)
         let choices = e.adviserChoices(companyID: companyID, kind: kind)
         LedgerSection(title) {
             VStack(alignment: .leading, spacing: 0) {
@@ -156,6 +158,14 @@ struct CompanyCoverageScreen: View {
                     Button("Drop \(title.lowercased())") { drop(kind, title, current!, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss)).padding(.top, 8)
                 }
             }
+        }
+    }
+
+    private func currentAdviser(_ kind: Advisers.Kind, _ o: CoverageOverview) -> AdviserOption? {
+        switch kind {
+        case .insurer: return o.insurer
+        case .law: return o.lawFirm
+        default: return o.accountant
         }
     }
 
