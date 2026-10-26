@@ -17,13 +17,15 @@ struct CompanyHowYouSell: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let changing = company.value("hys56c")
-        VStack(spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             ForEach(trade.knobs, id: \.id) { knob in
                 let value = company.value("knob")[knob.id].isNull ? knob.defaultIndex : company.value("knob")[knob.id].int
                 let lock = engine.knobGovernedBy(companyID: company.id, knob: knob.id)
-                Card {
+                LedgerSection(title: knob.name, trailing: {
+                    if lock != nil { Chip(text: "Locked", tint: Theme.caution, symbol: "lock.fill") }
+                    else if !knob.isMulti, knob.options.indices.contains(value) { Text(knob.options[value].name).font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                }) {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        SectionLabel(knob.name)
                         Text(knob.detail.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted)
                         if let lock {
                             Label("Locked. " + lock, systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.caution)
@@ -49,7 +51,7 @@ struct CompanyHowYouSell: View {
                                 }
                             }
                             if knob.options.indices.contains(value) { Text(knob.options[value].detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                            if lock == nil { Text("Changing how you sell costs a changeover and a few weeks at reduced capacity. Tap a choice to see the engine's estimate before you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            if lock == nil { Text("Changing how you sell costs a changeover and a few weeks at reduced capacity. Tap another choice to see the cost and an estimate before you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
                 }

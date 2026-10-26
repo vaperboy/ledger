@@ -8,51 +8,56 @@ struct CompanyOperations: View {
     var engine: GameEngine
     var company: Company
     @State private var pending: PendingAction?
+    @State private var lastPrice: SettingResult?
 
     var body: some View {
         let trade = engine.tradeInfo(companyID: company.id)
-        VStack(spacing: Theme.Space.l) {
-            GlassCard {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            LedgerSection("Price") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("Price").capsLabel()
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(priceWord(company.priceLevel)).font(.hero(34))
                         Spacer()
                         Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
-                    Slider(value: Binding(get: { company.priceLevel }, set: { v in _ = store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) } }), in: -3...3, step: 0.5) { editing in
-                        if !editing { store.show("Price: \(priceWord(company.priceLevel)).", tone: "good"); Haptics.tap() }
+                    Slider(value: Binding(get: { company.priceLevel }, set: { v in lastPrice = store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) } }), in: -3...3, step: 0.5) { editing in
+                        if !editing { Haptics.tap(); store.settle(lastPrice, "Price: \(priceWord(company.priceLevel)).", same: "Price is already \(priceWord(company.priceLevel)).", tone: "good") }
                     }
-                        .tint(Theme.gold)
-                    Text("Cheaper brings more customers, dearer more profit per sale. The right spot depends on your trade and area.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .tint(Theme.gold)
+                    HStack {
+                        Text("Bargain").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Spacer()
+                        Text("Luxury").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    Text("Cheaper brings more customers, dearer more profit per sale. The right spot depends on your trade and area. The change applies from next week.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     inflationHold
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Your time")
-                    HStack(spacing: Theme.Space.m) {
-                        IconBadge(symbol: "clock.fill", tint: Theme.ivoryMuted)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(Int(company.ownerHours.rounded())) hours a week").font(.bodyText.weight(.medium))
-                            Text(company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer()
-                        StepperPill(value: Binding(get: { company.ownerHours }, set: { v in store.settle(store.act { $0.setOwnerHours(companyID: company.id, hours: v) }, "Hours saved.", same: "Hours are already that.") }), range: 0...80, step: 5)
+            LedgerSection("Your time", trailing: { Text("Max 80 h across all companies").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
+                HStack(spacing: Theme.Space.m) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(Int(company.ownerHours.rounded())) hours a week").font(.bodyText.weight(.medium))
+                        Text(company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself").font(.caption).foregroundStyle(Theme.ivoryFaint)
                     }
-                    Text("Your hours across all companies cannot exceed 80.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    Spacer()
+                    StepperPill(value: Binding(get: { company.ownerHours }, set: { v in store.settle(store.act { $0.setOwnerHours(companyID: company.id, hours: v) }, "Hours saved.", same: "Hours are already that.") }), range: 0...80, step: 5)
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Upkeep")
+            LedgerSection("Upkeep") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Maintenance").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SectionTabs(items: [0, 1, 2], title: { ["Minimal", "Normal", "Thorough"][$0] },
-                                selection: Binding(get: { company.maintenance }, set: { v in store.act { $0.setMaintenance(companyID: company.id, level: v) } }))
+                                selection: Binding(get: { company.maintenance }, set: { v in
+                                    store.act { $0.setMaintenance(companyID: company.id, level: v) }
+                                    store.saved("Maintenance: \(["minimal", "normal", "thorough"][min(2, max(0, v))])")
+                                }))
                         .padding(.horizontal, -Theme.Space.margin)
-                    Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, Theme.Space.xs)
                     SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
-                                selection: Binding(get: { company.int("stockPol", 1) }, set: { v in store.act { $0.setStockPolicy(companyID: company.id, level: v) } }))
+                                selection: Binding(get: { company.int("stockPol", 1) }, set: { v in
+                                    store.act { $0.setStockPolicy(companyID: company.id, level: v) }
+                                    store.saved("Stock: \(["lean", "balanced", "generous"][min(2, max(0, v))])")
+                                }))
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("Thorough upkeep costs more but equipment breaks less; generous stock avoids running out but ties up cash.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
@@ -87,7 +92,7 @@ struct CompanyOperations: View {
     private func setHold(_ on: Bool, edge: Double) {
         let id = company.id, name = company.name
         let apply = {
-            _ = store.act { $0.setInflationHold(companyID: id, hold: on) }
+            guard store.act({ $0.setInflationHold(companyID: id, hold: on) }) != nil else { store.show("Could not change the price setting.", tone: "warn"); return }
             store.show(on ? "\(name) now holds its prices." : "\(name)'s prices follow inflation again.", tone: "n")
         }
         if !on && edge >= 0.5 {

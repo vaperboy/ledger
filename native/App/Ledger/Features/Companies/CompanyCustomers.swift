@@ -122,21 +122,12 @@ struct CompanyCustomers: View {
                     HStack {
                         Text(c.status.managerPicks ? "Your manager picks the level, keeps the backups and books the training." : "Your choice stands.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                         Spacer()
-                        if !c.status.managerPicks { Button("Leave it to the manager") { store.act { $0.leaveCyberToManager(companyID: company.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                        if !c.status.managerPicks { Button("Leave it to the manager") { store.act { $0.leaveCyberToManager(companyID: company.id) }; store.saved("your manager now picks the IT protection") }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
                     }
                 }
-                ForEach(Cyber.levels.indices, id: \.self) { i in
+                ForEach(Cyber.levels.indices, id: \.self) { (i: Int) in
                     Hairline()
-                    Button { Haptics.choose(); store.settle(store.act { $0.setCyberLevel(companyID: company.id, level: i) }, "Cyber protection: \(Cyber.levels[i].name).", same: "That protection level is already in place.") } label: {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(Cyber.levels[i].name).font(.system(size: 13.5, weight: c.status.level == i ? .semibold : .regular)).foregroundStyle(c.status.level == i ? Theme.gold : Theme.ivory)
-                                Text(Cyber.levels[i].text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer()
-                            Text(i == 0 ? "Free" : cur.tidyShort(c.levelCosts[i]) + "/mo").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                        }.contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    levelRow(i, c: c, cur: cur)
                 }
                 Hairline()
                 HStack {
@@ -145,7 +136,7 @@ struct CompanyCustomers: View {
                     Spacer()
                     Button((c.status.trainedUntil ?? 0) > engine.state.week ? "Staff trained" : "Train staff · " + cur.tidyShort(c.trainingCost)) {
                         let r = store.act { $0.trainStaff(companyID: company.id) }
-                        if case .refused(let why)? = r { store.show(why, tone: "warn") } else { Haptics.success() }
+                        if case .refused(let why)? = r { store.show(why, tone: "warn") } else if r != nil { Haptics.success(); store.show("Staff training booked.", tone: "good") }
                     }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 }
                 if let last = c.status.log.first {
@@ -153,6 +144,26 @@ struct CompanyCustomers: View {
                 }
             }
         }
+    }
+
+    private func levelRow(_ i: Int, c: CyberInfo, cur: Currency) -> some View {
+        let on: Bool = c.status.level == i
+        let costText: String = i == 0 ? "Free" : cur.tidyShort(c.levelCosts[i]) + "/mo"
+        let done: String = "Cyber protection: \(Cyber.levels[i].name)."
+        return Button {
+            Haptics.choose()
+            store.settle(store.act { $0.setCyberLevel(companyID: company.id, level: i) }, done, same: "That protection level is already in place.")
+        } label: {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Cyber.levels[i].name).font(.system(size: 13.5, weight: on ? .semibold : .regular)).foregroundStyle(on ? Theme.gold : Theme.ivory)
+                    Text(Cyber.levels[i].text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Text(costText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.caption).foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+            }.contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 }
 
@@ -185,7 +196,7 @@ private struct AccountRow: View {
             WrapRow {
                 Group {
                     ForEach(KeyAccounts.discounts, id: \.self) { d in
-                        Button("\(d)%") { store.act { $0.setAccountDiscount(companyID: company.id, accountID: account.id, percent: d) } }
+                        Button("\(d)%") { store.act { $0.setAccountDiscount(companyID: company.id, accountID: account.id, percent: d) }; store.saved("\(account.name): \(d == 0 ? "full price" : "\(d)% off")") }
                             .buttonStyle(QuietButtonStyle(tint: account.discount == d ? Theme.gold : Theme.ivoryFaint))
                     }
                 }
@@ -196,7 +207,7 @@ private struct AccountRow: View {
                     switch r {
                     case .wait?: store.show("You met recently. Give it a few weeks.", tone: "warn")
                     case .cash?: store.show("Not enough cash for the dinner.", tone: "warn")
-                    default: Haptics.success()
+                    default: Haptics.success(); store.show("Dinner with \(account.name). The relationship is warmer.", tone: "good")
                     }
                 }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 Spacer()

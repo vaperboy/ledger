@@ -44,7 +44,7 @@ struct CompanyWaysToSell: View {
     private func toggle(_ r: SalesWays.Row) {
         let result = store.act { $0.setWayToSell(companyID: company.id, kind: r.kind, on: !r.isOn) }
         switch result {
-        case .changed?: Haptics.success()
+        case .changed?: Haptics.success(); store.show("\(r.name): \(r.isOn ? "stopped" : "started").", tone: r.isOn ? "n" : "good")
         case .notEnoughCash(let need)?: Haptics.warning(); store.show("Needs \(store.money(need, in: company)) for the set-up.", tone: "warn")
         default: Haptics.warning(); store.show("This cannot be changed.", tone: "warn")
         }
