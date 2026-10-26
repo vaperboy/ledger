@@ -58,7 +58,6 @@ final class GameStore: ObservableObject {
     @Published private(set) var engine: GameEngine?
     @Published var toast: Toast?
     @Published var errorText: String?
-    @Published private(set) var isAdvancing = false
 
     // Navigation requests from anywhere (e.g. a suggestion card)
     @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnTab = nil } } }
@@ -79,7 +78,6 @@ final class GameStore: ObservableObject {
     @Published private(set) var loadProblem: String?
 
     let saves: SaveStore?
-    private var cancelAdvance = false
     /// Launched with `-showcase` (screenshots, UI tests): a prepared game, and nothing is written to disk.
     private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
 
@@ -161,7 +159,7 @@ final class GameStore: ObservableObject {
     // MARK: Time
 
     func nextDay() {
-        guard var e = engine, !isAdvancing else { return }
+        guard var e = engine else { return }
         let out = e.nextDay()
         engine = e
         if out.completedWeek { Haptics.weekDone() } else { Haptics.advanceDay() }
@@ -169,31 +167,6 @@ final class GameStore: ObservableObject {
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
     }
-
-    /// Keep going until something needs a decision, in small steps so the screen stays alive.
-    func untilNeeded(maxDays: Int = 26 * 7) {
-        guard !isAdvancing, engine != nil else { return }
-        isAdvancing = true; cancelAdvance = false
-        Task { [weak self] in
-            guard let self else { return }
-            var reason: String?
-            var n = 0
-            while n < maxDays, !self.cancelAdvance, var e = self.engine, !e.state.isGameOver {
-                let out = e.nextDay()
-                self.engine = e
-                n += 1
-                if let m = out.newMessages.first(where: { $0.status == "open" || (!$0.isRead && $0.tone == "bad") }) { reason = m.title; break }
-                if n % 3 == 0 { await Task.yield() }
-            }
-            self.isAdvancing = false
-            self.save(backup: true)
-            if let reason { Haptics.warning(); self.show("Stopped: \(reason)", tone: "warn") }
-            else if self.engine?.state.isGameOver == true { Haptics.failure() }
-            else if !self.cancelAdvance { Haptics.success() }
-        }
-    }
-
-    func stopAdvancing() { cancelAdvance = true }
 
     private func report(_ fresh: [Message]) {
         if let m = fresh.first(where: { $0.status == "open" }) { Haptics.warning(); show(m.title, tone: "warn") }

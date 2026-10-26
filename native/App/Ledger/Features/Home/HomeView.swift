@@ -220,15 +220,8 @@ struct AdvanceBar: View {
                 }
             }
             Spacer(minLength: 8)
-            Button { store.untilNeeded() } label: {
-                Image(systemName: "forward.fill").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                    .frame(width: 40, height: 40).overlay(Circle().strokeBorder(Theme.ivory.opacity(0.18), lineWidth: 0.75))
-            }
-            .buttonStyle(.plain)
-            .disabled(store.isAdvancing || engine.state.isGameOver)
-            .accessibilityLabel("Skip ahead until something needs you")
-            Button { store.isAdvancing ? store.stopAdvancing() : store.nextDay() } label: {
-                Text(store.isAdvancing ? "Stop" : engine.state.isGameOver ? "Game over" : "Next day  ›")
+            Button { store.nextDay() } label: {
+                Text(engine.state.isGameOver ? "Game over" : "Next day  ›")
                     .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
                     .lineLimit(1).fixedSize()
                     .padding(.horizontal, 24).frame(height: 44)

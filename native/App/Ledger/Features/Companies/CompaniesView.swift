@@ -85,6 +85,7 @@ struct CompaniesView: View {
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
             }

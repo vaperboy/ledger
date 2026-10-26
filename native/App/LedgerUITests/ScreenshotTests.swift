@@ -45,6 +45,9 @@ final class ScreenshotTests: XCTestCase {
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }
 
         open("Company"); sleep(1); shot("03-company")
+        // Creating a company starts from the company list's plus button.
+        let plus = app.buttons["New company"].firstMatch
+        if plus.waitForExistence(timeout: 3) { plus.tap(); sleep(1); shot("03-company-new"); goBack() }
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-overview")
@@ -56,24 +59,6 @@ final class ScreenshotTests: XCTestCase {
         }
         open("Team"); sleep(1); shot("05-team")
         open("Group"); sleep(1); shot("06-group")
-        let money = app.buttons["Money"].firstMatch
-        if money.exists { money.tap(); sleep(1) }
-        shot("06-money")
-        for section in ["Bank", "Invest", "Taxes", "Costs"] {
-            let b = app.buttons[section]
-            if b.exists { b.tap(); sleep(1); shot("06-money-" + section.lowercased()) }
-        }
-        let more = app.buttons["more-button"].firstMatch
-        if more.exists { more.tap(); sleep(1) }
-        shot("07-phone")
-        for item in ["Settings", "Stats"] {
-            let b = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", item)).firstMatch
-            if b.exists {
-                b.tap(); sleep(1); shot("08-phone-" + item.lowercased())
-                goBack()
-            }
-        }
-        if app.buttons["Done"].exists && app.buttons["Done"].isHittable { app.buttons["Done"].tap() }
         open("Projects"); sleep(1); shot("08-projects")
         open("Inbox"); sleep(1); shot("09-inbox")
     }
