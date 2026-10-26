@@ -280,38 +280,78 @@ struct ChainRulesSection: View {
     var chainID: Int
     @State private var pending: PendingAction?
 
+    private var rules: JSONValue { engine.chainRules(chainID: chainID) }
+
     var body: some View {
-        let rules = engine.chainRules(chainID: chainID)
         LedgerSection("Chain rules") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(rules["price"].double)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
-                    Slider(value: Binding(get: { rules["price"].double }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) } }), in: -3...3, step: 0.5) { editing in
-                        if !editing { store.saved("chain price rule.") }
-                    }
-                }
+                priceRule
                 Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
-                            selection: Binding(get: { rules["stockPol"].int }, set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }, "Chain ordering rule: \(["lean", "balanced", "generous"][min(2, max(0, v))]).") }))
-                    .padding(.horizontal, -Theme.Space.margin)
+                orderingRule
                 Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: [0.0, 0.05, 0.1], title: { ["Market pay", "+5%", "+10%"][[0.0, 0.05, 0.1].firstIndex(of: $0) ?? 0] },
-                            selection: Binding(get: { [0.0, 0.05, 0.1].min(by: { abs($0 - rules["pay"].double) < abs($1 - rules["pay"].double) }) ?? 0 },
-                                               set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.") }))
-                    .padding(.horizontal, -Theme.Space.margin)
+                payRule
                 Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: ["own", "light", "normal", "heavy"], title: { ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"][$0] ?? $0 },
-                            selection: Binding(get: { rules["mkt"].string.isEmpty ? "own" : rules["mkt"].string }, set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).") }))
-                    .padding(.horizontal, -Theme.Space.margin)
+                marketingRule
                 Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                if let trade = engine.chainTrade(chainID: chainID) {
-                    ForEach(trade.knobs, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
-                }
+                knobRules
             }
         }
         .confirmAction($pending)
+    }
+
+    private var priceRule: some View {
+        let current: Double = rules["price"].double
+        let binding = Binding<Double>(get: { current }, set: { (v: Double) in
+            store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) }
+        })
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(current)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
+            Slider(value: binding, in: -3...3, step: 0.5) { editing in
+                if !editing { store.saved("chain price rule.") }
+            }
+        }
+    }
+
+    private var orderingRule: some View {
+        let names: [String] = ["Lean", "Balanced", "Generous"]
+        let binding = Binding<Int>(get: { rules["stockPol"].int }, set: { (v: Int) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }
+            store.settle(r, "Chain ordering rule: \(names[min(2, max(0, v))].lowercased()).")
+        })
+        return SectionTabs(items: [0, 1, 2], title: { names[$0] }, selection: binding)
+            .padding(.horizontal, -Theme.Space.margin)
+    }
+
+    private var payRule: some View {
+        let steps: [Double] = [0.0, 0.05, 0.1]
+        let labels: [String] = ["Market pay", "+5%", "+10%"]
+        let now: Double = rules["pay"].double
+        let nearest: Double = steps.min(by: { abs($0 - now) < abs($1 - now) }) ?? 0
+        let binding = Binding<Double>(get: { nearest }, set: { (v: Double) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
+            store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.")
+        })
+        return SectionTabs(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
+            .padding(.horizontal, -Theme.Space.margin)
+    }
+
+    private var marketingRule: some View {
+        let labels: [String: String] = ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"]
+        let raw: String = rules["mkt"].string
+        let binding = Binding<String>(get: { raw.isEmpty ? "own" : raw }, set: { (v: String) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }
+            store.settle(r, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).")
+        })
+        return SectionTabs(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
+            .padding(.horizontal, -Theme.Space.margin)
+    }
+
+    @ViewBuilder private var knobRules: some View {
+        if let trade = engine.chainTrade(chainID: chainID) {
+            ForEach(trade.knobs, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
+        }
     }
 
     /// A chain standard for one way of selling: mandatory for the stores while set (they see it locked), or left to each store.
