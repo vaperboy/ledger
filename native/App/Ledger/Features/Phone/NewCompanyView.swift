@@ -24,9 +24,10 @@ struct NewCompanyView: View {
             let list = (showEverything || searching) ? matching : matching.filter { $0.isFunded }
             let hidden = matching.count - list.count
             ScrollView {
-                Card {
-                    LazyVStack(spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    LazyVStack(alignment: .leading, spacing: Theme.Space.s) {
                         if search.isEmpty {
+                            Text("Other ways in").capsLabel()
                             NavigationLink { NewHoldingView() } label: {
                                 ListRow(symbol: TradeSymbol.of(family: "hold"), tint: Theme.gold, title: "Holding company", subtitle: "Owns your other companies; dividends into it are taxed far lower", chevron: true).contentShape(Rectangle())
                             }.buttonStyle(.plain)
@@ -43,6 +44,7 @@ struct NewCompanyView: View {
                             }.buttonStyle(.plain)
                         }
                         if !searching {
+                            Text(showEverything ? "All trades" : "Trades you can fund now").capsLabel().padding(.top, Theme.Space.s)
                             Text("You have \(cur.tidyDisplay(Payments.liquid(e.state))) available (account and savings). Costs are the full start-up estimate; nothing is locked.")
                                 .font(.caption).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("Show everything", isOn: $showEverything).tint(Theme.gold)
@@ -65,7 +67,7 @@ struct NewCompanyView: View {
                         }
                         if hidden > 0 {
                             Button("\(hidden) more \(hidden == 1 ? "trade needs" : "trades need") more money than you have: show everything") { showEverything = true }
-                                .font(.caption).foregroundStyle(Theme.gold)
+                                .font(.caption).foregroundStyle(Theme.gold).multilineTextAlignment(.leading)
                         }
                     }
                 }

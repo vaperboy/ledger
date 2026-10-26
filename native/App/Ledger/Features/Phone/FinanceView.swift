@@ -17,8 +17,8 @@ struct FinanceView: View {
         if let e = store.engine {
             let o = e.financeOverview(companyID: companyID)
             ScrollView {
-                VStack(spacing: Theme.Space.l) {
-                    SectionTabs(items: companyID == nil ? Section.allCases : [.overview, .taxes, .costs, .reports], title: { $0.rawValue }, selection: $section)
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    SectionTabs(items: companyID == nil ? Section.allCases : [.overview, .taxes, .costs, .reports], primary: companyID == nil ? [.overview, .bank, .invest, .taxes] : nil, title: { $0.rawValue }, selection: $section)
                         .padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: overview(e, o)
@@ -47,100 +47,96 @@ struct FinanceView: View {
 
     // MARK: Overview
 
+    /// The answer first: can the next 30 days be paid? Then what is owed, what is due, and where the money goes.
     private func overview(_ e: GameEngine, _ o: FinanceOverview) -> some View {
-        VStack(spacing: Theme.Space.l) {
-            GlassCard {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Next 30 days")
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(store.money(o.dueWithin30Days)).font(.hero(34))
-                        Spacer()
-                        Chip(text: o.shortfall > 0 ? "Short by \(store.short(o.shortfall))" : "Covered", tint: o.shortfall > 0 ? Theme.loss : Theme.gain)
+        let short = o.shortfall > 0
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Due in the next 30 days").capsLabel()
+                    Spacer()
+                    Chip(text: short ? "Short by \(store.short(o.shortfall))" : "Covered", tint: short ? Theme.loss : Theme.gain)
+                }
+                Text(store.money(o.dueWithin30Days)).font(.hero(36)).foregroundStyle(short ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                if short { Text("Cash will not cover what is due. Move money in, sell something or ask the bank before the dates below.").font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true) }
+            }
+            KeyFigures(items: [
+                .init(label: CashWording.available(companyID: companyID), value: store.short(o.cashAvailable), tint: o.cashAvailable < 0 ? Theme.loss : Theme.ivory),
+                .init(label: "Tax and VAT owed", value: store.short(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory),
+                companyID == nil ? .init(label: "Private", value: store.short(e.netWorth.personal), tint: Theme.ivoryMuted, sub: "not counted above")
+                                 : .init(label: "Profit, month", value: store.short(o.monthProfit), tint: Theme.change(o.monthProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.monthProfit)),
+            ])
+            if companyID == nil { Text(CashWording.personalNote).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+            ForEach(o.notes, id: \.self) { n in Text(n).font(.caption).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
+
+            LedgerSection("Upcoming payments") {
+                VStack(spacing: 0) {
+                    if o.upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                    ForEach(Array(o.upcoming.prefix(8).enumerated()), id: \.element.id) { n, u in
+                        FlatRow(label: u.title, value: store.short(u.amount),
+                                sub: ([u.dateText, u.essential ? "cannot be skipped" : ""] + [u.detail]).filter { !$0.isEmpty }.joined(separator: " · "),
+                                tint: u.essential ? Theme.ivory : Theme.ivoryMuted, rule: n > 0)
                     }
-                    ValueRow(label: CashWording.available(companyID: companyID), value: store.money(o.cashAvailable))
-                    if companyID == nil { ValueRow(label: CashWording.personalNote, value: store.money(e.netWorth.personal), tint: Theme.ivoryMuted) }
-                    ValueRow(label: "Tax and VAT owed now", value: store.money(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory)
-                    ForEach(o.notes, id: \.self) { n in Text(n).font(.caption).foregroundStyle(Theme.ivoryMuted) }
                 }
             }
             if !o.taxes.isEmpty {
-                Card {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        HStack { SectionLabel("Tax summary"); Spacer(); Text("Owed now").font(.caption).foregroundStyle(Theme.ivoryFaint) }
-                        ForEach(o.taxes.prefix(4)) { l in
-                            ListRow(symbol: l.label.contains("VAT") || l.label.lowercased().contains("sales") ? "percent" : "building.columns", tint: Theme.ivoryMuted,
-                                    title: l.label, subtitle: l.detail, trailing: store.short(l.amount))
+                LedgerSection(title: "Tax owed now", trailing: { moreLink("All taxes", .taxes) }) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(o.taxes.prefix(4).enumerated()), id: \.element.id) { n, l in
+                            FlatRow(label: l.label, value: store.short(l.amount), sub: l.detail, rule: n > 0)
                         }
                     }
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Upcoming payments")
-                    if o.upcoming.isEmpty { Text("Nothing is due.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-                    ForEach(o.upcoming.prefix(8)) { u in
-                        ListRow(symbol: u.essential ? "lock.fill" : "calendar", tint: Theme.ivoryMuted,
-                                title: u.title, subtitle: u.detail, trailing: store.short(u.amount), trailingSub: u.dateText)
-                    }
-                }
-            }
             if !o.costsThisMonth.isEmpty {
-                Card {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        SectionLabel("Business costs · this month")
-                        costDonut(o.costsThisMonth, o.costTotalThisMonth)
-                    }
+                LedgerSection(title: "Business costs this month", trailing: { moreLink("Details", .costs) }) {
+                    costDonut(o.costsThisMonth, o.costTotalThisMonth)
                 }
             }
-            Text("The lock marks payments that cannot be skipped without consequences: wages, tax, rent and loans.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }
+    }
+
+    /// A champagne text link with a chevron that switches to another part of this screen.
+    private func moreLink(_ text: String, _ target: Section) -> some View {
+        Button { section = target; Haptics.tap() } label: {
+            HStack(spacing: 3) { Text(text); Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)) }
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+        }.buttonStyle(.plain)
     }
 
     // MARK: Taxes
 
     private func taxes(_ o: FinanceOverview) -> some View {
-        VStack(spacing: Theme.Space.l) {
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionLabel("Owed now")
-                    Text(store.money(o.taxesOwed)).font(.hero(34))
-                    Text("Corporate tax is worked out on taxable profit, after losses carried forward. VAT is collected for the state and is not income.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Tax and VAT owed now").capsLabel()
+                Text(store.money(o.taxesOwed)).font(.hero(36)).foregroundStyle(o.taxesOwed > 0 ? Theme.caution : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                Text("Corporate tax is worked out on taxable profit, after losses carried forward. VAT is collected for the state and is not income.").font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("By tax")
-                    if o.taxes.isEmpty { Text("No tax is owed.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-                    ForEach(o.taxes) { l in
-                        VStack(alignment: .leading, spacing: 2) {
-                            ValueRow(label: l.label, value: store.money(l.amount))
-                            if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                        }
+            LedgerSection("By tax") {
+                VStack(spacing: 0) {
+                    if o.taxes.isEmpty { Text("No tax is owed.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                    ForEach(Array(o.taxes.enumerated()), id: \.element.id) { n, l in
+                        FlatRow(label: l.label, value: store.money(l.amount), sub: l.detail.tidyMoney, rule: n > 0)
                     }
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    HStack { SectionLabel("Rules in \(o.countryName)"); Spacer(); Chip(text: o.basis.hasPrefix("Estimate") ? "Estimate" : "Checked", tint: o.basis.hasPrefix("Estimate") ? Theme.caution : Theme.gain) }
-                    ForEach(o.rules) { r in ValueRow(label: r.label, value: r.value) }
-                    Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            LedgerSection(title: "Rules in \(o.countryName)", trailing: { Chip(text: o.basis.hasPrefix("Estimate") ? "Estimate" : "Checked", tint: o.basis.hasPrefix("Estimate") ? Theme.caution : Theme.gain) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(o.rules.enumerated()), id: \.element.id) { n, r in FlatRow(label: r.label, value: r.value, rule: n > 0) }
+                    Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
                 }
             }
             if !o.licences.isEmpty {
-                Card {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        SectionLabel("Licences and registrations")
-                        ForEach(o.licences) { l in
-                            VStack(alignment: .leading, spacing: 2) {
-                                ValueRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free")
-                                if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                            }
+                LedgerSection("Licences and registrations") {
+                    VStack(spacing: 0) {
+                        ForEach(Array(o.licences.enumerated()), id: \.element.id) { n, l in
+                            FlatRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free", sub: l.detail.tidyMoney, rule: n > 0)
                         }
-                        Text("Fees are the game's estimate of typical official fees.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Text("Fees are the game's estimate of typical official fees. Game estimates, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
                     }
                 }
             }
-            Text("Game estimates, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }
     }
 
@@ -149,21 +145,22 @@ struct FinanceView: View {
     private func expenses(_ o: FinanceOverview) -> some View {
         let lines = yearly ? o.costsThisYear : o.costsThisMonth
         let total = yearly ? o.costTotalThisYear : o.costTotalThisMonth
-        return VStack(spacing: Theme.Space.l) {
-            Picker("Period", selection: $yearly) { Text("This month").tag(false); Text("This year").tag(true) }.pickerStyle(.segmented)
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Where the money goes")
-                    if lines.isEmpty { Text("No costs booked yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-                    else { costDonut(lines, total) }
-                }
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            SectionTabs(items: [false, true], title: { $0 ? "This year" : "This month" }, selection: $yearly).padding(.horizontal, -Theme.Space.margin)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(yearly ? "Business costs this year" : "Business costs this month").capsLabel()
+                Text(store.money(total)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)
+            }
+            LedgerSection("Where the money goes") {
+                if lines.isEmpty { Text("No costs booked yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                else { costDonut(lines, total) }
             }
         }
     }
 
     private static let palette: [Color] = [Theme.slateBlue, Theme.caution, Theme.gain, Theme.gold, Theme.loss, Color(red: 0.36, green: 0.70, blue: 0.74), Color(red: 0.62, green: 0.50, blue: 0.80), Theme.goldDeep, Theme.ivoryFaint, Theme.ivoryMuted, Theme.glass, Theme.goldLight]
 
-    /// A donut with the total in the middle and a coloured legend: label, share, amount.
+    /// A donut with the total in the middle and a coloured legend, then every line with its amount.
     private func costDonut(_ lines: [FinanceLine], _ total: Double) -> some View {
         VStack(spacing: Theme.Space.m) {
             HStack(spacing: Theme.Space.l) {
@@ -189,43 +186,53 @@ struct FinanceView: View {
                     }
                 }
             }
-            ForEach(lines) { l in ValueRow(label: l.label, value: store.short(l.amount)) }
+            VStack(spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: store.short(l.amount), rule: n > 0) }
+            }
         }
     }
 
     // MARK: Reports
 
+    private func gainTint(_ v: Double) -> Color { Theme.change(v) == Theme.ivoryMuted ? Theme.ivory : Theme.change(v) }
+
     private func reports(_ e: GameEngine, _ o: FinanceOverview) -> some View {
-        VStack(spacing: Theme.Space.l) {
-            ReportsContent(engine: e, companyID: companyID)
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionLabel("So far, live")
-                    ValueRow(label: "Revenue this month", value: store.money(o.monthRevenue))
-                    ValueRow(label: "Profit this month", value: store.money(o.monthProfit), tint: Theme.change(o.monthProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.monthProfit))
-                    Hairline()
-                    ValueRow(label: "Revenue this year", value: store.money(o.yearRevenue))
-                    ValueRow(label: "Profit this year", value: store.money(o.yearProfit), tint: Theme.change(o.yearProfit) == Theme.ivoryMuted ? Theme.ivory : Theme.change(o.yearProfit))
-                    ValueRow(label: "Profit last year", value: store.money(o.lastYearProfit))
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Profit this year, so far").capsLabel()
+                Text(store.money(o.yearProfit)).font(.hero(36)).foregroundStyle(gainTint(o.yearProfit)).minimumScaleFactor(0.6).lineLimit(1)
             }
+            KeyFigures(items: [
+                .init(label: "Revenue, month", value: store.short(o.monthRevenue)),
+                .init(label: "Profit, month", value: store.short(o.monthProfit), tint: gainTint(o.monthProfit)),
+                .init(label: "Revenue, year", value: store.short(o.yearRevenue)),
+                .init(label: "Profit last year", value: store.short(o.lastYearProfit), tint: gainTint(o.lastYearProfit)),
+            ], columns: 2)
+            ReportsContent(engine: e, companyID: companyID)
             if companyID == nil {
-                Card(padding: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        SectionLabel("By company").padding(Theme.Space.l)
-                        ForEach(e.state.liveCompanies.filter { $0.type != "hold" }) { co in
-                            Hairline()
+                LedgerSection("By company, this year") {
+                    VStack(spacing: 0) {
+                        ForEach(Array(e.state.liveCompanies.filter { $0.type != "hold" }.enumerated()), id: \.element.id) { n, co in
                             let p = Books.profit(co.books.year)
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) { Text(co.name).font(.bodyText.weight(.medium)); Text("Revenue \(store.short(co.books.year["rev"] ?? 0, in: co))").font(.caption).foregroundStyle(Theme.ivoryMuted) }
-                                Spacer()
-                                Text((p >= 0 ? "+" : "−") + store.short(abs(p), in: co)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.change(p))
-                            }.padding(Theme.Space.l)
+                            Button { store.openCompany(co.id, section: .finances) } label: {
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(co.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                        Text("Revenue \(store.short(co.books.year["rev"] ?? 0, in: co))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text((p >= 0 ? "+" : "−") + store.short(abs(p), in: co)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.change(p))
+                                    Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                }.padding(.vertical, 9).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                            .overlay(alignment: .top) { if n > 0 { Hairline() } }
                         }
                     }
                 }
                 NavigationLink { ActivityView() } label: {
-                    Card { HStack { Text("Every movement on your account").font(.bodyText); Spacer(); Image(systemName: "chevron.right").foregroundStyle(Theme.ivoryFaint) } }
+                    HStack { Text("Every movement on your account").font(.system(size: 13.5)).foregroundStyle(Theme.gold); Spacer(); Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.gold) }
+                        .padding(.vertical, 10).contentShape(Rectangle())
+                        .overlay(alignment: .top) { Hairline() }
                 }.buttonStyle(.plain)
             }
         }
