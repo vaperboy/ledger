@@ -13,6 +13,7 @@ struct CompanyMarket: View {
     @State private var weeks = 2
     @State private var rival: Int?
     @State private var showWar = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -20,13 +21,18 @@ struct CompanyMarket: View {
             if let info = engine.priceMoves(company) { priceMoves(info) }
             rivals
         }
-        .sheet(item: Binding(get: { rival.map { RivalID(id: $0) } }, set: { rival = $0?.id })) { r in
+        .confirmAction($pending)
+        .sheet(item: rivalBinding) { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
         .sheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
     }
 
     private struct RivalID: Identifiable { var id: Int }
+
+    private var rivalBinding: Binding<RivalID?> {
+        Binding<RivalID?>(get: { rival.map { RivalID(id: $0) } }, set: { rival = $0?.id })
+    }
 
     // MARK: Share
 
@@ -52,71 +58,112 @@ struct CompanyMarket: View {
     // MARK: Price moves
 
     private func priceMoves(_ info: PriceMovesInfo) -> some View {
-        let cur = engine.currency(for: company)
+        let cur: Currency = engine.currency(for: company)
+        let rivalText: String = info.rivalsAverage.map { cur.tidyShort($0) } ?? "–"
+        let marginText: String = info.margin.map { String(format: "%.0f%%", $0 * 100) } ?? "–"
+        let items: [KeyFigures.Item] = [
+            .init(label: "Your price", value: cur.tidyShort(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
+            .init(label: "Rivals", value: rivalText),
+            .init(label: "Margin", value: marginText, tint: (info.margin ?? 0) < 0 ? Theme.loss : Theme.ivory),
+        ]
         return LedgerSection("Price moves") {
             VStack(alignment: .leading, spacing: 10) {
-                KeyFigures(items: [
-                    .init(label: "Your price", value: cur.tidyShort(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
-                    .init(label: "Rivals", value: info.rivalsAverage.map { cur.tidyShort($0) } ?? "–"),
-                    .init(label: "Margin", value: info.margin.map { String(format: "%.0f%%", $0 * 100) } ?? "–", tint: (info.margin ?? 0) < 0 ? Theme.loss : Theme.ivory),
-                ])
+                KeyFigures(items: items)
                 if let war = info.war {
-                    Hairline()
-                    Text("Price war · \(war.weeksLeft) wk left · \(cur.tidyShort(war.loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
-                    Button("End the price war now") { store.act { $0.endPriceWar(companyID: company.id) }; Haptics.tap() }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                    warBlock(weeksLeft: war.weeksLeft, loss: war.loss, cur)
                 } else {
+                    changeBlock(info, cur)
                     Hairline()
-                    Text("Change price").capsLabel(Theme.ivoryFaint)
-                    HStack {
-                        Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
-                        Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
-                    }
-                    Button(abs(change) < 0.005 ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.tidyShort(info.yourTicket * (1 + change)))) {
-                        if let real = store.act({ $0.changePrice(companyID: company.id, byShare: change) }) ?? nil {
-                            store.show(String(format: "Prices %+.0f%%.", real * 100)); Haptics.success()
-                        }
-                    }.buttonStyle(GoldButtonStyle()).disabled(abs(change) < 0.005)
-                    if abs(change) >= 0.005, let fc = engine.priceForecast(companyID: company.id, byShare: change) {
-                        HStack {
-                            Text("Customers: " + fc.text.customers)
-                            Spacer()
-                            Text("Margin: " + fc.text.margin)
-                        }.font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        Text(fc.text.byAnalyst ? "Ranges from your data analyst." : "A gut feeling. A data analyst in your office gives ranges.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    if info.recentCut >= 0.06 { Text("You cut prices lately. Rivals may match you.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
-                    Hairline()
-                    Text("Discount campaign").capsLabel(Theme.ivoryFaint)
-                    if info.discountOptions.isEmpty {
-                        Text("Not done in this trade.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    } else if let pct = info.discountPercent {
-                        Text("\(pct)% off · \(info.discountWeeksLeft) wk left").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        Button("End the discount") { store.act { $0.endDiscount(companyID: company.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
-                    } else {
-                        WrapRow {
-                            Group {
-                                ForEach(info.discountOptions, id: \.self) { d in
-                                    Button("\(d)%") { discount = d }.buttonStyle(QuietButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
-                                }
-                                ForEach([1, 2, 4, 6], id: \.self) { w in
-                                    Button("\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
-                                }
-                            }
-                        }
-                        if info.raisedWeeksAgo > 0 {
-                            Text("You raised prices \(info.raisedWeeksAgo) wk ago. A sale measured against that price can be fined as misleading.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
-                        }
-                        Button("Start \(discount)% off for \(weeks) wk") {
-                            let r = store.act { $0.startDiscount(companyID: company.id, percent: min(discount, info.discountOptions.last ?? discount), weeks: weeks) }
-                            if case .refused(let why)? = r { store.show(why, tone: "warn") } else { Haptics.success() }
-                        }.buttonStyle(GoldButtonStyle())
-                    }
+                    discountBlock(info, cur)
                     if !engine.rivalRows(company).isEmpty {
                         Hairline()
                         Button("Start a price war…") { showWar = true }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder private func warBlock(weeksLeft: Int, loss: Double, _ cur: Currency) -> some View {
+        Hairline()
+        Text("Price war · \(weeksLeft) wk left · \(cur.tidyShort(loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
+        Button("End the price war now") {
+            store.act { $0.endPriceWar(companyID: company.id) }
+            Haptics.tap()
+            store.show("The price war is over. Prices go back to normal.", tone: "n")
+        }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+    }
+
+    @ViewBuilder private func changeBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
+        let tiny: Bool = abs(change) < 0.005
+        let label: String = tiny ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.tidyShort(info.yourTicket * (1 + change)))
+        Hairline()
+        Text("Change price").capsLabel(Theme.ivoryFaint)
+        HStack {
+            Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
+            Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
+        }
+        Button(label) { askChange(info, cur) }.buttonStyle(GoldButtonStyle()).disabled(tiny)
+        if !tiny, let fc = engine.priceForecast(companyID: company.id, byShare: change) {
+            HStack {
+                Text("Customers: " + fc.text.customers)
+                Spacer()
+                Text("Margin: " + fc.text.margin)
+            }.font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text(fc.text.byAnalyst ? "Ranges from your data analyst." : "A gut feeling. A data analyst in your office gives ranges.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }
+        if info.recentCut >= 0.06 { Text("You cut prices lately. Rivals may match you.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+    }
+
+    private func askChange(_ info: PriceMovesInfo, _ cur: Currency) {
+        let share: Double = change
+        let forecast: String = engine.priceForecast(companyID: company.id, byShare: share).map { "Customers: " + $0.text.customers + ". Margin: " + $0.text.margin + "." } ?? "No forecast is available."
+        let msg: String = String(format: "Your price goes from %@ to about %@ (%+.0f%%). ", cur.tidyShort(info.yourTicket), cur.tidyShort(info.yourTicket * (1 + share)), share * 100) + forecast + " Rivals may react."
+        pending = PendingAction(title: "Change prices?", message: msg, button: "Change prices") {
+            if let real = store.act({ $0.changePrice(companyID: company.id, byShare: share) }) ?? nil {
+                store.show(String(format: "Prices %+.0f%%.", real * 100), tone: "good"); Haptics.success()
+            } else {
+                store.show("The price could not be changed.", tone: "warn")
+            }
+        }
+    }
+
+    @ViewBuilder private func discountBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
+        Text("Discount campaign").capsLabel(Theme.ivoryFaint)
+        if info.discountOptions.isEmpty {
+            Text("Not done in this trade.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+        } else if let pct = info.discountPercent {
+            Text("\(pct)% off · \(info.discountWeeksLeft) wk left").font(.system(size: 13)).foregroundStyle(Theme.ivory)
+            Button("End the discount") {
+                store.act { $0.endDiscount(companyID: company.id) }
+                store.show("The discount has ended.", tone: "n")
+            }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+        } else {
+            WrapRow {
+                Group {
+                    ForEach(info.discountOptions, id: \.self) { (d: Int) in
+                        Button("\(d)%") { discount = d }.buttonStyle(QuietButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
+                    }
+                    ForEach([1, 2, 4, 6], id: \.self) { (w: Int) in
+                        Button("\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
+                    }
+                }
+            }
+            if info.raisedWeeksAgo > 0 {
+                Text("You raised prices \(info.raisedWeeksAgo) wk ago. A sale measured against that price can be fined as misleading.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+            }
+            Button("Start \(discount)% off for \(weeks) wk") { askDiscount(info, cur) }.buttonStyle(GoldButtonStyle())
+        }
+    }
+
+    private func askDiscount(_ info: PriceMovesInfo, _ cur: Currency) {
+        let pct: Int = min(discount, info.discountOptions.last ?? discount)
+        let wk: Int = weeks
+        let msg: String = "Every sale is \(pct)% cheaper for \(wk) week\(wk == 1 ? "" : "s"), so margin falls while it runs. It brings more customers, not a promise of more profit. You can end it early."
+        pending = PendingAction(title: "Start \(pct)% off?", message: msg, button: "Start discount") {
+            let r = store.act { $0.startDiscount(companyID: company.id, percent: pct, weeks: wk) }
+            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+            else if r != nil { Haptics.success(); store.show("\(pct)% off for \(wk) week\(wk == 1 ? "" : "s").", tone: "good") }
         }
     }
 
@@ -168,94 +215,7 @@ struct RivalSheet: View {
         NavigationStack {
             ScrollView {
                 if let e = store.engine, let co = e.state.company(companyID), let d = e.rivalDetail(companyID: companyID, rivalID: rivalID) {
-                    let cur = e.currency(for: co)
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(d.rival.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                            Text("Owner \(d.rival.owner) · \(Rivals.relationshipWord(d.rival.relationship))" + (d.rival.forSale ? " · open to offers" : "")).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        }
-                        LedgerSection(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
-                            VStack(spacing: 0) {
-                                ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
-                                    if n > 0 { Hairline() }
-                                    HStack { Text(f.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(f.value).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }.padding(.vertical, 7)
-                                }
-                            }
-                        }
-                        LedgerSection("The owner") {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("\(d.moodWord) · \(d.temperament)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                                Text(d.nextMove).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                                ForEach(Array(d.rival.memory.prefix(6).enumerated()), id: \.offset) { _, m in
-                                    Hairline()
-                                    HStack(alignment: .top) {
-                                        Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
-                                        Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                                    }
-                                }
-                            }
-                        }
-                        if let g = d.group {
-                            LedgerSection("Group behind it") {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(g.strategyName): \(g.strategyText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                                    Text("\(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : "")).font(.system(size: 11.5)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryFaint)
-                                }
-                            }
-                        }
-                        LedgerSection(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(d.reviews) { r in
-                                    Text("\(String(repeating: "★", count: r.stars)) \(r.text)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                        HostingSection(engine: e, onlyRival: rivalID)
-                        if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
-                            LedgerSection("\(d.rival.name) cut prices \(cut.pct)%") {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Some of your customers are trying them. It runs until about week \(cut.end).").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                                    Button("Match their price") { answerCut(.match) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                                    Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                                    Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                                    Text("Doing nothing is also a choice: you lose some customers until the cut ends. You can also buy them out below.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                            }
-                        } else if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), let answer = cut.answered {
-                            Text("You answered their price cut: \(answer).").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        }
-                        LedgerSection("What you can do") {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Button("Meet the owner · " + cur.tidyShort(cur.scaledPrice(4000))) {
-                                    let r = store.act { $0.meetRival(companyID: companyID, rivalID: rivalID) }
-                                    switch r {
-                                    case .wait?: store.show("You met recently. Give it a few weeks.", tone: "warn")
-                                    case .cash?: store.show("Not enough cash for the lunch.", tone: "warn")
-                                    default: Haptics.success()
-                                    }
-                                }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
-                                Hairline()
-                                let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
-                                Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
-                                HStack {
-                                    Slider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
-                                    Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
-                                }
-                                Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                                Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(GoldButtonStyle())
-                                if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                                if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
-                                Hairline()
-                                if co.value("docs")["fran"]["st"].string == "ok" {
-                                    Button("Open a new site beside them") { openSite() }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
-                                } else {
-                                    Text("A new site beside a rival needs your franchise papers (Chain section).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
+                    content(e, co, d)
                 } else {
                     Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted).padding()
                 }
@@ -276,6 +236,126 @@ struct RivalSheet: View {
                 }
             }
         }
+    }
+
+
+    @ViewBuilder private func content(_ e: GameEngine, _ co: Company, _ d: RivalDetail) -> some View {
+        let cur: Currency = e.currency(for: co)
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            header(d)
+            factsSection(d)
+            ownerSection(d)
+            groupSection(d)
+            reviewsSection(d)
+            HostingSection(engine: e, onlyRival: rivalID)
+            cutSection(e, d)
+            actionsSection(e, co, d, cur)
+        }
+        .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
+    }
+
+    @ViewBuilder private func header(_ d: RivalDetail) -> some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(d.rival.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                Text("Owner \(d.rival.owner) · \(Rivals.relationshipWord(d.rival.relationship))" + (d.rival.forSale ? " · open to offers" : "")).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            }
+    }
+
+    @ViewBuilder private func factsSection(_ d: RivalDetail) -> some View {
+            LedgerSection(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
+                VStack(spacing: 0) {
+                    ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
+                        if n > 0 { Hairline() }
+                        HStack { Text(f.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(f.value).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }.padding(.vertical, 7)
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder private func ownerSection(_ d: RivalDetail) -> some View {
+            LedgerSection("The owner") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(d.moodWord) · \(d.temperament)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                    Text(d.nextMove).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(d.rival.memory.prefix(6).enumerated()), id: \.offset) { _, m in
+                        Hairline()
+                        HStack(alignment: .top) {
+                            Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
+                            Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        }
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder private func groupSection(_ d: RivalDetail) -> some View {
+            if let g = d.group {
+                LedgerSection("Group behind it") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("\(g.strategyName): \(g.strategyText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("\(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : "")).font(.system(size: 11.5)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryFaint)
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder private func reviewsSection(_ d: RivalDetail) -> some View {
+            LedgerSection(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(d.reviews) { r in
+                        Text("\(String(repeating: "★", count: r.stars)) \(r.text)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder private func cutSection(_ e: GameEngine, _ d: RivalDetail) -> some View {
+            if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
+                LedgerSection("\(d.rival.name) cut prices \(cut.pct)%") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Some of your customers are trying them. It runs until about week \(cut.end).").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                        Button("Match their price") { answerCut(.match) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                        Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                        Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                        Text("Doing nothing is also a choice: you lose some customers until the cut ends. You can also buy them out below.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
+            } else if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), let answer = cut.answered {
+                Text("You answered their price cut: \(answer).").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            }
+    }
+
+    @ViewBuilder private func actionsSection(_ e: GameEngine, _ co: Company, _ d: RivalDetail, _ cur: Currency) -> some View {
+            LedgerSection("What you can do") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Button("Meet the owner · " + cur.tidyShort(cur.scaledPrice(4000))) {
+                        let r = store.act { $0.meetRival(companyID: companyID, rivalID: rivalID) }
+                        switch r {
+                        case .wait?: store.show("You met recently. Give it a few weeks.", tone: "warn")
+                        case .cash?: store.show("Not enough cash for the lunch.", tone: "warn")
+                        default: Haptics.success(); store.show("Lunch with \(d.rival.owner). The relationship is warmer.", tone: "good")
+                        }
+                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    Hairline()
+                    let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
+                    Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
+                    HStack {
+                        Slider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
+                        Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
+                    }
+                    Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(GoldButtonStyle())
+                    if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                    if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                    Hairline()
+                    if co.value("docs")["fran"]["st"].string == "ok" {
+                        Button("Open a new site beside them") { openSite() }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    } else {
+                        Text("A new site beside a rival needs your franchise papers (Chain section).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
+            }
     }
 
     private struct PriceID: Identifiable { var price: Double; var id: Double { price } }
@@ -358,6 +438,7 @@ struct PriceWarSheet: View {
     var companyID: Int
     @State private var rivalID: Int?
     @State private var weeks = 10
+    @State private var pending: PendingAction?
 
     var body: some View {
         NavigationStack {
@@ -398,10 +479,7 @@ struct PriceWarSheet: View {
                                     .init(label: "Authority", value: est.yourShare >= 0.35 ? "Can fine" : "Low risk", tint: est.yourShare >= 0.35 ? Theme.loss : Theme.ivory),
                                 ])
                             }
-                            Button("Start a price war against \(c.rival.name)") {
-                                let r = store.act { $0.startPriceWar(companyID: companyID, rivalID: c.id, weeks: weeks) }
-                                if case .refused(let why)? = r { store.show(why, tone: "warn") } else { Haptics.success(); dismiss() }
-                            }.buttonStyle(GoldButtonStyle())
+                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(GoldButtonStyle())
                         }
                     }
                     .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
@@ -409,6 +487,17 @@ struct PriceWarSheet: View {
             }
             .ledgerBackground()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .confirmAction($pending)
+        }
+    }
+
+    private func askWar(_ name: String, _ rid: Int, _ est: Rivals.WarEstimate, _ cur: Currency) {
+        let wk: Int = weeks
+        let msg: String = "It costs you about \(cur.tidyShort(est.cost)) over \(wk) weeks. The chance that \(name) closes is about \(Int((est.odds * 100).rounded()))%; if you run out first, you lose. A big share of the market can draw a fine for abusing a dominant position."
+        pending = PendingAction(title: "Start a price war against \(name)?", message: msg, button: "Start price war", destructive: true) {
+            let r = store.act { $0.startPriceWar(companyID: companyID, rivalID: rid, weeks: wk) }
+            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+            else if r != nil { Haptics.success(); store.show("Price war against \(name) started.", tone: "n"); dismiss() }
         }
     }
 }
@@ -444,6 +533,7 @@ struct MarketView: View {
     private func shares(_ e: GameEngine) -> some View {
         let rows = e.marketRows()
         let weight = e.economyWeight()
+        let note: String = weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position." : "At about a third of a local market, the competition authority starts to watch your pricing."
         return VStack(alignment: .leading, spacing: Theme.Space.l) { LedgerSection("Your share of each market") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
@@ -466,8 +556,7 @@ struct MarketView: View {
                     weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")
                     weightRow("Jobs you provide", "\(weight.jobs)")
                     weightRow("Regulator attention", weight.attention)
-                    Text(weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position."
-                         : "At about a third of a local market, the competition authority starts to watch your pricing.")
+                    Text(note)
                         .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
