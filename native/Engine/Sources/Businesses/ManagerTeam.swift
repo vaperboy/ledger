@@ -113,8 +113,8 @@ extension ManagerModel {
         for (k, rec) in t["heads"].object where person(s, rec) != nil && teamRoles.contains(where: { $0.key == k }) { monthly += rec["wage"].double }
         for r in regionals(s) where r["payCo"].int == co.id && r["payCo"].string != "chain" { monthly += r["wage"].double }
         if monthly > 0 {
-            let social = World(state: s, data: data).country(co).employerSocial
-            Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * (1 + social), category: "wages")
+            let factor = World(state: s, data: data).country(co).employerCostFactor
+            Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * factor, category: "wages")
         }
         // what they do, cached for demand, capacity, marketing and quits (read in Demand, Capacity, Marketing, StaffRoutine)
         var tm: [String: JSONValue] = [:]
@@ -302,7 +302,7 @@ extension ManagerModel {
         var rec: JSONValue = .null
         if key == "ceo" { rec = t["ceo"] } else if key == "reg" { rec = regionals(s).first { $0["id"].int == regionalID } ?? .null } else { rec = t["heads"][key] }
         guard let n = person(s, rec) else { return false }
-        let social = World(state: s, data: data).country(co).employerSocial
+        let social = World(state: s, data: data).country(co).employerOnCost(monthlyWage: rec["wage"].double)
         Dismissal.book(&s, payer: .company(companyID), severance: Dismissal.monthOfPay(wage: rec["wage"].double, employerSocial: social), labels: .post(slotTitle(s, co, key, data: data)))
         var p = n; p.employerID = 0; s.people[n.id] = p
         if key == "ceo" { t["ceo"] = .null }

@@ -71,9 +71,42 @@ public enum Ledger {
         }
     }
 
+    // MARK: Money held back by the weekly staging
+
+    /// The week is worked out at once on its first day and each company's change of cash is held back (`rest["pend"]["co"]`: id, total, one-off part)
+    /// and released over the seven days. What is still to come after today, per company id. Nothing is held outside a staged week.
+    public static func heldRemainders(_ s: GameState) -> [Int: Double] {
+        guard let P = s.rest["pend"], !P.isNull else { return [:] }
+        var out: [Int: Double] = [:]
+        for x in P["co"].array {
+            let total = x[1].double, one = x[2].double
+            let t = total - (one + min(0, total - one))   // the part spread over the week; the one-off part landed on day 0
+            let left = jsRound(t) - jsRound(t * Double(s.day + 1) / 7)
+            if left != 0 { out[x[0].int] = left }
+        }
+        return out
+    }
+
+    /// Pay a company what is still held back of this week's money and stop holding it. Called before a company is sold, wound up or goes
+    /// bust, so its figures are complete and the rest of the week does not land on a company that no longer exists.
+    public static func releaseHeld(_ s: inout GameState, companyID: Int) {
+        guard let left = heldRemainders(s)[companyID] else { return }
+        moveRaw(&s, .company(companyID), left)
+        guard var P = s.rest["pend"], !P.isNull else { return }
+        var list = P["co"].array
+        for k in list.indices where list[k][0].int == companyID { list[k] = .array([.number(Double(companyID)), 0, 0]) }
+        P["co"] = .array(list)
+        s.rest["pend"] = P
+    }
+
     /// Differences between cash and what was booked, per holder (empty = consistent). Original: `ledgerGaps`.
+    /// Money still held back for a company that is sold or gone is a gap too: nobody can ever be paid it.
     public static func gaps(_ s: GameState) -> [(holder: String, difference: Double)] {
         var out: [(String, Double)] = []
+        for (id, left) in heldRemainders(s).sorted(by: { $0.key < $1.key }) {
+            let live = s.company(id)?.status.isLive ?? false
+            if !live && abs(left) > 1 { out.append(("held week money of \(s.company(id)?.name ?? "company \(id)")", left)) }
+        }
         let me = s.cash - s.openingCash - (s.cashFlow["me"] ?? 0)
         if abs(me) > 1 { out.append(("me", me)) }
         for c in s.companies {

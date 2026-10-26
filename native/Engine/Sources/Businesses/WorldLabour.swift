@@ -18,7 +18,7 @@ extension World {
                                     reason: LabourRules.TerminationReason? = nil, age: Double? = nil, massLayoff: Bool = false) -> (notice: Double, severance: Double, fine: Double) {
         let c = country(co)
         return labour(co).termination(tenureWeeks: tenureWeeks, withCause: withCause, onNotice: onNotice, reason: reason, age: age, massLayoff: massLayoff)
-            .payments(monthlyWage: monthlyWage, employerSocial: c.employerSocialRate(monthlyWage: monthlyWage))
+            .payments(monthlyWage: monthlyWage, employerSocial: c.employerOnCost(monthlyWage: monthlyWage))
     }
 
     public func terminationCost(_ co: Company, monthlyWage: Double, tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false,

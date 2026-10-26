@@ -221,9 +221,9 @@ public enum StaffProfile {
     public static func layoffPreview(_ s: GameState, companyID: Int, count n: Int, data: GameData) -> (names: [String], savesPerMonth: Double, severance: Double) {
         guard let co = s.company(companyID) else { return ([], 0, 0) }
         let t = data.catalog.tables
-        let emp = World(state: s, data: data).country(co).employerSocial
+        let country = World(state: s, data: data).country(co)
         let pick = co.staff.sorted { StaffModel.skill($0, person: s.people[$0.id], salesRoles: t.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: t.salesRoles) }.prefix(max(0, n))
-        let saves = pick.reduce(0) { $0 + $1.monthlyWage * (1 + emp) }
+        let saves = pick.reduce(0) { $0 + $1.monthlyWage * country.payrollFactor(monthlyWage: $1.monthlyWage) }
         let sev = Dismissal.quote(s, companyID: companyID, staffIDs: pick.map { $0.id }, reason: .redundancy, data: data)
         return (pick.map { $0.id }.compactMap { s.people[$0]?.name }, saves, sev)
     }

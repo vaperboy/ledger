@@ -19,8 +19,6 @@ public extension GameEngine {
     var knownSuppliers: [Suppliers.Vendor] { Suppliers.known(state, data: data) }
     func boardAgreement(scope: String) -> String? { Suppliers.agreement(state, scope: scope) }
 
-    /// vendorID "auto" lets the manager (or the market) choose.
-    mutating func chooseGoodsSupplier(companyID: Int, vendorID: String) { update { s, _, _ in Suppliers.chooseGoodsVendor(&s, companyID: companyID, vendorID: vendorID) } }
     /// 0 Basic, 1 Standard, 2 Premium.
     mutating func chooseGoodsClass(companyID: Int, goodsClass: Int) { update { s, _, _ in Suppliers.chooseGoodsClass(&s, companyID: companyID, goodsClass: goodsClass) } }
     mutating func chooseRepairSupplier(companyID: Int, vendorID: String) { update { s, _, _ in Suppliers.chooseRepairVendor(&s, companyID: companyID, vendorID: vendorID) } }

@@ -12,8 +12,9 @@ import Businesses
 /// is personally liable for everything.
 public enum Failure {
     public static func bankrupt(_ s: inout GameState, companyIndex i: Int, reason: String, data: GameData, context: FinanceContext) {
+        guard s.companies[i].status.isLive else { return }
+        Ledger.releaseHeld(&s, companyID: s.companies[i].id)   // the rest of this week's money is the company's to settle with
         let co = s.companies[i]
-        guard co.status.isLive else { return }
         let cur = context.homeCurrency(s)
         let assets = max(0, CompanyFigures.assets(co) - co.cash) * 0.45
         let p = co.payables
@@ -73,6 +74,7 @@ public enum Failure {
 
     /// The bank sells a company at a discount to cover an overdraft. Original: `forcedSale`.
     static func forcedSale(_ s: inout GameState, companyIndex i: Int, data: GameData, context: FinanceContext) {
+        Ledger.releaseHeld(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
         let v = jsRound(Valuation.companyValue(co, state: s, trades: data.catalog) * co.ownership / 100 * 0.6)
         if v <= 0 { bankrupt(&s, companyIndex: i, reason: "cash", data: data, context: context); return }

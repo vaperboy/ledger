@@ -144,6 +144,7 @@ public enum Hiring {
     /// Returns the skill seen, or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
     public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> Double? {
         guard var n = s.people[personID], n.employerID == 0, s.companyIndex(companyID) != nil else { return nil }
+        guard (n.raw["trial"]?.double ?? 0) == 0 else { return nil }   // one trial week per candidate (the result is kept in `trialRes`)
         let trialCost = jsRound(marketWage(role: n.role, company: s.companies[s.companyIndex(companyID)!], state: s, data: data) / 4)
         guard Payments.companyPays(&s, companyID: companyID, amount: trialCost, category: "wages", label: "Trial week") else { return nil }
         n.set("trial", 1)

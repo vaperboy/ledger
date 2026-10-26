@@ -153,6 +153,7 @@ public extension GameEngine {
         var done = false
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
+            Ledger.releaseHeld(&s, companyID: companyID)   // the rest of this week's money is the company's to settle with
             let co = s.companies[i]
             let cash: Double = max(0, co.cash) + max(0, CompanyFigures.assets(co) - co.cash) * 0.55
             let ownLoans = s.loans.filter { $0.companyID == co.id }

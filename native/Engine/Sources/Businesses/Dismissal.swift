@@ -65,7 +65,7 @@ public enum Dismissal {
         // Extra notice agreed in a contract talk (ContractTalk, key "nx") is owed on top, in the cases where the country's law owes notice at all.
         let extra = Double(m.int("nx"))
         if extra > 0, !onNotice, world.labour(co).noticeReasons.contains(why.rawValue) {
-            q.notice += m.monthlyWage * 12 / 52 * extra * (1 + world.country(co).employerSocialRate(monthlyWage: m.monthlyWage))
+            q.notice += m.monthlyWage * 12 / 52 * extra * world.country(co).payrollFactor(monthlyWage: m.monthlyWage)
         }
         return q
     }

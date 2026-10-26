@@ -16,6 +16,7 @@ struct CompanySettings: View {
     @State private var newName = ""
     @State private var closeWeeks = 4
     @State private var giveUpRent = false
+    @State private var pauseSubscriptions = false
     @State private var pending: PendingAction?
 
     var body: some View {
@@ -130,6 +131,14 @@ struct CompanySettings: View {
                             }
                         }.tint(Theme.gold)
                     }
+                    if company.value("eq").object.values.contains(where: { !$0["sub"].isNull }) {
+                        Toggle(isOn: $pauseSubscriptions) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Pause software plans").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text("No charge while it is closed; the plans start again when it reopens. Your data is kept.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }.tint(Theme.gold)
+                    }
                     Button("Close for \(closeWeeks) weeks…") { confirmClose(notice, cur) }.buttonStyle(QuietButtonStyle())
                 }
             }
@@ -139,7 +148,7 @@ struct CompanySettings: View {
     private func confirmClose(_ notice: (notice: Double, depositBack: Double)?, _ cur: Currency) {
         let weeks = closeWeeks, giveUp = giveUpRent && notice != nil
         pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.display(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
-            switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp) }) {
+            switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp, pauseSubscriptions: pauseSubscriptions) }) {
             case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
             case .notOpen?: store.show("Only an open company can be closed.", tone: "warn")
             default: store.show("Not possible.", tone: "warn")

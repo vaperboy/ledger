@@ -25,7 +25,7 @@ public enum Trophies {
         public var before: Bool
     }
     public static let groups: [(id: String, name: String)] = [
-        ("first", "Firsts"), ("money", "Money"), ("people", "People"), ("trades", "Companies and trades"), ("world", "The world"), ("legacy", "Legacy")]
+        ("first", "Firsts"), ("money", "Money"), ("people", "People"), ("trades", "Companies and trades"), ("world", "The world"), ("legacy", "Legacy"), ("market", "Markets")]
 
     /// The numbers a trophy test can ask for, worked out once per check.
     struct Facts {
@@ -95,7 +95,7 @@ public enum Trophies {
         one("hold", "A holding company", "trades") { f in f.live.contains { $0.type == "hold" } ? "Your companies now sit under a holding." : nil }
         one("oil", "Black gold", "trades") { f in f.live.contains { $0.type == "oilgas" && $0.status == .open } ? "You produce oil and gas." : nil }
         one("club", "A football club", "trades") { f in f.live.contains { f.data.catalog[$0.type]?.family == "club" } ? "You own a football club." : nil }
-        L += ladder("cc", "world", [("3", "Three countries", 3), ("5", "Five countries", 5), ("10", "Ten countries", 10), ("15", "Every country", 15)],
+        L += ladder("cc", "world", [("3", "Three countries", 3), ("5", "Five countries", 5), ("10", "Ten countries", 10), ("23", "Every country", 23)],
                     test: { f, v in Double(f.countries) >= v }, text: { _, v in "You do business in \(Int(v)) countries." })
         L += ladder("yr", "legacy", [("5", "Five years in business", 5), ("10", "Ten years in business", 10), ("25", "Twenty-five years", 25), ("50", "Half a century", 50)],
                     test: { f, v in f.years >= v }, text: { _, v in "\(Int(v)) years since you started your first company." })

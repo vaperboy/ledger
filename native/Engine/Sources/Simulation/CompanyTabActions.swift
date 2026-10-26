@@ -16,10 +16,6 @@ public extension GameEngine {
         return Advisers.pool(&s, companyID: companyID, kind: kind, data: data)
     }
     func ownAdviserFirms(companyID: Int, kind: Advisers.Kind) -> [Company] { Advisers.ownFirms(state, for: companyID, kind: kind) }
-    func ownAdviserOffer(companyID: Int, kind: Advisers.Kind, firmID: Int) -> JSONValue? {
-        state.company(firmID).map { Advisers.ownProvider(state, kind: kind, firm: $0, data: data) }
-    }
-    func currentAdviser(companyID: Int, kind: Advisers.Kind) -> JSONValue { state.company(companyID).map { Advisers.current($0, kind) } ?? .null }
 
     /// Hire a provider. For a law firm or insurer, providerID 0 removes the current one.
     @discardableResult
@@ -69,7 +65,6 @@ public extension GameEngine {
     // MARK: Staff profile
 
     func staffProfile(companyID: Int, staffID: Int) -> StaffProfile.Profile? { StaffProfile.profile(state, companyID: companyID, staffID: staffID, data: data) }
-    func courseOffers(companyID: Int) -> [StaffProfile.Course] { state.company(companyID).map { StaffProfile.courses($0, data: data) } ?? [] }
     func layoffPreview(companyID: Int, count: Int) -> (names: [String], savesPerMonth: Double, severance: Double) {
         StaffProfile.layoffPreview(state, companyID: companyID, count: count, data: data)
     }

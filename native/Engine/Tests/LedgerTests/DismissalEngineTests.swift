@@ -153,7 +153,7 @@ final class DismissalEngineTests: XCTestCase {
         let sid = addStaff(&e, id, years: 4)
         let co = try XCTUnwrap(e.state.company(id))
         let q = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: sid, reason: .redundancy, data: e.data))
-        let social = World(state: e.state, data: e.data).country(co).employerSocialRate(monthlyWage: 300_000)
+        let social = World(state: e.state, data: e.data).country(co).employerOnCost(monthlyWage: 300_000)
         XCTAssertGreaterThan(q.notice, 0)
         XCTAssertEqual(q.notice, 300_000 * 12 / 52 * LabourRules(country: World(state: e.state, data: e.data).country(co)).termination(tenureWeeks: 208, reason: .redundancy).noticeWeeks * (1 + social), accuracy: 1)
         e.update { s, d, _ in Dismissal.dismiss(&s, companyID: id, staffID: sid, reason: .redundancy, data: d) }

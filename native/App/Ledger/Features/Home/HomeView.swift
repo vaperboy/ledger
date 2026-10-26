@@ -16,14 +16,13 @@ struct HomeSummary: View {
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.xl) {
                     VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e) }
-                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e); GoalsCard(engine: e) }
+                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e); ComingUpCard(engine: e); GoalsCard(engine: e) }
                 }
             } else {
                 NetWorthSection(engine: e)
                 ReportPromptSection(engine: e)
                 SuggestionCard(engine: e)
                 ComingUpCard(engine: e)
-                FirstStepsCard(engine: e)
                 GoalsCard(engine: e)
             }
         }

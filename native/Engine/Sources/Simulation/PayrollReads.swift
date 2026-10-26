@@ -52,7 +52,7 @@ public extension GameEngine {
         let hq = s.hasHeadOffice("acc")
         let next = Payday.nextPay(co, config: cfg, today: t)
         let country = context.country(of: co, s)
-        let est = (co.payables["wages"] ?? 0) + Payday.weeklyWageCost(co, employerFactor: country.employerCostFactor) * Double(max(0, (next - Payday.dayNumber(week: s.week, day: 0)) / 7))
+        let est = (co.payables["wages"] ?? 0) + Payday.weeklyWageCost(co, country: country) * Double(max(0, (next - Payday.dayNumber(week: s.week, day: 0)) / 7))
         let choices = [Payday.Mode.manual, .accountant, .manager].map { m -> PayrollModeChoice in
             var why: String?
             if fixed { why = "This kind of company runs its own payroll." }
