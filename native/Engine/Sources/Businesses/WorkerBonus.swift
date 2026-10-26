@@ -94,7 +94,7 @@ public enum WorkerBonus {
         var mean = 0.0
         var scores: [Int: Double] = [:]
         for m in co.staff { if let n = s.people[m.id] { scores[m.id] = n.skill + m.skillGain } }
-        if !scores.isEmpty { mean = scores.values.reduce(0, +) / Double(scores.count) }
+        if !scores.isEmpty { mean = scores.keys.sorted().reduce(0) { $0 + scores[$1]! } / Double(scores.count) }
         var paid: [String: Double] = [:]
         for k in s.companies[ci].staff.indices {
             let m = s.companies[ci].staff[k]

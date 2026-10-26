@@ -12,7 +12,7 @@ public enum CompanyFigures {
     /// Equipment and vehicles at book value. Original: `eqBook`.
     public static func equipmentBookValue(_ co: Company) -> Double {
         var t = 0.0
-        for (_, e) in co.value("eq").object { t += e["bv"].double }
+        for (_, e) in co.value("eq").object.sorted(by: { $0.key < $1.key }) { t += e["bv"].double }
         for v in co.value("veh").array { t += v["bv"].double }
         return t
     }
@@ -82,7 +82,7 @@ public enum CompanyFigures {
         let mgr = co.managerMonthlyWage * 12 / 52 * employerFactor
         let prem = co.value("prem")
         let rent = (!prem.isNull && !prem["owned"].bool && prem["m2"].double > 0) ? prem["rent"].double * prem["m2"].double / 52 : 0
-        let marketing = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let marketing = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         return staffPay + mgr + rent + fixedCost * pow(co.size, 0.6) + marketing + co.value("lastW")["cogs"].double * 0.5
     }
 

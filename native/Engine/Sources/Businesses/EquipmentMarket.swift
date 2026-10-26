@@ -715,7 +715,7 @@ public enum EquipmentMarket {
     /// Equipment health as far as the owner can tell, 0 to 1 (nil if the company owns nothing that wears).
     public static func health(_ co: Company) -> Double? {
         var vals: [Double] = []
-        for (_, list) in co.value("units").object { for u in list.array { vals.append(seen(u)) } }
+        for (_, list) in co.value("units").object.sorted(by: { $0.key < $1.key }) { for u in list.array { vals.append(seen(u)) } }
         for v in co.value("veh").array { vals.append(seen(v)) }
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }

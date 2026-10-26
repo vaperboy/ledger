@@ -52,7 +52,7 @@ public enum RivalGroups {
     }
 
     /// The groups that compete in a country.
-    static func all(_ s: GameState) -> [JSONValue] { Array((s.rest["g27"]?["g"] ?? .null).object.values) }
+    static func all(_ s: GameState) -> [JSONValue] { (s.rest["g27"]?["g"] ?? .null).object.sorted(by: { $0.key < $1.key }).map { $0.value } }
 
     public static func groups(_ s: GameState, country cc: String) -> [Group] {
         all(s).filter { !$0["gone"].bool && $0["cs"].array.contains { $0.string == cc } }.map(read).sorted { $0.revenue > $1.revenue }
