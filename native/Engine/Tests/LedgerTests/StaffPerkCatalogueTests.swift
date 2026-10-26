@@ -81,7 +81,12 @@ final class StaffPerkCatalogueTests: XCTestCase {
         let cash0 = co.cash
         e.update { s, d, _ in StaffPerks.weekly(&s, data: d) }
         let after = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(cash0 - after.cash, monthly * 12 / 52, accuracy: 1, "the car bills through its lease and fuel, not through the perk line")
+        // Benefits in kind attract the employer's charges like pay does (deliberate model rule: StaffPerks.weekly adds the country's on-cost
+        // at the median wage), so the perk line is the catalogue cost times (1 + on-cost), not the bare catalogue cost.
+        let country = World(state: e.state, data: e.data).country(co)
+        let onCost = 1 + country.employerOnCost(monthlyWage: country.medianMonthlyWage)
+        XCTAssertGreaterThan(onCost, 1)
+        XCTAssertEqual(cash0 - after.cash, monthly * 12 / 52 * onCost, accuracy: 1, "the car bills through its lease and fuel, not through the perk line")
         XCTAssertEqual(after.staff[0].tiredness, 20 - 1.5, accuracy: 1e-9)
         XCTAssertEqual(after.staff[1].tiredness, 10 - 1.5, accuracy: 1e-9)
         XCTAssertEqual(after.num("mood"), 50 + (0.25 + 0.2) * max(0, 1 - 50.0 / 85), accuracy: 1e-9)
