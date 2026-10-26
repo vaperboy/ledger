@@ -88,7 +88,7 @@ public struct Currency: Sendable {
     /// Whole number with a non-breaking space between thousands: "1 234 567". Original: `npad`.
     public static func grouped(_ n: Double) -> String {
         let x = n.isFinite ? n : 0
-        let digits = String(Int64(jsRound(abs(x))))
+        let digits = String(Int64(min(jsRound(abs(x)), 9.0e18)))   // Int64(Double) traps beyond about 9.22e18
         var out = ""
         for (i, ch) in digits.reversed().enumerated() {
             if i > 0 && i % 3 == 0 { out.append("\u{00A0}") }

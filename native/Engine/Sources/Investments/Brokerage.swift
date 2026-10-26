@@ -35,7 +35,7 @@ public enum Brokerage {
         var bag = inv[bagKey(kind)]
         var pos = bag[sym].isNull ? JSONValue.object(["q": 0, "cost": 0]) : bag[sym]
         pos["q"] = .number(pos["q"].double + amt / px)
-        pos["cost"] = .number(pos["cost"].double + amt)
+        pos["cost"] = .number(pos["cost"].double + amt + fee)   // the buy fee is part of the cost base, so a round trip is not taxed as a gain
         bag[sym] = pos
         inv[bagKey(kind)] = bag
         s.rest["inv"] = inv
