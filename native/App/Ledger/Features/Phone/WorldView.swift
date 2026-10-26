@@ -82,8 +82,6 @@ struct RankingView: View {
 /// How people see you, the people you know with favours and promises, and the maps. Original: features/world/world_around_you.js.
 struct WorldAroundView: View {
     @EnvironmentObject var store: GameStore
-    @State private var pending: PendingAction?
-
     /// Tells the player what the engine answered; a nil result (no game) says so rather than staying silent.
     private func report(_ r: WorldAround.ActionResult?) {
         switch r {
@@ -145,9 +143,8 @@ struct WorldAroundView: View {
                                         Spacer(minLength: 8)
                                         if c.relationship >= 64 {
                                             Button("Ask a favour") {
-                                                pending = PendingAction(title: "Ask \(c.name) for a favour?", message: "\(c.name), \(c.role.rawValue) at \(c.organisation). They may say no; what comes of it is reported at once, and a favour asked is a favour you may owe.",
-                                                                        button: "Ask") { report(store.act { $0.askForFavour(contactID: c.id) }) }
-                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                                report(store.act { $0.askForFavour(contactID: c.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel("Ask \(c.name) for a favour")
                                         }
                                         Text(c.word).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                                     }.padding(.vertical, 8)
@@ -169,12 +166,8 @@ struct WorldAroundView: View {
                                         if f.kind != .owe {
                                             Button(f.kind == .owed ? "Call in" : "Keep it") {
                                                 let calling = f.kind == .owed
-                                                pending = PendingAction(title: (calling ? "Call in the favour from " : "Keep your promise to ") + f.name + "?",
-                                                                        message: (calling ? "They owe you: " : "You promised: ") + f.text + ". The result is reported at once.",
-                                                                        button: calling ? "Call in" : "Keep it") {
-                                                    report(store.act { calling ? $0.callInFavour(favourID: f.id) : $0.keepPromise(favourID: f.id) })
-                                                }
-                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                                report(store.act { calling ? $0.callInFavour(favourID: f.id) : $0.keepPromise(favourID: f.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel((f.kind == .owed ? "Call in the favour from " : "Keep your promise to ") + f.name)
                                         }
                                     }.padding(.vertical, 8)
                                 }
@@ -219,7 +212,6 @@ struct WorldAroundView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .confirmAction($pending)
             .navigationTitle("World around you")
             .navigationBarTitleDisplayMode(.inline)
         }
