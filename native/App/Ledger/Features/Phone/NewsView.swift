@@ -38,16 +38,25 @@ struct NewsView: View {
         if news.isEmpty {
             Text("No news yet. Headlines about the economy, your rivals and your companies appear as the weeks go by.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
         } else {
-            let weeks = news.map { $0.week }.reduce(into: [Int]()) { if !$0.contains($1) { $0.append($1) } }
-            ForEach(weeks, id: \.self) { w in
-                LedgerSection(title: w == e.state.week ? "This week" : GameCalendar.dateString(week: w), trailing: { EmptyView() }) {
-                    VStack(spacing: 0) {
-                        ForEach(news.filter { $0.week == w }) { n in
-                            ListRow(symbol: n.tone == "bad" ? "exclamationmark.triangle.fill" : n.tone == "good" ? "arrow.up.right.circle.fill" : "newspaper.fill",
-                                    tint: n.tone == "bad" ? Theme.loss : n.tone == "good" ? Theme.gain : Theme.ivoryMuted, title: n.text)
-                        }
-                    }
-                }
+            // Two sections only: this week (bad news first), then everything older with its date under each line.
+            let now = news.filter { $0.week == e.state.week }.sorted { ($0.tone == "bad" ? 0 : 1) < ($1.tone == "bad" ? 0 : 1) }
+            let older = news.filter { $0.week != e.state.week }
+            if !now.isEmpty {
+                LedgerSection("This week") { newsRows(now, dated: false) }
+            }
+            if !older.isEmpty {
+                LedgerSection("Earlier") { newsRows(older, dated: true) }
+            }
+        }
+    }
+
+    private func newsRows(_ items: [NewsItem], dated: Bool) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, n in
+                if i > 0 { Hairline() }
+                ListRow(symbol: n.tone == "bad" ? "exclamationmark.triangle.fill" : n.tone == "good" ? "arrow.up.right.circle.fill" : "newspaper.fill",
+                        tint: n.tone == "bad" ? Theme.loss : n.tone == "good" ? Theme.gain : Theme.ivoryMuted, title: n.text,
+                        subtitle: dated ? GameCalendar.dateString(week: n.week) : "")
             }
         }
     }

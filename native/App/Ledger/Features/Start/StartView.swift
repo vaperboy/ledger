@@ -90,7 +90,8 @@ struct StartView: View {
             NavigationStack {
                 VStack(spacing: Theme.Space.m) {
                     TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(minHeight: 220)
-                        .scrollContentBackground(.hidden).background(Theme.leather).clipShape(RoundedRectangle(cornerRadius: Theme.Radius.s))
+                        .scrollContentBackground(.hidden)
+                        .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
                     // The warning sits on the button itself here, so no second dialog has to appear over a closing sheet.
                     if store.hasSavedGame { Text(replacedLine).font(.caption).foregroundStyle(Theme.caution).frame(maxWidth: .infinity, alignment: .leading) }
                     Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
@@ -106,13 +107,12 @@ struct StartView: View {
     // MARK: States
 
     private var continueCard: some View {
-        GlassCard {
+        LedgerSection("Your game") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                SectionLabel("Your game")
                 if let s = summary {
                     let country = countries.first { $0.code == s.countryCode }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(s.playerName).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.ivory)
+                        Text(s.playerName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text("\(country.map { "\($0.flag) \($0.name)" } ?? s.countryCode) · \(GameCalendar.dateString(week: s.week)) · week \(s.week + 1)")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                         Text(s.companies == 0 ? "No companies yet" : "\(s.companies) \(s.companies == 1 ? "company" : "companies")")
@@ -148,9 +148,8 @@ struct StartView: View {
     }
 
     private var newGameCard: some View {
-        GlassCard {
+        LedgerSection("New game") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                SectionLabel("New game")
                 TextField("Your name", text: $name)
                     .textInputAutocapitalization(.words)
                     .padding(.vertical, 12)
@@ -187,8 +186,8 @@ struct StartView: View {
                 Button { story = s } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Image(systemName: story == s ? "largecircle.fill.circle" : "circle").foregroundStyle(Theme.gold)
-                            Text(s.title.tidyMoney).font(.bodyText)
+                            Image(systemName: story == s ? "largecircle.fill.circle" : "circle").foregroundStyle(story == s ? Theme.gold : Theme.ivoryFaint)
+                            Text(s.title.tidyMoney).font(.bodyText.weight(story == s ? .semibold : .regular)).foregroundStyle(story == s ? Theme.gold : Theme.ivory)
                         }
                         Text(s.tagline).font(.caption).foregroundStyle(Theme.ivoryMuted)
                         if let p = previews[s], let cur {

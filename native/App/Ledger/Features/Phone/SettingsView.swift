@@ -10,12 +10,13 @@ struct SettingsView: View {
     @State private var showImporter = false
     @State private var policy = ManagementPolicy()
     @State private var askStep = Double(ConfirmThreshold.step)
+    @State private var pending: PendingAction?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 group("Feel") {
-                    row("hand.tap", "Haptic feedback") { Toggle("", isOn: $haptics).labelsHidden().tint(Theme.gold).onChange(of: haptics) { _, v in Haptics.enabled = v } }
+                    row("hand.tap", "Haptic feedback") { Toggle("", isOn: $haptics).labelsHidden().tint(Theme.gold).onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) } }
                 }
                 group("How much I decide", footer: "Routine payroll is approved when the company can pay it, gaps in a team are filled, and small complaints are handled. Campaigns pause when cash would drop below the reserve. Big choices (hiring a manager, loans, sales, legal trouble) always come to your inbox. Sales, closures, loans, dismissals and other irreversible steps always ask, whatever the size you set for spending.") {
                     row("checkmark.seal", "Approve routine payroll for me") { Toggle("", isOn: $policy.autoPayroll).labelsHidden().tint(Theme.gold) }
@@ -59,8 +60,14 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
-        .onChange(of: askStep) { _, v in ConfirmThreshold.step = Int(v) }
-        .onChange(of: policy) { _, v in _ = store.act { $0.setPolicy(v) } }
+        .onChange(of: askStep) { _, v in ConfirmThreshold.step = Int(v); store.saved("asking before spending: " + askDetail.lowercased()) }
+        .onChange(of: policy) { old, v in
+            // Loading the page sets `policy` from the game; only a real change by the player is saved and reported.
+            guard let current = store.engine?.state.policy, current != v else { return }
+            store.act { $0.setPolicy(v) }
+            store.saved(policyChange(from: old, to: v))
+        }
+        .confirmAction($pending)
         .confirmationDialog("Leave this game?", isPresented: $confirmQuit) {
             Button("Save and leave", role: .destructive) { store.quitToMenu() }
         } message: { Text("It is saved first. You can continue it from the start screen.") }
@@ -68,8 +75,23 @@ struct SettingsView: View {
             guard case .success(let url) = result else { return }
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if let text = try? String(contentsOf: url, encoding: .utf8) { store.importLegacy(text: text) } else { store.errorText = "That file could not be read as text." }
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { store.errorText = "That file could not be read as text."; return }
+            // Ask once the file picker has gone: an import replaces the game you are playing.
+            DispatchQueue.main.async {
+                pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
+                                        button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+            }
         }
+    }
+
+    /// What the player just changed, in words, for the "Saved" message.
+    private func policyChange(from old: ManagementPolicy, to v: ManagementPolicy) -> String {
+        if old.autoPayroll != v.autoPayroll { return "routine payroll " + (v.autoPayroll ? "approved for you" : "comes to you") }
+        if old.autoRehire != v.autoRehire { return "replacing people who leave is " + (v.autoRehire ? "on" : "off") }
+        if old.autoComplaints != v.autoComplaints { return "staff " + (v.autoComplaints ? "answer" : "no longer answer") + " routine complaints" }
+        if old.reserveWeeks != v.reserveWeeks { return v.reserveWeeks == 0 ? "no cash reserve" : "cash reserve of \(v.reserveWeeks.formatted()) weeks of costs" }
+        if old.autoDividendWeeks != v.autoDividendWeeks { return v.autoDividendWeeks == 0 ? "no automatic dividends" : "dividends above \(Int(v.autoDividendWeeks)) weeks of spare cash" }
+        return "how much you decide"
     }
 
     private var askDetail: String {

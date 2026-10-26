@@ -33,7 +33,8 @@ struct GoalsCard: View {
                 Hairline()
                 if let path = engine.currentAmbition, let name = engine.ambitionPaths.first(where: { $0.id == path })?.name {
                     let ms = engine.ambitionMilestones(path: path)
-                    row("Ambition: \(name)", "\(ms.filter { $0.done != nil }.count) of \(ms.count) milestones on this level", nil) {}
+                    let perk = engine.ambitionPerk(path: path)
+                    row("Ambition: \(name)", "\(ms.filter { $0.done != nil }.count) of \(ms.count) milestones on this level" + (perk.isEmpty ? "" : "\nPerk: " + perk), nil) {}
                     ForEach(ms, id: \.id) { m in
                         Text((m.done != nil ? "\u{2713} " : "\u{00B7} ") + m.text).font(.system(size: 12)).foregroundStyle(m.done != nil ? Theme.ivoryMuted : Theme.ivory).padding(.leading, 12).padding(.vertical, 2)
                     }

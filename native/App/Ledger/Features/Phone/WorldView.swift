@@ -15,19 +15,23 @@ struct RankingView: View {
             let board = e.rankingBoard(scope: scope, metric: metric)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    HStack {
-                        ForEach(CompanyRanking.Scope.allCases, id: \.self) { sc in
-                            Button(scopeName(sc, e)) { scope = sc }.buttonStyle(QuietButtonStyle(tint: scope == sc ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
-                    HStack {
-                        ForEach(CompanyRanking.Metric.allCases, id: \.self) { m in
-                            Button(m.title) { metric = m }.buttonStyle(QuietButtonStyle(tint: metric == m ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
                     if let you = board.you {
-                        Text("You are number \(you.rank) of \(board.total) by \(metric.title.lowercased()).")
-                            .font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Your place by \(metric.title.lowercased())").capsLabel()
+                            Text("#\(you.rank) of \(board.total)").font(.hero(34)).foregroundStyle(Theme.gold)
+                        }
+                    }
+                    WrapRow {
+                        ForEach(CompanyRanking.Scope.allCases, id: \.self) { sc in
+                            Button(scopeName(sc, e)) { scope = sc; Haptics.choose() }.buttonStyle(QuietButtonStyle(tint: scope == sc ? Theme.gold : Theme.ivoryFaint))
+                        }
+                    }
+                    WrapRow {
+                        ForEach(CompanyRanking.Metric.allCases, id: \.self) { m in
+                            Button(m.title) { metric = m; Haptics.choose() }.buttonStyle(QuietButtonStyle(tint: metric == m ? Theme.gold : Theme.ivoryFaint))
+                        }
+                    }
+                    if board.you != nil {
                         LedgerSection("The biggest") {
                             VStack(spacing: 0) {
                                 ForEach(Array(board.entries.prefix(20).enumerated()), id: \.offset) { i, en in
@@ -37,7 +41,7 @@ struct RankingView: View {
                             }
                         }
                     } else {
-                        Text("The ranking appears once you run a business.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        Text("The ranking is locked until you run a business. Open or buy a company and you appear here.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
@@ -78,6 +82,14 @@ struct RankingView: View {
 /// How people see you, the people you know with favours and promises, and the maps. Original: features/world/world_around_you.js.
 struct WorldAroundView: View {
     @EnvironmentObject var store: GameStore
+    /// Tells the player what the engine answered; a nil result (no game) says so rather than staying silent.
+    private func report(_ r: WorldAround.ActionResult?) {
+        switch r {
+        case .ok(let msg)?: Haptics.success(); store.show(msg, tone: "good")
+        case .refused(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+        case nil: store.show("No game is open.", tone: "warn")
+        }
+    }
 
     var body: some View {
         if var e = store.engine {
@@ -87,6 +99,23 @@ struct WorldAroundView: View {
             let infl = e.mapInfluence()
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    LedgerSection("Records") {
+                        VStack(spacing: 0) {
+                            recordLink(.rival, e.nemesis.map { "\($0.owner) of \($0.groupName): you \($0.wins), them \($0.losses)" } ?? "No rival has picked you yet")
+                            Hairline()
+                            recordLink(.topFifty, e.topFifty.map { t in t.yourRank.map { "Last January: you were number \($0) of \(t.of)" } ?? "Last January you were not on it" } ?? "Printed every January")
+                            Hairline()
+                            recordLink(.months, "Income, costs and profit by month, per company")
+                            Hairline()
+                            recordLink(.crisis, "\(e.crisisCentre.filter { $0.status == "open" }.count) waiting")
+                            Hairline()
+                            recordLink(.hall, e.retirementHall.isEmpty ? "Nobody has retired yet" : "\(e.retirementHall.count) retired")
+                            Hairline()
+                            NavigationLink { NewsView() } label: {
+                                ListRow(symbol: "newspaper", tint: Theme.ivoryMuted, title: "Business paper and weather", subtitle: "Front pages, forecasts and visitors", chevron: true).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                        }
+                    }
                     LedgerSection("Seen as") {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(img.label).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.gold)
@@ -114,9 +143,8 @@ struct WorldAroundView: View {
                                         Spacer(minLength: 8)
                                         if c.relationship >= 64 {
                                             Button("Ask a favour") {
-                                                let r = store.act { $0.askForFavour(contactID: c.id) }
-                                                if case .refused(let why)? = r { store.show(why, tone: "warn") } else if case .ok(let msg)? = r { store.show(msg, tone: "good") }
-                                            }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                                                report(store.act { $0.askForFavour(contactID: c.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel("Ask \(c.name) for a favour")
                                         }
                                         Text(c.word).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                                     }.padding(.vertical, 8)
@@ -137,9 +165,9 @@ struct WorldAroundView: View {
                                         Spacer(minLength: 8)
                                         if f.kind != .owe {
                                             Button(f.kind == .owed ? "Call in" : "Keep it") {
-                                                let r = store.act { f.kind == .owed ? $0.callInFavour(favourID: f.id) : $0.keepPromise(favourID: f.id) }
-                                                if case .refused(let why)? = r { store.show(why, tone: "warn") } else if case .ok(let msg)? = r { store.show(msg, tone: "good") }
-                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                                                let calling = f.kind == .owed
+                                                report(store.act { calling ? $0.callInFavour(favourID: f.id) : $0.keepPromise(favourID: f.id) })
+                                            }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel((f.kind == .owed ? "Call in the favour from " : "Keep your promise to ") + f.name)
                                         }
                                     }.padding(.vertical, 8)
                                 }
@@ -187,6 +215,12 @@ struct WorldAroundView: View {
             .navigationTitle("World around you")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    private func recordLink(_ page: WorldRecordsView.Page, _ preview: String) -> some View {
+        NavigationLink { WorldRecordsView(page: page) } label: {
+            ListRow(symbol: page.symbol, tint: Theme.ivoryMuted, title: page.rawValue, subtitle: preview, chevron: true).contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 
     private func circle(_ title: String, _ names: [String]) -> some View {

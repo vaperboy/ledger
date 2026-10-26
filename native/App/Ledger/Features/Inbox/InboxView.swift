@@ -178,7 +178,7 @@ struct InboxView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 }).padding(.vertical, Theme.Space.xs).background(Theme.walnut.opacity(0.9))
+                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 }).padding(.vertical, Theme.Space.xs).background(Theme.page)
             }
             .searchable(text: $query, prompt: "Search messages")
             .onChange(of: tab) { _, _ in limit = Self.page }
@@ -211,7 +211,9 @@ struct InboxView: View {
                 }
             }
             Button("Mark all read") {
+                let n = store.unreadCount
                 store.act { e in e.update { s, _, _ in for i in s.inbox.indices where s.inbox[i].status != "open" { s.inbox[i].isRead = true } } }
+                store.show("Marked \(n) message\(n == 1 ? "" : "s") as read. Open decisions stay open.", tone: "n")
             }.disabled(store.unreadCount == 0)
         } label: {
             Image(systemName: "line.3.horizontal.decrease.circle").accessibilityLabel("Inbox options")
@@ -224,7 +226,10 @@ struct InboxView: View {
             if !b.note.isEmpty { Text(b.note.tidyMoney).font(.system(size: 11)).foregroundStyle(b.tint) }
             Spacer(minLength: 8)
             if let id = b.companyID {
-                Button { store.openCompany(id) } label: { Text("Open →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+                Button { store.openCompany(id) } label: {
+                    HStack(spacing: 3) { Text("Open"); Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)) }
+                        .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                }.buttonStyle(.plain)
             }
         }
         .padding(.top, Theme.Space.s)
@@ -335,8 +340,11 @@ struct MessageCard: View {
                             if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
                                 let sec = Self.section(for: message)
                                 Button { store.openCompany(co.id, section: sec) } label: {
-                                    Text("Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "") + " →").font(.caption.weight(.medium)).foregroundStyle(Theme.gold)
-                                }.buttonStyle(.plain).padding(.top, 2).accessibilityIdentifier("open-company-link")
+                                    HStack(spacing: 4) {
+                                        Text("Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "")).font(.caption.weight(.medium))
+                                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                                    }.foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                                }.buttonStyle(.plain).accessibilityIdentifier("open-company-link")
                             }
                         }
                     }
@@ -382,9 +390,10 @@ struct MessageCard: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Theme.Space.m)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.04)))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.s).strokeBorder(idx == 0 ? Theme.gold.opacity(0.55) : Theme.hairline, lineWidth: 0.75))
+                        .padding(.vertical, 8).padding(.leading, Theme.Space.m).padding(.trailing, 20)
+                        .overlay(alignment: .leading) { Rectangle().fill(idx == 0 ? Theme.gold : Theme.hairline).frame(width: 1.5) }
+                        .overlay(alignment: .trailing) { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
+                        .contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
             }

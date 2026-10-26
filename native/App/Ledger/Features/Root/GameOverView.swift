@@ -24,7 +24,7 @@ struct GameOverView: View {
             VStack(spacing: Theme.Space.l) {
                 VStack(spacing: Theme.Space.m) {
                     Image(systemName: "building.columns").font(.system(size: 44, weight: .ultraLight)).foregroundStyle(Theme.roseGold)
-                    Text("The ledger is closed").font(.system(.title, design: .default).weight(.semibold))
+                    Text("The ledger is closed").font(.serifTitle(28)).foregroundStyle(Theme.ivory)
                     Text(over["reason"].string == "insolvent"
                          ? "You owe more than you own and the bank has ended it."
                          : "Your account stayed empty for too long. The bank has stopped lending.")
@@ -72,7 +72,7 @@ struct GameOverView: View {
                 }
 
                 VStack(spacing: Theme.Space.s) {
-                    Button("Back to the start screen") { store.quitToMenu() }.buttonStyle(GoldButtonStyle())
+                    Button { store.quitToMenu() } label: { Text("Back to the start screen") }.buttonStyle(GoldButtonStyle())
                     Text("This run stays saved. Starting a new game from the start screen replaces it.")
                         .font(.caption).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.center)
                 }

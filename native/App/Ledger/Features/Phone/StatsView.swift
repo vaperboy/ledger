@@ -3,50 +3,53 @@ import GameCore
 import Finance
 import Simulation
 
+/// Your record: best net worth first, then the state of the economy around you, what the run has cost so far, and the latest trophies.
 struct StatsView: View {
     @EnvironmentObject var store: GameStore
     var body: some View {
         if let e = store.engine {
             let s = e.state
             let nw = e.netWorth
+            let phase = s.economy.phase
             ScrollView {
-                VStack(spacing: Theme.Space.l) {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            Text("Best net worth").capsLabel()
-                            Text(store.money(max(s.stats.peakNetWorth, nw.total))).font(.hero(34)).minimumScaleFactor(0.6).lineLimit(1)
-                            HStack(spacing: Theme.Space.l) {
-                                Stat(label: "Now", value: store.short(nw.total), tint: nw.total < 0 ? Theme.loss : Theme.ivory)
-                                Stat(label: "Weeks played", value: "\(s.week)")
-                                Stat(label: "Companies sold", value: "\(s.stats.companiesSold)")
-                            }
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Best net worth").capsLabel()
+                        Text(store.money(max(s.stats.peakNetWorth, nw.total))).font(.hero(34)).minimumScaleFactor(0.6).lineLimit(1)
+                    }
+                    KeyFigures(items: [
+                        .init(label: "Now", value: store.short(nw.total), tint: nw.total < 0 ? Theme.loss : Theme.ivory),
+                        .init(label: "Weeks played", value: "\(s.week)"),
+                        .init(label: "Companies sold", value: "\(s.stats.companiesSold)")
+                    ])
+                    LedgerSection(title: "The economy", trailing: { Chip(text: phase.capitalized, tint: phaseTint(phase)) }) {
+                        if phase == "recession" || phase == "slowdown" {
+                            Text(phase == "recession" ? "The economy is in recession. Customer demand and rates below show how it reaches you." : "The economy is slowing. Customer demand and rates below show how it reaches you.")
+                                .font(.system(size: 13)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                        }
+                        VStack(spacing: 0) {
+                            FlatRow(label: "Customer demand", value: String(format: "%+.0f%%", (s.economy.demand - 1) * 100), tint: Theme.change(s.economy.demand - 1), rule: false)
+                            FlatRow(label: "Inflation", value: pct(s.economy.inflation))
+                            FlatRow(label: "Central bank rate", value: pct(s.economy.policyRate))
+                            FlatRow(label: "Fuel price", value: String(format: "%+.0f%%", (s.economy.fuel - 1) * 100), tint: Theme.change(1 - s.economy.fuel))
+                        }
+                    }
+                    LedgerSection("What it has cost") {
+                        VStack(spacing: 0) {
+                            FlatRow(label: "Tax paid", value: store.short(s.stats.taxPaid), rule: false)
+                            FlatRow(label: "Wages paid", value: store.short(s.stats.wagesPaid))
+                            FlatRow(label: "Interest paid", value: store.short(s.stats.interestPaid))
+                            FlatRow(label: "Bankruptcies", value: "\(s.stats.bankruptcies)", tint: s.stats.bankruptcies > 0 ? Theme.loss : Theme.ivory)
                         }
                     }
                     TrophiesPreview()
-                    Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            SectionLabel("What it cost")
-                            ListRow(symbol: "building.columns.fill", tint: Theme.ivoryMuted, title: "Tax paid", trailing: store.short(s.stats.taxPaid))
-                            ListRow(symbol: "person.2.fill", tint: Theme.ivoryMuted, title: "Wages paid", trailing: store.short(s.stats.wagesPaid))
-                            ListRow(symbol: "percent", tint: Theme.ivoryMuted, title: "Interest paid", trailing: store.short(s.stats.interestPaid))
-                            ListRow(symbol: "xmark.octagon.fill", tint: s.stats.bankruptcies > 0 ? Theme.loss : Theme.ivoryMuted, title: "Bankruptcies", trailing: "\(s.stats.bankruptcies)")
-                        }
-                    }
-                    Card {
-                        VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            HStack { SectionLabel("The economy"); Spacer(); Chip(text: s.economy.phase.capitalized, tint: phaseTint(s.economy.phase)) }
-                            ListRow(symbol: "cart.fill", tint: Theme.ivoryMuted, title: "Customer demand", trailing: String(format: "%+.0f%%", (s.economy.demand - 1) * 100), trailingTint: Theme.change(s.economy.demand - 1))
-                            ListRow(symbol: "chart.line.uptrend.xyaxis", tint: Theme.ivoryMuted, title: "Inflation", trailing: pct(s.economy.inflation))
-                            ListRow(symbol: "building.columns", tint: Theme.ivoryMuted, title: "Central bank rate", trailing: pct(s.economy.policyRate))
-                            ListRow(symbol: "fuelpump.fill", tint: Theme.ivoryMuted, title: "Fuel price", trailing: String(format: "%+.0f%%", (s.economy.fuel - 1) * 100), trailingTint: Theme.change(1 - s.economy.fuel))
-                        }
-                    }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
             .navigationTitle("Stats")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
     private func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }

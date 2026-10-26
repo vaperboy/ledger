@@ -13,11 +13,14 @@ struct AchievementsView: View {
             let got = entries.filter { $0.reachedWeek != nil }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Trophies").capsLabel()
+                        Text("\(got.count) of \(entries.count)").font(.hero(34)).foregroundStyle(Theme.ivory)
+                    }
                     KeyFigures(items: [
-                        .init(label: "Trophies", value: "\(got.count) of \(entries.count)"),
                         .init(label: "Awards won", value: "\(Awards.wonCount(e.state))"),
                         .init(label: "Latest", value: got.max { ($0.reachedWeek ?? 0) < ($1.reachedWeek ?? 0) }?.name ?? "None yet")
-                    ], columns: 3)
+                    ], columns: 2)
                     ForEach(Trophies.groups, id: \.id) { g in
                         let list = entries.filter { $0.group == g.id }
                         if !list.isEmpty {
@@ -66,7 +69,12 @@ struct TrophiesPreview: View {
             let entries = Trophies.entries(e.state)
             let got = entries.filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
             LedgerSection(title: "Trophies", trailing: {
-                NavigationLink { AchievementsView() } label: { Text("All \(entries.count)  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+                NavigationLink { AchievementsView() } label: {
+                    HStack(spacing: 4) {
+                        Text("All \(entries.count)").font(.system(size: 12.5, weight: .medium))
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                    }.foregroundStyle(Theme.gold).frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain)
             }) {
                 if got.isEmpty {
                     Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
