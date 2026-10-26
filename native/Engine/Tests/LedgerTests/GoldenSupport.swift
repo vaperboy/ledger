@@ -25,3 +25,12 @@ func assertClose(_ a: Double, _ b: Double, tol: Double = 1e-9, _ msg: @autoclosu
     let scale = max(1, abs(b))
     XCTAssertTrue(abs(a - b) <= tol * scale, "\(msg()) expected \(b), got \(a)", file: file, line: line)
 }
+
+extension GameState {
+    /// Intended difference, not a regression: the original priced inflation as pow(1 + rate, week / 52), i.e. today's rate applied back to
+    /// week 0. The Swift game keeps a cumulative index (each week's inflation applied once, Economy.inflationIndex), which a save made by
+    /// the original does not have (it reads as 1). To compare everything else exactly, put the original's figure into the index.
+    mutating func useOriginalInflation() {
+        economy.inflationIndex = pow(1 + economy.inflation, Double(week) / 52)
+    }
+}
