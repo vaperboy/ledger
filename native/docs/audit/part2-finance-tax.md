@@ -1,6 +1,6 @@
 # Audit part 2: finance and tax
 
-Branch worktree-agent-a8ba4568c01df162e. Method: read the code path and the 23-country data, then add short tests that CI runs (not run in full locally).
+Merged (DONE). Method: read the code path and the 23-country data, then add short tests that CI runs (not run in full locally).
 Not re-checked: everything already listed as verified in `calculations.md`.
 
 | Item | Verdict | Test |

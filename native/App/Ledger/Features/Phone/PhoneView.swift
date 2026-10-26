@@ -65,7 +65,7 @@ struct PhoneView: View {
     }
 
     private func goalsLine(_ e: GameEngine) -> String {
-        let left = e.firstSteps().filter { !$0.done }.count
+        let left = e.firstStepRewardsHidden ? 0 : (e.firstStepRewards ?? []).filter { !$0.done }.count
         return left > 0 ? "\(left) first \(left == 1 ? "step" : "steps") to go" : (e.currentAmbition == nil ? "Choose what you want to build" : "Daily goal and your ambition")
     }
     private func achievementsLine(_ e: GameEngine) -> String {

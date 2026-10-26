@@ -50,7 +50,7 @@ final class SourcingContractsTests: XCTestCase {
         // A repair supplier you know well gives a discount on upkeep and service.
         let v = try XCTUnwrap(e.supplierCandidates(companyID: cafe, scope: "fix").first)
         e.update { s, _, _ in s.rest["vr"] = .object([v.id: .object(["r": 95, "w": .number(Double(s.week)), "meet": -99])]) }
-        e.chooseRepairSupplier(companyID: cafe, vendorID: v.id)
+        e.switchSupplier(companyID: cafe, input: "repair", to: .repairVendor(v.id))
         let co = try XCTUnwrap(e.state.company(cafe))
         XCTAssertGreaterThan(Suppliers.repairDiscount(e.state, company: co, data: e.data), 0.1)
         XCTAssertGreaterThan(try XCTUnwrap(e.sourcingSummary(companyID: cafe)).repairDiscount, 0.1)
@@ -61,7 +61,7 @@ final class SourcingContractsTests: XCTestCase {
         // Supply from inside: no outside supplier events while your own bakery supplies the bread.
         XCTAssertFalse(e.isSuppliedFromInside(companyID: cafe))
         XCTAssertFalse(Sourcing.shields(e.state, companyID: cafe, eventID: "g_supply"))
-        XCTAssertTrue(e.setSupplier(buyer: cafe, kind: "bread", supplier: bakery, mode: "mkt"))
+        XCTAssertEqual(e.switchSupplier(companyID: cafe, input: "bread", to: .ownCompany(bakery, mode: "mkt")), .ok)
         XCTAssertTrue(e.isSuppliedFromInside(companyID: cafe))
         XCTAssertTrue(Sourcing.shields(e.state, companyID: cafe, eventID: "g_supply"))
         XCTAssertFalse(Sourcing.shields(e.state, companyID: cafe, eventID: "g_break"))

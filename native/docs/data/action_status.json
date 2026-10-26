@@ -133,7 +133,7 @@
  ],
  "autostock": [
   "COVERED_UI",
-  "setSalmonAutomation->CompanyEnergy.swift (setAutoStock is an engine internal)"
+  "setSalmonAutomation->CompanyEnergy.swift (stocking is the salmon automation switch)"
  ],
  "away56": [
   "PRESENTATION",
@@ -293,7 +293,7 @@
  ],
  "carallow": [
   "COVERED_UI",
-  "toggleOwnCar->CompanyOtherSections.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
+  "contractPropose->ContractDiscussionView.swift (benefits topic: own car, ContractTalk calls PersonalEquipment.toggleOwnCar)"
  ],
  "carc": [
   "COVERED_UI",
@@ -1125,11 +1125,11 @@
  ],
  "mgrmove": [
   "COVERED_UI",
-  "moveManager->CompanyManagement.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
+  "contractPropose->ContractDiscussionView.swift (move topic: ContractTalk calls ManagerModel.move)"
  ],
  "mgrmovego": [
   "COVERED_UI",
-  "moveManager->CompanyManagement.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
+  "contractPropose->ContractDiscussionView.swift (move topic: ContractTalk calls ManagerModel.move)"
  ],
  "mgrraise": [
   "COVERED_UI",

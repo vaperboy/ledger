@@ -81,18 +81,3 @@ struct GlassCard<Content: View>: View {
         Card(padding: padding, content: content)
     }
 }
-
-/// Soft light behind the content, so glass has something to bend: a warm bronze glow high on the right and a cool one
-/// low on the left, both faint enough that the page stays charcoal.
-struct AmbientLight: View {
-    var body: some View {
-        GeometryReader { g in
-            ZStack {
-                RadialGradient(colors: [Theme.gold.opacity(0.09), .clear], center: .topTrailing, startRadius: 0, endRadius: g.size.width * 0.9)
-                RadialGradient(colors: [Theme.slateBlue.opacity(0.06), .clear], center: UnitPoint(x: 0, y: 0.55), startRadius: 0, endRadius: g.size.width * 0.8)
-                RadialGradient(colors: [Theme.roseGold.opacity(0.04), .clear], center: .bottom, startRadius: 0, endRadius: g.size.width * 0.7)
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}

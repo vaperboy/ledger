@@ -49,15 +49,6 @@ public extension GameEngine {
     mutating func setMaintenance(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].maintenance = min(2, max(0, level)) } } }
     mutating func setStockPolicy(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].set("stockPol", min(2, max(0, level))) } } }
 
-    /// Write a business option (a "knob") directly, free of any changeover. For tests and set-up only: a player changes how
-    /// the business sells with `changeKnob` / `toggleKnobOption`, which cost something and respect chain and franchise rules.
-    mutating func setKnob(companyID: Int, knob: String, option: Int) {
-        update { s, _, _ in
-            guard let i = s.companyIndex(companyID) else { return }
-            var k = s.companies[i].value("knob"); k[knob] = .number(Double(option)); s.companies[i].set("knob", k)
-        }
-    }
-
     /// Switch one add-on of a multi-choice knob on or off. Several add-ons can run together: the knob is a bit mask,
     /// so this sets or clears that option's bit and leaves the others alone. An add-on that needs a licence applies for it
     /// (fee paid now); a chain standard or franchise agreement that fixes the knob refuses.
@@ -186,13 +177,6 @@ public extension GameEngine {
             out = Hiring.search(role: role, company: co, mode: mode, state: &s, data: data)
         }
         return out
-    }
-
-    @discardableResult
-    mutating func fire(personID: Int, companyID: Int) -> Double {
-        var sev = 0.0
-        update { s, data, _ in sev = Dismissal.dismiss(&s, companyID: companyID, staffID: personID, reason: .redundancy, data: data)?.paid ?? 0 }
-        return sev
     }
 
     /// Mark a paperwork item as done for a team member. It is free; missing items can be fined in an inspection.

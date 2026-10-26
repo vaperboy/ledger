@@ -206,13 +206,8 @@ public extension GameEngine {
         return (plan, t.fee)
     }
 
-    /// Open a company under a brand whose terms you agreed. Original: `ACT.ncgo` with `st.fran`/`st.deal`, `applyBrand`.
-    mutating func startFranchisedCompany(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
-        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, form: form, name: name, accountantID: accountantID, pick: nil, fundWith: amount).map { $0.companyID }
-    }
-
     /// Open a franchised unit and take the picked place (rent or buy) before the standard set-up does everything else; with no pick it is the
-    /// standard rented place, exactly as `startFranchisedCompany`. The place is the franchisee's own premises, so the brand's rent rules apply to it.
+    /// standard rented place. Original: `ACT.ncgo` with `st.fran`/`st.deal`, `applyBrand`. The place is the franchisee's own premises, so the brand's rent rules apply to it.
     mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID) else { return .failure(.notAllowedHere) }
         let country = franchiseApplication(brandID)["country"].string
@@ -271,12 +266,4 @@ public extension GameEngine {
     func supplyPriceFactor(supplier: Int, mode: String) -> Double {
         state.company(supplier).map { IntercompanySupply.priceFactor(mode: mode, supplier: $0, data: data, perkCut: Ambitions.supplyCostCut(state, data)) } ?? 1
     }
-
-    @discardableResult
-    mutating func setSupplier(buyer: Int, kind: String, supplier: Int, mode: String) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = IntercompanySupply.setSupplier(&s, buyer: buyer, kind: kind, supplier: supplier, mode: mode) }
-        return ok
-    }
-    mutating func clearSupplier(buyer: Int, kind: String) { update { s, _, _ in IntercompanySupply.clearSupplier(&s, buyer: buyer, kind: kind) } }
 }

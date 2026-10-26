@@ -353,15 +353,6 @@ public enum CompanySetup {
         return true
     }
 
-    /// Change the accountant of a company. Original: `pickAccountant`.
-    public static func changeAccountant(_ s: inout GameState, companyID: Int, accountantID: Int, data: GameData) -> Bool {
-        guard let i = s.companyIndex(companyID), s.companies[i].value("acc")["id"].int != accountantID else { return false }
-        let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants
-        guard pool.contains(where: { $0["id"].int == accountantID }) else { return false }
-        chooseAccountant(&s, companyID: companyID, accountantID: accountantID, data: data)
-        return true
-    }
-
     static func chooseAccountant(_ s: inout GameState, companyID: Int, accountantID: Int?, data: GameData) {
         guard let i = s.companyIndex(companyID) else { return }
         let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants

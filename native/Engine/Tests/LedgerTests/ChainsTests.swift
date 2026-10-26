@@ -6,6 +6,13 @@ import Businesses
 import Simulation
 
 /// Chains, franchises (both sides) and supply between your own companies: they run, and the books balance.
+extension GameEngine {
+    /// Start a franchised unit in the standard place (test set-up; the app picks the place).
+    mutating func startFranchisedCompany(brandID: String, cityID: String, form: LegalForm, name: String?, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
+        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, form: form, name: name, pick: nil, fundWith: amount).map { $0.companyID }
+    }
+}
+
 final class ChainsTests: XCTestCase {
     static func engine(_ country: String = "NO", seed: Int = 11) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
@@ -160,12 +167,12 @@ final class ChainsTests: XCTestCase {
         Self.play(&e, days: 10 * 7)
         let k = try XCTUnwrap(e.supplyKinds(companyID: hotel).first { $0.id == "clean" })
         XCTAssertTrue(e.possibleSuppliers(buyer: hotel, kind: k.id).contains { $0.id == cleaning })
-        XCTAssertTrue(e.setSupplier(buyer: hotel, kind: k.id, supplier: cleaning, mode: "c10"))
+        XCTAssertEqual(e.switchSupplier(companyID: hotel, input: k.id, to: .ownCompany(cleaning, mode: "c10")), .ok)
         Self.play(&e, days: 20 * 7)
         let l = try XCTUnwrap(e.supplyLink(buyer: hotel, kind: k.id))
         XCTAssertGreaterThan(l.lastSpend, 0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        e.clearSupplier(buyer: hotel, kind: k.id)
+        e.switchSupplier(companyID: hotel, input: k.id, to: .outside)
         XCTAssertNil(e.supplyLink(buyer: hotel, kind: k.id))
     }
 }

@@ -293,28 +293,15 @@ final class ReportsTests: XCTestCase {
         XCTAssertEqual(try store.load().rest["reports"], s.rest["reports"])
     }
 
-    func testVersionOneEnvelopeIsMigrated() throws {
+    func testASaveFromANewerAppIsRefused() throws {
         var e = try newEngine()
         play(&e, weeks: 1)
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-reports-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = try SaveStore(directory: dir)
         try store.save(e.state, summary: store.summary(of: e.state, trades: e.data.catalog))
-        // Rewrite the file the way the previous app version wrote it: envelope version 1, no report fields.
         let file = dir.appendingPathComponent("current.ledgersave")
         var env = try XCTUnwrap(try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: file)).object as [String: JSONValue]?)
-        env["version"] = .number(1)
-        var st = env["state"]?.object ?? [:]
-        for k in ["reports", "rptBase", "rptCum", "rptSeen"] { st[k] = nil }
-        env["state"] = .object(st)
-        try JSONEncoder().encode(JSONValue.object(env)).write(to: file)
-        let old = try store.load()
-        XCTAssertEqual(old.rest["reports"]?["w"].array.count, 0)
-        XCTAssertEqual(old.rest["reports"]?["y"].array.count, 0)
-        let (data, events, marketing) = try GameEngine.loadResources()
-        let again = GameEngine(state: old, data: data, events: events, marketing: marketing)
-        XCTAssertTrue(again.reports(.week).isEmpty)
-        // A save from a newer app is still refused.
         env["version"] = .number(Double(NativeSaveFormat.currentVersion + 1))
         try JSONEncoder().encode(JSONValue.object(env)).write(to: file)
         try? FileManager.default.removeItem(at: dir.appendingPathComponent("current.previous.ledgersave"))

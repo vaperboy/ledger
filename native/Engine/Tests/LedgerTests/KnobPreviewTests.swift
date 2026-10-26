@@ -5,6 +5,16 @@ import Finance
 import Businesses
 import Simulation
 
+extension GameEngine {
+    /// Write a business option directly, free of any changeover (test set-up only; the app uses `changeKnob`).
+    mutating func setKnob(companyID: Int, knob: String, option: Int) {
+        update { s, _, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            var k = s.companies[i].value("knob"); k[knob] = .number(Double(option)); s.companies[i].set("knob", k)
+        }
+    }
+}
+
 /// The "how you sell" preview is the engine's own demand, price, capacity and cost functions on the company as it is: it must
 /// match what the engine then does, change nothing, and promise nothing.
 final class KnobPreviewTests: XCTestCase {

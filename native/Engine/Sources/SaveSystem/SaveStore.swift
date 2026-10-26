@@ -68,8 +68,8 @@ public final class SaveStore {
     // MARK: Reading
 
     static func read(data: Data) throws -> (GameState, SaveSummary?) {
-        guard var env = (try? JSONDecoder().decode(JSONValue.self, from: data))?.object, env["format"]?.string == NativeSaveFormat.formatName else { throw SaveError.notAGameSave }
-        try NativeMigrations.upgrade(&env)
+        guard let env = (try? JSONDecoder().decode(JSONValue.self, from: data))?.object, env["format"]?.string == NativeSaveFormat.formatName else { throw SaveError.notAGameSave }
+        try NativeSaveFormat.check(env)
         let stateData = try JSONEncoder().encode(env["state"] ?? .null)
         let state = try JSONDecoder().decode(GameState.self, from: stateData)
         let summary = try? JSONDecoder().decode(SaveSummary.self, from: JSONEncoder().encode(env["summary"] ?? .null))

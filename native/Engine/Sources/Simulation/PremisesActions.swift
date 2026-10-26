@@ -22,11 +22,6 @@ public extension GameEngine {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return false }
         return PremisesExtras.hasOutgrownHome(co, bd)
     }
-    @discardableResult mutating func moveBackHome(companyID: Int) -> Bool {
-        var r = false
-        update { s, d, _ in r = PremisesExtras.moveBackHome(&s, companyID: companyID, data: d) }
-        return r
-    }
 
     // MARK: Your own buildings as the franchise unit's place
 

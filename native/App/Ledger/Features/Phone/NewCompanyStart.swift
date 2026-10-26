@@ -122,40 +122,7 @@ struct TradeDetailView: View {
     // MARK: Premises
 
     @ViewBuilder private func premises(_ t: Trade, _ plan: NewCompanyPlan, _ cur: Currency) -> some View {
-        LedgerSection("Premises") {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                switch plan.premisesKind {
-                case .none:
-                    Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                case .home:
-                    Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                case .place:
-                    let chosen = rentIndex ?? plan.standardIndex
-                    ForEach(plan.options) { o in
-                        Button { rentIndex = o.index; if !o.canBuy { buying = false } } label: {
-                            ListRow(symbol: o.index == chosen ? "checkmark.circle.fill" : "circle", tint: o.index == chosen ? Theme.gold : Theme.ivoryMuted,
-                                    title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
-                                    trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront), trailingSub: "up front")
-                        }.buttonStyle(.plain)
-                    }
-                    if let o = plan.options.first(where: { $0.index == chosen }) {
-                        Picker("Rent or buy", selection: Binding(get: { buying }, set: { buying = $0; if rentIndex == nil { rentIndex = chosen } })) {
-                            Text("Rent").tag(false)
-                            if o.canBuy { Text("Buy").tag(true) }
-                        }.pickerStyle(.segmented)
-                        if buying {
-                            Text("Buying: \(cur.tidyShort(o.purchasePrice)). You pay \(cur.tidyShort(o.downPayment)) down and \(cur.tidyShort(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up.")
-                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        } else {
-                            Text("Renting: a deposit of \(cur.tidyShort(o.deposit)) (three months, returned when you leave) and \(cur.tidyShort(o.fitOut)) to fit it out. Then \(cur.tidyShort(o.monthlyRent)) a month. Moving later is possible.")
-                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        if !(rentIndex != nil) { Text("Nothing picked: the standard middle place is rented.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                    }
-                }
-            }
-        }
+        PremisesPicker(plan: plan, cur: cur, rentIndex: $rentIndex, buying: $buying)
     }
 
     // MARK: Cost, risks
@@ -244,6 +211,52 @@ struct TradeDetailView: View {
             case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
             case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
             default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
+            }
+        }
+    }
+}
+
+/// Where the new company works: rent or buy one of the places the engine lists, with what it costs up front. Shared by starting on your own
+/// and starting a unit under a brand, so the choice looks and reads the same in both.
+struct PremisesPicker: View {
+    var plan: NewCompanyPlan
+    var cur: Currency
+    @Binding var rentIndex: Int?
+    @Binding var buying: Bool
+
+    var body: some View {
+        LedgerSection("Premises") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                switch plan.premisesKind {
+                case .none:
+                    Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                case .home:
+                    Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
+                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                case .place:
+                    let chosen = rentIndex ?? plan.standardIndex
+                    ForEach(plan.options) { o in
+                        Button { rentIndex = o.index; if !o.canBuy { buying = false } } label: {
+                            ListRow(symbol: o.index == chosen ? "checkmark.circle.fill" : "circle", tint: o.index == chosen ? Theme.gold : Theme.ivoryMuted,
+                                    title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
+                                    trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront), trailingSub: "up front")
+                        }.buttonStyle(.plain)
+                    }
+                    if let o = plan.options.first(where: { $0.index == chosen }) {
+                        Picker("Rent or buy", selection: Binding(get: { buying }, set: { buying = $0; if rentIndex == nil { rentIndex = chosen } })) {
+                            Text("Rent").tag(false)
+                            if o.canBuy { Text("Buy").tag(true) }
+                        }.pickerStyle(.segmented)
+                        if buying {
+                            Text("Buying: \(cur.tidyShort(o.purchasePrice)). You pay \(cur.tidyShort(o.downPayment)) down and \(cur.tidyShort(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up.")
+                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        } else {
+                            Text("Renting: a deposit of \(cur.tidyShort(o.deposit)) (three months, returned when you leave) and \(cur.tidyShort(o.fitOut)) to fit it out. Then \(cur.tidyShort(o.monthlyRent)) a month. Moving later is possible.")
+                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        if !(rentIndex != nil) { Text("Nothing picked: the standard middle place is rented.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                    }
+                }
             }
         }
     }

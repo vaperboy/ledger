@@ -29,7 +29,7 @@ final class KnobMultiTests: XCTestCase {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         let single = try XCTUnwrap(e.data.catalog["cafe"]?.knobs.first { !$0.isMulti })
-        if case .refused = e.toggleKnobOption(companyID: id, knob: single.id, option: 1, on: true) {} else { XCTFail("single-choice knob must use setKnob") }
+        if case .refused = e.toggleKnobOption(companyID: id, knob: single.id, option: 1, on: true) {} else { XCTFail("single-choice knob must use changeKnob") }
         if case .refused = e.toggleKnobOption(companyID: id, knob: "nope", option: 0, on: true) {} else { XCTFail("unknown knob") }
         let bid = ChainsTests.start(&e, "barber")
         let k = try XCTUnwrap(e.data.catalog["barber"]?.knobs.first { $0.isMulti })

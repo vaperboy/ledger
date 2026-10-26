@@ -476,11 +476,4 @@ public enum WorldAround {
         return Influence(inner: liveCompanies(s).map { $0.name }, allies: R.filter { $0.relationship >= 50 }.map { $0.name },
                          others: R.filter { $0.relationship < 50 }.map { $0.name }, seenAs: image(s, data: data).label)
     }
-
-    /// The line under the people-you-know row. Original: `R31.netSub`.
-    public static func contactsSummary(_ s: inout GameState, data: GameData) -> String {
-        let f = favours(s).filter { $0.status == .open }
-        let owed = f.filter { $0.kind == .owed }.count, prom = f.filter { $0.kind == .promise }.count
-        return "\(contacts(&s, data: data).count) contacts" + (owed > 0 ? " · \(owed) owe you" : "") + (prom > 0 ? " · \(prom) promise\(prom > 1 ? "s" : "") open" : "")
-    }
 }

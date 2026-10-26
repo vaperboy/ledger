@@ -13,19 +13,11 @@ Method: every `mutating func` in `Engine/Sources/Simulation/*Actions.swift` and 
 | contractWithdraw | WIRED: contract discussion, "Drop this talk" on a talk you started and they countered. |
 | setFirstStepsHidden | WIRED: Goals card, hide / show the first-step rewards. |
 | recordPushedThrough | WIRED: closing a company (wind up) and selling it, when the engine's `boardVote` says you carried it alone against every other owner; the others' mood drops and the Inbox gets a line. |
-| setAutoStock | engine internal: salmon stocking is `setSalmonAutomation` (Company > Energy screen). |
-| changeAccountant | engine internal: superseded by `chooseAdviser(kind: .accountant)` (Company > Insurance and advisers). |
-| moveBackHome | engine internal: duplicate of `giveUpPremises`, which Workplace calls. |
-| chooseGoodsSupplier, chooseRepairSupplier, setSupplier, clearSupplier, buyFromAccount, stopBuyingFromAccount | engine internals: one supplier screen calls `switchSupplier` (Company > Operations > Suppliers). Two actions for one choice would be the duplicate entry point DESIGN_RULES forbids. |
-| startupPitches | engine internal: the app reads `startupPitchesOnOffer` (no side effect). |
-| contactsSummary | engine internal: text form of the circles the World screen already shows. |
-| fire | engine internal / legacy: the app dismisses through `dismissStaff` (StaffProfile rules). Candidate for deletion. |
-| setKnob | test and set-up only (its own comment); the app uses `changeKnob` / `toggleKnobOption`. |
-| startCompany | engine internal: the app uses `startCompanyChoosingPremises`. |
-| setFlag, prepareLeague | private helpers, not API. |
-| releaseGroupCEO | not wired: repairs a CEO post from saves older than round 56. Nothing to offer a new game. |
-| setReports, toggleOfficeAssignment | NOT wired on purpose: they write `office.rep` and `staff[].cos`, and no engine rule reads either. A setting with no effect would be fake functionality. Question for the owner below. |
-| startFranchisedCompanyChoosingPremises | NOT wired: the franchise start screen says the standard premises are taken and can be changed under Equipment, so it is honest today. Choosing the place at start needs a premises picker for franchise units (`newCompanyPlan` is not franchise-aware). Left as is. |
+| setAutoStock, changeAccountant, moveBackHome, startupPitches, contactsSummary, fire, releaseGroupCEO, chooseGoodsSupplier, chooseRepairSupplier, setSupplier, clearSupplier, buyFromAccount, stopBuyingFromAccount, setReports, toggleOfficeAssignment (and `StaffContracts.toggleOwnCar`, the duplicate of `PersonalEquipment.toggleOwnCar`) | DELETED with their static helpers. Salmon stocking is `setSalmonAutomation`; the accountant is `chooseAdviser(kind: .accountant)`; giving up premises is `giveUpPremises`; one supplier call, `switchSupplier`, serves a store and tests; `fire` was the old dismissal path (`dismissStaff`); `releaseGroupCEO` only repaired old saves; `setReports` / `toggleOfficeAssignment` wrote values no rule read (the `rep` field of the office record went with them). Tests were repointed to the live path. |
+| setKnob | moved to a test-only extension (`KnobPreviewTests.swift`); the app uses `changeKnob` / `toggleKnobOption`. |
+| startCompany | kept: not an app entry point but the one function `startCompanyChoosingPremises`, `startFranchisedCompanyChoosingPremises` and `Demo` build on (and many tests). |
+| setFlag, prepareLeague | private helpers still used (credit check, league set-up). |
+| startFranchisedCompanyChoosingPremises | WIRED: Start under a brand now has the same premises picker as a new company (`PremisesPicker`, shared), the cost comes from `franchiseStartPlan` (plan plus entry fee), and the result toast says when the picked place could not be paid. `startFranchisedCompany` (standard place only) was removed; tests use a test-only wrapper. |
 
 The 5 remaining ENGINE_ONLY ids in `action_status.json` are applydoc, applydoc2 (no per-company permit application), fireceo, hqas, repset.
 
@@ -44,10 +36,10 @@ Fixed: dead `MoneyView` (a "Money tab" that no longer exists) removed; stale "Mo
 Checked and fine: no Assistant/Regional/Chief tab; hiring a manager is called from two screens but both call `hireManager`; Team and Inbox have empty states; Group > Money is the one `FinanceView` (the Company-tab push is gone).
 Known and left to the owner (already in ui-and-data.md): UI-02 decisions in Team, UI-03 dashboard load, UI-12 More only from two tabs, UI-13 Activity vs Money, UI-14 Group market vs Company market.
 
-## 5. Questions for the owner
+## 5. Owner questions, decided
 
-1. Should the group office report settings (`setReports`: frequency, detail, which companies) and the marketing director / analyst company assignment (`toggleOfficeAssignment`) get an engine effect? Today nothing reads them, so no screen offers them.
-2. `fire` (PlayerActions) and `releaseGroupCEO` look deletable; delete them, or keep for old saves?
-3. Franchise start: should the player choose the place at start (engine ready)?
-4. Stale mapping in `action_status.json` for `carallow`, `mgrmove`, `mgrmovego`: the named functions no longer exist. Where do own-car allowance and moving a manager between companies live now? (Marked STALE in the file; the staff-contract ids were mapped to the contract discussion by inference.)
-5. Is the second first-steps tracker intended? `FirstStepsCard` (Advisor, no rewards) and `GoalsCard` (PlayerGoals, with rewards) both exist on the Goals screen.
+1. Group office report settings and analyst assignment: no engine effect, so deleted (no fake settings).
+2. `fire`, `releaseGroupCEO`: deleted (the game is not published; no old saves).
+3. Franchise start place: the player chooses it (done, see above).
+4. `carallow` lives in the contract talk (benefits topic, `PersonalEquipment.toggleOwnCar`); `mgrmove` / `mgrmovego` in the contract talk (move topic, `ManagerModel.move`). `action_status.json` is fixed.
+5. One first-steps tracker: `PlayerGoals.firstSteps` (rewards) stays; `Advisor.firstSteps` and `FirstStepsCard` are gone, the Goals line in More counts the unfinished reward steps.

@@ -11,8 +11,8 @@ A JSON file:
 ```
 
 * `format` must be `ledger-native`. A file of another kind is refused.
-* `version` is the version of this envelope. `NativeMigrations.upgrade` brings an older file up one version at a time; a file from a
-  **newer** app than this one is refused with a clear error and never overwritten.
+* `version` is the version of this envelope. `NativeSaveFormat.check` reads only the current version: a file from a
+  **newer** app is refused with a clear error and never overwritten, an older one is unreadable (nothing is published yet, so there are no old saves to carry over).
 * `state` is the game state. Its keys keep the names the original game used (`cos`, `loans`, `inbox`, `rs`, …) so that an import is lossless and
   so that fields the native code has not ported yet survive a round trip.
 * Native-only additions live under their own keys and are optional: `dayHist` (daily history for the Home charts).
@@ -43,8 +43,7 @@ luxury, football clubs.
 
 ## Adding a field
 
-Add the accessor on the record type (for example in `GameCore/State/Company.swift`), give it a default for old saves, and — only if
-the old value must be changed — add a step to `NativeMigrations.steps`.
+Add the accessor on the record type (for example in `GameCore/State/Company.swift`), give it a default, and raise `NativeSaveFormat.currentVersion` only when the envelope itself changes.
 
 The last-50-actions pass (`AccountSupply`, `RivalAbsorb`, `OfficeChecks`) saves in the original's own names, so legacy saves and native saves are the same shape and need no migration: `rest["l39"]` (links to business customers), `flags.match27`, `flags.brand27`, `branch.of` and `branch.r` on a company, `uc27.resp` on a rival, `lastRev` on a company.
 

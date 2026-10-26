@@ -5,21 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Franchising from both sides: your concept franchised out (units, applicants, master franchises abroad) and, when the company
-/// runs under a brand, what the brand asks of you.
-struct CompanyFranchise: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if !company.value("franchise").isNull { FranchiseeCard(engine: engine, company: company) }
-            if engine.canFranchise(companyID: company.id) && company.value("franchise").isNull { FranchisorCard(engine: engine, company: company) }
-        }
-    }
-}
-
 /// You are a franchisee: royalties, the brand's quality standard, the contract, and the way out.
 struct FranchiseeCard: View {
     @EnvironmentObject var store: GameStore

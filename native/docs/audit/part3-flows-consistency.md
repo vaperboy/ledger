@@ -1,6 +1,6 @@
 # Audit part 3: money flows and consistency
 
-Branch worktree-agent-ad323a5ed812a3001. Tests: `Tests/LedgerTests/HeldMoneyAndFiguresTests.swift` (written, run by CI; only compiled locally).
+Merged (DONE). Tests: `Tests/LedgerTests/HeldMoneyAndFiguresTests.swift` (written, run by CI; only compiled locally).
 Not re-checked (already in calculations.md / connectivity.md): ledger gaps, payday dates, VAT filing months, payroll shortfall flow.
 
 ## Fixed
@@ -41,7 +41,7 @@ Repairs, leases beyond the line above, project, rental, finance, energy, salmon,
 
 # Part 3b: repairs, leases, vehicles, special models, bonuses, perks, commission
 
-Branch worktree-agent-a2e144f76b512b20b. Test: `Tests/LedgerTests/SpecialModelMoneyTests.swift` (one seeded game per model: construction, developer, rental, bank, insurer, fund, power, salmon, football club, holding with a cafe; 52 weeks, `Ledger.gaps` empty, the 26 weekly reports add up to the books of the group and of each company). Passed locally. Reports are differences of the books, so "report = books" holds wherever a posting uses a books category; the check is that no money is lost between them.
+Merged (DONE). Test: `Tests/LedgerTests/SpecialModelMoneyTests.swift` (one seeded game per model: construction, developer, rental, bank, insurer, fund, power, salmon, football club, holding with a cafe; 52 weeks, `Ledger.gaps` empty, the 26 weekly reports add up to the books of the group and of each company). Passed locally. Reports are differences of the books, so "report = books" holds wherever a posting uses a books category; the check is that no money is lost between them.
 
 | Item | Verdict |
 |---|---|

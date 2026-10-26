@@ -82,17 +82,6 @@ final class DismissalCharacterizationTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testRosterFireIsARedundancy() throws {
-        var (e, id) = try cafe()
-        let sid = addStaff(&e, id, years: 4)
-        let expected = owed(e, id, wage: 300_000, tenureWeeks: 208, .redundancy)
-        let before = cash(e, id)
-        let paid = e.fire(personID: sid, companyID: id)
-        XCTAssertEqual(paid, expected, accuracy: 1)
-        XCTAssertEqual(before - cash(e, id), expected, accuracy: 2)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     func testManagerDismissalPaysTheStatuteUnderManagerLabels() throws {
         var (e, id) = try cafe()
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))

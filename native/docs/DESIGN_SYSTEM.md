@@ -13,7 +13,7 @@ Type: serif with tabular digits for every money figure (`Font.figure`), small tr
 text style for body so Dynamic Type works.
 
 Components: `Card`, `GoldButtonStyle` (one per screen, the main action), `QuietButtonStyle`, `DeltaPill` (arrow, amount and a percent
-only when it is meaningful), `Sparkline` (real history, empty line when there is none), `MiniBars`, `Chip`, `Meter`, `AmountField`
+only when it is meaningful), `Sparkline` (real history, empty line when there is none), `Chip`, `Meter`, `AmountField`
 (types in the displayed currency, converts to the game's unit), `SectionTabs`.
 
 Rules for numbers on screen: a figure and the text that explains it come from the same value (the net worth card shows assets, debts and

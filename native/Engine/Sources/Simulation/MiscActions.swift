@@ -211,8 +211,6 @@ public extension GameEngine {
 
     /// Check customers' credit before selling on account (a switch). Original: `ACT.ccheck`.
     mutating func setCreditCheck(companyID: Int, on: Bool) { setFlag(companyID, "ccheck", on) }
-    /// Salmon farm stocking by itself (a switch). Original: `ACT.autostock`.
-    mutating func setAutoStock(companyID: Int, on: Bool) { setFlag(companyID, "autoStock", on) }
 
     /// Let prices follow inflation by themselves or hold them where you set them. Original: `ACT.inflset`.
     mutating func setInflationHold(companyID: Int, hold: Bool) {
@@ -264,12 +262,6 @@ public extension GameEngine {
         update { s, d, _ in r = CompanySetup.giveUpPremises(&s, companyID: companyID, data: d) }
         return r
     }
-    @discardableResult mutating func changeAccountant(companyID: Int, accountantID: Int) -> Bool {
-        var r = false
-        update { s, d, _ in r = CompanySetup.changeAccountant(&s, companyID: companyID, accountantID: accountantID, data: d) }
-        return r
-    }
-
     /// The accountants on offer in the company's country: id, name, fee a month, rating (1 to 5), and whether it is the current one.
     func accountantChoices(companyID: Int) -> [(id: Int, name: String, fee: Double, rating: Double, current: Bool)] {
         guard let co = state.company(companyID) else { return [] }

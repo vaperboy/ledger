@@ -150,51 +150,6 @@ struct CompaniesView: View {
     }
 }
 
-/// The group as a portfolio: what it is worth, how that divides, what it earns and holds, and how it did month by month.
-struct GroupSummary: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var rows: [CompanyHealth]
-    var staff: Int
-    var body: some View {
-        let profit = rows.reduce(0) { $0 + $1.profitTTM }, revenue = rows.reduce(0) { $0 + $1.revenueTTM }
-        let change = DayHistory.change(engine.dayHistory.companies, days: 30)
-        let cash = engine.state.liveCompanies.reduce(0) { $0 + max(0, $1.cash) }
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Value of holdings").capsLabel()
-            HStack(alignment: .firstTextBaseline) {
-                Text(store.money(engine.netWorth.companies)).font(.hero(36)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.55).lineLimit(1)
-                Spacer(minLength: 6)
-                if let change, abs(change.amount) >= 1 {
-                    Text((change.amount > 0 ? "+" : "−") + store.short(abs(change.amount)) + " · 30 d").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.change(change.amount))
-                }
-            }
-            AllocationBar(parts: rows.map { $0.value }.sorted(by: >)).padding(.top, 8)
-            KeyFigures(items: [
-                .init(label: "Revenue 12 mo", value: store.short(revenue)),
-                .init(label: "Profit 12 mo", value: store.short(profit), tint: profit < 0 ? Theme.loss : Theme.gain),
-                .init(label: "Margin", value: revenue > 0 ? String(format: "%.1f%%", profit / revenue * 100) : "–", tint: revenue > 0 ? Theme.ivory : Theme.ivoryMuted),
-                .init(label: "Cash in companies", value: store.short(cash)),
-                .init(label: "Debt", value: store.short(rows.reduce(0) { $0 + $1.debt }), tint: rows.contains { $0.debt > 0 } ? Theme.loss : Theme.ivory),
-                .init(label: "Staff", value: "\(staff)"),
-            ]).padding(.top, 10)
-            let rev = aligned(\.revenueSeries), prof = aligned(\.profitSeries)
-            if rev.count >= 2 {
-                HStack { Text("Revenue and profit by month").capsLabel(); Spacer(); ChartKey(items: [("Revenue", Theme.gold), ("Profit", Theme.gain)]) }.padding(.top, 8)
-                RevenueProfitChart(revenue: rev, profit: prof, format: { store.short($0) }).padding(.top, 2)
-            }
-        }
-    }
-
-    /// The last twelve closed months of every company added together, newest at the right.
-    private func aligned(_ key: KeyPath<CompanyHealth, [Double]>) -> [Double] {
-        var out = [Double](repeating: 0, count: 12)
-        for r in rows { let s = Array(r[keyPath: key].suffix(12)); for (i, v) in s.enumerated() { out[12 - s.count + i] += v } }
-        let firstLive = rows.map { min(12, $0[keyPath: key].count) }.max() ?? 0
-        return Array(out.suffix(max(firstLive, 0)))
-    }
-}
-
 /// iPad: every company side by side, one row each.
 struct CompanyTable: View {
     @EnvironmentObject var store: GameStore

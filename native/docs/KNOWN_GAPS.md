@@ -166,7 +166,7 @@ untouched next to the converted save.
 * Ported: see `MASTER_CHECKLIST.md`. Effects of the team are cached on the company (`tm`, `mgrLift`, `mdCoach`, `drift56`, `boss56`, `brdLaw`, `brdMkt`) each week and read by demand, capacity, marketing, quits, fines and manager quality.
 * Not faithful: fame is a simplified formula (no foreign countries); head office candidates come from the manager generator with the role's pay, not worker search; holders (co-owners) exist only when given as shares in a promotion, since funding rounds are not ported, so owner votes and director elections are rare; the "loan" vote is not forced on the loan action (use `boardVote` first); manager duties `sec`/`ins` are stored but do nothing; a dividend policy is stored but no quarterly dividend is paid; the finance manager does not lower loan margins; course prices use the country cost index only.
 * Not ported: `grp27` (profile of a rival group, depends on rival groups' UI), board pack report preference of a promoted manager. (Supply-from-inside protection is in: `Sourcing`.)
-## Company tabs, misc screens, fleet and luxury leftovers (branch worktree-agent-a62df16577d42dde6)
+## Company tabs, misc screens, fleet and luxury leftovers (merged, DONE)
 
 | Id | What it is in the original | Native |
 |---|---|---|

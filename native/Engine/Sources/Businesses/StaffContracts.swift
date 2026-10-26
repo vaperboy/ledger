@@ -173,13 +173,6 @@ extension StaffTalks {
         }
     }
 
-    /// Let an estate agent use their own car for work, paid by mileage, or give back the company car. Original: `ACT.carallow`.
-    @discardableResult
-    public static func toggleOwnCar(_ s: inout GameState, companyID: Int, staffID: Int) -> Bool {
-        guard let ci = s.companyIndex(companyID) else { return false }
-        return edit(&s, ci, staffID) { m in m.set("ownCar", m.num("ownCar") != 0 ? 0 : 1) }
-    }
-
     /// Seasonal workers come back for their season and finish it. Original: `seasonsTurn` (features/people/seasons_and_hours.js).
     static func seasonsTurn(_ s: inout GameState, companyIndex i: Int) {
         let m1 = month1(s.week)

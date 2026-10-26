@@ -15,14 +15,6 @@ public extension GameEngine {
     func accountSupplyLink(buyer: Int, kind: String) -> AccountSupply.Link? { AccountSupply.link(state, buyer: buyer, kind: kind) }
     func accountSupplyLinks() -> [AccountSupply.Link] { AccountSupply.links(state) }
 
-    @discardableResult
-    mutating func buyFromAccount(buyer: Int, kind: String, accountID: Int) -> AccountSupply.SetResult {
-        var r = AccountSupply.SetResult.notAllowed
-        update { s, d, _ in r = AccountSupply.set(&s, buyer: buyer, kind: kind, accountID: accountID, data: d) }
-        return r
-    }
-    mutating func stopBuyingFromAccount(buyer: Int, kind: String) { update { s, _, _ in AccountSupply.clear(&s, buyer: buyer, kind: kind) } }
-
     // MARK: Rivals: what a purchase becomes, a site beside a rival, an answer to a price cut
 
     /// What the choice needs in the current account on top of the price (merge and close cost extra).

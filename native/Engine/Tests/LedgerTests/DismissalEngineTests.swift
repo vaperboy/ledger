@@ -35,7 +35,7 @@ final class DismissalEngineTests: XCTestCase {
     // MARK: Every caller's cash change is the single function's quote
 
     func testEveryStaffCallerMatchesTheQuote() throws {
-        enum Way: CaseIterable { case profile, rosterFire, layoff, proposalCut, direct }
+        enum Way: CaseIterable { case profile, layoff, proposalCut, direct }
         for way in Way.allCases {
             var (e, id) = try cafe()
             let sid = addStaff(&e, id, years: 5)
@@ -47,7 +47,6 @@ final class DismissalEngineTests: XCTestCase {
             var extra = 0.0
             switch way {
             case .profile: extra = try XCTUnwrap(e.dismissStaff(companyID: id, staffID: sid)).compensation
-            case .rosterFire: XCTAssertEqual(e.fire(personID: sid, companyID: id), quote.total, accuracy: 1)
             case .layoff: XCTAssertEqual(e.layOffStaff(companyID: id, count: 1), [sid])
             case .proposalCut: e.update { s, d, _ in Dismissal.dismiss(&s, companyID: id, staffID: sid, reason: .redundancy, data: d) }
             case .direct: e.update { s, d, _ in Dismissal.dismiss(&s, companyID: id, staffID: sid, reason: .redundancy, data: d) }

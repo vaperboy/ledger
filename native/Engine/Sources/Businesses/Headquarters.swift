@@ -117,21 +117,11 @@ public enum Headquarters {
             Payments.playerPays(&s, cost, label: "Office move: first month deposit")
         }
         s.rest["office"] = .object(["tier": .string(id), "city": .string(city), "since": .number(Double(s.week)), "staff": old["staff"].isNull ? .array([]) : old["staff"],
-                                    "rep": old["rep"].isNull ? .object(["freq": 4, "detail": "short", "only": "managed"]) : old["rep"], "perfAuto": old["perfAuto"], "set": .number(Double(s.week))])
+                                    "perfAuto": old["perfAuto"], "set": .number(Double(s.week))])
         return .ok
     }
     static func desksUsedOutsideStaff(_ s: GameState) -> Int { desksUsed(s) - staff(s).count }
 
-    public static func setReports(_ s: inout GameState, frequency: Int? = nil, detail: String? = nil, only: String? = nil) {
-        var o = office(s)
-        if o.isNull { o = .object(["tier": "home", "since": .number(Double(s.week)), "staff": .array([]), "rep": .object(["freq": 4, "detail": "short", "only": "managed"])]) }
-        var rep = o["rep"]
-        if let f = frequency { rep["freq"] = .number(Double(f)) }
-        if let d = detail { rep["detail"] = .string(d) }
-        if let on = only { rep["only"] = .string(on) }
-        o["rep"] = rep
-        s.rest["office"] = o
-    }
     public static func setPerformanceAuto(_ s: inout GameState, _ on: Bool) { var o = office(s); o["perfAuto"] = .bool(on); s.rest["office"] = o }
 
     // MARK: Roles: when they open, whether there is room
@@ -276,17 +266,6 @@ public enum Headquarters {
     }
 
     /// Assign a company to your marketing director or performance analyst. Original: `ACT.hqas`.
-    public static func toggleAssignment(_ s: inout GameState, role: String, companyID: Int) {
-        guard var o = s.rest["office"] else { return }
-        var l = o["staff"].array
-        guard let k = l.firstIndex(where: { $0["role"].string == role }) else { return }
-        var cos = l[k]["cos"].array
-        if let i = cos.firstIndex(where: { $0.int == companyID }) { cos.remove(at: i) } else { cos.append(.number(Double(companyID))) }
-        l[k]["cos"] = .array(cos)
-        o["staff"] = .array(l)
-        s.rest["office"] = o
-    }
-
     // MARK: Paying for the office
 
     /// Group salaries and the office: a holding with spare cash pays, else you do. Original: `payHQ`.

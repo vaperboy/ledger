@@ -491,11 +491,6 @@ public extension GameEngine {
         update { s, d, _ in r = WorldAround.influence(&s, data: d) }
         return r
     }
-    mutating func contactsSummary() -> String {
-        var r = ""
-        update { s, d, _ in r = WorldAround.contactsSummary(&s, data: d) }
-        return r
-    }
     var localPaperName: String? { WorldAround.paperName(state, data: data) }
 
     // MARK: Key accounts: what they sell

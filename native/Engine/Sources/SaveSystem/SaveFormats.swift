@@ -4,11 +4,10 @@ import GameCore
 /// How games are stored.
 ///
 /// NATIVE FILE (`*.ledgersave`, JSON):
-///   { "format": "ledger-native", "version": 1, "savedAt": "<ISO date>", "summary": {...}, "state": { ...game state... } }
+///   { "format": "ledger-native", "version": 2, "savedAt": "<ISO date>", "summary": {...}, "state": { ...game state... } }
 /// `version` is the version of this *envelope*; `state` keeps the original game's field names (and its own `v`,
 /// the original save version), so a save is also readable by the HTML game's importer.
-/// When the format changes, add a step to `NativeMigrations` and raise `currentVersion`. Old saves are never
-/// discarded: only a save from a NEWER app than this one is refused.
+/// When the format changes, raise `currentVersion`; only a save of the current version is read.
 public enum NativeSaveFormat {
     public static let formatName = "ledger-native"
     public static let currentVersion = 2
@@ -30,27 +29,13 @@ public enum SaveError: Error, Equatable {
     case notAGameSave
 }
 
-/// Changes to the envelope between app versions. Step n turns a version-n envelope into version n+1.
-public enum NativeMigrations {
-    static let steps: [Int: (inout [String: JSONValue]) -> Void] = [
-        // 1 -> 2: weekly, monthly and yearly reports. Older saves get empty lists; the first period is started by the game on the
-        // next week end (there is no earlier snapshot to compare with), so no report is invented for the time before.
-        1: { env in
-            var state = env["state"]?.object ?? [:]
-            if state["reports"] == nil { state["reports"] = .object(["w": .array([]), "m": .array([]), "y": .array([])]) }
-            if state["rptCum"] == nil { state["rptCum"] = .object([:]) }
-            env["state"] = .object(state)
-        },
-    ]
-
-    public static func upgrade(_ envelope: inout [String: JSONValue]) throws {
-        var v = envelope["version"]?.int ?? 1
-        if v > NativeSaveFormat.currentVersion { throw SaveError.newerThanThisApp(v) }
-        while v < NativeSaveFormat.currentVersion {
-            steps[v]?(&envelope)
-            v += 1
-            envelope["version"] = .number(Double(v))
-        }
+public extension NativeSaveFormat {
+    /// Only a save written by this version of the app is read: a newer one is refused (the player must update), an older one is unreadable
+    /// (the game is not published yet, so there are no old saves to carry over).
+    static func check(_ envelope: [String: JSONValue]) throws {
+        let v = envelope["version"]?.int ?? 0
+        if v > currentVersion { throw SaveError.newerThanThisApp(v) }
+        if v < currentVersion { throw SaveError.unreadable("saved by an older version of the game") }
     }
 }
 

@@ -86,23 +86,6 @@ struct ListRow: View {
     }
 }
 
-/// The top of a main screen: a small line (date, place), then the title in serif.
-struct ScreenHeader<Trailing: View>: View {
-    var eyebrow: String
-    var title: String
-    @ViewBuilder var trailing: () -> Trailing
-    var body: some View {
-        HStack(alignment: .lastTextBaseline) {
-            VStack(alignment: .leading, spacing: 3) {
-                if !eyebrow.isEmpty { Text(eyebrow).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
-                Text(title).font(.serifTitle(28)).foregroundStyle(Theme.ivory)
-            }
-            Spacer()
-            trailing()
-        }
-    }
-}
-
 /// The one filled control: a champagne pill with dark text.
 struct GoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -189,25 +172,6 @@ struct Sparkline: View {
                 }
             } else {
                 Rectangle().fill(Theme.hairline).frame(height: 1).frame(maxHeight: .infinity, alignment: .center)
-            }
-        }
-    }
-}
-
-/// Bars for a short series (monthly profit). Gains up in green, losses down in red.
-struct MiniBars: View {
-    var values: [Double]
-    var body: some View {
-        GeometryReader { geo in
-            let peak = max(values.map { abs($0) }.max() ?? 1, 1)
-            HStack(alignment: .center, spacing: 3) {
-                ForEach(Array(values.enumerated()), id: \.offset) { _, v in
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0).frame(maxHeight: v >= 0 ? .infinity : 0)
-                        RoundedRectangle(cornerRadius: 1).fill(Theme.change(v)).frame(height: max(2, geo.size.height / 2 * CGFloat(abs(v) / peak)))
-                        Spacer(minLength: 0).frame(maxHeight: v < 0 ? .infinity : 0)
-                    }
-                }
             }
         }
     }
@@ -458,29 +422,6 @@ struct RateBar: View {
             }.frame(height: 4)
             Text(String(format: "%.0f%%", fraction * 100)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 42, alignment: .trailing)
         }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// A circular gauge with a figure in the middle. Thin stroke; kept for places where a ring reads better than a bar.
-struct Ring: View {
-    var label: String
-    var fraction: Double
-    var centre: String
-    var tint: Color = Theme.gold
-    var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle().stroke(Theme.hairline, lineWidth: 3)
-                Circle().trim(from: 0, to: CGFloat(min(1, max(0.005, fraction))))
-                    .stroke(tint, style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
-                Text(centre).font(.system(.subheadline, design: .default).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    .minimumScaleFactor(0.6).lineLimit(1).padding(6)
-            }
-            .frame(width: 60, height: 60)
-            Text(label).font(.caption2).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
 }

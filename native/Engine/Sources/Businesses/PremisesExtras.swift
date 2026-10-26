@@ -47,25 +47,6 @@ public enum PremisesExtras {
         }
     }
 
-    /// Give up the place: everyone works from home again. An owned building is sold at today's value and the mortgage paid off.
-    /// Original: `ACT.home37`.
-    @discardableResult
-    public static func moveBackHome(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
-        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], isHomeTrade(bd), s.companies[i].value("prem")["m2"].double > 0 else { return false }
-        let prem = s.companies[i].value("prem")
-        if prem["owned"].bool {
-            let val = prem["val"].double
-            var debt = 0.0
-            if let li = s.loans.firstIndex(where: { $0.id == prem["loan"].int }) { debt = s.loans[li].balance; s.loans.remove(at: li) }
-            if max(0, val - debt) > 0 { Payments.companyReceives(&s, companyID: companyID, amount: max(0, val - debt), category: nil, label: "Office sold") }
-            if debt > val { Payments.companyPays(&s, companyID: companyID, amount: debt - val, category: nil, label: "Mortgage shortfall") }
-        } else if prem["dep"].double > 0 {
-            Payments.companyReceives(&s, companyID: companyID, amount: prem["dep"].double, category: nil, label: "Lease deposit returned")
-        }
-        s.companies[i].set("prem", .object(["kind": "home", "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
-        return true
-    }
-
     /// Morale and quality slip every week for a team of four or more at home. Original: the 'week.after' step at 55.
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open {

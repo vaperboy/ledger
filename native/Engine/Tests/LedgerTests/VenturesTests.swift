@@ -29,7 +29,8 @@ final class VenturesTests: XCTestCase {
         _ = e.pitchStartupRound(startupID: sid)
         e.changeBuilders(startupID: sid, by: 1)
         _ = e.putMoneyIntoStartup(startupID: sid, amount: 100_000)
-        let pitches = e.startupPitches()
+        e.update { s, d, _ in _ = Startups.pitches(&s, data: d) }
+        let pitches = e.startupPitchesOnOffer
         XCTAssertEqual(pitches.count, 3)
         XCTAssertEqual(e.investInStartup(pitchID: pitches[0].id, amount: pitches[0].raise), .ok)
         let offers = e.privateEquityOffers()

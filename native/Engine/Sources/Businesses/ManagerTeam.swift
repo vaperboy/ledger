@@ -462,13 +462,6 @@ extension ManagerModel {
         }
     }
 
-    /// The older group CEO of saves from before round 56. Original: `ACT.fireceo`.
-    public static func releaseGroupCEO(_ s: inout GameState) {
-        guard let n = person(s, s.rest["group"]?["ceo"] ?? .null) else { return }
-        var p = n; p.employerID = 0; s.people[n.id] = p
-        updateGroup(&s) { $0["ceo"] = .null }
-    }
-
     /// How much the group may decide before it comes to you. Original: `ACT.setbig`.
     public static func setGroupLimit(_ s: inout GameState, amount: Double) { updateGroup(&s) { $0["big"] = .number(amount) } }
 

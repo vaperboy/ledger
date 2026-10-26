@@ -155,8 +155,6 @@ public extension GameEngine {
 
     // MARK: Startups of other people you invest in
 
-    /// The pitches on offer (three, a new set every four weeks).
-    mutating func startupPitches() -> [Startups.Pitch] { var out: [Startups.Pitch] = []; update { s, d, _ in out = Startups.pitches(&s, data: d) }; return out }
     var startupStakes: [Startups.Stake] { Startups.stakes(state) }
     @discardableResult
     mutating func investInStartup(pitchID: Int, amount: Double) -> Startups.InvestResult { var r = Startups.InvestResult.gone; update { s, _, c in r = Startups.invest(&s, pitchID: pitchID, amount: amount, context: c) }; return r }

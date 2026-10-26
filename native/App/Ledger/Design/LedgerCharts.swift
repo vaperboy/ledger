@@ -49,22 +49,3 @@ struct ChartKey: View {
         }
     }
 }
-
-/// A thin stacked bar showing how a total divides, in champagne shades.
-struct AllocationBar: View {
-    var parts: [Double]
-    static let shades: [Color] = [Color(red: 0.812, green: 0.694, blue: 0.522), Color(red: 0.722, green: 0.600, blue: 0.427), Color(red: 0.624, green: 0.510, blue: 0.349),
-                                  Color(red: 0.525, green: 0.424, blue: 0.282), Color(red: 0.431, green: 0.345, blue: 0.224), Color(red: 0.341, green: 0.275, blue: 0.180)]
-    var body: some View {
-        let total = max(parts.reduce(0, +), 1)
-        GeometryReader { g in
-            HStack(spacing: 2) {
-                ForEach(Array(parts.enumerated()), id: \.offset) { i, v in
-                    Rectangle().fill(Self.shades[min(i, Self.shades.count - 1)]).frame(width: max(2, (g.size.width - CGFloat(parts.count - 1) * 2) * CGFloat(max(v, 0) / total)))
-                }
-            }
-        }
-        .frame(height: 6)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
-    }
-}

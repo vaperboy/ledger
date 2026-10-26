@@ -45,7 +45,6 @@ public extension GameEngine {
             ManagerModel.setExecutiveAuthority(&s, level: level, chainID: chainID, regionalID: regionalID, authority: authority, buy: buy)
         }
     }
-    mutating func releaseGroupCEO() { update { s, _, _ in ManagerModel.releaseGroupCEO(&s) } }
     /// Deals above this amount always come to you.
     @discardableResult
     mutating func setGroupLimit(_ amount: Double) -> SettingResult {
@@ -126,8 +125,6 @@ public extension GameEngine {
     @discardableResult
     mutating func tickOfficePaperwork(personID: Int, item: String) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.tickPaperwork(&s, personID: personID, item: item) }; return ok }
     func officePaperwork(personID: Int) -> [(key: String, text: String, done: Bool)] { Headquarters.paperwork(state, personID: personID) }
-    mutating func toggleOfficeAssignment(role: String, companyID: Int) { update { s, _, _ in Headquarters.toggleAssignment(&s, role: role, companyID: companyID) } }
-    mutating func setReports(frequency: Int? = nil, detail: String? = nil, only: String? = nil) { update { s, _, _ in Headquarters.setReports(&s, frequency: frequency, detail: detail, only: only) } }
     mutating func setPerformanceAnalystAuto(_ on: Bool) { update { s, _, _ in Headquarters.setPerformanceAuto(&s, on) } }
     func managerScorecard(companyID: Int) -> Headquarters.Scorecard? { Headquarters.review(state, companyID: companyID) }
     @discardableResult

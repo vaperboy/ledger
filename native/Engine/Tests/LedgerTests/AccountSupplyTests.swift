@@ -46,10 +46,10 @@ final class AccountSupplyTests: XCTestCase {
         XCTAssertEqual(good.priceFactor, 0.95, accuracy: 1e-9, "2% below outside plus 3% for a relationship of 40")
         XCTAssertEqual(good.ownerCompanyID, owner)
 
-        XCTAssertEqual(e.buyFromAccount(buyer: buyer, kind: "clean", accountID: 9002), .notKnownWell)
-        XCTAssertEqual(e.buyFromAccount(buyer: buyer, kind: "clean", accountID: 12345), .unknownAccount)
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9002)), .notKnownWell)
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(12345)), .unknown)
         XCTAssertNil(e.accountSupplyLink(buyer: buyer, kind: "clean"))
-        XCTAssertEqual(e.buyFromAccount(buyer: buyer, kind: "clean", accountID: 9001), .ok)
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9001)), .ok)
         XCTAssertEqual(e.accountSupplyLink(buyer: buyer, kind: "clean")?.accountID, 9001)
 
         let cash0 = try XCTUnwrap(e.state.company(buyer)).cash
@@ -62,7 +62,7 @@ final class AccountSupplyTests: XCTestCase {
         XCTAssertGreaterThan(rel1, rel0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
 
-        e.stopBuyingFromAccount(buyer: buyer, kind: "clean")
+        e.switchSupplier(companyID: buyer, input: "clean", to: .outside)
         XCTAssertNil(e.accountSupplyLink(buyer: buyer, kind: "clean"))
     }
 
@@ -74,7 +74,7 @@ final class AccountSupplyTests: XCTestCase {
             let b = s.companyIndex(buyer)!
             s.companies[b].set("lastW", .object(["rev": 100_000]))
         }
-        XCTAssertEqual(e.buyFromAccount(buyer: buyer, kind: "clean", accountID: 9001), .ok)
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9001)), .ok)
         // the account is gone: the buyer goes back to outside suppliers and hears about it
         let mails = e.state.inbox.count
         e.dropAccount(companyID: owner, accountID: 9001)
@@ -87,13 +87,13 @@ final class AccountSupplyTests: XCTestCase {
             let o = s.companyIndex(owner)!
             s.companies[o].set("accts", .array([.object(["id": 9003, "name": "Bright Cleaners", "f": 0.1, "rel": 40, "w0": .number(Double(s.week)), "disc": 0, "t": "cleaning"])]))
         }
-        XCTAssertEqual(e.buyFromAccount(buyer: buyer, kind: "clean", accountID: 9003), .ok)
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .businessCustomer(9003)), .ok)
         e.update { s, _, _ in
             // owner stands in as a cleaning company for this check
             let o = s.companyIndex(owner)!
             s.companies[o].type = "cleaning"
         }
-        XCTAssertTrue(e.setSupplier(buyer: buyer, kind: "clean", supplier: owner, mode: "mkt"))
+        XCTAssertEqual(e.switchSupplier(companyID: buyer, input: "clean", to: .ownCompany(owner, mode: "mkt")), .ok)
         XCTAssertNil(e.accountSupplyLink(buyer: buyer, kind: "clean"), "a new own supplier ends the deal with the business customer")
         XCTAssertNotNil(e.supplyLink(buyer: buyer, kind: "clean"))
     }

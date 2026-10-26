@@ -211,14 +211,11 @@ final class DeterminismSavesDatesTests: XCTestCase {
         }
     }
 
-    func testEnvelopeMigrationsAreVersionedAndOneWay() throws {
-        XCTAssertEqual(NativeSaveFormat.currentVersion, NativeMigrations.steps.keys.max().map { $0 + 1 }, "every version has a step to the next")
-        var env: [String: JSONValue] = ["format": "ledger-native", "version": 1, "state": .object([:])]
-        try NativeMigrations.upgrade(&env)
-        XCTAssertEqual(env["version"]?.int, NativeSaveFormat.currentVersion)
-        XCTAssertNotNil(env["state"]?["reports"])
-        var newer: [String: JSONValue] = ["version": .number(Double(NativeSaveFormat.currentVersion + 1))]
-        XCTAssertThrowsError(try NativeMigrations.upgrade(&newer))
+    func testOnlyTheCurrentEnvelopeVersionIsRead() throws {
+        let ok: [String: JSONValue] = ["version": .number(Double(NativeSaveFormat.currentVersion))]
+        XCTAssertNoThrow(try NativeSaveFormat.check(ok))
+        XCTAssertThrowsError(try NativeSaveFormat.check(["version": .number(Double(NativeSaveFormat.currentVersion + 1))])) { XCTAssertEqual($0 as? SaveError, .newerThanThisApp(NativeSaveFormat.currentVersion + 1)) }
+        XCTAssertThrowsError(try NativeSaveFormat.check(["version": 1]))
     }
 
     // MARK: (3) Dates
@@ -464,5 +461,70 @@ final class DeterminismSavesDatesTests: XCTestCase {
         let code = data.countries["UK"]?.vatFilingMonths == 3 ? "UK" : try XCTUnwrap(data.countries.countries.map { $0.code }.sorted().first { data.countries[$0]?.vatFilingMonths == 3 })
         let r = try playDated(country: code, weeks: Self.weeksToPlay)
         checkDates(r, country: code)
+    }
+
+    // MARK: Expiry dates of leases and franchise terms
+
+    /// A commercial tenant's lease ends in the week it runs out: the space is free again and a note says so.
+    func testTenantLeaseEndsExactlyOnTheDateItRunsOut() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
+        Self.fund(&e, 5_000_000_000)
+        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, form: .limited, fundWith: e.homeCurrency.scaledPrice(300_000_000)) else { return XCTFail("rental company") }
+        let pid = try XCTUnwrap(e.propertyPortfolio(companyID: id)?.rows.first?.id)
+        XCTAssertFalse(e.tenantOffers(companyID: id, propertyID: pid).isEmpty)
+        XCTAssertTrue(e.leaseSpace(companyID: id, propertyID: pid, offerIndex: 0))
+        func leases() -> Int { e.state.company(id)?.properties.first { $0.id == pid }?.leases.count ?? -1 }
+        func leased() -> Double { e.state.company(id)?.properties.first { $0.id == pid }?.leasedUnits ?? -1 }
+        XCTAssertEqual(leases(), 1)
+        XCTAssertGreaterThan(leased(), 0)
+        // the lease as signed runs for years; bring its last week forward so the test plays weeks, not years
+        let until = e.state.week + 3
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id), let k = s.companies[i].properties.firstIndex(where: { $0.id == pid }) else { return }
+            var ls = s.companies[i].properties[k].leases; ls[0].untilWeek = until
+            s.companies[i].properties[k].leases = ls
+        }
+        var leftIn: Int?
+        for _ in 0..<(6 * 7) {
+            e.nextDay()
+            if leftIn == nil && leases() == 0 { leftIn = e.state.week }
+        }
+        let ended = try XCTUnwrap(leftIn, "the lease ended")
+        XCTAssertTrue(ended == until || ended == until + 1, "the tenant leaves in the week the lease runs out (week \(until)), not \(ended)")
+        XCTAssertEqual(leased(), 0, accuracy: 1e-9, "the space is free again")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
+    /// A franchised unit is asked what it wants when the brand's term ends, never before; a question nobody answers ends the contract.
+    func testFranchiseUnitTermEndAsksOnTheDateAndSilenceEndsTheBrand() throws {
+        var e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 12)
+        Self.fund(&e, 3_000_000_000)
+        let brand = try XCTUnwrap(["cafe", "gym", "barber", "bakery", "carclean"].lazy.compactMap { t in
+            FranchiseBrands.brands(t, country: "NO", World(state: e.state, data: e.data)).first { $0.openness == "open" }
+        }.first)
+        XCTAssertEqual(e.applyToFranchiseBrand(brand.id, country: "NO"), .ok)
+        Self.play(&e, days: 4 * 7)
+        let n = try XCTUnwrap(e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()))
+        e.signFranchiseTerms(brand.id, terms: try XCTUnwrap(n.terms))
+        let started = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: e.state.player.cityID, form: .limited, name: "Unit", pick: nil, fundWith: e.homeCurrency.scaledPrice(30_000_000))
+        guard case .success(let out) = started else { return XCTFail("unit: \(started)") }
+        let id = out.companyID
+        Self.play(&e, days: 8 * 7)
+        XCTAssertFalse(e.state.company(id)?.value("franchise").isNull ?? true, "still under the brand")
+        let end = e.state.week + 3
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            var f = s.companies[i].value("franchise"); f["end"] = .number(Double(end)); f["asked"] = 0; f["owed"] = 0; f["lowQ"] = 0; f["lateW"] = 0
+            s.companies[i].set("franchise", f)
+        }
+        var askedWeek: Int?
+        for _ in 0..<(5 * 7) {
+            e.nextDay()
+            if askedWeek == nil, e.openDecisions.contains(where: { $0.actionID == "fb24" && $0.companyID == id }) { askedWeek = e.state.week }
+        }
+        let w = try XCTUnwrap(askedWeek, "the contract question came")
+        XCTAssertTrue(w == end || w == end + 1, "the question comes in the week the term ends (week \(end)), not \(w)")
+        XCTAssertTrue(e.state.company(id)?.value("franchise").isNull ?? false, "nobody answered: the contract ended and the unit is independent")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 }

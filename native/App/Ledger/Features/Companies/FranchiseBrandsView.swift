@@ -228,6 +228,8 @@ struct StartFranchisedView: View {
     @State private var cityID = ""
     @State private var limited = true
     @State private var name = ""
+    @State private var rentIndex: Int?
+    @State private var buying = false
     @State private var pending: PendingAction?
 
     var body: some View {
@@ -238,10 +240,13 @@ struct StartFranchisedView: View {
             let bd = e.data.catalog[b.tradeID]
             let city = cityID.isEmpty ? (e.franchiseApplication(brandID)["city"].string.isEmpty ? country.cities[0].id : e.franchiseApplication(brandID)["city"].string) : cityID
             let form: LegalForm = (limited || (bd?.needsLimitedCompany ?? false)) ? .limited : .soleTrader
-            let est = e.franchiseStartEstimate(brandID: brandID, cityID: city, form: form)
-            let fund = max(0, min(((est?.estimate.total ?? 0) + (est?.fee ?? 0)) * 1.15, Payments.liquid(e.state) - (est?.estimate.personalOutlay ?? 0)))
-            let short = max(0, (est?.estimate.total ?? 0) + (est?.fee ?? 0) + (est?.estimate.personalOutlay ?? 0) - Payments.liquid(e.state))
-            let left = max(0, Payments.liquid(e.state) - (est?.estimate.personalOutlay ?? 0) - fund)
+            let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
+            let fp = e.franchiseStartPlan(brandID: brandID, cityID: city, form: form, pick: pick)
+            let outlay = fp?.plan.estimate.personalOutlay ?? 0
+            let total = (fp?.plan.total ?? 0) + (fp?.fee ?? 0)
+            let fund = max(0, min(total * 1.15, Payments.liquid(e.state) - outlay))
+            let short = max(0, total + outlay - Payments.liquid(e.state))
+            let left = max(0, Payments.liquid(e.state) - outlay - fund)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -250,38 +255,44 @@ struct StartFranchisedView: View {
                     }
                     LedgerSection("Where and how") {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            Picker("City", selection: Binding(get: { city }, set: { cityID = $0 })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
+                            Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                             if bd?.needsLimitedCompany == true { Text("This trade needs a limited company.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
                             else { Picker("Legal form", selection: $limited) { Text("Sole trader").tag(false); Text("Limited company").tag(true) }.pickerStyle(.segmented) }
                             TextField("Company name", text: $name).textFieldStyle(.plain).font(.system(size: 15)).padding(.vertical, 8).overlay(alignment: .bottom) { Hairline() }
                         }
                     }
-                    if let est {
+                    if let fp {
+                        let plan = fp.plan
+                        PremisesPicker(plan: plan, cur: cur, rentIndex: $rentIndex, buying: $buying)
                         LedgerSection("Start-up cost") {
                             VStack(spacing: 0) {
-                                FlatRow(label: "Start-up estimate", value: cur.tidyShort(est.estimate.total), sub: "Documents, equipment, premises, stock, first payroll.", rule: false)
-                                FlatRow(label: "Franchise entry fee", value: cur.tidyShort(est.fee))
+                                FlatRow(label: "Start-up estimate", value: cur.tidyShort(plan.total), sub: "Documents, equipment, the place you picked, stock, first payroll.", rule: false)
+                                FlatRow(label: "Franchise entry fee", value: cur.tidyShort(fp.fee))
                                 if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in the company's account when you start.", tint: Theme.gain) }
                                 FlatRow(label: "You have available", value: cur.tidyShort(Payments.liquid(e.state)))
-                                FlatRow(label: "Total to find", value: cur.tidyShort(est.estimate.total + est.fee), sub: "Estimate plus entry fee, before the brand's cover.", tint: Theme.ivory)
+                                FlatRow(label: "Total to find", value: cur.tidyShort(total), sub: "Estimate plus entry fee, before the brand's cover.", tint: Theme.ivory)
                                 FlatRow(label: "Left in your accounts afterwards", value: cur.tidyShort(left), tint: left > 0 ? Theme.gain : Theme.caution)
                             }
                         }
                         LedgerSection("Risks") {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("You pay \(Currency.percent(t.royalty, decimals: 1)) of sales as royalty and \(Currency.percent(t.marketing, decimals: 0)) to the brand's marketing for \(b.termYears) years. Leaving early means a buyout.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                                Text("The brand sets standards you must keep. The premises and equipment are set up with the standard choices; you can change the place afterwards under Equipment.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                Text("The brand sets standards you must keep. The brand approves the place you pick; the equipment is set up with the standard choices.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                                 if short > 0 { Text("You are \(cur.tidyShort(short)) short. If the company cannot pay the entry fee it starts independent, without the brand.").font(.system(size: 12.5)).foregroundStyle(Theme.caution) }
                                 Text("It earns nothing until it is set up and open.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                             }
                         }
                         Button("Review and start") {
                             pending = PendingAction(title: "Start under \(b.name)?",
-                                                    message: "\(cur.tidyShort(est.estimate.total + est.fee)) to start, including the \(cur.tidyShort(est.fee)) entry fee. \(cur.tidyShort(fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
+                                                    message: "\(cur.tidyShort(total)) to start, including the \(cur.tidyShort(fp.fee)) entry fee. \(cur.tidyShort(fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
                                                     button: "Start it") {
-                                let r = store.act { $0.startFranchisedCompany(brandID: brandID, cityID: city, form: form, name: name, fundWith: fund) }
+                                let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, form: form, name: name, pick: pick, fundWith: fund) }
                                 switch r {
-                                case .success(let id)?: Haptics.success(); store.show("Started under \(b.name).", tone: "good"); store.openCompany(id); dismiss()
+                                case .success(let out)?:
+                                    let late = out.premises == .notEnoughCash
+                                    Haptics.success()
+                                    store.show(late ? "Started under \(b.name), but the company could not pay for the place you picked. Choose premises under Equipment." : "Started under \(b.name).", tone: late ? "warn" : "good")
+                                    store.openCompany(out.companyID); dismiss()
                                 case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
                                 case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
                                 default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
