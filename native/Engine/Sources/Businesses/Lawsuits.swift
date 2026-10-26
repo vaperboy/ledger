@@ -104,7 +104,14 @@ public enum Lawsuits {
 
     static func lose(_ s: inout GameState, _ id: Int, _ d: JSONValue, extra: Double = 0, data: GameData) {
         Incidents.loss(&s, companyID: id, amount: d["claim"].double + extra, category: "liab", label: "Court: \(d["who"].string)", data: data)
-        if let i = s.companyIndex(id) { s.companies[i].reputation = clamp(s.companies[i].reputation - (d["big"].bool ? 4.5 : 3), 0, 100) }
+        if let i = s.companyIndex(id) {
+            s.companies[i].reputation = clamp(s.companies[i].reputation - (d["big"].bool ? 4.5 : 3), 0, 100)
+            // The ruling is public: reviews and local press hurt for a while, the insurer reprices, and a big loss invites copycat claims.
+            PriceMoves.addModifier(&s, i, key: "dem", multiplier: d["big"].bool ? 0.94 : 0.97, weeks: 6)
+            s.note("The lost case against \(s.companies[i].name) is in the local press and the reviews: demand dips for six weeks.", tone: "bad", companyID: id)
+            AftermathQueue.schedule(&s, companyID: id, kind: "premium", delay: 2)
+            if d["big"].bool { AftermathQueue.schedule(&s, companyID: id, kind: "copycat", delay: 7) }
+        }
     }
 
     /// The owner answers the lawsuit message. Original: `ACTS.sue16`.

@@ -14,6 +14,7 @@ struct CompanyCustomers: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             reviews
             accounts
+            CompanyContracts(engine: engine, company: company)
             security
         }
     }
@@ -90,7 +91,7 @@ struct CompanyCustomers: View {
         }) {
             VStack(alignment: .leading, spacing: 8) {
                 KeyFigures(items: [
-                    .init(label: "Protection", value: Cyber.levels[c.status.level].name, sub: cur.short(c.monthlyNow) + " a month"),
+                    .init(label: "Protection", value: Cyber.levels[c.status.level].name, sub: cur.tidyShort(c.monthlyNow) + " a month"),
                     .init(label: "Stopped", value: "\(c.status.blocked)", sub: "attacks caught"),
                     .init(label: "Cyber insurance", value: c.insured ? "Yes" : "No", tint: c.insured ? Theme.gain : Theme.ivory),
                 ])
@@ -111,7 +112,7 @@ struct CompanyCustomers: View {
                                 Text(Cyber.levels[i].text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
-                            Text(i == 0 ? "Free" : cur.short(c.levelCosts[i]) + "/mo").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                            Text(i == 0 ? "Free" : cur.tidyShort(c.levelCosts[i]) + "/mo").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
@@ -120,7 +121,7 @@ struct CompanyCustomers: View {
                     Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { store.act { $0.toggleBackups(companyID: company.id) }; Haptics.tap() }
                         .buttonStyle(QuietButtonStyle(tint: c.status.backups ? Theme.gold : Theme.ivoryMuted))
                     Spacer()
-                    Button((c.status.trainedUntil ?? 0) > engine.state.week ? "Staff trained" : "Train staff · " + cur.short(c.trainingCost)) {
+                    Button((c.status.trainedUntil ?? 0) > engine.state.week ? "Staff trained" : "Train staff · " + cur.tidyShort(c.trainingCost)) {
                         let r = store.act { $0.trainStaff(companyID: company.id) }
                         if case .refused(let why)? = r { store.show(why, tone: "warn") } else { Haptics.success() }
                     }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
@@ -144,8 +145,13 @@ private struct AccountRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text("\(Rivals.relationshipWord(account.relationship)) · since week \(account.sinceWeek) · paid you \(cur.short(account.totalPaid))")
+                    Text("\(Rivals.relationshipWord(account.relationship)) · since week \(account.sinceWeek) · paid you \(cur.tidyShort(account.totalPaid))")
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    if account.owed > 0 || account.lateRun > 0 {
+                        Text((account.owed > 0 ? "Still owes you \(cur.tidyShort(account.owed)) on invoices" : "Nothing owed now")
+                             + (account.lateRun > 0 ? " · paid late \(account.lateRun) time\(account.lateRun == 1 ? "" : "s") in a row. Late payment earns interest where the country allows it." : ""))
+                            .font(.system(size: 11)).foregroundStyle(account.lateRun > 0 ? Theme.caution : Theme.ivoryFaint)
+                    }
                     let profile = engine.keyAccountProfile(account)
                     Text("Runs a \(profile.tradeName.lowercased())" + (profile.inputName.map { profile.canBuy ? ". You can buy \($0.lowercased()) from them." : ". Get to know them to buy \($0.lowercased()) from them." } ?? ""))
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
@@ -162,7 +168,7 @@ private struct AccountRow: View {
                 }
             }
             HStack {
-                Button("Dinner · " + cur.short(cur.scaledPrice(6000))) {
+                Button("Dinner · " + cur.tidyShort(cur.scaledPrice(6000))) {
                     let r = store.act { $0.meetAccount(companyID: company.id, accountID: account.id) }
                     switch r {
                     case .wait?: store.show("You met recently. Give it a few weeks.", tone: "warn")

@@ -20,14 +20,14 @@ public struct DemandResult: Equatable {
 ///             fit, what local people can afford, the trade's fit with the country and tourists.
 public enum DemandModel {
     public static func compute(_ co: Company, _ bd: Trade, _ w: World) -> DemandResult {
-        var parts: [(String, Double)] = [("base", bd.normalDemand)]
+        var parts: [(name: String, value: Double)] = [("base", bd.normalDemand)]
         let city = w.city(co)
         let cityDemand = city?.demand ?? 1
         var D = bd.normalDemand * w.balance.demandDesignFactor * cityDemand
         func apply(_ name: String, _ f: Double) { D *= f; parts.append((name, f)) }
 
         parts.append(("city", cityDemand))
-        apply("season", season(bd, w))
+        apply("season", season(bd, w, for: co))
         apply("marketing", awarenessFactor(co))
         apply("chain", Competition.chainReachFactor(co, w))
         apply("buzz", 1 + co.num("hype") * 0.006)
@@ -39,6 +39,9 @@ public enum DemandModel {
         parts.append(("price", pe))
         apply("choices", Knobs.effect(co, bd, "d", w))
         apply("economy", 1 + (w.economy.demand - 1) * (w.balance.economySensitivity[bd.family] ?? 0.8))
+        // Rate-sensitive trades (housing, cars, luxury) lean a little on the policy rate. Mild by design (about +-3% at the extremes).
+        let credit = creditFactor(co, w)
+        if credit != 1 { apply("credit", credit) }
         apply("rivals", Competition.rivalFactor(co, w))
         let own = Competition.ownOutletShare(co, w)
         D *= own
@@ -52,14 +55,27 @@ public enum DemandModel {
         return r
     }
 
-    /// Temporary effects on a company (events, one-off bonuses). Original: `modProd(co, key)`.
-    static func modifier(_ co: Company, _ key: String) -> Double {
-        co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key)
+    /// Trades whose customers borrow to buy: how much of the policy rate's distance from a neutral 4% they feel (housing, cars, luxury).
+    static let rateSensitivity: [String: Double] = ["estate": 0.8, "realdev": 1.0, "construction": 0.7, "cardealer": 0.9, "carrental": 0.3,
+                                                     "boutique": 0.4, "furniture": 0.5]
+
+    /// A mild effect of credit conditions on consumer demand: dearer money, fewer big purchases. Clamped to 0.96...1.03.
+    static func creditFactor(_ co: Company, _ w: World) -> Double {
+        guard let k = rateSensitivity[co.type] else { return 1 }
+        return clamp(1 - (w.economy.policyRate - 0.04) * k * 1.0, 0.96, 1.03)
     }
 
-    static func season(_ bd: Trade, _ w: World) -> Double {
+    /// Temporary effects on a company (events, one-off bonuses). Original: `modProd(co, key)`.
+    static func modifier(_ co: Company, _ key: String) -> Double {
+        co.value("mods").array.filter { $0["k"].string == key }.reduce(1) { $0 * $1["m"].double } * Development.factor(co, key) * (key == "cogsup" ? VolumeTenders.qualityUplift(co) : 1)
+    }
+
+    /// Season curves are written for the northern hemisphere; a company in the southern one (AU, BR) lives six months apart.
+    static func season(_ bd: Trade, _ w: World, for co: Company? = nil) -> Double {
         let curve = w.catalog.tables.seasons[bd.seasonKey] ?? Array(repeating: 1, count: 12)
-        return curve[GameCalendar.month(week: w.week)]
+        let month = GameCalendar.month(week: w.week)
+        let south = co.map { CountryTraits.isSouthernHemisphere($0.countryCode) } ?? false
+        return curve[south ? (month + 6) % 12 : month]
     }
 
     /// An unknown business gets few customers. Original: `window.mktMult` (realistic_odds.js).
@@ -117,6 +133,9 @@ public enum DemandModel {
         // 85: a sales director brings more customers, most in business-to-business trades (ManagerTeam)
         let salesHead = co.value("tm")["sales"].double
         if salesHead > 0 && r.customers != 0 { r.customers *= 1 + (0.035 + 0.055 * bd.businessShare) * salesHead }
+        // 80: a manager chasing the month's targets pushes a little harder (ManagerTargets)
+        let chase = ManagerTargets.demandFactor(co, week: w.week)
+        if chase != 1 && r.customers != 0 { r.customers *= chase }
         // 100: own premises: business clients trust you more
         let homeKind = bd.premisesKind == "home"
         if homeKind && (co.value("prem")["m2"].double > 0) && bd.businessShare >= 0.4 && r.customers != 0 { r.customers *= 1.06 }
@@ -150,7 +169,11 @@ public enum DemandModel {
         let d0 = r.customers
         var f = 1.0
         func way(_ k: String) -> Balance.SalesWay? { ways.first { $0.kind == k } }
-        if let p = way("platform"), on["platform"].bool { f *= 1 + (p.options["lift"] ?? 0.2) }
+        if let p = way("platform"), on["platform"].bool {
+            // a delivery add-on only brings customers while the delivery is supplied (`IntercompanySupply.deliveryFill`)
+            let fill = (p.options["deliv"] ?? 0) > 0 ? IntercompanySupply.deliveryFill(w.state, buyer: co, way: p) : 1
+            f *= 1 + (p.options["lift"] ?? 0.2) * fill
+        }
         if way("members") != nil, on["members"].bool {
             let dc = max(0.3, bd.normalDemand * (w.city(co)?.demand ?? 1))
             f *= 1 + min(0.2, s["mem"].double / (dc * 6 + 1))

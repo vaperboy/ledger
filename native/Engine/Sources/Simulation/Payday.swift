@@ -23,7 +23,8 @@ public enum Payday {
     static func civil(_ n: Int) -> (year: Int, month: Int, day: Int) { GameCalendar.civilFromDays(n) }
     /// 0 = Monday ... 6 = Sunday (1970-01-01 was a Thursday).
     static func weekday(_ n: Int) -> Int { ((n % 7) + 7 + 3) % 7 }
-    static func lastDay(_ y: Int, _ m: Int) -> Int { GameCalendar.daysFromCivil(year: m == 12 ? y + 1 : y, month: m == 12 ? 1 : m + 1, day: 1) - GameCalendar.daysFromCivil(year: y, month: m, day: 1) }
+    /// Days in a month. `m` is 0-based (0 = January), like the original's `getUTCMonth`; every caller passes `civil(..).month - 1`.
+    static func lastDay(_ y: Int, _ m: Int) -> Int { GameCalendar.daysFromCivil(year: m == 11 ? y + 1 : y, month: m == 11 ? 1 : m + 2, day: 1) - GameCalendar.daysFromCivil(year: y, month: m + 1, day: 1) }
     static func monthNumber(_ n: Int) -> Int { let c = civil(n); return c.year * 12 + (c.month - 1) }
 
     /// The real payment date in a month (day number). A weekend payday moves to the Friday before, or the Monday
@@ -31,20 +32,24 @@ public enum Payday {
     static func payDate(config: PayrollConfig, year y: Int, month m: Int) -> Int {
         let ld = lastDay(y, m)
         let dd = config.day == 0 ? ld : min(config.day, ld)
-        let d = GameCalendar.daysFromCivil(year: y, month: m, day: dd)
+        let d = GameCalendar.daysFromCivil(year: y, month: m + 1, day: dd)
         let wd = weekday(d)
         if wd == 5 || wd == 6 {
             let back = d - (wd == 5 ? 1 : 2)
-            return civil(back).month == m ? back : d + (wd == 5 ? 2 : 1)
+            return civil(back).month == m + 1 ? back : d + (wd == 5 ? 2 : 1)
         }
         return d
     }
-    static func billDate(year y: Int, month m: Int) -> Int { GameCalendar.daysFromCivil(year: y, month: m, day: lastDay(y, m)) }
+    /// Monthly late interest on rent and supplier bills left unpaid: the country's own rule when its data has one, else the game's default
+    /// (`SupplyTerms.lateMonthlyRate`).
+    static func billDate(year y: Int, month m: Int) -> Int { GameCalendar.daysFromCivil(year: y, month: m + 1, day: lastDay(y, m)) }
 
     // MARK: Per-company settings (stored as `pr29` in the company)
 
     public struct PayrollConfig: Equatable, Sendable {
         public var day = 25            // day of month; 0 = last day
+        /// A pay day change waiting for this month's payroll to be paid (original `nday`). nil = none.
+        public var nextDay: Int?
         public var mode: Mode?         // nil = default for the company
         public var paidMonth = -1      // last month index whose payday was paid
         public var approvedMonth = -1  // month index the owner approved
@@ -57,6 +62,8 @@ public enum Payday {
         public var lateOwed = 0.0
         public var lateDays = 0
         public var billShortMonths = 0
+        /// What was still unpaid on rent ("rent") and suppliers ("other") after the last month-end bills; it earns late interest.
+        public var arrears: [String: Double] = [:]
 
         init(json j: JSONValue = .null, defaultsFor monthIndex: Int? = nil, paidThisMonth: Bool = false) {
             if j.isNull {
@@ -68,6 +75,7 @@ public enum Payday {
                 return
             }
             day = j["day"].isNull ? 25 : j["day"].int
+            nextDay = j["nday"].isNull ? nil : j["nday"].int
             mode = j["mode"].isNull ? nil : Mode(rawValue: j["mode"].string)
             paidMonth = j["pm"].isNull ? -1 : j["pm"].int
             approvedMonth = j["ok"].isNull ? -1 : j["ok"].int
@@ -75,6 +83,7 @@ public enum Payday {
             billsMonth = j["bm"].isNull ? -1 : j["bm"].int
             ownerPaidMonth = j["om"].isNull ? -1 : j["om"].int
             billShortMonths = j["bs"].int
+            for (k, v) in j["arr"].object { arrears[k] = v.double }
             let late = j["late"]
             if !late.isNull {
                 lateSince = Int(late["d0"].double)
@@ -88,12 +97,55 @@ public enum Payday {
             var o: [String: JSONValue] = ["day": .number(Double(day)), "pm": .number(Double(paidMonth)), "ok": .number(Double(approvedMonth)),
                                           "rem": .number(Double(reminderMonth)), "bm": .number(Double(billsMonth)), "om": .number(Double(ownerPaidMonth)),
                                           "bs": .number(Double(billShortMonths))]
+            if let nd = nextDay { o["nday"] = .number(Double(nd)) }
+            if !arrears.isEmpty { o["arr"] = .object(arrears.mapValues { .number($0) }) }
             if let m = mode { o["mode"] = .string(m.rawValue) }
             if let d0 = lateSince {
                 o["late"] = .object(["d0": .number(Double(d0)), "why": .string(lateWhy), "mi": .number(Double(lateMonth)), "owe": .number(lateOwed), "n": .number(Double(lateDays))])
             } else { o["late"] = .null }
             return .object(o)
         }
+    }
+
+    /// A queued pay day change takes effect once the payroll that was due has been dealt with. Original: `applyNewDay`.
+    static func applyNewDay(_ cfg: inout PayrollConfig) {
+        if let nd = cfg.nextDay { cfg.day = nd; cfg.nextDay = nil }
+    }
+
+    /// The pay days a company can choose (0 = the last day of the month). Original: `DAYS`.
+    public static let paydayChoices = [1, 5, 10, 12, 15, 20, 25, 28, 0]
+
+    public enum PaydayChange: Equatable, Sendable {
+        case changedNow(day: Int)       // this month's payroll is already paid: the new day applies from next month
+        case queued(day: Int)           // applies once this month's payroll has been paid
+        case queueCleared               // chose the current day again: the waiting change was dropped
+        case unchanged                  // already the pay day
+        case invalidDay, noCompany
+    }
+
+    /// Change a company's pay day. Original: `ACT.pr29day`. If this month's payroll is paid and nothing is late the day changes
+    /// now (the next payday is next month's, so nothing is paid twice or skipped); otherwise the change waits for the payroll.
+    static func setPayday(_ s: inout GameState, companyID: Int, day: Int, today t: Int) -> PaydayChange {
+        guard paydayChoices.contains(day) else { return .invalidDay }
+        guard let i = s.companyIndex(companyID) else { return .noCompany }
+        var cfg = config(s.companies[i], today: t)
+        let mi = monthNumber(t)
+        let result: PaydayChange
+        if cfg.paidMonth >= mi && cfg.lateSince == nil {
+            if cfg.day == day && cfg.nextDay == nil { return .unchanged }
+            cfg.day = day; cfg.nextDay = nil
+            result = .changedNow(day: day)
+        } else if day == cfg.day {
+            if cfg.nextDay == nil { return .unchanged }
+            cfg.nextDay = nil
+            result = .queueCleared
+        } else {
+            cfg.nextDay = day
+            result = .queued(day: day)
+        }
+        cfg.reminderMonth = -1
+        s.companies[i].set("pr29", cfg.json)
+        return result
     }
 
     public static func config(_ co: Company, today: Int) -> PayrollConfig {
@@ -161,7 +213,7 @@ public enum Payday {
             s.companies[i].addPayable("wages", cost)
             Payments.book(&s, companyID: co.id, category: "wages", amount: cost)
             co = s.companies[i]
-            let tax = Taxes.personalIncomeTax(co.ownerMonthlySalary * 12, kind: .wage, in: context.homeCountry(s)) / 12
+            let tax = Taxes.personalIncomeTax(co.ownerMonthlySalary * 12, kind: .wage, in: country) / 12
             co.set("ownPend", .object(["sal": .number(co.ownerMonthlySalary), "tax": .number(tax)]))
             s.companies[i] = co
         }
@@ -184,6 +236,7 @@ public enum Payday {
         let c = civil(t)
         if t >= payDate(config: cfg, year: c.year, month: c.month - 1) { cfg.paidMonth = max(cfg.paidMonth, mi) }
         cfg.approvedMonth = -1
+        applyNewDay(&cfg)
         co.wageShortfall = short
         let cur = context.currency(co.countryCode, s)
         if short > 1 {
@@ -241,13 +294,26 @@ public enum Payday {
 
     /// Rent and supplier bills on the last day of the month. Original: `payBills`.
     @discardableResult
-    static func payBills(_ s: inout GameState, _ i: Int, today t: Int, context: FinanceContext) -> (paid: Double, short: Double) {
+    static func payBills(_ s: inout GameState, _ i: Int, today t: Int, context: FinanceContext, data: GameData? = nil) -> (paid: Double, short: Double) {
         var co = s.companies[i]
         var left = max(0, co.cash + context.overdraftRoom(co, s))
         var short = 0.0, paid = 0.0
+        var cfg = config(co, today: t)
+        // Late interest on what was left unpaid last month (rent and suppliers): added to the supplier bill, booked as interest.
+        let overdue = (cfg.arrears["rent"] ?? 0) + (cfg.arrears["other"] ?? 0)
+        let carried = min(overdue, (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0))
+        let lateFee = jsRound(carried * SupplyTerms.lateMonthlyRate(country: context.country(of: co, s), policyRate: s.economy.policyRate))
+        if lateFee > 0 {
+            co.addPayable("other", lateFee)
+            var b = co.books; b.add("int", lateFee); co.books = b
+            s.companies[i] = co
+            s.addMessage(from: co.name, title: "Late fees at \(co.name)",
+                         body: "Rent and supplier bills left unpaid last month now carry late interest of \(context.currency(co.countryCode, s).display(lateFee)).",
+                         companyID: co.id, tone: "bad")
+        }
         for k in ["rent", "other"] {
             let due = co.payables[k] ?? 0
-            if due <= 0 { continue }
+            if due <= 0 { cfg.arrears[k] = nil; continue }
             let p = min(due, left)
             if p > 0 {
                 // Keep what the first bill already changed (rent paid): re-reading the company without writing it back first
@@ -257,16 +323,21 @@ public enum Payday {
                 co = s.companies[i]
                 let used = !co.value("f30").object.isEmpty
                 co.addTransaction(week: s.week, amount: -jsRound(p), label: k == "rent" ? "Rent" : (used ? "Monthly bills: suppliers, insurance, leasing, fees" : "Suppliers and costs"))
+                // The landlord company is paid when the tenant really pays: the same period and the same amount.
+                if k == "rent" { s.companies[i] = co; PremisesExtras.payLandlord(&s, tenantIndex: i, paid: p); co = s.companies[i] }
             }
+            cfg.arrears[k] = jsRound(due - p) < 1 ? nil : jsRound(due - p)
             co.payables[k] = due - p
             left -= p
             short += due - p
             paid += p
         }
         if (co.payables["other"] ?? 0) < 1 { co.set("f30", .object([:])) }
-        var cfg = config(co, today: t)
         s.companies[i] = co
+        let wasCut = co.int("supCut")
         if short > context.currency(co.countryCode, s).scaledPrice(1500) {
+            // The suppliers you could not pay think less of you (the relationship their discounts come from).
+            if let d = data { SupplyTerms.billsMissed(&s, companyIndex: i, data: d) }
             cfg.billShortMonths += 1
             if cfg.billShortMonths == 1 {
                 let cur = context.currency(co.countryCode, s)
@@ -275,8 +346,27 @@ public enum Payday {
             }
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
+        // Repeated misses: suppliers tighten terms (2 months: stock only against cash in the account) and then stop delivering stock (3 months).
+        let level = cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
+        // Bills and invoices each cut suppliers off; stock buying reads the stricter of the two (`SupplyTerms.refreshCut`).
+        if level > 0 || s.companies[i].raw["supCutB"] != nil { s.companies[i].set("supCutB", level); if level == 0 { s.companies[i].raw.removeValue(forKey: "supCutB") } }
+        let level2 = max(level, SupplyTerms.invoiceCutLevel(s.companies[i], week: s.week))
+        s.companies[i].set("supCut", level2)
+        if level2 > wasCut {
+            s.addMessage(from: co.name, title: level2 == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
+                         body: level2 == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
+                                          : "Suppliers refuse new stock until the overdue bills are paid. Sales will suffer.",
+                         companyID: co.id, tone: "bad")
+        } else if level2 == 0 && wasCut > 0 {
+            s.addMessage(from: co.name, title: "Suppliers deliver normally again", body: "The overdue bills at \(co.name) are paid. Suppliers are back on normal terms.", companyID: co.id, tone: "good")
+        }
         s.companies[i].set("pr29", cfg.json)
         return (jsRound(paid), jsRound(short))
+    }
+
+    /// Bills (rent, suppliers) short for four months running, or tax unpaid for six: the company can no longer pay. Used by `Failure`.
+    static func unpaidForMonths(_ co: Company, today t: Int) -> Bool {
+        config(co, today: t).billShortMonths >= 4 || co.unpaidMonths >= 6
     }
 
     /// One more day with wages owed: people quit, word gets out, a wage claim follows. Original: `lateDay`.
@@ -336,6 +426,7 @@ public enum Payday {
             if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil {
                 if !hasPayroll(s.companies[i]) {
                     cfg.paidMonth = mi
+                    applyNewDay(&cfg)
                     s.companies[i].set("pr29", cfg.json)
                 } else if md == .manual {
                     // The owner's standing policy approves payroll the company can pay, even when the reminder window was missed.
@@ -402,13 +493,13 @@ public enum Payday {
             if cfg.billsMonth < mi - 1 {
                 cfg.billsMonth = mi - 1
                 s.companies[i].set("pr29", cfg.json)
-                payBills(&s, i, today: t, context: context)
+                payBills(&s, i, today: t, context: context, data: data)
             }
             cfg = config(s.companies[i], today: t)
             if cfg.billsMonth < mi && t >= bd2 {
                 cfg.billsMonth = mi
                 s.companies[i].set("pr29", cfg.json)
-                payBills(&s, i, today: t, context: context)
+                payBills(&s, i, today: t, context: context, data: data)
             }
         }
         // One approval message for all companies that need it.
@@ -443,6 +534,27 @@ public enum Payday {
     }
 
     /// The player's answer to a payroll message.
+    /// The Inbox "Approve payroll" message and the Company screen's approval are one thing: once a company is approved, whichever way, it drops
+    /// off every open approval message, and a message with nobody left to approve is resolved (read and done).
+    static func closeApprovalMessages(_ s: inout GameState, today t: Int) {
+        for k in s.inbox.indices where s.inbox[k].status == "open" && s.inbox[k].actionID == "pay29all" {
+            let d = s.inbox[k].value("data")
+            let mi = d["mi"].int
+            let left = d["ids"].array.filter { idv in
+                guard let i = s.companyIndex(idv.int) else { return false }
+                let cfg = config(s.companies[i], today: t)
+                return cfg.paidMonth < mi && cfg.approvedMonth < mi
+            }
+            if left.count == d["ids"].array.count { continue }
+            if left.isEmpty {
+                s.inbox[k].set("status", "done"); s.inbox[k].set("pick", 0); s.inbox[k].isRead = true
+            } else {
+                var nd = d; nd["ids"] = .array(left)
+                s.inbox[k].set("data", nd)
+            }
+        }
+    }
+
     public static func answer(_ s: inout GameState, action: String, data: JSONValue, option: Int, companyID: Int, data gd: GameData, context: FinanceContext) {
         let t = dayNumber(week: s.week, day: s.day)
         if action == "pay29all" {
@@ -453,6 +565,7 @@ public enum Payday {
                 var cfg = config(s.companies[i], today: t)
                 if cfg.paidMonth < mi && cfg.lateSince == nil { cfg.approvedMonth = mi; s.companies[i].set("pr29", cfg.json) }
             }
+            closeApprovalMessages(&s, today: t)
             s.note("Payroll approved. It goes out on payday.", tone: "good")
         } else if action == "pay29", let i = s.companyIndex(companyID), data["k"].string == "late", option == 0 {
             let cfg = config(s.companies[i], today: t)
@@ -462,5 +575,76 @@ public enum Payday {
                 s.note("Payroll run at \(s.companies[i].name): \(cur.display(r.paid)) paid" + (r.short > 0 ? ", short by \(cur.display(r.short))" : "") + ".", tone: r.short > 0 ? "bad" : "good", companyID: companyID)
             }
         }
+    }
+}
+
+// MARK: Reading the pay day for a screen
+
+public struct PaydayChoice: Equatable, Sendable, Identifiable {
+    public var id: Int { day }
+    public var day: Int                 // 0 = last day of the month
+    public var label: String            // "1st", "25th", "Last day"
+    public var isCurrent: Bool
+    public var isQueued: Bool
+    /// The first payday that follows the choice (a weekend moves it to the Friday before).
+    public var firstPayDay: Int
+    public var firstPayText: String
+    /// Days between that payday and the month-end bills of the same month; 0 = wages and rent fall on the same day.
+    public var daysBeforeBills: Int
+}
+
+public struct PaydayInfo: Equatable, Sendable {
+    public var hasPayroll: Bool
+    public var day: Int
+    public var dayLabel: String
+    public var pendingDay: Int?
+    public var pendingLabel: String?
+    public var paidThisMonth: Bool
+    public var isLate: Bool
+    /// A change made now applies at once (this month is paid and nothing is late); otherwise it waits for the payroll.
+    public var changesImmediately: Bool
+    public var nextPayDay: Int
+    public var nextPayText: String
+    public var billDay: Int
+    public var billText: String
+    public var choices: [PaydayChoice]
+}
+
+extension Payday {
+    static func ordinal(_ n: Int) -> String {
+        let r = n % 100
+        let suffix = (r >= 11 && r <= 13) ? "th" : (n % 10 == 1 ? "st" : n % 10 == 2 ? "nd" : n % 10 == 3 ? "rd" : "th")
+        return "\(n)\(suffix)"
+    }
+    static func dayLabel(_ d: Int) -> String { d == 0 ? "Last day" : ordinal(d) }
+    static func dateText(_ n: Int) -> String { let d = civil(n); return "\(d.day) \(GameCalendar.monthNames[d.month - 1]) \(d.year)" }
+}
+
+public extension GameEngine {
+    func paydayInfo(companyID: Int) -> PaydayInfo? {
+        let s = state
+        guard let co = s.company(companyID) else { return nil }
+        let t = Payday.dayNumber(week: s.week, day: s.day)
+        let cfg = Payday.config(co, today: t)
+        let c = Payday.civil(t)
+        let mi = Payday.monthNumber(t)
+        let immediate = cfg.paidMonth >= mi && cfg.lateSince == nil
+        let next = Payday.nextPay(co, config: cfg, today: t)
+        let nm = Payday.civil(next)
+        let bill = Payday.billDate(year: c.year, month: c.month - 1)
+        var probe = cfg
+        // Immediately: the new day applies from next month. Queued: the payroll that is due stays on its date, then the new day applies.
+        let basis = immediate ? (c.year, c.month - 1) : (nm.year, nm.month - 1)
+        let after = basis.1 == 11 ? (basis.0 + 1, 0) : (basis.0, basis.1 + 1)
+        let choices = Payday.paydayChoices.map { d -> PaydayChoice in
+            probe.day = d
+            let pd = Payday.payDate(config: probe, year: after.0, month: after.1)
+            return PaydayChoice(day: d, label: Payday.dayLabel(d), isCurrent: d == cfg.day, isQueued: d == cfg.nextDay,
+                                firstPayDay: pd, firstPayText: Payday.dateText(pd), daysBeforeBills: Payday.billDate(year: after.0, month: after.1) - pd)
+        }
+        return PaydayInfo(hasPayroll: Payday.hasPayroll(co), day: cfg.day, dayLabel: Payday.dayLabel(cfg.day), pendingDay: cfg.nextDay,
+                          pendingLabel: cfg.nextDay.map(Payday.dayLabel), paidThisMonth: cfg.paidMonth >= mi, isLate: cfg.lateSince != nil,
+                          changesImmediately: immediate, nextPayDay: next, nextPayText: Payday.dateText(next), billDay: bill,
+                          billText: Payday.dateText(bill), choices: choices)
     }
 }

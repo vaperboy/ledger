@@ -5,7 +5,7 @@ import Finance
 import Businesses
 
 /// Boards, the management team, chain and group executives, the main office, meetings, the academy, owners and the big meeting, as player actions.
-/// Models: `ManagerTeam`, `ManagerBoards`, `ManagerMeetings`, `ManagerPromotions`, `ManagerProposals`, `ChainHierarchy`, `Headquarters`, `Academy`, `ManagerStakes`.
+/// Models: `ManagerTeam`, `ManagerBoards`, `ManagerMeetings`, `ManagerPromotions`, `ManagerProposals`, `ChainHierarchy`, `Headquarters`, `Academy`.
 public extension GameEngine {
     // MARK: Management team of a company (managing director, department heads, regional manager)
 
@@ -44,6 +44,12 @@ public extension GameEngine {
     mutating func setGroupLimit(_ amount: Double) { update { s, _, _ in ManagerModel.setGroupLimit(&s, amount: amount) } }
     var regionalManagers: [JSONValue] { ManagerModel.regionals(state) }
     var groupManagingDirector: JSONValue { state.rest["org56"]?["md"] ?? .null }
+    /// The owner has set up a group office (`rentOffice`); group-level posts exist only from then on.
+    var groupOfficeEstablished: Bool { Headquarters.established(state) }
+    /// Who employs the group office's people: a holding with spare cash, else the office the owner set up.
+    var groupOfficeEmployer: String { Headquarters.employerName(state, data) }
+    /// What the group office costs a month now (0 before it is set up).
+    var groupOfficeMonthlyCost: Double { Headquarters.monthlyCost(state, data) }
 
     // MARK: Boards
 
@@ -125,7 +131,6 @@ public extension GameEngine {
     var managersDueMeeting: [Company] { ManagerModel.managersDueMeeting(state) }
     func weeksSinceMeeting(companyID: Int) -> Int { state.company(companyID).map { ManagerModel.weeksSinceMeeting($0, week: state.week) } ?? 0 }
     mutating func setManagerDuty(companyID: Int, duty: String, manager: Bool) { update { s, _, _ in ManagerModel.setManagerDuty(&s, companyID: companyID, duty: duty, manager: manager) } }
-    mutating func setManagerProfitBonus(companyID: Int, share: Double) { update { s, _, _ in ManagerModel.setManagerProfitBonus(&s, companyID: companyID, share: share) } }
     func personReport(companyID: Int, personID: Int) -> ManagerModel.PersonReport? { ManagerModel.personReport(state, companyID: companyID, personID: personID, data: data) }
 
     // MARK: Chains: money between stores, requests
@@ -148,13 +153,4 @@ public extension GameEngine {
         var r = Academy.Outcome.unavailable; update { s, d, _ in r = Academy.send(&s, companyID: companyID, staffID: staffID, course: courseID, data: d) }; return r
     }
 
-    // MARK: Owners and the big meeting
-
-    func buyBackPrice(companyID: Int, holderName: String) -> Double? { ManagerModel.buyBackPrice(state, companyID: companyID, holderName: holderName, data: data) }
-    mutating func buyBackStake(companyID: Int, holderName: String) -> Bool { var r = false; update { s, d, _ in r = ManagerModel.buyBackStake(&s, companyID: companyID, holderName: holderName, data: d) }; return r }
-    var bigOffer: ManagerModel.BigOffer? { ManagerModel.bigOffer(state) }
-    var stakes: [ManagerModel.Stake] { ManagerModel.stakes(state) }
-    mutating func acceptBigOffer() -> ManagerModel.BigResult { var r = ManagerModel.BigResult.none; update { s, d, _ in r = ManagerModel.acceptBigOffer(&s, data: d) }; return r }
-    mutating func counterBigOffer() -> ManagerModel.BigResult { var r = ManagerModel.BigResult.none; update { s, _, _ in r = ManagerModel.counterBigOffer(&s) }; return r }
-    mutating func walkAwayFromBigOffer() { update { s, _, _ in ManagerModel.walkAwayFromBigOffer(&s) } }
 }

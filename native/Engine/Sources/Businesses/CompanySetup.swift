@@ -70,7 +70,7 @@ public enum CompanySetup {
 
     static let premisesWords = ["Properties", "Estates", "Commercial", "Real Estate", "Holdings", "Property Group"]
 
-    /// Six places to rent, from a back street unit to a central location; a new list every half year. Original: `premListings`.
+    /// Five places to rent (the original's `PL_TIERS`), from a back street unit to a central location; a new list every half year. Original: `premListings`.
     public static func listings(for co: Company, _ bd: Trade, _ w: World) -> [Listing] {
         if PremisesExtras.isHomeTrade(bd) { return PremisesExtras.listings(co, bd, w) }   // a trade that started at home looks for a workshop or office
         guard let kind = bd.premisesKind, kind != "none", kind != "home" else { return [] }
@@ -179,9 +179,9 @@ public enum CompanySetup {
 
     /// People a company of this size normally employs. Original: `stdStaff` (+ small-firm step).
     public static func standardStaff(_ bd: Trade, size: Double) -> [(role: String, count: Int)] {
-        var base = bd.standardStaff.map { ($0.role, Int(max(1, jsRound($0.count * size)))) }
+        var base: [(role: String, count: Int)] = bd.standardStaff.map { (role: $0.role, count: Int(max(1, jsRound($0.count * size)))) }
         if size <= 0.6 {
-            base = bd.standardStaff.enumerated().map { (i, s) in (s.role, i == 0 ? Int(max(1, jsRound(s.count * size))) : Int(max(0, jsRound(s.count * size)))) }
+            base = bd.standardStaff.enumerated().map { (i, s) in (role: s.role, count: i == 0 ? Int(max(1, jsRound(s.count * size))) : Int(max(0, jsRound(s.count * size)))) }
         }
         return base
     }
@@ -282,7 +282,7 @@ public enum CompanySetup {
         if let reason = banReason(tradeID, country: country) { return .failure(.banned(reason)) }
         let currency = context.currency(code, s)
         let abroad = code != s.homeCountryCode
-        let abroadFee = abroad ? Luxury.abroadFee(context.currency(code, s).scaledPrice(220000 + bd.openingCost * 1.5) * Ambitions.abroadFeeFactor(s, data), s) : 0
+        let abroadFee = abroad ? Luxury.abroadFee(Ambitions.abroadFee(context.currency(code, s).scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) : 0
         if abroad && s.cash < abroadFee + currency.scaledPrice(50000) { return .failure(.notEnoughCash) }
         if form == .limited && s.cash < country.shareCapitalMinimum + country.registrationFee + abroadFee { return .failure(.notEnoughCash) }
         let chosenSize = size ?? recommendedSize(bd, city: city)
@@ -434,7 +434,7 @@ public enum CompanySetup {
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
-        if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5) * Ambitions.abroadFeeFactor(s, data), s) }
+        if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(Ambitions.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) }
         return r
     }
 
@@ -482,12 +482,14 @@ public enum CompanySetup {
                 // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
                 while n > 0 && attempts < allowed {
                     attempts += 1
-                    let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
-                    guard !cands.isEmpty else { break }
-                    let pick = faithfulHiring ? cands[cands.count / 2] : Hiring.bestValue(cands)
-                    let cur = w.currency(s.companies[i])
-                    let offer = cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
-                    if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }
+                    let found = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data)
+                    guard !found.isEmpty else { break }
+                    if faithfulHiring {
+                        let cands = found.sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+                        let pick = cands[cands.count / 2]
+                        let offer = w.currency(s.companies[i]).roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
+                        if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }
+                    } else if AutoHire.hireWorker(role: st.role, companyID: companyID, candidates: found, state: &s, data: data) != nil { n -= 1 }
                 }
                 if n > 0 { log.append("hire \(st.role): \(n) missing") }
             }

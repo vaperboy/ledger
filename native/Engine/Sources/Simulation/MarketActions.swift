@@ -39,6 +39,8 @@ public extension GameEngine {
                    : EquipmentMarket.usedEquipment(state, companyID: companyID, equipmentID: equipmentID, data: data)
     }
     func ownedEquipment(companyID: Int) -> [EquipmentMarket.Owned] { EquipmentMarket.owned(state, companyID: companyID, data: data) }
+    /// A week of running costs of the fleet at full use: fuel, leases, motor insurance, vehicle tax, charges on company cars.
+    func fleetRunningCosts(companyID: Int) -> VehicleRunning.FleetCosts { VehicleRunning.fleetCosts(state, companyID: companyID, data: data) }
     func equipmentHealth(companyID: Int) -> Double? { state.company(companyID).flatMap { EquipmentMarket.health($0) } }
 
     /// Price of one item of the offer, today (a vehicle: of the make and model).
@@ -109,7 +111,7 @@ public extension GameEngine {
     @discardableResult
     mutating func serviceEquipment(companyID: Int, equipmentID: String) -> EquipmentMarket.Result {
         var r = EquipmentMarket.Result.notPossible
-        update { s, _, _ in r = EquipmentMarket.serviceAll(&s, companyID: companyID, equipmentID: equipmentID) }
+        update { s, d, _ in r = EquipmentMarket.serviceAll(&s, companyID: companyID, equipmentID: equipmentID, data: d) }
         return r
     }
 

@@ -6,7 +6,7 @@ import GameCore
 /// Definitions (so the numbers never contradict each other):
 ///  - assets    = cash + customers' unpaid invoices + VAT refund due + stock + lease deposit + equipment & vehicles
 ///                at book value + owned premises + owned property + financial-company assets
-///  - debts     = loans of the company + unpaid wages, bills, rent, tax + VAT owed + financial-company liabilities
+///  - debts     = loans of the company + unpaid wages, bills, supplier invoices, rent, tax + VAT owed + financial-company liabilities
 ///  - equity    = assets - debts
 public enum CompanyFigures {
     /// Equipment and vehicles at book value. Original: `eqBook`.
@@ -49,7 +49,7 @@ public enum CompanyFigures {
         let p = co.payables
         let loanSum = loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
         let fm = co.value("fm")
-        return loanSum + (p["wages"] ?? 0) + (p["other"] ?? 0) + (p["rent"] ?? 0) + max(0, co.vatBalance) + (p["tax"] ?? 0)
+        return loanSum + (p["wages"] ?? 0) + (p["other"] ?? 0) + (p["inv"] ?? 0) + (p["rent"] ?? 0) + max(0, co.vatBalance) + (p["tax"] ?? 0)
             + (fm["liab"].isNull ? 0 : fm["liab"].double)
     }
 

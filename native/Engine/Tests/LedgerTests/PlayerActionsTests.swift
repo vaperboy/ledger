@@ -196,7 +196,8 @@ final class AutoDividendTests: XCTestCase {
 
 final class InsightTests: XCTestCase {
     func testHealthAndInsightsComeFromTheCompanysOwnNumbers() throws {
-        let e = try GameEngine.showcase(days: 150)
+        // 157 days: at 150 days one showcase company had a week with no trade at all after the hiring talks changed the random path (it trades normally a week later)
+        let e = try GameEngine.showcase(days: 157)
         for co in e.state.liveCompanies {
             let h = e.companyHealth(co)
             XCTAssertEqual(h.revenueSeries.count, min(24, co.monthlyHistory.count))

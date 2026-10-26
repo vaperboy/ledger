@@ -34,11 +34,13 @@ struct CompanyEnergy: View {
     var company: Company
     @State private var megawatts = 10.0
     @State private var confirmDrill = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if company.type == "power" { plant } else { oil }
         }
+        .confirmAction($pending)
     }
 
     // MARK: Power
@@ -55,7 +57,7 @@ struct CompanyEnergy: View {
                         .init(label: "Being built", value: "\(Int((p?.building ?? 0).rounded())) MW", sub: p?.weeksToReady.map { "first ready in \($0) wk" } ?? ""),
                         .init(label: "Output last week", value: "\(Int((p?.outputMWh ?? 0).rounded())) MWh"),
                     ])
-                    FlatRow(label: "Average price", value: cur.short(p?.averagePrice ?? 0) + " / MWh", sub: "Sold at the power market price, less what is hedged.").padding(.top, 8)
+                    FlatRow(label: "Average price", value: cur.tidyShort(p?.averagePrice ?? 0) + " / MWh", sub: "Sold at the power market price, less what is hedged.").padding(.top, 8)
                     FlatRow(label: "Market price index", value: String(format: "%.0f%% of normal", engine.state.economy.power * 100),
                             tint: engine.state.economy.power < 0.85 ? Theme.loss : engine.state.economy.power > 1.15 ? Theme.gain : Theme.ivory)
                 }
@@ -67,11 +69,14 @@ struct CompanyEnergy: View {
                         Spacer()
                         StepperPill(value: $megawatts, range: 1...100, step: 5)
                     }
-                    Text("About \(cur.short(perMW * megawatts)) now (\(cur.short(perMW)) per MW). New capacity takes \(buildWeeks) weeks to build and only then produces. Output follows the weather and the season.")
+                    Text("About \(cur.tidyShort(perMW * megawatts)) now (\(cur.tidyShort(perMW)) per MW). New capacity takes \(buildWeeks) weeks to build and only then produces. Output follows the weather and the season.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    Button("Order \(Int(megawatts)) MW") {
-                        if store.act({ $0.orderTurbines(companyID: company.id, megawatts: megawatts) }) == true { Haptics.success(); store.show("Ordered. Construction has started.", tone: "good") }
-                        else { Haptics.warning(); store.show("The company does not have that much cash.", tone: "warn") }
+                    Button("Order \(Int(megawatts)) MW…") {
+                        let mw = megawatts
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.display(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order") {
+                            if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
+                            else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
+                        }
                     }.buttonStyle(QuietButtonStyle())
                 }
             }
@@ -93,7 +98,7 @@ struct CompanyEnergy: View {
                     KeyFigures(items: [
                         .init(label: "Fields", value: "\(fields.filter { $0.state != "depleted" }.count)", sub: "\(fields.filter { $0.state == "dev" }.count) in development"),
                         .init(label: "Last week", value: "\(Int(company.lastWeekUnits.rounded())) kbbl"),
-                        .init(label: "Oil price", value: cur.short(price), sub: "per barrel"),
+                        .init(label: "Oil price", value: cur.tidyShort(price), sub: "per barrel"),
                     ])
                     FlatRow(label: "Market index", value: String(format: "%.0f%% of normal", engine.state.economy.oil * 100),
                             sub: "Taxes on oil are very high. Term contracts take part of the swing out.",
@@ -116,13 +121,16 @@ struct CompanyEnergy: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("Stake with \(Int(k / 1000)) M barrels left").font(.system(size: 13.5))
-                                Text(cur.short(engine.oilStakePrice(thousandBarrels: k))).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                Text(cur.tidyShort(engine.oilStakePrice(thousandBarrels: k))).font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
-                            Button("Buy") {
-                                switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
-                                case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
-                                default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
+                            Button("Buy…") {
+                                let cost = engine.oilStakePrice(thousandBarrels: k)
+                                pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: "\(cur.display(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time.", button: "Buy stake") {
+                                    switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
+                                    case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
+                                    default: Haptics.warning(); store.show("The company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
+                                    }
                                 }
                             }.buttonStyle(QuietButtonStyle())
                         }
@@ -131,7 +139,7 @@ struct CompanyEnergy: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Drill an exploration well").font(.system(size: 13.5))
-                            Text("\(cur.short(drill)) · most wells find nothing; a hit takes about three years to produce").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("\(cur.tidyShort(drill)) · most wells find nothing; a hit takes about three years to produce").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
                         Button("Drill") { confirmDrill = true }.buttonStyle(QuietButtonStyle())
@@ -140,7 +148,7 @@ struct CompanyEnergy: View {
             }
         }
         .confirmationDialog("Drill an exploration well?", isPresented: $confirmDrill, titleVisibility: .visible) {
-            Button("Drill for \(cur.short(drill))", role: .destructive) {
+            Button("Drill for \(cur.tidyShort(drill))", role: .destructive) {
                 switch store.act({ $0.exploreForOil(companyID: company.id) }) {
                 case .hit?: Haptics.success(); store.show("Discovery! Check your inbox.", tone: "good")
                 case .dry?: Haptics.warning(); store.show("A dry well.", tone: "bad")
@@ -169,7 +177,7 @@ struct CompanySalmon: View {
                     KeyFigures(items: [
                         .init(label: "Fish", value: String(format: "%.0f k", cohorts.reduce(0) { $0 + $1.fish } / 1000)),
                         .init(label: "Biomass", value: "\(Int(fm["bio"].double.rounded())) t"),
-                        .init(label: "Price a kilo", value: cur.short(engine.salmonPricePerKilo())),
+                        .init(label: "Price a kilo", value: cur.tidyShort(engine.salmonPricePerKilo())),
                     ])
                     if cohorts.isEmpty {
                         Text("No fish in the pens. A new cohort is stocked when the cash allows.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)

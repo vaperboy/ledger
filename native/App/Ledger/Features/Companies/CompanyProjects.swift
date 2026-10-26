@@ -170,7 +170,7 @@ private struct JobList: View {
     private func tenderSheet(_ t: ProjectBoard.TenderRow) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             valueRow("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))% · quality \(Int(((1 - t.priceWeight) * 100).rounded()))%")
-            valueRow("Bids close", "in \(t.weeksToBid) weeks · award \(GameCalendar.dateString(week: t.awardWeek))")
+            valueRow("Bids close", "in \(t.weeksToBid.weeksText) · award \(GameCalendar.dateString(week: t.awardWeek))")
             valueRow("Writing the bid costs", store.money(t.bidCost, in: company))
             if t.myBid != nil {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

@@ -38,21 +38,21 @@ struct FranchiseeCard: View {
                 FlatRow(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 1) + " of revenue")
                 FlatRow(label: "Marketing fund", value: Currency.percent(f["mkt"].double, decimals: 0) + " of revenue")
                 FlatRow(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double), sub: "Your quality keeps it strong or drags it down.")
-                FlatRow(label: "Quality", value: "\(Int(company.quality.rounded())) (brand minimum \(Int(minQ)))", tint: company.quality < minQ ? Theme.loss : Theme.ivory,
-                        sub: company.quality < minQ ? "Below the standard: the franchisor warns, then ends the contract." : "")
+                FlatRow(label: "Quality", value: "\(Int(company.quality.rounded())) (brand minimum \(Int(minQ)))", sub: company.quality < minQ ? "Below the standard: the franchisor warns, then ends the contract." : "",
+                        tint: company.quality < minQ ? Theme.loss : Theme.ivory)
                 if !f["end"].isNull { FlatRow(label: "Contract ends", value: GameCalendar.dateString(week: f["end"].int, dayOffset: 0)) }
-                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.short(f["owed"].double), tint: Theme.loss, sub: "Paid first from the company's cash; unpaid parts pile up.") }
+                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.tidyShort(f["owed"].double), sub: "Paid first from the company's cash; unpaid parts pile up.", tint: Theme.loss) }
                 Hairline()
-                Button("Leave the franchise · buyout \(cur.short(buyout))") { confirmLeave = true }
+                Button("Leave the franchise · buyout \(cur.tidyShort(buyout))") { confirmLeave = true }
                     .font(.system(size: 12.5)).foregroundStyle(Theme.loss).buttonStyle(.plain).padding(.top, 10)
             }
         }
         .confirmationDialog("Leave the franchise?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button("Pay \(cur.short(buyout)) and leave", role: .destructive) {
+            Button("Pay \(cur.tidyShort(buyout)) and leave", role: .destructive) {
                 if store.act({ $0.leaveFranchise(companyID: company.id) }) == true { Haptics.success(); store.show("\(company.name) is now independent.") }
             }
         } message: {
-            Text("You pay \(cur.short(buyout)) to buy out the contract (including any royalties you owe), put up new signs, and lose much of the brand awareness. No more royalties after that.")
+            Text("You pay \(cur.tidyShort(buyout)) to buy out the contract (including any royalties you owe), put up new signs, and lose much of the brand awareness. No more royalties after that.")
         }
     }
 }
@@ -89,7 +89,7 @@ struct FranchisorCard: View {
                 if let u = terminate { store.act { $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }; Haptics.success() }
                 terminate = nil
             }
-        } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.short(cur.scaledPrice(15000))) and may recover part of any arrears.") }
+        } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }
     }
 
     // MARK: Before launch
@@ -113,7 +113,7 @@ struct FranchisorCard: View {
             if doc.status == "applied" {
                 Text("Franchise documents: about \(doc.weeksLeft) \(doc.weeksLeft == 1 ? "week" : "weeks") left. A lawyer writes the agreement and the disclosure document.").font(.caption).foregroundStyle(Theme.caution).padding(.top, 10)
             } else if doc.status != "ok" {
-                Button("Apply for franchise documents · \(cur.short(engine.documentFee(companyID: company.id, document: "fran")))") {
+                Button("Apply for franchise documents · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")))") {
                     switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "fran") }) {
                     case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
                     case .notYet(let why)?: store.show(why, tone: "warn")
@@ -134,7 +134,7 @@ struct FranchisorCard: View {
                 Text("Entry fee").font(.system(size: 13.5)); Spacer()
                 ForEach([50_000.0, 150_000, 300_000], id: \.self) { v in
                     let amt = cur.scaledPrice(v)
-                    Button(cur.short(amt)) { fee = amt }.buttonStyle(QuietButtonStyle(tint: abs(fee - amt) < 1 ? Theme.gold : Theme.ivoryFaint))
+                    Button(cur.tidyShort(amt)) { fee = amt }.buttonStyle(QuietButtonStyle(tint: abs(fee - amt) < 1 ? Theme.gold : Theme.ivoryFaint))
                 }
             }
             HStack {
@@ -165,8 +165,8 @@ struct FranchisorCard: View {
         KeyFigures(items: [
             .init(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double)),
             .init(label: "Units open", value: "\(units.count)"),
-            .init(label: "Income last week", value: cur.short(f["income"].double)),
-            .init(label: "Fee", value: cur.short(f["fee"].double)),
+            .init(label: "Income last week", value: cur.tidyShort(f["income"].double)),
+            .init(label: "Fee", value: cur.tidyShort(f["fee"].double)),
             .init(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 0)),
             .init(label: "Set-up", value: ["Franchisee pays", "Half covered", "Fully covered"][min(2, f["supp"].int)]),
         ])
@@ -177,12 +177,12 @@ struct FranchisorCard: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(u["name"].string).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(engine.data.countries.city(u["city"].string, preferring: company.countryCode)?.city.name ?? "")\(u["owed"].double > 0.5 ? " · owes \(cur.short(u["owed"].double))" : "") · until \(GameCalendar.dateString(week: u["end"].int, dayOffset: 0))")
+                        Text("\(engine.data.countries.city(u["city"].string, preferring: company.countryCode)?.city.name ?? "")\(u["owed"].double > 0.5 ? " · owes \(cur.tidyShort(u["owed"].double))" : "") · until \(GameCalendar.dateString(week: u["end"].int, dayOffset: 0))")
                             .font(.system(size: 11)).foregroundStyle(u["owed"].double > 0.5 ? Theme.loss : Theme.ivoryFaint)
                     }
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 3) {
-                        Text(cur.short(u["rev"].double) + " / wk").font(.system(size: 13.5).monospacedDigit()).foregroundStyle(u["prof"].double < 0 ? Theme.loss : Theme.ivory)
+                        Text(cur.tidyShort(u["rev"].double) + " / wk").font(.system(size: 13.5).monospacedDigit()).foregroundStyle(u["prof"].double < 0 ? Theme.loss : Theme.ivory)
                         Button("End contract") { terminate = u["id"].int }.font(.system(size: 11.5)).foregroundStyle(Theme.loss).buttonStyle(.plain)
                     }
                 }.padding(.vertical, 9)
@@ -198,7 +198,7 @@ struct FranchisorCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(a.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(engine.data.countries.city(a.cityID, preferring: company.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.short(a.capital))")
+                        Text("\(engine.data.countries.city(a.cityID, preferring: company.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))")
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
                     Spacer()
@@ -211,7 +211,7 @@ struct FranchisorCard: View {
         Text("Master franchise").capsLabel(Theme.ivoryFaint).padding(.top, 10)
         ForEach(Array(masters.enumerated()), id: \.offset) { n, m in
             let c = engine.data.countries[m["c"].string]
-            FlatRow(label: "\(c?.flag ?? "") \(c?.name ?? m["c"].string)", value: engine.state.week < m["ready"].int ? "registering, \(m["ready"].int - engine.state.week) wk" : "\(m["n"].int) units · \(cur.short(m["rev"].double)) / wk")
+            FlatRow(label: "\(c?.flag ?? "") \(c?.name ?? m["c"].string)", value: engine.state.week < m["ready"].int ? "registering, \(m["ready"].int - engine.state.week) wk" : "\(m["n"].int) units · \(cur.tidyShort(m["rev"].double)) / wk")
         }
         if !countries.isEmpty {
             Text("Sell a whole country to a local partner: a big fee up front and half the royalties. Legal work is slower and costlier in complex countries.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -257,13 +257,13 @@ struct FranchiseTalkView: View {
                         Text("\(e.data.countries.city(a.cityID, preferring: co.countryCode)?.city.name ?? "") · \(a.experience) yr experience · \(a.personalityText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     VStack(alignment: .leading, spacing: 8) {
-                        bubble(false, "Hello. \(a.experience > 0 ? "I have \(a.experience) \(a.experience == 1 ? "year" : "years") in \(e.tradeName(co).lowercased())" : "I am new to \(e.tradeName(co).lowercased()), but I learn fast") and would like to open a \(co.name) in \(e.data.countries.city(a.cityID, preferring: co.countryCode)?.city.name ?? ""). I have \(cur.short(a.capital)) of my own; the setup is about \(cur.short(sums?.setup ?? 0)).")
+                        bubble(false, "Hello. \(a.experience > 0 ? "I have \(a.experience) \(a.experience == 1 ? "year" : "years") in \(e.tradeName(co).lowercased())" : "I am new to \(e.tradeName(co).lowercased()), but I learn fast") and would like to open a \(co.name) in \(e.data.countries.city(a.cityID, preferring: co.countryCode)?.city.name ?? ""). I have \(cur.tidyShort(a.capital)) of my own; the setup is about \(cur.tidyShort(sums?.setup ?? 0)).")
                         ForEach(Array(log.enumerated()), id: \.offset) { _, l in bubble(l.mine, l.text) }
                     }
                     if !finished {
                         LedgerSection("Your offer") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                                choice("Entry fee · \(cur.short(co.value("fr")["fee"].double * terms.feeFactor))", [(1.0, "Full"), (0.5, "Half"), (0.0, "Waived")], current: terms.feeFactor) { terms.feeFactor = $0 }
+                                choice("Entry fee · \(cur.tidyShort(co.value("fr")["fee"].double * terms.feeFactor))", [(1.0, "Full"), (0.5, "Half"), (0.0, "Waived")], current: terms.feeFactor) { terms.feeFactor = $0 }
                                 choice("Royalty of sales", [0.04, 0.05, 0.06, 0.07, 0.08, 0.10].map { ($0, "\(Int($0 * 100))%") }, current: terms.royalty) { terms.royalty = $0 }
                                 HStack {
                                     Text("Your help with the setup").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer()
@@ -279,9 +279,9 @@ struct FranchiseTalkView: View {
                                 choice("Contract", [(5.0, "5 years"), (10.0, "10 years")], current: Double(terms.years)) { terms.years = Int($0) }
                                 if let s = sums {
                                     Hairline()
-                                    FlatRow(label: "They need", value: cur.short(max(0, s.need)), sub: "They have \(cur.short(a.capital)) of their own.", tint: a.capital < s.need ? Theme.loss : Theme.ivory, rule: false)
-                                    FlatRow(label: "Their profit a year", value: cur.short(s.theirs), tint: s.theirs < 0 ? Theme.loss : Theme.ivory)
-                                    FlatRow(label: "Yours a year", value: cur.short(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.short(s.youPutIn))." : "")
+                                    FlatRow(label: "They need", value: cur.tidyShort(max(0, s.need)), sub: "They have \(cur.tidyShort(a.capital)) of their own.", tint: a.capital < s.need ? Theme.loss : Theme.ivory, rule: false)
+                                    FlatRow(label: "Their profit a year", value: cur.tidyShort(s.theirs), tint: s.theirs < 0 ? Theme.loss : Theme.ivory)
+                                    FlatRow(label: "Yours a year", value: cur.tidyShort(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.tidyShort(s.youPutIn))." : "")
                                 }
                                 Text("Patience " + String(repeating: "●", count: max(0, patience)) + String(repeating: "○", count: max(0, (Franchising.patienceDots(for: a.personality)) - max(0, patience))))
                                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)

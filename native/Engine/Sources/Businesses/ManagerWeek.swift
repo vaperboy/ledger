@@ -10,7 +10,7 @@ import Finance
 extension ManagerModel {
     /// Called once a week for every company, after the staff routine.
     public static func weekly(_ s: inout GameState, companyIndex ci: Int, _ bd: Trade, data: GameData, revenue rev: Double, utilisation util: Double, demand D: Double, capacity cap: Double) {
-        noticeWeek(&s, companyIndex: ci)
+        noticeWeek(&s, companyIndex: ci, data: data)
         assistantWeek(&s, companyIndex: ci, data: data)
         let co = s.companies[ci]
         guard let mid = co.managerID, let n = s.people[mid] else { return }
@@ -32,9 +32,12 @@ extension ManagerModel {
         // A year in the role: a raise is asked for
         if (s.week - started) % 52 == 51 && s.random.chance(0.7) {
             let ask = cur.roundedStep(co.managerMonthlyWage * 0.06, about: 100)
+            var request = ContractTalk.Talk(opener: .employee, proposal: ContractTalk.Proposal(.payRise, amount: 0.06), week: s.week)
+            request.ask = 0.06; request.reason = "A year in the role."
+            ContractTalk.store(request, &s, personID: mid)
             s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a raise at \(co.name)", body: "A year in the role, they want +\(cur.display(ask)) per month (6%).",
                          companyID: co.id, tone: "n", status: "open",
-                         options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Decline", "They may leave")],
+                         options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Delay \(ContractTalk.delayWeeks) weeks", "If you do not answer, they feel turned down."), .option("Decline", "They may leave")],
                          action: "mgrraise", data: .object(["ask": .number(ask)]), expiresWeek: s.week + 3)
         }
         // Unhappy managers and rival offers
@@ -44,6 +47,7 @@ extension ManagerModel {
         rivalOffer(&s, companyIndex: ci, data: data)
         staffWork(&s, ci, bd, n, q, data: data, revenue: rev)
         keepTeam(&s, ci, bd, data: data, quality: q)
+        seasonalWeek(&s, ci, n, data: data, capacity: cap)   // seasonal help ahead of a busy season (ManagerSeasonal.swift)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
         if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
@@ -104,17 +108,18 @@ extension ManagerModel {
                 if let k = s.companies[ci].staff.firstIndex(where: { $0.id == m.id }) { var st = s.companies[ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[ci].staff = st }
                 s.note("\(n.name) moved \(nn.name) to a fixed salary at \(co.name).", tone: "n", companyID: co.id)
             }
-            let why: String? = m.noticeWeeks > 0 ? "has handed in notice" : (mk0 > m.monthlyWage * 1.25 ? "is paid far below market and may leave"
+            let paid = m.monthlyWage + StaffPerks.worthMonthly(co, m, currency: cur)   // perks that cover them count as pay
+            let why: String? = m.noticeWeeks > 0 ? "has handed in notice" : (mk0 > paid * 1.25 ? "is paid far below market and may leave"
                 : (lrW >= 52 && ten >= 52 ? "has had no raise for \(lrW >= 104 ? "\(lrW / 52) years" : "a year")"
-                   : (sk >= 68 && ten >= 26 && mk0 > m.monthlyWage * 1.04 ? "is one of your best and paid below market" : nil)))
+                   : (sk >= 68 && ten >= 26 && mk0 > paid * 1.04 ? "is one of your best and paid below market" : nil)))
             let yearOn = lrW >= 52 && ten >= 52 && m.noticeWeeks == 0
             let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
-            guard let reason = why, yearOn || mk0 > m.monthlyWage * 1.03, askW == nil || askW == 0 || s.week - askW! >= 12 else { continue }
+            guard let reason = why, yearOn || mk0 > paid * 1.03, askW == nil || askW == 0 || s.week - askW! >= 12 else { continue }
             let felt = StaffTalks.raiseNeeded(role: m.role, age: nn.age, tables: data.catalog.tables)
             let target = yearOn && mk0 <= m.monthlyWage * (1 + felt) ? cur.roundedStep(m.monthlyWage * (1 + felt + (1 - q) * 0.01), about: 100)
                 : max(m.monthlyWage + 100, cur.roundedStep(m.monthlyWage + (mk0 - m.monthlyWage) * (1 - 0.55 * q), about: 100))
             let d = target - m.monthlyWage
-            if lvl >= 2 || (lvl == 1 && d <= co.value("auth")["hire"].double) {
+            if ContractTalk.managerMayDecide(co, extraMonthly: d) {
                 let had = m.noticeWeeks > 0
                 StaffTalks.raise(&s, companyIndex: ci, staffID: m.id, percent: target / m.monthlyWage - 1, data: data)
                 if had { s.note("\(nn.name) withdrew the notice after the raise.", tone: "good", companyID: co.id) }
@@ -150,11 +155,9 @@ extension ManagerModel {
                 return
             }
             var f = fl; f["rep22"] = .number(Double(s.week)); s.companies[ci].set("flags", f)
-            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, state: &s, data: data).sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, state: &s, data: data)
             guard !cands.isEmpty else { return }
-            let pick = cands[min(cands.count - 1, Int(Double(cands.count) * (0.35 + q * 0.4)))]
-            let cur = World(state: s, data: data).currency(co)
-            if Hiring.hire(pick.id, into: co.id, monthlyWage: cur.roundedStep(pick.askingMonthlyWage * 1.02, about: 100), state: &s, data: data) == .ok {
+            if let pick = AutoHire.hireWorker(role: role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: mgr), state: &s, data: data) {
                 s.note("\(mgr.name) hired \(pick.name) (\(r.name.lowercased())) at \(co.name): the post was empty.", tone: "n", companyID: co.id)
             }
             return
@@ -264,20 +267,20 @@ extension ManagerModel {
         let co = s.companies[ci]
         switch dp.kind {
         case "hire":
-            var cands = Hiring.search(role: dp.role, company: co, mode: .ads, state: &s, data: data)
-            cands.sort { a, b in (a.claimedSkill - a.askingMonthlyWage / 1500) > (b.claimedSkill - b.askingMonthlyWage / 1500) }
-            guard let c = cands.first else { return }
-            if Hiring.hire(c.id, into: co.id, monthlyWage: c.askingMonthlyWage, state: &s, data: data) == .ok {
+            let cands = Hiring.search(role: dp.role, company: co, mode: .ads, state: &s, data: data)
+            guard !cands.isEmpty else { return }
+            if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
                 s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)
             }
         case "eq", "veh", "space": buyForProposal(&s, ci, dp, n, data: data)
+        case "seas": execSeasonal(&s, ci, dp, n, data: data)
         case "cut":
             let weakest = co.staff.min { (s.people[$0.id]?.skill ?? 0) + $0.skillGain < (s.people[$1.id]?.skill ?? 0) + $1.skillGain }
-            if let w = weakest { Hiring.fire(w.id, from: co.id, state: &s, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
+            if let w = weakest { Dismissal.dismiss(&s, companyID: co.id, staffID: w.id, reason: .redundancy, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
         case "ad":
             let ch = (data.catalog[co.type]?.audience ?? 0) > 0.5 ? "google" : "meta"
             var mkt = co.value("mkt")
-            if mkt[ch].isNull {
+            if mkt[ch].isNull, FranchiseStandards.campaignRefusal(co, channel: ch) == nil {
                 mkt[ch] = .object(["b": .number(World(state: s, data: data).currency(co).scaledPrice(1500)), "since": .number(Double(s.week)), "lock": .number(Double(s.week + 4))])
                 s.companies[ci].set("mkt", mkt)
                 s.note("\(n.name) started ads for \(co.name).", tone: "n", companyID: co.id)
@@ -298,15 +301,17 @@ extension ManagerModel {
             if idx == 0 {
                 s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["ask"].double
                 s.companies[ci].set("mood", min(100, mood(co) + 8))
+                if let mid = co.managerID { ContractTalk.close(&s, personID: mid) }
+            } else if idx == 1 {   // delay: an answer is due; the weekly contract pass counts a missed one as a decline
+                if let mid = co.managerID, var talk = ContractTalk.openTalk(s, personID: mid) { talk.delayUntil = s.week + ContractTalk.delayWeeks; ContractTalk.store(talk, &s, personID: mid) }
             } else {
-                s.companies[ci].set("mood", max(0, mood(co) - 10))
-                if s.random.chance(0.55) { resign(&s, companyIndex: ci, why: "without the raise I have to look elsewhere") }
+                declineManagerRaise(&s, companyIndex: ci)
+                if let mid = co.managerID { ContractTalk.close(&s, personID: mid) }
             }
         case "mgrpoach":
             if idx == 0 {
-                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double
+                s.companies[ci].managerMonthlyWage = co.managerMonthlyWage + d["up"].double   // matching the offer: they stay (nobody turns down more pay for the same job)
                 s.companies[ci].set("mood", min(100, mood(co) + 6))
-                if s.random.chance(0.12) { resign(&s, companyIndex: ci, why: "the rival's offer was too good to turn down", to: "a rival group") }
             } else { resign(&s, companyIndex: ci, why: "a rival made me an offer", to: "a rival group") }
         default:
             let kind = d["t"].string
@@ -323,6 +328,12 @@ extension ManagerModel {
             }
             exec(&s, ci, dp, n, quality(s.companies[ci], bd, people: s.people), data: data)
         }
+    }
+
+    /// The old consequence of turning a manager's raise down: the mood drops and they may resign.
+    static func declineManagerRaise(_ s: inout GameState, companyIndex ci: Int) {
+        s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 10))
+        if s.random.chance(0.55) { resign(&s, companyIndex: ci, why: "without the raise I have to look elsewhere") }
     }
 
     // MARK: Asking the manager
@@ -369,8 +380,9 @@ extension ManagerModel {
             case "mkt_more":
                 let ch = bd.audience > 0.5 ? "google" : "meta"
                 var mkt = co.value("mkt")
-                let opts = marketing.channels[ch]?.budgetOptions ?? []
-                if let next = opts.first(where: { $0 > mkt[ch]["b"].double }) {
+                let opts = marketing.channels[ch]?.budgets(in: cur) ?? []
+                if let why = FranchiseStandards.campaignRefusal(co, channel: ch) { say = "We cannot: \(why)." }
+                else if let next = opts.first(where: { $0 > mkt[ch]["b"].double }) {
                     if mkt[ch].isNull { mkt[ch] = .object(["b": .number(next), "since": .number(Double(s.week)), "lock": .number(Double(s.week + (marketing.channels[ch]?.minimumWeeks ?? 4)))]) }
                     else { mkt[ch]["b"] = .number(next) }
                     s.companies[ci].set("mkt", mkt)
@@ -382,7 +394,7 @@ extension ManagerModel {
                     let lock = mkt[ch]["lock"].isNull ? 0 : mkt[ch]["lock"].double
                     if Double(s.week) < lock { say = "Some of it is locked in for now." }
                     else {
-                        let lower = (marketing.channels[ch]?.budgetOptions ?? []).reversed().first(where: { $0 < mkt[ch]["b"].double }) ?? 0
+                        let lower = (marketing.channels[ch]?.budgets(in: cur) ?? []).reversed().first(where: { $0 < mkt[ch]["b"].double }) ?? 0
                         if lower > 0 { mkt[ch]["b"] = .number(lower) } else { mkt = Marketing.removing(mkt, ch) }
                         s.companies[ci].set("mkt", mkt)
                         say = "I cut \(marketing.channels[ch]?.name ?? ch) to " + (lower > 0 ? "\(cur.display(lower)) a week." : "nothing.")

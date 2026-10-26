@@ -351,7 +351,7 @@ extension ManagerModel {
         case "cpx56": if idx == 0, s.company(d["co"].int) != nil { Chains.setStoreRule(&s, companyID: d["co"].int, rule: .priceSteps(d["v"].double)) }
         case "mfind11":
             guard idx == 0, let ci = s.companyIndex(m.companyID), s.companies[ci].managerID == nil, let n = s.people[d["n"].int] else { return }
-            if hire(&s, personID: n.id, companyID: m.companyID, monthlyWage: max(1, n.askingMonthlyWage), data: data) != .ok {
+            if hire(&s, personID: n.id, companyID: m.companyID, monthlyWage: max(1, d["w"].double), data: data) != .ok {
                 s.addMessage(kind: "info", from: n.name, title: "Changed my mind", body: "Sorry, I took another job.", companyID: m.companyID, tone: "bad", status: "done")
             }
         default: break
@@ -516,7 +516,7 @@ extension ManagerModel {
             c.status.isLive && c.managerID != nil && s.people[c.managerID!] != nil && (companyID == nil || c.id == companyID)
         }
         if cos.isEmpty { return .none }
-        let fresh = cos.filter { $0.value("meetW").isNull || Double(s.week) - $0.num("meetW") >= 3 }
+        let fresh = cos.filter { !CounterpartMeeting.isCoolingDown(lastWeek: $0.value("meetW").isNull ? nil : $0.num("meetW"), now: s.week, weeks: 3) }
         if fresh.isEmpty { return .wait }
         for c in fresh { meetOne(&s, companyID: c.id, goal: goal, tone: tone, data: data, marketing: marketing) }
         return .ok(fresh.count)

@@ -47,12 +47,17 @@ public extension GameEngine {
     /// Does this trade let a person use their own car (the hiring screen's work car choice)?
     func offersOwnCar(companyID: Int) -> Bool {
         guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return false }
-        return PersonalEquipment.offersOwnCar(co, bd)
+        return PersonalEquipment.offersOwnCar(co, bd, tables: data.catalog.tables)
     }
-    /// Switch someone between the company car and their own car with mileage. Returns the new state (true: own car).
-    @discardableResult mutating func toggleOwnCar(companyID: Int, staffID: Int) -> Bool? {
-        var r: Bool?
-        update { s, _, _ in r = PersonalEquipment.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
-        return r
+    /// Does this job in this trade use a car for work, so the person can use their own car with mileage?
+    func offersOwnCar(companyID: Int, role: String) -> Bool {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return false }
+        return PersonalEquipment.canUseOwnCar(role: role, bd, tables: data.catalog.tables)
+    }
+    /// Mileage a month for one person on their own car (country rate times the trade's kilometres, else the game's flat figure).
+    func ownCarMileagePerMonth(companyID: Int) -> Double {
+        guard let co = state.company(companyID), let bd = data.catalog[co.type] else { return 0 }
+        let w = World(state: state, data: data)
+        return PersonalEquipment.mileagePerMonth(w.currency(co), country: w.country(co), bd, tables: data.catalog.tables)
     }
 }

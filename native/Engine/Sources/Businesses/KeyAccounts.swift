@@ -36,6 +36,9 @@ public enum KeyAccounts {
         public var totalPaid: Double
         /// The trade it runs (a cleaner, a bakery, a web agency ...). Original: `acc39`, `a.t`.
         public var tradeID: String
+        /// What they still owe you on invoices, and how many of their last invoices in a row came in late (`SupplyTerms`).
+        public var owed = 0.0
+        public var lateRun = 0
     }
 
     /// What the account sells, and whether you know them well enough to buy from them in your supply chain.
@@ -65,11 +68,13 @@ public enum KeyAccounts {
     }
 
     public static func accounts(_ co: Company) -> [Account] {
-        co.value("accts").array.map {
-            Account(id: $0["id"].int, name: $0["name"].string, share: $0["f"].double, relationship: $0["rel"].double, sinceWeek: $0["w0"].int,
-                    discount: $0["disc"].int, lastMeeting: $0["meet"].isNull ? nil : $0["meet"].int, lastUnits: $0["lastU"].double,
-                    totalUnits: $0["tu"].double, totalPaid: $0["tr"].double,
-                    tradeID: $0["t"].isNull ? tradeFor(id: $0["id"].int, known: { _ in true }) : $0["t"].string)
+        let owing = co.receivables
+        return co.value("accts").array.map { a -> Account in
+            Account(id: a["id"].int, name: a["name"].string, share: a["f"].double, relationship: a["rel"].double, sinceWeek: a["w0"].int,
+                    discount: a["disc"].int, lastMeeting: a["meet"].isNull ? nil : a["meet"].int, lastUnits: a["lastU"].double,
+                    totalUnits: a["tu"].double, totalPaid: a["tr"].double,
+                    tradeID: a["t"].isNull ? tradeFor(id: a["id"].int, known: { _ in true }) : a["t"].string,
+                    owed: owing.filter { $0.int("ac") == a["id"].int }.reduce(0) { $0 + $1.amount }, lateRun: a["lc"].int)
         }
     }
 
@@ -192,17 +197,17 @@ public enum KeyAccounts {
         guard let i = s.companyIndex(companyID) else { return .missing }
         var list = s.companies[i].value("accts").array
         guard let k = list.firstIndex(where: { $0["id"].int == accountID }) else { return .missing }
-        if !list[k]["meet"].isNull, s.week - list[k]["meet"].int < 4 { return .wait }
         let co = s.companies[i]
         let cost = World(state: s, data: data).currency(co).scaledPrice(6000)
-        if s.cash < cost { return .cash }
-        Payments.playerPays(&s, cost, label: "Dinner with \(list[k]["name"].string)", companyID: companyID)
-        var h = HashedRandom("\(s.seed):meet:\(s.week):\(accountID)")
-        let rel = list[k]["rel"].double
-        list[k]["meet"] = .number(Double(s.week))
-        list[k]["rel"] = .number(min(100, rel + (4 + (h.next() * 4).rounded(.down)) * (1 - pow(rel / 100, 1.6))))
-        s.companies[i].set("accts", .array(list))
-        return .ok
+        let last: Double? = list[k]["meet"].isNull ? nil : list[k]["meet"].double
+        let res = CounterpartMeeting.meet(&s, lastWeek: last, cost: cost, label: "Dinner with \(list[k]["name"].string)", companyID: companyID) { t in
+            var h = HashedRandom("\(t.seed):meet:\(t.week):\(accountID)")
+            let rel = list[k]["rel"].double
+            list[k]["meet"] = .number(Double(t.week))
+            list[k]["rel"] = .number(min(100, rel + (4 + (h.next() * 4).rounded(.down)) * (1 - pow(rel / 100, 1.6))))
+            t.companies[i].set("accts", .array(list))
+        }
+        return res == .ok ? .ok : res == .wait ? .wait : .cash
     }
 
     public static func drop(_ s: inout GameState, companyID: Int, accountID: Int) {

@@ -13,6 +13,7 @@ struct LuxuryView: View {
     @State private var openPiece: Int? = nil
     @State private var pendingSell: Luxury.Piece? = nil
     @State private var companyChoice: Luxury.Item? = nil
+    @State private var pending: PendingAction? = nil
 
     var body: some View {
         if let e = store.engine {
@@ -30,6 +31,7 @@ struct LuxuryView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            .confirmAction($pending)
             .ledgerBackground()
             .navigationTitle("Luxury")
             .navigationBarTitleDisplayMode(.inline)
@@ -202,7 +204,22 @@ struct LuxuryView: View {
                 SectionTabs(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
                             selection: Binding(get: { open }, set: { v in store.act { $0.setCastleOpen(pieceID: p.id, open: v) } })).padding(.horizontal, -Theme.Space.margin)
             }
+            LendPieceSection(engine: e, piece: p)
             HStack(spacing: Theme.Space.m) {
+                if p.item.category == "yachts", p.companyID == 0, let q = e.yachtDinnerQuote() {
+                    Button(q.waitWeeks > 0 ? "Dinner in \(q.waitWeeks) wk" : "Host a dinner") {
+                        pending = PendingAction(title: "Host a dinner on board?",
+                                                message: "Costs \(store.short(q.cost)) from your cash. Warms the three suppliers you know least. Possible once every four weeks.",
+                                                button: "Host for \(store.short(q.cost))") {
+                            switch store.act({ $0.hostYachtDinner() }) {
+                            case .ok(let guests)?: store.show(guests.isEmpty ? "A quiet evening on board: you know nobody to invite yet." : "Aboard: " + guests.joined(separator: ", ") + ".", tone: "good")
+                            case .wait?: store.show("Your last dinner was less than four weeks ago.", tone: "warn")
+                            case .notEnoughCash?: store.show("Not enough cash for the dinner.", tone: "warn")
+                            default: store.show("Not possible.", tone: "warn")
+                            }
+                        }
+                    }.buttonStyle(SmallOutlineButtonStyle()).disabled(q.waitWeeks > 0)
+                }
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
                         switch store.act({ $0.hostIslandRetreat() }) {

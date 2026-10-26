@@ -82,6 +82,7 @@ public enum Cyber {
             return
         }
         Incidents.loss(&s, companyID: co.id, amount: amt, category: "cyber", label: "Fake invoice paid", data: data)
+        AftermathQueue.schedule(&s, companyID: co.id, kind: "secreview", delay: 3)
         log(&s, i, "Paid a fake invoice: \(cur.display(amt))")
         s.addMessage(from: co.name, title: "\(co.name) paid a fake invoice",
                      body: "An email that looked like it came from a supplier asked us to pay \(cur.display(amt)) to a new bank account. It was a fraud and the money is gone."
@@ -96,6 +97,7 @@ public enum Cyber {
         let demand = (clamp(weeklyRevenue(co, cur) * (1 + 2 * h.next()), cur.scaledPrice(40000), cur.scaledPrice(5e6)) / 1000).rounded() * 1000
         let team = (cur.scaledPrice(60000) * sizeFactor(co) / 1000).rounded() * 1000
         PriceMoves.addModifier(&s, i, key: "cap", multiplier: 0.3, weeks: 1)
+        AftermathQueue.schedule(&s, companyID: co.id, kind: "secreview", delay: 3)
         log(&s, i, "Ransomware: systems locked")
         let bk = c["bk"].bool
         s.addMessage(kind: "ask", from: co.managerID.flatMap { s.people[$0]?.name } ?? co.name, title: "Ransomware has locked the systems at \(co.name)",
@@ -113,6 +115,7 @@ public enum Cyber {
         let f = CountryTraits.hasDataProtectionLaw(co.countryCode) ? 1.0 : 0.5
         let fine = (cur.scaledPrice(25000) * sizeFactor(co) * (0.6 + h.next()) * f * exposure(co, bd) / 1000).rounded() * 1000
         log(&s, i, "Customer data leaked")
+        AftermathQueue.schedule(&s, companyID: co.id, kind: "secreview", delay: 3)
         s.addMessage(kind: "ask", from: co.managerID.flatMap { s.people[$0]?.name } ?? co.name, title: "Customer data has leaked from \(co.name)",
                      body: "Someone got into our systems and copied names, emails and some payment details of our customers. The law says we must tell the data protection authority within 72 hours and warn the customers.",
                      companyID: co.id, tone: "bad", status: "open",

@@ -203,6 +203,7 @@ struct WorldAroundView: View {
 struct DataAnalystCard: View {
     @EnvironmentObject var store: GameStore
     @State private var candidates: [Person] = []
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine {
@@ -215,30 +216,31 @@ struct DataAnalystCard: View {
                                 let r = store.act { $0.orderAnalystReport(companyID: nil) }
                                 if case .refused(let why)? = r { store.show(why, tone: "warn") } else { store.show("Report sent to your inbox."); Haptics.success() }
                             }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                            Button("Let them go") { store.act { $0.fireDataAnalyst() } }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                            Button("Let them go") {
+                                pending = PendingAction(title: "Let your data analyst go?", message: "Market shares, rivals and forecasts go back to guesses until you hire another. Their desk in the main office is freed.", button: "Let go", destructive: true) {
+                                    store.act { $0.fireDataAnalyst() }; Haptics.warning(); store.show("Your data analyst has left.", tone: "n")
+                                }
+                            }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                         }
                     } else {
                         Text("Without an analyst you only have your own guess. A data analyst in your head office gives ranges, sharper with experience.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                         if candidates.isEmpty {
                             Button("Find a data analyst") { candidates = store.act { $0.dataAnalystCandidates() } ?? [] }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                         }
-                        ForEach(candidates) { p in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(p.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                                    Text("Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                        if !candidates.isEmpty {
+                            CandidateHireList(people: candidates, emptyText: "") { p in
+                                CandidateHireRow(person: p, currency: e.homeCurrency, subtitle: "Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)",
+                                                 market: e.goingRate(for: .analyst), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
+                                    let feedback = HireFeedback.from(store.act { $0.hireDataAnalyst(personID: p.id, monthlyWage: wage) }, name: p.name)
+                                    if feedback.isHired { candidates = []; store.show(feedback.text, tone: "good") }
+                                    return feedback
                                 }
-                                Spacer()
-                                Button(store.short(p.askingMonthlyWage) + " / mo") {
-                                    if let r = store.act({ $0.hireDataAnalyst(personID: p.id, monthlyWage: p.askingMonthlyWage) }) {
-                                        if r == .ok { candidates = []; Haptics.success() } else { store.show("They turned the offer down.", tone: "warn") }
-                                    }
-                                }.buttonStyle(QuietButtonStyle())
                             }
                         }
                     }
                 }
             }
+            .confirmAction($pending)
         }
     }
 }

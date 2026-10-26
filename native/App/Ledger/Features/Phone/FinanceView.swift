@@ -39,7 +39,7 @@ struct FinanceView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
-            .navigationTitle(companyID == nil ? "Money" : "Finance & taxes")
+            .navigationTitle(companyID == nil ? "Group money" : "Finance & taxes")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { takeRequestedSection() }
             .onChange(of: store.moneySection) { _, _ in takeRequestedSection() }
@@ -62,7 +62,8 @@ struct FinanceView: View {
                         Spacer()
                         Chip(text: o.shortfall > 0 ? "Short by \(store.short(o.shortfall))" : "Covered", tint: o.shortfall > 0 ? Theme.loss : Theme.gain)
                     }
-                    ValueRow(label: "Cash available", value: store.money(o.cashAvailable))
+                    ValueRow(label: CashWording.available(companyID: companyID), value: store.money(o.cashAvailable))
+                    if companyID == nil { ValueRow(label: CashWording.personalNote, value: store.money(e.netWorth.personal), tint: Theme.ivoryMuted) }
                     ValueRow(label: "Tax and VAT owed now", value: store.money(o.taxesOwed), tint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory)
                     ForEach(o.notes, id: \.self) { n in Text(n).font(.caption).foregroundStyle(Theme.ivoryMuted) }
                 }

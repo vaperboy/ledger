@@ -14,18 +14,58 @@ permissions:
 
 jobs:
   engine-tests:
-    runs-on: macos-14
+    # Same runner and Xcode as app-build, so the engine is tested with the toolchain that builds the app.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
       - name: Swift version
         run: swift --version
       - name: Test the game engine
         working-directory: native/Engine
-        run: swift test 2>&1 | tail -n 40
+        env:
+          LEDGER_PROGRESS: "1"
+        run: |
+          set -o pipefail
+          # Release build with testing enabled: the same tests, several times faster (the long balance probes ran past what the
+          # macOS runner allows a silent test process in a debug build).
+          if ! swift test -c release -Xswiftc -enable-testing > test.log 2>&1; then
+            grep -nE "error:|Fatal error|fatalError|Exited with|signal|crash|Test Case .* started" test.log | tail -n 30
+            grep -n "PROGRESS" test.log | tail -n 8
+            tail -n 40 test.log
+            # A crashed test process leaves no XCTest output: print the macOS crash report's faulting thread.
+            R=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 1)
+            if [ -n "$R" ]; then echo "== crash report $R"; python3 -c "
+          import json,sys
+          t=open(sys.argv[1]).read().split('\\n',1)[1]; d=json.loads(t)
+          print('exception:', d.get('exception'), d.get('termination',{}).get('indicator'))
+          imgs=d.get('usedImages',[])
+          for th in d.get('threads',[]):
+              if th.get('triggered'):
+                  for f in th.get('frames',[])[:40]:
+                      im=imgs[f.get('imageIndex',0)].get('name','?') if imgs else '?'
+                      print(' ', im, f.get('symbol','?'), f.get('sourceFile',''), f.get('sourceLine',''))
+          " "$R" || head -c 4000 "$R"; fi
+            exit 1
+          fi
+          tail -n 5 test.log
 
+      - name: Backtrace of the crashing test (only if the tests failed)
+        if: failure()
+        working-directory: native/Engine
+        run: |
+          B=$(find .build -name "LedgerEnginePackageTests.xctest" -maxdepth 4 | head -n 1)
+          X=$(xcrun -f xctest)
+          echo "bundle=$B xctest=$X"
+          LEDGER_PROGRESS=1 lldb --batch -o "process handle SIGILL SIGTRAP SIGSEGV SIGBUS SIGABRT -s true -n true" -o run -o "bt 60" -o "thread list" \
+            -- "$X" -XCTest LedgerTests.BalanceGuardTests/testCapitalHeavyTradesEarnModestReturns "$B" 2>&1 | grep -vE "^PROGRESS" | tail -n 90
+
+  # Runs in parallel with engine-tests (both must pass): a compile error in the app shows up without waiting for the long engine tests.
   app-build:
     runs-on: macos-15
-    needs: engine-tests
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode

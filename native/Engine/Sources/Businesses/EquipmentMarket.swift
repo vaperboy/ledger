@@ -164,7 +164,7 @@ public enum EquipmentMarket {
         let generic = ["Group", "Trading", "Supply Group", "Holding", "Partners"]
         let starts = C.companyNameStarts.isEmpty ? ["Nova"] : C.companyNameStarts
         func pick<T>(_ a: [T]) -> T { a[min(a.count - 1, Int(r.next() * Double(a.count)))] }
-        var out: [(Vendor, [String])] = []
+        var out: [(vendor: Vendor, families: [String])] = []
         var used = Set<String>()
         var guardN = 0
         while out.count < 60 && guardN < 600 {
@@ -486,7 +486,7 @@ public enum EquipmentMarket {
         let q = one ? 1 : max(1, quantity)
         let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
         let total = unit * Double(q)
-        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, big: true) }
+        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
         var pay = payment
         if one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
         if pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
@@ -608,6 +608,7 @@ public enum EquipmentMarket {
         else { units[equipmentID] = .array(list) }
         s.companies[i].set("eq", eq); s.companies[i].set("units", units)
         if r["n"].double - 1 > 0 { EquipmentUnits.syncCondition(&s, companyIndex: i, equipmentID: equipmentID) }
+        if bvU > val { Payments.book(&s, companyID: companyID, category: "loss", amount: bvU - val) }   // sold below book value: the loss is an expense
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold used \(equipmentID)") }
         return val
     }
@@ -626,10 +627,12 @@ public enum EquipmentMarket {
         guard let i = s.companyIndex(companyID) else { return 0 }
         var eq = s.companies[i].value("eq")
         guard !eq[equipmentID].isNull, equipmentID != "fit" else { return 0 }
-        let v = jsRound(eq[equipmentID]["bv"].double * 0.7)
+        let bookValue = eq[equipmentID]["bv"].double
+        let v = jsRound(bookValue * 0.7)
         eq = .object(eq.object.filter { $0.key != equipmentID })
         s.companies[i].set("eq", eq)
         s.companies[i].set("units", EquipmentUnits.removing(s.companies[i].value("units"), equipmentID))
+        if bookValue > v { Payments.book(&s, companyID: companyID, category: "loss", amount: bookValue - v) }
         Payments.companyReceives(&s, companyID: companyID, amount: v, category: nil, label: "Sold equipment")
         return v
     }
@@ -643,6 +646,7 @@ public enum EquipmentMarket {
         let v = list.remove(at: at)
         s.companies[i].set("veh", .array(list))
         let val = v["mode"].string == "lease" ? 0 : jsRound(v["bv"].double * 0.78)
+        if v["bv"].double > val { Payments.book(&s, companyID: companyID, category: "loss", amount: v["bv"].double - val) }
         if val > 0 { Payments.companyReceives(&s, companyID: companyID, amount: val, category: nil, label: "Sold \(v["name"].string)") }
         if v["loan"].int != 0, let li = s.loans.firstIndex(where: { $0.id == v["loan"].int }) {
             Payments.companyPays(&s, companyID: companyID, amount: s.loans[li].balance, category: nil, label: "Loan settled")

@@ -18,15 +18,14 @@ extension StaffTalks {
     /// The months (1-12) as seasons in words. Original: `R54.seasText`.
     public static func seasonText(_ ms: [Int]) -> String {
         let full = seasons.filter { $0.months.allSatisfy(ms.contains) }
-        let covered = Set(full.flatMap(\.months))
-        let out = (full.map(\.name) + ms.filter { !covered.contains($0) }.map { monthNames[$0] }).joined(separator: ", ")
+        let covered = Set(full.flatMap { $0.months })
+        let out = (full.map { $0.name } + ms.filter { !covered.contains($0) }.map { monthNames[$0] }).joined(separator: ", ")
         return out.isEmpty ? "no months yet" : out
     }
 
     /// Months (1-12) in which the trade is busy: the ones a seasonal worker is for. Original: `R54.busyMonths`.
     public static func busyMonths(_ co: Company, data: GameData) -> [Int] {
-        guard let bd = data.catalog[co.type], let t = data.catalog.tables.seasons[bd.seasonKey], t.count == 12 else { return [] }
-        return (1...12).filter { t[$0 - 1] >= 1.08 }
+        ManagerModel.seasonalBusyMonths(co, data: data)   // the trade's year with its own peak, as the original
     }
 
     static func month1(_ week: Int) -> Int { GameCalendar.month(week: week) + 1 }
@@ -42,7 +41,7 @@ extension StaffTalks {
             m.set("seas", .array(ms.map { .number(Double($0)) }))
             m.set("off", !ms.contains(month1(week)))
         }
-        if m.role == "estate", terms.ownCar { m.set("ownCar", 1) }
+        if terms.ownCar { m.set("ownCar", 1) }   // Hiring.hire drops it for a job that does not use a car
     }
 
     /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`.
@@ -160,26 +159,6 @@ extension StaffTalks {
         setFixedPay(&s, companyIndex: ci, staffID: staffID, data: data)
         let w = s.week
         return edit(&s, ci, staffID) { $0.happyUntilWeek = max($0.happyUntilWeek, w + 26) }
-    }
-
-    /// Pay model of a seller: fixed, fixed plus commission, commission only. Someone who wants security may refuse commission only
-    /// and resign. Original: `setPay`, `ACT.setpay`.
-    @discardableResult
-    public static func setPayModel(_ s: inout GameState, companyID: Int, staffID: Int, mode: String, data: GameData) -> PayModelResult {
-        guard let ci = s.companyIndex(companyID), let m0 = s.companies[ci].staff.first(where: { $0.id == staffID }), let n = s.people[staffID] else { return .unknown }
-        if mode == "com", n.num("sec") > 0.65, s.random.chance(0.6) {
-            _ = Hiring.fire(staffID, from: companyID, state: &s, data: data, withCause: true)
-            return .resigned
-        }
-        let rate = mode == "fix" ? 0.0 : mode == "mix" ? 0.03 : 0.06
-        let cur = World(state: s, data: data).currency(s.companies[ci])
-        let mk = cur.roundedStep(ManagerModel.marketWage(s, s.companies[ci], role: m0.role, data: data) * m0.partTimeShare * (0.7 + n.skill / 160), about: 100)
-        edit(&s, ci, staffID) { m in
-            m.monthlyWage = mode == "fix" ? max(m.monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : mode == "mix" ? cur.roundedStep(mk * 0.6, about: 100) : 0
-            m.set("pay", .object(["m": .string(mode), "rate": .number(rate)]))
-            m.set("commEma", 0)
-        }
-        return .ok
     }
 
     /// Commission share of a seller on a pay plan. Original: `ACT.setrate`.

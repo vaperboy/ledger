@@ -8,7 +8,11 @@ import Finance
 /// Golden/rf_save.json and Golden/rf_oracle.json were produced by tools/ref/snippets/rental_finance_oracle.js.
 final class RentalFinanceDifferentialTests: XCTestCase {
     func loaded() throws -> (GameState, JSONValue, GameData) {
-        (try Golden.state("rf_save"), try Golden.load("rf_oracle"), try GameData.bundled())
+        var s = try Golden.state("rf_save")
+        // Intended difference, not a regression: the Swift game has named, living rivals (strategy, fortune) whose strength moves the
+        // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
+        if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
+        return (s, try Golden.load("rf_oracle"), try GameData.bundled())
     }
 
     func index(_ s: GameState, _ g: JSONValue, _ key: String) -> Int { s.companyIndex(g["ids"][key].int)! }

@@ -134,6 +134,7 @@ public extension GameEngine {
         let p = co.payables
         var b: Double = p["wages"] ?? 0
         b += p["other"] ?? 0
+        b += p["inv"] ?? 0
         b += p["rent"] ?? 0
         b += max(0, co.vatBalance)
         b += p["tax"] ?? 0
@@ -230,8 +231,11 @@ public extension GameEngine {
 
     // MARK: Staff: employment types, trial week, pay model, car
 
-    /// Hire on given terms: full time with a chosen pay basis, part time (weekly hours) or seasonal (months). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`.
-    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms) -> Hiring.HireResult {
+    /// THE way to hire a candidate (every worker hire goes through here to `Hiring.hire`): checks the offer against the ask, lifts it to the minimum wage,
+    /// books the hire, makes the staff record and its paperwork, and answers `.ok`, `.taken` (has a job) or `.refused` (offer too low, or unknown person/company).
+    /// Terms: full time with a chosen pay basis (the default), part time (weekly hours), seasonal (months), own car (estate agents only). Original: `HIRE_HOURS`, `HIRE_SEAS`, `HIRE_BASIS`, `ACT.offer` + `carc`.
+    @discardableResult
+    mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms()) -> Hiring.HireResult {
         var r = Hiring.HireResult.refused
         update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data, terms: terms) }
         return r
@@ -239,55 +243,17 @@ public extension GameEngine {
     /// The months of the year a seasonal hire would be for by default: the busy months of the trade.
     func busyMonths(companyID: Int) -> [Int] { state.company(companyID).map { StaffTalks.busyMonths($0, data: data) } ?? [] }
 
+    /// What the job normally pays here at full time: the employer's opening offer in a pay discussion, the same for everyone in the role.
+    func marketWage(role: String, companyID: Int) -> Double { Hiring.marketWage(role: role, company: state.company(companyID), state: state, data: data) }
+
     /// Pay for a trial week and see what the person can really do. Original: `ACT.trial`.
     mutating func startTrialWeek(personID: Int, companyID: Int) -> Double? {
         var r: Double?
-        update { s, _, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s) }
-        return r
-    }
-    mutating func setStaffHours(companyID: Int, staffID: Int, hours: Double) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, _, _ in r = StaffTalks.setStaffHours(&s, companyID: companyID, staffID: staffID, hours: hours) }
-        return r
-    }
-    mutating func offerFullTime(companyID: Int, staffID: Int) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, d, _ in r = StaffTalks.offerFullTime(&s, companyID: companyID, staffID: staffID, data: d) }
-        return r
-    }
-    mutating func offerPartTime(companyID: Int, staffID: Int, hours: Double = 20) -> StaffTalks.OfferResult {
-        var r = StaffTalks.OfferResult.unknown
-        update { s, _, _ in r = StaffTalks.offerPartTime(&s, companyID: companyID, staffID: staffID, hours: hours) }
-        return r
-    }
-    @discardableResult mutating func toggleSeason(companyID: Int, staffID: Int, season: String) -> Bool {
-        var r = false
-        update { s, _, _ in r = StaffTalks.toggleSeason(&s, companyID: companyID, staffID: staffID, season: season) }
-        return r
-    }
-    @discardableResult mutating func offerFixedSalary(companyID: Int, staffID: Int) -> Bool {
-        var r = false
-        update { s, d, _ in r = StaffTalks.offerFixedSalary(&s, companyID: companyID, staffID: staffID, data: d) }
-        return r
-    }
-    mutating func setPayModel(companyID: Int, staffID: Int, mode: String) -> StaffTalks.PayModelResult {
-        var r = StaffTalks.PayModelResult.unknown
-        update { s, d, _ in r = StaffTalks.setPayModel(&s, companyID: companyID, staffID: staffID, mode: mode, data: d) }
-        return r
-    }
-    @discardableResult mutating func toggleOwnCar(companyID: Int, staffID: Int) -> Bool {
-        var r = false
-        update { s, _, _ in r = StaffTalks.toggleOwnCar(&s, companyID: companyID, staffID: staffID) }
+        update { s, data, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s, data: data) }
         return r
     }
     /// Roles that sell and can be paid by commission.
     var salesRoles: Set<String> { data.catalog.tables.salesRoles }
-    /// Why a person turned down an offer, in words.
-    func refusalReason(companyID: Int, staffID: Int, want: String) -> String {
-        guard let m = state.company(companyID)?.staff.first(where: { $0.id == staffID }) else { return "" }
-        return StaffTalks.wishWhy(m, name: state.people[staffID]?.name ?? "", want: want)
-    }
-
     // MARK: Chains, complaints, premises, accountant, development
 
     @discardableResult mutating func lendWorker(from: Int, to: Int, role: String) -> Bool {

@@ -142,19 +142,20 @@ public enum CompanySale {
     static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, mbo: Bool = false, data: GameData, context fc: FinanceContext) -> Double? {
         let co = s.companies[i]
         guard co.status.isLive else { return nil }
+        defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }   // a sold company leaves the holding's assets at once
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
         let basis = max(0, co.injectedCapital)
-        s.tax.gains += max(0, proceeds - basis * mine)
+        let gain = max(0, proceeds - basis * mine)
         var now = proceeds
         if mbo {
             let later = jsRound(proceeds / 3)
             now -= later
             var d = s.rest["deferred"]?.array ?? []
-            d.append(.object(["w": .number(Double(s.week + 104)), "amt": .number(later), "name": .string(co.name), "hurdle": .number(0)]))
+            d.append(.object(["w": .number(Double(s.week + 104)), "amt": .number(later), "name": .string(co.name), "hurdle": .number(0), "to": .number(Double(co.holdingID))]))
             s.rest["deferred"] = .array(d)
         }
-        Payments.playerReceives(&s, now, label: "Sold \(co.name) (\(buyer))", companyID: co.id)
+        Payments.ownerReceivesSale(&s, from: co, amount: now, gain: gain, label: "Sold \(co.name) (\(buyer))")
         for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
         s.companies[i].staff = []
@@ -172,8 +173,7 @@ public enum CompanySale {
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let pts = min(pct * co.ownership / 100, co.ownership - 1)
-        Payments.playerReceives(&s, amount, label: "Sold \(Int(pct))% of \(co.name)", companyID: co.id)
-        s.tax.gains += max(0, amount - co.injectedCapital * pts / 100)
+        Payments.ownerReceivesSale(&s, from: co, amount: amount, gain: amount - co.injectedCapital * pts / 100, label: "Sold \(Int(pct))% of \(co.name)")
         Funding.addHolder(&s, i, name: buyer, pct: pts, paid: amount)
         s.companies[i].ownership = jsRound((co.ownership - pts) * 100) / 100
         if pts >= 20 { Funding.addBoardSeats(&s, i, 1) }
@@ -198,26 +198,45 @@ public enum CompanySale {
 
     public enum TalkResult: Equatable { case unchanged, agreed(Double), stretched(Double), refused, walkedAway }
 
-    /// Name your price. At or below the offer: they ask you to sign. Up to their limit: they agree. A little above: they stretch half way
-    /// and lose patience. Far above: they lose two patience. At zero they walk away. Original: `ACT.salecounter`.
+    /// Name your price. At or below the offer: they ask you to sign. Up to their limit: they agree. Above it the buyer answers through the shared
+    /// `Negotiation` (it is a buyer, so it wants the price down): it stretches towards a figure it can pay, usually one it can really pay and now and then
+    /// an unrealistic one that does not move the offer; an insulting ask is refused; and when its patience is gone it walks away. Original: `ACT.salecounter`.
     @discardableResult
     public static func talkCounter(_ s: inout GameState, companyID: Int, offerID: Int, price: Double) -> TalkResult {
         guard let l = listing(s, companyID: companyID), let o = l.offers.first(where: { $0.id == offerID }) else { return .unchanged }
         let ask = (price / 1000).rounded() * 1000
         let mx = o.maxPrice > 0 ? o.maxPrice : (o.price * (1 + s.random.range(o.kind == "rival" || o.kind == "fund" ? 0.06 : 0.02, o.kind == "rival" ? 0.22 : 0.14)) / 1000).rounded() * 1000
-        var newPrice = o.price, pat = o.patience, result = TalkResult.unchanged, reply = ""
+        var newPrice = o.price, result = TalkResult.unchanged, reply = ""
+        var talk = Negotiation.State()
+        var walked = false
+        let t = Negotiation.temperament(personality: nil, key: "sale:\(offerID)")
+        let patience = Negotiation.patience(rank: "deal", temperament: t)
+        var left = o.patience
         if ask <= o.price { reply = "That is what we offered. Shall we sign?" }
-        else if ask <= mx { newPrice = ask; reply = "Fine. \(Int(ask)) it is."; result = .agreed(ask) }
-        else if ask <= mx * 1.1 { newPrice = min(mx, ((o.price + mx) / 2 / 1000).rounded() * 1000); pat -= 1; reply = "We can stretch to \(Int(newPrice)). That is about as far as we go."; result = .stretched(newPrice) }
-        else { pat -= 2; reply = "That is far above what it is worth to us."; result = .refused }
-        updateOffer(&s, companyID: companyID, offerID: offerID) { off in
-            var talk = off["talk"].array
-            talk.append(.object(["me": 1, "t": .string("I want \(Int(ask)).")]))
-            talk.append(.object(["me": 0, "t": .string(reply)]))
-            off["talk"] = .array(talk)
-            off["max"] = .number(mx); off["price"] = .number(newPrice); off["pat"] = .number(Double(pat))
+        else {
+            let stored = s.rest["sales"]?.array.first(where: { $0["co"].int == companyID })?["offers"].array.first(where: { $0["id"].int == offerID })?["neg"] ?? .null
+            if !stored.isNull { talk = Negotiation.State(json: stored) }
+            let position = Negotiation.Position(opening: o.price, reservation: mx, direction: .lower)
+            let reply0 = Negotiation.respond(offer: ask, position: position, temperament: t, rank: "deal", state: &talk, week: s.week, step: 1000, random: &s.random)
+            left = max(0, patience - talk.round)
+            switch reply0.answer {
+            case .accept: newPrice = ask; reply = "Fine. \(Int(ask)) it is."; result = .agreed(ask); talk = Negotiation.State()
+            case .counter(let c):
+                if reply0.unrealistic || c.amount <= o.price { reply = "We stay at \(Int(o.price)). That is what it is worth to us."; result = .refused }
+                else { newPrice = min(mx, c.amount); reply = "We can stretch to \(Int(newPrice)). That is about as far as we go."; result = .stretched(newPrice) }
+            case .refuse: reply = "That is far above what it is worth to us."; result = .refused
+            case .walkAway: walked = true
+            }
         }
-        if pat <= 0 {
+        updateOffer(&s, companyID: companyID, offerID: offerID) { off in
+            var tl = off["talk"].array
+            tl.append(.object(["me": 1, "t": .string("I want \(Int(ask)).")]))
+            tl.append(.object(["me": 0, "t": .string(walked ? "I have heard enough. We are done." : reply)]))
+            off["talk"] = .array(tl)
+            off["max"] = .number(mx); off["price"] = .number(newPrice); off["pat"] = .number(Double(left))
+            if talk.isOpen { off["neg"] = talk.json } else { off["neg"] = .null }
+        }
+        if walked {
             decline(&s, companyID: companyID, offerID: offerID)
             s.note("\(o.buyer) walked away.", tone: "n", companyID: companyID)
             return .walkedAway
@@ -265,7 +284,8 @@ public enum CompanySale {
                 let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog))
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
-                if s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45)) {
+                let hostedInv = StaffPerks.hosted(s, "inv")   // investors you hosted: buyers come sooner and pay a little more
+                if s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45) * (1 + 0.35 * hostedInv)) {
                     var kinds = pct == 100 ? ["private", "fund", "rival"] : ["private", "fund", "angel"]
                     if pct == 100, co.managerID != nil && s.people[co.managerID!] != nil { kinds.append("mbo") }
                     let k = s.random.pick(kinds)
@@ -274,7 +294,7 @@ public enum CompanySale {
                     let name: String = k == "mbo" ? (s.people[co.managerID ?? 0]?.name ?? "Your manager") + ", your manager"
                         : k == "rival" ? "A rival in your trade" : k == "fund" ? "An investment fund" : k == "angel" ? "A private investor" : "A private buyer"
                     let base = pct == 100 ? v0 : v0 * Double(pct) / 100 * co.ownership / 100
-                    let price = (base * f / 1000).rounded() * 1000
+                    let price = (base * f * (1 + 0.04 * hostedInv) / 1000).rounded() * 1000
                     offers.append(.object(["id": .number(Double(s.makeID())), "k": .string(k), "name": .string(name), "price": .number(price), "note": .string(notes[k] ?? ""),
                                            "exp": .number(Double(s.week + 6)), "ctr": .number(0)]))
                     s.addMessage(from: name, title: "Offer for \(pct == 100 ? co.name : "\(pct)% of \(co.name)")", body: "\(name) offers \(currency.display(pct == 100 ? price * co.ownership / 100 : price)) for your stake.", companyID: co.id, tone: "good")
@@ -293,7 +313,10 @@ public enum CompanySale {
         for d in s.rest["deferred"]?.array ?? [] {
             guard s.week >= d["w"].int else { keep.append(d); continue }
             let paid = jsRound(d["amt"].double)
-            Payments.playerReceives(&s, paid, label: "Paid back for \(d["name"].string)")
+            if d["to"].int != 0, let hi = s.companyIndex(d["to"].int), s.companies[hi].status.isLive {
+                Ledger.moveRaw(&s, .company(d["to"].int), paid)
+                s.companies[hi].addTransaction(week: s.week, amount: paid, label: "Paid back for \(d["name"].string)")
+            } else { Payments.playerReceives(&s, paid, label: "Paid back for \(d["name"].string)") }
             s.note("The money still owed for \(d["name"].string) has been paid.", tone: "good")
         }
         s.rest["deferred"] = .array(keep)

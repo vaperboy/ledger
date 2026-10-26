@@ -26,9 +26,7 @@ extension ManagerModel {
 
     public enum PromotionOutcome: Equatable {
         case accepted(String)
-        case counter(Double, String)     // "Make it ..."
-        case tooLow(String)
-        case declinedForGood(String)     // they leave it
+        case counter(Double, String)     // "Make it ..." (they ask for more, never less)
         case unavailable(String)
     }
 
@@ -59,7 +57,6 @@ extension ManagerModel {
     struct Candidate { var co: Company; var n: Person; var isManager: Bool; var pay: Double; var role: String; var skill: Double }
 
     static func skillOf(_ s: GameState, _ m: StaffMember, _ n: Person, data: GameData) -> Double { StaffTalks.skill(m, n, salesRoles: data.catalog.tables.salesRoles) }
-    static func patienceMax(_ n: Person) -> Int { n.str("pers") == "driven" ? 5 : (n.str("pers") == "loyal" || n.str("pers") == "steady") ? 8 : 7 }
 
     static func candidate(_ s: GameState, companyID: Int, personID: Int, data: GameData) -> Candidate? {
         guard let co = s.company(companyID), let n = s.people[personID] else { return nil }
@@ -122,49 +119,58 @@ extension ManagerModel {
 
     // MARK: The talk
 
-    /// Make an offer. Close offers get a counter; low ones lose patience. Original: `ACT.p11offer`.
-    public static func offerPromotion(_ s: inout GameState, companyID: Int, personID: Int, post key: String, monthlyWage w: Double, terms: PromotionTerms = PromotionTerms(), data: GameData) -> PromotionOutcome {
+    /// What this person asks for the post as offered: pay, with the extra duties, the authority and the reporting counted. The price the shared
+    /// `Negotiation` works from.
+    static func promotionNeed(_ post: PromotionPost, terms: PromotionTerms) -> Double {
+        var need = post.ask * (1 + Double(max(0, terms.duties.count - 1)) * 0.03)
+        if post.kind != "role" { need *= 1 + (terms.authority == 2 ? -0.03 : terms.authority == 0 && post.kind == "exec" ? 0.03 : 0) }
+        if post.kind == "exec" && terms.report == "week" { need *= 1.02 }
+        return need
+    }
+
+    /// What the extras in the package are worth a month to the person: the yearly bonus at 60% and the shares spread over three years.
+    static func promotionExtras(_ s: GameState, _ c: Candidate, wage w: Double, terms: PromotionTerms, data: GameData) -> Double {
+        let eq: Double = terms.sharesPercent > 0 && c.co.form == .limited ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
+        return w * terms.bonus * 0.6 + eq
+    }
+
+    /// Offer the post. At or above what the person asks they accept. Below it they ask for more through the shared `Negotiation` (patience by the level of
+    /// the post and the person's temperament, now and then an unrealistic figure); they never turn down more pay: when their patience is gone they take the
+    /// post at what is on the table, and are not happy about it. Original: `ACT.p11offer` (the answer is now `Negotiation`). The talk is kept by the caller.
+    public static func offerPromotion(_ s: inout GameState, companyID: Int, personID: Int, post key: String, monthlyWage w: Double, terms: PromotionTerms = PromotionTerms(),
+                                      negotiation talk: inout Negotiation.State, data: GameData) -> PromotionOutcome {
         guard let c = candidate(s, companyID: companyID, personID: personID, data: data), let post = promotionPosts(s, companyID: companyID, personID: personID, data: data).first(where: { $0.id == key }) else { return .unavailable("This post is not open.") }
         if !post.blocked.isEmpty { return .unavailable(post.blocked) }
-        var n = c.n
-        let first = firstName(n.name)
-        if n.num("promoNo") > Double(s.week) { return .unavailable("\(first) is not interested for a while.") }
-        var pat = n.value("promoPat").isNull ? patienceMax(n) : n.int("promoPat")
-        let senior = post.kind == "exec"
-        var need = post.ask * (1 + Double(max(0, terms.duties.count - 1)) * 0.03)
-        if post.kind != "role" { need *= 1 + (terms.authority == 2 ? -0.03 : terms.authority == 0 && senior ? 0.03 : 0) }
-        if senior && terms.report == "week" { need *= 1.02 / 1.0 }
-        let eqValue: Double
-        if terms.sharesPercent > 0 && c.co.form == .limited { eqValue = max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 } else { eqValue = 0 }
-        let eff = w + w * terms.bonus * 0.6 + eqValue
+        let first = firstName(c.n.name)
+        let need = promotionNeed(post, terms: terms)
+        let extras = promotionExtras(s, c, wage: w, terms: terms, data: data)
         let cur = World(state: s, data: data).currency(c.co)
-        if eff >= need {
-            n.set("promoPat", .null); s.people[personID] = n
-            let msg = applyPromotion(&s, c, post: post, wage: w, terms: terms, data: data)
+        func accept(grudging: Bool) -> PromotionOutcome {
+            talk = Negotiation.State()
+            var msg = applyPromotion(&s, c, post: post, wage: w, terms: terms, data: data)
+            if grudging, let ci = s.companyIndex(companyID) {
+                msg += " \(first) takes it, but feels underpaid for the job."
+                if c.isManager { s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 5)) }
+                else if let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) { var st = s.companies[ci].staff; st[k].happyUntilWeek = 0; s.companies[ci].staff = st }
+            }
             return .accepted(msg)
         }
-        var out: PromotionOutcome
-        if eff >= need * 0.9 {
-            pat -= 1
-            out = .counter(cur.roundedStep(need / (1 + terms.bonus * 0.6), about: 500), "Close. Make it \(cur.display(cur.roundedStep(need / (1 + terms.bonus * 0.6), about: 500)))\(terms.duties.count > 2 ? ", or take one duty off me," : "") and we have a deal.")
-        } else {
-            pat -= 2
-            out = .tooLow(post.kind == "role" ? "That is not much more than I earn now." : "That is too little for this much responsibility.")
+        if w + extras >= need { return accept(grudging: false) }
+        let t = Hiring.temperament(of: c.n)
+        let position = Negotiation.position(reservation: need, direction: .higher, temperament: t, key: "promo:\(personID):\(key)")
+        let reply = Negotiation.respond(offer: w + extras, position: position, temperament: t, rank: post.kind == "role" && !c.isManager ? "worker" : "manager",
+                                        state: &talk, week: s.week, step: cur.stepSize(about: 500), random: &s.random)
+        func wage(for figure: Double) -> Double { max(w, cur.roundedStep(figure - extras, about: 500)) }
+        switch reply.answer {
+        case .accept: return accept(grudging: false)
+        case .counter(let k):
+            let ask = wage(for: k.amount)
+            return .counter(ask, k.isFinal ? "That is my last word on this: \(cur.display(ask)) a month." : "I was hoping for more for this job. Make it \(cur.display(ask)) and we have a deal.")
+        case .refuse:
+            let ask = wage(for: position.opening)
+            return .counter(ask, "That is not much for this much responsibility. I would want \(cur.display(ask)) a month.")
+        case .walkAway: return accept(grudging: true)
         }
-        if pat <= 0 {
-            n.set("promoPat", .null); n.set("promoNo", s.week + 8)
-            if let ci = s.companyIndex(companyID) {
-                if c.isManager { s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 10)) }
-                else if let k = s.companies[ci].staff.firstIndex(where: { $0.id == personID }) {
-                    var staff = s.companies[ci].staff; staff[k].happyUntilWeek = 0
-                    if s.random.chance(0.25) { staff[k].noticeWeeks = 4 }
-                    s.companies[ci].staff = staff
-                }
-            }
-            out = .declinedForGood("Let us leave it. \(first) will keep the current job for now.")
-        } else { n.set("promoPat", pat) }
-        s.people[personID] = n
-        return out
     }
 
     /// Give a person shares as part of the contract. Original: `R15give`.
@@ -251,7 +257,7 @@ extension ManagerModel {
         var tail = ""
         // someone who moves up appoints their own successor
         if let had = had {
-            if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
+            if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
         }
         if shares { tail = giveShares(&s, companyID: co.id, personID: n.id, percent: u.sharesPercent) }
         return "\(first) is now \(post.title)." + tail
@@ -340,10 +346,15 @@ extension ManagerModel {
             }
             if d.contains("hire"), let need = L.first(where: { $0.managerID == nil && $0.staff.count >= 2 && !(Double(s.week) - $0.value("flags")["f11"].double < 8 && !$0.value("flags")["f11"].isNull) }), let bd = data.catalog[need.type] {
                 var f = need.value("flags"); f["f11"] = .number(Double(s.week)); if let i = s.companyIndex(need.id) { s.companies[i].set("flags", f) }
-                let m = generateCandidate(company: need, type: bd.managerType, state: &s, data: data)
+                // the executive looks at a few people, bargains with each (AutoHire) and brings the owner the best deal, at the wage already agreed
+                var found = (0..<3).map { _ in generateCandidate(company: need, type: bd.managerType, state: &s, data: data) }
+                found.append(generateCandidate(company: need, type: "gen", state: &s, data: data))
+                if let deal = AutoHire.bestManagerDeal(candidates: found, companyID: need.id, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
+                let m = deal.person
                 let cur = World(state: s, data: data).currency(need)
-                s.addMessage(kind: "ask", from: n.name, title: "I found a manager for \(need.name)", body: "\(m.name), \(m.age), \(String(format: "%g", m.num("exp"))) years of experience. Asks \(cur.display(m.askingMonthlyWage)) a month. I checked the references.",
-                             companyID: need.id, tone: "n", status: "open", options: [.option("Hire at \(cur.short(m.askingMonthlyWage))"), .option("No thanks")], action: "mfind11", data: .object(["n": .number(Double(m.id))]), expiresWeek: s.week + 3)
+                s.addMessage(kind: "ask", from: n.name, title: "I found a manager for \(need.name)", body: "\(m.name), \(m.age), \(String(format: "%g", m.num("exp"))) years of experience. I talked pay through and we agreed \(cur.display(deal.price)) a month. I checked the references.",
+                             companyID: need.id, tone: "n", status: "open", options: [.option("Hire at \(cur.short(deal.price))"), .option("No thanks")], action: "mfind11", data: .object(["n": .number(Double(m.id)), "w": .number(deal.price)]), expiresWeek: s.week + 3)
+                }
             }
             let rep = n.value("k11")["rep"].string, me = GameCalendar.isMonthEnd(week: s.week)
             let bad = L.filter { ($0.monthlyHistory.last?.profit ?? 0) < 0 }

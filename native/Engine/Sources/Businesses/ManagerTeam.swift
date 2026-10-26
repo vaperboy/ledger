@@ -239,10 +239,10 @@ extension ManagerModel {
     public static func searchTeam(_ s: inout GameState, companyID: Int, key: String, data: GameData) -> [Person]? {
         guard let ci = s.companyIndex(companyID), key == "ceo" || key == "reg" || teamRoles.contains(where: { $0.key == key }) else { return nil }
         let cur = World(state: s, data: data).currency(s.companies[ci])
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard s.companies[ci].cash >= fee || Payments.liquid(s) >= fee else { return nil }
         Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Executive search: \(slotTitle(s, s.companies[ci], key, data: data))")
-        let f = key == "ceo" ? 2.4 : key == "reg" ? 1.6 : teamRoles.first { $0.key == key }!.payFactor
+        let f = teamPayFactor(key)
         return (0..<3).map { _ in
             var n = generateCandidate(company: s.companies[ci], type: "gen", state: &s, data: data)
             n.askingMonthlyWage = cur.roundedStep(n.askingMonthlyWage * f, about: 500)
@@ -251,12 +251,22 @@ extension ManagerModel {
         }
     }
 
-    /// Hire into a team role. Below what they ask, the closer the offer the likelier they say yes. Original: `hireTeam`.
+    /// The going monthly rate for a post on the management team (`key`: ceo, reg, sales, ops, fin, hr, mkt) at this company.
+    public static func teamGoingRate(company co: Company, key: String, state s: GameState, data: GameData) -> Double {
+        World(state: s, data: data).currency(co).roundedStep(managerGoingRate(company: co, state: s, data: data) * teamPayFactor(key), about: 500)
+    }
+
+    /// The rank of a team post for the pay talk: the managing director sits above the department heads.
+    static func teamRank(_ key: String) -> String { key == "ceo" ? "ceo" : key == "reg" ? "region" : "teamHead" }
+
+    /// Hire into a team role: at or above what they would settle for they accept, below it they counter, refuse or walk away
+    /// (higher posts are more patient). Original: `hireTeam`.
     public static func hireTeam(_ s: inout GameState, companyID: Int, key: String, personID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
-        guard let ci = s.companyIndex(companyID), var n = s.people[personID] else { return .refused }
-        if n.employerID != 0 { return .taken }
-        let ask = max(1, n.askingMonthlyWage)
-        if w < ask && !s.random.chance(clamp((w / ask - 0.88) / 0.14, 0, 1)) { return .refused }
+        guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
+        if n0.employerID != 0 { return .taken }
+        let reply = Hiring.answer(personID: personID, employer: companyID, rank: teamRank(key), offer: w, currency: World(state: s, data: data).currency(s.companies[ci]), about: 500, state: &s)
+        if let r = offerResult(reply.answer) { return r }
+        guard var n = s.people[personID] else { return .refused }
         let co = s.companies[ci]
         var t = team(co)
         let hq = w
@@ -293,7 +303,7 @@ extension ManagerModel {
         if key == "ceo" { rec = t["ceo"] } else if key == "reg" { rec = regionals(s).first { $0["id"].int == regionalID } ?? .null } else { rec = t["heads"][key] }
         guard let n = person(s, rec) else { return false }
         let social = World(state: s, data: data).country(co).employerSocial
-        Payments.companyPays(&s, companyID: companyID, amount: rec["wage"].double * (1 + social), category: "wages", label: "Severance: \(slotTitle(s, co, key, data: data))")
+        Dismissal.book(&s, payer: .company(companyID), severance: Dismissal.monthOfPay(wage: rec["wage"].double, employerSocial: social), labels: .post(slotTitle(s, co, key, data: data)))
         var p = n; p.employerID = 0; s.people[n.id] = p
         if key == "ceo" { t["ceo"] = .null }
         else if key == "reg" {
@@ -323,7 +333,7 @@ extension ManagerModel {
         var buy: Double { self == .md ? 2_000_000 : self == .ceo56 ? 600_000 : self == .chainmgr ? 250_000 : 80_000 }
         public var text: String {
             switch self {
-            case .md: return "Runs the whole group under you and approves what the chains cannot. Paid by all your companies."
+            case .md: return "Runs the whole group under you and approves what the chains cannot. Part of your group office; the pay is shared by your companies by revenue."
             case .ceo56: return "Sets the chain's strategy and takes it into new cities. Paid by the chain's stores."
             case .chainmgr: return "Keeps every store on the chain's rules, coaches the store managers, opens new stores where they are full. Paid by the chain's stores."
             case .region: return "Runs the chain's stores in one city and expands the ones that are too small. Paid by the chain's stores."
@@ -334,7 +344,7 @@ extension ManagerModel {
     /// Search for a chain or group executive; the agency is paid by the player (group) or the first store. Original: `MR56` in org_chart.js, `genExec`.
     public static func searchExecutive(_ s: inout GameState, level: ExecLevel, data: GameData) -> [Person]? {
         let cur = playerCurrency(s, data)
-        let fee = cur.scaledPrice(15000)
+        let fee = searchFee(currency: cur)
         guard Payments.liquid(s) >= fee else { return nil }
         Payments.playerPays(&s, fee, label: "Executive search: \(level.title)")
         return (0..<3).map { _ in
@@ -348,12 +358,26 @@ extension ManagerModel {
         }
     }
 
-    /// Hire a chain or group executive. `chainID` for chain levels; `city` for a regional manager. Original: `MR56[r].hire`.
+    /// The going monthly rate for a chain or group executive: the level's pay at the player's price level.
+    public static func executiveGoingRate(level: ExecLevel, state s: GameState, data: GameData) -> Double {
+        playerCurrency(s, data).scaledPrice(level.pay)
+    }
+
+    /// The rank of an executive level for the pay talk: the higher the post, the more patience.
+    static func execRank(_ level: ExecLevel) -> String {
+        switch level { case .md: return "groupDirector"; case .ceo56: return "ceo"; case .chainmgr: return "chainManager"; case .region: return "region" }
+    }
+
+    /// Hire a chain or group executive. `chainID` for chain levels; `city` for a regional manager. At or above what they would settle for they
+    /// accept; below it they counter, refuse or walk away, and the higher the post the more patience they have. Original: `MR56[r].hire`.
     public static func hireExecutive(_ s: inout GameState, level: ExecLevel, personID: Int, monthlyWage w: Double, chainID: Int?, city: String?, data: GameData) -> OfferResult {
+        guard let n0 = s.people[personID] else { return .refused }
+        if n0.employerID != 0 { return .taken }
+        // The group managing director belongs to the group office, which the owner sets up first (`Headquarters.rentOffice`).
+        if level == .md && !Headquarters.established(s) { return .refused }
+        let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 500, state: &s)
+        if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
-        if n.employerID != 0 { return .taken }
-        let ask = max(1, n.askingMonthlyWage)
-        if w < ask && !s.random.chance(clamp((w / ask - 0.88) / 0.14, 0, 1)) { return .refused }
         let cur = playerCurrency(s, data)
         let rec: JSONValue = .object(["npc": .number(Double(personID)), "wage": .number(w), "lvl": 1, "buy": .number(cur.scaledPrice(level.buy)), "w0": .number(Double(s.week))])
         switch level {
@@ -403,7 +427,7 @@ extension ManagerModel {
         default: rec = regionals(s).first { $0["id"].int == regionalID } ?? .null
         }
         guard let n = person(s, rec) else { return false }
-        Payments.playerPays(&s, rec["wage"].double * (1 + 0.14), label: "Severance: \(level.title)")
+        Dismissal.book(&s, payer: .player, severance: Dismissal.monthOfPay(wage: rec["wage"].double, employerSocial: 0.14), labels: .post(level.title))
         var p = n; p.employerID = 0; s.people[n.id] = p
         switch level {
         case .md: s.rest["org56"] = (s.rest["org56"] ?? .object([:])).with("md", .null)

@@ -42,6 +42,33 @@ public enum Headquarters {
     public static func tier(_ s: GameState, _ data: GameData) -> Tier? { tiers(data).first { $0.id == office(s)["tier"].string } }
     public static func has(_ s: GameState, _ role: String) -> Bool { s.hasHeadOffice(role) }
 
+    /// The group office is something the owner sets up (`rentOffice` writes `set`); until then no group-level post exists.
+    /// A new game carries a free home-office record from day one (the owner's own desk), which is not a group office. Older saves count as
+    /// set up when the office has people or a rented tier, or a group managing director already exists.
+    public static func established(_ s: GameState) -> Bool {
+        let o = office(s)
+        if o.isNull { return false }
+        if !o["set"].isNull || o["tier"].string != "home" || !o["staff"].array.isEmpty { return true }
+        let md = s.rest["org56"]?["md"] ?? .null
+        return !md.isNull && s.people[md["npc"].int] != nil
+    }
+
+    /// What the office costs a month: rent and the employer cost of its staff (the amount `monthly` pays).
+    public static func monthlyCost(_ s: GameState, _ data: GameData) -> Double {
+        guard let t = tier(s, data) else { return 0 }
+        return staff(s).reduce(rent(s, tier: t, cityID: office(s)["city"].string, data: data) * 1.02) { $0 + $1["wage"].double * 1.14 }
+    }
+
+    /// The holding that pays for the group office, if one has cash to spare (`payHeadOffice` uses the same choice); else nil: the owner pays.
+    static func officePayer(_ s: GameState, amount: Double) -> Company? {
+        s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > amount * 3 })
+    }
+
+    /// Who employs the people of the group office: a holding with spare cash, else the group office the owner set up.
+    public static func employerName(_ s: GameState, _ data: GameData) -> String {
+        officePayer(s, amount: max(1, monthlyCost(s, data)))?.name ?? "Your group office"
+    }
+
     // MARK: Fame
 
     /// How well known you are decides who applies and what they ask. Original: `fame`.
@@ -90,7 +117,7 @@ public enum Headquarters {
             Payments.playerPays(&s, cost, label: "Office move: first month deposit")
         }
         s.rest["office"] = .object(["tier": .string(id), "city": .string(city), "since": .number(Double(s.week)), "staff": old["staff"].isNull ? .array([]) : old["staff"],
-                                    "rep": old["rep"].isNull ? .object(["freq": 4, "detail": "short", "only": "managed"]) : old["rep"], "perfAuto": old["perfAuto"]])
+                                    "rep": old["rep"].isNull ? .object(["freq": 4, "detail": "short", "only": "managed"]) : old["rep"], "perfAuto": old["perfAuto"], "set": .number(Double(s.week))])
         return .ok
     }
     static func desksUsedOutsideStaff(_ s: GameState) -> Int { desksUsed(s) - staff(s).count }
@@ -132,7 +159,7 @@ public enum Headquarters {
     public enum RoomResult: String, Equatable, Sendable { case ok, office, bad, locked, have, homeoffice, desks }
 
     public static func room(_ s: GameState, role: String, data: GameData) -> RoomResult {
-        if office(s).isNull { return .office }
+        if !established(s) { return .office }
         if self.role(role, data) == nil { return .bad }
         if !unlocked(s, role, data) { return .locked }
         if has(s, role) { return .have }
@@ -188,16 +215,29 @@ public enum Headquarters {
         }
     }
 
-    public enum HireResult: Equatable, Sendable { case ok, refuse, taken, blocked(RoomResult) }
+    /// `refuse` is an insult with no figure named, `countered` names their own figure, `walkedAway` means the person took another job.
+    public enum HireResult: Equatable, Sendable { case ok, refuse, taken, blocked(RoomResult), countered(Negotiation.Counter), walkedAway }
 
-    /// Offer the job. Below what they ask they may say no. Original: `hireHQnpc`.
+    /// The going monthly rate for a main-office role: the role's pay at the player's price level, and what the player's fame adds. What a person asks
+    /// on top of it follows their skill.
+    public static func goingRate(role: String, state s: GameState, data: GameData) -> Double {
+        guard let r = self.role(role, data) else { return 0 }
+        return ManagerModel.playerCurrency(s, data).roundedStep(ManagerModel.playerCurrency(s, data).scaledPrice(r.monthlyPay) * fameSalary(fame(s, data)), about: 100)
+    }
+
+    /// Offer the job. At or above what they would settle for they accept; below it they counter, refuse or walk away (head-office posts are
+    /// senior ones, so they have patience). Original: `hireHQnpc`.
     public static func hire(_ s: inout GameState, role: String, personID: Int, monthlyWage wage: Double, data: GameData) -> HireResult {
         let r = room(s, role: role, data: data)
-        guard r == .ok, var n = s.people[personID] else { return .blocked(r) }
-        if n.employerID != 0 { return .taken }
-        if wage < n.askingMonthlyWage * 0.82 && !s.random.chance(0.1) { return .refuse }
-        let p = clamp((wage / max(1, n.askingMonthlyWage) - 0.86) / 0.18, 0, 1)
-        if !s.random.chance(p) && wage < n.askingMonthlyWage { return .refuse }
+        guard r == .ok, let n0 = s.people[personID] else { return .blocked(r) }
+        if n0.employerID != 0 { return .taken }
+        switch Hiring.answer(personID: personID, employer: -3, rank: "headOffice", offer: wage, currency: ManagerModel.playerCurrency(s, data), about: 100, state: &s).answer {
+        case .refuse: return .refuse
+        case .walkAway: return .walkedAway
+        case .counter(let c): return .countered(c)
+        case .accept: break
+        }
+        guard var n = s.people[personID] else { return .refuse }
         n.employerID = -3
         s.people[personID] = n
         var o = office(s)
@@ -249,7 +289,7 @@ public enum Headquarters {
     static func payHeadOffice(_ s: inout GameState, _ amt: Double, label: String) {
         let a = jsRound(amt)
         if a <= 0 { return }
-        if let h = s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > a * 3 }) {
+        if let h = officePayer(s, amount: a) {
             Payments.companyPays(&s, companyID: h.id, amount: a, category: "wages", label: label)
             return
         }

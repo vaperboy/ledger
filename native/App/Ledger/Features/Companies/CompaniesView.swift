@@ -3,62 +3,42 @@ import GameCore
 import Businesses
 import Simulation
 
-enum CompanyRoute: Hashable { case company(Int), newCompany, market }
+enum CompanyRoute: Hashable {
+    case company(Int), newCompany, market
+    /// A company opened on one of its sections (from Team, Projects, Inbox or a deep link).
+    case companyAt(Int, CompanySection)
+}
 
 /// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
 /// Replaces the former separate Group tab, which listed the same companies again.
 struct CompaniesView: View {
-    enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
+    enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var path: [CompanyRoute] = []
-    @State private var sort: Sort = .profit
+    @State private var sort: Sort = .attention
+    /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
+    @State private var query = ""
+    @State private var chainFilter = "all"
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if let e = store.engine {
                     let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
-                    let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    let rows = cos.filter(matches).map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    let chains = e.chainSummaries
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            HomeSummary(engine: e)
                             HStack(alignment: .lastTextBaseline) {
-                                Text("Group").font(.serifTitle(28))
+                                Text("Company").font(.serifTitle(28))
                                 Spacer()
                                 if !cos.isEmpty {
                                     Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
                                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 }
                             }
-                            if cos.contains(where: { $0.status == .open }) {
-                                NavigationLink(value: CompanyRoute.market) {
-                                    HStack {
-                                        Text("Market, reviews and rivals").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                        Spacer()
-                                        Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                    }.padding(.vertical, 6).contentShape(Rectangle())
-                                }.buttonStyle(.plain)
-                            }
-                            if !e.holdingCompanies.isEmpty {
-                                LedgerSection("Holding companies") {
-                                    VStack(spacing: 0) {
-                                        ForEach(Array(e.holdingCompanies.enumerated()), id: \.element.id) { n, h in
-                                            if n > 0 { Hairline() }
-                                            NavigationLink(value: CompanyRoute.company(h.id)) {
-                                                HStack {
-                                                    VStack(alignment: .leading, spacing: 2) {
-                                                        Text(h.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                                        Text("\(e.state.companies.filter { $0.holdingID == h.id && $0.status.isLive }.count) companies under it").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                                    }
-                                                    Spacer()
-                                                    Text(store.short(Valuation.companyValue(h, state: e.state, trades: e.data.catalog), in: h)).font(.system(size: 13.5).monospacedDigit())
-                                                }.padding(.vertical, 9).contentShape(Rectangle())
-                                            }.buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
-                            ChainsGroupSection(engine: e)
                             if cos.isEmpty {
                                 LedgerSection("No companies yet") {
                                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -67,7 +47,6 @@ struct CompaniesView: View {
                                     }
                                 }
                             } else {
-                                GroupSummary(engine: e, rows: rows.map { $0.h }, staff: cos.reduce(0) { $0 + $1.staff.count })
                                 LedgerSection(title: "Companies", trailing: {
                                     Menu {
                                         Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
@@ -75,6 +54,8 @@ struct CompaniesView: View {
                                         Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
                                 }) {
+                                    if cos.count >= 8 { filterBar(chains) }
+                                    if rows.isEmpty { Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
                                     if sizeClass == .regular {
                                         CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
                                     } else {
@@ -95,31 +76,59 @@ struct CompaniesView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 130)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
             }
             .ledgerBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .navigationDestination(for: CompanyRoute.self) { route in
-                switch route {
-                case .company(let id): CompanyDetailView(companyID: id)
-                case .newCompany: NewCompanyView()
-                case .market: MarketView()
-                }
-            }
+            .companyRouteDestinations()
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
+            .phoneToolbar()
+            .routeRequests(for: .company, path: $path)
+            .returnBar(for: .company)
             .onAppear { openRequested() }
-            .onChange(of: store.openCompanyID) { _, _ in openRequested() }
             .onChange(of: store.showNewCompany) { _, _ in openRequested() }
         }
     }
 
+    private func matches(_ co: Company) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if !q.isEmpty && !co.name.lowercased().contains(q) && !(store.engine.map { $0.cityName(co).lowercased().contains(q) || $0.tradeName(co).lowercased().contains(q) } ?? false) { return false }
+        switch chainFilter {
+        case "all": return true
+        case "independent": return co.value("chain").isNull
+        default: return !co.value("chain").isNull && String(co.value("chain").int) == chainFilter
+        }
+    }
+
+    /// Search and chain chips, shown once there are enough companies for a long list to need them.
+    @ViewBuilder private func filterBar(_ chains: [Chains.Summary]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                TextField("Name, city or trade", text: $query).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
+                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain) }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
+            if !chains.isEmpty {
+                SectionTabs(items: ["all"] + chains.map { String($0.id) } + ["independent"],
+                            title: { k in k == "all" ? "All" : k == "independent" ? "Independent" : (chains.first { String($0.id) == k }?.name ?? "Chain") },
+                            selection: $chainFilter).padding(.horizontal, -Theme.Space.margin)
+            }
+        }.padding(.bottom, 6)
+    }
+
     private func order(_ a: (co: Company, h: CompanyHealth), _ b: (co: Company, h: CompanyHealth)) -> Bool {
         switch sort {
+        case .attention:
+            let ra = Self.urgency(a.co, a.h), rb = Self.urgency(b.co, b.h)
+            return ra != rb ? ra < rb : a.h.profitTTM < b.h.profitTTM
         case .profit: return a.h.profitTTM > b.h.profitTTM
         case .revenue: return a.h.revenueTTM > b.h.revenueTTM
         case .cash: return a.co.cash > b.co.cash
@@ -127,8 +136,17 @@ struct CompaniesView: View {
         }
     }
 
+    /// 0 is most urgent: out of cash, struggling or short of runway come before healthy companies; closed and setting up sit in between.
+    static func urgency(_ co: Company, _ h: CompanyHealth) -> Int {
+        if co.status == .setup { return 2 }
+        if co.status == .closed { return 3 }
+        if co.cash < 0 || h.label == "Struggling" { return 0 }
+        if let w = h.runwayWeeks, w < 8 { return 0 }
+        if h.label == "Tight" { return 1 }
+        return 4
+    }
+
     private func openRequested() {
-        if let id = store.openCompanyID { path = [.company(id)]; store.openCompanyID = nil }
         if store.showNewCompany { path = [.newCompany]; store.showNewCompany = false }
     }
 }
@@ -188,7 +206,7 @@ struct CompanyTable: View {
         Card(padding: 0, rule: false) {
             Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: 0) {
                 GridRow {
-                    ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Staff", "Limited by"], id: \.self) { h in
+                    ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Run by", "Staff", "Limited by"], id: \.self) { h in
                         Text(h).font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
@@ -206,6 +224,7 @@ struct CompanyTable: View {
                         num(r.h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "–")
                         num(store.short(r.co.cash, in: r.co), r.co.cash < 0 ? Theme.loss : Theme.ivory)
                         num(RunwayText.of(r.h), r.h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryMuted)
+                        Text(RunBy.name(engine, r.co)).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                         num("\(r.co.staff.count)")
                         Text(r.h.bottleneck ?? "–").font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                     }
@@ -269,6 +288,7 @@ struct CompanyRow: View {
                 HStack(spacing: 0) {
                     Text(engine.tradeName(co) + " · ").foregroundStyle(Theme.ivoryFaint)
                     if co.status == .open { Text(h.label).foregroundStyle(HealthChip.tint(h.label)) } else { Text(co.status == .setup ? "Setting up" : co.status.rawValue.capitalized).foregroundStyle(Theme.ivoryMuted) }
+                    Text(" · " + RunBy.name(engine, co)).foregroundStyle(Theme.ivoryFaint)
                 }
                 .font(.system(size: 11)).lineLimit(1)
             }
@@ -280,5 +300,14 @@ struct CompanyRow: View {
         }
         .padding(.vertical, 9)
         .contentShape(Rectangle())
+    }
+}
+
+/// Who runs a company day to day, in two words for list rows: the manager (or the boss above), "You", or "No one".
+enum RunBy {
+    static func name(_ e: GameEngine, _ co: Company) -> String {
+        guard co.status.isLive, co.type != "hold" else { return "–" }
+        if let b = e.decisionChain(companyID: co.id).first { return b.name }
+        return co.ownerHours > 0 ? "You" : (co.status == .open ? "No one" : "–")
     }
 }

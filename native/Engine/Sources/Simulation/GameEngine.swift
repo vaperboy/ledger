@@ -35,7 +35,9 @@ public struct GameEngine {
         self.data = data
         self.events = events
         self.marketing = marketing
-        self.context = FinanceContext(countries: data.countries, trades: data.catalog)
+        var lending = LendingModifiers()
+        lending.marginAdjustment = { [data] _, _, s in -Ambitions.loanMarginCut(s, data) }   // the financier / dynasty ambition perk: cheaper loans
+        self.context = FinanceContext(countries: data.countries, trades: data.catalog, lending: lending)
     }
 
     /// Load all bundled data. Throws if a data file is missing or broken.
@@ -47,7 +49,7 @@ public struct GameEngine {
 
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
-    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30) throws -> GameEngine {
+    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647
@@ -60,7 +62,8 @@ public struct GameEngine {
         json["uid"] = 1000; json["week"] = 0; json["day"] = 0; json["country"] = .string(country.code)
         json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName), "age": .number(Double(min(110, max(1, age)))),
                                   "city": .string(cityID ?? country.cities[0].id), "skill": .object([:])])
-        json["cash"] = .number(loan); json["cash0"] = .number(loan); json["flow"] = .object([:]); json["sav"] = .object(["bal": 0])
+        let startCash = story == .loan ? loan : 0   // other stories are funded through the ledger, so no loan record is ever made and removed
+        json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:]); json["sav"] = .object(["bal": 0])
         json["loans"] = .array([]); json["credit"] = 62; json["overdraft"] = 0
         json["overdraftLimit"] = .number(currency.scaledPrice(25000))
         json["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
@@ -78,16 +81,24 @@ public struct GameEngine {
         json["over"] = .null; json["settings"] = .object(["adv": 1, "confirm": 1]); json["flags"] = .object([:])
         json["dmode"] = 1
         var state = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(JSONValue.object(json)))
-        var l = Loan(raw: [:])
-        l.id = state.makeID(); l.kind = "start"; l.name = "Start-up loan"; l.balance = loan; l.set("rate", 0); l.margin = 0.045
-        l.termMonths = country.startLoanTermMonths; l.companyID = 0; l.startWeek = 0; l.isGuaranteed = false
-        l.monthlyPayment = Loans.annuity(principal: loan, yearlyRate: state.economy.policyRate + 0.045, months: Double(country.startLoanTermMonths))
-        state.loans.append(l)
+        if story == .loan {
+            var l = Loan(raw: [:])
+            l.id = state.makeID(); l.kind = "start"; l.name = "Start-up loan"; l.balance = loan; l.set("rate", 0); l.margin = 0.045
+            l.termMonths = country.startLoanTermMonths; l.companyID = 0; l.startWeek = 0; l.isGuaranteed = false
+            l.monthlyPayment = Loans.annuity(principal: loan, yearlyRate: state.economy.policyRate + 0.045, months: Double(country.startLoanTermMonths))
+            state.loans.append(l)
+        }
         state.economy.set("rate0", state.economy.policyRate)
         PlayerGoals.startFirstSteps(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
-        state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
+        if story == .loan {
+            state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
+        } else {
+            let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
+            guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }
+            state.note("Welcome to Ledger. The family café is yours, open and trading, with \(currency.display(state.cash)) in savings and no loan.", tone: "good")
+        }
         let bank = country.pack["authorities"]["cb"].string
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
         var engine = GameEngine(state: state, data: data, events: events, marketing: marketing)
@@ -127,18 +138,22 @@ public struct GameEngine {
             if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
+            if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
+            if ManagerTargets.handlesAnswer(m.actionID) { ManagerTargets.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
             if Ventures.handlesAnswer(m.actionID) { return Ventures.answer(&s, message: m, option: idx, data: d, context: c) }
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
+            if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
             if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56l" { Cyber.answerLeak(&s, message: m, option: idx, data: d); return true }
+            if Stories.handlesAnswer(m.actionID) { Stories.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == Press.interviewAction { Press.answerInterview(&s, questionIndex: m.value("data")["q"].int, option: idx); return true }
             if m.actionID == WeatherEvents.prepareAction { WeatherEvents.answerPrepare(&s, data: d, message: m, option: idx); return true }
             Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
@@ -302,6 +317,7 @@ public struct GameEngine {
         FootballModel.leaguesWeek(&state, data: data)
         Markets.fundsWeekly(&state)
         Brokerage.weekly(&state)
+        FinanceManager.weekly(&state, context: context)   // your fund manager's returns, the office finance manager's holdings
         Luxury.weekly(&state)
         for i in state.companies.indices {
             guard state.companies[i].status.isLive else { continue }
@@ -325,6 +341,7 @@ public struct GameEngine {
         SoftwareProducts.weekly(&state, data: data)
         ProjectTenders.weekly(&state, data: data, context: context)
         AutoStaff.weekly(&state, data: data)
+        Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
         EventEngine.expire(&state, data: data, context: context)
         StrategicDecisions.weekly(&state, data: data, context: context)
         Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
@@ -334,16 +351,25 @@ public struct GameEngine {
         MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
+        ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
         for i in state.companies.indices {
             let c = state.companies[i]
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
                 Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
+            }
+            else if (c.status == .open || c.status == .closed) && c.int("loanCall") > 0 && state.week >= c.int("loanCall") {
+                // The bank called the loan after three missed instalments and the company did not catch up in time.
+                Failure.bankrupt(&state, companyIndex: i, reason: "loan", data: data, context: context)
+            }
+            else if (c.status == .open || c.status == .closed) && c.cash < 0 && Payday.unpaidForMonths(c, today: Payday.dayNumber(week: state.week, day: state.day)) {
+                // Rent, suppliers or tax left unpaid for months while the account is empty: creditors close the company.
+                Failure.bankrupt(&state, companyIndex: i, reason: "unpaid", data: data, context: context)
             }
         }
         for id in FinanceModel.insolventCompanies(&state, data: data) {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
         snapshot()
-        Failure.checkOver(&state, data: data, context: context, liquidate: { s, need in Brokerage.liquidate(&s, need: need) })
+        Failure.checkOver(&state, data: data, context: context, liquidate: { s, need in Brokerage.liquidate(&s, need: need); FinanceManager.cashIn(&s, need: need) })
     }
 }

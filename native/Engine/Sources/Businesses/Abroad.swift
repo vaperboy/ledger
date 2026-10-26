@@ -63,4 +63,28 @@ public enum Abroad {
             return .success(id)
         }
     }
+
+    /// Monthly, after the exchange rates move: each country where you operate may issue new rules. Without a head-office
+    /// country desk the late compliance is fined on one open company there. Original: `regulationMonth` (country part).
+    public static func regulationMonth(_ s: inout GameState, data: GameData) {
+        for k in foreignCountries(s) {
+            guard let c = data.countries[k] else { continue }
+            if !s.random.chance(0.1 * c.bureaucracy) { continue }
+            let desk = hasDesk(s, country: k)
+            let target = s.companies.first(where: { $0.status == .open && $0.countryCode == k })
+                ?? s.companies.first(where: { $0.status == .open && $0.value("fr")["masters"].array.contains { $0["c"].string == k } })
+            guard let t = target else { continue }
+            let what = s.random.pick(["new data and labelling rules", "a stricter permit regime", "higher local reporting duties", "a changed employment regulation"])
+            if desk {
+                s.note("Your \(c.name) desk handled \(what) with no trouble.", tone: "good", companyID: t.id)
+                continue
+            }
+            let cur = Currency(country: c, rates: ExchangeRates(drift: s.exchangeRates.values))
+            let fine = cur.scaledPrice(s.random.range(8000, 30000).rounded() * c.bureaucracy)
+            Payments.companyPays(&s, companyID: t.id, amount: fine, category: "fine", label: "Late compliance with \(what) in \(c.name)")
+            s.addMessage(kind: "info", from: c.name + " authorities", title: "New rules in \(c.name)",
+                         body: "You missed \(what) and were fined \(cur.display(fine)). An HQ country desk for \(c.name) would have caught it.",
+                         companyID: t.id, tone: "bad", status: "done")
+        }
+    }
 }

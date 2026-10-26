@@ -52,11 +52,18 @@ public enum Banking {
     // MARK: Rates
 
     /// Yearly interest rate of a loan today. Original: `loanRate`.
-    public static func rate(of loan: Loan, state: GameState, modifiers: LendingModifiers = .init()) -> Double {
-        var core = max(0.005, state.economy.policyRate + loan.margin)
+    public static func rate(of loan: Loan, state: GameState, modifiers: LendingModifiers = .init(), countryShift: Double = 0) -> Double {
+        var core = max(0.005, state.economy.policyRate + countryShift + loan.margin)
         // A banker you know cuts the rate for a while (world around you: favours). Original: 'loanRate' step.
         if let cut = state.rest["net31"]?["loanCut"], !cut.isNull, Double(state.week) < cut["until"].double { core = max(0.005, core - cut["cut"].double) }
         return core + modifiers.rateAdjustment(loan, state)
+    }
+
+    /// How far the policy rate of a company's own country sits from the home country's (the economy tracks one policy rate,
+    /// moving around the home country's starting rate). 0 for the player's own loans and for companies at home.
+    public static func countryRateShift(companyID: Int, state s: GameState, context: FinanceContext) -> Double {
+        guard companyID != 0, let co = s.company(companyID), !co.countryCode.isEmpty, co.countryCode != s.homeCountryCode else { return 0 }
+        return context.country(of: co, s).startingPolicyRate - context.homeCountry(s).startingPolicyRate
     }
 
     public static func totalDebt(_ s: GameState, personalOnly: Bool = false) -> Double {
@@ -104,7 +111,7 @@ public enum Banking {
         // `380000 * CC().wage0`, but no country defines `wage0`, so every country got the same floor, the level of one particular
         // country. Corrected on purpose; docs/MONEY_SCALING.md.)
         let income = max(ownerSalaries + profitShare, assumedIncomeMonths * context.homeCountry(s).medianMonthlyWage)
-        let rate = s.economy.policyRate + margin
+        let rate = s.economy.policyRate + countryRateShift(companyID: co?.id ?? 0, state: s, context: context) + margin
         func room(_ inc: Double, _ pay: Double) -> Double {
             let free = max(0, inc * 0.4 - pay)
             let f = Loans.annuity(principal: 100000, yearlyRate: rate, months: 60) * 12 / 100000
@@ -122,6 +129,8 @@ public enum Banking {
             }
         default: break
         }
+        // A bank that has restricted or called the company's loans lends it nothing more.
+        if kind == "biz", let c = co, c.flag("loanFrozen") { maxLoan = 0 }
         if (owedP + owedC) > max(1, netWorth) * 0.6 { margin += 0.012 }
         // Own bank: cheaper (it earns the spread), but priced like anyone else's for its own owner (+0.006).
         var ownBank = 0
@@ -170,7 +179,7 @@ public enum Banking {
                 loan.bankCompanyID = 0
             }
         }
-        loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + off.margin, months: Double(termMonths))
+        loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + countryRateShift(companyID: loan.companyID, state: s, context: context) + off.margin, months: Double(termMonths))
         s.loans.append(loan)
         if let c = co {
             Payments.companyReceives(&s, companyID: c.id, amount: amount, category: nil, label: "Loan drawn")
@@ -191,6 +200,7 @@ public enum Banking {
             Payments.companyPays(&s, companyID: loan.companyID, amount: amt, category: nil, label: "Loan repaid")
         } else {
             if s.cash + s.savings < amt { return false }
+            Payments.transferFromSavings(&s, need: amt)
             Payments.playerPays(&s, amt, label: "Loan repaid")
         }
         if loan.bankCompanyID != 0, let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open {
@@ -206,6 +216,7 @@ public enum Banking {
             let l = s.loans[li]
             s.loans[li].monthlyPayment = min(l.monthlyPayment, Loans.annuity(principal: l.balance, yearlyRate: s.economy.policyRate + l.margin, months: 12))
         }
+        refreshCovenant(&s, companyID: loan.companyID)
         return true
     }
 
@@ -246,7 +257,7 @@ public enum Banking {
         for loanSnapshot in s.loans {
             guard let li = s.loans.firstIndex(where: { $0.id == loanSnapshot.id }) else { continue }
             var l = s.loans[li]
-            let r = rate(of: l, state: s, modifiers: context.lending)
+            let r = rate(of: l, state: s, modifiers: context.lending, countryShift: countryRateShift(companyID: l.companyID, state: s, context: context))
             if l.monthlyPayment > 0 && l.kind != "start" {
                 let elapsedMonths = ((Double(s.week - l.startWeek)) / 4.33).rounded(.down)
                 let remaining = max(1, Double(l.termMonths == 0 ? 120 : l.termMonths) - elapsedMonths)
@@ -256,13 +267,21 @@ public enum Banking {
             let interest = l.balance * r / 12
             let principal: Double = (l.graceUntilWeek > 0 && s.week < l.graceUntilWeek) ? 0 : min(l.balance, max(0, l.monthlyPayment - interest))
             if l.companyID != 0, let ci = s.companyIndex(l.companyID), !s.companies[ci].status.isLive { continue }
-            if l.companyID != 0, s.companyIndex(l.companyID) != nil {
+            if l.companyID != 0, let ci = s.companyIndex(l.companyID) {
+                // A company that cannot cover the instalment (cash plus overdraft room) misses it: no cash moves, the unpaid interest
+                // and a penalty are added to the loan, and the bank escalates.
+                let room = max(0, s.companies[ci].cash + context.overdraftRoom(s.companies[ci], s))
+                if jsRound(interest + principal) > room + 0.5 {
+                    missInstalment(&s, loanID: l.id, interest: interest, companyIndex: ci, context: context)
+                    continue
+                }
                 Payments.companyPaysLoanInstalment(&s, companyID: l.companyID, interest: interest, principal: principal, loanName: l.name, context: context)
             } else {
                 Payments.playerPaysLoanInstalment(&s, interest: interest, principal: principal, loanName: l.name)
             }
             guard let lj = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
             s.loans[lj].balance -= principal
+            if s.loans[lj].int("miss") > 0 { cureInstalment(&s, loanID: l.id) }
             if l.bankCompanyID != 0, let bi = s.companyIndex(l.bankCompanyID), s.companies[bi].status == .open {
                 Payments.companyReceives(&s, companyID: l.bankCompanyID, amount: interest, category: "rev", label: "Interest from group")
                 Ledger.moveRaw(&s, .company(l.bankCompanyID), principal)
@@ -274,5 +293,63 @@ public enum Banking {
                 s.loans.remove(at: lj)
             }
         }
+    }
+
+    // MARK: Missed instalments
+
+    /// Penalty on top of the interest that went unpaid: half of it again.
+    static let penaltyShare = 0.5
+    /// Weeks the bank gives after calling a loan before the company is wound up (see `Failure`).
+    static let callGraceWeeks = 6
+
+    /// The company could not pay: the unpaid interest plus a penalty is added to the loan (booked as interest; no cash moves).
+    /// 1st miss: warning. 2nd: covenant breach, the bank restricts credit (`loanFrozen`). 3rd: the bank calls the loan
+    /// (`loanCall` = the week the company is wound up unless it has caught up; the weekly check then uses the bankruptcy path).
+    static func missInstalment(_ s: inout GameState, loanID: Int, interest: Double, companyIndex ci: Int, context: FinanceContext) {
+        guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return }
+        let cur = context.currency(s.companies[ci].countryCode, s)
+        let name = s.companies[ci].name
+        let id = s.companies[ci].id
+        let miss = s.loans[li].int("miss") + 1
+        let added = interest * (1 + penaltyShare)
+        s.loans[li].set("miss", miss)
+        s.loans[li].balance += added
+        var b = s.companies[ci].books
+        b.add("int", added)
+        s.companies[ci].books = b
+        s.credit = clamp(s.credit - 2, 0, 100)
+        if miss == 1 {
+            s.addMessage(from: "Bank", title: "Missed loan payment at \(name)",
+                         body: "\(name) could not pay its instalment on \(s.loans[li].name). \(cur.display(added)) of unpaid and penalty interest was added to the loan. Pay in time next month or the bank restricts credit.",
+                         companyID: id, tone: "bad")
+        } else if miss == 2 {
+            s.companies[ci].set("loanFrozen", true)
+            s.addMessage(from: "Bank", title: "Loan covenant breached at \(name)",
+                         body: "Two instalments missed on \(s.loans[li].name). The bank restricts \(name)'s credit: no new loans until it is back on track. A third miss and the bank calls the loan.",
+                         companyID: id, tone: "bad")
+        } else if miss == 3 {
+            s.companies[ci].set("loanFrozen", true)
+            s.companies[ci].set("loanCall", s.week + callGraceWeeks)
+            s.addMessage(from: "Bank", title: "Bank calls the loan at \(name)",
+                         body: "Three missed instalments. The bank demands \(cur.display(s.loans[li].balance)) on \(s.loans[li].name). Put money in and pay the next instalment within \(callGraceWeeks) weeks, or \(name) is wound up.",
+                         companyID: id, tone: "bad")
+        }
+    }
+
+    /// An instalment was paid after misses: the loan is back on track.
+    static func cureInstalment(_ s: inout GameState, loanID: Int) {
+        guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return }
+        s.loans[li].set("miss", 0)
+        refreshCovenant(&s, companyID: s.loans[li].companyID)
+    }
+
+    /// Lifts the credit restriction and the loan call once no loan of the company is in arrears.
+    static func refreshCovenant(_ s: inout GameState, companyID: Int) {
+        guard companyID != 0, let ci = s.companyIndex(companyID), s.companies[ci].flag("loanFrozen") || s.companies[ci].int("loanCall") != 0 else { return }
+        if s.loans.contains(where: { $0.companyID == companyID && $0.int("miss") > 0 }) { return }
+        s.companies[ci].set("loanFrozen", false)
+        s.companies[ci].set("loanCall", 0)
+        s.addMessage(from: "Bank", title: "Loan back on track at \(s.companies[ci].name)",
+                     body: "The instalments are paid. The bank lifts the credit restriction on \(s.companies[ci].name).", companyID: companyID, tone: "good")
     }
 }

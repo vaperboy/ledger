@@ -47,6 +47,8 @@ public enum CompanyWeek {
             Satisfaction.reachCap(&s, i, data: data)
             Reviews.weekly(&s, i, bd, data: data)                              // customers write reviews (all trades share one system)
             KeyAccounts.weekly(&s, i, bd, data: data)              // business customers: relationships, offers
+            SalesWays.weekly(&s, i, bd, data: data)                // platform fees, memberships, referrals, call-out, add-ons, peak seasons
+            VolumeContracts.weekly(&s, i, bd, data: data)          // volume contracts: discount, payment delay, delivery, customer risk, offers
             if bd.family == "project" { ProjectWeek.afterWeek(&s, i, bd, data: data) }
         }
     }
@@ -127,7 +129,7 @@ public enum CompanyWeek {
             paidDuringWeek = close.cashAlreadyTaken
         } else {
             units = min(D, cap)
-            units = max(0, min(cap, units * (1 + s.random.gauss() * 0.045)))
+            units = max(0, min(cap, units * (1 + s.random.gauss() * salesNoise)))
             units = unitsForSpecialModels(&s, i, bd, demand: D, capacity: cap, units: units, data: data)
             units = jsRound(min(units, cap) * 10) / 10
         }
@@ -138,12 +140,7 @@ public enum CompanyWeek {
         var co = s.companies[i]
         let managerQ = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.5
         let w = World(state: s, data: data)
-        var costRate = (bd.costOfSales + Knobs.effect(co, bd, "c", w, sum: true)) * (co.managerID != nil ? 1.04 - 0.08 * managerQ : 1) * goods.m
-            * DemandModel.modifier(co, "price") * DemandModel.modifier(co, "cogsup")
-        if bd.family == "project" { costRate /= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
-        if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
-        if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
-        costRate = max(0.01, costRate)
+        let costRate = costRate(co, bd, w, state: s, goods: goods)
         // Business customers share the shop with the walk-ins (key_accounts.js: acctDemand, acctRev).
         let acctOrders = KeyAccounts.orders(co, bd, privateDemand: D, capacity: cap, units: units, price: price, costRate: costRate)
         var walkInRev = rev
@@ -167,6 +164,7 @@ public enum CompanyWeek {
         if let ota = bd.trait("ota") { cogs += rev * ota * Knobs.effect(co, bd, "ota", w) }
         if bd.hasTrait("excise") { cogs += units * 8.5 * w.country(co).costIndex * w.inflationIndex }
         var ctx = WeekContext(units: units, rev: rev, cogs: cogs, D: D, cap: cap, util: util, price: price, paidDuringWeek: paidDuringWeek)
+        ctx.acct = acctOrders.perAccount.filter { $0.units > 0 }.map { (id: $0.id, rev: $0.units * price * $0.pm) }
         // Family-specific adjustments (stock, returns, casino luck, subsidies)
         applyFamilyPost(&s, i, bd, &ctx, data: data)
         rev = ctx.rev; cogs = ctx.cogs
@@ -176,11 +174,28 @@ public enum CompanyWeek {
         weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
     }
 
+    /// The share of sales that goes on goods and direct costs this week: the trade's cost of sales plus its choices, the manager,
+    /// the supplier class, the economy and events. One function for the week itself and for the "how you sell" preview.
+    static func costRate(_ co: Company, _ bd: Trade, _ w: World, state s: GameState, goods: (m: Double, q: Double)) -> Double {
+        let managerQ = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.5
+        var costRate = (bd.costOfSales + Knobs.effect(co, bd, "c", w, sum: true)) * (co.managerID != nil ? 1.04 - 0.08 * managerQ : 1) * goods.m
+            * DemandModel.modifier(co, "price") * DemandModel.modifier(co, "cogsup")
+        if bd.family == "project" { costRate /= (w.balance.priceLevelByTrade[bd.id] ?? 1).squareRoot() }
+        if bd.family != "prod" && bd.family != "project" { costRate *= 0.7 + 0.3 * s.economy.materials }
+        if let fuel = bd.trait("fuel") { costRate += fuel * (s.economy.fuel - 1) }
+        return max(0.01, costRate)
+    }
+
+    /// Week-to-week spread of what a shop really sells around what demand and capacity allow (one standard deviation, as a share).
+    static let salesNoise = 0.045
+
     struct WeekContext {
         var units: Double, rev: Double, cogs: Double, D: Double, cap: Double, util: Double, price: Double
         var paidDuringWeek: Double
         /// The cost of sales is only an accounting entry (a developer pays for land and building as they fall due).
         var cogsIsAccounting = false
+        /// What each business customer ordered this week at the prices they pay (net of VAT): they pay on the trade's terms, some of them late.
+        var acct: [(id: Int, rev: Double)] = []
     }
 
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
@@ -258,7 +273,10 @@ public enum CompanyWeek {
         let target = ctx.cogs * stockWeeks / 7 * mult
         let d = target - co.inventory
         let q = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0
-        let step = d * (0.25 + (co.managerID != nil ? 0.15 * q : 0))
+        var step = d * (0.25 + (co.managerID != nil ? 0.15 * q : 0))
+        // Suppliers cut off after repeated missed bills (see `Payday.payBills`): stock only against cash in the account, then none at all.
+        let supCut = co.int("supCut")
+        if step > 0 && supCut > 0 { step = supCut >= 2 ? 0 : min(step, max(0, co.cash)) }
         var books = co.books
         if co.inventory > target * 1.8 && target > 0 {
             let obsolete = (co.inventory - target * 1.8) * 0.03
@@ -306,14 +324,36 @@ public enum CompanyWeek {
         let grossB2B = country.usesSalesTax ? rev : gross
         co.books = books
         s.companies[i] = co
-        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek, category: nil, label: nil)
+        // Business customers are invoiced one by one: their orders are not paid at the till. The part the trade would have taken in cash
+        // and the part it would have invoiced both wait for the customer (trade terms, and late when the customer is slow).
+        var acctInvoices: [(id: Int, amount: Double, due: Int, late: Int, bad: Bool)] = []
+        var acctCash = 0.0, acctCredit = 0.0
+        if !ctx.acct.isEmpty && rev > 0 {
+            let list = co.value("accts").array
+            let gRatio = gross / rev, bRatio = grossB2B / rev
+            for a in ctx.acct {
+                let relationship = list.first { $0["id"].int == a.id }?["rel"].double ?? 0
+                let late = SupplyTerms.customerLateness(s, companyID: co.id, accountID: a.id, relationship: relationship)
+                var h = HashedRandom("\(s.seed):cbad:\(s.week):\(co.id):\(a.id)")
+                let odds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
+                let cashPart = a.rev * gRatio * cashShare, creditPart = a.rev * bRatio * bd.businessShare
+                acctCash += cashPart; acctCredit += creditPart
+                acctInvoices.append((a.id, jsRound(cashPart + creditPart), s.week + bd.paymentTermsWeeks + late, late, h.next() < odds))
+            }
+        }
+        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek - acctCash, category: nil, label: nil)
         co = s.companies[i]
+        for inv in acctInvoices where inv.amount > 0 {
+            var r = Receivable(amount: inv.amount, dueWeek: inv.due, willDefault: inv.bad)
+            r.set("ac", inv.id); r.set("ld", inv.late)
+            var recv = co.receivables; recv.append(r); co.receivables = recv
+        }
         if bd.businessShare > 0 && rev > 0 {
             let extra = s.random.chance(0.18) ? s.random.int(1, 4) : 0
             let t = bd.paymentTermsWeeks + extra
             let defaultOdds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
             var recv = co.receivables
-            recv.append(Receivable(amount: jsRound(grossB2B * bd.businessShare), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds)))
+            recv.append(Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds)))
             co.receivables = recv
             if co.value("flags")["ccheck"].bool {
                 s.companies[i] = co
@@ -321,6 +361,8 @@ public enum CompanyWeek {
                 co = s.companies[i]
             }
         }
+        let goodsTerm = ctx.cogsIsAccounting ? nil : SupplyTerms.goodsTerm(s, co, data: data)
+        var termOwed = 0.0
         let salesTax = country.usesSalesTax
         let vBase = country.vat.rate(for: bd.vatCategory)
         let exempt = vr == 0 && vBase > 0 && Vat.isExempt(co, w)
@@ -331,13 +373,15 @@ public enum CompanyWeek {
         } else if exempt {
             // Below the VAT threshold: input VAT on purchases cannot be reclaimed and becomes a cost.
             let extra = cogs * min(vBase, 0.25) * 0.9
-            co.addPayable("other", cogs + extra)
+            if goodsTerm != nil { termOwed = cogs + extra } else { co.addPayable("other", cogs + extra) }
             var b = co.books; b.add("oth", extra); co.books = b
         } else {
-            co.addPayable("other", cogs * (1 + vatIn))
+            if goodsTerm != nil { termOwed = cogs * (1 + vatIn) } else { co.addPayable("other", cogs * (1 + vatIn)) }
             co.vatBalance -= vatIn * cogs
         }
         s.companies[i] = co
+        // Goods bought on agreed terms (`SupplyTerms`): paid on delivery or owed on an invoice instead of the monthly bill.
+        if let t = goodsTerm, termOwed > 0 { SupplyTerms.buyGoods(&s, companyIndex: i, amount: termOwed, term: t, data: data) }
     }
 
     // MARK: Week end
@@ -350,8 +394,11 @@ public enum CompanyWeek {
         var received = 0.0
         var lostNet = 0.0, lostVAT = 0.0
         let w0 = World(state: s, data: data)
+        var customersPaid: [(account: Int, late: Int, amount: Double)] = []
         for r in co.receivables {
+            if r.int("ic") != 0 { remaining.append(r); continue }   // an invoice to one of your own companies: settled with `SupplyTerms`
             if s.week >= r.dueWeek {
+                if r.int("ac") != 0 && !r.willDefault { customersPaid.append((r.int("ac"), r.int("ld"), r.amount)) }
                 if !r.willDefault { received += r.amount }
                 else {
                     let vr = w0.country(co).usesSalesTax ? 0 : Vat.rate(co, bd, w0)
@@ -364,6 +411,7 @@ public enum CompanyWeek {
         if lostNet > 0 { var b = co.books; b.add("loss", lostNet); co.books = b; co.vatBalance -= lostVAT }
         s.companies[i] = co
         if received != 0 { Payments.companyReceives(&s, companyID: id, amount: received, category: nil, label: nil) }
+        SupplyTerms.customersPaid(&s, companyIndex: i, paid: customersPaid, country: w0.country(co))
 
         CompanyCosts.wages(&s, companyIndex: i, bd, data: data)
         CompanyCosts.rent(&s, companyIndex: i, data: data)
@@ -391,6 +439,7 @@ public enum CompanyWeek {
         for (k, on) in co2.value("ins").object.sorted(by: { $0.key < $1.key }) where on.bool {
             if let p = marketing.insuranceProducts[k], p.count > 3 { premium += CompanyCosts.insurancePremium(co2, product: k, rate: p[3].double, w2) }
         }
+        if premium > 0, co2.value("flags")["premUntil"].double > Double(s.week) { premium *= 1 + co2.value("flags")["premUp"].double }   // repriced after a lost lawsuit (Aftermath)
         if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins"); Advisers.premiumsPaid(&s, i, total: premium) }
         // Leased vehicles
         for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {
@@ -406,7 +455,8 @@ public enum CompanyWeek {
         // Quality and reputation follow how well the company does its job.
         co = s.companies[i]
         let w3 = World(state: s, data: data)
-        let target = QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing, w3.state, data))
+        // the hidden champion ambition perk lifts the target (original: step 'window.qualityTarget:10', after the target's own steps)
+        let target = min(99, QualityModel.target(co, bd, utilisation: ctx.util == 0 ? 0.5 : ctx.util, w3, goods: goodsEffect(co, bd, marketing, w3.state, data)) + Ambitions.qualityBonus(s, data))
         co.quality += (target - co.quality) * 0.18
         co.reputation = clamp(co.reputation + (co.quality - co.reputation) * 0.025 - ((ctx.D > ctx.cap * 1.25 && ctx.cap > 0) ? 0.08 : 0), 0, 100)
         if co.managerID == nil && co.ownerHours >= 20 { co.ownerSkill = clamp(co.ownerSkill + 0.035 * (1 - co.ownerSkill / 120), 0, 100) }

@@ -48,7 +48,7 @@ public enum StaffModel {
     public static func skill(_ s: StaffMember, person: Person?, salesRoles: Set<String>) -> Double {
         guard let p = person else { return 40 }
         var v = p.skill + s.skillGain - (s.num("nr") > 0 ? 10 : 0)
-        if let mode = s.commissionMode, salesRoles.contains(s.role) { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
+        if let mode = s.commissionMode, salesRoles.contains(s.role) || s.flag("ppx") { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
         return clamp(v, 0, 100)
     }
 
@@ -58,7 +58,7 @@ public enum StaffModel {
         for s in staff where s.role == role && !s.isOffSeason && !isSick(s, week: week) {
             let skill = StaffModel.skill(s, person: people[s.id], salesRoles: salesRoles)
             var pay = 1.0
-            if s.commissionMode != nil && salesRoles.contains(s.role) {
+            if s.commissionMode != nil && (salesRoles.contains(s.role) || s.flag("ppx")) {
                 pay = s.commissionMode == "mix" ? 1.06 : s.commissionMode == "com" ? 1.12 : 1
             }
             let lazy = s.str("flag") == "lazy" ? 0.82 : 1

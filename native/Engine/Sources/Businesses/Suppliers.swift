@@ -81,11 +81,22 @@ public enum Suppliers {
         s.rest["vr"] = vr
     }
 
+    /// A supplier thinks less of you (late payment, walking out of a talk). The relationship falls by `d` points and stays at zero or above.
+    static func dock(_ s: inout GameState, _ id: String, by d: Double) {
+        guard var vr = s.rest["vr"], !vr[id].isNull else { return }
+        var o = vr[id]
+        o["r"] = .number(max(0, o["r"].double - d))
+        vr[id] = o
+        s.rest["vr"] = vr
+    }
+
     public static func bumpPublic(_ s: inout GameState, _ id: String, by d: Double) { bump(&s, id, by: d) }
 
     /// Buying something makes the relationship grow a little. Original: `vbuy`.
-    static func recordPurchase(_ s: inout GameState, vendorID id: String?, amount: Double, big: Bool = false) {
-        guard let id = id, amount > 0 else { return }
+    static func recordPurchase(_ s: inout GameState, vendorID id: String?, amount local: Double, priceIndex: Double = 1, big: Bool = false) {
+        guard let id = id, local > 0 else { return }
+        // The thresholds are at the reference price level: the same order is as big a deal in any country.
+        let amount = local / max(0.01, priceIndex)
         bump(&s, id, by: big ? min(3.5, max(0.3, amount / 120000)) : min(0.15, max(0.01, amount.squareRoot() / 4000)))
     }
 
@@ -96,14 +107,13 @@ public enum Suppliers {
         guard let v = vendor(s, id: id, data: data) else { return .unknown }
         var vr = s.rest["vr"] ?? .object([:])
         let o = vr[id].isNull ? JSONValue.object(["r": 0, "w": .number(Double(s.week)), "meet": -99]) : vr[id]
-        if Double(s.week) - o["meet"].double < 4 { return .wait }
         let cost = homeCurrency(s, data).scaledPrice(5000)
-        if s.cash < cost { return .cash }
-        Payments.playerPays(&s, cost, label: "Lunch with \(v.owner) of \(v.name)")
-        var o2 = o; o2["meet"] = .number(Double(s.week))
-        vr[id] = o2; s.rest["vr"] = vr
-        bump(&s, id, by: Double(s.random.int(5, 9)))
-        return .ok
+        let r = CounterpartMeeting.meet(&s, lastWeek: o["meet"].double, cost: cost, label: "Lunch with \(v.owner) of \(v.name)") { t in
+            var o2 = o; o2["meet"] = .number(Double(t.week))
+            vr[id] = o2; t.rest["vr"] = vr
+            bump(&t, id, by: Double(t.random.int(5, 9)))
+        }
+        return r == .ok ? .ok : r == .wait ? .wait : .cash
     }
 
     /// Relationships fade when you do not buy. Original: `vendMonth`.
@@ -177,7 +187,10 @@ public enum Suppliers {
         let cls = co.value("src")["c"].isNull ? 1 : co.value("src")["c"].int
         let c = classes.indices.contains(cls) ? classes[cls] : classes[1]
         guard let v = goodsVendor(s, company: co, data: data) else { return (c.cost, c.quality, nil) }
-        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - v.discount), 0.7, 1.4), c.quality + v.quality * 10, v)
+        // A negotiated price (`SupplyDeals`) and the payment terms agreed (`SupplyTerms`) change the price; both exist only when the player set them.
+        let deal = SupplyDeals.dealDiscount(co, scope: "goods", vendorID: v.id, week: s.week)
+        let terms = SupplyTerms.goodsTerm(s, co, data: data)?.priceEffect ?? 0
+        return (clamp(c.cost * (1 + v.quality * 0.3) * (1 - v.discount - deal) * (1 + terms), 0.7, 1.4), c.quality + v.quality * 10, v)
     }
 
     /// Who services the equipment, if anyone is chosen; the discount cuts repair bills. Original: `fixPick`, `fixDisc`.
@@ -187,12 +200,15 @@ public enum Suppliers {
         if let a = agreement(s, scope: "fix") { return vendor(s, id: a, scope: "fix", data: data) }
         return nil
     }
-    public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double { repairVendor(s, company: co, data: data)?.discount ?? 0 }
+    public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double {
+        guard let v = repairVendor(s, company: co, data: data) else { return 0 }
+        return v.discount + SupplyDeals.dealDiscount(co, scope: "fix", vendorID: v.id, week: s.week)
+    }
 
     /// The company's weekly buying from its goods supplier warms the relationship. Original: `vbuy(ctx.gd.v.id, cogs)`.
     static func recordGoods(_ s: inout GameState, companyIndex i: Int, cogs: Double, data: GameData) {
         guard cogs > 0, let v = goodsVendor(s, company: s.companies[i], data: data) else { return }
-        recordPurchase(&s, vendorID: v.id, amount: cogs)
+        recordPurchase(&s, vendorID: v.id, amount: cogs, priceIndex: data.countries.resolve(s.companies[i].countryCode, orHome: s.homeCountryCode).costIndex)
     }
 
     // MARK: Choosing (actions)

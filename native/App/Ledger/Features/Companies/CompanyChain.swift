@@ -5,27 +5,34 @@ import Finance
 import Businesses
 import Simulation
 
-/// A company's Chain section: the chain it belongs to (stores, shared rules, reach), how to grow into one, franchising it out
-/// or being a franchisee, and supply between your own companies.
+/// A company's Chain section: its place in the chain (with the way to the chain page), how to grow into a chain, being a
+/// franchisee (or, outside a chain, franchising it out). Supply between your own companies is in Operations > Suppliers.
 struct CompanyChain: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
 
     var body: some View {
+        let chain = engine.chainSummary(containing: company.id)
+        let franchisee = !company.value("franchise").isNull
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if company.status == .open || company.status == .closed {
-                if let sum = engine.chainSummary(containing: company.id) {
-                    ChainOverview(engine: engine, company: company, summary: sum)
-                    ChainStaffShortages(engine: engine, chainID: sum.id)
-                } else if company.value("franchise").isNull {
+                if let sum = chain {
+                    StoreInChainCard(engine: engine, company: company, summary: sum)
+                } else if !franchisee {
                     GrowIntoChain(engine: engine, company: company)
                 }
             }
-            if engine.canFranchise(companyID: company.id) || !company.value("franchise").isNull {
-                CompanyFranchise(engine: engine, company: company)
+            if franchisee {
+                FranchiseeCard(engine: engine, company: company)
+            } else if chain == nil && (engine.canFranchise(companyID: company.id) || engine.isFranchisor(companyID: company.id)) {
+                // A chain franchises from its chain page; a company outside a chain sees what franchising needs here.
+                FranchisorCard(engine: engine, company: company)
             }
-            CompanySupply(engine: engine, company: company)
+            // Supply between your own companies lives in Operations > Suppliers (one record, one action).
+            NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
+                GroupLinkRow(title: "Suppliers and supply from your own companies", sub: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
+            }.buttonStyle(.plain)
         }
     }
 
@@ -75,7 +82,7 @@ struct GrowIntoChain: View {
                         }.buttonStyle(GoldButtonStyle())
                     }.padding(.top, 10)
                 } else {
-                    Button("Apply for chain registration · \(cur.short(engine.documentFee(companyID: company.id, document: "chain")))") {
+                    Button("Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))") {
                         switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
                         case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
                         case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
@@ -90,137 +97,34 @@ struct GrowIntoChain: View {
     }
 }
 
-/// A registered chain: how the stores do, how far the name reaches, the rules every store follows, and a new store.
-struct ChainOverview: View {
-    @EnvironmentObject var store: GameStore
+/// This store's place in its chain: the chain at a glance with a way to the chain page, how this store compares, its own rules and
+/// what it owes sister stores. Chain-wide work (rules, all stores, chain posts, new stores) lives on the chain page.
+struct StoreInChainCard: View {
     var engine: GameEngine
     var company: Company
     var summary: Chains.Summary
-    @State private var openRulesFor: Int?
-    @State private var newCity = ""
-    @State private var newSize = 1.0
 
     var body: some View {
         let cur = engine.currency(for: company)
-        let rules = engine.chainRules(chainID: summary.id)
-        let r = summary.reach
-        LedgerSection(title: summary.name, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                KeyFigures(items: [
-                    .init(label: "Revenue / mo", value: cur.short(summary.revenue)),
-                    .init(label: "Profit / mo", value: cur.short(summary.profit), tint: summary.profit < 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Staff", value: "\(summary.staff)"),
-                    .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
-                    .init(label: "Buying discount", value: String(format: "%.1f%%", r.rebate * 100), sub: "of cost of sales"),
-                    .init(label: "Franchise units", value: "\(summary.franchiseUnits)"),
-                ])
-                RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
-                Text(r.nextAt > 0 ? "One shop is a local name. At \(r.nextAt) outlets the name reaches further (more of the town can know you, demand is a little higher, goods are cheaper)." : "A worldwide name.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            }
-        }
-        LedgerSection("Stores") {
-            VStack(spacing: 0) {
-                ForEach(Array(summary.stores.enumerated()), id: \.element.id) { n, s in
-                    if n > 0 { Hairline() }
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .top) {
-                            NavigationLink(value: CompanyRoute.company(s.id)) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(s.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                    Text("\(s.cityName) · \(s.status == .setup ? "setting up" : s.managerName ?? "you run it") · \(s.staff) staff\(s.ownRules > 0 ? " · own rules" : "")")
-                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                                }
-                            }.buttonStyle(.plain)
-                            Spacer(minLength: 8)
-                            VStack(alignment: .trailing, spacing: 3) {
-                                Text(cur.short(s.profit)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(s.profit < 0 ? Theme.loss : Theme.ivory)
-                                Button(openRulesFor == s.id ? "Hide rules" : "Own rules") { openRulesFor = openRulesFor == s.id ? nil : s.id }
-                                    .font(.system(size: 11.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
-                            }
-                        }
-                        if openRulesFor == s.id { StoreRules(engine: engine, storeID: s.id) }
-                    }.padding(.vertical, 9)
+        let ranked = summary.stores.sorted { $0.profit > $1.profit }
+        let rank = (ranked.firstIndex { $0.id == company.id } ?? 0) + 1
+        let owed = engine.groupLoanBalance(companyID: company.id)
+        LedgerSection(title: "Store of \(summary.name)", trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            VStack(alignment: .leading, spacing: 0) {
+                NavigationLink { ChainView(chainID: summary.id) } label: {
+                    GroupLinkRow(title: "Open the chain", sub: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
+                                 trailing: cur.tidyShort(summary.profit) + " / mo", tint: summary.profit < 0 ? Theme.loss : Theme.ivory)
+                }.buttonStyle(.plain)
+                if summary.stores.count > 1 {
+                    FlatRow(label: "This store", value: "No. \(rank) of \(summary.stores.count) by profit", sub: "Profit last month \(cur.tidyShort(summary.stores.first { $0.id == company.id }?.profit ?? 0)).")
                 }
-            }
-        }
-        LedgerSection("Chain rules") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Set once for every store. A store can take its own price step, local marketing, pay and ordering under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(rules["price"].double)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
-                    Slider(value: Binding(get: { rules["price"].double }, set: { v in store.act { $0.setChainRule(chainID: summary.id, rule: .price((v * 2).rounded() / 2)) } }), in: -3...3, step: 0.5)
+                if owed > 0 {
+                    FlatRow(label: "Owes sister stores", value: cur.tidyShort(owed), sub: "A group loan, paid back by itself once the store has a cushion.", tint: Theme.caution)
                 }
-                Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
-                            selection: Binding(get: { rules["stockPol"].int }, set: { v in store.act { $0.setChainRule(chainID: summary.id, rule: .stockPolicy(v)) } }))
-                    .padding(.horizontal, -Theme.Space.margin)
-                Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: [0.0, 0.05, 0.1], title: { ["Market pay", "+5%", "+10%"][[0.0, 0.05, 0.1].firstIndex(of: $0) ?? 0] },
-                            selection: Binding(get: { [0.0, 0.05, 0.1].min(by: { abs($0 - rules["pay"].double) < abs($1 - rules["pay"].double) }) ?? 0 },
-                                               set: { v in store.act { $0.setChainRule(chainID: summary.id, rule: .pay(v)) } }))
-                    .padding(.horizontal, -Theme.Space.margin)
-                Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: ["own", "light", "normal", "heavy"], title: { ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"][$0] ?? $0 },
-                            selection: Binding(get: { rules["mkt"].string.isEmpty ? "own" : rules["mkt"].string }, set: { v in store.act { $0.setChainRule(chainID: summary.id, rule: .marketing(v)) } }))
-                    .padding(.horizontal, -Theme.Space.margin)
-                Text("Marketing for the whole brand: a share of each store's sales goes to the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise. Business choices and opening hours follow the chain.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Hairline()
+                StoreRules(engine: engine, storeID: company.id).padding(.vertical, 9)
             }
         }
-        newStore(cur: cur)
-        let join = engine.companiesThatCanJoin(chainID: summary.id)
-        if !join.isEmpty {
-            LedgerSection("Add your other \(engine.tradeName(company).lowercased()) companies") {
-                VStack(spacing: 0) {
-                    ForEach(Array(join.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { Hairline() }
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(c.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(engine.cityName(c)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer()
-                            Button("Add") { store.act { $0.joinChain(chainID: summary.id, companyID: c.id, rename: false) }; Haptics.success() }.buttonStyle(QuietButtonStyle())
-                            Button("Add, rename") { store.act { $0.joinChain(chainID: summary.id, companyID: c.id, rename: true) }; Haptics.success() }.buttonStyle(QuietButtonStyle())
-                        }.padding(.vertical, 8)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func newStore(cur: Currency) -> some View {
-        let cities = engine.state.company(summary.stores.first?.id ?? 0).flatMap { engine.data.countries[$0.countryCode] }?.cities ?? []
-        let cityID = newCity.isEmpty ? (cities.first?.id ?? "") : newCity
-        let cost = engine.chainCost(chainID: summary.id, cityID: cityID, size: newSize)
-        LedgerSection("New store") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Same name, same rules and the paperwork you already have. A new store needs premises, equipment and people; it is set up to the chain's standard and runs on the chain's rules from day one.")
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted)
-                Picker("City", selection: Binding(get: { cityID }, set: { newCity = $0 })) {
-                    ForEach(cities) { c in
-                        let n = summary.stores.filter { $0.cityName == c.name }.count
-                        Text(c.name + (n > 0 ? " · \(n) \(n == 1 ? "store" : "stores")" : "")).tag(c.id)
-                    }
-                }.pickerStyle(.menu)
-                Picker("Size", selection: $newSize) { Text("Small").tag(0.7); Text("Standard").tag(1.0); Text("Large").tag(1.4) }.pickerStyle(.segmented)
-                if let cost {
-                    FlatRow(label: "Cost", value: cur.short(cost), sub: "You have \(store.money(Payments.liquid(engine.state))) available.", rule: false)
-                    Button("Open \(summary.name) \(cities.first { $0.id == cityID }?.name ?? "")") {
-                        switch store.act({ $0.openChainStore(chainID: summary.id, cityID: cityID, size: newSize) }) {
-                        case .success?: Haptics.success(); store.show("The new store is being set up.", tone: "good")
-                        case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You don't have enough for a new store.", tone: "warn")
-                        default: Haptics.warning(); store.show("A new store is not possible here.", tone: "warn")
-                        }
-                    }.buttonStyle(GoldButtonStyle())
-                }
-            }
-        }
-    }
-
-    private func priceWord(_ l: Double) -> String {
-        switch l { case ..<(-1.9): return "Bargain"; case ..<(-0.4): return "Below market"; case ..<0.4: return "At market"; case ..<1.9: return "Premium"; default: return "Luxury" }
     }
 }
 
@@ -259,85 +163,5 @@ struct StoreRules: View {
                 }
             }
         }
-    }
-}
-
-/// Supply between your own companies: what this company buys that another of yours could supply, and what it supplies.
-struct CompanySupply: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @State private var picking: String?
-
-    var body: some View {
-        let kinds = engine.supplyKinds(companyID: company.id)
-        let sells = engine.supplyLinks().filter { $0.supplierID == company.id }
-        let cur = engine.currency(for: company)
-        let shown = kinds.filter { engine.supplyLink(buyer: company.id, kind: $0.id) != nil || !engine.possibleSuppliers(buyer: company.id, kind: $0.id).isEmpty }
-        if !shown.isEmpty || !sells.isEmpty {
-            LedgerSection("Supply from your own companies") {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Switch an input from outside suppliers to one of your own companies, at market price, cost plus 10% or cost. The supplier gets the volume, the group keeps the margin, and if the supplier struggles the buyer pays for emergency supply.")
-                        .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 6)
-                    ForEach(Array(shown.enumerated()), id: \.element.id) { n, k in
-                        if n > 0 { Hairline() }
-                        buyRow(k, cur: cur)
-                    }
-                    ForEach(Array(sells.enumerated()), id: \.element.id) { n, l in
-                        if let b = engine.state.company(l.buyerID), let k = IntercompanySupply.kind(l.kindID) {
-                            Hairline()
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text("Supplies \(b.name)").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(k.name) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered").font(.system(size: 11)).foregroundStyle(l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
-                                }
-                                Spacer(minLength: 8)
-                                Text(cur.short(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr").font(.system(size: 13.5).monospacedDigit())
-                            }.padding(.vertical, 9)
-                        }
-                    }
-                    if company.num("int27u") > 0 {
-                        Text("Holding back \(Int(company.num("int27u").rounded())) sales a week of its capacity for the group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func buyRow(_ k: IntercompanySupply.Kind, cur: Currency) -> some View {
-        let link = engine.supplyLink(buyer: company.id, kind: k.id)
-        let supplier = link.flatMap { engine.state.company($0.supplierID) }
-        let year = engine.yearlySupplySpend(buyer: company.id, kind: k.id)
-        VStack(alignment: .leading, spacing: 6) {
-            Button { picking = picking == k.id ? nil : k.id } label: {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(supplier?.name ?? "Outside suppliers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(k.name) · \(link.map { IntercompanySupply.modeName($0.mode) } ?? "about \(cur.short(year)) a year")\(link != nil ? " · saves \(cur.short(link!.saved)) so far" : "")")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Chip(text: link == nil ? "Outside" : (link!.lastShare < 0.9 ? "Short" : "Yours"), tint: link == nil ? Theme.ivoryMuted : (link!.lastShare < 0.9 ? Theme.loss : Theme.gain))
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if picking == k.id {
-                let options = engine.possibleSuppliers(buyer: company.id, kind: k.id)
-                ForEach(options) { s in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.name).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                        HStack {
-                            ForEach(IntercompanySupply.modes, id: \.id) { m in
-                                let pf = engine.supplyPriceFactor(supplier: s.id, mode: m.id)
-                                Button(m.name + (pf < 1 ? " · saves \(cur.short(year * (1 - pf)))" : "")) {
-                                    if store.act({ $0.setSupplier(buyer: company.id, kind: k.id, supplier: s.id, mode: m.id) }) == true { Haptics.success(); picking = nil }
-                                }.buttonStyle(QuietButtonStyle(tint: link?.supplierID == s.id && link?.mode == m.id ? Theme.gold : Theme.ivoryMuted)).font(.caption)
-                            }
-                        }
-                    }
-                }
-                if link != nil { Button("Back to outside suppliers") { store.act { $0.clearSupplier(buyer: company.id, kind: k.id) }; picking = nil }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
-                Text("Market price keeps the profit in the supplier; at cost it moves to the buyer. If the supplier is short of people or closes, the buyer pays for emergency supply and its customers notice.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            }
-        }.padding(.vertical, 9)
     }
 }

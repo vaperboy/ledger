@@ -33,6 +33,8 @@ private enum EquipmentTab: String, CaseIterable, Hashable { case needed = "Neede
 struct CompanyEquipmentScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
+    /// Opened from the setup checklist's premises row: start on the choice of premises.
+    var opensOnPremises = false
     @State private var tab: EquipmentTab = .needed
     @State private var pending: Pending? = nil
     @State private var pendingListing: CompanySetup.Listing? = nil
@@ -81,6 +83,7 @@ struct CompanyEquipmentScreen: View {
             .ledgerBackground()
             .navigationTitle("Equipment")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if opensOnPremises && tabs.contains(.premises) { tab = .premises } }
             .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
             } message: { Text(pendingMessage) }
@@ -181,7 +184,7 @@ struct CompanyEquipmentScreen: View {
                                     Text(needLine(x)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
                                 }
                                 Spacer(minLength: 8)
-                                Text(x.have + x.leased > 0 && x.have + x.leased >= x.need ? "Owned" : x.subscription ? "from " + cur.short(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.short(x.fromPrice))
+                                Text(x.have + x.leased > 0 && x.have + x.leased >= x.need ? "Owned" : x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(x.have + x.leased >= max(1, x.need) ? Theme.gain : Theme.ivoryMuted)
                                 Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
                             }.padding(.vertical, 9).contentShape(Rectangle())
@@ -212,7 +215,7 @@ struct CompanyEquipmentScreen: View {
             LedgerSection(o.name) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let s = o.subscription {
-                        FlatRow(label: s, value: cur.short(o.subscriptionMonthly) + "/mo", sub: "Subscription", rule: false)
+                        FlatRow(label: s, value: cur.tidyShort(o.subscriptionMonthly) + "/mo", sub: "Subscription", rule: false)
                     } else if let l = o.licence {
                         FlatRow(label: l, value: o.outdated ? "Outdated" : "Current", sub: "", tint: o.outdated ? Theme.caution : Theme.ivory, rule: false)
                     }
@@ -229,7 +232,7 @@ struct CompanyEquipmentScreen: View {
                         }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 || o.subscription != nil || o.licence != nil { Hairline() } }
                     }
                     if o.leasedCount > 0 {
-                        FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.short(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
+                        FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.tidyShort(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
                         Button("End the lease") { store.act { $0.endEquipmentLease(companyID: companyID, equipmentID: o.equipmentID) }; store.show("Lease ended.") }.buttonStyle(QuietButtonStyle())
                     }
                     HStack(spacing: Theme.Space.m) {
@@ -238,7 +241,7 @@ struct CompanyEquipmentScreen: View {
                             Button("Cancel plan") { pending = .cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Theme.loss)
                         } else if o.licence == nil {
                             if o.count > 0 {
-                                Button("Service all · \(cur.short(o.serviceCost))") {
+                                Button("Service all · \(cur.tidyShort(o.serviceCost))") {
                                     switch store.act({ $0.serviceEquipment(companyID: companyID, equipmentID: o.equipmentID) }) {
                                     case .ok?: store.show("Serviced.", tone: "good")
                                     default: store.show("Not enough cash.", tone: "warn")
@@ -277,7 +280,7 @@ struct CompanyEquipmentScreen: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km · " + v.warranty + (v.daysInRepair > 0 ? " · in repair \(v.daysInRepair) days" : ""))
+                                Text(vehicleLine(v, cur))
                                     .font(.system(size: 11)).foregroundStyle(v.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -289,12 +292,51 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
+        perkCars(owned, cur)
+        runningCosts(e, cur)
         Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
     }
 
+    @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
+        if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
+            LedgerSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
+                        FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
+                    }
+                    Text("Leased for the Company car perk (Team > Perks). They go back when the perk is switched off or the person leaves.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
+        let run = e.fleetRunningCosts(companyID: companyID)
+        if run.total > 0 {
+            LedgerSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
+                    if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
+                    if run.charges.insurance > 0 { FlatRow(label: "Motor insurance", value: cur.tidyShort(run.charges.insurance), sub: "", rule: true) }
+                    if run.charges.vehicleTax > 0 { FlatRow(label: "Vehicle tax", value: cur.tidyShort(run.charges.vehicleTax), sub: "", rule: true) }
+                    if run.charges.benefitCharge > 0 { FlatRow(label: "Charges on company cars", value: cur.tidyShort(run.charges.benefitCharge), sub: "Employer's share on the taxable benefit", rule: true) }
+                }
+            }
+        }
+    }
+
+    private func vehicleLine(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {
+        var line = v.driver.isEmpty ? "" : "\(v.driver) · "
+        line += modeWord(v, cur) + " · \(v.kilometres / 1000) 000 km"
+        if v.fuelPerWeek > 0 { line += " · fuel \(cur.tidyShort(v.fuelPerWeek))/wk" }
+        line += " · " + v.warranty
+        if v.daysInRepair > 0 { line += " · in repair \(v.daysInRepair) days" }
+        return line
+    }
+
     private func modeWord(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> String {
-        v.mode == "fin" ? "Financed" : v.mode == "lease" ? "Leased " + cur.short(v.monthlyLease) + "/mo" : "Owned"
+        v.mode == "fin" ? "Financed" : v.mode == "lease" ? "Leased " + cur.tidyShort(v.monthlyLease) + "/mo" : "Owned"
     }
 
     // MARK: Software
@@ -319,7 +361,7 @@ struct CompanyEquipmentScreen: View {
                                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer(minLength: 8)
-                                Text(o?.subscription != nil ? cur.short(o?.subscriptionMonthly ?? 0) + "/mo" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Owned") : "from " + cur.short(mode == .subscription ? x.fromPrice / max(1, x.lifeYears) / 12 : x.fromPrice))
+                                Text(o?.subscription != nil ? cur.tidyShort(o?.subscriptionMonthly ?? 0) + "/mo" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Owned") : "from " + cur.tidyShort(mode == .subscription ? x.fromPrice / max(1, x.lifeYears) / 12 : x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(o != nil ? Theme.gain : Theme.ivoryMuted)
                                 Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
                             }.padding(.vertical, 9).contentShape(Rectangle())
@@ -343,11 +385,11 @@ struct CompanyEquipmentScreen: View {
                 } else {
                     FlatRow(label: prem["lname"].string.isEmpty ? "Premises" : prem["lname"].string, value: "\(Int(prem["m2"].double)) m²", sub: prem["landlord"].string, rule: false)
                     if prem["owned"].bool {
-                        FlatRow(label: "Value", value: cur.short(prem["val"].double))
-                        if prem["loan"].double != 0 { FlatRow(label: "Mortgage", value: cur.short(e.state.loans.first { $0.id == prem["loan"].int }?.balance ?? 0), tint: Theme.loss) }
+                        FlatRow(label: "Value", value: cur.tidyShort(prem["val"].double))
+                        if prem["loan"].double != 0 { FlatRow(label: "Mortgage", value: cur.tidyShort(e.state.loans.first { $0.id == prem["loan"].int }?.balance ?? 0), tint: Theme.loss) }
                     } else {
-                        FlatRow(label: "Rent a month", value: cur.short(prem["rent"].double * prem["m2"].double / 12))
-                        if prem["dep"].double > 0 { FlatRow(label: "Deposit held", value: cur.short(prem["dep"].double)) }
+                        FlatRow(label: "Rent a month", value: cur.tidyShort(prem["rent"].double * prem["m2"].double / 12))
+                        if prem["dep"].double > 0 { FlatRow(label: "Deposit held", value: cur.tidyShort(prem["dep"].double)) }
                     }
                     if prem["loc"].double != 0 {
                         let l = prem["loc"].double
@@ -374,8 +416,8 @@ struct CompanyEquipmentScreen: View {
                                 }
                                 Spacer(minLength: 8)
                                 VStack(alignment: .trailing, spacing: 1) {
-                                    Text((t.map { cur.short($0.monthlyRent) } ?? "") + "/mo").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                    Text("deposit " + (t.map { cur.short($0.deposit) } ?? "")).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                                    Text((t.map { cur.tidyShort($0.monthlyRent) } ?? "") + "/mo").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                    Text("deposit " + (t.map { cur.tidyShort($0.deposit) } ?? "")).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
                                 }
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
@@ -485,7 +527,7 @@ struct EquipmentShopView: View {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, o in
                     let p = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor)
                     row(o.name, "\(o.className) · \(o.seller) · \(stars(o.rating, o.reviews)) · output \(o.performance >= 1 ? "+" : "")\(Int(((o.performance - 1) * 100).rounded()))% · reliability \(reliabilityWord(o.reliability)) · \(o.comment)",
-                        lease ? cur.short(EquipmentMarket.leaseMonthly(price: p)) + "/mo" : cur.short(p), String(o.index), rule: n > 0)
+                        lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: p)) + "/mo" : cur.tidyShort(p), String(o.index), rule: n > 0)
                 }
             }
         }
@@ -497,7 +539,7 @@ struct EquipmentShopView: View {
                 if !one { stepper(q) }
                 if !lease && e.canFinance(companyID: companyID, equipmentID: equipmentID, total: total) { payChoice() }
                 let useFinance = finance && !lease && e.canFinance(companyID: companyID, equipmentID: equipmentID, total: total)
-                FlatRow(label: lease ? "Lease, 3 years, service included" : useFinance ? "Down payment now, loan for the rest" : "Total", value: lease ? cur.short(EquipmentMarket.leaseMonthly(price: total)) + "/mo" : useFinance ? cur.short(total * 0.2) : cur.short(total))
+                FlatRow(label: lease ? "Lease, 3 years, service included" : useFinance ? "Down payment now, loan for the rest" : "Total", value: lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: total)) + "/mo" : useFinance ? cur.tidyShort(total * 0.2) : cur.tidyShort(total))
                 Button(lease ? "Lease \(q)" : one ? "Buy licence" : "Buy \(q)") {
                     report(store.act { $0.buyEquipmentItem(companyID: companyID, equipmentID: equipmentID, offer: sel, quantity: q, payment: lease ? .lease : useFinance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
                 }.buttonStyle(GoldButtonStyle())
@@ -521,7 +563,7 @@ struct EquipmentShopView: View {
                                 Text(p.maxUsers > 1_000_000 ? "any number of users" : "up to \(p.maxUsers) users").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
-                            Text(cur.short(p.monthlyFee) + "/mo").font(.system(size: 13.5).monospacedDigit())
+                            Text(cur.tidyShort(p.monthlyFee) + "/mo").font(.system(size: 13.5).monospacedDigit())
                             Button(owned?.subscription != nil ? "Switch" : "Subscribe") {
                                 report(store.act { $0.subscribeSoftware(companyID: companyID, equipmentID: equipmentID, plan: p.index, offer: o) }, "Subscribed.")
                             }.buttonStyle(QuietButtonStyle())
@@ -547,7 +589,7 @@ struct EquipmentShopView: View {
                         "\(x.seller) · \(x.age) \(x.age == 1 ? "year" : "years") old · \(EquipmentMarket.wearWord(x.visibleCondition)) · \u{201C}\(x.says)\u{201D}"
                             + (x.kilometres > 0 ? " · \(x.kilometres / 1000) 000 km · breakdown risk, your guess: \(x.risk.lowercased()) · fuel and service: \(x.fuel.lowercased())" : "")
                             + (x.knownToLast ? " · known to last" : "") + " · no warranty",
-                        cur.short(x.price), x.id, rule: n > 0, tint: Theme.gain)
+                        cur.tidyShort(x.price), x.id, rule: n > 0, tint: Theme.gain)
                 }
             }
         }
@@ -556,8 +598,8 @@ struct EquipmentShopView: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if canFin { payChoice() }
                 let useFinance = finance && canFin
-                FlatRow(label: useFinance ? "Down payment now, loan for the rest" : "Total", value: cur.short(useFinance ? sel.price * 0.2 : sel.price))
-                Button("Buy used · \(cur.short(sel.price))") {
+                FlatRow(label: useFinance ? "Down payment now, loan for the rest" : "Total", value: cur.tidyShort(useFinance ? sel.price * 0.2 : sel.price))
+                Button("Buy used · \(cur.tidyShort(sel.price))") {
                     report(store.act { $0.buyUsedItem(companyID: companyID, equipmentID: equipmentID, listing: sel, payment: useFinance ? .finance : .cash) }, "Bought.")
                 }.buttonStyle(GoldButtonStyle())
             }
@@ -578,7 +620,7 @@ struct EquipmentShopView: View {
                     ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
                         let price = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
                         row(o.name + ", new", "\(o.modelName) · \(stars(o.rating, o.reviews)) · reliability \(reliabilityWord(o.reliability))",
-                            lease ? cur.short(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.short(price), o.id, rule: n > 0)
+                            lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(price), o.id, rule: n > 0)
                     }
                 }
             }
@@ -587,7 +629,7 @@ struct EquipmentShopView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if !lease { payChoice() }
                     FlatRow(label: lease ? "Lease, 3 years" : finance ? "Down payment now, loan for the rest" : "Total",
-                            value: lease ? cur.short(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.short(finance ? price * 0.2 : price))
+                            value: lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(finance ? price * 0.2 : price))
                     Button(lease ? "Lease" : "Buy new") {
                         report(store.act { $0.buyVehicleItem(companyID: companyID, equipmentID: equipmentID, offer: sel, payment: lease ? .lease : finance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
                     }.buttonStyle(GoldButtonStyle())

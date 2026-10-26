@@ -21,6 +21,15 @@ public extension GameEngine {
         return out
     }
 
+    /// "Find a successor": start the executive search for a manager who is leaving; the candidates stay until hired.
+    @discardableResult
+    mutating func findSuccessor(companyID: Int) -> [Person]? {
+        var out: [Person]?
+        update { s, data, _ in out = ManagerModel.findSuccessor(&s, companyID: companyID, data: data) }
+        return out
+    }
+    func successorCandidates(companyID: Int) -> [Person] { ManagerModel.successorCandidates(state, companyID: companyID) }
+
     /// Ask a candidate one of the interview questions (three per candidate); returns what they said.
     mutating func interviewManager(personID: Int, skill: String) -> Double? {
         var out: Double?
@@ -34,9 +43,10 @@ public extension GameEngine {
         return ok
     }
 
-    mutating func hireManager(personID: Int, companyID: Int, monthlyWage: Double) -> ManagerModel.HireResult {
+    /// `profitBonus` is a share (0...0.3) of each month's profit paid on top of the wage; the candidate counts part of it towards the offer.
+    mutating func hireManager(personID: Int, companyID: Int, monthlyWage: Double, profitBonus: Double = 0) -> ManagerModel.HireResult {
         var r = ManagerModel.HireResult.refused
-        update { s, data, _ in r = ManagerModel.hire(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, data: data) }
+        update { s, data, _ in r = ManagerModel.hire(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, profitBonus: profitBonus, data: data) }
         return r
     }
 
@@ -48,8 +58,6 @@ public extension GameEngine {
         return sev
     }
 
-    mutating func giveManagerRaise(companyID: Int) { update { s, data, _ in ManagerModel.raiseManager(&s, companyID: companyID, data: data) } }
-
     mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) {
         update { s, _, _ in ManagerModel.setAuthority(&s, companyID: companyID, level: level, buy: buy, pay: pay, ad: ad) }
     }
@@ -57,12 +65,6 @@ public extension GameEngine {
     mutating func meetManager(companyID: Int) -> Bool {
         var ok = false
         update { s, data, _ in ok = ManagerModel.meet(&s, companyID: companyID, data: data) }
-        return ok
-    }
-
-    mutating func moveManager(from: Int, to: Int) -> Bool {
-        var ok = false
-        update { s, data, _ in ok = ManagerModel.move(&s, fromCompanyID: from, toCompanyID: to, data: data) }
         return ok
     }
 
@@ -85,7 +87,7 @@ public extension GameEngine {
 
     mutating func hireAssistant(personID: Int, companyID: Int, monthlyWage: Double) -> ManagerModel.OfferResult {
         var r = ManagerModel.OfferResult.refused
-        update { s, _, _ in r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage) }
+        update { s, d, _ in r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID, monthlyWage: monthlyWage, data: d) }
         return r
     }
 
@@ -97,16 +99,4 @@ public extension GameEngine {
     }
 
     mutating func dismissAssistant(companyID: Int) { update { s, data, _ in ManagerModel.fireAssistant(&s, companyID: companyID, data: data) } }
-
-    // Promotions
-
-    func promotionPosts(companyID: Int, personID: Int) -> [ManagerModel.PromotionPost] {
-        ManagerModel.promotionPosts(state, companyID: companyID, personID: personID, data: data)
-    }
-
-    mutating func offerPromotion(companyID: Int, personID: Int, post: String, monthlyWage: Double, terms: ManagerModel.PromotionTerms = .init()) -> ManagerModel.PromotionOutcome {
-        var r = ManagerModel.PromotionOutcome.unavailable("")
-        update { s, data, _ in r = ManagerModel.offerPromotion(&s, companyID: companyID, personID: personID, post: post, monthlyWage: monthlyWage, terms: terms, data: data) }
-        return r
-    }
 }

@@ -143,6 +143,7 @@ public enum ProjectWeek {
                              body: "\(cur.short(j.contractValue)), to deliver around \(GameCalendar.dateString(week: j.dueWeek)). \(how) 30% deposit now, the rest after the event.",
                              companyID: id, tone: "good", status: "done")
             } else {
+                j.dueWeek = j.startWeek + j.weeks   // planned finish, recorded when the job is taken on (events carry their own date)
                 jobs.append(j)
             }
             return true

@@ -37,13 +37,20 @@ public enum HoldingModel {
     /// The holding earns interest on its cash and revalues what it owns. Original: `FAM.hold.custom`.
     static func context(_ s: inout GameState, _ i: Int, _ data: GameData) -> CompanyWeek.WeekContext {
         let h = s.companies[i]
-        let kids = subsidiaries(of: h.id, in: s)
-        let held = kids.reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * $1.ownership / 100 }
+        refreshAssets(&s, holdingID: h.id, data: data)
+        let interest = max(0, h.cash) * max(0, s.economy.policyRate - 0.01) / 52
+        return CompanyWeek.WeekContext(units: 0, rev: interest, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
+    }
+
+    /// Revalue what a holding owns (`fm.assets` = index fund + each company's value x its share). Called every week, and whenever a company
+    /// enters or leaves the holding or is sold, so net worth never counts a company twice (inside the holding and on its own) or not at all.
+    public static func refreshAssets(_ s: inout GameState, holdingID: Int, data: GameData) {
+        guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold" else { return }
+        let h = s.companies[i]
+        let held = subsidiaries(of: h.id, in: s).reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * $1.ownership / 100 }
         var fm = h.value("fm")
         fm["assets"] = .number(indexValue(h, s) + held)
         s.companies[i].set("fm", fm)
-        let interest = max(0, h.cash) * max(0, s.economy.policyRate - 0.01) / 52
-        return CompanyWeek.WeekContext(units: 0, rev: interest, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
     }
 
     /// A holding pays its own small costs with dividends from its companies instead of quietly going bankrupt.
@@ -93,7 +100,7 @@ public enum HoldingModel {
         s.companies[i].set("fm", .object(["idxU": 0, "idxCost": 0, "assets": 0]))
         s.companies[i].set("ownerHours", 0)
         s.companies[i].ownerHours = 0
-        for c in companies { _ = move(&s, companyID: c, into: id) }
+        for c in companies { _ = move(&s, companyID: c, into: id, data: data) }
         _ = country
         s.note("\(nm) is registered.", tone: "good", companyID: id)
         return .success(id)
@@ -101,19 +108,26 @@ public enum HoldingModel {
 
     /// Put a limited company under a holding. Original: `moveToHolding`.
     @discardableResult
-    public static func move(_ s: inout GameState, companyID: Int, into holdingID: Int) -> Bool {
+    public static func move(_ s: inout GameState, companyID: Int, into holdingID: Int, data: GameData? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID), let hi = s.companyIndex(holdingID) else { return false }
         let h = s.companies[hi], c = s.companies[ci]
         guard h.type == "hold", h.status.isLive, c.form == .limited, c.type != "hold", c.status.isLive else { return false }
+        let before = c.holdingID
         s.companies[ci].holdingID = holdingID
+        if let data = data {
+            refreshAssets(&s, holdingID: holdingID, data: data)
+            if before != 0 && before != holdingID { refreshAssets(&s, holdingID: before, data: data) }
+        }
         return true
     }
 
     /// Take a company out of the holding again (it is then yours directly). Original: `ACT.hrel`.
     @discardableResult
-    public static func release(_ s: inout GameState, companyID: Int) -> Bool {
+    public static func release(_ s: inout GameState, companyID: Int, data: GameData? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID), s.companies[ci].holdingID != 0 else { return false }
+        let before = s.companies[ci].holdingID
         s.companies[ci].holdingID = 0
+        if let data = data { refreshAssets(&s, holdingID: before, data: data) }
         return true
     }
 

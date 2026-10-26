@@ -45,3 +45,11 @@ luxury, football clubs.
 
 Add the accessor on the record type (for example in `GameCore/State/Company.swift`), give it a default for old saves, and — only if
 the old value must be changed — add a step to `NativeMigrations.steps`.
+
+The last-50-actions pass (`AccountSupply`, `RivalAbsorb`, `OfficeChecks`) saves in the original's own names, so legacy saves and native saves are the same shape and need no migration: `rest["l39"]` (links to business customers), `flags.match27`, `flags.brand27`, `branch.of` and `branch.r` on a company, `uc27.resp` on a rival, `lastRev` on a company.
+
+Open negotiations (stage 2): a talk that is still open is kept under the key `neg` on the record it concerns, and the key exists only while a talk is open: `{p: party (the employer), n: offers answered, o: last offer, c: standing counter, w: week}`. It is on a candidate (`npcs`), on a rival owner (`mk.<key>.riv[]`), on a sale offer and in the data of a pay-raise message. A candidate who lost patience and took another job has `hired: -9`. Saves without the key load as before.
+
+Supplier terms (stage 3, `SupplyTerms` / `SupplyDeals`) add keys that exist only while they are set, so older saves load and write back unchanged: `rest["sinv"]` (open supplier invoices: id, buyer, provider company or vendor id, face amount `f`, amount `a` with late interest, issued `w0`, due `d`, weeks late `l`), `pterm.goods` on a company (agreed goods payment terms), `lt` (weeks of recent late invoices), `supCutI` and `supCutB` (supplier cut-off from invoices and from monthly bills; `supCut` stays the one value stock buying reads), `sdl` (negotiated price per scope and the cool-off after a walk-out), `neg` on a company (a price talk still open), `payables.inv` (what the company owes on invoices), `tm` on a link in `rest["l27"]` (own-company payment terms), `ic` / `ac` / `ld` on a receivable (an invoice to one of your companies; a business customer's invoice and the weeks it will be late), `lc` / `lw` on a key account (late payment record), and `rules.sup[input]` on a chain (the chain-wide supplier rule).
+
+Fix/open-engine keys, all written only when set: a project job `due` (planned finish week, jobs taken on after this change), a fixed-term staff record `fts` (start of the run of terms) and `ftr` (renewals, only after the first). Old saves have none of them and load unchanged.

@@ -24,12 +24,12 @@ struct ReportPromptSection: View {
                         Text("net worth").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                     }
                     if let first = r.summary.first {
-                        Text(first).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        Text(first.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     }
                     Button {
                         store.reportRequest = ReportRef(kind: r.kind, id: r.id)
                         store.moneySection = .reports
-                        store.tab = .money
+                        store.jump(to: .group)
                         store.act { $0.dismissReportPrompt(r) }
                     } label: {
                         Text("Read the full report  →").font(.system(size: 12)).foregroundStyle(Theme.gold)

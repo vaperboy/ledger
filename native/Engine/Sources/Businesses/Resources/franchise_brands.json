@@ -1,0 +1,24 @@
+{
+  "_note": "Authored game defaults for what a franchise brand dictates to its franchisees, by brand tier (1 local brand, 2 regional chain, 3 national chain, 4 global brand). Not taken from any real franchise agreement; see docs/KNOWN_GAPS.md. A trade or tier not listed here leaves the choice to the franchisee.",
+  "knobStandards": {
+    "cafe":       [{ "knob": "menu", "fromTier": 2 }],
+    "restaurant": [{ "knob": "con", "fromTier": 2 }],
+    "barber":     [{ "knob": "pos", "fromTier": 2 }],
+    "gym":        [{ "knob": "pos", "fromTier": 2 }],
+    "hotel":      [{ "knob": "star", "fromTier": 2 }, { "knob": "dist", "fromTier": 3 }],
+    "foodtruck":  [{ "knob": "menu", "fromTier": 2 }],
+    "carclean":   [{ "knob": "tier", "fromTier": 3 }],
+    "tutor":      [{ "knob": "fmt", "fromTier": 3 }],
+    "boutique":   [{ "knob": "brand", "fromTier": 2 }],
+    "estate":     [{ "knob": "fee", "fromTier": 3 }],
+    "kiosk":      [{ "knob": "hrs", "fromTier": 3 }],
+    "grocery":    [{ "knob": "range", "fromTier": 3 }],
+    "bakery":     [{ "knob": "craft", "fromTier": 3 }]
+  },
+  "localMkt": {
+    "1": { "channels": "all", "requiredShare": 0 },
+    "2": { "channels": ["flyer", "google", "meta", "tiktok", "local", "bill", "seo", "mail", "b2b", "fair", "ref"], "requiredShare": 0 },
+    "3": { "channels": ["flyer", "google", "local", "bill", "mail", "fair", "ref"], "requiredShare": 0.01 },
+    "4": { "channels": [], "requiredShare": 0 }
+  }
+}

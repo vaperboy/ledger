@@ -53,7 +53,36 @@ public extension GameEngine {
         update { s, d, _ in Chains.join(&s, chainID: chainID, companyID: companyID, rename: rename, data: d) }
     }
 
-    mutating func setChainRule(chainID: Int, rule: Chains.Rule) { update { s, _, _ in Chains.setRule(&s, chainID: chainID, rule: rule) } }
+    /// The trade a chain runs (its "how you sell" choices are the chain's to standardise).
+    func chainTrade(chainID: Int) -> Trade? { Chains.chain(state, id: chainID).flatMap { data.catalog[$0["type"].string] } }
+
+    /// What a chain-wide standard for a knob would cost each store (a single-choice option index, or the bit mask of a multi-choice knob).
+    func chainKnobPlan(chainID: Int, knob: String, value: Int) -> Chains.KnobStandardPlan? { Chains.knobStandardPlan(state, chainID: chainID, knob: knob, value: value, data: data) }
+
+    /// Make it the chain's mandatory standard; each store changes over on its own terms. Returns who changed and who could not.
+    @discardableResult
+    mutating func setChainKnob(chainID: Int, knob: String, value: Int) -> Chains.KnobStandardPlan {
+        var out = Chains.KnobStandardPlan(lines: [])
+        update { s, d, _ in out = Chains.setKnobStandard(&s, chainID: chainID, knob: knob, value: value, data: d) }
+        return out
+    }
+
+    /// The chain's standard for a knob (option index, or bit mask for add-ons); nil when each store decides.
+    func chainKnobStandard(chainID: Int, knob: String) -> Int? { Chains.knobStandard(state, chainID: chainID, knob: knob) }
+
+    /// Stores that do not follow the standard right now, with what they sell by.
+    func chainKnobExceptions(chainID: Int, knob: String) -> [(storeID: Int, storeName: String, value: Int)] { Chains.knobExceptions(state, chainID: chainID, knob: knob, data: data) }
+
+    /// Leave this choice to each store.
+    mutating func releaseChainKnob(chainID: Int, knob: String) { update { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) } }
+
+    mutating func setChainRule(chainID: Int, rule: Chains.Rule) {
+        update { s, d, _ in
+            // A new knob standard is a changeover for every store it governs, not a silent overwrite.
+            if case .knob(let id, let o) = rule { Chains.setKnobStandard(&s, chainID: chainID, knob: id, value: o, data: d) }
+            else { Chains.setRule(&s, chainID: chainID, rule: rule) }
+        }
+    }
     mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) { update { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) } }
 
     mutating func openChainStore(chainID: Int, cityID: String, size: Double) -> Result<Int, CompanySetup.StartError> {
@@ -158,15 +187,34 @@ public extension GameEngine {
         return (est, t.fee, size)
     }
 
+    /// The New company plan for a franchised unit: the same picture as `newCompanyPlan` (places to rent or buy, what the pick costs, risks), priced in the
+    /// country the franchise application is for, plus the entry fee the franchisor charges on top of it. Nil when the terms are not agreed.
+    func franchiseStartPlan(brandID: String, cityID: String, form: LegalForm, pick: NewCompanyPlan.Pick? = nil) -> (plan: NewCompanyPlan, fee: Double)? {
+        guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID), let est = franchiseStartEstimate(brandID: brandID, cityID: cityID, form: form) else { return nil }
+        let country = franchiseApplication(brandID)["country"].string
+        guard let plan = newCompanyPlan(tradeID: b.tradeID, cityID: cityID, form: form, size: est.size, pick: pick, countryCode: country.isEmpty ? nil : country) else { return nil }
+        return (plan, t.fee)
+    }
+
     /// Open a company under a brand whose terms you agreed. Original: `ACT.ncgo` with `st.fran`/`st.deal`, `applyBrand`.
     mutating func startFranchisedCompany(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
+        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, form: form, name: name, accountantID: accountantID, pick: nil, fundWith: amount).map { $0.companyID }
+    }
+
+    /// Open a franchised unit and take the picked place (rent or buy) before the standard set-up does everything else; with no pick it is the
+    /// standard rented place, exactly as `startFranchisedCompany`. The place is the franchisee's own premises, so the brand's rent rules apply to it.
+    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID) else { return .failure(.notAllowedHere) }
         let country = franchiseApplication(brandID)["country"].string
         let cc = country.isEmpty ? state.homeCountryCode : country
         let size = data.countries[cc].flatMap { c in c.city(cityID).flatMap { city in data.catalog[b.tradeID].map { CompanySetup.recommendedSize($0, city: city, brandStrength: b.strength / 100) } } }
         let nm = (name?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 }
         let r = startCompany(tradeID: b.tradeID, cityID: cityID, form: form, size: size, name: nm, countryCode: cc, accountantID: accountantID, fundWith: amount, quickSetup: false)
-        guard case .success(let id) = r else { return r }
+        guard case .success(let id) = r else {
+            if case .failure(let e) = r { return .failure(e) }
+            return .failure(.notAllowedHere)
+        }
+        var out = NewCompanyOutcome(companyID: id, premises: nil, setupNotes: [])
         update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             if s.companies[i].cash >= t.fee {
@@ -176,9 +224,13 @@ public extension GameEngine {
             } else {
                 s.note("Not enough funding for the franchise fee, so \(s.companies[i].name) starts independent.", tone: "bad", companyID: id)
             }
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: d)
+            if let pick, let bd = d.catalog[s.companies[i].type], let k = bd.premisesKind, k != "none", k != "home",
+               let l = CompanySetup.listings(for: s.companies[i], bd, World(state: s, data: d)).first(where: { $0.index == pick.listingIndex }) {
+                out.premises = CompanySetup.setPremises(&s, companyID: id, listing: l, buy: pick.buy, data: d)
+            }
+            out.setupNotes = CompanySetup.quickSetup(&s, companyID: id, data: d)
         }
-        return r
+        return .success(out)
     }
 
     func franchiseeInfo(companyID: Int) -> JSONValue { state.company(companyID)?.value("franchise") ?? .null }
@@ -207,7 +259,7 @@ public extension GameEngine {
     }
     /// How a supplier's price compares with the market: 1 = market price. Original: `pfOf`.
     func supplyPriceFactor(supplier: Int, mode: String) -> Double {
-        state.company(supplier).map { IntercompanySupply.priceFactor(mode: mode, supplier: $0, data: data) } ?? 1
+        state.company(supplier).map { IntercompanySupply.priceFactor(mode: mode, supplier: $0, data: data, perkCut: Ambitions.supplyCostCut(state, data)) } ?? 1
     }
 
     @discardableResult

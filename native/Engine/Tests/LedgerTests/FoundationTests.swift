@@ -44,8 +44,9 @@ final class FoundationTests: XCTestCase {
     /// Tax figures deliberately corrected to the 2025/26 law (docs/TAX_SOURCES.md lists every change). The original's numbers are
     /// kept in Golden/countries_derived.json; for these (country, field) pairs the test checks the corrected values instead
     /// (`testCorrectedTaxFiguresArePinned`).
-    static let correctedBrackets: Set<String> = ["SE", "LT", "DE", "FR", "NL", "US", "CA", "BR", "DK"]
-    static let correctedEmployerCost: Set<String> = ["DE"]
+    static let correctedBrackets: Set<String> = ["SE", "LT", "DE", "FR", "NL", "US", "CA", "BR", "DK", "FI", "MX"]
+    // MX: IMSS table + 3% state payroll tax; BR: employer FGTS 8% as payroll (owner-supplied 2026 rules, docs/TAX_SOURCES.md)
+    static let correctedEmployerCost: Set<String> = ["DE", "MX", "BR"]
 
     func testCountryDerivedValuesMatchOriginal() throws {
         // The original game's city data: the real-life city overlay (docs/CITY_DATA.md) adds cities and fields on top of it.
@@ -98,6 +99,30 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(c("NL").income.brackets.map { $0.rate }, [0.3575, 0.3756, 0.495])
         XCTAssertEqual(c("LT").income.brackets.map { $0.rate }, [0.2, 0.25, 0.32])
         XCTAssertEqual(c("DK").income.brackets.map { $0.rate }, [0, 0.3706, 0.4456, 0.5206, 0.5706])
+        // LT: 36 and 60 x the 2026 average wage (EUR 2,312.15 a month) = EUR 83,237.40 and 138,729 (VMI / KPMG LT, 2026)
+        XCTAssertEqual(c("LT").income.brackets[1].from, local("LT", 83237), accuracy: 1e-6)
+        XCTAssertEqual(c("LT").income.brackets[2].from, local("LT", 138729), accuracy: 1e-6)
+        // MX: annual tariff of Anexo 8 RMF 2026 (DOF 28 Dec 2025): second step from MXN 10,135.12
+        XCTAssertEqual(c("MX").income.brackets[1].from, local("MX", 10135), accuracy: 1e-6)
+        XCTAssertEqual(c("MX").income.brackets.last!.from, local("MX", 5107704), accuracy: 1e-6)
+        // Owner-supplied 2026 rules: MX ISR 30% on taxable profit, IVA 16%, dividend withholding 10%, state payroll tax 3% plus IMSS from the table
+        XCTAssertEqual(c("MX").corporateTax, 0.30, accuracy: 1e-12)
+        XCTAssertEqual(c("MX").vat.standard, 0.16, accuracy: 1e-12)
+        XCTAssertEqual(c("MX").dividendTax, 0.10, accuracy: 1e-12)
+        XCTAssertEqual(c("MX").statePayrollTax, 0.03, accuracy: 1e-12)
+        XCTAssertFalse(c("MX").employerContributions.isEmpty)
+        // IMSS is computed from pay: below the cap the effective rate is the table sum + 3%, far above the cap it falls
+        let mx = c("MX"), tableSum = mx.employerContributions.reduce(0) { $0 + $1.rate }
+        XCTAssertEqual(mx.employerSocialRate(monthlyWage: mx.contributionUnitMonthly * 5), tableSum + 0.03, accuracy: 1e-9)
+        XCTAssertLessThan(mx.employerSocialRate(monthlyWage: mx.contributionUnitMonthly * 250), tableSum + 0.03)
+        // LT: standard VAT 21%; the reduced category rate (old 9%) is 12% from 2026; the other reduced rate and the zero rate stay separate
+        XCTAssertEqual(c("LT").vat.standard, 0.21, accuracy: 1e-12)
+        XCTAssertEqual(c("LT").vat.food, 0.12, accuracy: 1e-12)
+        XCTAssertEqual(c("LT").vat.low, 0.05, accuracy: 1e-12)
+        XCTAssertEqual(c("LT").vat.zero, 0, accuracy: 1e-12)
+        XCTAssertEqual(c("BR").employerPension, 0.08, accuracy: 1e-12)   // employer FGTS 8% is payroll cost
+        // FI: combined state (12.64 / 19 / 30.25 / 33.25 / 37.5% , Vero 2026) + municipal scale, fitted to Veronmaksajat's 2026 table
+        XCTAssertEqual(c("FI").income.brackets.map { $0.rate }, [0, 0.27, 0.33, 0.42, 0.44])
         XCTAssertEqual(c("NO").wealthThreshold, local("NO", 1_900_000), accuracy: 1e-6)
         XCTAssertEqual(c("BR").income.brackets[1].from, local("BR", 60000), accuracy: 1e-6)    // exempt up to BRL 5,000 a month
         // Every country says when and how its figures were checked

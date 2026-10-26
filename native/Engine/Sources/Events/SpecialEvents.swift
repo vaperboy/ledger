@@ -25,6 +25,11 @@ enum SpecialEvents {
             s.note("\(co.name) wins a local business award!", tone: "good", companyID: co.id)
             s.addMessage(from: co.name, title: "Award won", body: "Your reputation rises.", companyID: co.id, tone: "good")
         case "g_audit":
+            // Hidden takings or flattering accounts are looked for first. Original events have no such cases, so this only fires after misconduct.
+            if Misconduct.hasCases(co, kinds: ["tax", "bank"]), s.random.chance(min(0.9, 0.4 * Misconduct.enforcement(co.countryCode))) {
+                Misconduct.investigate(&s, i, data: data, context: fc, cause: "A tax audit found irregularities", kinds: ["tax", "bank"])
+                return true
+            }
             let y = co.books.year
             let weekOfYear = max(8, Double(GameCalendar.date(week: s.week).month * 4 + 1))
             let yearProfit = max(0, (y["rev"] ?? 0) - Books.expenses(y)) * (52 / weekOfYear)
@@ -42,6 +47,10 @@ enum SpecialEvents {
             }
         case "g_inspect":
             guard let bd = data.catalog[co.type] else { return true }
+            if Misconduct.hasCases(co, kinds: ["quality", "bribe"]), s.random.chance(min(0.9, 0.4 * Misconduct.enforcement(co.countryCode))) {
+                Misconduct.investigate(&s, i, data: data, context: fc, cause: "An inspection found shortcuts", kinds: ["quality", "bribe"])
+                return true
+            }
             let missing = !Knobs.documentOK(co, "workplace_safety") && bd.documents.contains("workplace_safety")
             let mq = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.55
             let p = 0.18 + (1 - mq) * 0.25 + (1 - co.quality / 100) * 0.2 + (missing ? 0.5 : 0) + (co.value("flags")["shrinkUp"].bool ? 0.05 : 0)
@@ -49,6 +58,7 @@ enum SpecialEvents {
                 let f = jsRound(max(cur.scaledPrice(8000), c.wk * 0.2))
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Inspection fine")
                 s.note("Inspectors found issues at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                AftermathQueue.schedule(&s, companyID: co.id, kind: "reinspect", delay: 4)
                 s.addMessage(from: fc.country(of: co, s).pack["authorities"]["lab"].string, title: "Inspection at \(co.name)", body: "Deviations were found. Fine \(cur.display(f)). Improve routines and training.", companyID: co.id, tone: "bad")
             } else { s.note("Inspection at \(co.name): passed.", tone: "good", companyID: co.id) }
         case "v_health":
@@ -60,6 +70,7 @@ enum SpecialEvents {
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Food safety fine")
                 s.companies[i].reputation = clamp(co.reputation - 3, 0, 100)
                 s.note("\(food) found hygiene deviations at \(co.name): fine \(cur.display(f)).", tone: "bad", companyID: co.id)
+                AftermathQueue.schedule(&s, companyID: co.id, kind: "reinspect", delay: 4)
                 s.addMessage(from: food, title: "Inspection at \(co.name)", body: "Deviations in hygiene routines. Fine \(cur.display(f)).", companyID: co.id, tone: "bad")
             } else {
                 s.companies[i].reputation = clamp(co.reputation + 0.5, 0, 100)

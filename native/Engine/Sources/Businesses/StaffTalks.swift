@@ -21,56 +21,32 @@ public enum StaffTalks {
     /// Skill including what they have learned, minus the "not rested" penalty, plus the lift of commission. Original: `staffSkill`.
     static func skill(_ m: StaffMember, _ n: Person, salesRoles: Set<String>) -> Double {
         var v = n.skill + m.skillGain - (m.num("nr") > 0 ? 10 : 0)
-        if let mode = m.commissionMode, salesRoles.contains(m.role) { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
+        if let mode = m.commissionMode, salesRoles.contains(m.role) || m.flag("ppx") { v += mode == "com" ? 9 : mode == "mix" ? 4 : 0 }
         return clamp(v, 0, 100)
     }
 
     // MARK: Asking
 
     /// Should this person ask something this week? Returns the kind of talk. Original: inside `staffWeek`.
-    static func nextTalk(_ m: StaffMember, _ n: Person, company co: Company, gap: Double, tenure ten: Double, week: Int, salesRoles: Set<String>) -> StaffEvent? {
-        guard co.managerID == nil else { return nil }
-        let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
-        let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
-        if ten >= 13, gap > 0.06 || week - lastRaise >= 52, askW == nil || askW == 0 || week - askW! >= 13, m.noticeWeeks == 0 { return .payAsk(staffID: m.id) }
-        let fixAsk = m.raw["fixAskW"].flatMap { $0.isNull ? nil : $0.int }
-        if m.payBasis == "hour", (m.weeklyHours ?? 0) == 0, !m.flag("seas"), ten >= 26, skill(m, n, salesRoles: salesRoles) >= 55, !m.flag("flag") && m.raw["flag"] == nil,
-           wantsFixedSalary(n), fixAsk == nil || fixAsk == 0 || week - fixAsk! >= 26 { return .fixedSalaryAsk(staffID: m.id) }
-        return nil
+    /// `perkShare` is what the company's perks are worth to the person as a share of the market pay: they count as pay, so a person looked after asks later.
+    static func nextTalk(_ m: StaffMember, _ n: Person, company co: Company, gap rawGap: Double, perkShare: Double = 0, tenure ten: Double, week: Int, salesRoles: Set<String>) -> StaffEvent? {
+        let gap = rawGap - perkShare
+        // With a manager in charge the manager's monthly pay review (ManagerWeek.staffWork) holds the pay and fixed-salary talks; promotion and hours requests
+        // still arise and go to the manager first (ContractTalk.employeeAsks).
+        if co.managerID == nil {
+            let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
+            let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
+            if ten >= 13, gap > 0.06 || week - lastRaise >= 52, askW == nil || askW == 0 || week - askW! >= 13, m.noticeWeeks == 0 { return .payAsk(staffID: m.id) }
+            let fixAsk = m.raw["fixAskW"].flatMap { $0.isNull ? nil : $0.int }
+            if m.payBasis == "hour", (m.weeklyHours ?? 0) == 0, !m.flag("seas"), ten >= 26, skill(m, n, salesRoles: salesRoles) >= 55, !m.flag("flag") && m.raw["flag"] == nil,
+               wantsFixedSalary(n), fixAsk == nil || fixAsk == 0 || week - fixAsk! >= 26 { return .fixedSalaryAsk(staffID: m.id) }
+        }
+        return ContractTalk.requestTrigger(m, n, company: co, week: week, salesRoles: salesRoles, tenure: ten)
     }
 
+    /// A request about pay or a fixed salary reaches the owner: one engine path, `ContractTalk.employeeAsks`.
     static func ask(_ s: inout GameState, companyIndex i: Int, staffID: Int, fixed: Bool, data: GameData) {
-        guard let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return }
-        var staff = s.companies[i].staff
-        let m = staff[k]
-        let co = s.companies[i]
-        let w = World(state: s, data: data)
-        let cur = w.currency(co)
-        let roleName = data.catalog.tables.roles[m.role]?.name ?? m.role
-        if fixed {
-            staff[k].set("fixAskW", s.week); s.companies[i].staff = staff
-            s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a fixed salary at \(co.name)",
-                         body: "I have been here \(Int(jsRound(Double(s.week - m.hiredWeek) / 4.35))) months and the work goes well. I would like a fixed monthly salary instead of being paid by the hour, so I know what comes in each month.",
-                         companyID: co.id, tone: "n", status: "open",
-                         options: [.option("Fixed salary", "\(cur.display(cur.roundedStep(m.monthlyWage, about: 100)))/month, a full week"), .option("Keep it hourly", "Disappointed")],
-                         action: "staffx", data: .object(["t": "fixask", "sid": .number(Double(staffID))]), expiresWeek: s.week + 3)
-            return
-        }
-        staff[k].set("askW", s.week); s.companies[i].staff = staff
-        let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
-        let years = (s.week - lastRaise) / 52
-        let need = raiseNeeded(role: m.role, age: n.age, tables: data.catalog.tables)
-        let big = max(need, 0.06), small = 0.03
-        let why = s.week - lastRaise >= 52
-            ? "It has been \(years > 1 ? "\(years) years" : "a year") since my last raise."
-            : "I have looked around, and people doing my job earn more."
-        s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks about pay at \(co.name)",
-                     body: "\(why) I like it here and would like to stay. Could we look at my pay? (\(roleName))",
-                     companyID: co.id, tone: "n", status: "open",
-                     options: [.option("+\(Int(jsRound(big * 100)))%", "+\(cur.display(m.monthlyWage * big))/month"),
-                               .option("+\(Int(jsRound(small * 100)))%", "+\(cur.display(m.monthlyWage * small))/month"),
-                               .option("Not now", "Disappointed. They may start looking around.")],
-                     action: "staffx", data: .object(["t": "payask", "sid": .number(Double(staffID)), "big": .number(big), "small": .number(small)]), expiresWeek: s.week + 3)
+        ContractTalk.employeeAsks(&s, companyIndex: i, staffID: staffID, topic: fixed ? .payBasis : .payRise, data: data)
     }
 
     // MARK: Answering
@@ -84,6 +60,9 @@ public enum StaffTalks {
         var m = staff[k]
         let need = raiseNeeded(role: m.role, age: n.age, tables: data.catalog.tables)
         m.monthlyWage = (m.weeklyHours ?? 0) != 0 ? m.monthlyWage * (1 + percent) : cur.roundedStep(m.monthlyWage * (1 + percent), about: 100)
+        if m.commissionMode == nil || m.commissionMode == "fix" {   // a raise never leaves pay under the minimum wage
+            m.monthlyWage = max(m.monthlyWage, w.minimumWage(s.companies[i], hours: m.weeklyHours ?? StaffModel.fullWeekHours))
+        }
         m.set("denied", 0)
         if percent >= need {
             m.lastRaiseWeek = s.week
@@ -126,16 +105,9 @@ public enum StaffTalks {
             // A manager's pay review (original: ACTS.staffx 'raise')
             if idx == 0, let k = s.companies[i].staff.first(where: { $0.id == sid }) { raise(&s, companyIndex: i, staffID: sid, percent: max(0, d["w"].double / k.monthlyWage - 1), data: data) }
             else { markDenied(&s, companyIndex: i, staffID: sid) }
-        } else if d["t"].string == "payask" {
-            if idx == 0 || idx == 1 { raise(&s, companyIndex: i, staffID: sid, percent: idx == 0 ? d["big"].double : d["small"].double, data: data) }
-            else { markDenied(&s, companyIndex: i, staffID: sid) }
-        } else if d["t"].string == "fixask" {
-            if idx == 0 {
-                setFixedPay(&s, companyIndex: i, staffID: sid, data: data)
-                if let k = s.companies[i].staff.firstIndex(where: { $0.id == sid }) {
-                    var st = s.companies[i].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[i].staff = st
-                }
-            } else { markDenied(&s, companyIndex: i, staffID: sid) }
+        } else if ["payask", "fixask", "promoask", "hoursask"].contains(d["t"].string) {
+            // Their request: agree, delay (an answer is due) or decline; the discussion in the staff profile also lets you answer with a figure of your own.
+            ContractTalk.answerMessage(&s, message: m, option: idx, data: data)
         }
     }
 

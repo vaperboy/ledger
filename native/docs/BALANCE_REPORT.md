@@ -190,3 +190,74 @@ the licence wait) gives, for the trades compared with the original:
 Most trades with premises moved up by 5 to 25 points, so the verdict "no trade makes you rich quickly" still stands in money
 terms but the capital-heavy trades listed as losing money (grocery, hardware, car repair) are much closer to break-even. The
 full table was not regenerated; run the probe to refresh it.
+
+## Session 6 balance pass
+
+`testCapitalHeavyTradesEarnModestReturns` failed (6 of 16 capital-heavy trades lost money; limit 3). Probe: 3 seeds, UK, 3 years.
+
+**Structural bug found (courier).** `PersonalEquipment.needed` took the bikes a courier already has off the vans needed from
+`eq.bike.n`, but bikes are vehicles stored in `veh`, so the count was always 0. Every courier (plus owner) then "needed" a van,
+the 2 vans the standard set-up buys covered half of that need, and the van part cut the company's capacity to 50 percent
+(663 against 1324 parcels a week) while the wages of the full team were paid. This was the structural -12% (and why the earlier
+pass needed demand x2 and capacity x1.2 to reach +13%). Fixed (`CapacityModel.equipmentCount`). With the fix the old courier
+tuning gave +74%, so it was withdrawn: capacity back to the original numbers, demand level 3.8 (original 2.45).
+Checked and found not structural: late interest (only on unpaid bills), country loan rate, credit factor (0.96 to 1.03),
+rival strength factor (0.88 to 1.1), leased vehicles; vehicle upkeep and depreciation are in real-world ranges.
+
+**The rest is parameter fit, not mechanics.** Cardealer, carrepair, factory, casino, furniture, hardware, hotel, skires and farm
+sat at -5% to +2% because costs the calibration does not know about (random fines such as inspection fines of 20% of a week's
+revenue, incident losses of up to 10% of a year's revenue on a farm, loan interest) eat the 3 to 7% design margin. Their
+`demandLevel` (and, for the space- or capacity-bound farm and ski resort, `Dc`/`capD`) was raised by 1.2 to 1.6x; no bonus or
+special case was added.
+
+| Trade | Before | After | Change in `trade_tuning.json` |
+|---|---:|---:|---|
+| cardealer | -5% | 6% | demandLevel 2.48 to 3.1 |
+| carrepair | -5% | 9% | 3.1 to 4.0 (very sensitive: 4.3 gives 27%) |
+| factory | -1% | 9% | 1.96 to 2.3 |
+| courier | -7% (-12% at original values) | 10% | bug fix; tuning withdrawn, demandLevel 3.8 |
+| casino | -3% | 5% | 1.9 to 2.3 |
+| furniture | -2% | 8% | 4.2 to 5.0 |
+| farm | -1% | -2% (0 to +1% in two of three seeds) | Dc, capD x1.38 (space-bound); incident losses up to 2 M in 3 years |
+| hardware | 2% | 4% | 1.98 to 2.3 |
+| hotel | 2% | 7% | 1.98 to 2.3 |
+| skires | 1% | 13% | Dc, capD x1.2; lumpy (-2% to +13% by seed) |
+| grocery, boutique, brewery, kiosk, vineyard, wh3pl | 20, 15, 7, 36, 10, 8% | unchanged | |
+| airline | 4% (first year -29 M) | 4% | unchanged; opens and survives |
+
+`BalanceGuardTests` passes in full (farm is still around zero, so one trade loses money, limit 3). Highest returns are the small
+kiosk (36%) and grocery (20%), far below the 50% ceiling. Not fixed: a ski resort's reputation falls to single digits over three
+years in the probe because serious complaints go to the owner and the probe never answers them; the farm's yearly result swings
+with random incident losses.
+
+**Follow-up (farm, car repair, ski resort).** Probe: 5 seeds (11 to 15), UK, 3 years, ROI per seed.
+- Farm: the cause of the swing was one uninsured premises fire (`g_fire`, loss = 22 percent of equipment value, about 1.5 M on 6.8 M of
+  tractors, harvester and barn, against about 100 k of weekly revenue). The standard set-up buys no property insurance, and in 2 of 5
+  seeds one fire erased a year. Fix in `events.json`: fire and theft losses are capped at 6 and 2 weeks of typical revenue
+  (`min(eqv * 0.22, wk * 6)`, `min(eqv * 0.06, wk * 2)`); property insurance still pays all but the excess. Farm before: -5, 5.5, -5, 7, 11
+  (avg 3%); after: 9.6, 5.5, 3.2, 6.8, 13.3 (avg 8%). Hotel (5%) and casino (6%) are barely affected.
+- Car repair: no runaway or feedback found. Capacity (about 20 cars a week) is above demand (10 to 16), reputation and awareness are flat, and
+  wages plus rent are about 45 percent of revenue, so profit is plain operating leverage: +29 percent demand (3.1 to 4.0) roughly triples
+  the profit. The seed spread (-10 to +28, avg 12) comes from random events (ransomware, fines). demandLevel left at 4.0.
+- Ski resort: 5 seeds gave 11 to 16 percent (avg 14), no longer lumpy; no unbounded seasonality found. Unchanged.
+- Probe: `LEDGER_SEEDS=11,12,13` and `LEDGER_PERSEED=1` print per-seed ROI; `LEDGER_SEED` picks the trace seed.
+
+## Manager targets: nil fix (fix/open-engine)
+
+`ManagerTargets.current` used to return `.null` instead of nil, so every managed company was treated as having monthly targets all the time
+(demand lift for a manager chasing a bonus, rating care, "standing"), and the first targets of a newly managed company were only set at a
+month end. After the fix those only apply in months that have targets. Nothing was retuned. Probe: `LEDGER_MGRPROBE=1 swift test -c release
+--filter ManagedTargetsProbeTests` (managed UK company, standard set-up, manager hired at the start, 8 seeds 11 to 18, 2 years; the figures
+are year 2, averages per company, game accounting units):
+
+| Trade (8 seeds) | Revenue before | after | Profit before | after | Rating before | after | Weeks with targets (of 104) before | after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| cafe | 3 952 472 | 4 221 792 | 37 206 | 32 896 | 3.563 | 3.587 | 91.9 | 64.2 |
+| bakery | 14 558 850 | 14 948 726 | 3 418 094 | 3 848 263 | 3.575 | 3.613 | 97.5 | 70.1 |
+| gym | 7 332 338 | 7 290 203 | 2 123 600 | 2 037 551 | 3.587 | 3.600 | 84.8 | 57.5 |
+| barber | 2 193 150 | 2 308 266 | -14 856 | 97 122 | 3.575 | 3.588 | 85.8 | 55.9 |
+| all 32 | 7 009 202 | 7 192 247 (+2.6%) | 1 391 011 | 1 503 958 (+8.1%) | 3.575 | 3.597 | 90.0 | 61.9 |
+
+Reading: revenue and rating are within seed noise per trade (n=8, the sign is mixed: gym -0.6%, bakery +2.7%, barber +5.2%, cafe +6.8%), so
+no balance conclusion is drawn from the pooled +2.6% / +8.1%. The one clear change is structural: months with targets fell from about 90 to
+about 62 of 104 weeks (before, "targets" never ended; now they exist only in months that have them).

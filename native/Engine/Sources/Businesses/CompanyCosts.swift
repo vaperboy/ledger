@@ -17,7 +17,7 @@ public enum CompanyCosts {
     static func commission(_ co: inout Company, _ bd: Trade, _ w: World) -> Double {
         let salesRoles = w.catalog.tables.salesRoles
         var staff = co.staff
-        let sellerIdx = staff.indices.filter { salesRoles.contains(staff[$0].role) }
+        let sellerIdx = staff.indices.filter { PayPlans.sells(staff[$0], salesRoles: salesRoles) }
         if sellerIdx.isEmpty { return 0 }
         let rev = co.lastWeekRevenue
         let skills = sellerIdx.map { StaffModel.skill(staff[$0], person: w.state.people[staff[$0].id], salesRoles: salesRoles) + 10 }
@@ -53,12 +53,15 @@ public enum CompanyCosts {
         if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
         gross *= f
         let cost = gross * country.employerCostFactor
-        co.addPayable("wages", cost)
-        var b = co.books; b.add("wages", cost); co.books = b
+        // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
+        let bonus = co.num("bnPend") * country.employerCostFactor
+        if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
+        co.addPayable("wages", cost + bonus)
+        var b = co.books; b.add("wages", cost + bonus); co.books = b
         co.lastWages = cost
         s.companies[i] = co
-        s.stats.wagesPaid += cost
-        return cost
+        s.stats.wagesPaid += cost + bonus
+        return cost + bonus
     }
 
     // MARK: Rent
@@ -154,6 +157,8 @@ public enum CompanyCosts {
             eq[id]["cond"] = .number(cond)
         }
         var vehicles = co.value("veh").array
+        let runCountry = World(state: s, data: data).country(co), runCurrency = World(state: s, data: data).currency(co)
+        var fuel = 0.0
         for (n, v) in vehicles.enumerated() {
             let kind = data.catalog.tables.vehicles[v["model"].string]?.kind ?? ""
             let depRate: Double = ["plane": 0.05, "bus": 0.1, "truck": 0.12, "plant": 0.1, "van": 0.15, "car": 0.16, "bike": 0.2][kind] ?? 0.15
@@ -165,8 +170,11 @@ public enum CompanyCosts {
             total += vehicles[n]["cond"].double * v["cost"].double
             weight += v["cost"].double
             eqv += v["cost"].double
-            vehicles[n]["km"] = .number(v["km"].double + (bd.trait("km") ?? 500) / Double(max(1, vehicles.count)) * util)
-            upkeep += v["cost"].double * mc * 1.3 / 52
+            let run = VehicleRunning.vehicleWeek(v, bd: bd, util: util, tables: data.catalog.tables, country: runCountry, currency: runCurrency, fuelIndex: s.economy.fuel)
+            vehicles[n]["km"] = .number(v["km"].double + run.km)
+            fuel += run.fuel
+            // A leased vehicle is serviced by the lessor ("Service included in lease"): no upkeep bill on top of the lease payment.
+            if v["mode"].string != "lease" { upkeep += v["cost"].double * mc * 1.3 / 52 }
         }
         co.set("eq", eq)
         co.set("veh", .array(vehicles))
@@ -174,7 +182,11 @@ public enum CompanyCosts {
         co.set("eqc", weight != 0 ? total / weight : 1)
         co.set("eqv", eqv)
         s.companies[i] = co
-        if upkeep > 0 { Payments.companyPays(&s, companyID: co.id, amount: upkeep, category: "oth") }
+        if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel") }
+        if upkeep > 0 {
+            let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
+            SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)   // on the repair terms agreed (SupplyTerms)
+        }
     }
 
     /// Owned premises follow the housing market and cost 1% of their value per year to keep. Original: `premValueWeek`.

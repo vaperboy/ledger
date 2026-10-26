@@ -11,6 +11,15 @@ import Investments
 final class BalanceProbeTests: XCTestCase {
     struct Outcome { var trade: String; var invested: Double; var profitY1: Double; var profitY3: Double; var value: Double; var cash: Double; var status: String; var staff: Int }
 
+    /// Runs `body` in its own autorelease pool where there is one (Apple platforms); plain call elsewhere.
+    static func drained(_ body: () -> Void) {
+        #if canImport(ObjectiveC)
+        autoreleasepool(invoking: body)
+        #else
+        body()
+        #endif
+    }
+
     static func play(trade: String, country: String = "UK", seed: Int, years: Int = 3, aggressive: Bool = false) throws -> Outcome? {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
         var id = 0, invested = 0.0
@@ -33,18 +42,33 @@ final class BalanceProbeTests: XCTestCase {
             }
         }
         if aggressive {
-            for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil {
+            for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil && !ch.isPrimeTime {
                 _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0)
             }
         }
-        for _ in 0..<(years * 52 * 7) {
-            e.nextDay()
-            for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            // Money the owner adds to keep a company alive counts as invested
-            if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
-                let top = -co.cash + 100_000
-                e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
-                invested += top
+        // LEDGER_PROGRESS: unbuffered progress on stderr, so a run that dies (CI) shows the trade, seed and day it reached.
+        let progress = ProcessInfo.processInfo.environment["LEDGER_PROGRESS"] != nil
+        for day in 0..<(years * 52 * 7) {
+            if progress && day % 28 == 0 {
+                var ru = rusage()
+                #if os(Linux)
+                getrusage(RUSAGE_SELF.rawValue, &ru)
+                #else
+                getrusage(RUSAGE_SELF, &ru)
+                #endif
+                FileHandle.standardError.write("PROGRESS \(trade) seed \(seed) day \(day) maxrss \(ru.ru_maxrss) inbox \(e.state.inbox.count) people \(e.state.people.count)\n".data(using: .utf8)!)
+            }
+            // One simulated day per autorelease pool: on Apple platforms Foundation objects made inside a long loop are otherwise only
+            // freed when the test method returns, and the runner kills a test process that grows for minutes (SIGKILL, no message).
+            BalanceProbeTests.drained {
+                e.nextDay()
+                for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                // Money the owner adds to keep a company alive counts as invested
+                if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
+                    let top = -co.cash + 100_000
+                    e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
+                    invested += top
+                }
             }
         }
         guard let co = e.state.company(id) else { return nil }
@@ -64,8 +88,10 @@ final class BalanceProbeTests: XCTestCase {
         print("BAL trade | invested k | profit y1 k | profit y3 k | y3 ROI | value k | value/invested | status")
         for t in trades where only == nil || only!.contains(t) {
             var outs: [Outcome] = []
-            for seed in [11, 12, 13] { if let o = try Self.play(trade: t, country: country, seed: seed, aggressive: aggressive) { outs.append(o) } }
+            let seeds = ProcessInfo.processInfo.environment["LEDGER_SEEDS"]?.split(separator: ",").compactMap { Int($0) } ?? [11, 12, 13]
+            for seed in seeds { if let o = try Self.play(trade: t, country: country, seed: seed, aggressive: aggressive) { outs.append(o) } }
             guard !outs.isEmpty else { continue }
+            if ProcessInfo.processInfo.environment["LEDGER_PERSEED"] != nil { print("BAL   \(t) per seed ROI:", outs.map { String(format: "%.1f%%", $0.profitY3 / $0.invested * 100) }.joined(separator: " ")) }
             func avg(_ f: (Outcome) -> Double) -> Double { outs.map(f).reduce(0, +) / Double(outs.count) }
             let inv = avg { $0.invested }, y1 = avg { $0.profitY1 }, y3 = avg { $0.profitY3 }, v = avg { $0.value }
             print(String(format: "BAL %@ | %.0f | %.0f | %.0f | %.0f%% | %.0f | %.1fx | %@ | staff %.0f", t, inv / 1000, y1 / 1000, y3 / 1000, y3 / inv * 100, v / 1000, v / inv,
@@ -78,7 +104,7 @@ extension BalanceProbeTests {
     /// LEDGER_TRACE=<trade>: what holds a company back, week by week.
     func testPrintTrace() throws {
         guard let trade = ProcessInfo.processInfo.environment["LEDGER_TRACE"] else { return }
-        var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: 11)
+        var e = try GameEngine.newGame(countryCode: ProcessInfo.processInfo.environment["LEDGER_COUNTRY"] ?? "UK", playerName: "T", seed: Int(ProcessInfo.processInfo.environment["LEDGER_SEED"] ?? "11")!)
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
@@ -112,6 +138,7 @@ extension BalanceProbeTests {
         }
         if let co = e.state.company(id), let bd = e.data.catalog[co.type] {
             let y = co.books.lastYear
+            print("TRACE monthly profit k:", co.monthlyHistory.map { Int($0.profit / 1000) })
             print("TRACE last year books:", y.sorted { $0.key < $1.key }.map { "\($0.key)=\(Int($0.value / 1000))k" })
             print("TRACE calib: normalDemand=\(Int(bd.normalDemand)) cap=\(Int(bd.normalCapacity)) F=\(Int(bd.weeklyFixedCosts)) vc=\(bd.variableCostShare) margin=\(bd.margin) ticket=\(bd.ticket) size=\(co.size)")
         }

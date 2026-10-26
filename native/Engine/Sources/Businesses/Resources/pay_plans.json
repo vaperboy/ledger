@@ -1,0 +1,16 @@
+{
+  "about": "Commission and mix pay plans (PayPlans.swift). Game design values, not from a source. `modes`: \"mix\" is a lower salary (`baseShare` of the going pay for their skill) plus commission at `defaultRate`; \"com\" is commission only: NO base pay at all (owner rule), at `defaultRate`. `rateSteps` are the commission shares a plan can be set to. `extraRoles` lists, per trade, the jobs outside the general sales roles (tables.json SALES_ROLES) that sensibly sell on commission there: shop assistants where the shop's takings come from what they sell, recruiters in staffing, advisers in a bank, ticket desk staff at an airline, rental agents. Commission is on the revenue attributed to the person, as for every seller. A trade with no sellers of its own (no travel agency or recruitment-only trade exists in the trade list) has no entry.",
+  "modes": {
+    "mix": { "baseShare": 0.6, "defaultRate": 0.03 },
+    "com": { "baseShare": 0,   "defaultRate": 0.06 }
+  },
+  "rateSteps": [0.02, 0.03, 0.05, 0.08, 0.12],
+  "extraRoles": {
+    "boutique": ["cashier"],
+    "hardware": ["cashier"],
+    "staffing": ["hr"],
+    "bank": ["banker"],
+    "airline": ["recept"],
+    "carrental": ["rentag"]
+  }
+}

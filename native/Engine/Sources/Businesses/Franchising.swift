@@ -87,16 +87,17 @@ public enum Franchising {
     static func applicantsWeek(_ s: inout GameState, _ i: Int, data: GameData) {
         var f = s.companies[i].value("fr")
         guard f["on"].bool, f["units"].array.count + f["app"].array.count < 14 else { return }
-        guard s.week % 6 == 0, s.random.chance(0.55 + f["brand"].double / 200) else { return }
+        let hs = StaffPerks.hosted(s, "fr")   // prospects you hosted come twice as often, keener and with more money
+        guard s.week % (hs > 0 ? 3 : 6) == 0, s.random.chance(0.55 + f["brand"].double / 200 + 0.2 * hs) else { return }
         let co = s.companies[i]
         guard let country = data.countries[co.countryCode] else { return }
         let city = s.random.pick(country.cities)
         let cur = Currency(country: country, rates: ExchangeRates(drift: s.exchangeRates.values))
-        let cap = cur.scaledPrice(Double(s.random.int(120, 900)) * 1000)
+        let cap = cur.scaledPrice(Double(s.random.int(120, 900)) * 1000 * (1 + 0.3 * hs))
         let skill = Double(s.random.int(30, 85))
         let exp = max(0, ((skill - 30) / 3.5 + s.random.range(-2, 3)).rounded())
         let name = s.random.pick(country.firstNames) + " " + s.random.pick(country.lastNames)
-        let pers = s.random.pick(["eager", "careful", "tough"])
+        let pers = hs > 0 && s.random.chance(0.5) ? "eager" : s.random.pick(["eager", "careful", "tough"])
         let age = s.random.int(26, 58)
         let id = s.makeID()
         var apps = f["app"].array
@@ -539,7 +540,11 @@ public enum Franchising {
         guard f["fran"].bool else { return }
         let co = s.companies[i]
         if f["term"].double > 0 && !f["w0"].isNull && f["end"].isNull { f["end"] = .number(f["w0"].double + f["term"].double * 52) }
-        let due = rev * (f["roy"].double + f["mkt"].double)
+        // The brand's marketing fund takes its share of sales; where the agreement requires local marketing, what the unit does not
+        // spend itself goes to the fund instead. Both are costs of the franchisee; the brand is outside the player's books.
+        let spent = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let topUp = max(0, rev * FranchiseStandards.requiredShare(co) - spent)
+        let due = rev * (f["roy"].double + f["mkt"].double) + topUp
         let can = max(0, min(due + f["owed"].double, co.cash))
         if can > 0 { pay(&s, co.id, can, "oth") }
         f["owed"] = .number(max(0, f["owed"].double + due - can))

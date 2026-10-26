@@ -127,10 +127,10 @@ extension ManagerModel {
         func pmAt(_ l: Double) -> Double { pm[min(6, max(0, Int(l.rounded()) + 3))] }
         if util > 0.85 && L < 3 { out.append(ManagerProposal(kind: "price_up", title: "Raise prices one step", why: "We are nearly fully booked, so a higher price costs us few customers.", role: "", id: "", addedCost: 0, addedRevenue: rev * (pmAt(L + 1) / pmAt(L) * 0.9 - 1), once: 0)) }
         if util < 0.6 && L > -3 && units > 0 { out.append(ManagerProposal(kind: "price_down", title: "Lower prices one step", why: "We have free capacity. A lower price fills it.", role: "", id: "", addedCost: 0, addedRevenue: rev * (pmAt(L - 1) / pmAt(L) * 1.22 - 1), once: 0)) }
-        if co.awareness < 70 {
+        if co.awareness < 70, FranchiseStandards.campaignRefusal(co, channel: bd.audience > 0.5 ? "google" : "meta") == nil {
             let ch = bd.audience > 0.5 ? "google" : "meta"
             let cur0 = co.value("mkt")[ch]["b"].double
-            let steps: [Double] = marketingSteps(ch)
+            let steps: [Double] = marketingSteps(ch, cur)
             if let nx = steps.first(where: { $0 > cur0 }) {
                 out.append(ManagerProposal(kind: "mkt_more", title: "Spend more on \(ch == "google" ? "Google" : "Meta")", why: "We are not known enough locally. More people need to hear about us.", role: "", id: "",
                                            addedCost: nx - cur0, addedRevenue: (nx - cur0) * (1.1 + (70 - co.awareness) / 60) * (util < 0.9 ? 1 : 0.4), once: 0))
@@ -150,7 +150,9 @@ extension ManagerModel {
         scored.sort { $0.1 > $1.1 }
         return scored.prefix(3).map { $0.0 }
     }
-    static func marketingSteps(_ ch: String) -> [Double] { ch == "google" ? [500, 1500, 3000, 7000, 15000] : [300, 1000, 2500, 5000, 10000] }
+    static func marketingSteps(_ ch: String, _ cur: Currency) -> [Double] {
+        (ch == "google" ? [500, 1500, 3000, 7000, 15000] : [300, 1000, 2500, 5000, 10000]).map { cur.scaledPrice($0) }
+    }
 
     /// Call a meeting with one manager: they put proposals on the table as messages you answer. Original: `ACT.mtgo2`.
     @discardableResult
@@ -201,15 +203,7 @@ extension ManagerModel {
 
     // MARK: Profit bonus and a manager's year
 
-    /// A share of the month's profit on top of the salary, booked as wages before tax. Original: `monthEndCoCore`.
-    static func profitBonus(_ s: inout GameState, data: GameData) {
-        for co in s.companies where co.status == .open && co.managerID != nil && co.managerProfitBonus > 0 && s.people[co.managerID!] != nil {
-            let p0 = Books.profit(co.books.month)
-            let x = p0 > 0 ? jsRound(p0 * co.managerProfitBonus * (1 + World(state: s, data: data).country(co).employerSocial)) : 0
-            if x > 0 { Payments.companyPays(&s, companyID: co.id, amount: x, category: "wages", label: "Profit bonus: \(s.people[co.managerID!]!.name)") }
-            if let i = s.companyIndex(co.id) { s.companies[i].set("mgrBonusLast", x) }
-        }
-    }
+    /// The share of a month's profit a manager is paid on top of the salary is booked in `MonthEnd.closeMonth` (original: `monthEndCoCore`).
     public static func setManagerProfitBonus(_ s: inout GameState, companyID: Int, share: Double) {
         guard let i = s.companyIndex(companyID), s.companies[i].managerID != nil else { return }
         s.companies[i].managerProfitBonus = clamp(share, 0, 0.3)

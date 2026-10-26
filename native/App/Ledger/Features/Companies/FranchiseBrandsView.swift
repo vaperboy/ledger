@@ -5,72 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-/// Chains and franchises on the Group screen: your chains, stores that share a name, franchise units you run, and the way to join a brand.
-struct ChainsGroupSection: View {
-    var engine: GameEngine
-
-    var body: some View {
-        let sums = engine.chainSummaries
-        let loose = engine.looseStoreGroups
-        let brands = engine.franchiseBrands()
-        let franchised = engine.state.companies.filter { $0.status.isLive && !$0.value("franchise").isNull }
-        let franchisors = engine.state.companies.filter { $0.status.isLive && $0.value("fr")["on"].bool }
-        if !sums.isEmpty || !loose.isEmpty || !brands.isEmpty || !franchised.isEmpty || !franchisors.isEmpty {
-            LedgerSection("Chains and franchises") {
-                VStack(spacing: 0) {
-                    ForEach(Array(sums.enumerated()), id: \.element.id) { n, s in
-                        if n > 0 { Hairline() }
-                        if let first = s.stores.first {
-                            NavigationLink(value: CompanyRoute.company(first.id)) {
-                                row(title: s.name, sub: "\(s.stores.count) \(s.stores.count == 1 ? "store" : "stores") · \(s.reach.label)\(s.franchiseUnits > 0 ? " · \(s.franchiseUnits) franchise units" : "")",
-                                    trailing: engine.homeCurrency.short(s.profit) + " / mo", tint: s.profit < 0 ? Theme.loss : Theme.ivory)
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    ForEach(Array(loose.enumerated()), id: \.element.id) { n, g in
-                        if n > 0 || !sums.isEmpty { Hairline() }
-                        if let id = g.companyIDs.first {
-                            NavigationLink(value: CompanyRoute.company(id)) {
-                                row(title: g.name, sub: "\(g.companyIDs.count) \(engine.data.catalog[g.tradeID]?.name.lowercased() ?? "stores") under one name · register a chain", trailing: "›", tint: Theme.gold)
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    ForEach(Array(franchisors.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 || !sums.isEmpty || !loose.isEmpty { Hairline() }
-                        NavigationLink(value: CompanyRoute.company(c.id)) {
-                            row(title: "\(c.name) franchise", sub: "\(c.value("fr")["units"].array.count) units · \(c.value("fr")["app"].array.count) applying", trailing: engine.currency(for: c).short(c.value("fr")["income"].double) + " / wk", tint: Theme.ivory)
-                        }.buttonStyle(.plain)
-                    }
-                    ForEach(Array(franchised.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 || !sums.isEmpty || !loose.isEmpty || !franchisors.isEmpty { Hairline() }
-                        NavigationLink(value: CompanyRoute.company(c.id)) {
-                            row(title: c.name, sub: "Franchisee of \(c.value("franchise")["brandName"].string) · royalty \(Currency.percent(c.value("franchise")["roy"].double, decimals: 1))", trailing: "›", tint: Theme.gold)
-                        }.buttonStyle(.plain)
-                    }
-                    if !brands.isEmpty {
-                        let any = !sums.isEmpty || !loose.isEmpty || !franchisors.isEmpty || !franchised.isEmpty
-                        if any { Hairline() }
-                        NavigationLink { FranchisesView() } label: {
-                            row(title: "Join a franchise", sub: "A known brand, their rules, a fee · \(brands.count) \(brands.count == 1 ? "brand" : "brands")", trailing: "›", tint: Theme.gold)
-                        }.buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
-    private func row(title: String, sub: String, trailing: String, tint: Color) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
-            }
-            Spacer(minLength: 8)
-            Text(trailing).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint)
-        }.padding(.vertical, 9).contentShape(Rectangle())
-    }
-}
-
 /// Brands that take new franchisees. You apply, they answer in a week or three, then you meet them to agree the terms, then you start.
 struct FranchisesView: View {
     @EnvironmentObject var store: GameStore
@@ -90,7 +24,7 @@ struct FranchisesView: View {
                             VStack(spacing: 0) {
                                 ForEach(Array(brands.filter { $0.tradeID == t }.enumerated()), id: \.element.id) { n, b in
                                     if n > 0 { Hairline() }
-                                    brandRow(e, b, cur)
+                                    FranchiseBrandRow(brand: b)
                                 }
                             }
                         }
@@ -104,8 +38,18 @@ struct FranchisesView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+}
 
-    @ViewBuilder private func brandRow(_ e: GameEngine, _ b: FranchiseBrands.Brand, _ cur: Currency) -> some View {
+/// One franchise brand: its terms, and the next step with it (apply, meet them, or start under the agreed deal).
+struct FranchiseBrandRow: View {
+    @EnvironmentObject var store: GameStore
+    var brand: FranchiseBrands.Brand
+
+    var body: some View {
+        if let e = store.engine { row(e, brand, e.homeCurrency) }
+    }
+
+    @ViewBuilder private func row(_ e: GameEngine, _ b: FranchiseBrands.Brand, _ cur: Currency) -> some View {
         let a = e.franchiseApplication(b.id)
         let st = a["st"].string
         let sx = e.franchiseStatus(b)
@@ -113,14 +57,14 @@ struct FranchisesView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(b.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text("\(b.tierDescription) · \(b.units) units · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(b.tierDescription) · \(b.units) \(b.units == 1 ? "unit" : "units") · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer(minLength: 8)
-                Text("Fee \(cur.short(e.franchiseEntryFee(b)))").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text("Fee \(cur.tidyShort(e.franchiseEntryFee(b)))").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
             }
             switch st {
             case "pending":
-                Text("Application sent. Answer in about \(max(1, a["due"].int - e.state.week)) weeks.").font(.caption).foregroundStyle(Theme.caution)
+                Text("Application sent. Answer in about \(max(1, a["due"].int - e.state.week).weeksText).").font(.caption).foregroundStyle(Theme.caution)
             case "invited":
                 HStack {
                     Text("They want to talk. Open for \(max(0, a["exp"].int - e.state.week)) more weeks.").font(.caption).foregroundStyle(Theme.gain)
@@ -130,7 +74,7 @@ struct FranchisesView: View {
             case "agreed":
                 let t = e.franchiseAgreedTerms(b.id)
                 HStack {
-                    Text("Terms agreed. Entry fee \(cur.short(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).").font(.caption).foregroundStyle(Theme.gain)
+                    Text("Terms agreed. Entry fee \(cur.tidyShort(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).").font(.caption).foregroundStyle(Theme.gain)
                     Spacer()
                     NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Talk again").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
                     NavigationLink { StartFranchisedView(brandID: b.id) } label: { Text("Start with this deal").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold) }
@@ -212,23 +156,27 @@ struct BrandMeetingView: View {
                                 if let c = r?.counter { ask = c }
                             }.buttonStyle(result?.terms != nil ? AnyButtonStyle(QuietButtonStyle()) : AnyButtonStyle(GoldButtonStyle()))
                             if let t = result?.terms, result?.kind == .accept || result?.kind == .counter {
-                                Button("Sign this deal") { store.act { $0.signFranchiseTerms(brandID, terms: t) }; Haptics.success(); dismiss() }.buttonStyle(GoldButtonStyle())
+                                Button("Sign this deal") {
+                                    store.act { $0.signFranchiseTerms(brandID, terms: t) }
+                                    if store.engine?.franchiseAgreedTerms(brandID) != nil { Haptics.success(); store.show("Terms agreed. Start the company under the brand from the list.", tone: "good"); dismiss() }
+                                    else { Haptics.warning(); store.show("The brand did not sign. Talk again.", tone: "warn") }
+                                }.buttonStyle(GoldButtonStyle())
                             }
                         }
                         if let t = result?.terms, result?.kind == .accept || result?.kind == .counter {
-                            Text("Entry fee \(cur.short(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                            Text("Entry fee \(cur.tidyShort(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
                         }
                     }
                     LedgerSection(title: "Facts", trailing: { Button(showFacts ? "Hide" : "Show") { showFacts.toggle() }.font(.system(size: 11)).foregroundStyle(Theme.gold).buttonStyle(.plain) }) {
                         if showFacts {
                             VStack(spacing: 0) {
                                 FlatRow(label: "Units open", value: "\(b.units)", rule: false)
-                                FlatRow(label: "Entry fee", value: cur.short(e.franchiseEntryFee(b)))
+                                FlatRow(label: "Entry fee", value: cur.tidyShort(e.franchiseEntryFee(b)))
                                 FlatRow(label: "Royalty", value: Currency.percent(b.royalty, decimals: 1) + " of revenue")
                                 FlatRow(label: "Marketing fund", value: Currency.percent(b.marketingFund, decimals: 0))
                                 FlatRow(label: "Setup support", value: ["None, you pay everything", "They cover about 40%", "They cover about 70%"][min(2, b.support)])
                                 FlatRow(label: "Contract length", value: "\(b.termYears) years")
-                                FlatRow(label: "Typical unit revenue", value: cur.short(stats.revenue) + " / wk")
+                                FlatRow(label: "Typical unit revenue", value: cur.tidyShort(stats.revenue) + " / wk")
                                 FlatRow(label: "Margin after fees", value: Currency.percent(stats.margin, decimals: 0))
                                 FlatRow(label: "Units failing in 5 years", value: "\(Int(b.failPercent))%")
                                 FlatRow(label: "Quality standard", value: b.standard >= 70 ? "Strict" : b.standard >= 58 ? "Firm" : "Relaxed")
@@ -280,6 +228,7 @@ struct StartFranchisedView: View {
     @State private var cityID = ""
     @State private var limited = true
     @State private var name = ""
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine, let b = e.franchiseBrand(brandID), let t = e.franchiseAgreedTerms(brandID) {
@@ -290,11 +239,14 @@ struct StartFranchisedView: View {
             let city = cityID.isEmpty ? (e.franchiseApplication(brandID)["city"].string.isEmpty ? country.cities[0].id : e.franchiseApplication(brandID)["city"].string) : cityID
             let form: LegalForm = (limited || (bd?.needsLimitedCompany ?? false)) ? .limited : .soleTrader
             let est = e.franchiseStartEstimate(brandID: brandID, cityID: city, form: form)
+            let fund = max(0, min(((est?.estimate.total ?? 0) + (est?.fee ?? 0)) * 1.15, Payments.liquid(e.state) - (est?.estimate.personalOutlay ?? 0)))
+            let short = max(0, (est?.estimate.total ?? 0) + (est?.fee ?? 0) + (est?.estimate.personalOutlay ?? 0) - Payments.liquid(e.state))
+            let left = max(0, Payments.liquid(e.state) - (est?.estimate.personalOutlay ?? 0) - fund)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Start under \(b.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("Entry fee \(cur.short(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Entry fee \(cur.tidyShort(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     LedgerSection("Where and how") {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -307,20 +259,33 @@ struct StartFranchisedView: View {
                     if let est {
                         LedgerSection("Start-up cost") {
                             VStack(spacing: 0) {
-                                FlatRow(label: "Start-up estimate", value: cur.short(est.estimate.total), sub: "Documents, equipment, premises, stock, first payroll.", rule: false)
-                                FlatRow(label: "Franchise entry fee", value: cur.short(est.fee))
+                                FlatRow(label: "Start-up estimate", value: cur.tidyShort(est.estimate.total), sub: "Documents, equipment, premises, stock, first payroll.", rule: false)
+                                FlatRow(label: "Franchise entry fee", value: cur.tidyShort(est.fee))
                                 if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in the company's account when you start.", tint: Theme.gain) }
-                                FlatRow(label: "You have available", value: cur.short(Payments.liquid(e.state)))
+                                FlatRow(label: "You have available", value: cur.tidyShort(Payments.liquid(e.state)))
+                                FlatRow(label: "Total to find", value: cur.tidyShort(est.estimate.total + est.fee), sub: "Estimate plus entry fee, before the brand's cover.", tint: Theme.ivory)
+                                FlatRow(label: "Left in your accounts afterwards", value: cur.tidyShort(left), tint: left > 0 ? Theme.gain : Theme.caution)
                             }
                         }
-                        Button("Create company") {
-                            let fund = min((est.estimate.total + est.fee) * 1.15, Payments.liquid(e.state) - est.estimate.personalOutlay)
-                            let r = store.act { $0.startFranchisedCompany(brandID: brandID, cityID: city, form: form, name: name, fundWith: max(0, fund)) }
-                            switch r {
-                            case .success(let id)?: Haptics.success(); store.show("Started under \(b.name).", tone: "good"); store.tab = .companies; store.openCompanyID = id; dismiss()
-                            case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
-                            case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
-                            default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
+                        LedgerSection("Risks") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("You pay \(Currency.percent(t.royalty, decimals: 1)) of sales as royalty and \(Currency.percent(t.marketing, decimals: 0)) to the brand's marketing for \(b.termYears) years. Leaving early means a buyout.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                Text("The brand sets standards you must keep. The premises and equipment are set up with the standard choices; you can change the place afterwards under Equipment.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                if short > 0 { Text("You are \(cur.tidyShort(short)) short. If the company cannot pay the entry fee it starts independent, without the brand.").font(.system(size: 12.5)).foregroundStyle(Theme.caution) }
+                                Text("It earns nothing until it is set up and open.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                            }
+                        }
+                        Button("Review and start") {
+                            pending = PendingAction(title: "Start under \(b.name)?",
+                                                    message: "\(cur.tidyShort(est.estimate.total + est.fee)) to start, including the \(cur.tidyShort(est.fee)) entry fee. \(cur.tidyShort(fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
+                                                    button: "Start it") {
+                                let r = store.act { $0.startFranchisedCompany(brandID: brandID, cityID: city, form: form, name: name, fundWith: fund) }
+                                switch r {
+                                case .success(let id)?: Haptics.success(); store.show("Started under \(b.name).", tone: "good"); store.openCompany(id); dismiss()
+                                case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
+                                case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
+                                default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
+                                }
                             }
                         }.buttonStyle(GoldButtonStyle())
                     }
@@ -331,6 +296,7 @@ struct StartFranchisedView: View {
             .ledgerBackground()
             .navigationTitle("Start a franchise")
             .navigationBarTitleDisplayMode(.inline)
+            .confirmAction($pending)
         } else {
             Text("These terms have expired. Meet the brand again.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

@@ -30,7 +30,7 @@ public enum PremisesExtras {
     /// A team of four or more has outgrown the kitchen table.
     public static func hasOutgrownHome(_ co: Company, _ bd: Trade) -> Bool { isAtHome(co, bd) && heads(co) >= 4 }
 
-    /// Six places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
+    /// Five places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
     static func listings(_ co: Company, _ bd: Trade, _ w: World) -> [CompanySetup.Listing] {
         let want = wantedSquareMetres(co, bd)
         var r = HashedRandom("\(w.state.seed):pl37:\(co.type):\(co.cityID):\(Int(want)):\(w.week / 26)")
@@ -106,13 +106,19 @@ public enum PremisesExtras {
     }
 
     /// Rent a company of yours pays goes to the landlord company (97 %). Original: the `co.landlord` lines of `rentWeekCore`.
+    /// Weekly: the tenant is registered in the building. The landlord is paid when the tenant really pays its rent (`payLandlord`),
+    /// not when it accrues, so both sides book the same cash in the same period.
     static func rentToLandlord(_ s: inout GameState, tenantIndex i: Int, rent r: Double) {
         let lo = s.companies[i].value("landlord")
         guard !lo.isNull else { return }
         leaseNote(&s, tenantIndex: i)
-        if let l = s.company(lo["co"].int), l.status == .open, r > 0 {
-            Payments.companyReceives(&s, companyID: l.id, amount: r * 0.97, category: "rev", label: "Rent from \(s.companies[i].name)")
-        }
+    }
+
+    /// The tenant paid `paid` of its rent: the landlord company receives 97 % of it, now.
+    public static func payLandlord(_ s: inout GameState, tenantIndex i: Int, paid: Double) {
+        let lo = s.companies[i].value("landlord")
+        guard !lo.isNull, paid > 0, let l = s.company(lo["co"].int), l.status == .open else { return }
+        Payments.companyReceives(&s, companyID: l.id, amount: paid * 0.97, category: "rev", label: "Rent from \(s.companies[i].name)")
     }
 
     /// Leases of your own companies end when the tenant is gone. Original: `leaseClean`.
@@ -120,14 +126,15 @@ public enum PremisesExtras {
         var props = s.companies[i].properties
         var changed = false
         for k in props.indices {
-            let keep = props[k].leases.filter { l in
+            let current = props[k].leases
+            let keep = current.filter { l in
                 guard l.companyID != 0 else { return true }
                 if let t = s.company(l.companyID), t.status.isLive { return true }
                 props[k].leasedUnits = max(0, props[k].leasedUnits - l.squareMetres)
                 changed = true
                 return false
             }
-            if keep.count != props[k].leases.count { props[k].leases = keep }
+            if keep.count != current.count { props[k].leases = keep }
         }
         if changed { s.companies[i].properties = props }
     }

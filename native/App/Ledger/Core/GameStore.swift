@@ -8,20 +8,43 @@ import Events
 import SaveSystem
 import Simulation
 
-/// Five flat destinations: today, the companies (with the group's totals), money (finance, bank, investments), decisions, and the rest.
+/// Five destinations: daily company operations (with today's summary), everyone who works for you, the group (ownership, structure, money),
+/// time-bound projects and investments, and decisions. The old Phone pages sit behind a toolbar button on Company and Group.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case home, companies, money, inbox, phone
+    case company, team, group, projects, inbox
     var id: String { rawValue }
-    var title: String { switch self { case .home: return "Home"; case .companies: return "Group"; case .money: return "Money"; case .phone: return "Phone"; case .inbox: return "Inbox" } }
+    var title: String { switch self { case .company: return "Company"; case .team: return "Team"; case .group: return "Group"; case .projects: return "Projects"; case .inbox: return "Inbox" } }
     var symbol: String {
-        switch self { case .home: return "house"; case .companies: return "building.2"; case .money: return "banknote"; case .phone: return "iphone.gen3"; case .inbox: return "tray" }
+        switch self { case .company: return "building.2"; case .team: return "person.3"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .inbox: return "tray" }
     }
 }
 
-enum PhoneDestination: Hashable { case news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround }
+enum PhoneDestination: Hashable, CaseIterable { case news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
+    /// Title and symbol, shared by the More sheet, the toolbar menu and the iPad sidebar so the three always agree.
+    var title: String {
+        switch self {
+        case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
+        case .achievements: return "Achievements"; case .richList: return "Rich list"; case .ranking: return "Biggest companies"; case .worldAround: return "World around you"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
+        case .settings: return "gearshape.fill"; case .achievements: return "rosette"; case .richList: return "list.number"; case .ranking: return "building.2.fill"
+        case .worldAround: return "person.2.wave.2.fill"
+        }
+    }
+}
 
 /// The sections of the Money tab.
 enum MoneySection: String, CaseIterable, Hashable { case overview = "Overview", bank = "Bank", invest = "Invest", taxes = "Taxes", costs = "Costs", reports = "Reports" }
+
+/// "Push this onto the stack of this tab": the one shape of a deep link to a company.
+struct RouteRequest: Equatable {
+    let id = UUID()
+    var tab: AppTab
+    var route: CompanyRoute
+}
 
 struct Toast: Identifiable, Equatable {
     let id = UUID()
@@ -38,14 +61,22 @@ final class GameStore: ObservableObject {
     @Published private(set) var isAdvancing = false
 
     // Navigation requests from anywhere (e.g. a suggestion card)
-    @Published var tab: AppTab = .home
-    @Published var openCompanyID: Int?
-    @Published var phoneDestination: PhoneDestination?
+    @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnTab = nil } } }
+    /// Set while the player is on a tab they were sent to by a link; that tab shows "Back to <returnTab>".
+    @Published private(set) var returnTab: AppTab?
+    /// A company or record to push onto the navigation stack of `tab` (the tab it was requested from). Taken by `routeRequests`.
+    @Published var routeRequest: RouteRequest?
+    private var jumping = false
+    @Published var phoneDestination: PhoneDestination? { didSet { if phoneDestination != nil { showPhone = true } } }
+    /// The sheet with news, stats, activity, luxury, settings and the rest (opened from the toolbar of Company and Group).
+    @Published var showPhone = false
     @Published var moneySection: MoneySection?
     /// Open the Reports section on this report (set by the Home prompt).
     @Published var reportRequest: ReportRef?
     @Published var showNewCompany = false
     @Published var openMessageID: Int?
+    /// Set when the save on disk exists but could not be opened; the start screen explains it instead of a passing alert.
+    @Published private(set) var loadProblem: String?
 
     let saves: SaveStore?
     private var cancelAdvance = false
@@ -73,7 +104,24 @@ final class GameStore: ObservableObject {
 
     func loadCurrent() {
         guard let saves else { return }
-        do { try start(with: saves.load()) } catch { errorText = "The save could not be read: \(error)" }
+        do { try start(with: saves.load()); loadProblem = nil; resetNavigation() }
+        catch { loadProblem = Self.describe(error) }
+    }
+
+    /// The summary written with the current save (player, country, week, companies, when it was saved), or nil when there is none or it is unreadable.
+    func currentSaveSummary() -> SaveSummary? {
+        saves?.slots().first { $0.slot == "current" }?.summary
+    }
+
+    /// A save error in words a player can act on.
+    static func describe(_ error: Error) -> String {
+        switch error {
+        case SaveError.notAGameSave: return "The file is not a Ledger save."
+        case SaveError.newerThanThisApp(let v): return "It was saved by a newer version of Ledger (save format \(v)). Update the app to open it."
+        case SaveError.unreadable(let why): return "The file is damaged: \(why)."
+        case is DecodingError: return "The file is damaged and its contents could not be read."
+        default: return error.localizedDescription
+        }
     }
 
     private func start(with state: GameState) throws {
@@ -92,15 +140,15 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
-    func newGame(name: String, countryCode: String) {
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name); tab = .home; save() } catch { errorText = "Could not start a game: \(error)" }
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil) {
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
     func importLegacy(text: String) {
         guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); tab = .home; save(); show("Save imported. The original file is kept untouched.", tone: "good") }
-        catch { errorText = "That save could not be imported: \(error)" }
+        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); show("Save imported. The original file is kept untouched.", tone: "good") }
+        catch { errorText = "That save could not be imported. " + Self.describe(error) }
     }
 
     func exportText() -> String? {
@@ -108,7 +156,7 @@ final class GameStore: ObservableObject {
         return String(data: d, encoding: .utf8)
     }
 
-    func quitToMenu() { save(); engine = nil }
+    func quitToMenu() { save(); resetNavigation(); engine = nil }
 
     // MARK: Time
 
@@ -176,7 +224,7 @@ final class GameStore: ObservableObject {
     }
 
     func show(_ text: String, tone: String = "n") {
-        let t = Toast(text: text, tone: tone)
+        let t = Toast(text: text.tidyText, tone: tone)
         toast = t
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_200_000_000)
@@ -186,19 +234,77 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation
 
+    /// The one way to open a company (or one of its sections) from anywhere: it is pushed onto the navigation stack of the tab the
+    /// player is on (Company, Team, Group, Projects or Inbox), so Back returns to the screen they came from. The More sheet is closed
+    /// first, so a link from it lands on the tab behind it. The request is consumed by that tab (`routeRequests`), so it cannot leak.
+    func openCompany(_ id: Int, section: CompanySection? = nil) {
+        showPhone = false
+        let route: CompanyRoute
+        if let section { route = .companyAt(id, section) } else { route = .company(id) }
+        routeRequest = RouteRequest(tab: tab, route: route)
+    }
+
+    /// Switches to another tab for a link that cannot be pushed (a message in the Inbox, a Money section, New company) and remembers
+    /// where the player came from; the destination shows "Back to <tab>". Switching tabs by hand clears it.
+    func jump(to destination: AppTab) {
+        showPhone = false
+        guard destination != tab else { return }
+        let from = tab
+        jumping = true; tab = destination; jumping = false
+        returnTab = from
+    }
+
+    /// Back to the tab a link came from.
+    func returnToOrigin() {
+        guard let back = returnTab else { return }
+        jumping = true; tab = back; jumping = false
+        returnTab = nil
+    }
+
+    /// Opens one message in the Inbox. `InboxView` takes the request on appear and on change, so it works whether or not
+    /// the Inbox was built before.
+    func openMessage(_ id: Int) {
+        openMessageID = id
+        jump(to: .inbox)
+    }
+
+    /// Opens the More sheet, on `destination` when given (from the toolbar menu or the iPad sidebar).
+    func openMore(_ destination: PhoneDestination? = nil) {
+        Haptics.tap()
+        if let destination { phoneDestination = destination } else { showPhone = true }
+    }
+
+    /// Drops every pending navigation request, so nothing from one game (or one visit) opens in the next.
+    private func resetNavigation() {
+        jumping = true; tab = .company; jumping = false; returnTab = nil
+        routeRequest = nil; moneySection = nil; reportRequest = nil
+        openMessageID = nil; phoneDestination = nil; showPhone = false; showNewCompany = false
+    }
+
     func go(_ action: Suggestion.Action) {
         Haptics.tap()
         switch action {
-        case .openMessage(let id): openMessageID = id; tab = .inbox
-        case .openCompany(let id): openCompanyID = id; tab = .companies
-        case .openLoans: moneySection = .bank; tab = .money
-        case .openInvest: moneySection = .invest; tab = .money
-        case .openTax: moneySection = .taxes; tab = .money
-        case .newCompany: showNewCompany = true; tab = .companies
+        case .openMessage(let id): openMessage(id)
+        case .openCompany(let id): openCompany(id)
+        case .openLoans: moneySection = .bank; jump(to: .group)
+        case .openInvest: moneySection = .invest; jump(to: .group)
+        case .openTax: moneySection = .taxes; jump(to: .group)
+        case .newCompany: showNewCompany = true; jump(to: .company)
         }
     }
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
+}
+
+extension Int {
+    /// "1 week", "3 weeks".
+    var weeksText: String { "\(self) \(self == 1 ? "week" : "weeks")" }
+}
+
+extension Currency {
+    /// `short` as the player should read it ("£220k", "£2,751"), the same as `GameStore.short`. Views that hold a currency use this,
+    /// so the same amount never shows as "£2 751" on one screen and "£2,751" on the next.
+    func tidyShort(_ v: Double) -> String { short(v).tidyMoney }
 }
 
 extension String {

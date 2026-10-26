@@ -10,14 +10,18 @@ public struct EquipmentSpec: Equatable, Sendable {
     public var lifeYears: Double
     /// Standard number needed at size 1
     public var standardCount: Double
-    /// Flags: r = required to open, c = sets capacity, q = affects quality, u = can be bought used
+    /// Flags: r = required to open, c = sets capacity, q = affects quality, u = can be bought used, o = a person may use their own car
+    /// instead (mileage is paid, `PersonalEquipment`)
     public var flags: String
     /// Vehicle model ids this equipment is bought as, if it is a vehicle: [model]
     public var vehicleModels: [String]?
+    /// Who needs one of this and how much work goes on without it, written in the data (`pe`): see `PersonalEquipment.rule`.
+    public var personalRule: PersonalEquipment.Rule? = nil
 
     public var isRequired: Bool { flags.contains("r") }
     public var limitsCapacity: Bool { flags.contains("c") }
     public var affectsQuality: Bool { flags.contains("q") }
+    public var allowsOwnCar: Bool { flags.contains("o") }
 }
 
 /// One option of a business choice ("knob"). Original: knob options with `fx`.
@@ -133,7 +137,8 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
         equipment = j["eq"].array.map { e in
             EquipmentSpec(id: e["id"].string, name: e["n"].string, cost: e["cost"].double, lifeYears: e["life"].double,
                           standardCount: e["std"].double, flags: e["fl"].string,
-                          vehicleModels: e["vo"].isNull ? nil : e["vo"].array.map { $0.string })
+                          vehicleModels: e["vo"].isNull ? nil : e["vo"].array.map { $0.string },
+                          personalRule: e["pe"].isNull ? nil : PersonalEquipment.Rule(roles: e["pe"]["roles"].array.map { $0.string }, peoplePerUnit: e["pe"]["per"].double, workWithout: e["pe"]["without"].double))
         }
         documents = j["docs"].array.map { $0.string }
         managerType = j["mgr"].string

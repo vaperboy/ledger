@@ -129,6 +129,98 @@ public enum Chains {
             s.companies[i].name = storeName(s, chain: ch, s.companies[i], data: d)
         }
         applyRules(&s, chain: ch, companyIndex: i)
+        // An open store joining a chain changes over to its standards like any other change; one that cannot keeps its choice.
+        if let d = data, s.companies[i].status == .open {
+            for (k, v) in ch["rules"]["knob"].object where s.companies[i].value("knob")[k].int != v.int {
+                if case .refused(let why) = KnobChange.apply(&s, d, companyID: companyID, knob: k, value: v.int, byChain: true) {
+                    s.note("\(s.companies[i].name) joined \(ch["name"].string) but keeps its own way of selling: \(why)", tone: "warn", companyID: companyID)
+                }
+            }
+            SupplyDeals.applyChainRules(&s, d, storeID: companyID)
+        }
+    }
+
+    /// One store's line in a chain-wide change of a standard.
+    public struct KnobStandardLine: Equatable, Sendable {
+        public var storeID: Int
+        public var storeName: String
+        /// False when the store already follows the standard
+        public var changes: Bool
+        public var cost: Double
+        public var weeks: Int
+        /// Why this store cannot take the standard (it keeps its current choice)
+        public var reason: String?
+    }
+
+    public struct KnobStandardPlan: Equatable, Sendable {
+        public var lines: [KnobStandardLine]
+        public init(lines: [KnobStandardLine]) { self.lines = lines }
+        /// What the stores that can change will pay in all
+        public var totalCost: Double { lines.filter { $0.changes && $0.reason == nil }.reduce(0) { $0 + $1.cost } }
+        public var exceptions: Int { lines.filter { $0.changes && $0.reason != nil }.count }
+        public var changing: Int { lines.filter { $0.changes && $0.reason == nil }.count }
+    }
+
+    /// What making `value` the chain's standard for a knob would cost each store. Nothing is changed.
+    public static func knobStandardPlan(_ s: GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan? {
+        guard let ch = chain(s, id: chainID), data.catalog[ch["type"].string]?.knobs.contains(where: { $0.id == knob }) == true else { return nil }
+        var lines: [KnobStandardLine] = []
+        for c in stores(s, ch) {
+            guard let q = KnobChange.quote(s, data, companyID: c.id, knob: knob, value: value, byChain: true) else { continue }
+            let same = (c.value("knob")[knob].isNull ? (data.catalog[c.type]?.knobs.first { $0.id == knob }?.defaultIndex ?? 0) : c.value("knob")[knob].int) == value
+            lines.append(KnobStandardLine(storeID: c.id, storeName: c.name, changes: !same, cost: q.totalCost, weeks: q.transitionWeeks, reason: same ? nil : q.blocked))
+        }
+        return KnobStandardPlan(lines: lines)
+    }
+
+    /// Make `value` the chain's mandatory standard for a knob and have every store it governs change over to it. A store that
+    /// cannot (no cash, licence refused, still changing over) keeps its choice and is reported, never silently overridden.
+    /// Running it again later retries the stores that still differ.
+    @discardableResult
+    public static func setKnobStandard(_ s: inout GameState, chainID: Int, knob: String, value: Int, data: GameData) -> KnobStandardPlan {
+        guard var ch = chain(s, id: chainID), let plan0 = knobStandardPlan(s, chainID: chainID, knob: knob, value: value, data: data) else { return KnobStandardPlan(lines: []) }
+        ch["rules"]["knob"][knob] = .number(Double(value))
+        save(&s, ch)
+        var lines = plan0.lines
+        for n in lines.indices where lines[n].changes {
+            let id = lines[n].storeID
+            guard let i = s.companyIndex(id) else { continue }
+            if s.companies[i].status != .open {
+                var k = s.companies[i].value("knob"); k[knob] = .number(Double(value)); s.companies[i].set("knob", k)
+                lines[n].reason = nil
+                continue
+            }
+            if case .refused(let why) = KnobChange.apply(&s, data, companyID: id, knob: knob, value: value, byChain: true) {
+                lines[n].reason = why
+                s.note("\(lines[n].storeName) keeps its way of selling: \(why)", tone: "warn", companyID: id)
+            } else { lines[n].reason = nil }
+        }
+        return KnobStandardPlan(lines: lines)
+    }
+
+    /// The chain's standard for a knob (an option index, or the bit mask of a multi-choice knob), nil when each store decides.
+    public static func knobStandard(_ s: GameState, chainID: Int, knob: String) -> Int? {
+        guard let ch = chain(s, id: chainID), !ch["rules"]["knob"][knob].isNull else { return nil }
+        return ch["rules"]["knob"][knob].int
+    }
+
+    /// Stores that do not follow the chain's standard for a knob right now (they could not change over). Empty when there is no standard.
+    public static func knobExceptions(_ s: GameState, chainID: Int, knob: String, data: GameData) -> [(storeID: Int, storeName: String, value: Int)] {
+        guard let std = knobStandard(s, chainID: chainID, knob: knob), let ch = chain(s, id: chainID),
+              let k = data.catalog[ch["type"].string]?.knobs.first(where: { $0.id == knob }) else { return [] }
+        return stores(s, ch).compactMap { c in
+            let v = KnobChange.currentValue(c, k)
+            return v == std ? nil : (storeID: c.id, storeName: c.name, value: v)
+        }
+    }
+
+    /// Give the choice back to the stores: the chain no longer fixes this knob.
+    public static func releaseKnobStandard(_ s: inout GameState, chainID: Int, knob: String) {
+        guard var ch = chain(s, id: chainID) else { return }
+        var k = ch["rules"]["knob"].object
+        k.removeValue(forKey: knob)
+        ch["rules"]["knob"] = .object(k)
+        save(&s, ch)
     }
 
     /// A place in a chain that is short of a role, and a sister store that has one more than it needs. Original: the "Short of staff" list.
@@ -136,17 +228,17 @@ public enum Chains {
 
     public static func staffShortages(_ s: GameState, chainID: Int, data: GameData) -> [Shortage] {
         guard let ch = chain(s, id: chainID) else { return [] }
-        let stores = stores(s, ch)
+        let chainStores = stores(s, ch)
         func std(_ c: Company, _ role: String) -> Int {
             guard let bd = data.catalog[c.type] else { return 0 }
             return CompanySetup.standardStaff(bd, size: c.size).filter { $0.role == role }.reduce(0) { $0 + $1.count }
         }
         func have(_ c: Company, _ role: String) -> Int { c.staff.filter { $0.role == role }.count }
         var out: [Shortage] = []
-        for c in stores {
+        for c in chainStores {
             guard let bd = data.catalog[c.type] else { continue }
             for r in CompanySetup.standardStaff(bd, size: c.size) where have(c, r.role) < r.count {
-                out.append(Shortage(storeID: c.id, role: r.role, spareAtStoreID: stores.first { $0.id != c.id && have($0, r.role) > std($0, r.role) }?.id))
+                out.append(Shortage(storeID: c.id, role: r.role, spareAtStoreID: chainStores.first { $0.id != c.id && have($0, r.role) > std($0, r.role) }?.id))
             }
         }
         return out
@@ -154,11 +246,11 @@ public enum Chains {
 
     /// Lend the least skilled person of a role from one store of a chain to another. Original: `ACT.ch12lend`.
     @discardableResult
-    public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, data: GameData) -> Bool {
+    public static func lendWorker(_ s: inout GameState, from fromID: Int, to toID: Int, role: String, staffID: Int? = nil, data: GameData) -> Bool {
         guard let a = s.companyIndex(fromID), let b = s.companyIndex(toID), a != b,
               let ca = chain(s, of: s.companies[a]), let cb = chain(s, of: s.companies[b]), ca["id"].int == cb["id"].int else { return false }
         let tables = data.catalog.tables
-        let pick = s.companies[a].staff.filter { $0.role == role }
+        let pick = s.companies[a].staff.filter { staffID == nil ? $0.role == role : $0.id == staffID }   // a named person (the contract talk), else the least skilled of the role
             .min { StaffModel.skill($0, person: s.people[$0.id], salesRoles: tables.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: tables.salesRoles) }
         guard let m = pick else { return false }
         s.companies[a].staff = s.companies[a].staff.filter { $0.id != m.id }
@@ -172,9 +264,13 @@ public enum Chains {
     static func applyRules(_ s: inout GameState, chain ch: JSONValue, companyIndex i: Int) {
         let R = ch["rules"], o = s.companies[i].value("off")
         s.companies[i].priceLevel = clamp(R["price"].double + o["price"].double, -3, 3)
-        var knob = s.companies[i].value("knob")
-        for (k, v) in R["knob"].object { knob[k] = v }
-        s.companies[i].set("knob", knob)
+        // A store that is not open yet takes the chain's standard as it opens. An open store changes over (cost, weeks, licences)
+        // when the standard changes (`setKnobStandard`), so the weekly turn never rewrites its choices silently.
+        if s.companies[i].status != .open {
+            var knob = s.companies[i].value("knob")
+            for (k, v) in R["knob"].object { knob[k] = v }
+            s.companies[i].set("knob", knob)
+        }
         s.companies[i].set("stockPol", o["stock"].isNull ? R["stockPol"].double : o["stock"].double)
     }
 
@@ -387,7 +483,8 @@ public enum Chains {
                         guard let c = marketing.channels[k] else { return 0 }
                         return Marketing.channelAffinity(bd, k, marketing.affinityByFamily, marketing.affinityByTrade) * ((1 - bd.audience) * c.localShare + bd.audience * c.businessShare) * c.efficiency
                     }
-                    let ks = marketing.channels.keys.filter { k in let c = marketing.channels[k]!; return !c.isPrimeTime && !c.isNational && !c.isHighVariance }
+                    // A store that is also a franchise unit may only get channels its franchise agreement allows locally.
+                    let ks = marketing.channels.keys.filter { k in let c = marketing.channels[k]!; return !c.isPrimeTime && !c.isNational && !c.isHighVariance && FranchiseStandards.campaignRefusal(co, channel: k) == nil }
                         .sorted { fit($0) != fit($1) ? fit($0) > fit($1) : $0 < $1 }.prefix(2)
                     let b = (max(rev * sh, sh > 0 ? Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(300) : 0) / Double(max(1, ks.count))).rounded()
                     var mkt = co.value("mkt")
@@ -438,10 +535,12 @@ public enum Chains {
             let co = s.companies[i]
             guard co.status == .open, co.type != "club" else { continue }
             let lw = co.value("lastW")
-            if co.type == "cardealer", lw["rev"].double > 0, let pl = s.companies.first(where: { $0.type == "factory" && $0.status == .open && $0.id != co.id && $0.value("knob")["line"].int >= 1 }) {
+            if co.type == "cardealer", lw["rev"].double > 0, let pl = s.companies.first(where: { $0.type == "factory" && $0.status == .open && $0.id != co.id && $0.countryCode == co.countryCode && $0.value("knob")["line"].int >= 1 }) {
                 let rev = lw["rev"].double
-                rebate(&s, co.id, min(rev * 0.06, lw["cogs"].double * 0.12))
-                Payments.companyReceives(&s, companyID: pl.id, amount: rev * 0.04, category: "rev", label: "Wholesale to \(co.name)")
+                // The dealer's saving and the plant's wholesale revenue are the same amount (same country, as in IntercompanySupply).
+                let discount = min(rev * 0.06, lw["cogs"].double * 0.12).rounded()
+                rebate(&s, co.id, discount)
+                if discount > 0 { Payments.companyReceives(&s, companyID: pl.id, amount: discount, category: "rev", label: "Wholesale to \(co.name)") }
                 let cap = clamp(36 + 17 * log2(Double(max(1, Competition.chainOutlets(co, World(state: s, data: data))))), 36, 100)
                 s.companies[i].awareness = max(s.companies[i].awareness, min(cap, pl.awareness * 0.5))
             }
@@ -459,6 +558,9 @@ public enum Chains {
         reachWeek(&s, data: data)
         Franchising.weekly(&s, data: data, context: fc)
         IntercompanySupply.weekly(&s, data: data)
+        SupplyTerms.weekly(&s, data: data, context: fc)   // invoices fall due: paid, or late with interest and consequences
+        AccountSupply.weekly(&s)   // inputs bought from your business customers
+        RivalAbsorb.weekly(&s)     // a matched price ends, a site beside a rival takes its customers
         ManagerModel.groupWeekly(&s, data: data, context: fc, marketing: marketing)   // management team, boards, chain bosses, group loans, the office
     }
 }
