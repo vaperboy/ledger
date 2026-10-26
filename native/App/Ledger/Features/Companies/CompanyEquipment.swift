@@ -59,9 +59,7 @@ struct CompanyEquipmentScreen: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let needs = e.equipmentNeeds(companyID: companyID)
-            let tabs = EquipmentTab.allCases.filter { t in
-                t == .fleet ? needs.contains { $0.isVehicle } : t == .software ? needs.contains { $0.isSoftware } : t == .premises ? (e.tradeInfo(companyID: companyID)?.premisesKind.map { $0 != "none" && $0 != "home" } ?? false) : true
-            }
+            let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -99,6 +97,21 @@ struct CompanyEquipmentScreen: View {
             } message: { Text(pendingListing.map { "\($0.name), \(Int($0.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back." } ?? "") }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    private func visibleTabs(_ e: GameEngine, _ needs: [EquipmentMarket.Need]) -> [EquipmentTab] {
+        let hasVehicles: Bool = needs.contains { $0.isVehicle }
+        let hasSoftware: Bool = needs.contains { $0.isSoftware }
+        let kind: String? = e.tradeInfo(companyID: companyID)?.premisesKind
+        let hasPremises: Bool = kind.map { $0 != "none" && $0 != "home" } ?? false
+        return EquipmentTab.allCases.filter { (t: EquipmentTab) -> Bool in
+            switch t {
+            case .fleet: return hasVehicles
+            case .software: return hasSoftware
+            case .premises: return hasPremises
+            default: return true
+            }
         }
     }
 
