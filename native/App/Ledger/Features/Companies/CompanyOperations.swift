@@ -19,7 +19,9 @@ struct CompanyOperations: View {
                         Spacer()
                         Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
-                    Slider(value: Binding(get: { company.priceLevel }, set: { v in store.settle(store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) }, "Price level saved.", same: "Price level is already that.") }), in: -3...3, step: 0.5)
+                    Slider(value: Binding(get: { company.priceLevel }, set: { v in _ = store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) } }), in: -3...3, step: 0.5) { editing in
+                        if !editing { store.show("Price: \(priceWord(company.priceLevel)).", tone: "good"); Haptics.tap() }
+                    }
                         .tint(Theme.gold)
                     Text("Cheaper brings more customers, dearer more profit per sale. The right spot depends on your trade and area.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
