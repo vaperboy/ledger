@@ -46,11 +46,23 @@ public enum CompanyFigures {
 
     /// Everything the company owes. Original: `companyDebts`.
     public static func debts(_ co: Company, loans: [Loan]) -> Double {
-        let p = co.payables
         let loanSum = loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
+        return loanSum + billsOwed(co)
+    }
+
+    /// Everything the company owes except loans: unpaid wages, bills, supplier invoices, rent, VAT, tax and financial-company liabilities.
+    /// The one list that the balance sheet, wind-up and bankruptcy all use.
+    public static func billsOwed(_ co: Company) -> Double {
+        let p = co.payables
         let fm = co.value("fm")
-        return loanSum + (p["wages"] ?? 0) + (p["other"] ?? 0) + (p["inv"] ?? 0) + (p["rent"] ?? 0) + max(0, co.vatBalance) + (p["tax"] ?? 0)
-            + (fm["liab"].isNull ? 0 : fm["liab"].double)
+        var total: Double = p["wages"] ?? 0
+        total += p["other"] ?? 0
+        total += p["inv"] ?? 0
+        total += p["rent"] ?? 0
+        total += max(0, co.vatBalance)
+        total += p["tax"] ?? 0
+        if !fm["liab"].isNull { total += fm["liab"].double }
+        return total
     }
 
     /// Profit over the last twelve months, scaled to a year. Original: `coEbit12`.
