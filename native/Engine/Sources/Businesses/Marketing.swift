@@ -232,7 +232,6 @@ public enum Marketing {
         co = s.companies[i]
         if co.status == .open {
             let a = organicAwareness(co, bd, w)
-            co.set("aw23", jsRound(a * 10) / 10)
             if a > co.awareness { co.awareness = clamp(co.awareness / max(0.5, decay(co)) + (a - co.awareness) * 0.035, 0, a + 0.5) }
             s.companies[i] = co
         }

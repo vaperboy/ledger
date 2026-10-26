@@ -9,7 +9,6 @@ struct GoalsView: View {
         ScrollView {
             if let e = store.engine {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    FirstStepsCard(engine: e)
                     GoalsCard(engine: e)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)

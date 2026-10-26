@@ -40,26 +40,33 @@ public enum CompanyCosts {
         return c
     }
 
+    /// The standing payroll of one week, employer on-cost included: staff pay with the cover for paid leave, plus the manager.
+    /// The one function behind both the accrual (`wages`) and every payroll estimate, so the two cannot drift apart. Each wage carries its own
+    /// on-cost rate (`Country.payrollFactor`), which matters where contributions are capped (Mexico). Commission is not included.
+    /// With `sickWeek` (the accrual), someone who fell sick last week costs what the country's sick-pay law makes the employer pay
+    /// (`LabourRules.employerSickPay`) instead of the full wage; estimates leave it out. `capScale` carries the price drift of a flat statutory rate.
+    public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true, sickWeek: Int? = nil, capScale: Double = 1) -> Double {
+        let labour = LabourRules(country: country)
+        let holiday = 1 + labour.leaveWeeks / 52 * 0.3  // cover for paid leave (sick pay is by law, below)
+        var cost = 0.0
+        for m in co.staff where !(skipOffSeason && m.isOffSeason) {
+            let weekly = m.monthlyWage * 12 / 52
+            let pay = (sickWeek != nil && m.sickUntilWeek == sickWeek)
+                ? labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: capScale) : weekly * holiday
+            cost += pay * country.payrollFactor(monthlyWage: m.monthlyWage)
+        }
+        if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
+        return cost
+    }
+
     /// Accrue this week's payroll. `factor` < 1 for a closed company. Returns the cost incl. employer charges.
     @discardableResult
     public static func wages(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, factor f: Double = 1) -> Double {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let labour = LabourRules(country: country)
-        let holiday = 1 + labour.leaveWeeks / 52 * 0.3  // cover for paid leave (sick pay is by law, below)
-        var gross = 0.0
-        for m in co.staff where !m.isOffSeason {
-            let weekly = m.monthlyWage * 12 / 52
-            // Someone who fell sick last week costs what the country's sick-pay law makes the employer pay, not the full wage.
-            if m.sickUntilWeek == s.week {
-                gross += labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: w.inflationIndex)
-            } else { gross += weekly * holiday }
-        }
-        gross += co.status == .closed ? 0 : commission(&co, bd, w)
-        if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
-        gross *= f
-        let cost = gross * country.employerCostFactor
+        let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
+        let cost = (standingWeeklyPayroll(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * country.employerCostFactor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * country.employerCostFactor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }

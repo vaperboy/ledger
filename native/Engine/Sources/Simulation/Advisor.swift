@@ -26,13 +26,6 @@ public struct Suggestion: Identifiable, Equatable, Sendable {
     public var actionLabel: String
 }
 
-public struct FirstStep: Identifiable, Equatable, Sendable {
-    public var id: String
-    public var title: String
-    public var detail: String
-    public var done: Bool
-}
-
 public extension GameEngine {
     /// Ranked suggestions: decisions waiting, money problems, then opportunities. At most `limit`.
     func suggestions(limit: Int = 5) -> [Suggestion] {
@@ -75,20 +68,5 @@ public extension GameEngine {
                                   detail: "Paying part of a loan back would cut your interest.", tone: .neutral, action: .openLoans, actionLabel: "Open bank"))
         }
         return Array(out.prefix(limit))
-    }
-
-    /// The first-steps tracker. No rewards, just a guide.
-    func firstSteps() -> [FirstStep] {
-        let cos = state.companies
-        func traded(_ c: Company) -> Bool { (c.books.total["rev"] ?? 0) > 0 }
-        return [
-            FirstStep(id: "start", title: "Start a business", detail: "Tap + on the Company tab and choose a trade.", done: !cos.isEmpty),
-            FirstStep(id: "open", title: "Get it open", detail: "Documents, premises and equipment must be ready.", done: cos.contains { $0.openedWeek != nil }),
-            FirstStep(id: "sale", title: "Make your first sales", detail: "Press Next day and watch the money come in.", done: cos.contains(where: traded)),
-            FirstStep(id: "hire", title: "Hire someone", detail: "More hands mean more customers served.", done: cos.contains { !$0.staff.isEmpty }),
-            FirstStep(id: "market", title: "Try marketing", detail: "A small campaign raises awareness, but results vary.", done: cos.contains { !$0.value("mkt").object.isEmpty }),
-            FirstStep(id: "month", title: "Close a month", detail: "Wages, tax and VAT are settled at month end.", done: cos.contains { !$0.monthlyHistory.isEmpty }),
-            FirstStep(id: "profit", title: "Make a profitable month", detail: "Revenue above all costs, tax included.", done: cos.contains { $0.monthlyHistory.contains { $0.profit > 0 } }),
-        ]
     }
 }

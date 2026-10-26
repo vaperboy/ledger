@@ -72,8 +72,14 @@ public enum Ledger {
     }
 
     /// Differences between cash and what was booked, per holder (empty = consistent). Original: `ledgerGaps`.
+    /// Money still held back for a company that is sold or gone is a gap too: nobody can ever be paid it.
     public static func gaps(_ s: GameState) -> [(holder: String, difference: Double)] {
         var out: [(String, Double)] = []
+        for id in (s.rest["pend"]?["co"].array ?? []).map({ $0[0].int }).sorted() {
+            let left = HeldMoney.remaining(s, companyID: id)
+            let live = s.company(id)?.status.isLive ?? false
+            if !live && abs(left) > 1 { out.append(("held week money of \(s.company(id)?.name ?? "company \(id)")", left)) }
+        }
         let me = s.cash - s.openingCash - (s.cashFlow["me"] ?? 0)
         if abs(me) > 1 { out.append(("me", me)) }
         for c in s.companies {

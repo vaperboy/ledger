@@ -65,7 +65,7 @@ final class CompanyCountryRulesTests: XCTestCase {
             m.id = s.makeID(); m.role = "waiter"; m.monthlyWage = 300_000; m.hiredWeek = s.week - 60
             s.companies[i].staff.append(m)
             wage = m.monthlyWage
-            social = World(state: s, data: data).country(s.companies[i]).employerSocial
+            social = World(state: s, data: data).country(s.companies[i]).employerOnCost(monthlyWage: 300_000)
             sev = Dismissal.dismiss(&s, companyID: id, staffID: m.id, reason: .redundancy, data: data)?.paid ?? 0
         }
         let weeks = LabourRules(code: "DE").termination(tenureWeeks: 60).weeks

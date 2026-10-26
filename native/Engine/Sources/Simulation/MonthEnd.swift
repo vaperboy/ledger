@@ -163,7 +163,10 @@ public enum MonthEnd {
                 }
                 var rest = v - pay
                 if rest > 1 {
-                    let penalty = jsRound(rest * 0.05)
+                    // The 5 % penalty is charged once, on the VAT of this return that was left unpaid. Arrears carried from earlier
+                    // returns (`vatOver`) already contain their own penalty and interest and are not penalised again.
+                    let carried = min(s.companies[i].num("vatOver"), v)
+                    let penalty = jsRound(min(rest, max(0, v - carried)) * 0.05)
                     Payments.book(&s, companyID: co.id, category: "fine", amount: penalty)
                     rest += penalty
                     s.companies[i].set("vatOver", rest)

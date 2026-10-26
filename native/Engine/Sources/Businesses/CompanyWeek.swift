@@ -75,6 +75,12 @@ public enum CompanyWeek {
         let fixed = bd.fixedWeekly * pow(s.companies[i].size, 0.6) * 0.5
         _ = w
         Payments.companyPays(&s, companyID: s.companies[i].id, amount: fixed, category: "oth")
+        // Software plans keep charging while closed unless the owner paused them when closing (original: `weekCo.after`, `subPause`).
+        if !s.companies[i].value("subPause").bool {
+            for (_, rec) in s.companies[i].value("eq").object.sorted(by: { $0.key < $1.key }) where !rec["sub"].isNull {
+                Payments.companyPays(&s, companyID: s.companies[i].id, amount: rec["sub"]["fee"].double * 12 / 52, category: "oth", label: "Software plan")
+            }
+        }
         let total = s.companies[i].num("closeTot", s.companies[i].num("closeW"))
         let left = s.companies[i].num("closeW")
         CompanyCosts.wages(&s, companyIndex: i, bd, data: data, factor: (total - left) < 2 ? 1 : 0.4)

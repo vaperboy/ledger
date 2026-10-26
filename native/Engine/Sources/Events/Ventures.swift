@@ -16,16 +16,15 @@ public enum Ventures {
         Shareholders.weekly(&s, data: data, context: fc)
     }
 
-    /// Inbox actions that belong here: pro-rata rounds and bridge money for startups you hold, bids from rival groups, demands of your co-owners.
+    /// Inbox actions that belong here: pro-rata rounds and bridge money for startups you hold, demands of your co-owners.
     public static func handlesAnswer(_ action: String) -> Bool {
-        action == "round" || action == "bridge" || action == GroupDeals.bidAction || action == Shareholders.action
+        action == "round" || action == "bridge" || action == Shareholders.action
     }
 
     /// Returns false when the answer could not be carried out (not enough money): the message stays open.
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, context fc: FinanceContext) -> Bool {
         switch m.actionID {
         case "round", "bridge": return Startups.answer(&s, message: m, option: idx)
-        case GroupDeals.bidAction: GroupDeals.answerBid(&s, message: m, option: idx, data: data, context: fc); return true
         case Shareholders.action: Shareholders.answer(&s, message: m, option: idx, data: data, context: fc); return true
         default: return true
         }

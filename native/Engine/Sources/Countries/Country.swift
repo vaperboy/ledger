@@ -152,6 +152,9 @@ public struct Country: Equatable, Sendable, Identifiable {
     /// Employer's total payroll multiplier: wages cost this much more than the gross pay. Original: `OC()`.
     public var employerCostFactor: Double { 1 + employerSocial + employerPension + employerInjury }
 
+    /// What one unit of pay at this wage costs the employer: `1 + employerOnCost`.
+    public func payrollFactor(monthlyWage: Double) -> Double { 1 + employerOnCost(monthlyWage: monthlyWage) }
+
     /// The employer's contribution rate for one wage (accounting units a month): the table components each on the pay up to their cap,
     /// plus the state payroll tax and the flat pension/injury rates. Without a table it is the flat `employerSocial`.
     public func employerSocialRate(monthlyWage: Double) -> Double {
