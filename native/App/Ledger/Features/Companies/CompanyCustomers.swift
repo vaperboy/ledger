@@ -45,7 +45,7 @@ struct CompanyCustomers: View {
                                 Spacer()
                                 Text(line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
-                            Text(line.text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                             Text((line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
@@ -105,7 +105,7 @@ struct CompanyCustomers: View {
                 }
                 ForEach(Cyber.levels.indices, id: \.self) { i in
                     Hairline()
-                    Button { store.act { $0.setCyberLevel(companyID: company.id, level: i) }; Haptics.choose() } label: {
+                    Button { Haptics.choose(); store.settle(store.act { $0.setCyberLevel(companyID: company.id, level: i) }, "Cyber protection: \(Cyber.levels[i].name).", same: "That protection level is already in place.") } label: {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(Cyber.levels[i].name).font(.system(size: 13.5, weight: c.status.level == i ? .semibold : .regular)).foregroundStyle(c.status.level == i ? Theme.gold : Theme.ivory)
@@ -118,7 +118,7 @@ struct CompanyCustomers: View {
                 }
                 Hairline()
                 HStack {
-                    Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { store.act { $0.toggleBackups(companyID: company.id) }; Haptics.tap() }
+                    Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { Haptics.tap(); store.settle(store.act { $0.toggleBackups(companyID: company.id) }, c.status.backups ? "Offline backups switched off." : "Offline backups switched on.") }
                         .buttonStyle(QuietButtonStyle(tint: c.status.backups ? Theme.gold : Theme.ivoryMuted))
                     Spacer()
                     Button((c.status.trainedUntil ?? 0) > engine.state.week ? "Staff trained" : "Train staff · " + cur.tidyShort(c.trainingCost)) {

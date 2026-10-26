@@ -111,7 +111,7 @@ struct ToastView: View {
     @EnvironmentObject var store: GameStore
     var body: some View {
         if let t = store.toast {
-            Text(t.text)
+            Text(t.text.tidyMoney)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.ivory)
                 .padding(.horizontal, 16).padding(.vertical, 10)

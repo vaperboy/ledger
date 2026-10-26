@@ -58,8 +58,9 @@ public extension GameEngine {
         return sev
     }
 
-    mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) {
-        update { s, _, _ in ManagerModel.setAuthority(&s, companyID: companyID, level: level, buy: buy, pay: pay, ad: ad) }
+    @discardableResult
+    mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setAuthority(&s, companyID: companyID, level: level, buy: buy, pay: pay, ad: ad) }
     }
 
     mutating func meetManager(companyID: Int) -> Bool {

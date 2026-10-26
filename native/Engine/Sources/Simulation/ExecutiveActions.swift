@@ -20,7 +20,10 @@ public extension GameEngine {
     mutating func releaseTeam(companyID: Int, key: String, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseTeam(&s, companyID: companyID, key: key, regionalID: regionalID, data: d) }; return r
     }
-    mutating func setTeamAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil) { update { s, _, _ in ManagerModel.setTeamAuthority(&s, companyID: companyID, level: level, buy: buy) } }
+    @discardableResult
+    mutating func setTeamAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setTeamAuthority(&s, companyID: companyID, level: level, buy: buy) }
+    }
     /// Who decides above the manager, lowest first.
     func decisionChain(companyID: Int) -> [ManagerModel.Boss] { state.company(companyID).map { ManagerModel.decisionChain(state, $0, data: data) } ?? [] }
 
@@ -41,7 +44,10 @@ public extension GameEngine {
     }
     mutating func releaseGroupCEO() { update { s, _, _ in ManagerModel.releaseGroupCEO(&s) } }
     /// Deals above this amount always come to you.
-    mutating func setGroupLimit(_ amount: Double) { update { s, _, _ in ManagerModel.setGroupLimit(&s, amount: amount) } }
+    @discardableResult
+    mutating func setGroupLimit(_ amount: Double) -> SettingResult {
+        applySetting(probe: { .object($0.rest) }) { s, _, _ in ManagerModel.setGroupLimit(&s, amount: amount) }
+    }
     var regionalManagers: [JSONValue] { ManagerModel.regionals(state) }
     var groupManagingDirector: JSONValue { state.rest["org56"]?["md"] ?? .null }
     /// The owner has set up a group office (`rentOffice`); group-level posts exist only from then on.
@@ -62,7 +68,10 @@ public extension GameEngine {
     func boardMeetings(key: String) -> [ManagerModel.BoardMeeting] { ManagerModel.meetings(state, key: key) }
     func boardCandidates(key: String) -> [Person] { ManagerModel.board(state, key: key)["cands"].array.compactMap { state.people[$0.int] } }
     var seatRoles: [ManagerModel.SeatRole] { ManagerModel.seatRoles }
-    mutating func setBoardMode(key: String, regular: Bool? = nil, quarterly: Bool? = nil) { update { s, _, _ in ManagerModel.setBoardMode(&s, key: key, regular: regular, quarterly: quarterly) } }
+    @discardableResult
+    mutating func setBoardMode(key: String, regular: Bool? = nil, quarterly: Bool? = nil) -> SettingResult {
+        applySetting(probe: { ManagerModel.board($0, key: key) }) { s, _, _ in ManagerModel.setBoardMode(&s, key: key, regular: regular, quarterly: quarterly) }
+    }
     mutating func searchForSeat(key: String, role: String) -> [Person]? {
         var r: [Person]?; update { s, d, _ in r = ManagerModel.searchForSeat(&s, key: key, role: role, data: d) }; return r
     }
@@ -86,7 +95,10 @@ public extension GameEngine {
     // MARK: Your right hand and the main office
 
     var rightHand: Headquarters.RightHand? { Headquarters.rightHand(state) }
-    mutating func setRightHand(decidesForYou: Bool? = nil, briefing: String? = nil) { update { s, _, _ in Headquarters.setRightHand(&s, decidesForYou: decidesForYou, briefing: briefing) } }
+    @discardableResult
+    mutating func setRightHand(decidesForYou: Bool? = nil, briefing: String? = nil) -> SettingResult {
+        applySetting(refuse: { Headquarters.rightHand($0) == nil ? "You have no right hand to set this for." : nil }, probe: { $0.rest["lh"] ?? .null }) { s, _, _ in Headquarters.setRightHand(&s, decidesForYou: decidesForYou, briefing: briefing) }
+    }
     var officeTiers: [Headquarters.Tier] { Headquarters.tiers(data) }
     var officeTier: Headquarters.Tier? { Headquarters.tier(state, data) }
     var officeRoles: [Headquarters.Role] { Headquarters.roles(data) }

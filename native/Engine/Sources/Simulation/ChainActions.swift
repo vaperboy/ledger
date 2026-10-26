@@ -74,10 +74,14 @@ public extension GameEngine {
     func chainKnobExceptions(chainID: Int, knob: String) -> [(storeID: Int, storeName: String, value: Int)] { Chains.knobExceptions(state, chainID: chainID, knob: knob, data: data) }
 
     /// Leave this choice to each store.
-    mutating func releaseChainKnob(chainID: Int, knob: String) { update { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) } }
+    @discardableResult
+    mutating func releaseChainKnob(chainID: Int, knob: String) -> SettingResult {
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) }
+    }
 
-    mutating func setChainRule(chainID: Int, rule: Chains.Rule) {
-        update { s, d, _ in
+    @discardableResult
+    mutating func setChainRule(chainID: Int, rule: Chains.Rule) -> SettingResult {
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, d, _ in
             // A new knob standard is a changeover for every store it governs, not a silent overwrite.
             if case .knob(let id, let o) = rule { Chains.setKnobStandard(&s, chainID: chainID, knob: id, value: o, data: d) }
             else { Chains.setRule(&s, chainID: chainID, rule: rule) }

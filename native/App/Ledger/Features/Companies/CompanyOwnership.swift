@@ -39,7 +39,7 @@ struct CompanyOwnershipSection: View {
                         Text("Dividend policy").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                         Spacer()
                         ForEach(Shareholders.policies, id: \.self) { p in
-                            Button(Shareholders.policyNames[p] ?? p) { store.act { $0.setDividendPolicy(companyID: id, policy: p) } }
+                            Button(Shareholders.policyNames[p] ?? p) { store.settle(store.act { $0.setDividendPolicy(companyID: id, policy: p) }, "Dividend policy: \(Shareholders.policyNames[p] ?? p).", same: "That is already the dividend policy.") }
                                 .buttonStyle(SmallOutlineButtonStyle()).opacity(engine.dividendPolicy(companyID: id) == p ? 1 : 0.5)
                         }
                     }
@@ -79,8 +79,8 @@ struct CompanyOwnershipSection: View {
                                         store.show(ok ? "\(cur.tidyShort(o.amount)) is in the company." : "The offer has gone.", tone: ok ? "good" : "warn")
                                     }
                                 }.buttonStyle(SmallGoldButtonStyle())
-                                if !o.countered { Button("Counter") { store.act { $0.counterFundingOffer(companyID: id, index: o.id) }; store.show("Counter sent. Their answer replaces the offer.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle()) }
-                                Button("Decline") { store.act { $0.declineFundingOffer(companyID: id, index: o.id) }; store.show("Declined.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle())
+                                if !o.countered { Button("Counter") { store.settle(store.act { $0.counterFundingOffer(companyID: id, index: o.id) }, "Counter sent. Their answer replaces the offer.", same: "That offer has gone or was already countered.") }.buttonStyle(SmallOutlineButtonStyle()) }
+                                Button("Decline") { store.settle(store.act { $0.declineFundingOffer(companyID: id, index: o.id) }, "Declined.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
                             }
                         }
                     }

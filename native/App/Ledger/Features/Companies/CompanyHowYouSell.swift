@@ -24,7 +24,7 @@ struct CompanyHowYouSell: View {
                 Card {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         SectionLabel(knob.name)
-                        Text(knob.detail).font(.caption).foregroundStyle(Theme.ivoryMuted)
+                        Text(knob.detail.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted)
                         if let lock {
                             Label("Locked. " + lock, systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.caution)
                         }
@@ -35,7 +35,7 @@ struct CompanyHowYouSell: View {
                             ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Toggle(o.name, isOn: Binding(get: { value & (1 << i) != 0 }, set: { on in toggle(knob, i, on, cur) })).disabled(lock != nil)
-                                    Text(o.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                    Text(o.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint)
                                 }
                             }
                         } else {

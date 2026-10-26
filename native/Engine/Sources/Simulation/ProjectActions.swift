@@ -117,8 +117,10 @@ public extension GameEngine {
         return out
     }
 
-    mutating func withdrawBid(companyID: Int, tenderID: Int) {
-        update { s, _, _ in ProjectTenders.withdrawBid(&s, companyID: companyID, tenderID: tenderID) }
+    /// `unchanged` means the bid could not be taken back: the bidding has closed, or it was never there.
+    @discardableResult
+    mutating func withdrawBid(companyID: Int, tenderID: Int) -> SettingResult {
+        applySetting(probe: { .object($0.rest) }) { s, _, _ in ProjectTenders.withdrawBid(&s, companyID: companyID, tenderID: tenderID) }
     }
 
     /// Should the manager bid for tenders at list price when there is room? Original: `tnd56auto`.

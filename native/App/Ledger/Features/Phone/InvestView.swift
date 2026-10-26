@@ -21,7 +21,7 @@ struct InvestContent: View {
                         .padding(.horizontal, -Theme.Space.margin)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(kind == .stock ? "Your shares" : kind == .crypto ? "Your crypto" : "Your funds").capsLabel()
-                        Text(cur.display(held)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)
+                        Text(cur.tidyDisplay(held)).font(.hero(36)).minimumScaleFactor(0.6).lineLimit(1)
                         if kind == .crypto { Chip(text: "Very volatile: you can lose most of it", tint: Theme.caution, symbol: "exclamationmark.triangle.fill").padding(.top, 2) }
                     }
                     Card {
@@ -39,7 +39,7 @@ struct InvestContent: View {
                                         Spacer(minLength: 6)
                                         if !q.history.isEmpty { Sparkline(values: Array(q.history.suffix(26)), tint: (q.weekChange ?? 0) >= 0 ? Theme.gain : Theme.loss).frame(width: 60, height: 26) }
                                         VStack(alignment: .trailing, spacing: 2) {
-                                            Text(cur.display(q.price)).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                            Text(cur.tidyDisplay(q.price)).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
                                             if let w = q.weekChange { Text(String(format: "%+.1f%%", w * 100)).font(.caption2.weight(.semibold)).foregroundStyle(Theme.change(w)) }
                                         }
                                     }
@@ -72,15 +72,15 @@ struct TradeSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(live.name).capsLabel()
-                            Text(cur.display(live.price)).font(.hero(36))
+                            Text(cur.tidyDisplay(live.price)).font(.hero(36))
                             if let w = live.weekChange { Chip(text: String(format: "%+.1f%% this week", w * 100), tint: Theme.change(w), symbol: w >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill") }
                         }
                         if live.quantity > 0 {
                             Card {
                                 VStack(spacing: Theme.Space.s) {
-                                    ValueRow(label: "You hold", value: cur.display(live.value))
-                                    ValueRow(label: "You paid", value: cur.display(live.costBasis))
-                                    ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.display(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
+                                    ValueRow(label: "You hold", value: cur.tidyDisplay(live.value))
+                                    ValueRow(label: "You paid", value: cur.tidyDisplay(live.costBasis))
+                                    ValueRow(label: "Result if sold", value: (live.value - live.costBasis >= 0 ? "+" : "−") + cur.tidyDisplay(abs(live.value - live.costBasis)), tint: Theme.change(live.value - live.costBasis))
                                 }
                             }
                         }

@@ -190,7 +190,7 @@ struct RivalSheet: View {
                                     Hairline()
                                     HStack(alignment: .top) {
                                         Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
-                                        Text(m.text).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                        Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                                     }
                                 }
                             }
@@ -535,7 +535,7 @@ struct MarketDetailView: View {
             if let e = store.engine, let d = e.marketDetail(key: marketKey) {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(d.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Text(d.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text(d.subtitle).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     KeyFigures(items: [
@@ -551,10 +551,10 @@ struct MarketDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                        if !p.detail.isEmpty { Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                                        if !p.detail.isEmpty { Text(p.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
                                     }
                                     Spacer()
-                                    Text(p.text).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                    Text(p.text.tidyMoney).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                                 }.padding(.vertical, 8)
                             }
                         }

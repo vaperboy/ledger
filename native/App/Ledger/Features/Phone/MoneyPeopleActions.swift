@@ -32,7 +32,7 @@ struct HostingSection: View {
                         if n > 0 { Hairline() }
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(g.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text(g.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                 Text(g.detail + (g.hostedLately ? " · hosted lately" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 8)
@@ -158,7 +158,10 @@ struct FundManagerCard: View {
                     let cands = FinanceManager.candidates(engine.state)
                     if cands.isEmpty {
                         Text("A professional invests a sum for you in the index. They charge a yearly fee on the money they manage.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        Button("Meet fund managers") { store.act { $0.fundManagerCandidates() }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
+                        Button("Meet fund managers") {
+                            let met = store.act { $0.fundManagerCandidates() } ?? []
+                            if met.isEmpty { Haptics.warning(); store.show("No fund manager is available to meet right now.", tone: "warn") } else { Haptics.tap(); store.show("You met \(met.count) fund managers. Choose a mandate and an amount below.", tone: "n") }
+                        }.buttonStyle(QuietButtonStyle())
                     } else {
                         Text("Mandate").capsLabel(Theme.ivoryFaint)
                         SectionTabs(items: FinanceManager.Mandate.allCases, title: { $0.title }, selection: $mandate).padding(.horizontal, -Theme.Space.margin)
@@ -236,7 +239,7 @@ struct HoldingFinanceManagerCard: View {
             Text("Hired: \(e["name"].string), \(cur.tidyShort(e["wage"].double)) a month, paid by the group.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             ForEach(engine.officePaperwork(personID: id), id: \.key) { item in
                 HStack {
-                    Text(item.text).font(.system(size: 11.5)).foregroundStyle(item.done ? Theme.ivoryFaint : Theme.ivory)
+                    Text(item.text.tidyMoney).font(.system(size: 11.5)).foregroundStyle(item.done ? Theme.ivoryFaint : Theme.ivory)
                     Spacer(minLength: 8)
                     if !item.done { Button("Done") { store.act { $0.tickOfficePaperwork(personID: id, item: item.key) } }.buttonStyle(QuietButtonStyle()) }
                 }

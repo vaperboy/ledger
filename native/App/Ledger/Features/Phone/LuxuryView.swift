@@ -73,7 +73,7 @@ struct LuxuryView: View {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(it.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                                    Text(it.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
+                                    Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
                                 }
                                 Spacer(minLength: 8)
                                 Text(store.short(it.price)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(e.state.cash >= it.price ? Theme.ivory : Theme.ivoryFaint)
@@ -98,10 +98,14 @@ struct LuxuryView: View {
             }
             HStack(spacing: Theme.Space.m) {
                 Button(e.state.cash < it.price ? "Your cash is \(store.short(max(0, e.state.cash)))" : "Purchase") {
-                    switch store.act({ $0.buyLuxury(itemID: it.id) }) {
-                    case .ok?: Haptics.success(); store.show("Bought: \(it.name).", tone: "good"); tab = "collection"
-                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
-                    default: Haptics.warning(); store.show("Not possible.", tone: "warn")
+                    pending = PendingAction(title: "Buy \(it.name)?",
+                                            message: "\(store.money(it.price)) from your own cash, then about \(store.short(it.monthlyUpkeep)) a month for upkeep, insurance and storage. Selling later costs \(Int((Luxury.sellFee * 100).rounded()))%.",
+                                            button: "Purchase for \(store.short(it.price))", amount: it.price, currency: e.homeCurrency) {
+                        switch store.act({ $0.buyLuxury(itemID: it.id) }) {
+                        case .ok?: Haptics.success(); store.show("Bought: \(it.name).", tone: "good"); tab = "collection"
+                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
+                        default: Haptics.warning(); store.show("Not possible.", tone: "warn")
+                        }
                     }
                 }.buttonStyle(GoldButtonStyle()).disabled(e.state.cash < it.price)
                 if !e.luxuryCompanies(itemID: it.id).isEmpty {
@@ -197,7 +201,7 @@ struct LuxuryView: View {
                 Text("Use").capsLabel(Theme.ivoryFaint).padding(.top, 8)
                 SectionTabs(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in store.act { $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) } })).padding(.horizontal, -Theme.Space.margin)
-                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
+                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"

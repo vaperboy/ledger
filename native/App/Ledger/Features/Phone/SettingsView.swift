@@ -75,7 +75,7 @@ struct SettingsView: View {
     private var askDetail: String {
         let step = Int(askStep)
         guard step > 0, let cur = store.engine?.homeCurrency else { return "Always ask" }
-        return "Not for small spends under \(cur.short(ConfirmThreshold.limit(step: step, currency: cur)).tidyMoney); the result is still reported"
+        return "Not for small spends under \(cur.tidyShort(ConfirmThreshold.limit(step: step, currency: cur)).tidyMoney); the result is still reported"
     }
 
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {

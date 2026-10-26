@@ -134,7 +134,7 @@ struct ContractDiscussionView: View {
         let p = t.proposal
         switch p.topic {
         case .payRise: return "+\(String(format: "%.1f", p.amount * 100))% on their pay"
-        case .promotion: return "\(cur.display(p.amount)) a month for the new post"
+        case .promotion: return "\(cur.tidyDisplay(p.amount)) a month for the new post"
         case .hours: return "\(Int(p.amount.rounded())) hours a week"
         case .payBasis: return "A fixed monthly salary"
         default: return p.topic.title
@@ -154,7 +154,7 @@ struct ContractDiscussionView: View {
                             .disabled(!t.available)
                     }
                 }
-                if let t = list.first(where: { $0.topic == topic }), !t.available { Text(t.why).font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                if let t = list.first(where: { $0.topic == topic }), !t.available { Text(t.why.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
             }
         }
     }
@@ -225,8 +225,8 @@ struct ContractDiscussionView: View {
             Button { choice = o.id; if topic == .promotion, let ask = promotionAsk(o.id) { pay = ask } } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(o.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text(o.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(o.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text(o.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     Image(systemName: choice == o.id ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(choice == o.id ? Theme.gold : Theme.ivoryFaint)

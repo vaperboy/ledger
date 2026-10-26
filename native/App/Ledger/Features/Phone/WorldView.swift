@@ -90,7 +90,7 @@ struct WorldAroundView: View {
                     LedgerSection("Seen as") {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(img.label).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.gold)
-                            Text(img.text).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                            Text(img.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                             Text("Opens: " + img.opens).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                             Text("Risks: " + img.risks).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                             Hairline()

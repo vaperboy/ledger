@@ -46,7 +46,7 @@ struct CompanyMarketing: View {
                             }
                             Spacer()
                         }
-                        Text(ch.note).font(.caption).foregroundStyle(Theme.ivoryMuted)
+                        Text(ch.note.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted)
                         if budget > 0, !running["lock"].isNull, Double(engine.state.week) < running["lock"].double {
                             Text("Committed for \(Int(running["lock"].double) - engine.state.week) more weeks").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }

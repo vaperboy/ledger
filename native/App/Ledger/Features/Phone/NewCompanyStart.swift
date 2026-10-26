@@ -84,7 +84,7 @@ struct TradeDetailView: View {
                     Text(t.category).font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }
             }
-            Text(t.blurb).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+            Text(t.blurb.tidyMoney).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
             if let plan {
                 KeyFigures(items: [

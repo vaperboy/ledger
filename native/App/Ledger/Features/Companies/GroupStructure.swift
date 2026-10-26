@@ -75,7 +75,7 @@ struct GroupAttention: View {
         case .company(let id, let sec): NavigationLink(value: CompanyRoute.companyAt(id, sec)) { GroupLinkRow(title: it.title, sub: it.sub, subTint: it.tint) }.buttonStyle(.plain)
         case .none:
             VStack(alignment: .leading, spacing: 1) {
-                Text(it.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                Text(it.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                 Text(it.sub).font(.system(size: 11)).foregroundStyle(it.tint)
             }.padding(.vertical, 9)
         }

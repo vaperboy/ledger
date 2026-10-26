@@ -82,7 +82,7 @@ struct FranchiseBrandRow: View {
             default:
                 HStack {
                     if st == "refused" { Text("They turned you down for now.").font(.caption).foregroundStyle(Theme.loss) }
-                    else if !sx.ok { Text(sx.why).font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                    else if !sx.ok { Text(sx.why.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint) }
                     Spacer()
                     if sx.ok {
                         Button("Apply") {
@@ -125,7 +125,7 @@ struct BrandMeetingView: View {
                         Text("\(b.tierDescription) · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     if !st.ok {
-                        Text(st.why).font(.bodyText).foregroundStyle(Theme.loss)
+                        Text(st.why.tidyMoney).font(.bodyText).foregroundStyle(Theme.loss)
                     } else if !["invited", "agreed"].contains(a["st"].string) {
                         Text("Apply first. They will invite you when they have looked at your application.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     } else {

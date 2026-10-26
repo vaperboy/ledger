@@ -51,10 +51,10 @@ struct CompanySettings: View {
 
     private func confirmConvert(_ cost: (registrationFee: Double, shareCapital: Double), _ cur: Currency) {
         let total = cost.registrationFee + cost.shareCapital
-        pending = PendingAction(title: "Convert \(company.name) to a limited company?", message: "\(cur.display(total)) leaves your account (\(cur.display(cost.shareCapital)) of it becomes the company's share capital). From then on profit pays company tax and money comes out as salary or dividends. This cannot be undone.", button: "Convert") {
+        pending = PendingAction(title: "Convert \(company.name) to a limited company?", message: "\(cur.tidyDisplay(total)) leaves your account (\(cur.tidyDisplay(cost.shareCapital)) of it becomes the company's share capital). From then on profit pays company tax and money comes out as salary or dividends. This cannot be undone.", button: "Convert") {
             switch store.act({ $0.convertToLimited(companyID: company.id) }) {
             case .ok?: Haptics.success(); store.show("\(company.name) is now a limited company.", tone: "good")
-            case .notEnoughCash?: Haptics.warning(); store.show("You need \(cur.display(total)) in your own account.", tone: "warn")
+            case .notEnoughCash?: Haptics.warning(); store.show("You need \(cur.tidyDisplay(total)) in your own account.", tone: "warn")
             case .alreadyLimited?: store.show("It is already a limited company.", tone: "n")
             default: store.show("Not possible.", tone: "warn")
             }
@@ -73,7 +73,7 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     TextField("New name", text: $newName).font(.system(size: 14)).foregroundStyle(Theme.ivory).autocorrectionDisabled()
                         .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
-                    Text("New signs and paperwork cost \(cur.display(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
+                    Text("New signs and paperwork cost \(cur.tidyDisplay(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Rename…") { confirmRename(cost, cur) }.buttonStyle(QuietButtonStyle()).disabled(newName.trimmingCharacters(in: .whitespaces).count < 2)
                 }
@@ -83,12 +83,12 @@ struct CompanySettings: View {
 
     private func confirmRename(_ cost: Double, _ cur: Currency) {
         let name = newName.trimmingCharacters(in: .whitespaces)
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.display(cost)) and some awareness: customers have to learn the new name.", button: "Rename") {
+        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename") {
             switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
             case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
             case .tooShort?: store.show("Choose a different name of at least two letters.", tone: "warn")
             case .nameTaken?: store.show("Another company already has that name.", tone: "warn")
-            case .notEnoughCash?: Haptics.warning(); store.show("The company needs \(cur.display(cost)) in cash.", tone: "warn")
+            case .notEnoughCash?: Haptics.warning(); store.show("The company needs \(cur.tidyDisplay(cost)) in cash.", tone: "warn")
             case .partOfChain?: store.show("A chain store carries the chain's name.", tone: "warn")
             default: store.show("Not possible.", tone: "warn")
             }
@@ -138,7 +138,7 @@ struct CompanySettings: View {
 
     private func confirmClose(_ notice: (notice: Double, depositBack: Double)?, _ cur: Currency) {
         let weeks = closeWeeks, giveUp = giveUpRent && notice != nil
-        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.display(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
+        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
             switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp) }) {
             case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
             case .notOpen?: store.show("Only an open company can be closed.", tone: "warn")
@@ -170,7 +170,7 @@ struct CompanySettings: View {
 
     private func confirmWindUp(_ back: Double, _ cur: Currency) {
         let name = company.name, staff = company.staff.count
-        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.display(back)).", button: "Wind up for good", destructive: true) {
+        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true) {
             if store.act({ $0.windUpCompany(companyID: company.id) }) == true {
                 Haptics.warning(); store.show("\(name) is closed down and its things sold.", tone: "n")
             } else {

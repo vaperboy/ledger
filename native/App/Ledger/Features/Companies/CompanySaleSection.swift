@@ -47,7 +47,7 @@ struct CompanySaleSection: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { o in
-                Text("\(o.buyer) pays " + cur.display(o.price * company.ownership / 100) + (o.kind == "mbo" ? ", a third of it after two years" : "") + ". " + consequences(o, cur))
+                Text("\(o.buyer) pays " + cur.tidyDisplay(o.price * company.ownership / 100) + (o.kind == "mbo" ? ", a third of it after two years" : "") + ". " + consequences(o, cur))
             }
         }
     }
@@ -82,11 +82,14 @@ struct CompanySaleSection: View {
                     HStack {
                         Button("Accept") { Haptics.tap(); confirming = o }.buttonStyle(SmallGoldButtonStyle())
                         Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(SmallOutlineButtonStyle())
-                        Button("Decline") { store.act { $0.update { s, _, _ in CompanySale.decline(&s, companyID: company.id, offerID: o.id) } }; store.show("Offer from \(o.buyer) declined.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle())
+                        Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
                     }
                 }.padding(.vertical, 6)
             }
-            Button("Take it off the market") { store.act { $0.update { s, _, _ in CompanySale.withdraw(&s, companyID: company.id) } }; store.show("\(company.name) is off the market.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle())
+            Button("Take it off the market") {
+                store.act { $0.update { s, _, _ in CompanySale.withdraw(&s, companyID: company.id) } }
+                if CompanySale.listing(store.engine?.state ?? engine.state, companyID: company.id) == nil { store.show("\(company.name) is off the market.", tone: "n") } else { Haptics.warning(); store.show("It could not be taken off the market now.", tone: "warn") }
+            }.buttonStyle(SmallOutlineButtonStyle())
         }
     }
 }
@@ -110,7 +113,7 @@ struct BuyerTalkSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(o.buyer).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                            Text(o.note).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(o.note.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                         }
                         KeyFigures(items: [
                             .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),

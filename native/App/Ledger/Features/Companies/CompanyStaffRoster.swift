@@ -145,7 +145,7 @@ struct CompanyStaffRoster: View {
     }
 
     private func confirmLayOff(_ n: Int, _ p: (names: [String], savesPerMonth: Double, severance: Double), _ cur: Currency) {
-        pending = PendingAction(title: "Lay off \(n) \(n == 1 ? "person" : "people")?", message: "\(p.names.joined(separator: ", ")). Saves \(cur.display(p.savesPerMonth)) a month; severance of \(cur.display(p.severance)) is paid now and the mood of the rest drops.", button: "Lay off", destructive: true) {
+        pending = PendingAction(title: "Lay off \(n) \(n == 1 ? "person" : "people")?", message: "\(p.names.joined(separator: ", ")). Saves \(cur.tidyDisplay(p.savesPerMonth)) a month; severance of \(cur.tidyDisplay(p.severance)) is paid now and the mood of the rest drops.", button: "Lay off", destructive: true) {
             let ids = store.act { $0.layOffStaff(companyID: company.id, count: n) } ?? []
             Haptics.warning()
             store.show(ids.isEmpty ? "No one was let go." : "\(ids.count) \(ids.count == 1 ? "person" : "people") let go. The rest are shaken.", tone: "n")
@@ -287,10 +287,10 @@ struct StaffProfileView: View {
 
     private func confirmDismiss(_ p: StaffProfile.Profile, _ cur: Currency) {
         let risk = p.dismissalDocumented ? "Two warnings or theft are on file, so this is easy to defend." : "Nothing documented: they may claim unfair dismissal and win \(cur.tidyShort(p.compensationRange.lowerBound)) to \(cur.tidyShort(p.compensationRange.upperBound))."
-        pending = PendingAction(title: "Let \(p.name) go?", message: "Notice and severance of \(cur.display(p.severance)) is paid. \(risk)", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let \(p.name) go?", message: "Notice and severance of \(cur.tidyDisplay(p.severance)) is paid. \(risk)", button: "Let go", destructive: true) {
             guard let r = store.act({ $0.dismissStaff(companyID: companyID, staffID: staffID) }) ?? nil else { store.show("They no longer work here.", tone: "warn"); dismiss(); return }
             Haptics.warning()
-            store.show(r.claimedUnfairDismissal ? "\(p.name) is gone, and claimed unfair dismissal: \(cur.display(r.compensation)) paid on top of \(cur.display(r.severance)) severance." : (r.severance > 0 ? "Severance paid: \(cur.display(r.severance))." : "\(p.name) has left."), tone: r.claimedUnfairDismissal ? "bad" : "n")
+            store.show(r.claimedUnfairDismissal ? "\(p.name) is gone, and claimed unfair dismissal: \(cur.tidyDisplay(r.compensation)) paid on top of \(cur.tidyDisplay(r.severance)) severance." : (r.severance > 0 ? "Severance paid: \(cur.tidyDisplay(r.severance))." : "\(p.name) has left."), tone: r.claimedUnfairDismissal ? "bad" : "n")
             dismiss()
         }
     }

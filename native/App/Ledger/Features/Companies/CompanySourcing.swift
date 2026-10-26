@@ -73,7 +73,7 @@ struct CompanySourcing: View {
             Button { withAnimation(.easeOut(duration: 0.18)) { open = isOpen ? nil : input.id }; Haptics.tap() } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(input.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
+                        Text(input.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
                         Text(input.current?.name ?? "Not set").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                         Text(headerLine(input, cur: cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }
@@ -263,7 +263,7 @@ struct CompanySourcing: View {
                     Spacer(minLength: 0)
                 }
             }
-            if let f = talks[o.id] { Text(f.text).font(.system(size: 11.5)).foregroundStyle(f.tint).fixedSize(horizontal: false, vertical: true) }
+            if let f = talks[o.id] { Text(f.text.tidyMoney).font(.system(size: 11.5)).foregroundStyle(f.tint).fixedSize(horizontal: false, vertical: true) }
             else { Text("Ask for more off the price. The better they know you the more they can give and the longer they listen; ask too much and they may walk out.")
                 .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
         }

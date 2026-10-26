@@ -61,9 +61,9 @@ struct GrowIntoChain: View {
                     if n > 0 { Hairline() }
                     HStack(alignment: .firstTextBaseline) {
                         Image(systemName: r.ok ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
-                        Text(r.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                         Spacer(minLength: 8)
-                        Text(r.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
+                        Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
                     }.padding(.vertical, 8)
                 }
                 Hairline()

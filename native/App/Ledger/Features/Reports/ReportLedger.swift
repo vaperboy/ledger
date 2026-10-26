@@ -138,8 +138,8 @@ struct ReportBills: View {
                             Button { if u.companyID != 0 { store.openCompany(u.companyID, section: .finances) } } label: {
                                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(u.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                                        Text(u.detail).font(.system(size: 11)).foregroundStyle(u.detail == "Needs your approval" ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
+                                        Text(u.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                                        Text(u.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(u.detail == "Needs your approval" ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
                                     }
                                     Spacer(minLength: 8)
                                     VStack(alignment: .trailing, spacing: 2) {

@@ -151,7 +151,7 @@ struct CandidateHireRow<Extra: View>: View {
                 }
             }
             if let feedback {
-                Text(feedback.text).font(.system(size: 11.5)).foregroundStyle(feedback.tint).fixedSize(horizontal: false, vertical: true)
+                Text(feedback.text.tidyMoney).font(.system(size: 11.5)).foregroundStyle(feedback.tint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(market == nil ? "Below what they ask they may say no; above it they are more likely to stay."
                      : "You open at the going rate for the job. Some people take it gladly or for less; others want more and may name their own figure, and a weak candidate may cost more than they are worth. Push too hard and they walk away.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)

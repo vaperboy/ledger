@@ -294,8 +294,8 @@ struct CompanySetupSection: View {
         let content = HStack(alignment: .center, spacing: 10) {
             Image(systemName: it.isDone ? "checkmark.circle.fill" : "circle").foregroundStyle(it.isDone ? Theme.gain : Theme.ivoryFaint)
             VStack(alignment: .leading, spacing: 1) {
-                Text(it.title).font(.system(size: 13.5, weight: it.isDone ? .regular : .medium)).foregroundStyle(it.isDone ? Theme.ivoryMuted : Theme.ivory)
-                if !it.detail.isEmpty { Text(it.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                Text(it.title.tidyMoney).font(.system(size: 13.5, weight: it.isDone ? .regular : .medium)).foregroundStyle(it.isDone ? Theme.ivoryMuted : Theme.ivory)
+                if !it.detail.isEmpty { Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
             }
             Spacer(minLength: 6)
             if !it.isDone {

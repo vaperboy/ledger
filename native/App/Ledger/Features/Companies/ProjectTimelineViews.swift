@@ -15,7 +15,7 @@ struct ProjectTimelineRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(line.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                        Text(line.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
                         Text("\(line.companyName) · \(kindWord(line.kind)) · \(line.subtitle)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                     }
                     Spacer(minLength: 8)
@@ -80,7 +80,7 @@ struct ProjectTimelineDetail: View {
                 let now = e.state.week
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(line.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Text(line.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text("\(co.name) · \(kindWord(line.kind)) · \(line.subtitle)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     KeyFigures(items: figures(line, co, now))
@@ -143,7 +143,7 @@ struct ProjectTimelineDetail: View {
                 .font(.system(size: 14)).foregroundStyle(s.state == .upcoming ? Theme.ivoryFaint : Theme.gold).padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(s.name).font(.system(size: 13.5, weight: s.state == .current ? .semibold : .regular)).foregroundStyle(s.state == .upcoming ? Theme.ivoryMuted : Theme.ivory)
-                if !s.detail.isEmpty { Text(s.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                if !s.detail.isEmpty { Text(s.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             if let w = s.week {

@@ -43,7 +43,7 @@ struct NewCompanyView: View {
                             }.buttonStyle(.plain)
                         }
                         if !searching {
-                            Text("You have \(cur.display(Payments.liquid(e.state))) available (account and savings). Costs are the full start-up estimate; nothing is locked.")
+                            Text("You have \(cur.tidyDisplay(Payments.liquid(e.state))) available (account and savings). Costs are the full start-up estimate; nothing is locked.")
                                 .font(.caption).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("Show everything", isOn: $showEverything).tint(Theme.gold)
                         }
@@ -83,7 +83,7 @@ struct NewCompanyView: View {
     private func subtitle(_ r: TradeAffordability, _ t: Trade, _ cur: Currency) -> String {
         if let why = r.blocked { return why }
         guard let cost = r.cost else { return t.blurb }
-        if r.shortfall > 0 { return "\(cur.display(cost)) to start · \(cur.tidyShort(r.shortfall)) short · \(t.blurb)" }
-        return "\(cur.display(cost)) to start · \(t.blurb)"
+        if r.shortfall > 0 { return "\(cur.tidyDisplay(cost)) to start · \(cur.tidyShort(r.shortfall)) short · \(t.blurb)" }
+        return "\(cur.tidyDisplay(cost)) to start · \(t.blurb)"
     }
 }

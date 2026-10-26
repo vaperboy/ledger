@@ -14,6 +14,7 @@ struct CompanyProperties: View {
     @State private var openTenants: Int? = nil
     @State private var pendingBuy: PropertyListing? = nil
     @State private var pendingSell: PropertyRow? = nil
+    @State private var pending: PendingAction? = nil
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -68,7 +69,7 @@ struct CompanyProperties: View {
                             if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).font(.caption).foregroundStyle(Theme.loss) }
                         }
                         HStack(spacing: 18) {
-                            Button("Renovate") { renovate(p) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                            Button("Renovate") { pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.", button: "Renovate") { renovate(p) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
                             if p.kind == "com" {
                                 Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { withAnimation(.snappy(duration: 0.2)) { openTenants = openTenants == p.id ? nil : p.id } }
                                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
@@ -83,6 +84,7 @@ struct CompanyProperties: View {
                 }
             }
         }
+        .confirmAction($pending)
         .confirmationDialog("Sell this property?", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), presenting: pendingSell) { p in
             Button("Sell for about " + cur.tidyShort(p.value * 0.975) + (p.mortgage > 0 ? ", repay the mortgage" : ""), role: .destructive) { sell(p) }
             Button("Keep it", role: .cancel) {}
@@ -126,7 +128,7 @@ struct CompanyProperties: View {
                             Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Button("Sell to them") { sellBuilding(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
+                        Button("Sell to them") { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
                     }
                 }
             }

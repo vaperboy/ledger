@@ -23,7 +23,7 @@ struct CompanyWaysToSell: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(r.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                                 if !r.detail.isEmpty {
-                                    Text(r.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                    Text(r.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                             Spacer(minLength: 8)

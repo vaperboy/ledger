@@ -69,7 +69,7 @@ struct ChainSupplyOverview: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(r.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
+                                    Text(r.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
                                     Text(r.usual).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                 }
                                 Spacer(minLength: 8)
@@ -138,8 +138,7 @@ struct ChainSupplyOverview: View {
                 }
                 Button("Each store decides") {
                     pending = PendingAction(title: "Release the \(rule.title.lowercased()) rule?", message: "The chain no longer fixes this input. Every store keeps the provider it has now and may change it on its own.", button: "Release") {
-                        store.act { $0.releaseChainSupplier(chainID: summary.id, input: rule.input) }
-                        store.show("Each store now decides its own \(rule.title.lowercased()).", tone: "n")
+                        store.settle(store.act { $0.releaseChainSupplier(chainID: summary.id, input: rule.input) }, "Each store now decides its own \(rule.title.lowercased()).", same: "Each store already decides its own \(rule.title.lowercased()).")
                     }
                 }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 Spacer(minLength: 0)

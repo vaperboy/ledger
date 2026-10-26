@@ -145,7 +145,7 @@ struct TeamView: View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             Circle().fill(i.severity >= 3 ? Theme.loss : i.severity == 2 ? Theme.caution : Theme.ivoryFaint).frame(width: 7, height: 7).padding(.top, 6)
             VStack(alignment: .leading, spacing: 2) {
-                Text(i.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                Text(i.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 Text(i.beyondAuthority ? "Above their authority · \(i.detail)" : i.needsOwner ? i.detail : "\(i.handledBy) · \(i.detail)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
@@ -329,7 +329,7 @@ struct TeamView: View {
             HStack(spacing: Theme.Space.m) {
                 Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).frame(width: 14)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(g.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    Text(g.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                     Text("\(g.lines.count) \(g.lines.count == 1 ? "company" : "companies") · \(byMgr) with a boss\(weak > 0 ? " · \(weak) weak" : "")")
                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }

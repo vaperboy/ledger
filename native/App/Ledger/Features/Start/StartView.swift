@@ -188,7 +188,7 @@ struct StartView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: story == s ? "largecircle.fill.circle" : "circle").foregroundStyle(Theme.gold)
-                            Text(s.title).font(.bodyText)
+                            Text(s.title.tidyMoney).font(.bodyText)
                         }
                         Text(s.tagline).font(.caption).foregroundStyle(Theme.ivoryMuted)
                         if let p = previews[s], let cur {
@@ -208,9 +208,9 @@ struct StartView: View {
     }
 
     private func storyFacts(_ p: StoryPreview, _ cur: Currency) -> String {
-        var parts = ["Cash \(cur.display(p.cash))"]
-        if p.debt > 0 { parts.append("debt \(cur.display(p.debt)), repaid with about \(cur.display(p.monthlyRepayment)) a month") } else { parts.append("no debt") }
-        if let n = p.companyName { parts.append("you own \(n), worth about \(cur.display(p.companyValue))") } else { parts.append("no business yet") }
+        var parts = ["Cash \(cur.tidyDisplay(p.cash))"]
+        if p.debt > 0 { parts.append("debt \(cur.tidyDisplay(p.debt)), repaid with about \(cur.tidyDisplay(p.monthlyRepayment)) a month") } else { parts.append("no debt") }
+        if let n = p.companyName { parts.append("you own \(n), worth about \(cur.tidyDisplay(p.companyValue))") } else { parts.append("no business yet") }
         parts.append("credit \(Int(p.credit.rounded()))")
         return parts.joined(separator: " · ")
     }

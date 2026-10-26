@@ -21,8 +21,8 @@ struct FirstStepsCard: View {
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: s.done ? "checkmark" : "circle").font(.system(size: 11, weight: .semibold)).foregroundStyle(s.done ? Theme.gain : Theme.ivoryFaint).frame(width: 16).padding(.top, 3)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(s.title).font(.system(size: 13.5)).foregroundStyle(s.done ? Theme.ivoryMuted : Theme.ivory).strikethrough(s.done, color: Theme.ivoryFaint)
-                                    if !s.done { Text(s.detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                                    Text(s.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(s.done ? Theme.ivoryMuted : Theme.ivory).strikethrough(s.done, color: Theme.ivoryFaint)
+                                    if !s.done { Text(s.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                                 }
                             }
                         }

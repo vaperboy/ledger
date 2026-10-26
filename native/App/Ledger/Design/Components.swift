@@ -271,11 +271,28 @@ struct KeyFigures: View {
 struct LedgerBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
+            .ledgerScreen()
             .background(Theme.page.ignoresSafeArea())
             .foregroundStyle(Theme.ivory)
     }
 }
+
+/// Keeps scrolled content from ever drawing over the status bar, the Back button or the title. It does not depend on the global
+/// `UINavigationBar` appearance: the navigation bar gets the page colour as an always-visible background (the bar then clips the
+/// scroll content under it), and a page-coloured strip the height of the top safe area is pinned above the scroll container as a
+/// second guard for screens without a navigation bar. Applied by `ledgerBackground()`, so every screen gets it.
+struct LedgerScreen: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .toolbarBackground(Theme.page, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Color.clear.frame(height: 0).background(Theme.page.ignoresSafeArea(edges: .top))
+            }
+    }
+}
 extension View {
+    func ledgerScreen() -> some View { modifier(LedgerScreen()) }
     func ledgerBackground() -> some View { modifier(LedgerBackground()) }
 }
 
@@ -563,7 +580,7 @@ extension View {
                                                 set: { if !$0 { pending.wrappedValue = nil } }),
                            titleVisibility: .visible, presenting: pending.wrappedValue) { p in
             Button(p.button, role: p.destructive ? .destructive : nil) { p.run(); pending.wrappedValue = nil }
-        } message: { p in Text(p.message) }
+        } message: { p in Text(p.message.tidyMoney) }
         .onChange(of: pending.wrappedValue?.id) { _, _ in
             if let p = pending.wrappedValue, ConfirmThreshold.skips(p) { pending.wrappedValue = nil; p.run() }
         }

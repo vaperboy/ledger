@@ -67,7 +67,7 @@ struct AbroadOptionsView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(co.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("You have \(e.homeCurrency.display(Payments.liquid(e.state))) in cash and savings.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        Text("You have \(e.homeCurrency.tidyDisplay(Payments.liquid(e.state))) in cash and savings.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                     }
                     if weak {
                         Text("The brand is too weak (\(Int(co.reputation)) of 35 needed). Build its reputation at home first.").font(.caption).foregroundStyle(Theme.caution)
@@ -105,7 +105,7 @@ struct AbroadOptionsView: View {
             Text("Registration about \(Int(o.registrationWeeks)) weeks" + (o.hasDesk ? " (your head-office desk there speeds it up)" : " (slower without a head-office desk there)")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             Button("Register in \(o.name)") {
                 pending = PendingAction(title: "Register \(co.name) in \(o.name)?",
-                                        message: "Start-up cost about \(cur.display(o.estimatedStartCost)), taken from your own cash and savings once the company is registered. It is a separate limited company that must finish the foreign registration (about \(Int(o.registrationWeeks)) weeks) and get local permits before it opens. " + (o.hasDesk ? "" : "Without a head-office desk for \(o.name), new local rules can bring fines. ") + "Most new foreign operations run at a loss for a while.",
+                                        message: "Start-up cost about \(cur.tidyDisplay(o.estimatedStartCost)), taken from your own cash and savings once the company is registered. It is a separate limited company that must finish the foreign registration (about \(Int(o.registrationWeeks)) weeks) and get local permits before it opens. " + (o.hasDesk ? "" : "Without a head-office desk for \(o.name), new local rules can bring fines. ") + "Most new foreign operations run at a loss for a while.",
                                         button: "Register") {
                     switch store.act({ $0.expandAbroad(companyID: co.id, countryCode: o.countryCode) }) {
                     case .success(let id)?: Haptics.success(); store.show("Registered in \(o.name). Complete the registration, then open.", tone: "good"); store.openCompany(id)

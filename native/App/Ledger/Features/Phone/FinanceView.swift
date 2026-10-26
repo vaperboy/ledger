@@ -119,7 +119,7 @@ struct FinanceView: View {
                     ForEach(o.taxes) { l in
                         VStack(alignment: .leading, spacing: 2) {
                             ValueRow(label: l.label, value: store.money(l.amount))
-                            if !l.detail.isEmpty { Text(l.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
                 }
@@ -138,7 +138,7 @@ struct FinanceView: View {
                         ForEach(o.licences) { l in
                             VStack(alignment: .leading, spacing: 2) {
                                 ValueRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free")
-                                if !l.detail.isEmpty { Text(l.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                                if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                             }
                         }
                         Text("Fees are the game's estimate of typical official fees.").font(.caption2).foregroundStyle(Theme.ivoryFaint)

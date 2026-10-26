@@ -52,7 +52,7 @@ struct AcquisitionSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Buy \(r.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                            Text("Agreed price \(cur.display(price)). Choose what it becomes.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                            Text("Agreed price \(cur.tidyDisplay(price)). Choose what it becomes.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                         }
                         LedgerSection("What it becomes") {
                             VStack(spacing: 0) {
@@ -87,7 +87,7 @@ struct AcquisitionSheet: View {
                             }
                         }
                         Button("Buy for \(cur.tidyShort(price))") {
-                            pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.display(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.display(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
+                            pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
                         }.buttonStyle(GoldButtonStyle()).disabled(!ch.affordable)
