@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Businesses
+import Countries
 import Simulation
 
 /// Customers: what they say (reviews, one system for every trade), the business customers (key accounts) and IT security.

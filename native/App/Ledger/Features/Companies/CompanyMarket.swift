@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Businesses
+import Countries
 import Simulation
 
 /// The market around one company: your share, price moves (percent changes, discount, price war) and the named rivals.
