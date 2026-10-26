@@ -85,7 +85,9 @@ final class VehiclesTravelTests: XCTestCase {
     }
 
     /// Fuel is a standard-rated purchase: the bank pays net plus input VAT (reclaimed later by a registered company); sales-tax countries add none.
-    private func inputVatFactor(_ c: Country) -> Double { c.usesSalesTax ? 1 : 1 + c.vat.standard }
+    /// The exact cash a fuel bill of `net` costs: the bank pays the net rounded to whole money (Payments.companyPays) plus Vat.input's
+    /// jsRound(net * standard rate) on the unrounded net, so the bill is not simply net * (1 + vat).
+    private func fuelBill(_ net: Double, _ c: Country) -> Double { jsRound(net) + (c.usesSalesTax ? 0 : jsRound(net * c.vat.standard)) }
 
     func testAPlumberPaysFuelForTheKilometresItsOdometerCounts() throws {
         let (e, id) = try startedCompany("plumber")
@@ -100,7 +102,7 @@ final class VehiclesTravelTests: XCTestCase {
         let km = VehicleRunning.kmPerWeek(bd, tables: e.data.catalog.tables) * util
         XCTAssertEqual(one.km, km * Double(vans.count), accuracy: 1e-6, "the odometer turns by the trait's kilometres for every vehicle")
         XCTAssertGreaterThan(perKm, 0)
-        XCTAssertEqual(two.cash - one.cash, km * perKm * inputVatFactor(w.country(co)), accuracy: 1.0, "doubling the fuel price adds exactly the fuel bill of those kilometres, with the input VAT paid on it")
+        XCTAssertEqual(two.cash - one.cash, fuelBill(2 * km * perKm, w.country(co)) - fuelBill(km * perKm, w.country(co)), accuracy: 1e-6, "doubling the fuel price adds exactly the fuel bill of those kilometres, with the input VAT paid on it")
     }
 
     func testTradesThatCarryFuelInTheirCostOfSalesOrLetTheCustomerPayGetNoSecondFuelLine() throws {
@@ -170,7 +172,7 @@ final class VehiclesTravelTests: XCTestCase {
         let perKm = VehicleRunning.fuelPerKm(model: CompanyCarPerk.model, tables: e.data.catalog.tables, country: w.country(co), currency: w.currency(co), fuelIndex: 1)
         let km = e.data.catalog.tables.raw["RUNNING"]["defaultKmPerWeek"].double * 0.5
         XCTAssertEqual(one.km, km, accuracy: 1e-9)
-        XCTAssertEqual(two.cash - one.cash, km * perKm * inputVatFactor(w.country(co)), accuracy: 1.0)
+        XCTAssertEqual(two.cash - one.cash, fuelBill(2 * km * perKm, w.country(co)) - fuelBill(km * perKm, w.country(co)), accuracy: 1e-6)
         // the old flat per-head charge is gone: the weekly perk line carries no car
         var s = e.state
         let before = s.companies[s.companyIndex(id)!].cash
