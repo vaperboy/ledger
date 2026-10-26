@@ -125,7 +125,8 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var registrationFee: Double
     public var conversionFee: Double
     public var companyForms: [String: String]
-    public var leaveWeeks: Double
+    /// Added to the policy rate to get the overdraft rate (`economy.overdraftMargin`).
+    public var overdraftMargin: Double
     /// Fuel price, mileage rate, motor insurance, road tax and company-car benefit, where the data has sourced figures (empty otherwise).
     public var vehicleRules: VehicleRules = .none
     public var firstNames: [String]
@@ -240,7 +241,7 @@ extension Country {
         registrationFee = jsRound(B(p["companies"]["registrationFee"].double))
         conversionFee = B(p["companies"]["conversionFee"].double)
         companyForms = p["companies"]["forms"].object.mapValues { $0.string }
-        leaveWeeks = p["work"]["leaveWeeks"].double
+        overdraftMargin = eco["overdraftMargin"].isNull ? 0.10 : eco["overdraftMargin"].double
         vehicleRules = VehicleRules(pack: p)
         firstNames = p["names"]["first"].array.map { $0.string }
         lastNames = p["names"]["last"].array.map { $0.string }

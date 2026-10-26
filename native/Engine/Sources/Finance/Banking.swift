@@ -66,6 +66,13 @@ public enum Banking {
         return context.country(of: co, s).startingPolicyRate - context.homeCountry(s).startingPolicyRate
     }
 
+    /// Yearly interest on an overdrawn account: the policy rate (of the account's own country) plus that country's overdraft margin
+    /// (`economy.overdraftMargin` in the country data; 0.10 where missing). The player's private account pays `personalExtra` more.
+    public static func overdraftRate(state s: GameState, country: Country, home: Country, personal: Bool = false) -> Double {
+        s.economy.policyRate + (country.startingPolicyRate - home.startingPolicyRate) + country.overdraftMargin + (personal ? personalOverdraftExtra : 0)
+    }
+    public static let personalOverdraftExtra = 0.02
+
     public static func totalDebt(_ s: GameState, personalOnly: Bool = false) -> Double {
         s.loans.filter { !personalOnly || $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
     }

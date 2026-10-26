@@ -46,7 +46,7 @@ public enum CompanyCosts {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let holiday = 1 + country.leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
+        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
         var gross = 0.0
         for m in co.staff where !m.isOffSeason { gross += m.monthlyWage * 12 / 52 * holiday }
         gross += co.status == .closed ? 0 : commission(&co, bd, w)
