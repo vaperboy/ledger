@@ -51,7 +51,7 @@ final class MainScreensTests: XCTestCase {
     func scrollUp() { app.swipeDown(); app.swipeDown(); app.swipeDown(); sleep(1) }
 
     func testMainScreens() {
-        XCTAssertTrue(app.staticTexts["Net worth"].waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 5))
         shot("20-home")
         scrollDown(); shot("21-home-lower")
 

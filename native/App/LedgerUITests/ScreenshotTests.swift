@@ -39,7 +39,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testTour() {
-        XCTAssertTrue(app.staticTexts["Net worth"].waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 5))
         shot("01-home")
         let next = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Next day")).firstMatch
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }

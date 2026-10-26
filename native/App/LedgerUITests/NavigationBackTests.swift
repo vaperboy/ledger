@@ -11,7 +11,7 @@ final class NavigationBackTests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-showcase"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Net worth"].waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 5))
     }
 
     private func open(_ name: String) {
@@ -51,7 +51,7 @@ final class NavigationBackTests: XCTestCase {
         assertCompanyOpen("Home")
         XCTAssertTrue(tapBack(to: "Company"))
         // Asserted: Back lands on Home (the net-worth summary).
-        XCTAssertTrue(app.staticTexts["Net worth"].waitForExistence(timeout: 5) || app.staticTexts["NET WORTH"].exists, "Back should return to Home")
+        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 5) || app.staticTexts["NET WORTH"].firstMatch.exists, "Back should return to Home")
     }
 
     func testBackFromInboxCompanyLinkReturnsToInbox() throws {
@@ -64,7 +64,7 @@ final class NavigationBackTests: XCTestCase {
         XCTAssertTrue(tapBack(to: "Inbox"))
         // Asserted: Back lands on the Inbox, not on the Company list.
         XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5), "Back should return to the Inbox")
-        XCTAssertFalse(app.staticTexts["Net worth"].exists, "Back must not land on Company/Home")
+        XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists, "Back must not land on Company/Home")
     }
 
     func testBackFromProjectsReturnsToProjects() throws {
@@ -76,6 +76,6 @@ final class NavigationBackTests: XCTestCase {
         XCTAssertTrue(tapBack(to: "Projects"))
         // Asserted: Back lands on Projects (Work / Ventures tabs), not on the Company list.
         XCTAssertTrue(app.buttons["Ventures"].waitForExistence(timeout: 5), "Back should return to Projects")
-        XCTAssertFalse(app.staticTexts["Net worth"].exists)
+        XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists)
     }
 }
