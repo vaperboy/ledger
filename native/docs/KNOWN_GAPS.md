@@ -240,3 +240,5 @@ untouched next to the converted save.
   exists (written when the owner chooses a size), or the office has staff, a rented tier above home, or a managing director (so older saves keep what they had).
   An older save that only has the untouched home record shows the "Set up a group office (optional)" row.
 * The Team search now reads `GameEngine.teamPeopleSearch(query:)`, which also finds chain people, regional managers, the group managing director and group office staff (employer shown; a hit with no company is not tappable).
+
+- Overdraft interest follows the policy rate plus a per-country margin (`economy.overdraftMargin`, a game approximation of bank spreads; see TAX_SOURCES.md, consistency pass). A real overdraft rate also depends on the bank and the customer, which is not modelled.
