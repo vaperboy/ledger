@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Countries
 import Finance
 
 /// Buying and selling investments, savings and fixed deposits. Original: `buyAsset`, `sellAsset`, `saveMove`,
@@ -8,7 +9,10 @@ public enum Brokerage {
     public enum Kind: String, Sendable { case stock, crypto, fund }
     public enum BuyResult: Equatable, Sendable { case ok, tooSmall, notEnoughCash, delisted }
 
-    static func brokerFee(_ v: Double) -> Double { max(29, v * 0.001) }
+    /// The broker's fee: 0.1 % with a minimum, and the smallest purchase. Both minimums are in the reference economy's prices; a currency
+    /// scales them to the country's price level (`Currency.scaledPrice`). Without one (`nil`) they stay 29 and 100.
+    static func brokerFee(_ v: Double, currency: Currency? = nil) -> Double { max(currency?.scaledPrice(29) ?? 29, v * 0.001) }
+    static func minimumPurchase(_ currency: Currency?) -> Double { currency?.scaledPrice(100) ?? 100 }
 
     static func bagKey(_ k: Kind) -> String { k == .stock ? "stocks" : k == .crypto ? "crypto" : "funds" }
 
@@ -20,11 +24,11 @@ public enum Brokerage {
         }
     }
 
-    public static func buy(_ s: inout GameState, _ kind: Kind, _ sym: String, amount: Double) -> BuyResult {
+    public static func buy(_ s: inout GameState, _ kind: Kind, _ sym: String, amount: Double, currency: Currency? = nil) -> BuyResult {
         let amt = jsRound(amount)
-        if amt < 100 { return .tooSmall }
+        if amt < minimumPurchase(currency) { return .tooSmall }
         let px = kind == .crypto ? price(s, kind, sym) * 1.008 : price(s, kind, sym)
-        let fee = kind == .crypto ? amt * 0.004 : brokerFee(amt)
+        let fee = kind == .crypto ? amt * 0.004 : brokerFee(amt, currency: currency)
         if s.cash < amt + fee {
             if Payments.liquid(s) < amt + fee { return .notEnoughCash }
             Payments.transferFromSavings(&s, need: amt + fee)
@@ -44,7 +48,7 @@ public enum Brokerage {
 
     /// Sell a share (0...1) of a holding; returns the sale value. Gains are taxed at the year end.
     @discardableResult
-    public static func sell(_ s: inout GameState, _ kind: Kind, _ sym: String, fraction frac: Double) -> Double {
+    public static func sell(_ s: inout GameState, _ kind: Kind, _ sym: String, fraction frac: Double, currency: Currency? = nil) -> Double {
         var inv = s.rest["inv"] ?? .object([:])
         var bag = inv[bagKey(kind)]
         var pos = bag[sym]
@@ -54,7 +58,7 @@ public enum Brokerage {
         let q = pos["q"].double * f
         let v = q * px
         let cost = pos["cost"].double * f
-        let fee = kind == .crypto ? v * 0.004 : brokerFee(v)
+        let fee = kind == .crypto ? v * 0.004 : brokerFee(v, currency: currency)
         pos["q"] = .number(pos["q"].double - q)
         pos["cost"] = .number(pos["cost"].double - cost)
         if pos["q"].double < 1e-9 { var o = bag.object; o.removeValue(forKey: sym); bag = .object(o) } else { bag[sym] = pos }
@@ -125,7 +129,7 @@ public enum Brokerage {
     }
 
     /// Sell everything to cover debts, savings first, until `cash >= need`. Original: `liquidateInvestments`.
-    public static func liquidate(_ s: inout GameState, need: Double) {
+    public static func liquidate(_ s: inout GameState, need: Double, currency: Currency? = nil) {
         if s.savings > 0 {
             let v = s.savings
             Ledger.move(&s, .me, v, why: "Savings emptied to cover debts")
@@ -137,8 +141,8 @@ public enum Brokerage {
         inv["deposits"] = .array([])
         s.rest["inv"] = inv
         if s.cash >= need { return }
-        for k in (s.rest["inv"]?["funds"].object.keys.sorted() ?? []) { sell(&s, .fund, k, fraction: 1) }
-        for k in (s.rest["inv"]?["stocks"].object.keys.sorted() ?? []) { sell(&s, .stock, k, fraction: 1) }
-        for k in (s.rest["inv"]?["crypto"].object.keys.sorted() ?? []) { sell(&s, .crypto, k, fraction: 1) }
+        for k in (s.rest["inv"]?["funds"].object.keys.sorted() ?? []) { sell(&s, .fund, k, fraction: 1, currency: currency) }
+        for k in (s.rest["inv"]?["stocks"].object.keys.sorted() ?? []) { sell(&s, .stock, k, fraction: 1, currency: currency) }
+        for k in (s.rest["inv"]?["crypto"].object.keys.sorted() ?? []) { sell(&s, .crypto, k, fraction: 1, currency: currency) }
     }
 }

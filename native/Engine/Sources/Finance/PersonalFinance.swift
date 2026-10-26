@@ -21,8 +21,8 @@ public enum PersonalFinance {
         let enk = max(0, soleTraderIncome(s) - s.enkLoss)
         let wage = s.tax.salary
         let tax1 = Taxes.personalIncomeTax(enk + wage, kind: wage > enk ? .wage : .selfEmployed, in: c)
-        return max(0, tax1 - s.tax.withheld) + max(0, s.tax.gains) * c.dividendTax
-            + Taxes.dividendTax(s.tax.dividends, shield: s.tax.dividendShield, in: c) + s.tax.interest * c.dividendTax
+        return max(0, tax1 - s.tax.withheld) + Taxes.capitalGainsTax(s.tax.gains, in: c)
+            + Taxes.dividendTax(s.tax.dividends, shield: s.tax.dividendShield, in: c) + Taxes.savingsInterestTax(s.tax.interest, in: c)
     }
 
     /// Monthly personal processes: overdraft interest, savings interest, loan instalments, credit score drift.
@@ -76,10 +76,9 @@ public enum PersonalFinance {
         let income = enk + wage
         let tax1 = Taxes.personalIncomeTax(income, kind: wage > enk ? .wage : .selfEmployed, in: c)
         let withheld = t.withheld
-        let gain = max(0, t.gains)
-        let taxGain = gain * c.dividendTax
+        let taxGain = Taxes.capitalGainsTax(t.gains, in: c)
         let divT = Taxes.dividendTax(t.dividends, shield: t.dividendShield, in: c)
-        let intT = t.interest * c.dividendTax
+        let intT = Taxes.savingsInterestTax(t.interest, in: c)
         let wealthBase = netWorth - ownedCompanyValue * (1 - c.wealthCompanyShare) - c.wealthThreshold
         let wealth = max(0, wealthBase) * c.wealthRate
         let due = max(-t.advancePaid, tax1 - withheld) + taxGain + divT + intT + wealth

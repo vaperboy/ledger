@@ -67,6 +67,16 @@ public struct LabourRules: Equatable, Sendable {
     public var fixedTermMaxWeeks = 0.0
     public var fixedTermMaxRenewals = 0.0
 
+    /// Statutory sick pay (`sick` in the data), per spell of illness: `waitingDays` at the start that nobody pays, then for up to `employerDays`
+    /// working days the employer pays `employerShare` of normal pay (at most `weeklyCap` a week, in local currency, where the law sets a flat
+    /// amount, e.g. the UK's SSP). After that the state pays `stateShare` of pay (information; it is not a cost to the company).
+    public var sickWaitingDays = 0.0
+    /// Without data the employer keeps paying in full, as before the rules existed.
+    public var sickEmployerShare = 1.0
+    public var sickEmployerDays = 260.0
+    public var sickWeeklyCap = 0.0
+    public var sickStateShare = 0.0
+
     public init() {}
 
     public init(code: String) {
@@ -88,6 +98,24 @@ public struct LabourRules: Equatable, Sendable {
         massLayoffNoticeWeeks = n("massLayoffNoticeWeeks")
         fixedTermNoticeWeeks = n("fixedTermNoticeWeeks")
         fixedTermMaxWeeks = n("fixedTermMaxWeeks"); fixedTermMaxRenewals = n("fixedTermMaxRenewals")
+        let sick = j["sick"]
+        if !sick.isNull {
+            sickWaitingDays = sick["waitingDays"].double; sickEmployerShare = sick["employerShare"].double; sickEmployerDays = sick["employerDays"].double
+            sickWeeklyCap = sick["weeklyCap"].double; sickStateShare = sick["stateShare"].double
+        }
+    }
+
+    // MARK: Sick pay
+
+    /// What the employer pays for a week in which the person was sick `days` working days (before employer charges): the days after the waiting
+    /// days, up to the employer's limit, at the employer's share of normal pay, with the flat weekly cap pro rata. `weeklyWage` and the cap's
+    /// conversion `rate` (accounting units per local unit, times any price drift `capScale`) are in accounting units.
+    public func employerSickPay(weeklyWage: Double, days: Double = 5, rate: Double = 1, capScale: Double = 1) -> Double {
+        let paidDays = max(0, min(days - sickWaitingDays, sickEmployerDays))
+        guard paidDays > 0 else { return 0 }
+        var perWeek = weeklyWage * sickEmployerShare
+        if sickWeeklyCap > 0 { perWeek = min(perWeek, sickWeeklyCap * rate * capScale) }
+        return perWeek * paidDays / 5
     }
 
     public init(country: Country) { self.init(code: country.code) }
@@ -212,6 +240,9 @@ public struct LabourRules: Equatable, Sendable {
         out.append(("Notice", !noticeBands.isEmpty ? "\(w(noticeBands.first?.value ?? 0)) to \(w(noticeBands.last?.value ?? 0)) weeks by service" : noticeWeeks > 0 || noticePerYear > 0 ? "\(w(noticeWeeks)) weeks, +\(w(noticePerYear)) a year" : "None"))
         out.append(("Severance", !severanceTiers.isEmpty || severanceBaseWeeks > 0 ? "By service, only if not for cause" : severancePerYear > 0 ? "\(w(severancePerYear)) weeks a year" + (severanceAfterYears > 0 ? " after \(w(severanceAfterYears)) years" : "") : severanceMin > 0 ? "\(w(severanceMin)) weeks" : "None"))
         out.append(("Paid leave", leaveDays > 0 ? "\(w(leaveDays)) \(leaveCalendarDays ? "calendar" : "working") days" : "None"))
+        out.append(("Sick pay", sickEmployerShare > 0 && sickEmployerDays > 0
+                    ? "Employer pays \(Int((sickEmployerShare * 100).rounded()))% from day \(Int(sickWaitingDays) + 1)" + (sickWeeklyCap > 0 ? ", flat weekly rate" : "")
+                    : sickStateShare > 0 ? "State insurance only" : "None"))
         out.append(("Probation", atWill ? "At will" : probationWeeks > 0 ? "\(w(probationWeeks)) weeks" : "None"))
         return out
     }

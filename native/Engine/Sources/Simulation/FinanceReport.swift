@@ -202,6 +202,8 @@ public extension GameEngine {
         o.rules = [
             RuleLine(label: "Company profit tax", value: pct(country.corporateTax)),
             RuleLine(label: "Tax on dividends", value: pct(country.dividendTax)),
+            RuleLine(label: "Tax on investment gains", value: pct(country.capitalGainsTax)),
+            RuleLine(label: "Tax on savings interest", value: pct(country.savingsInterestTax)),
             RuleLine(label: "Employer contributions", value: pct(country.employerSocial + country.employerPension + country.employerInjury)),
             RuleLine(label: "Employee contributions", value: pct(country.employeeSocial)),
             RuleLine(label: country.usesSalesTax ? "Sales tax" : "VAT, standard rate", value: pct(country.vat.standard)),

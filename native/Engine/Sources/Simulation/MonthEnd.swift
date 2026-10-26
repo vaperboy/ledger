@@ -34,10 +34,15 @@ public enum MonthEnd {
         // Profit kept out of the tax base this year: legal deductions and concealed takings (see `Misconduct`).
         let ev = co.value("evade")
         let kept = ev["y"].int == GameCalendar.year(week: s.week) ? ev["c"].double + ev["l"].double : 0
-        let target = max(0, co.yearProfitSoFar - lc0 - gc.out - kept) * rate
+        // Carried-forward losses offset profit only up to the country's cap (`Taxes.lossOffsetLimit`; no cap where the data has none).
+        let country = w.country(co)
+        let profitBeforeLosses = co.yearProfitSoFar - gc.out - kept
+        let used = min(lc0, Taxes.lossOffsetLimit(profit: profitBeforeLosses, in: country))
+        let target = max(0, profitBeforeLosses - used) * rate
         let delta = target - co.taxAccrued
         co.taxAccrued = target
-        co.lossCarryForward = max(0, lc0 - co.yearProfitSoFar - gc.in)
+        let covered = co.yearProfitSoFar + gc.in
+        co.lossCarryForward = max(0, lc0 + max(0, -covered) - min(lc0, Taxes.lossOffsetLimit(profit: covered, in: country)))
         co.set("gc", gc.out > 0 || gc.in > 0 ? .object(["out": .number(gc.out), "in": .number(gc.in)]) : .null)
         s.companies[i] = co
         if delta > 0 {
@@ -50,7 +55,28 @@ public enum MonthEnd {
         }
     }
 
-    /// Pay corporate tax once it is due (half a year after year end). Returns what could not be paid.
+    /// At a year end: split the losses carried forward into yearly lots, take this year's use from the oldest lot, add this year's loss, and let
+    /// lots older than the country's limit (`Country.lossYears`, e.g. Japan and Mexico 10 years) lapse. Sets `lossCarryForward` to what is left.
+    static func rollLossLots(_ co: inout Company, country: Country, closingYear: Int) {
+        let lc0 = co.lossCarryAtYearStart ?? 0
+        let carry = co.lossCarryForward
+        let covered = co.yearProfitSoFar + co.value("gc")["in"].double
+        let newLoss = max(0, -covered)
+        var remaining = max(0, lc0 + newLoss - carry)   // what this year's profit used up
+        var lots: [(year: Int, amount: Double)] = co.value("lossLots").array.map { ($0[0].int, $0[1].double) }
+        if abs(lots.reduce(0) { $0 + $1.amount } - lc0) > 0.5 { lots = lc0 > 0 ? [(closingYear - 1, lc0)] : [] }
+        lots.sort { $0.year < $1.year }
+        for i in lots.indices where remaining > 0 {
+            let take = min(remaining, lots[i].amount)
+            lots[i].amount -= take; remaining -= take
+        }
+        if newLoss > 0 { lots.append((closingYear, newLoss)) }
+        lots = lots.filter { $0.amount > 0.005 && (country.lossYears == 0 || closingYear - $0.year < country.lossYears) }
+        co.lossCarryForward = lots.reduce(0) { $0 + $1.amount }
+        co.set("lossLots", .array(lots.map { .array([.number(Double($0.year)), .number($0.amount)]) }))
+    }
+
+    /// Pay corporate tax once it is due (`Country.corporateTaxDueWeeks` after year end). Returns what could not be paid.
     /// In day mode wages, rent and suppliers are settled on their own days, so only tax is settled here.
     /// Original: `settle` under R29.
     @discardableResult
@@ -238,13 +264,17 @@ public enum MonthEnd {
 
     /// Year end. Original: `yearEnd`.
     public static func closeYear(_ s: inout GameState, data: GameData, context: FinanceContext) {
+        let world = World(state: s, data: data)
+        let closingYear = GameCalendar.year(week: s.week)
         for i in s.companies.indices where s.companies[i].status.isLive {
             var co = s.companies[i]
             var flags = co.value("flags"); flags["fraud"] = 0; co.set("flags", flags)
             if co.form == .limited {
+                let country = world.country(co)
+                rollLossLots(&co, country: country, closingYear: closingYear)
                 co.taxDue = true
                 co.taxPrevYear = co.payables["tax"] ?? 0
-                co.taxDueWeek = s.week + 26
+                co.taxDueWeek = s.week + country.corporateTaxDueWeeks
                 co.set("gcLy", co.value("gc")); co.set("gc", .null)
                 co.lossCarryAtYearStart = co.lossCarryForward
                 co.yearProfitSoFar = 0

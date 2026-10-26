@@ -95,6 +95,17 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var specialTax: [String: Double]
     public var dividendTax: Double
     public var dividendShield: Double
+    /// Private investors' tax on realised gains (`tax.capitalGains`; the dividend rate when the data has none).
+    public var capitalGainsTax: Double
+    /// Tax on savings and deposit interest (`tax.savingsInterest`; the dividend rate when the data has none).
+    public var savingsInterestTax: Double
+    /// Weeks after the year end when a limited company's corporate tax falls due (`tax.payWeeks`, 26 when missing).
+    public var corporateTaxDueWeeks: Int
+    /// Loss carry-forward limits (`tax.loss`): losses offset up to `free` of profit plus `share` of profit above it (share 1 and free 0 = no cap);
+    /// a loss expires after `years` years (0 = never).
+    public var lossFree: Double
+    public var lossShare: Double
+    public var lossYears: Int
     public var employerSocial: Double
     public var employerPension: Double
     public var employerInjury: Double
@@ -212,6 +223,12 @@ extension Country {
         specialTax = tax["special"].object.mapValues { $0.double }
         dividendTax = tax["dividend"].double
         dividendShield = tax["dividendShield"].double
+        capitalGainsTax = tax["capitalGains"].isNull ? tax["dividend"].double : tax["capitalGains"].double
+        savingsInterestTax = tax["savingsInterest"].isNull ? tax["dividend"].double : tax["savingsInterest"].double
+        corporateTaxDueWeeks = tax["payWeeks"].isNull ? 26 : tax["payWeeks"].int
+        lossFree = B(tax["loss"]["free"].double)
+        lossShare = tax["loss"]["share"].isNull ? 1 : tax["loss"]["share"].double
+        lossYears = tax["loss"]["years"].int
         employerSocial = tax["employer"]["social"].double
         employerPension = tax["employer"]["pension"].double
         employerInjury = tax["employer"]["injury"].double

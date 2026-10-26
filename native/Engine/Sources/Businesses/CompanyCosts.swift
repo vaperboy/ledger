@@ -40,13 +40,21 @@ public enum CompanyCosts {
         return c
     }
 
-    /// The standing payroll of one week, employer on-cost included: staff pay with the cover for paid leave and sick days, plus the manager.
+    /// The standing payroll of one week, employer on-cost included: staff pay with the cover for paid leave, plus the manager.
     /// The one function behind both the accrual (`wages`) and every payroll estimate, so the two cannot drift apart. Each wage carries its own
     /// on-cost rate (`Country.payrollFactor`), which matters where contributions are capped (Mexico). Commission is not included.
-    public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true) -> Double {
-        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
+    /// With `sickWeek` (the accrual), someone who fell sick last week costs what the country's sick-pay law makes the employer pay
+    /// (`LabourRules.employerSickPay`) instead of the full wage; estimates leave it out. `capScale` carries the price drift of a flat statutory rate.
+    public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true, sickWeek: Int? = nil, capScale: Double = 1) -> Double {
+        let labour = LabourRules(country: country)
+        let holiday = 1 + labour.leaveWeeks / 52 * 0.3  // cover for paid leave (sick pay is by law, below)
         var cost = 0.0
-        for m in co.staff where !(skipOffSeason && m.isOffSeason) { cost += m.monthlyWage * 12 / 52 * holiday * country.payrollFactor(monthlyWage: m.monthlyWage) }
+        for m in co.staff where !(skipOffSeason && m.isOffSeason) {
+            let weekly = m.monthlyWage * 12 / 52
+            let pay = (sickWeek != nil && m.sickUntilWeek == sickWeek)
+                ? labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: capScale) : weekly * holiday
+            cost += pay * country.payrollFactor(monthlyWage: m.monthlyWage)
+        }
         if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
         return cost
     }
@@ -58,7 +66,7 @@ public enum CompanyCosts {
         let w = World(state: s, data: data)
         let country = w.country(co)
         let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
-        let cost = (standingWeeklyPayroll(co, country: country) + commissionPay * country.employerCostFactor) * f
+        let cost = (standingWeeklyPayroll(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * country.employerCostFactor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * country.employerCostFactor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
