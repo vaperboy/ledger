@@ -33,7 +33,7 @@ struct CompanyOperations: View {
                     inflationHold
                 }
             }
-            LedgerSection("Your time", trailing: { Text("Max 80 h across all companies").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
+            LedgerSection(title: "Your time", trailing: { Text("Max 80 h across all companies").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
                 HStack(spacing: Theme.Space.m) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(Int(company.ownerHours.rounded())) hours a week").font(.bodyText.weight(.medium))

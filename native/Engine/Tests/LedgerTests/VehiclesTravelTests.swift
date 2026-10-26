@@ -84,6 +84,9 @@ final class VehiclesTravelTests: XCTestCase {
         return (before - s.companies[i].cash, s.companies[i].value("veh").array.reduce(0) { $0 + $1["km"].double } - km0)
     }
 
+    /// Fuel is a standard-rated purchase: the bank pays net plus input VAT (reclaimed later by a registered company); sales-tax countries add none.
+    private func inputVatFactor(_ c: Country) -> Double { c.usesSalesTax ? 1 : 1 + c.vat.standard }
+
     func testAPlumberPaysFuelForTheKilometresItsOdometerCounts() throws {
         let (e, id) = try startedCompany("plumber")
         let co = try XCTUnwrap(e.state.company(id))
@@ -97,7 +100,7 @@ final class VehiclesTravelTests: XCTestCase {
         let km = VehicleRunning.kmPerWeek(bd, tables: e.data.catalog.tables) * util
         XCTAssertEqual(one.km, km * Double(vans.count), accuracy: 1e-6, "the odometer turns by the trait's kilometres for every vehicle")
         XCTAssertGreaterThan(perKm, 0)
-        XCTAssertEqual(two.cash - one.cash, km * perKm, accuracy: 1.0, "doubling the fuel price adds exactly the fuel bill of those kilometres")
+        XCTAssertEqual(two.cash - one.cash, km * perKm * inputVatFactor(w.country(co)), accuracy: 1.0, "doubling the fuel price adds exactly the fuel bill of those kilometres, with the input VAT paid on it")
     }
 
     func testTradesThatCarryFuelInTheirCostOfSalesOrLetTheCustomerPayGetNoSecondFuelLine() throws {
@@ -167,7 +170,7 @@ final class VehiclesTravelTests: XCTestCase {
         let perKm = VehicleRunning.fuelPerKm(model: CompanyCarPerk.model, tables: e.data.catalog.tables, country: w.country(co), currency: w.currency(co), fuelIndex: 1)
         let km = e.data.catalog.tables.raw["RUNNING"]["defaultKmPerWeek"].double * 0.5
         XCTAssertEqual(one.km, km, accuracy: 1e-9)
-        XCTAssertEqual(two.cash - one.cash, km * perKm, accuracy: 1.0)
+        XCTAssertEqual(two.cash - one.cash, km * perKm * inputVatFactor(w.country(co)), accuracy: 1.0)
         // the old flat per-head charge is gone: the weekly perk line carries no car
         var s = e.state
         let before = s.companies[s.companyIndex(id)!].cash
