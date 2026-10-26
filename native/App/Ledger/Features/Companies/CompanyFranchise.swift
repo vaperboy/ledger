@@ -139,7 +139,7 @@ struct FranchisorCard: View {
             Button("Launch franchise") {
                 let f = fee > 0 ? fee : cur.scaledPrice(150_000)
                 if store.act({ $0.launchFranchise(companyID: company.id, entryFee: f, royalty: royalty, support: support) }) == .ok { Haptics.success(); store.show("Franchise launched.", tone: "good") }
-            }.buttonStyle(GoldButtonStyle()).padding(.top, 6)
+            }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
             Text("Applicants come as the brand grows. You agree the terms with each one in a talk; units pay the fee and royalties, struggle, renew, leave or are ended.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }.padding(.top, 10)
     }
@@ -273,11 +273,11 @@ struct FranchiseTalkView: View {
                                 }
                                 Text("Patience " + String(repeating: "●", count: max(0, patience)) + String(repeating: "○", count: max(0, (Franchising.patienceDots(for: a.personality)) - max(0, patience))))
                                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                                Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(GoldButtonStyle())
+                                Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(QuietButtonStyle())
                             }
                         }
                     } else {
-                        Button("Back to the franchise") { dismiss() }.buttonStyle(GoldButtonStyle())
+                        Button("Back to the franchise") { dismiss() }.buttonStyle(QuietButtonStyle())
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)

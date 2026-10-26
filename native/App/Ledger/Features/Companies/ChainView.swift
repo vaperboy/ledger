@@ -452,7 +452,7 @@ struct ChainNewStore: View {
                         pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
                                                 message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
                                                 button: "Open the store") { open(cityID: cityID) }
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 } else {
                     Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }

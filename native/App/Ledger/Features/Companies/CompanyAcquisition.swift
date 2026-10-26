@@ -90,7 +90,7 @@ struct AcquisitionSheet: View {
                             pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
-                        }.buttonStyle(GoldButtonStyle()).disabled(!ch.affordable)
+                        }.buttonStyle(QuietButtonStyle()).disabled(!ch.affordable)
                         if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
                     }
                     .padding(Theme.Space.margin)

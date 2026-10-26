@@ -346,7 +346,7 @@ struct ClubMarketView: View {
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
                         default: store.show("The club is no longer for sale.", tone: "warn")
                         }
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 }
             } else {
                 ForEach([0.9, 1.2, 1.8, 3.0], id: \.self) { f in

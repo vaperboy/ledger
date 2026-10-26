@@ -79,7 +79,7 @@ struct GrowIntoChain: View {
                             let made: Int? = store.act({ $0.makeChain(companyID: company.id, name: name.isEmpty ? company.name : name) }) ?? nil
                             if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
                             else { Haptics.warning(); store.show("The chain registration is not approved yet.", tone: "warn") }
-                        }.buttonStyle(GoldButtonStyle())
+                        }.buttonStyle(QuietButtonStyle())
                     }.padding(.top, 10)
                 } else {
                     Button("Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))") {

@@ -103,7 +103,7 @@ struct CompanyMarket: View {
             Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
             Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
         }
-        Button(label) { askChange(info, cur) }.buttonStyle(GoldButtonStyle()).disabled(tiny)
+        Button(label) { askChange(info, cur) }.buttonStyle(QuietButtonStyle()).disabled(tiny)
         if !tiny, let fc = engine.priceForecast(companyID: company.id, byShare: change) {
             HStack {
                 Text("Customers: " + fc.text.customers)
@@ -115,16 +115,15 @@ struct CompanyMarket: View {
         if info.recentCut >= 0.06 { Text("You cut prices lately. Rivals may match you.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
     }
 
+    /// A price change is routine and reversible (change it again), so it runs at once; the forecast above the button is the consequence.
     private func askChange(_ info: PriceMovesInfo, _ cur: Currency) {
         let share: Double = change
-        let forecast: String = engine.priceForecast(companyID: company.id, byShare: share).map { "Customers: " + $0.text.customers + ". Margin: " + $0.text.margin + "." } ?? "No forecast is available."
-        let msg: String = String(format: "Your price goes from %@ to about %@ (%+.0f%%). ", cur.tidyShort(info.yourTicket), cur.tidyShort(info.yourTicket * (1 + share)), share * 100) + forecast + " Rivals may react."
-        pending = PendingAction(title: "Change prices?", message: msg, button: "Change prices") {
-            if let real = store.act({ $0.changePrice(companyID: company.id, byShare: share) }) ?? nil {
-                store.show(String(format: "Prices %+.0f%%.", real * 100), tone: "good"); Haptics.success()
-            } else {
-                store.show("The price could not be changed.", tone: "warn")
-            }
+        if let real = store.act({ $0.changePrice(companyID: company.id, byShare: share) }) ?? nil {
+            Haptics.success()
+            store.show(String(format: "Prices %+.0f%%.", real * 100), tone: "good")
+        } else {
+            Haptics.warning()
+            store.show("The price could not be changed.", tone: "warn")
         }
     }
 
@@ -152,19 +151,18 @@ struct CompanyMarket: View {
             if info.raisedWeeksAgo > 0 {
                 Text("You raised prices \(info.raisedWeeksAgo) wk ago. A sale measured against that price can be fined as misleading.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             }
-            Button("Start \(discount)% off for \(weeks) wk") { askDiscount(info, cur) }.buttonStyle(GoldButtonStyle())
+            Text("Every sale is cheaper while it runs, so margin falls. It brings more customers, not a promise of more profit. You can end it early.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Button("Start \(discount)% off for \(weeks) wk") { askDiscount(info, cur) }.buttonStyle(QuietButtonStyle())
         }
     }
 
+    /// A discount can be ended any time, so it starts at once; the note under the choices says what it does to the margin.
     private func askDiscount(_ info: PriceMovesInfo, _ cur: Currency) {
         let pct: Int = min(discount, info.discountOptions.last ?? discount)
         let wk: Int = weeks
-        let msg: String = "Every sale is \(pct)% cheaper for \(wk) week\(wk == 1 ? "" : "s"), so margin falls while it runs. It brings more customers, not a promise of more profit. You can end it early."
-        pending = PendingAction(title: "Start \(pct)% off?", message: msg, button: "Start discount") {
-            let r = store.act { $0.startDiscount(companyID: company.id, percent: pct, weeks: wk) }
-            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-            else if r != nil { Haptics.success(); store.show("\(pct)% off for \(wk) week\(wk == 1 ? "" : "s").", tone: "good") }
-        }
+        let r = store.act { $0.startDiscount(companyID: company.id, percent: pct, weeks: wk) }
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r != nil { Haptics.success(); store.show("\(pct)% off for \(wk) week\(wk == 1 ? "" : "s").", tone: "good") }
     }
 
     // MARK: Rivals
@@ -345,7 +343,7 @@ struct RivalSheet: View {
                         Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
                     }
                     Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                    Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(GoldButtonStyle())
+                    Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(QuietButtonStyle())
                     if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
                     if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
                     Hairline()
@@ -479,7 +477,7 @@ struct PriceWarSheet: View {
                                     .init(label: "Authority", value: est.yourShare >= 0.35 ? "Can fine" : "Low risk", tint: est.yourShare >= 0.35 ? Theme.loss : Theme.ivory),
                                 ])
                             }
-                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(GoldButtonStyle())
+                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(QuietButtonStyle())
                         }
                     }
                     .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)

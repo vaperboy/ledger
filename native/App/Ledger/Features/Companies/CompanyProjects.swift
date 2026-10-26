@@ -209,7 +209,7 @@ private struct JobList: View {
                     case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
                     default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
                     }
-                }.buttonStyle(SmallGoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
         .padding(.bottom, 4)
@@ -323,7 +323,7 @@ private struct DevelopmentList: View {
                 if q.financed { row("Loan", store.short(q.loanAmount, in: company)) }
                 row("Brings in, if all sold", store.short(q.expectedRevenue, in: company))
             }
-            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(SmallGoldButtonStyle())
+            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(QuietButtonStyle())
         }
         .padding(.bottom, 6)
     }

@@ -566,7 +566,7 @@ struct EquipmentShopView: View {
                 FlatRow(label: lease ? "Lease, 3 years, service included" : useFinance ? "Down payment now, loan for the rest" : "Total", value: lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: total)) + "/mo" : useFinance ? cur.tidyShort(total * 0.2) : cur.tidyShort(total))
                 Button(lease ? "Lease \(q)" : one ? "Buy licence" : "Buy \(q)") {
                     report(store.act { $0.buyEquipmentItem(companyID: companyID, equipmentID: equipmentID, offer: sel, quantity: q, payment: lease ? .lease : useFinance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
-                }.buttonStyle(GoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
     }
@@ -663,7 +663,7 @@ struct EquipmentShopView: View {
                 FlatRow(label: useFinance ? "Down payment now, loan for the rest" : "Total", value: cur.tidyShort(useFinance ? sel.price * 0.2 : sel.price))
                 Button("Buy used · \(cur.tidyShort(sel.price))") {
                     report(store.act { $0.buyUsedItem(companyID: companyID, equipmentID: equipmentID, listing: sel, payment: useFinance ? .finance : .cash) }, "Bought.")
-                }.buttonStyle(GoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
     }
@@ -694,7 +694,7 @@ struct EquipmentShopView: View {
                             value: lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(finance ? price * 0.2 : price))
                     Button(lease ? "Lease" : "Buy new") {
                         report(store.act { $0.buyVehicleItem(companyID: companyID, equipmentID: equipmentID, offer: sel, payment: lease ? .lease : finance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 }
             }
         }
