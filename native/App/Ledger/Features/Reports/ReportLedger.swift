@@ -66,7 +66,7 @@ struct ReportMovements: View {
                         }
                     }
                     if list.count > limit {
-                        Button("Show \(min(60, list.count - limit)) more") { limit += 60 }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 6)
+                        Button("Show \(min(60, list.count - limit)) more") { limit += 60 }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
                     }
                 }
             }
@@ -102,6 +102,7 @@ struct ReportMovements: View {
                 Spacer(minLength: 8)
                 Text(fmt.signed(m.amount, company: m.companyID)).font(.system(size: 13.5).monospacedDigit())
                     .foregroundStyle(m.amount > 0 ? Theme.gain : Theme.ivory)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }
@@ -147,6 +148,7 @@ struct ReportBills: View {
                                         Text(u.daysAway <= 0 ? "Due now" : u.daysAway == 1 ? "Tomorrow" : "\(u.dateText) · \(u.daysAway) days")
                                             .font(.system(size: 10.5)).foregroundStyle(u.daysAway <= 7 ? Theme.caution : Theme.ivoryFaint)
                                     }
+                                    if u.companyID != 0 { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
                                 }
                                 .padding(.vertical, 8).contentShape(Rectangle())
                             }

@@ -30,18 +30,6 @@ struct RivalGroupProfileView: View {
                         .init(label: "Cash", value: g.cashWord, tint: g.cash <= 0 ? Theme.loss : Theme.ivory),
                         .init(label: "Debt", value: g.debtWord, tint: g.debtWord == "Very high" ? Theme.caution : Theme.ivory),
                     ])
-                    LedgerSection("How it plays") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(g.strategyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                            Text("Ambition: \(g.ambition)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
-                        }
-                    }
-                    LedgerSection("Where it competes") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            FlatRow(label: "Trades", value: g.trades.map { e.data.catalog[$0]?.name ?? $0 }.joined(separator: ", "), rule: false)
-                            FlatRow(label: "Countries", value: g.countries.map { e.data.countries[$0]?.name ?? $0 }.joined(separator: ", "))
-                        }
-                    }
                     LedgerSection("What it means for you") {
                         VStack(alignment: .leading, spacing: 6) {
                             if overlap.isEmpty && mine.isEmpty {
@@ -58,6 +46,18 @@ struct RivalGroupProfileView: View {
                                     FlatRow(label: m.rival.name, value: m.company.name, sub: "competes with")
                                 }
                             }
+                        }
+                    }
+                    LedgerSection("How it plays") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(g.strategyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text("Ambition: \(g.ambition)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+                        }
+                    }
+                    LedgerSection("Where it competes") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            FlatRow(label: "Trades", value: g.trades.map { e.data.catalog[$0]?.name ?? $0 }.joined(separator: ", "), rule: false)
+                            FlatRow(label: "Countries", value: g.countries.map { e.data.countries[$0]?.name ?? $0 }.joined(separator: ", "))
                         }
                     }
                     LedgerSection("Recent moves") {

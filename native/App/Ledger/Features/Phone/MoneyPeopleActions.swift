@@ -36,11 +36,12 @@ struct HostingSection: View {
                                 Text(g.detail + (g.hostedLately ? " · hosted lately" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 8)
-                            Menu("Host…") {
+                            Menu {
                                 ForEach(venues) { v in
                                     Button("\(v.item.name) · \(cur.tidyShort(engine.hostingCost(pieceID: v.id) ?? 0))") { pending = (v, g) }
                                 }
-                            }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+                            } label: { HStack(spacing: 3) { Text("Host"); Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) } }
+                            .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
                         }.padding(.vertical, 8)
                     }
                     Text("An evening needs a piece of yours that is not away, and once a month at most on the same piece.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
@@ -82,11 +83,12 @@ struct LendPieceSection: View {
             let people = engine.rewardCandidates
             if !people.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Menu("Lend to a manager or star worker…") {
+                    Menu {
                         ForEach(people) { r in
                             Button("\(r.name) · \(r.companyName)\(r.isManager ? " (manager)" : "")\(r.rewardedLately ? " · rewarded lately" : "")") { pending = r }
                         }
-                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+                    } label: { HStack(spacing: 3) { Text("Lend to a manager or star worker"); Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) } }
+                    .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
                 }.padding(.top, 8)
                 .confirmationDialog(pending.map { "Lend \(piece.item.name) to \($0.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                     if let r = pending {
@@ -143,12 +145,14 @@ struct FundManagerCard: View {
                     AmountField(title: "Amount", currency: cur, amount: $amount)
                     HStack {
                         Button("Add") {
-                            if amount > 0, store.act({ $0.addToFundManager(amount) }) == true { Haptics.success(); store.show("Added.", tone: "good"); amount = 0 }
-                            else { Haptics.warning(); store.show("Not enough cash.", tone: "warn") }
+                            let a = amount
+                            if a > 0, store.act({ $0.addToFundManager(a) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) added to what \(engine.fundManager?.name ?? "the manager") invests.", tone: "good"); amount = 0 }
+                            else { Haptics.warning(); store.show(a > 0 ? "Not enough cash on the current account." : "Enter an amount first.", tone: "warn") }
                         }.buttonStyle(QuietButtonStyle())
                         Button("Take out") {
-                            if amount > 0, store.act({ $0.withdrawFromFundManager(amount) }) == true { Haptics.success(); store.show("Taken out.", tone: "good"); amount = 0 }
-                            else { store.show("Nothing to take out.", tone: "warn") }
+                            let a = amount
+                            if a > 0, store.act({ $0.withdrawFromFundManager(a) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) taken out and back on your account.", tone: "good"); amount = 0 }
+                            else { Haptics.warning(); store.show(a > 0 ? "The manager holds less than that." : "Enter an amount first.", tone: "warn") }
                         }.buttonStyle(QuietButtonStyle())
                         Spacer(minLength: 0)
                         Button("Let go") { confirmDismiss = true }.buttonStyle(QuietButtonStyle(tint: Theme.loss))

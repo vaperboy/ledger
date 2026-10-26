@@ -32,8 +32,8 @@ struct ReportPromptSection: View {
                         store.jump(to: .group)
                         store.act { $0.dismissReportPrompt(r) }
                     } label: {
-                        Text("Read the full report  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
-                    }.buttonStyle(.plain)
+                        Text("Read the full report")
+                    }.buttonStyle(QuietButtonStyle())
                 }
             }
         }

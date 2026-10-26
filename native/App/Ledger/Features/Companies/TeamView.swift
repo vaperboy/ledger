@@ -185,7 +185,7 @@ struct TeamView: View {
                     }
                     if o.members.count > 8 {
                         Button(showAllMembers ? "Show fewer people" : "Show all \(o.members.count) people") { withAnimation { showAllMembers.toggle() } }
-                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.vertical, 8)
+                            .buttonStyle(QuietButtonStyle()).padding(.vertical, 8)
                     }
                     ForEach(Array(shown.enumerated()), id: \.element.id) { n, v in
                         if n > 0 || !people.isEmpty { Hairline() }
@@ -204,7 +204,7 @@ struct TeamView: View {
                     }
                     if o.vacancies.count > limit {
                         Button(showAllVacancies ? "Show fewer open posts" : "Show all \(o.vacancies.count) open posts") { withAnimation { showAllVacancies.toggle() } }
-                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 8)
+                            .buttonStyle(QuietButtonStyle()).padding(.top, 8)
                     }
                 }
             }
@@ -256,7 +256,7 @@ struct TeamView: View {
                     }
                     if o.scorecards.count > limit {
                         Button(showAllScores ? "Show fewer" : "Show all \(o.scorecards.count)") { withAnimation { showAllScores.toggle() } }
-                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 8)
+                            .buttonStyle(QuietButtonStyle()).padding(.top, 8)
                     }
                     Text("Scorecard 0 to 100 from margin, reputation, quality, mistakes, paperwork and targets. Open a manager to coach, limit or replace them.")
                         .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)

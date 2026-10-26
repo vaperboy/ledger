@@ -32,6 +32,13 @@ struct BankContent: View {
                         .init(label: "You owe", value: owed > 0 ? store.short(owed) : "Nothing", tint: owed > 0 ? Theme.caution : Theme.ivory, sub: personal.isEmpty ? "" : "\(store.short(personal.reduce(0) { $0 + $1.monthlyPayment })) a month"),
                         .init(label: "Credit", value: Banking.creditWord(s.credit), sub: "bank rate \(Currency.percent(s.economy.policyRate, decimals: 2))"),
                     ]).padding(.top, 8)
+                    if missedTotal(e) > 0 {
+                        Label("\(missedTotal(e)) loan instalment\(missedTotal(e) == 1 ? "" : "s") missed. Pay it before the next week: a missed payment adds a penalty and hurts your credit.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                    } else if s.cash < 0 {
+                        Label("Your current account is overdrawn. Move money from savings or borrow before bills fall due.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                    }
                 }
                 savings(e, cur)
                 deposits(e, cur)
@@ -44,6 +51,9 @@ struct BankContent: View {
         }
     }
 
+    /// Missed instalments over every loan, yours and your companies', for the warning at the top.
+    private func missedTotal(_ e: GameEngine) -> Int { e.state.loans.reduce(0) { $0 + $1.int("miss") } }
+
     // MARK: Savings and deposits
 
     private func savings(_ e: GameEngine, _ cur: Currency) -> some View {
@@ -52,8 +62,11 @@ struct BankContent: View {
                 Text("Earns interest and can be moved back any day. Loan repayments draw on it when the current account is short.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 AmountField(title: "Amount", currency: cur, amount: $amount)
                 HStack {
-                    Button("Save") { move(amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
-                    Button("Withdraw") { move(-amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
+                    Button(amount > 0 ? "Save \(cur.tidyShort(amount))" : "Save") { move(amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.cash)
+                    Button(amount > 0 ? "Withdraw \(cur.tidyShort(amount))" : "Withdraw") { move(-amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.savings)
+                }
+                if amount > e.state.cash && amount > e.state.savings && amount > 0 {
+                    Text("More than either account holds: \(cur.tidyShort(max(0, e.state.cash))) current, \(cur.tidyShort(e.state.savings)) savings.").font(.caption2).foregroundStyle(Theme.caution)
                 }
             }
         }
