@@ -76,7 +76,7 @@ public enum VehicleRunning {
             guard let share else { continue }
             let key = v["perk"].string
             let wage = key == "m" ? co.managerMonthlyWage : (co.staff.first { "s\($0.id)" == key }?.monthlyWage ?? 0)
-            let rate = c.employerSocialRate(monthlyWage: wage) + c.employerPension + c.employerInjury
+            let rate = c.employerOnCost(monthlyWage: wage)
             out.benefitCharge += v["cost"].double * share / 52 * rate
         }
         return out

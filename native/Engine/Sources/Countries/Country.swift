@@ -153,6 +153,10 @@ public struct Country: Equatable, Sendable, Identifiable {
         return charged / monthlyWage + statePayrollTax
     }
 
+    /// The employer's full on-cost rate for one wage: contributions (`employerSocialRate`) plus pension and injury. The one rate behind payroll
+    /// (`employerCostFactor` is 1 + this at the median wage), notice paid in lieu, contract talks and vehicle running costs.
+    public func employerOnCost(monthlyWage: Double) -> Double { employerSocialRate(monthlyWage: monthlyWage) + employerPension + employerInjury }
+
     /// Median monthly gross wage in accounting units: the reference economy's median times this country's wage level.
     /// Every money limit that is really "a number of months of an ordinary wage" (loan floors, income assumptions) derives from this.
     public var medianMonthlyWage: Double { ReferenceEconomy.medianWage * wageLevel }

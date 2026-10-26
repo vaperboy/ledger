@@ -89,7 +89,7 @@ public enum StaffRoutine {
         for (id, p) in changedPeople { s.people[id] = p }
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
         if lifted > 0 { s.note("\(lifted) \(lifted == 1 ? "person's pay was" : "people's pay was") raised to the new minimum wage at \(co.name).", companyID: co.id) }
-        if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerSocial), category: "wages", label: "Overtime pay") }
+        if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerOnCost(monthlyWage: country.medianMonthlyWage)), category: "wages", label: "Overtime pay") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }

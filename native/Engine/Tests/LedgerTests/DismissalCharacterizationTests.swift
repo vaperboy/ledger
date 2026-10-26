@@ -119,7 +119,7 @@ final class DismissalCharacterizationTests: XCTestCase {
             s.companies[i].set("asst", .object(["npc": .number(Double(cands[1].id)), "wage": .number(200_000), "duties": .array([]), "w0": .number(Double(s.week))]))
             var p = s.people[cands[1].id]!; p.employerID = id; s.people[p.id] = p
         }
-        let social = World(state: e.state, data: e.data).country(try XCTUnwrap(e.state.company(id))).employerSocial
+        let social = World(state: e.state, data: e.data).country(try XCTUnwrap(e.state.company(id))).employerOnCost(monthlyWage: 200_000)
         let before = cash(e, id)
         e.dismissAssistant(companyID: id)
         XCTAssertEqual(before - cash(e, id), 200_000 * (1 + social), accuracy: 2)
@@ -147,7 +147,7 @@ final class DismissalCharacterizationTests: XCTestCase {
             s.companies[i].set("team", .object(["ceo": .object(["npc": .number(Double(cands[2].id)), "wage": .number(500_000)]), "heads": .object([:])]))
             var p = s.people[cands[2].id]!; p.employerID = id; s.people[p.id] = p
         }
-        let social = World(state: e.state, data: e.data).country(try XCTUnwrap(e.state.company(id))).employerSocial
+        let social = World(state: e.state, data: e.data).country(try XCTUnwrap(e.state.company(id))).employerOnCost(monthlyWage: 500_000)
         let before = cash(e, id)
         XCTAssertTrue(e.releaseTeam(companyID: id, key: "ceo"))
         XCTAssertEqual(before - cash(e, id), 500_000 * (1 + social), accuracy: 2)

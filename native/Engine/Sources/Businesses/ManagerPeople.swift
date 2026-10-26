@@ -419,7 +419,7 @@ extension ManagerModel {
         guard let ci = s.companyIndex(companyID) else { return }
         let a = s.companies[ci].value("asst")
         guard a["npc"].int != 0 else { return }
-        let social = World(state: s, data: data).country(s.companies[ci]).employerSocial
+        let social = World(state: s, data: data).country(s.companies[ci]).employerOnCost(monthlyWage: a["wage"].double)
         Dismissal.book(&s, payer: .company(companyID), notice: Dismissal.monthOfPay(wage: a["wage"].double, employerSocial: social))
         if var n = s.people[a["npc"].int] { n.employerID = 0; s.people[n.id] = n }
         s.companies[ci].set("asst", .null)
@@ -438,7 +438,7 @@ extension ManagerModel {
         let a = co.value("asst")
         guard a["npc"].int != 0 else { return }
         guard let n = s.people[a["npc"].int] else { s.companies[ci].set("asst", .null); return }
-        let social = World(state: s, data: data).country(co).employerSocial
+        let social = World(state: s, data: data).country(co).employerOnCost(monthlyWage: a["wage"].double)
         Payments.companyPays(&s, companyID: co.id, amount: a["wage"].double * 12 / 52 * (1 + social), category: "wages")
         guard co.status == .open else { return }
         let sk = (n.skill.isZero ? 55 : n.skill) / 100
