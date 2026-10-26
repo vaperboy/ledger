@@ -353,9 +353,9 @@ public enum ContractTalk {
     static func employerCost(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID) else { return 0 }
         let w = World(state: s, data: data), c = w.country(co), cur = w.currency(co)
-        var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * c.payrollFactor(monthlyWage: $1.monthlyWage) }
-        if co.managerID != nil { sum += co.managerMonthlyWage * c.payrollFactor(monthlyWage: co.managerMonthlyWage) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
-        sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * c.payrollFactor(monthlyWage: m.monthlyWage) } ?? 0) }
+        var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * (1 + c.employerOnCost(monthlyWage: $1.monthlyWage)) }
+        if co.managerID != nil { sum += co.managerMonthlyWage * (1 + c.employerOnCost(monthlyWage: co.managerMonthlyWage)) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
+        sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerOnCost(monthlyWage: m.monthlyWage)) } ?? 0) }
         sum += StaffExpenses.monthlyCost(co, currency: cur)
         sum += StaffPerks.totalMonthlyCost(co, currency: cur)
         if let bd = data.catalog[co.type] { sum += PersonalEquipment.mileagePerMonth(cur, country: c, bd, tables: data.catalog.tables) * Double(co.staff.filter { $0.flag("ownCar") }.count) }

@@ -12,7 +12,7 @@ public enum CompanyFigures {
     /// Equipment and vehicles at book value. Original: `eqBook`.
     public static func equipmentBookValue(_ co: Company) -> Double {
         var t = 0.0
-        for (_, e) in co.value("eq").object { t += e["bv"].double }
+        for (_, e) in co.value("eq").object.sorted(by: { $0.key < $1.key }) { t += e["bv"].double }
         for v in co.value("veh").array { t += v["bv"].double }
         return t
     }
@@ -46,11 +46,23 @@ public enum CompanyFigures {
 
     /// Everything the company owes. Original: `companyDebts`.
     public static func debts(_ co: Company, loans: [Loan]) -> Double {
-        let p = co.payables
         let loanSum = loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
+        return loanSum + billsOwed(co)
+    }
+
+    /// Everything the company owes except loans: unpaid wages, bills, supplier invoices, rent, VAT, tax and financial-company liabilities.
+    /// The one list that the balance sheet, wind-up and bankruptcy all use.
+    public static func billsOwed(_ co: Company) -> Double {
+        let p = co.payables
         let fm = co.value("fm")
-        return loanSum + (p["wages"] ?? 0) + (p["other"] ?? 0) + (p["inv"] ?? 0) + (p["rent"] ?? 0) + max(0, co.vatBalance) + (p["tax"] ?? 0)
-            + (fm["liab"].isNull ? 0 : fm["liab"].double)
+        var total: Double = p["wages"] ?? 0
+        total += p["other"] ?? 0
+        total += p["inv"] ?? 0
+        total += p["rent"] ?? 0
+        total += max(0, co.vatBalance)
+        total += p["tax"] ?? 0
+        if !fm["liab"].isNull { total += fm["liab"].double }
+        return total
     }
 
     /// Profit over the last twelve months, scaled to a year. Original: `coEbit12`.
@@ -70,7 +82,7 @@ public enum CompanyFigures {
         let mgr = co.managerMonthlyWage * 12 / 52 * employerFactor
         let prem = co.value("prem")
         let rent = (!prem.isNull && !prem["owned"].bool && prem["m2"].double > 0) ? prem["rent"].double * prem["m2"].double / 52 : 0
-        let marketing = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let marketing = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         return staffPay + mgr + rent + fixedCost * pow(co.size, 0.6) + marketing + co.value("lastW")["cogs"].double * 0.5
     }
 

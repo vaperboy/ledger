@@ -15,6 +15,7 @@ struct PhoneView: View {
                 if let e = store.engine {
                     Card {
                         VStack(spacing: Theme.Space.m) {
+                            row(.goals, goalsLine(e)); Hairline()
                             row(.news, e.news.first?.text ?? "No news yet")
                             Hairline()
                             row(.stats, "Best net worth " + store.short(max(e.state.stats.peakNetWorth, e.netWorth.total)) + " · week \(e.state.week + 1)")
@@ -40,6 +41,7 @@ struct PhoneView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { store.showPhone = false } } }
             .navigationDestination(for: PhoneDestination.self) { dest in
                 switch dest {
+                case .goals: GoalsView()
                 case .news: NewsView()
                 case .stats: StatsView()
                 case .activity: ActivityView()
@@ -62,6 +64,10 @@ struct PhoneView: View {
         }.buttonStyle(.plain)
     }
 
+    private func goalsLine(_ e: GameEngine) -> String {
+        let left = e.firstSteps().filter { !$0.done }.count
+        return left > 0 ? "\(left) first \(left == 1 ? "step" : "steps") to go" : (e.currentAmbition == nil ? "Choose what you want to build" : "Daily goal and your ambition")
+    }
     private func achievementsLine(_ e: GameEngine) -> String {
         let all = Trophies.entries(e.state)
         return "\(all.filter { $0.reachedWeek != nil }.count) of \(all.count) trophies · \(Awards.wonCount(e.state)) awards"

@@ -58,7 +58,7 @@ struct ExecutivePosts: View {
                     Menu("Deals above \(big > 0 ? cur.tidyShort(big) : "any size") always come to you") {
                         ForEach([0.0, 250_000, 1_000_000, 5_000_000, 20_000_000], id: \.self) { v in
                             let amt = cur.scaledPrice(v)
-                            Button(v == 0 ? "No limit set" : cur.tidyShort(amt)) { store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }; store.show(v == 0 ? "No group limit." : "Deals above \(cur.tidyShort(amt)) come to you.") }
+                            Button(v == 0 ? "No limit set" : cur.tidyShort(amt)) { store.settle(store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }, v == 0 ? "No group limit." : "Deals above \(cur.tidyShort(amt)) come to you.", same: "That limit is already set.") }
                         }
                     }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).padding(.top, 8)
                 }
@@ -91,7 +91,7 @@ struct ExecutivePosts: View {
                         RoleScopeBadge(role: p.level == .md ? "Group managing director" : p.level.title, scope: p.scope)
                     }
                     Text((person == nil ? "Would be employed by " : "Employed by ") + employer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    if person == nil { Text(p.level.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                    if person == nil { Text(p.level.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
                 if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
@@ -101,8 +101,8 @@ struct ExecutivePosts: View {
                 HStack(spacing: 16) {
                     AuthorityPicker(level: lvl, currency: cur, limit: p.rec["buy"].double,
                                     limitSteps: [50000.0, 100000, 250000, 600000, 2000000].map { cur.scaledPrice($0) },
-                                    setLevel: { l in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) } },
-                                    setLimit: { v in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) } })
+                                    setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
+                                    setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
                     Button("Let go") { releasing = p }.foregroundStyle(Theme.loss)
                 }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)

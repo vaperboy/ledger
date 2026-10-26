@@ -56,6 +56,7 @@ public extension GameEngine {
             line("loans", "Loans", loanSum),
             line("wages", "Wages not yet paid", p["wages"] ?? 0),
             line("bills", "Supplier and other bills", p["other"] ?? 0),
+            line("inv", "Supplier invoices", p["inv"] ?? 0),
             line("rent", "Rent owed", p["rent"] ?? 0),
             line("vat", "VAT owed", max(0, co.vatBalance)),
             line("tax", "Tax owed", p["tax"] ?? 0),

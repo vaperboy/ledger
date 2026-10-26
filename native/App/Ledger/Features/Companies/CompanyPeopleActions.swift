@@ -128,7 +128,7 @@ struct CompanyPerksCard: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                Text(p.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 Text("\(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month · \(fewer(p))% fewer leave among those it covers").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
                                 groupChoices(p, cur)
                                 if p.id == "car" && on {

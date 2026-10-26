@@ -9,9 +9,9 @@ struct SuggestionCard: View {
 
     var body: some View {
         let list = engine.suggestions(limit: 6)
-        let shown = expanded ? list : Array(list.prefix(2))
-        LedgerSection(title: list.isEmpty ? "All clear" : "Needs your attention", trailing: {
-            if list.count > 2 {
+        let shown = expanded ? list : Array(list.prefix(3))
+        LedgerSection(title: list.isEmpty ? "All clear" : "Priorities", trailing: {
+            if list.count > 3 {
                 Button { withAnimation(.snappy(duration: 0.28)) { expanded.toggle() }; Haptics.tap() } label: {
                     Text(expanded ? "Show fewer" : "\(list.count) findings").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }.buttonStyle(.plain)
@@ -25,6 +25,14 @@ struct SuggestionCard: View {
                         SuggestionRow(item: item)
                         if i < shown.count - 1 { Hairline() }
                     }
+                    Button { Haptics.tap(); store.jump(to: .inbox) } label: {
+                        HStack(spacing: 4) {
+                            Text("See all in Inbox").font(.system(size: 13, weight: .medium))
+                            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(Theme.gold).padding(.top, 8).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
                 }
             }
         }

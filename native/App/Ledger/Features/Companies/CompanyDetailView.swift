@@ -48,7 +48,7 @@ struct CompanyDetailView: View {
                             Text(context).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         }
                     }
-                    SectionTabs(items: Self.availableSections(co, e), title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
+                    SectionTabs(items: Self.availableSections(co, e), primary: co.status == .setup ? nil : [.overview, .staff, .finances, .operations], title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section, moneyPart: $moneyPart)
                     case .projects: CompanyProjects(engine: e, company: co)

@@ -78,5 +78,8 @@ public extension GameEngine {
     }
 
     /// "Each store decides": the chain no longer fixes this input.
-    mutating func releaseChainSupplier(chainID: Int, input: String) { update { s, _, _ in SupplyDeals.releaseChainRule(&s, chainID: chainID, input: input) } }
+    @discardableResult
+    mutating func releaseChainSupplier(chainID: Int, input: String) -> SettingResult {
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, _, _ in SupplyDeals.releaseChainRule(&s, chainID: chainID, input: input) }
+    }
 }

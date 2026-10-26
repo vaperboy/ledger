@@ -143,7 +143,7 @@ struct CompanyContracts: View {
             } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(t.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
                         Text("\(t.buyer) · \(String(format: "%.1f", t.unitsPerWeek)) a week for \(t.years) years").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         if !q.ok, let r = q.reason { Text(r).font(.system(size: 11)).foregroundStyle(Theme.caution) }
                     }
@@ -181,7 +181,7 @@ struct CompanyContracts: View {
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Button("Take the bid back") { store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }; Haptics.tap() }.buttonStyle(SmallOutlineButtonStyle())
+                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }.buttonStyle(SmallOutlineButtonStyle())
             } else if !qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             } else {

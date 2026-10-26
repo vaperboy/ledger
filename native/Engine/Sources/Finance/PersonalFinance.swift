@@ -29,7 +29,8 @@ public enum PersonalFinance {
     /// Original: `personalMonth`.
     public static func monthly(_ s: inout GameState, context: FinanceContext) {
         if s.cash < 0 {
-            let interest = -s.cash * 0.16 / 12
+            let home = context.homeCountry(s)
+            let interest = -s.cash * Banking.overdraftRate(state: s, country: home, home: home, personal: true) / 12
             Ledger.move(&s, .me, -interest, why: "Overdraft interest")
             s.credit = clamp(s.credit - 0.4, 0, 100)
         }

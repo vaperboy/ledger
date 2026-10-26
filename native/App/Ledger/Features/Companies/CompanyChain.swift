@@ -61,9 +61,9 @@ struct GrowIntoChain: View {
                     if n > 0 { Hairline() }
                     HStack(alignment: .firstTextBaseline) {
                         Image(systemName: r.ok ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
-                        Text(r.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                         Spacer(minLength: 8)
-                        Text(r.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
+                        Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
                     }.padding(.vertical, 8)
                 }
                 Hairline()
@@ -142,7 +142,7 @@ struct StoreRules: View {
                 Text("Price step").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 Spacer()
                 ForEach([-1.0, 0.0, 1.0], id: \.self) { v in
-                    Button(v == 0 ? "Chain" : v < 0 ? "Lower" : "Higher") { store.act { $0.setStoreRule(companyID: storeID, rule: .priceSteps(v)) } }
+                    Button(v == 0 ? "Chain" : v < 0 ? "Lower" : "Higher") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .priceSteps(v)) }, "Store price rule saved.", same: "That price rule is already set.") }
                         .buttonStyle(QuietButtonStyle(tint: off["price"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }
@@ -150,7 +150,7 @@ struct StoreRules: View {
                 Text("Local marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 Spacer()
                 ForEach([0.0, 0.01, 0.02], id: \.self) { v in
-                    Button(v == 0 ? "None extra" : "+\(Int(v * 100))%") { store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) } }
+                    Button(v == 0 ? "None extra" : "+\(Int(v * 100))%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) }, "Store marketing rule saved.", same: "That marketing rule is already set.") }
                         .buttonStyle(QuietButtonStyle(tint: off["mkt"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }
@@ -158,7 +158,7 @@ struct StoreRules: View {
                 Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 Spacer()
                 ForEach([-0.1, 0.0, 0.1], id: \.self) { v in
-                    Button(v == 0 ? "Chain pay" : v < 0 ? "−10%" : "+10%") { store.act { $0.setStoreRule(companyID: storeID, rule: .pay(v)) } }
+                    Button(v == 0 ? "Chain pay" : v < 0 ? "−10%" : "+10%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .pay(v)) }, "Store pay rule saved.", same: "That pay rule is already set.") }
                         .buttonStyle(QuietButtonStyle(tint: off["pay"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }

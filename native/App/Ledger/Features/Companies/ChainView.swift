@@ -251,10 +251,13 @@ struct ChainStoreComparison: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 NavigationLink(value: CompanyRoute.company(s.id)) {
+                    HStack(spacing: 6) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(s.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                        Text("\(s.cityName) · \(s.status == .setup ? "setting up" : s.managerName ?? "you run it") · \(s.staff) staff\(s.ownRules > 0 ? " · own rules" : "")")
+                        Text("\(s.cityName) · \(s.status == .setup ? "setting up" : s.managerName ?? "you run it") · \(s.staff.peopleText)\(s.ownRules > 0 ? " · own rules" : "")")
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain)
                 Spacer(minLength: 8)
@@ -284,20 +287,22 @@ struct ChainRulesSection: View {
                 Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(rules["price"].double)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
-                    Slider(value: Binding(get: { rules["price"].double }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) } }), in: -3...3, step: 0.5)
+                    Slider(value: Binding(get: { rules["price"].double }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) } }), in: -3...3, step: 0.5) { editing in
+                        if !editing { store.saved("chain price rule.") }
+                    }
                 }
                 Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 SectionTabs(items: [0, 1, 2], title: { ["Lean", "Balanced", "Generous"][$0] },
-                            selection: Binding(get: { rules["stockPol"].int }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) } }))
+                            selection: Binding(get: { rules["stockPol"].int }, set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }, "Chain ordering rule: \(["lean", "balanced", "generous"][min(2, max(0, v))]).") }))
                     .padding(.horizontal, -Theme.Space.margin)
                 Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 SectionTabs(items: [0.0, 0.05, 0.1], title: { ["Market pay", "+5%", "+10%"][[0.0, 0.05, 0.1].firstIndex(of: $0) ?? 0] },
                             selection: Binding(get: { [0.0, 0.05, 0.1].min(by: { abs($0 - rules["pay"].double) < abs($1 - rules["pay"].double) }) ?? 0 },
-                                               set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) } }))
+                                               set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.") }))
                     .padding(.horizontal, -Theme.Space.margin)
                 Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 SectionTabs(items: ["own", "light", "normal", "heavy"], title: { ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"][$0] ?? $0 },
-                            selection: Binding(get: { rules["mkt"].string.isEmpty ? "own" : rules["mkt"].string }, set: { v in store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) } }))
+                            selection: Binding(get: { rules["mkt"].string.isEmpty ? "own" : rules["mkt"].string }, set: { v in store.settle(store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).") }))
                     .padding(.horizontal, -Theme.Space.margin)
                 Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -314,13 +319,12 @@ struct ChainRulesSection: View {
         let cur = engine.homeCurrency
         return VStack(alignment: .leading, spacing: 4) {
             Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     Button("Each store decides") {
                         if current.isNull { return }
                         pending = PendingAction(title: "Leave \(knob.name) to each store?", message: "Stores keep what they sell by now and can change it themselves, each paying its own changeover.", button: "Leave to stores") {
-                            store.act { $0.releaseChainKnob(chainID: chainID, knob: knob.id) }
-                            store.show("\(knob.name) is now each store's choice.", tone: "good")
+                            store.settle(store.act { $0.releaseChainKnob(chainID: chainID, knob: knob.id) }, "\(knob.name) is now each store's choice.", same: "\(knob.name) was already each store's choice.", tone: "good")
                         }
                     }.buttonStyle(QuietButtonStyle(tint: current.isNull ? Theme.gold : Theme.ivoryMuted))
                     ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in

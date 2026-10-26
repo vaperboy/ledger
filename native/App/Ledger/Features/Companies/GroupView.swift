@@ -24,7 +24,6 @@ struct GroupView: View {
             .ledgerBackground()
             .navigationTitle("Group")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .routeRequests(for: .group, path: $path)
             .returnBar(for: .group)

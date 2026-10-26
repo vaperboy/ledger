@@ -19,17 +19,17 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
-enum PhoneDestination: Hashable, CaseIterable { case news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
+enum PhoneDestination: Hashable, CaseIterable { case goals, news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
     /// Title and symbol, shared by the More sheet, the toolbar menu and the iPad sidebar so the three always agree.
     var title: String {
         switch self {
-        case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
+        case .goals: return "Goals"; case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
         case .achievements: return "Achievements"; case .richList: return "Rich list"; case .ranking: return "Biggest companies"; case .worldAround: return "World around you"
         }
     }
     var symbol: String {
         switch self {
-        case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
+        case .goals: return "target"; case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
         case .settings: return "gearshape.fill"; case .achievements: return "rosette"; case .richList: return "list.number"; case .ranking: return "building.2.fill"
         case .worldAround: return "person.2.wave.2.fill"
         }
@@ -95,9 +95,9 @@ final class GameStore: ObservableObject {
 
     // MARK: Formatting (home currency)
 
-    func money(_ v: Double) -> String { engine?.homeCurrency.display(v) ?? String(Int(v)) }
+    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
-    func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).display(v) ?? String(Int(v)) }
+    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
 
     // MARK: Saving and loading
@@ -223,6 +223,21 @@ final class GameStore: ObservableObject {
         engine = e
     }
 
+    /// Tells the player what a setting-style engine action did: `done` when it changed something, `same` when it was already so (or the
+    /// thing has gone), and the engine's reason when it refused. Returns true when the setting now holds.
+    @discardableResult
+    func settle(_ result: SettingResult?, _ done: String, same: String = "Already set.", tone: String = "n") -> Bool {
+        switch result {
+        case .applied?: show(done, tone: tone); return true
+        case .unchanged?: show(same, tone: "n"); return true
+        case .refused(let why)?: Haptics.warning(); show(why, tone: "warn"); return false
+        case nil: return false
+        }
+    }
+
+    /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
+    func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
+
     func show(_ text: String, tone: String = "n") {
         let t = Toast(text: text.tidyText, tone: tone)
         toast = t
@@ -294,24 +309,39 @@ final class GameStore: ObservableObject {
     }
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
+    /// Decisions waiting for an answer: the one number behind the Inbox tab badge and the Decisions tab badge.
+    var openDecisionCount: Int { engine?.state.inbox.filter { $0.status == "open" }.count ?? 0 }
 }
 
 extension Int {
     /// "1 week", "3 weeks".
     var weeksText: String { "\(self) \(self == 1 ? "week" : "weeks")" }
+    /// "1 person", "12 people": the one way to count employees on screen.
+    var peopleText: String { "\(self) \(self == 1 ? "person" : "people")" }
+    /// "1 decision", "3 decisions": a count with a regular plural ("s", or `plural` for the others, like "companies").
+    func countText(_ singular: String, plural: String? = nil) -> String { "\(self) \(self == 1 ? singular : (plural ?? singular + "s"))" }
 }
 
 extension Currency {
     /// `short` as the player should read it ("£220k", "£2,751"), the same as `GameStore.short`. Views that hold a currency use this,
     /// so the same amount never shows as "£2 751" on one screen and "£2,751" on the next.
     func tidyShort(_ v: Double) -> String { short(v).tidyMoney }
+    /// `display` as the player should read it: the one app-side formatter for full amounts ("£8,026", "1,234\u{00A0}kr").
+    func tidyDisplay(_ v: Double) -> String { display(v).tidyMoney }
 }
 
 extension String {
-    /// "£220 k" and "2\u{00A0}751" as the player should read them: "£220k", "2,751".
+    /// Money text as the player should read it: "£220 k" becomes "£220k", thousands use a comma ("£8,026", never "£8 026"), and a
+    /// symbol that follows the number (kr, zł, three-letter codes) keeps a non-breaking space ("1,234\u{00A0}kr"). Safe to run on
+    /// engine-written news, notes and insights, so every amount on screen looks the same.
     var tidyMoney: String {
-        var t = replacingOccurrences(of: "\u{00A0}", with: ",")
-        for unit in ["k", "M", "bn"] { t = t.replacingOccurrences(of: " \(unit)", with: unit) }
+        var t = self
+        // A non-breaking space between digits is a thousands separator.
+        t = t.replacingOccurrences(of: "(?<=\\d)\u{00A0}(?=\\d)", with: ",", options: .regularExpression)
+        for unit in ["k", "M", "bn"] {
+            t = t.replacingOccurrences(of: "(?<=\\d) \(unit)\\b", with: unit, options: .regularExpression)
+        }
+        t = t.replacingOccurrences(of: "(?<=\\d|\\dk|\\dM|\\dbn) (?=(kr|zł|(?!CEO|CFO|COO|CTO|VAT|PAYE)[A-Z]{3})(?![A-Za-z]))", with: "\u{00A0}", options: .regularExpression)
         return t
     }
 }

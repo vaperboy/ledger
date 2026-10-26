@@ -67,7 +67,7 @@ struct TeamSlotSheet: View {
             if let e = store.engine, let co = e.state.company(companyID), let slot = e.teamSlots(companyID: companyID).first(where: { $0.id == slotID }) {
                 let cur = e.currency(for: co)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(slot.title).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                    Text(slot.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
                     RoleScopeBadge(role: co.name, scope: Self.scope(slot, company: co))
                 }
                 if let pid = slot.personID, let p = e.state.people[pid] { filled(slot, p, co, cur) } else { vacant(slot, co, cur, e) }
@@ -83,15 +83,14 @@ struct TeamSlotSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 FlatRow(label: p.name, value: "\(cur.tidyShort(slot.monthlyWage)) a month", rule: false)
                 Text("In the post since \(GameCalendar.dateString(week: slot.since, dayOffset: 0)).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Text(slot.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(slot.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
         if slot.key == "ceo" {
             LedgerSection("Decides") {
                 VStack(alignment: .leading, spacing: 10) {
                     AuthorityLevelPicker(level: slot.level) { l in
-                        store.act { $0.setTeamAuthority(companyID: co.id, level: l) }
-                        store.show("\(p.name) now \(GameEngine.authorityText(level: l)).", tone: "n")
+                        store.settle(store.act { $0.setTeamAuthority(companyID: co.id, level: l) }, "\(p.name) now \(GameEngine.authorityText(level: l)).", same: "\(p.name) already works that way.")
                     }
                     if slot.level == 1 {
                         HStack {
@@ -100,8 +99,7 @@ struct TeamSlotSheet: View {
                             Menu {
                                 ForEach([25000.0, 50000, 100000, 250000, 500000], id: \.self) { v in
                                     Button(cur.tidyShort(cur.scaledPrice(v))) {
-                                        store.act { $0.setTeamAuthority(companyID: co.id, buy: cur.scaledPrice(v)) }
-                                        store.show("Above \(cur.tidyShort(cur.scaledPrice(v))) it comes to you.", tone: "n")
+                                        store.settle(store.act { $0.setTeamAuthority(companyID: co.id, buy: cur.scaledPrice(v)) }, "Above \(cur.tidyShort(cur.scaledPrice(v))) it comes to you.", same: "That limit is already set.")
                                     }
                                 }
                             } label: { Text(cur.tidyShort(slot.buy)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
@@ -126,7 +124,7 @@ struct TeamSlotSheet: View {
         let fee = ManagerModel.searchFee(currency: cur)
         LedgerSection("Vacant") {
             VStack(alignment: .leading, spacing: 10) {
-                Text(slot.detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(slot.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
                                             message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",

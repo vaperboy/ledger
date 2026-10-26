@@ -107,8 +107,8 @@ struct BoardView: View {
 
     @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(m.title).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
-            if !m.why.isEmpty { Text(m.why).font(.caption).foregroundStyle(Theme.ivoryMuted) }
+            Text(m.title.tidyMoney).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
+            if !m.why.isEmpty { Text(m.why.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted) }
             if m.isEmergency {
                 ForEach(Array(m.options.enumerated()), id: \.offset) { i, o in
                     Button(o) {
@@ -122,7 +122,7 @@ struct BoardView: View {
             } else {
                 ForEach(m.items.filter { $0.status.isEmpty }) { it in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(it.text).font(.caption).foregroundStyle(Theme.ivory)
+                        Text(it.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivory)
                         HStack {
                             Button("Approve") {
                                 let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
@@ -169,8 +169,8 @@ struct BoardView: View {
                     Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
                 Text("Add to the board (a search costs a fee)").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, 4)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                WrapRow {
+                    Group {
                         ForEach(engine.seatRoles) { r in
                             Button(r.title) {
                                 let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
@@ -211,13 +211,13 @@ struct BoardView: View {
         LedgerSection("Meets") {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack {
-                    Button("When needed") { store.act { $0.setBoardMode(key: key, regular: false) } }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 0.5 : 1)
-                    Button("Regularly") { store.act { $0.setBoardMode(key: key, regular: true) } }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 1 : 0.5)
+                    Button("When needed") { store.settle(store.act { $0.setBoardMode(key: key, regular: false) }, "The board meets when needed.", same: "It already meets when needed.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 0.5 : 1)
+                    Button("Regularly") { store.settle(store.act { $0.setBoardMode(key: key, regular: true) }, "The board meets regularly.", same: "It already meets regularly.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 1 : 0.5)
                 }
                 if regular {
                     HStack {
-                        Button("Every 4 weeks") { store.act { $0.setBoardMode(key: key, quarterly: false) } }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 0.5 : 1)
-                        Button("Quarterly") { store.act { $0.setBoardMode(key: key, quarterly: true) } }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 1 : 0.5)
+                        Button("Every 4 weeks") { store.settle(store.act { $0.setBoardMode(key: key, quarterly: false) }, "The board meets every 4 weeks.", same: "It already meets every 4 weeks.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 0.5 : 1)
+                        Button("Quarterly") { store.settle(store.act { $0.setBoardMode(key: key, quarterly: true) }, "The board meets quarterly.", same: "It already meets quarterly.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 1 : 0.5)
                     }
                 }
                 Text(regular ? "The board meets on a schedule and puts its own items on the agenda." : "The board meets only when you call it or something needs it.")

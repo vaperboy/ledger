@@ -33,7 +33,7 @@ struct CompanyLoans: View {
                         HStack(alignment: .center, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(l.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("Interest \(Currency.percent(Banking.rate(of: l, state: engine.state, modifiers: engine.context.lending, countryShift: shift), decimals: 2)) · \(cur.display(l.monthlyPayment)) a month" + (l.termMonths > 0 ? " · \(l.termMonths / 12 >= 1 && l.termMonths % 12 == 0 ? "\(l.termMonths / 12)-year" : "\(l.termMonths)-month") term" : "") + (l.isGuaranteed ? " · you guarantee it" : ""))
+                                Text("Interest \(Currency.percent(Banking.rate(of: l, state: engine.state, modifiers: engine.context.lending, countryShift: shift), decimals: 2)) · \(cur.tidyDisplay(l.monthlyPayment)) a month" + (l.termMonths > 0 ? " · \(l.termMonths / 12 >= 1 && l.termMonths % 12 == 0 ? "\(l.termMonths / 12)-year" : "\(l.termMonths)-month") term" : "") + (l.isGuaranteed ? " · you guarantee it" : ""))
                                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 if l.int("miss") > 0 { Text("\(l.int("miss")) instalment\(l.int("miss") == 1 ? "" : "s") missed").font(.system(size: 11)).foregroundStyle(Theme.loss) }
                             }
@@ -64,7 +64,7 @@ struct CompanyLoans: View {
                 if company.flag("loanFrozen") {
                     Text("Credit restricted: the bank lends nothing new until the missed instalments are paid.").font(.caption).foregroundStyle(Theme.caution)
                 }
-                Text("The bank would lend up to \(cur.display(offer.maximum)) at about \(Currency.percent(rate, decimals: 1)) a year.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("The bank would lend up to \(cur.tidyDisplay(offer.maximum)) at about \(Currency.percent(rate, decimals: 1)) a year.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                 AmountField(title: "Loan amount", currency: cur, amount: $loanAmount)
                 Text("Term").font(.caption).foregroundStyle(Theme.ivoryMuted)
                 SectionTabs(items: Self.terms, title: { $0 < 12 || $0 % 12 != 0 ? "\($0) mo" : "\($0 / 12) yr" }, selection: $term).padding(.horizontal, -Theme.Space.margin)
@@ -88,9 +88,9 @@ struct CompanyLoans: View {
         guard loanAmount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
         let amount = loanAmount, months = term
         let pay = engine.companyLoanPayment(amount: amount, termMonths: months, companyID: company.id)
-        pending = PendingAction(title: "Borrow \(cur.display(amount))?", message: "\(cur.display(pay)) a month for \(months) months, \(cur.display(pay * Double(months))) in total. Missed instalments add penalties and can get the loan called.", button: "Take the loan") {
+        pending = PendingAction(title: "Borrow \(cur.tidyDisplay(amount))?", message: "\(cur.tidyDisplay(pay)) a month for \(months) months, \(cur.tidyDisplay(pay * Double(months))) in total. Missed instalments add penalties and can get the loan called.", button: "Take the loan") {
             switch store.act({ $0.takeLoan(kind: "biz", amount: amount, termMonths: months, companyID: company.id) }) {
-            case .ok?: Haptics.success(); loanAmount = 0; store.show("Loan granted: \(cur.display(amount)) paid into \(company.name).", tone: "good")
+            case .ok?: Haptics.success(); loanAmount = 0; store.show("Loan granted: \(cur.tidyDisplay(amount)) paid into \(company.name).", tone: "good")
             case .tooSmall?: store.show("The bank won't lend that little.", tone: "warn")
             default: Haptics.warning(); store.show("The bank declined.", tone: "bad")
             }
@@ -138,9 +138,9 @@ struct RepayLoanSheet: View {
     private func repay(_ v: Double, _ cur: Currency) {
         guard v > 0 else { return }
         if store.act({ $0.repayLoan(id: loan.id, amount: v) }) == true {
-            Haptics.success(); store.show(v >= loan.balance - 1 ? "\(loan.name) paid off." : "Repaid \(cur.display(v)).", tone: "good"); dismiss()
+            Haptics.success(); store.show(v >= loan.balance - 1 ? "\(loan.name) paid off." : "Repaid \(cur.tidyDisplay(v)).", tone: "good"); dismiss()
         } else {
-            Haptics.warning(); store.show("\(company.name) does not have \(cur.display(v)) in cash. Put money in first.", tone: "warn")
+            Haptics.warning(); store.show("\(company.name) does not have \(cur.tidyDisplay(v)) in cash. Put money in first.", tone: "warn")
         }
     }
 }

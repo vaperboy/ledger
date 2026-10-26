@@ -41,7 +41,7 @@ struct PhoneShell: View {
             ForEach(AppTab.allCases) { tab in
                 TabContent(tab: tab)
                     .tabItem { Label(tab.title, systemImage: tab.symbol) }
-                    .badge(tab == .inbox ? store.unreadCount : 0)
+                    .badge(tab == .inbox ? store.openDecisionCount : 0)
                     .tag(tab)
             }
         }
@@ -73,7 +73,7 @@ struct SidebarShell: View {
                 Section {
                     ForEach(AppTab.allCases) { tab in
                         SidebarLabel(title: tab.title, symbol: tab.symbol)
-                            .badge(tab == .inbox ? store.unreadCount : 0)
+                            .badge(tab == .inbox ? store.openDecisionCount : 0)
                             .tag(tab)
                     }
                 }
@@ -111,7 +111,7 @@ struct ToastView: View {
     @EnvironmentObject var store: GameStore
     var body: some View {
         if let t = store.toast {
-            Text(t.text)
+            Text(t.text.tidyMoney)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.ivory)
                 .padding(.horizontal, 16).padding(.vertical, 10)

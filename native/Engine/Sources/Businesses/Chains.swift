@@ -131,7 +131,7 @@ public enum Chains {
         applyRules(&s, chain: ch, companyIndex: i)
         // An open store joining a chain changes over to its standards like any other change; one that cannot keeps its choice.
         if let d = data, s.companies[i].status == .open {
-            for (k, v) in ch["rules"]["knob"].object where s.companies[i].value("knob")[k].int != v.int {
+            for (k, v) in ch["rules"]["knob"].object.sorted(by: { $0.key < $1.key }) where s.companies[i].value("knob")[k].int != v.int {
                 if case .refused(let why) = KnobChange.apply(&s, d, companyID: companyID, knob: k, value: v.int, byChain: true) {
                     s.note("\(s.companies[i].name) joined \(ch["name"].string) but keeps its own way of selling: \(why)", tone: "warn", companyID: companyID)
                 }

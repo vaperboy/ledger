@@ -141,7 +141,7 @@ public enum CompanySale {
     @discardableResult
     static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, mbo: Bool = false, data: GameData, context fc: FinanceContext) -> Double? {
         guard s.companies[i].status.isLive else { return nil }
-        Ledger.releaseHeld(&s, companyID: s.companies[i].id)   // the rest of this week's money goes with the company
+        HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
         defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }   // a sold company leaves the holding's assets at once
         let mine = co.ownership / 100

@@ -93,12 +93,11 @@ struct CompanyMarket: View {
                         Text("\(pct)% off · \(info.discountWeeksLeft) wk left").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                         Button("End the discount") { store.act { $0.endDiscount(companyID: company.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                     } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
+                        WrapRow {
+                            Group {
                                 ForEach(info.discountOptions, id: \.self) { d in
                                     Button("\(d)%") { discount = d }.buttonStyle(QuietButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
                                 }
-                                Divider().frame(height: 14)
                                 ForEach([1, 2, 4, 6], id: \.self) { w in
                                     Button("\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
                                 }
@@ -191,7 +190,7 @@ struct RivalSheet: View {
                                     Hairline()
                                     HStack(alignment: .top) {
                                         Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
-                                        Text(m.text).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                        Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                                     }
                                 }
                             }
@@ -385,7 +384,7 @@ struct PriceWarSheet: View {
                             }
                         }
                         LedgerSection("How long") {
-                            ScrollView(.horizontal, showsIndicators: false) { HStack { ForEach([6, 10, 14, 20], id: \.self) { w in
+                            WrapRow { Group { ForEach([6, 10, 14, 20], id: \.self) { w in
                                 Button("\(w) weeks") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint)) } } }
                         }
                         if let c = chosen, let est = e.warEstimate(companyID: companyID, rivalID: c.id, weeks: weeks) {
@@ -536,7 +535,7 @@ struct MarketDetailView: View {
             if let e = store.engine, let d = e.marketDetail(key: marketKey) {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(d.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Text(d.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text(d.subtitle).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
                     KeyFigures(items: [
@@ -552,10 +551,10 @@ struct MarketDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                        if !p.detail.isEmpty { Text(p.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                                        if !p.detail.isEmpty { Text(p.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
                                     }
                                     Spacer()
-                                    Text(p.text).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                    Text(p.text.tidyMoney).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                                 }.padding(.vertical, 8)
                             }
                         }

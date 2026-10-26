@@ -140,13 +140,17 @@ struct HeadOfficeSection: View {
             }
             HStack(spacing: 16) {
                 if !open.isEmpty {
-                    Button("Paperwork done (\(open.count))") { for p in open { store.act { $0.tickOfficePaperwork(personID: id, item: p.key) } }; Haptics.success() }
+                    Button("Paperwork done (\(open.count))") {
+                        let done = open.filter { p in store.act({ $0.tickOfficePaperwork(personID: id, item: p.key) }) == true }.count
+                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { store.show("Nothing could be ticked.", tone: "warn") }
+                    }
                 }
                 Spacer(minLength: 0)
                 Button("Let go") {
                     let name = x["name"].string
                     pending = PendingAction(title: "Let \(name) go?", message: "What they do for the group stops at once. " + engine.officeRoleResult(role: x["role"].string), button: "Let go", destructive: true) {
-                        store.act { $0.fireOffice(personID: id) }; Haptics.warning(); store.show("\(name) has left the group office.")
+                        if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("\(name) has left the group office.", tone: "n") }
+                        else { store.show("\(name) is no longer in the group office.", tone: "warn") }
                     }
                 }.foregroundStyle(Theme.loss)
             }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
@@ -158,8 +162,8 @@ struct HeadOfficeSection: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(r.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text(r.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                    Text(r.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 if room == .ok {
@@ -230,7 +234,10 @@ struct HeadOfficeSection: View {
             HStack {
                 Text("Manager reviews").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                 Spacer()
-                if analyst && !managed.isEmpty { Button("Review all") { store.act { $0.runManagerScorecards() }; Haptics.success() }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                if analyst && !managed.isEmpty { Button("Review all") {
+                        let cards = store.act { $0.runManagerScorecards() } ?? []
+                        if cards.isEmpty { Haptics.warning(); store.show("No manager could be reviewed right now.", tone: "warn") } else { Haptics.success(); store.show("Reviewed \(cards.count) \(cards.count == 1 ? "manager" : "managers"). The results are on each row.", tone: "good") }
+                    }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
             }
             if managed.isEmpty { Text("No company has a manager yet.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
             else if !analyst { Text("Without a performance analyst each review is an external one and costs money.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
@@ -274,16 +281,16 @@ struct HeadOfficeSection: View {
             HStack(spacing: 16) {
                 Button(rh.decidesForYou ? "Stop deciding for me" : "Let them decide") {
                     if rh.decidesForYou {
-                        store.act { $0.setRightHand(decidesForYou: false) }; store.show("Everything comes to you again.")
+                        store.settle(store.act { $0.setRightHand(decidesForYou: false) }, "Everything comes to you again.", same: "Everything already comes to you.")
                     } else {
                         pending = PendingAction(title: "Let \(name) decide for you?", message: "Benefit: fewer small decisions reach you. Risk: they choose by their own judgement, and a choice you would have made differently still stands. You can switch this off at any time.", button: "Let them decide") {
-                            store.act { $0.setRightHand(decidesForYou: true) }; Haptics.success(); store.show("\(name) decides small matters.", tone: "good")
+                            if store.settle(store.act { $0.setRightHand(decidesForYou: true) }, "\(name) decides small matters.", same: "\(name) already decides small matters.", tone: "good") { Haptics.success() }
                         }
                     }
                 }
                 Menu("Briefing: \(["week": "weekly", "month": "monthly", "off": "none"][rh.briefing] ?? rh.briefing)") {
                     ForEach([("week", "Every week"), ("month", "Every month"), ("off", "None")], id: \.0) { k, label in
-                        Button(label) { store.act { $0.setRightHand(briefing: k) }; store.show("Briefing set: \(label.lowercased()).") }
+                        Button(label) { store.settle(store.act { $0.setRightHand(briefing: k) }, "Briefing set: \(label.lowercased()).", same: "The briefing is already \(label.lowercased()).") }
                     }
                 }
                 Spacer(minLength: 0)

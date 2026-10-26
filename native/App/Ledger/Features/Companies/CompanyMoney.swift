@@ -50,7 +50,7 @@ struct CompanyMoneySummary: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Company cash").capsLabel()
-                Text(cur.display(company.cash)).font(.hero(34)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                Text(cur.tidyDisplay(company.cash)).font(.hero(34)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
                 Text(h.runwayWeeks != nil ? "At the current rate of loss the cash lasts \(RunwayText.of(h))." : String(format: "About %.0f weeks of costs in the bank.", h.weeksOfCash))
                     .font(.system(size: 12)).foregroundStyle(h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryFaint)
                 KeyFigures(items: [
@@ -65,8 +65,9 @@ struct CompanyMoneySummary: View {
             CompanyPaymentStress(engine: engine, company: company)
             if !o.upcoming.isEmpty {
                 LedgerSection(title: "Coming up", trailing: {
-                    NavigationLink { FinanceView(companyID: company.id) } label: {
-                        Text("Taxes and costs  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                    // Stays inside this company's Finances section: no second "Group money" screen in the Company tab.
+                    Button { withAnimation(.snappy(duration: 0.2)) { part = .payroll }; Haptics.choose() } label: {
+                        Text("Payroll and bills  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
                     }.buttonStyle(.plain)
                 }) {
                     VStack(spacing: 0) {
@@ -188,7 +189,7 @@ struct CompanyOwnerMoney: View {
                         }
                     }
                     if company.form == .limited {
-                        Text("Most you can pay out now: \(cur.display(engine.maximumDividend(companyID: company.id))). Dividends come from retained profit and are taxed on your return.")
+                        Text("Most you can pay out now: \(cur.tidyDisplay(engine.maximumDividend(companyID: company.id))). Dividends come from retained profit and are taxed on your return.")
                             .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text("A sole trader's money is yours: taking it out is not taxed again, the profit already is.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -233,7 +234,7 @@ struct CompanyOwnerMoney: View {
     private func confirmDividend(_ cur: Currency) {
         guard amount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
         let amt = amount
-        pending = PendingAction(title: "Pay \(cur.display(amt)) as a dividend?", message: "The cash leaves the company for good. Dividend tax is due on your personal return; co-owners get their share.", button: "Pay dividend") {
+        pending = PendingAction(title: "Pay \(cur.tidyDisplay(amt)) as a dividend?", message: "The cash leaves the company for good. Dividend tax is due on your personal return; co-owners get their share.", button: "Pay dividend") {
             switch store.act({ $0.payDividend(companyID: company.id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("Dividend paid.", tone: "good")
             case .noRetainedProfit?: store.show("There are no retained profits to pay out.", tone: "warn")
@@ -243,9 +244,9 @@ struct CompanyOwnerMoney: View {
         }
     }
     private func setSalary(_ v: Double, _ cur: Currency) {
-        store.act { $0.setOwnerSalary(companyID: company.id, monthly: v) }
+        let result = store.act { $0.setOwnerSalary(companyID: company.id, monthly: v) }
         let now = store.engine?.state.company(company.id)?.ownerMonthlySalary ?? 0
         salary = now
-        store.show(now > 0 ? "Your salary is now \(cur.display(now)) a month." : "You no longer take a salary.", tone: "n")
+        store.settle(result, now > 0 ? "Your salary is now \(cur.tidyDisplay(now)) a month." : "You no longer take a salary.", same: "Your salary is already that.")
     }
 }

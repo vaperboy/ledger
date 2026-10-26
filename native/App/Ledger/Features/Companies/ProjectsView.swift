@@ -34,7 +34,6 @@ struct ProjectsView: View {
                 .scrollDismissesKeyboard(.interactively)
                 .ledgerBackground()
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
                 .companyRouteDestinations()
                 .routeRequests(for: .projects, path: $path)
                 .returnBar(for: .projects)

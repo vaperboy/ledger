@@ -44,8 +44,21 @@ public extension GameEngine {
     }
     @discardableResult
     mutating func acceptFundingOffer(companyID: Int, index: Int) -> Bool { var ok = false; update { s, _, _ in ok = Funding.acceptOffer(&s, companyID: companyID, index: index) }; return ok }
-    mutating func counterFundingOffer(companyID: Int, index: Int) { update { s, d, _ in Funding.counterOffer(&s, companyID: companyID, index: index, data: d) } }
-    mutating func declineFundingOffer(companyID: Int, index: Int) { update { s, _, _ in Funding.declineOffer(&s, companyID: companyID, index: index) } }
+    /// `unchanged` means the offer had already gone or was already countered.
+    @discardableResult
+    mutating func counterFundingOffer(companyID: Int, index: Int) -> SettingResult {
+        applySetting(probe: { .object($0.rest) }) { s, d, _ in Funding.counterOffer(&s, companyID: companyID, index: index, data: d) }
+    }
+    /// `unchanged` means the offer had already gone.
+    @discardableResult
+    mutating func declineFundingOffer(companyID: Int, index: Int) -> SettingResult {
+        applySetting(probe: { .object($0.rest) }) { s, _, _ in Funding.declineOffer(&s, companyID: companyID, index: index) }
+    }
+    /// Turn down a buyer's offer for a company you listed. `unchanged` means it had already gone.
+    @discardableResult
+    mutating func declineSaleOffer(companyID: Int, offerID: Int) -> SettingResult {
+        applySetting(probe: { s in .object(["offers": .number(Double(CompanySale.listing(s, companyID: companyID)?.offers.count ?? -1))]) }) { s, _, _ in CompanySale.decline(&s, companyID: companyID, offerID: offerID) }
+    }
     func shareOffers(companyID: Int) -> [Funding.ShareOffer] { Funding.shareOffers(state, companyID: companyID, data: data) }
     /// mode "primary" (new shares, the money goes into the company) or "secondary" (you sell some of yours).
     @discardableResult
@@ -82,7 +95,13 @@ public extension GameEngine {
     func owners(companyID: Int) -> [Shareholders.Holder] { Shareholders.holders(state, companyID: companyID) }
     func ownersPower(companyID: Int) -> (kind: Shareholders.Power, text: String)? { state.company(companyID).map { Shareholders.power($0) } }
     func dividendPolicy(companyID: Int) -> String { state.company(companyID).map { Shareholders.policy($0) } ?? "none" }
-    mutating func setDividendPolicy(companyID: Int, policy: String) { update { s, _, _ in Shareholders.setPolicy(&s, companyID: companyID, policy: policy) } }
+    @discardableResult
+    mutating func setDividendPolicy(companyID: Int, policy: String) -> SettingResult {
+        applySetting(refuse: { s in
+            if s.company(companyID) == nil { return "That company no longer exists." }
+            return Shareholders.policies.contains(policy) ? nil : "That is not a dividend policy."
+        }, probe: { $0.company(companyID)?.value("dp27") ?? .null }) { s, _, _ in Shareholders.setPolicy(&s, companyID: companyID, policy: policy) }
+    }
     func buyBackPrice(companyID: Int, holder: String) -> Double? { Shareholders.buyBackPrice(state, companyID: companyID, holder: holder, data: data) }
     @discardableResult
     mutating func buyBackStake(companyID: Int, holder: String) -> Bool { var ok = false; update { s, d, _ in ok = Shareholders.buyBack(&s, companyID: companyID, holder: holder, data: d) }; return ok }
@@ -106,12 +125,25 @@ public extension GameEngine {
     mutating func pitchStartupRound(startupID: Int) -> Startups.RoundResult { var r = Startups.RoundResult.notLive; update { s, d, _ in r = Startups.pitchRound(&s, startupID: startupID, data: d) }; return r }
     @discardableResult
     mutating func acceptStartupRound(startupID: Int, index: Int) -> Bool { var ok = false; update { s, _, _ in ok = Startups.acceptRound(&s, startupID: startupID, index: index) }; return ok }
-    mutating func declineStartupRound(startupID: Int, index: Int) { update { s, _, _ in Startups.declineRound(&s, startupID: startupID, index: index) } }
+    /// `unchanged` means the offer had already gone.
+    @discardableResult
+    mutating func declineStartupRound(startupID: Int, index: Int) -> SettingResult {
+        applySetting(probe: { .object($0.rest) }) { s, _, _ in Startups.declineRound(&s, startupID: startupID, index: index) }
+    }
     @discardableResult
     mutating func putMoneyIntoStartup(startupID: Int, amount: Double) -> Bool { var ok = false; update { s, _, _ in ok = Startups.topUp(&s, startupID: startupID, amount: amount) }; return ok }
     @discardableResult
     mutating func shutDownStartup(startupID: Int) -> Double? { var r: Double?; update { s, _, _ in r = Startups.shutDown(&s, startupID: startupID) }; return r }
-    mutating func changeBuilders(startupID: Int, by delta: Int) { update { s, _, c in Startups.setBuilders(&s, startupID: startupID, delta: delta, context: c) } }
+    @discardableResult
+    mutating func changeBuilders(startupID: Int, by delta: Int) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let f = (s.rest["founded"]?.array ?? []).first(where: { $0["id"].int == startupID }), !f["sw16"].isNull else { return "This startup has no product to build." }
+            let n = f["sw16"]["devs"].int + delta
+            if n > 10 { return "Ten builders is the most." }
+            if n < 0 { return "No builders left to let go." }
+            return nil
+        }, probe: { .object($0.rest) }) { s, _, c in Startups.setBuilders(&s, startupID: startupID, delta: delta, context: c) }
+    }
     @discardableResult
     mutating func toggleOwnerHoursOnProduct(startupID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Startups.toggleOwnerHours(&s, startupID: startupID) }; return ok }
     @discardableResult
@@ -163,7 +195,10 @@ public extension GameEngine {
     mutating func acceptBigMeetingOffer() -> BigMeeting.AcceptResult { var r = BigMeeting.AcceptResult.noOffer; update { s, _, c in r = BigMeeting.accept(&s, context: c) }; return r }
     @discardableResult
     mutating func counterBigMeetingOffer() -> Bool? { var r: Bool?; update { s, _, _ in r = BigMeeting.counter(&s) }; return r }
-    mutating func walkAwayFromBigMeeting() { update { s, _, _ in BigMeeting.walkAway(&s) } }
+    @discardableResult
+    mutating func walkAwayFromBigMeeting() -> SettingResult {
+        applySetting(probe: { $0.rest["bigOff"] ?? .null }) { s, _, _ in BigMeeting.walkAway(&s) }
+    }
     var groupStakes: [GroupDeals.Stake] { GroupDeals.stakes(state) }
 
     // MARK: The crisis centre

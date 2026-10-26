@@ -88,7 +88,7 @@ struct GivingView: View {
                 Spacer(minLength: 8)
                 Text(cur.tidyShort(cost) + (g.yearly ? " / yr" : "")).font(.system(size: 14).monospacedDigit()).foregroundStyle(short && !done ? Theme.loss : Theme.ivory)
             }
-            Text(g.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            Text(g.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             Text("Standing in \(place.name) +\(Int(g.standing)) · legacy +\(Int(g.legacy))").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
             if done {
                 Text("Done in \(place.name).").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
@@ -96,7 +96,7 @@ struct GivingView: View {
                 Button(g.yearly ? "Sponsor" : "Give") {
                     pending = PendingAction(
                         title: "\(g.name) in \(place.name)?",
-                        message: "Costs \(cur.display(cost)) from your own cash" + (g.yearly ? ", and again every year; if you cannot pay one year the sponsorship ends." : ", once.")
+                        message: "Costs \(cur.tidyDisplay(cost)) from your own cash" + (g.yearly ? ", and again every year; if you cannot pay one year the sponsorship ends." : ", once.")
                             + " Your standing in \(place.name) rises by about \(Int(g.standing)) and your legacy by \(Int(g.legacy)). It cannot be undone, and there is no financial return except the small demand lift in that city.",
                         button: g.yearly ? "Sponsor" : "Give") { give(g, place) }  // irreversible: no amount, so it always asks
                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(short)
@@ -140,7 +140,7 @@ struct GivingView: View {
                     Button("Start the foundation") {
                         pending = PendingAction(
                             title: "Endow a foundation with \(cur.tidyShort(amount))?",
-                            message: "\(cur.display(amount)) leaves your cash for good. It then gives about \(cur.display(amount * 0.04)) a year to schools, clubs and people in need in the cities you work in. It adds legacy and improves your public image. You cannot take the money back or add to it later.",
+                            message: "\(cur.tidyDisplay(amount)) leaves your cash for good. It then gives about \(cur.tidyDisplay(amount * 0.04)) a year to schools, clubs and people in need in the cities you work in. It adds legacy and improves your public image. You cannot take the money back or add to it later.",
                             button: "Start the foundation", destructive: true) {
                             switch store.act({ $0.startFoundation(amount: amount) }) {
                             case .ok?: Haptics.success(); store.show("The foundation is started with \(cur.tidyShort(amount)).", tone: "good")

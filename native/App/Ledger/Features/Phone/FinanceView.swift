@@ -4,13 +4,8 @@ import GameCore
 import Finance
 import Simulation
 
-/// The Money tab: what is owed and coming, the bank, investments, taxes, where the money goes, and the books.
-struct MoneyView: View {
-    var body: some View { NavigationStack { FinanceView() } }
-}
-
 /// Finance & taxes: what is owed, what is coming, where the money goes, and the books. Everything comes from `FinanceOverview`.
-/// For the whole empire (the Money tab) it also holds the bank and investments; for one company only that company's money.
+/// For the whole empire (Group > Money) it also holds the bank and investments; for one company only that company's money.
 struct FinanceView: View {
     typealias Section = MoneySection
     @EnvironmentObject var store: GameStore
@@ -119,7 +114,7 @@ struct FinanceView: View {
                     ForEach(o.taxes) { l in
                         VStack(alignment: .leading, spacing: 2) {
                             ValueRow(label: l.label, value: store.money(l.amount))
-                            if !l.detail.isEmpty { Text(l.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
                 }
@@ -138,7 +133,7 @@ struct FinanceView: View {
                         ForEach(o.licences) { l in
                             VStack(alignment: .leading, spacing: 2) {
                                 ValueRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free")
-                                if !l.detail.isEmpty { Text(l.detail).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                                if !l.detail.isEmpty { Text(l.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                             }
                         }
                         Text("Fees are the game's estimate of typical official fees.").font(.caption2).foregroundStyle(Theme.ivoryFaint)

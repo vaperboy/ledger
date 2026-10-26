@@ -30,12 +30,16 @@ public extension GameEngine {
         return result
     }
 
-    mutating func setPriceLevel(companyID: Int, level: Double) {
-        update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].priceLevel = clamp(level, -3, 3) } }
+    @discardableResult
+    mutating func setPriceLevel(companyID: Int, level: Double) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            if let i = s.companyIndex(companyID) { s.companies[i].priceLevel = clamp(level, -3, 3) }
+        }
     }
 
-    mutating func setOwnerHours(companyID: Int, hours: Double) {
-        update { s, _, _ in
+    @discardableResult
+    mutating func setOwnerHours(companyID: Int, hours: Double) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
             let others = CapacityModel.ownerHoursCommitted(s, except: companyID)
             s.companies[i].ownerHours = max(0, min(hours, 80 - others))
@@ -192,13 +196,19 @@ public extension GameEngine {
     }
 
     /// Mark a paperwork item as done for a team member. It is free; missing items can be fined in an inspection.
-    mutating func completePaperwork(companyID: Int, personID: Int, key: String? = nil) {
+    /// Returns how many items were missing and are now ticked (0 when the person is not on the payroll or nothing was missing).
+    @discardableResult
+    mutating func completePaperwork(companyID: Int, personID: Int, key: String? = nil) -> Int {
+        var done = 0
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == personID }) else { return }
             var staff = s.companies[i].staff
+            let before = StaffExtras.missing(staff[k]).count
             for it in StaffExtras.items(role: staff[k].role) where key == nil || it.key == key { StaffExtras.tick(&staff[k], key: it.key) }
+            done = before - StaffExtras.missing(staff[k]).count
             s.companies[i].staff = staff
         }
+        return done
     }
 
     // MARK: Money
@@ -245,8 +255,12 @@ public extension GameEngine {
         return r
     }
 
-    mutating func setOwnerSalary(companyID: Int, monthly: Double) {
-        update { s, data, ctx in
+    @discardableResult
+    mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let co = s.company(companyID) else { return "That company no longer exists." }
+            return co.form == .limited ? nil : "Only a limited company can pay its owner a salary."
+        }, probe: { $0.companySnapshot(companyID) }) { s, data, ctx in
             guard let i = s.companyIndex(companyID), s.companies[i].form == .limited else { return }
             s.companies[i].ownerMonthlySalary = max(0, ctx.currency(s.companies[i].countryCode, s).roundedStep(monthly, about: 100))
         }
@@ -291,8 +305,9 @@ public extension GameEngine {
     }
 
     /// Who runs payroll at a company: the owner (approves each month), the accountant, or the manager.
-    mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) {
-        update { s, _, _ in
+    @discardableResult
+    mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
             let t = Payday.dayNumber(week: s.week, day: s.day)
             var cfg = Payday.config(s.companies[i], today: t)

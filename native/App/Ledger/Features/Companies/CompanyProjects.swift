@@ -78,7 +78,7 @@ private struct JobList: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(j.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    Text(j.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                     Text(subtitle(j)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                 }
                 Spacer(minLength: 8)
@@ -131,7 +131,7 @@ private struct JobList: View {
                         ForEach(Array(results.prefix(5).enumerated()), id: \.element.id) { n, t in
                             HStack {
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(t.title).font(.system(size: 13)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    Text(t.title.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivory).lineLimit(1)
                                     Text(t.buyer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                                 }
                                 Spacer()
@@ -153,7 +153,7 @@ private struct JobList: View {
             } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(t.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
                         Text("\(t.buyer) · about \(store.short(t.worth, in: company))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         if let r = t.requirement, !t.qualifies { Text("Needs \(r)").font(.system(size: 11)).foregroundStyle(Theme.caution) }
                     }
@@ -174,7 +174,7 @@ private struct JobList: View {
             valueRow("Writing the bid costs", store.money(t.bidCost, in: company))
             if t.myBid != nil {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Button("Take the bid back") { store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }; Haptics.tap() }
+                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
                     .buttonStyle(SmallOutlineButtonStyle())
             } else if !t.qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)

@@ -1,6 +1,7 @@
 import XCTest
 import GameCore
 import Countries
+import Employees
 import Finance
 @testable import Businesses
 @testable import Events
@@ -91,7 +92,9 @@ final class AuditFixesTests: XCTestCase {
         hireOne(&e, id, wage: med * 10)
         let co = e.state.company(id)!
         let est = CompanyCosts.standingWeeklyPayroll(co, country: mx)
-        let expected = co.staff.reduce(0.0) { $0 + $1.monthlyWage * 12 / 52 * (1 + mx.leaveWeeks / 52 * 0.3) * mx.payrollFactor(monthlyWage: $1.monthlyWage) }
+        let holiday: Double = 1 + LabourRules(country: mx).leaveWeeks / 52 * 0.3
+        var expected = 0.0
+        for m in co.staff { expected += m.monthlyWage * 12 / 52 * holiday * mx.payrollFactor(monthlyWage: m.monthlyWage) }
         XCTAssertTrue(co.staff.contains { $0.monthlyWage > med * 5 })
         XCTAssertEqual(est, expected, accuracy: 1e-6)
     }
@@ -133,18 +136,18 @@ final class AuditFixesTests: XCTestCase {
         for _ in 0..<(7 * 30) {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            if e.state.company(id)?.status == .open, e.state.day == 1, abs(Ledger.heldRemainders(e.state)[id] ?? 0) > 50 { return }
+            if e.state.company(id)?.status == .open, e.state.day == 1, abs(HeldMoney.remaining(e.state, companyID: id)) > 50 { return }
         }
     }
 
     func testHeldWeekMoneyIsSettledWhenACompanyIsWoundUp() throws {
         var (e, id) = try cafe()
         playToHeldMoney(&e, id)
-        let held = Ledger.heldRemainders(e.state)[id] ?? 0
+        let held = HeldMoney.remaining(e.state, companyID: id)
         XCTAssertNotEqual(held, 0, "part of the week's change is still held on day 1")
         let before = e.state.companies[e.state.companyIndex(id)!].cash
         XCTAssertTrue(e.windUpCompany(companyID: id))
-        XCTAssertNil(Ledger.heldRemainders(e.state)[id], "nothing is left held for a company that is gone")
+        XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "nothing is left held for a company that is gone")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         _ = before
         for _ in 0..<7 { e.nextDay() }
@@ -155,7 +158,7 @@ final class AuditFixesTests: XCTestCase {
     func testGapCheckShowsMoneyHeldForAGoneCompany() throws {
         var (e, id) = try cafe()
         playToHeldMoney(&e, id)
-        XCTAssertNotEqual(Ledger.heldRemainders(e.state)[id] ?? 0, 0)
+        XCTAssertNotEqual(HeldMoney.remaining(e.state, companyID: id), 0)
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].status = .sold }   // gone without settling
         XCTAssertFalse(Ledger.gaps(e.state).isEmpty)
     }

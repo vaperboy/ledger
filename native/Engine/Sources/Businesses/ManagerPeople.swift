@@ -438,8 +438,8 @@ extension ManagerModel {
         let a = co.value("asst")
         guard a["npc"].int != 0 else { return }
         guard let n = s.people[a["npc"].int] else { s.companies[ci].set("asst", .null); return }
-        let factor = World(state: s, data: data).country(co).payrollFactor(monthlyWage: a["wage"].double)
-        Payments.companyPays(&s, companyID: co.id, amount: a["wage"].double * 12 / 52 * factor, category: "wages")
+        let social = World(state: s, data: data).country(co).employerOnCost(monthlyWage: a["wage"].double)
+        Payments.companyPays(&s, companyID: co.id, amount: a["wage"].double * 12 / 52 * (1 + social), category: "wages")
         guard co.status == .open else { return }
         let sk = (n.skill.isZero ? 55 : n.skill) / 100
         let duties = a["duties"].array.map { $0.string }

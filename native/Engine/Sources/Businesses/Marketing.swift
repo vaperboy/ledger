@@ -126,7 +126,7 @@ public enum Marketing {
     /// a company that spends nothing on marketing is forgotten 4% faster.
     public static func decay(_ co: Company) -> Double {
         let core = clamp(0.955 - max(0, 55 - co.reputation) * 0.0015 - max(0, 55 - co.quality) * 0.001 + clamp((co.reputation - 60) * 0.0004, 0, 0.012), 0.9, 0.968)
-        let spend = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let spend = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         return spend > 0 ? core : core * 0.96
     }
 
@@ -172,7 +172,7 @@ public enum Marketing {
         // Campaigns end on their date.
         var mkt = co.value("mkt")
         var mktEnd = co.value("mktEnd")
-        for (k, endWeek) in mktEnd.object {
+        for (k, endWeek) in mktEnd.object.sorted(by: { $0.key < $1.key }) {
             // An end date outlives nothing: a campaign that was cut or replaced leaves no stale date behind.
             if mkt[k].isNull { mktEnd = removing(mktEnd, k); continue }
             if Double(s.week) >= endWeek.double {
@@ -184,7 +184,7 @@ public enum Marketing {
         var gain = 0.0, spend = 0.0
         var primeTimeActive = false
         // Advertising is paid in advance: with too little cash (after the owner's reserve) the campaigns pause instead of running up debt.
-        let planned = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let planned = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         let reserve = s.policy.reserveWeeks * FinanceContext(countries: data.countries, trades: data.catalog).weeklyCost(co, s)
         let paused = planned > 0 && co.cash - planned < reserve
         if paused { var f = co.value("flags"); f["mktPausedWeek"] = .number(Double(s.week)); co.set("flags", f) }

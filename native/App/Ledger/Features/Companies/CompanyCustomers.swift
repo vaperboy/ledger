@@ -14,6 +14,7 @@ struct CompanyCustomers: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             reviews
             accounts
+            creditCheck
             CompanyContracts(engine: engine, company: company)
             security
         }
@@ -45,7 +46,7 @@ struct CompanyCustomers: View {
                                 Spacer()
                                 Text(line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
-                            Text(line.text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                             Text((line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
@@ -81,6 +82,27 @@ struct CompanyCustomers: View {
         }
     }
 
+    // MARK: Credit check
+
+    /// Only for trades that invoice businesses: checking a buyer's credit before selling on account costs a little and cuts unpaid invoices.
+    @ViewBuilder private var creditCheck: some View {
+        if let t = engine.tradeInfo(companyID: company.id), t.businessShare > 0, company.status.isLive {
+            let on = company.value("flags")["ccheck"].bool
+            LedgerSection(title: "Credit check", trailing: { Text(on ? "on" : "off").font(.system(size: 11)).foregroundStyle(on ? Theme.gain : Theme.ivoryFaint) }) {
+                Toggle(isOn: Binding(get: { on }, set: { v in
+                    _ = store.act { $0.setCreditCheck(companyID: company.id, on: v) }
+                    store.show(v ? "Buyers' credit is checked before you sell on account." : "Credit checks switched off.", tone: "n")
+                })) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Check buyers before selling on account").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Costs about 0.4% of what you invoice to businesses. Benefit: unpaid invoices become about 70% less likely. Risk of leaving it off: a bad debt is written off in full.")
+                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    }
+                }.tint(Theme.gold)
+            }
+        }
+    }
+
     // MARK: IT security
 
     private var security: some View {
@@ -105,7 +127,7 @@ struct CompanyCustomers: View {
                 }
                 ForEach(Cyber.levels.indices, id: \.self) { i in
                     Hairline()
-                    Button { store.act { $0.setCyberLevel(companyID: company.id, level: i) }; Haptics.choose() } label: {
+                    Button { Haptics.choose(); store.settle(store.act { $0.setCyberLevel(companyID: company.id, level: i) }, "Cyber protection: \(Cyber.levels[i].name).", same: "That protection level is already in place.") } label: {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(Cyber.levels[i].name).font(.system(size: 13.5, weight: c.status.level == i ? .semibold : .regular)).foregroundStyle(c.status.level == i ? Theme.gold : Theme.ivory)
@@ -118,7 +140,7 @@ struct CompanyCustomers: View {
                 }
                 Hairline()
                 HStack {
-                    Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { store.act { $0.toggleBackups(companyID: company.id) }; Haptics.tap() }
+                    Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { Haptics.tap(); store.settle(store.act { $0.toggleBackups(companyID: company.id) }, c.status.backups ? "Offline backups switched off." : "Offline backups switched on.") }
                         .buttonStyle(QuietButtonStyle(tint: c.status.backups ? Theme.gold : Theme.ivoryMuted))
                     Spacer()
                     Button((c.status.trainedUntil ?? 0) > engine.state.week ? "Staff trained" : "Train staff · " + cur.tidyShort(c.trainingCost)) {
@@ -139,6 +161,7 @@ private struct AccountRow: View {
     var engine: GameEngine
     var company: Company
     var account: KeyAccounts.Account
+    @State private var pending: PendingAction?
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: 6) {
@@ -159,8 +182,8 @@ private struct AccountRow: View {
                 Spacer()
                 Text(account.discount == 0 ? "Full price" : "\(account.discount)% off").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     ForEach(KeyAccounts.discounts, id: \.self) { d in
                         Button("\(d)%") { store.act { $0.setAccountDiscount(companyID: company.id, accountID: account.id, percent: d) } }
                             .buttonStyle(QuietButtonStyle(tint: account.discount == d ? Theme.gold : Theme.ivoryFaint))
@@ -177,8 +200,16 @@ private struct AccountRow: View {
                     }
                 }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 Spacer()
-                Button("End contract") { store.act { $0.dropAccount(companyID: company.id, accountID: account.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                Button("End contract…") {
+                    pending = PendingAction(title: "End the contract with \(account.name)?",
+                                            message: "Their regular orders stop at once and you would have to win them over again to get them back." + (account.owed > 0 ? " They still owe you \(cur.tidyShort(account.owed)) on invoices." : ""),
+                                            button: "End contract", destructive: true) {
+                        if store.act({ $0.dropAccount(companyID: company.id, accountID: account.id) }) == true { Haptics.warning(); store.show("Contract with \(account.name) ended.", tone: "n") }
+                        else { store.show("That contract is already gone.", tone: "warn") }
+                    }
+                }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
             }
         }.padding(.vertical, 8)
+        .confirmAction($pending)
     }
 }

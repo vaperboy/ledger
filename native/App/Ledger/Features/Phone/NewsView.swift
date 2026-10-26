@@ -74,7 +74,7 @@ struct NewsView: View {
         ForEach(Array(pages.enumerated()), id: \.offset) { _, p in
             LedgerSection(title: GameCalendar.dateString(week: p.week), trailing: { EmptyView() }) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(e.displayText(p.headline)).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Text(e.displayText(p.headline.tidyMoney)).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                     if !p.deck.isEmpty { Text(e.displayText(p.deck)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
                     ForEach(Array(p.side.enumerated()), id: \.offset) { _, s in
                         Text("· " + e.displayText(s)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -201,7 +201,7 @@ struct WeatherPage: View {
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Image(systemName: ev.factor >= 1 ? "person.3.fill" : "person.crop.circle.badge.xmark").font(.system(size: 12)).foregroundStyle(ev.factor >= 1 ? Theme.gain : Theme.loss).frame(width: 20)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(e.displayText(ev.text)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                                Text(e.displayText(ev.text.tidyMoney)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                                 Text("Visitors \(pct(ev.factor)) until " + GameCalendar.dateString(week: ev.until) + (ev.city.map { " · \($0)" } ?? ""))
                                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                             }

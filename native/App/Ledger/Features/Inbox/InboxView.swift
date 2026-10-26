@@ -30,7 +30,7 @@ struct InboxView: View {
         var messages: [Message]
     }
 
-    private var waitingCount: Int { store.engine?.state.inbox.filter { msg in msg.status == "open" }.count ?? 0 }
+    private var waitingCount: Int { store.openDecisionCount }
 
     private func matches(_ m: Message) -> Bool {
         switch tab {
@@ -220,8 +220,8 @@ struct InboxView: View {
 
     private func header(_ b: Block) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(b.title).capsLabel()
-            if !b.note.isEmpty { Text(b.note).font(.system(size: 11)).foregroundStyle(b.tint) }
+            Text(b.title.tidyMoney).capsLabel()
+            if !b.note.isEmpty { Text(b.note.tidyMoney).font(.system(size: 11)).foregroundStyle(b.tint) }
             Spacer(minLength: 8)
             if let id = b.companyID {
                 Button { store.openCompany(id) } label: { Text("Open →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)

@@ -137,14 +137,16 @@ public enum FinanceManager {
     }
 
     /// Dismiss: everything comes back to you. Original: `fireFinManager`.
-    public static func fire(_ s: inout GameState) {
-        guard let a = account(s) else { return }
+    @discardableResult
+    public static func fire(_ s: inout GameState) -> Bool {
+        guard let a = account(s) else { return false }
         s.rest["fm"] = .null
         s.rest["fmPool"] = .null
         if a.balance > 0 { Ledger.move(&s, .me, a.balance, why: "Fund manager let go: money back") }
         s.tax.gains += a.balance - a.cost
         if var p = s.people[a.personID] { p.employerID = 0; s.people[a.personID] = p }
         s.note("You let \(a.name) go. The managed money is back in your account.", tone: "n")
+        return true
     }
 
     /// The bank forces a sale: the managed money is cashed in when cash is still short. Original: end of `liquidateInvestments`.

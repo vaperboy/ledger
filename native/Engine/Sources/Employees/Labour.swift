@@ -29,7 +29,12 @@ public struct LabourRules: Equatable, Sendable {
     public var severanceMin = 0.0
     public var severanceMax = 0.0
     public var severanceAfterYears = 0.0
+    /// Statutory paid annual leave for a new hire, in the law's own days (`leaveUnit`: "working" = days of a 5 day week, "calendar" = any day).
+    /// The only leave field in the data (`work.leaveWeeks` was removed).
     public var leaveDays = 0.0
+    public var leaveCalendarDays = false
+    /// The same leave in weeks.
+    public var leaveWeeks: Double { leaveDays / (leaveCalendarDays ? 7 : 5) }
     public var probationWeeks = 0.0
     public var probationNoticeWeeks = 0.0
     /// No unfair dismissal protection at all.
@@ -71,7 +76,7 @@ public struct LabourRules: Equatable, Sendable {
         minMonthly = n("minMonthly"); statutory = j["statutory"].bool; stdHours = max(1, n("stdHours", 40)); overtimePremium = n("overtimePremium")
         noticeWeeks = n("noticeWeeks"); noticePerYear = n("noticePerYear"); noticeMax = n("noticeMax")
         severancePerYear = n("severancePerYear"); severanceMin = n("severanceMin"); severanceMax = n("severanceMax"); severanceAfterYears = n("severanceAfterYears")
-        leaveDays = n("leaveDays"); probationWeeks = n("probationWeeks"); probationNoticeWeeks = n("probationNoticeWeeks"); atWill = j["atWill"].bool
+        leaveDays = n("leaveDays"); leaveCalendarDays = j["leaveUnit"].string == "calendar"; probationWeeks = n("probationWeeks"); probationNoticeWeeks = n("probationNoticeWeeks"); atWill = j["atWill"].bool
         noticeBands = j["noticeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
         severanceTiers = j["severanceTiersMonths"].array.map { Band(from: $0[0].double, value: $0[1].double * 52 / 12) }.sorted { $0.from < $1.from }
         severanceAgeBands = j["severanceAgeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
@@ -206,7 +211,7 @@ public struct LabourRules: Equatable, Sendable {
         out.append(("Overtime", overtimePremium > 0 ? "+\(Int((overtimePremium * 100).rounded()))%" : "Basic rate"))
         out.append(("Notice", !noticeBands.isEmpty ? "\(w(noticeBands.first?.value ?? 0)) to \(w(noticeBands.last?.value ?? 0)) weeks by service" : noticeWeeks > 0 || noticePerYear > 0 ? "\(w(noticeWeeks)) weeks, +\(w(noticePerYear)) a year" : "None"))
         out.append(("Severance", !severanceTiers.isEmpty || severanceBaseWeeks > 0 ? "By service, only if not for cause" : severancePerYear > 0 ? "\(w(severancePerYear)) weeks a year" + (severanceAfterYears > 0 ? " after \(w(severanceAfterYears)) years" : "") : severanceMin > 0 ? "\(w(severanceMin)) weeks" : "None"))
-        out.append(("Paid leave", leaveDays > 0 ? "\(w(leaveDays)) days" : "None"))
+        out.append(("Paid leave", leaveDays > 0 ? "\(w(leaveDays)) \(leaveCalendarDays ? "calendar" : "working") days" : "None"))
         out.append(("Probation", atWill ? "At will" : probationWeeks > 0 ? "\(w(probationWeeks)) weeks" : "None"))
         return out
     }

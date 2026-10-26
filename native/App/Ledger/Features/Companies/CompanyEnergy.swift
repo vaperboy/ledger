@@ -16,11 +16,11 @@ struct FlatRow: View {
             if rule { Hairline() }
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    if !sub.isEmpty { Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                    Text(label.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                    if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
-                Text(value).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing)
+                Text(value.tidyText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing)
             }
             .padding(.vertical, 9)
         }
@@ -73,7 +73,7 @@ struct CompanyEnergy: View {
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     Button("Order \(Int(megawatts)) MW…") {
                         let mw = megawatts
-                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.display(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order") {
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order") {
                             if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
                             else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
                         }
@@ -126,7 +126,7 @@ struct CompanyEnergy: View {
                             Spacer()
                             Button("Buy…") {
                                 let cost = engine.oilStakePrice(thousandBarrels: k)
-                                pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: "\(cur.display(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time.", button: "Buy stake") {
+                                pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: "\(cur.tidyDisplay(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time.", button: "Buy stake") {
                                     switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
                                     case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
                                     default: Haptics.warning(); store.show("The company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")

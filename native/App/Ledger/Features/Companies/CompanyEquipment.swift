@@ -44,12 +44,14 @@ struct CompanyEquipmentScreen: View {
         case all(equipmentID: String, name: String)
         case vehicle(id: Int, name: String)
         case cancelPlan(equipmentID: String, name: String)
+        case endLease(equipmentID: String, name: String, units: Int, monthly: String)
         var id: String {
             switch self {
             case .unit(let e, let u, _): return "u\(e)\(u)"
             case .all(let e, _): return "a\(e)"
             case .vehicle(let v, _): return "v\(v)"
             case .cancelPlan(let e, _): return "c\(e)"
+            case .endLease(let e, _, _, _): return "l\(e)"
             }
         }
     }
@@ -108,6 +110,7 @@ struct CompanyEquipmentScreen: View {
         case .all(_, let n)?: return "Sell all \(n)?"
         case .vehicle(_, let n)?: return "Sell \(n)?"
         case .cancelPlan(_, let n)?: return "Cancel \(n)?"
+        case .endLease(_, let n, _, _)?: return "End the lease of \(n)?"
         case nil: return ""
         }
     }
@@ -117,11 +120,13 @@ struct CompanyEquipmentScreen: View {
         case .all?: return "You get about 70% of book value. Capacity may collapse."
         case .vehicle?: return "You get roughly 78% of its book value. A loan on it is settled; a lease just ends."
         case .cancelPlan?: return "It stops working right away."
+        case .endLease(_, _, let units, let monthly)?: return "The \(units) leased \(units == 1 ? "unit goes" : "units go") back at once and the capacity they gave is lost until you replace \(units == 1 ? "it" : "them"). The \(monthly) a month stops."
         case nil: return ""
         }
     }
     private func pendingButton(_ p: Pending) -> String {
         if case .cancelPlan = p { return "Cancel plan" }
+        if case .endLease = p { return "End the lease" }
         return "Sell"
     }
     private func confirm(_ p: Pending) {
@@ -131,13 +136,16 @@ struct CompanyEquipmentScreen: View {
             store.show(v > 0 ? "Sold for \(store.short(v))." : "Not sold.", tone: v > 0 ? "good" : "warn")
         case .all(let eq, _):
             let v = store.act { $0.sellAllEquipment(companyID: companyID, equipmentID: eq) } ?? 0
-            store.show("Sold for \(store.short(v)).", tone: "good")
+            store.show(v > 0 ? "Sold for \(store.short(v))." : "Nothing was sold.", tone: v > 0 ? "good" : "warn")
         case .vehicle(let id, _):
             let v = store.act { $0.sellVehicle(companyID: companyID, vehicleID: id) } ?? 0
             store.show(v > 0 ? "Sold for \(store.short(v))." : "Vehicle returned.", tone: "good")
         case .cancelPlan(let eq, _):
-            store.act { $0.cancelSubscription(companyID: companyID, equipmentID: eq) }
-            store.show("Plan cancelled.", tone: "n")
+            let gone = store.act { $0.cancelSubscription(companyID: companyID, equipmentID: eq) } ?? false
+            store.show(gone ? "Plan cancelled." : "The plan could not be cancelled.", tone: gone ? "n" : "warn")
+        case .endLease(let eq, let name, _, _):
+            if store.act({ $0.endEquipmentLease(companyID: companyID, equipmentID: eq) }) == true { Haptics.warning(); store.show("Lease of \(name) ended.", tone: "n") }
+            else { store.show("There is no lease of \(name) to end.", tone: "warn") }
         }
         pending = nil
     }
@@ -233,7 +241,7 @@ struct CompanyEquipmentScreen: View {
                     }
                     if o.leasedCount > 0 {
                         FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.tidyShort(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
-                        Button("End the lease") { store.act { $0.endEquipmentLease(companyID: companyID, equipmentID: o.equipmentID) }; store.show("Lease ended.") }.buttonStyle(QuietButtonStyle())
+                        Button("End the lease…") { pending = .endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly)) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                     }
                     HStack(spacing: Theme.Space.m) {
                         NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: o.equipmentID) } label: { Text(o.subscription != nil ? "Plans" : "Buy more").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }
@@ -445,6 +453,7 @@ struct EquipmentShopView: View {
     @State private var selected: String? = nil
     @State private var quantity = 0
     @State private var finance = false
+    @State private var pendingOwn: PendingAction?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let need = e.equipmentNeeds(companyID: companyID).first(where: { $0.equipmentID == equipmentID }) {
@@ -468,6 +477,7 @@ struct EquipmentShopView: View {
                         .init(label: "Needed", value: need.need > 0 ? "\(Int(need.need))" : "–"),
                         .init(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory),
                     ])
+                    if need.kind == "soft" { ownSoftware(e, need, cur) }
                     if need.isVehicle { vehicles(e, co, need, current, cur) }
                     else if current == .used { used(e, co, need, cur) }
                     else if need.subscription && current == .new { plans(e, co, need, cur) }
@@ -477,6 +487,7 @@ struct EquipmentShopView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            .confirmAction($pendingOwn)
             .ledgerBackground()
             .navigationTitle("Shop")
             .navigationBarTitleDisplayMode(.inline)
@@ -543,6 +554,44 @@ struct EquipmentShopView: View {
                 Button(lease ? "Lease \(q)" : one ? "Buy licence" : "Buy \(q)") {
                     report(store.act { $0.buyEquipmentItem(companyID: companyID, equipmentID: equipmentID, offer: sel, quantity: q, payment: lease ? .lease : useFinance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
                 }.buttonStyle(GoldButtonStyle())
+            }
+        }
+    }
+
+    // MARK: Your own software
+
+    /// A product one of your own companies builds that does this job: the buyer pays the producer its internal price (set where the product is managed).
+    @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
+        let offers = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
+        if !offers.isEmpty {
+            LedgerSection(title: "From your own companies", trailing: { Text("\(offers.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
+                        let producer = e.state.company(o.producerID)?.name ?? "your company"
+                        if n > 0 { Hairline() }
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text("Built by \(producer) · \(o.modelName.lowercased())" + (o.tested ? " · test version: less reliable" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Text(o.cost == 0 ? "free" : cur.tidyShort(o.cost) + (o.monthly ? "/mo" : "")).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Button("Use it") { confirmOwn(o, producer, cur) }.buttonStyle(QuietButtonStyle())
+                        }.padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    private func confirmOwn(_ o: SoftwareProducts.Offer, _ producer: String, _ cur: Currency) {
+        let id = companyID, equip = equipmentID
+        let price = o.cost == 0 ? "at no charge" : "for \(cur.tidyDisplay(o.cost))" + (o.monthly ? " a month" : " once")
+        pendingOwn = PendingAction(title: "Use \(o.name)?", message: "This company takes \(o.name) from \(producer) \(price); the money goes to \(producer). " + (o.tested ? "It is still a test version and may let you down. " : "") + "It replaces any other software of this kind here.", button: "Use it") {
+            switch store.act({ $0.useOwnSoftware(companyID: id, equipmentID: equip, producerID: o.producerID) }) {
+            case .ok?: Haptics.success(); store.show("Now using \(o.name) from \(producer).", tone: "good")
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
+            default: Haptics.warning(); store.show("Not possible.", tone: "warn")
             }
         }
     }
@@ -644,7 +693,7 @@ struct EquipmentShopView: View {
         HStack {
             Text("How to pay").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
             Spacer()
-            SectionTabs(items: [false, true], title: { $0 ? "Finance" : "Cash" }, selection: $finance).fixedSize()
+            SectionTabs(items: [false, true], title: { $0 ? "Finance" : "Cash" }, selection: $finance)
         }
     }
 

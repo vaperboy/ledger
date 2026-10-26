@@ -301,7 +301,7 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertEqual(member(e, id, pid)?.int("nx"), 8)
         let q1 = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: pid, reason: .unjustified, data: e.data))
         let w = World(state: e.state, data: e.data), co = e.state.company(id)!
-        let extra = wage(e, id, pid) * 12 / 52 * 8 * w.country(co).payrollFactor(monthlyWage: wage(e, id, pid))
+        let extra = wage(e, id, pid) * 12 / 52 * 8 * (1 + w.country(co).employerOnCost(monthlyWage: wage(e, id, pid)))
         XCTAssertEqual(q1.notice - q0.notice, extra, accuracy: 0.01, "you pay the extra weeks when you let them go without cause")
         // and they work them when they resign
         e.update { s, d, _ in StaffRoutine.handle(&s, companyIndex: s.companyIndex(id)!, .quit(staffID: pid), data: d) }
@@ -357,7 +357,7 @@ final class ContractTalkTests: XCTestCase {
         XCTAssertTrue(e.state == state0, "a preview changes nothing")
         let w = World(state: e.state, data: e.data), co = e.state.company(id)!
         let m = member(e, id, pid)!
-        XCTAssertEqual(pv.costPerMonth, (wage(e, id, pid) * 0.1) * w.country(co).payrollFactor(monthlyWage: m.monthlyWage * 1.1), accuracy: wage(e, id, pid) * 0.03)
+        XCTAssertEqual(pv.costPerMonth, (wage(e, id, pid) * 0.1) * (1 + w.country(co).employerOnCost(monthlyWage: m.monthlyWage * 1.1)), accuracy: wage(e, id, pid) * 0.03)
         XCTAssertGreaterThan(pv.costPerMonth, 0)
         let before = try XCTUnwrap(pv.quitYearBefore), after = try XCTUnwrap(pv.quitYearAfter)
         XCTAssertLessThanOrEqual(after, before, "pay that is closer to the market does not make leaving likelier")

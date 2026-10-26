@@ -86,7 +86,10 @@ struct FranchisorCard: View {
         }
         .confirmationDialog("End this contract?", isPresented: Binding(get: { terminate != nil }, set: { if !$0 { terminate = nil } }), titleVisibility: .visible) {
             Button("End contract", role: .destructive) {
-                if let u = terminate { store.act { $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }; Haptics.success() }
+                if let u = terminate {
+                    if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
+                    else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
+                }
                 terminate = nil
             }
         } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }
@@ -103,9 +106,9 @@ struct FranchisorCard: View {
             if n > 0 { Hairline() }
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: r.ok ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
-                Text(r.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                 Spacer(minLength: 8)
-                Text(r.detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
+                Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
             }.padding(.vertical, 8)
         }
         if reqs.allSatisfy({ $0.ok }) {
@@ -319,8 +322,8 @@ struct FranchiseTalkView: View {
     private func choice(_ title: String, _ options: [(Double, String)], current: Double, set: @escaping (Double) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     ForEach(options, id: \.0) { o in
                         Button(o.1) { set(o.0) }.buttonStyle(QuietButtonStyle(tint: abs(current - o.0) < 0.0001 ? Theme.gold : Theme.ivoryFaint)).font(.caption)
                     }

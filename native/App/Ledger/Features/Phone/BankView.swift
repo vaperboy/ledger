@@ -26,7 +26,7 @@ struct BankContent: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Cash and savings").capsLabel()
-                    Text(cur.display(s.cash + s.savings)).font(.hero(36)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(cur.tidyDisplay(s.cash + s.savings)).font(.hero(36)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
                     KeyFigures(items: [
                         .init(label: "Current account", value: store.short(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory),
                         .init(label: "You owe", value: owed > 0 ? store.short(owed) : "Nothing", tint: owed > 0 ? Theme.caution : Theme.ivory, sub: personal.isEmpty ? "" : "\(store.short(personal.reduce(0) { $0 + $1.monthlyPayment })) a month"),
@@ -47,7 +47,7 @@ struct BankContent: View {
     // MARK: Savings and deposits
 
     private func savings(_ e: GameEngine, _ cur: Currency) -> some View {
-        LedgerSection(title: "Savings", trailing: { Text(cur.display(e.state.savings)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
+        LedgerSection(title: "Savings", trailing: { Text(cur.tidyDisplay(e.state.savings)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Earns interest and can be moved back any day. Loan repayments draw on it when the current account is short.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 AmountField(title: "Amount", currency: cur, amount: $amount)
@@ -67,7 +67,7 @@ struct BankContent: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 ForEach(e.deposits) { d in
                     ListRow(symbol: "lock.fill", tint: Theme.gold, title: "Fixed deposit at \(Currency.percent(d.rate, decimals: 2))",
-                            subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")", trailing: cur.display(d.balance))
+                            subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")", trailing: cur.tidyDisplay(d.balance))
                 }
                 SectionTabs(items: GameEngine.depositTermChoices, title: { "\($0) weeks" }, selection: $depositWeeks).padding(.horizontal, -Theme.Space.margin)
                 KeyFigures(items: [
@@ -78,7 +78,7 @@ struct BankContent: View {
                 Button(amount > 0 ? "Lock \(cur.tidyShort(amount)) for \(depositWeeks) weeks" : "Enter an amount above") {
                     let a = amount, w = depositWeeks
                     pending = PendingAction(title: "Lock \(cur.tidyShort(a)) for \(w) weeks?",
-                                            message: "It earns \(Currency.percent(q.yearlyRate, decimals: 2)) a year: \(cur.display(q.interest)) interest, paid with the money in \(w) weeks. Until then it is out of reach, also for bills. The interest is taxed as income.",
+                                            message: "It earns \(Currency.percent(q.yearlyRate, decimals: 2)) a year: \(cur.tidyDisplay(q.interest)) interest, paid with the money in \(w) weeks. Until then it is out of reach, also for bills. The interest is taxed as income.",
                                             button: "Lock it") {
                         if store.act({ $0.openDeposit(amount: a, weeks: w) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) locked until week \((store.engine?.state.week ?? 0) + w).", tone: "good"); amount = 0 }
                         else { Haptics.warning(); store.show("Not enough on the current account for that deposit.", tone: "warn") }
@@ -156,7 +156,7 @@ struct BankContent: View {
                 Button(borrow > 0 ? "Borrow \(cur.tidyShort(borrow)) over \(term / 12 > 0 && term % 12 == 0 ? "\(term / 12) year\(term == 12 ? "" : "s")" : "\(term) months")" : "Enter an amount above") {
                     let a = borrow, t = term
                     pending = PendingAction(title: "Borrow \(cur.tidyShort(a))?",
-                                            message: "\(t) monthly payments of \(cur.display(q.monthlyPayment)) at \(Currency.percent(q.yearlyRate, decimals: 2)): \(cur.display(q.totalRepaid)) in all, \(cur.display(q.totalInterest)) of it interest. The rate follows the bank rate, so the cost can change. A missed payment adds a penalty and hurts your credit.",
+                                            message: "\(t) monthly payments of \(cur.tidyDisplay(q.monthlyPayment)) at \(Currency.percent(q.yearlyRate, decimals: 2)): \(cur.tidyDisplay(q.totalRepaid)) in all, \(cur.tidyDisplay(q.totalInterest)) of it interest. The rate follows the bank rate, so the cost can change. A missed payment adds a penalty and hurts your credit.",
                                             button: "Borrow") { take(a, t, cur) }
                 }.buttonStyle(QuietButtonStyle()).disabled(borrow <= 0 || problem != nil)
             }
@@ -229,7 +229,7 @@ struct RepayPersonalLoanSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(l.name).capsLabel()
-                            Text(cur.display(l.balance)).font(.hero(34))
+                            Text(cur.tidyDisplay(l.balance)).font(.hero(34))
                             Text("left to pay · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? "")).font(.caption).foregroundStyle(Theme.ivoryFaint)
                         }
                         HStack {

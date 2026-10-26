@@ -119,7 +119,14 @@ struct CompanyStaffRoster: View {
             HStack {
                 Text("\(papers) paperwork item\(papers == 1 ? "" : "s") missing. An inspection can fine you.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 Spacer()
-                Button("Do all") { for m in staff { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) } }; Haptics.success(); store.show("Paperwork done for everyone.", tone: "good") }
+                Button("Do all") {
+                    var done = 0
+                    for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
+                    let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
+                    if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
+                    else if done > 0 { store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
+                    else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+                }
                     .font(.caption.weight(.semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
             }.padding(.top, 8)
         }
@@ -138,7 +145,7 @@ struct CompanyStaffRoster: View {
     }
 
     private func confirmLayOff(_ n: Int, _ p: (names: [String], savesPerMonth: Double, severance: Double), _ cur: Currency) {
-        pending = PendingAction(title: "Lay off \(n) \(n == 1 ? "person" : "people")?", message: "\(p.names.joined(separator: ", ")). Saves \(cur.display(p.savesPerMonth)) a month; severance of \(cur.display(p.severance)) is paid now and the mood of the rest drops.", button: "Lay off", destructive: true) {
+        pending = PendingAction(title: "Lay off \(n) \(n == 1 ? "person" : "people")?", message: "\(p.names.joined(separator: ", ")). Saves \(cur.tidyDisplay(p.savesPerMonth)) a month; severance of \(cur.tidyDisplay(p.severance)) is paid now and the mood of the rest drops.", button: "Lay off", destructive: true) {
             let ids = store.act { $0.layOffStaff(companyID: company.id, count: n) } ?? []
             Haptics.warning()
             store.show(ids.isEmpty ? "No one was let go." : "\(ids.count) \(ids.count == 1 ? "person" : "people") let go. The rest are shaken.", tone: "n")
@@ -237,7 +244,10 @@ struct StaffProfileView: View {
                     Button("Written warning") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
                 }
                 if !StaffExtras.missing(m).isEmpty {
-                    Button("Paperwork done (\(StaffExtras.missing(m).count))") { store.act { $0.completePaperwork(companyID: companyID, personID: staffID) }; Haptics.success(); store.show("Paperwork done.", tone: "good") }
+                    Button("Paperwork done (\(StaffExtras.missing(m).count))") {
+                        let done = store.act { $0.completePaperwork(companyID: companyID, personID: staffID) } ?? 0
+                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { store.show("Nothing could be ticked.", tone: "warn") }
+                    }
                         .buttonStyle(QuietButtonStyle())
                 }
                 if !p.courses.isEmpty {
@@ -277,10 +287,10 @@ struct StaffProfileView: View {
 
     private func confirmDismiss(_ p: StaffProfile.Profile, _ cur: Currency) {
         let risk = p.dismissalDocumented ? "Two warnings or theft are on file, so this is easy to defend." : "Nothing documented: they may claim unfair dismissal and win \(cur.tidyShort(p.compensationRange.lowerBound)) to \(cur.tidyShort(p.compensationRange.upperBound))."
-        pending = PendingAction(title: "Let \(p.name) go?", message: "Notice and severance of \(cur.display(p.severance)) is paid. \(risk)", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let \(p.name) go?", message: "Notice and severance of \(cur.tidyDisplay(p.severance)) is paid. \(risk)", button: "Let go", destructive: true) {
             guard let r = store.act({ $0.dismissStaff(companyID: companyID, staffID: staffID) }) ?? nil else { store.show("They no longer work here.", tone: "warn"); dismiss(); return }
             Haptics.warning()
-            store.show(r.claimedUnfairDismissal ? "\(p.name) is gone, and claimed unfair dismissal: \(cur.display(r.compensation)) paid on top of \(cur.display(r.severance)) severance." : (r.severance > 0 ? "Severance paid: \(cur.display(r.severance))." : "\(p.name) has left."), tone: r.claimedUnfairDismissal ? "bad" : "n")
+            store.show(r.claimedUnfairDismissal ? "\(p.name) is gone, and claimed unfair dismissal: \(cur.tidyDisplay(r.compensation)) paid on top of \(cur.tidyDisplay(r.severance)) severance." : (r.severance > 0 ? "Severance paid: \(cur.tidyDisplay(r.severance))." : "\(p.name) has left."), tone: r.claimedUnfairDismissal ? "bad" : "n")
             dismiss()
         }
     }

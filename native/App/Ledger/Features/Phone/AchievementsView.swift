@@ -47,7 +47,7 @@ struct AchievementsView: View {
                 .font(.system(size: 14)).foregroundStyle(t.reachedWeek != nil ? Theme.gold : Theme.ivoryFaint)
             VStack(alignment: .leading, spacing: 2) {
                 Text(t.name).font(.system(size: 14.5)).foregroundStyle(t.reachedWeek != nil ? Theme.ivory : Theme.ivoryMuted)
-                if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             Text(t.reachedWeek.map { t.before ? "Before the wall" : GameCalendar.dateString(week: $0) } ?? "Not yet")

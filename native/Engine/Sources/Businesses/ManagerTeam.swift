@@ -110,11 +110,11 @@ extension ManagerModel {
         let t = team(co)
         var monthly = 0.0
         if person(s, t["ceo"]) != nil { monthly += t["ceo"]["wage"].double }
-        for (k, rec) in t["heads"].object where person(s, rec) != nil && teamRoles.contains(where: { $0.key == k }) { monthly += rec["wage"].double }
+        for (k, rec) in t["heads"].object.sorted(by: { $0.key < $1.key }) where person(s, rec) != nil && teamRoles.contains(where: { $0.key == k }) { monthly += rec["wage"].double }
         for r in regionals(s) where r["payCo"].int == co.id && r["payCo"].string != "chain" { monthly += r["wage"].double }
         if monthly > 0 {
-            let factor = World(state: s, data: data).country(co).employerCostFactor
-            Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * factor, category: "wages")
+            let social = World(state: s, data: data).country(co).employerOnCost(monthlyWage: monthly)
+            Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * (1 + social), category: "wages")
         }
         // what they do, cached for demand, capacity, marketing and quits (read in Demand, Capacity, Marketing, StaffRoutine)
         var tm: [String: JSONValue] = [:]
@@ -496,7 +496,7 @@ extension ManagerModel {
             let tot = max(1, L.reduce(0) { $0 + rev($1) })
             for c in L { share.append((c.id, md["wage"].double * 1.14 * rev(c) / tot)) }
         }
-        for (id, amt) in share where amt > 0 { Payments.companyPays(&s, companyID: id, amount: amt, category: "wages", label: "Chain and group management") }
+        for (id, amt) in share.sorted(by: { $0.0 < $1.0 }) where amt > 0 { Payments.companyPays(&s, companyID: id, amount: amt, category: "wages", label: "Chain and group management") }
     }
     static func rev(_ c: Company) -> Double { max(1, c.value("lastW")["rev"].double) }
 }

@@ -74,16 +74,26 @@ public extension GameEngine {
     func chainKnobExceptions(chainID: Int, knob: String) -> [(storeID: Int, storeName: String, value: Int)] { Chains.knobExceptions(state, chainID: chainID, knob: knob, data: data) }
 
     /// Leave this choice to each store.
-    mutating func releaseChainKnob(chainID: Int, knob: String) { update { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) } }
+    @discardableResult
+    mutating func releaseChainKnob(chainID: Int, knob: String) -> SettingResult {
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, _, _ in Chains.releaseKnobStandard(&s, chainID: chainID, knob: knob) }
+    }
 
-    mutating func setChainRule(chainID: Int, rule: Chains.Rule) {
-        update { s, d, _ in
+    @discardableResult
+    mutating func setChainRule(chainID: Int, rule: Chains.Rule) -> SettingResult {
+        applySetting(refuse: { Chains.chain($0, id: chainID) == nil ? "That chain no longer exists." : nil }, probe: { Chains.chain($0, id: chainID) ?? .null }) { s, d, _ in
             // A new knob standard is a changeover for every store it governs, not a silent overwrite.
             if case .knob(let id, let o) = rule { Chains.setKnobStandard(&s, chainID: chainID, knob: id, value: o, data: d) }
             else { Chains.setRule(&s, chainID: chainID, rule: rule) }
         }
     }
-    mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) { update { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) } }
+    @discardableResult
+    mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let co = s.company(companyID) else { return "That store no longer exists." }
+            return Chains.chain(s, of: co) == nil ? "That store is not part of a chain." : nil
+        }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) }
+    }
 
     mutating func openChainStore(chainID: Int, cityID: String, size: Double) -> Result<Int, CompanySetup.StartError> {
         var r: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)

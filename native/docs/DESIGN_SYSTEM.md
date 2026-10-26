@@ -25,3 +25,8 @@ when a day passes, a medium one when a week completes, a selection tick when swi
 results. All can be turned off in Settings.
 
 iPad: the tab bar becomes a sidebar (`NavigationSplitView`), Home uses two columns, content is capped at a readable width.
+
+## Navigation menus never scroll sideways
+- `SectionTabs` is the one switcher: up to 5 items in an equal-width row (44 pt tall, text scales down, never clips); more than 5 shows a fixed row of `primary` (default first 4) plus a "More" menu. Selected fixed item: accent underline; in the menu: checkmark, and the "More" cell turns accent and shows the chosen title. Badge counts of hidden items roll up onto "More".
+- Company sections: fixed Overview, Team, Finances, Operations; everything else (Marketing, Customers, Market, Setup, family sections) sits under More.
+- No horizontal `ScrollView` for navigation, filters or option chips: use `SectionTabs`, or `WrapRow` (wrapping chips) for action/option buttons.

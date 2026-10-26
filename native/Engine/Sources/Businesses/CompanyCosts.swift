@@ -44,7 +44,7 @@ public enum CompanyCosts {
     /// The one function behind both the accrual (`wages`) and every payroll estimate, so the two cannot drift apart. Each wage carries its own
     /// on-cost rate (`Country.payrollFactor`), which matters where contributions are capped (Mexico). Commission is not included.
     public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true) -> Double {
-        let holiday = 1 + country.leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
+        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
         var cost = 0.0
         for m in co.staff where !(skipOffSeason && m.isOffSeason) { cost += m.monthlyWage * 12 / 52 * holiday * country.payrollFactor(monthlyWage: m.monthlyWage) }
         if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
@@ -140,7 +140,7 @@ public enum CompanyCosts {
         var total = 0.0, weight = 0.0, eqv = 0.0
         var upkeep = 0.0
         var eq = co.value("eq")
-        for (id, r) in eq.object {
+        for (id, r) in eq.object.sorted(by: { $0.key < $1.key }) {
             if id == "fit" && r["bv"].double > 0 {
                 let d = min(r["bv"].double, r["cost"].double / ((r["life"].isNull ? 10 : r["life"].double) * 52))
                 eq[id]["bv"] = .number(r["bv"].double - d)

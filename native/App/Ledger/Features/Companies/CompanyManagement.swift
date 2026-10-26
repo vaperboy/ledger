@@ -179,7 +179,7 @@ struct ManagerSheet: View {
                         .init(label: "Reputation", value: "\(card.reputation)"),
                         .init(label: "Quality", value: "\(card.quality)"),
                     ], columns: 4)
-                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps) staff with paperwork missing count against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     if card.fraud > 0 { Text("Fraud was found under this manager.").font(.system(size: 11.5)).foregroundStyle(Theme.loss) }
                 }
                 if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
@@ -207,13 +207,12 @@ struct ManagerSheet: View {
         LedgerSection("Decides") {
             VStack(alignment: .leading, spacing: 10) {
                 AuthorityLevelPicker(level: lvl) { v in
-                    store.act { $0.setManagerAuthority(companyID: co.id, level: v) }
-                    store.show("\(m.name) now \(GameEngine.authorityText(level: v)).", tone: "n")
+                    store.settle(store.act { $0.setManagerAuthority(companyID: co.id, level: v) }, "\(m.name) now \(GameEngine.authorityText(level: v)).", same: "\(m.name) already works that way.")
                 }
                 if lvl == 1 {
-                    limitRow("Pay and promotions a month", auth["hire"].double, [0, 3000, 8000, 15000, 30000], cur) { v in store.act { $0.setManagerAuthority(companyID: co.id, pay: v) } }
-                    limitRow("Purchases and hires up to", auth["buy"].double, [10000, 25000, 50000, 100000, 250000], cur) { v in store.act { $0.setManagerAuthority(companyID: co.id, buy: v) } }
-                    limitRow("Advertising a week", auth["ad"].double, [0, 1500, 3000, 7000], cur) { v in store.act { $0.setManagerAuthority(companyID: co.id, ad: v) } }
+                    limitRow("Pay and promotions a month", auth["hire"].double, [0, 3000, 8000, 15000, 30000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, pay: v) }, "Pay and promotions limit: \(cur.tidyShort(v)) a month.") }
+                    limitRow("Purchases and hires up to", auth["buy"].double, [10000, 25000, 50000, 100000, 250000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, buy: v) }, "Purchases and hires limit: \(cur.tidyShort(v)).") }
+                    limitRow("Advertising a week", auth["ad"].double, [0, 1500, 3000, 7000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, ad: v) }, "Advertising limit: \(cur.tidyShort(v)) a week.") }
                     Text("Above these limits a request comes to you (or to the boss above them first) and shows in Team as a decision.")
                         .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
@@ -247,7 +246,7 @@ struct ManagerSheet: View {
                         } label: {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(d.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                    Text(d.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                     Text(d.manager ? d.managerText : d.ownerText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer(minLength: 8)
@@ -304,7 +303,7 @@ struct ManagerSheet: View {
                                                 message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
                                                 button: "Dismiss", destructive: true) {
                             let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
-                            store.show("\(m.name) has gone. Paid \(cur.display(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
+                            store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
                         }
                     }.foregroundStyle(Theme.loss)
                 }
@@ -435,8 +434,8 @@ struct AssistantSheet: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(d.title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(d.text).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text(d.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text(d.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
                             Image(systemName: on ? "checkmark.circle.fill" : "circle").foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)

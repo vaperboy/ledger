@@ -82,7 +82,7 @@ private struct BigMeetingCard: View {
                 HStack {
                     Button("Accept") {
                         pending = PendingAction(title: "Buy \(o.pct)% of \(o.target) for \(cur.tidyShort(o.price))?",
-                                                message: "\(cur.display(f.own)) from your cash and savings" + (f.borrow > 0 ? ", \(cur.display(f.borrow)) as a 10-year acquisition loan in your name" : "") + ". You receive about \(cur.display(o.yearlyProfitShare)) a year as your share of the profit; the value can fall.",
+                                                message: "\(cur.tidyDisplay(f.own)) from your cash and savings" + (f.borrow > 0 ? ", \(cur.tidyDisplay(f.borrow)) as a 10-year acquisition loan in your name" : "") + ". You receive about \(cur.tidyDisplay(o.yearlyProfitShare)) a year as your share of the profit; the value can fall.",
                                                 button: "Buy the stake") {
                             switch store.act({ $0.acceptBigMeetingOffer() }) {
                             case .ok?: Haptics.success(); store.show("You bought \(o.pct)% of \(o.target).", tone: "good")
@@ -99,7 +99,7 @@ private struct BigMeetingCard: View {
                             }
                         }.buttonStyle(SmallOutlineButtonStyle())
                     }
-                    Button("Walk away") { store.act { $0.walkAwayFromBigMeeting() }; store.show("You walked away from the offer.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle())
+                    Button("Walk away") { store.settle(store.act { $0.walkAwayFromBigMeeting() }, "You walked away from the offer.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
                 }
             }
         }
@@ -183,12 +183,12 @@ private struct FoundedCard: View {
                                     store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
                                 }
                             }.buttonStyle(SmallGoldButtonStyle())
-                            Button("Decline") { store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }; store.show("Offer declined.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle())
+                            Button("Decline") { store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
                         }
                     }.padding(.vertical, 4)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                WrapRow {
+                    Group {
                         Button("Raise a round") {
                             switch store.act({ $0.pitchStartupRound(startupID: f.id) }) {
                             case .offers(let n)?: Haptics.success(); store.show("\(n) investor\(n == 1 ? "" : "s") made an offer.", tone: "good")
@@ -205,12 +205,10 @@ private struct FoundedCard: View {
                         }.buttonStyle(SmallOutlineButtonStyle())
                         if let p = f.product {
                             Button("− builder") {
-                                store.act { $0.changeBuilders(startupID: f.id, by: -1) }
-                                store.show(p.builders > 0 ? "One builder fewer: slower work, lower costs." : "No builders left to let go.", tone: "n")
+                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: -1) }, "One builder fewer: slower work, lower costs.")
                             }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.builders == 0)
                             Button("+ builder") {
-                                store.act { $0.changeBuilders(startupID: f.id, by: 1) }
-                                store.show(p.builders < 10 ? "One more builder: faster work, higher monthly cost." : "Ten builders is the most.", tone: "n")
+                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: 1) }, "One more builder: faster work, higher monthly cost.")
                             }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.builders >= 10)
                             Button(p.selfHours > 0 ? "Stop working on it" : "Work on it yourself") {
                                 let ok = store.act { $0.toggleOwnerHoursOnProduct(startupID: f.id) } ?? false
@@ -234,13 +232,48 @@ private struct FoundedCard: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(c.company.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                                    Text(c.effect.summary).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    Text(c.effect.summary.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()
                                 Button(using ? "Stop" : "Use") {
                                     let ok = store.act { $0.toggleProductUse(startupID: f.id, companyID: c.company.id) } ?? false
                                     store.show(ok ? (using ? "\(c.company.name) stopped using it." : "\(c.company.name) now uses it.") : "Not possible right now.", tone: ok ? "good" : "warn")
                                 }.buttonStyle(SmallOutlineButtonStyle())
+                            }
+                        }
+                    }
+                    if !users.isEmpty || !p.usedBy.isEmpty {
+                        HStack {
+                            Text("Your companies pay").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            Spacer()
+                            ForEach([0, 50, 100], id: \.self) { pct in
+                                Button("\(pct)%") {
+                                    store.act { $0.setProductInternalPrice(startupID: f.id, percent: Double(pct)) }
+                                    store.show("Your own companies pay \(pct)% of the list price for \(f.productName.isEmpty ? "the product" : f.productName).", tone: "n")
+                                }.buttonStyle(SmallOutlineButtonStyle()).opacity(Int(p.internalPrice.rounded()) == pct ? 1 : 0.5)
+                            }
+                        }
+                    }
+                    let rivals = engine.rivalTargetsForProduct(startupID: f.id)
+                    if !rivals.isEmpty {
+                        Text("Sell it to rivals").capsLabel(Theme.ivoryFaint).padding(.top, 4)
+                        ForEach(rivals) { r in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(r.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                                    Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int((r.odds * 100).rounded()))% chance they sign · relationship \(Int(r.relationship.rounded())) of 100")
+                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                                Spacer()
+                                if !r.alreadyCustomer {
+                                    Button("Pitch") {
+                                        switch store.act({ $0.pitchProductToRival(startupID: f.id, rivalID: r.id) }) {
+                                        case .some(.some(true)): Haptics.success(); store.show("\(r.name) signed up for \(f.name).", tone: "good")
+                                        case .some(.some(false)): store.show("\(r.name) said no this time. You can ask again in a few weeks.", tone: "warn")
+                                        default: store.show("That pitch is not possible now.", tone: "warn")
+                                        }
+                                    }.buttonStyle(SmallOutlineButtonStyle()).disabled(r.waitWeeks > 0)
+                                }
                             }
                         }
                     }
@@ -360,7 +393,7 @@ private struct BackedStartups: View {
                                 Spacer()
                                 Text(p.sector).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
-                            Text(p.blurb).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(p.blurb.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                             Text("Raising \(cur.tidyShort(p.raise)) at \(cur.tidyShort(p.preMoney)) before the money · team \(p.team), market \(p.market), traction \(p.traction)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             HStack {
                                 ForEach(cheques(p, minimum), id: \.self) { amt in
@@ -469,7 +502,7 @@ private struct PrivateEquityPart: View {
                                 Spacer()
                                 Text(PrivateEquity.styles[o.style]?.name ?? o.style).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
-                            Text(o.description).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(o.description.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                             Text("Manager's record: \(o.trackRecord) · minimum \(cur.tidyShort(o.minimum))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             HStack {
                                 ForEach([1.0, 2.0, 4.0], id: \.self) { m in
@@ -528,7 +561,7 @@ private struct PrivateEquityPart: View {
                 let price = engine.secondaryPrice(fundID: f.id)
                 Button("Sell on the secondary market · \(cur.tidyShort(price))") {
                     pending = PendingAction(title: "Sell your stake in \(f.name)?",
-                                            message: "A buyer pays \(cur.display(price)), \(Int((engine.secondaryDiscount(fundID: f.id) * 100).rounded()))% below its value, and takes over the capital calls still to come.",
+                                            message: "A buyer pays \(cur.tidyDisplay(price)), \(Int((engine.secondaryDiscount(fundID: f.id) * 100).rounded()))% below its value, and takes over the capital calls still to come.",
                                             button: "Sell") {
                         let v = store.act { $0.sellFundStake(fundID: f.id) } ?? nil
                         store.show(v.map { "Stake sold for \(cur.tidyShort($0))." } ?? "No buyer for the stake.", tone: v == nil ? "warn" : "good")
@@ -634,8 +667,8 @@ private struct SoftwarePart: View {
                     .init(label: "Your companies pay", value: "\(p.internalPercent)%", sub: "of list price"),
                 ])
                 HStack {
-                    Button("− coder") { store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders - 1) }; store.show("Team: \(max(0, p.coders - 1)) coders.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders == 0)
-                    Button("+ coder") { store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders + 1) }; store.show("Team: \(min(10, p.coders + 1)) coders, about \(cur.tidyShort(coder)) a month more.", tone: "n") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders >= 10)
+                    Button("− coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders - 1) }, "Team: \(max(0, p.coders - 1)) coders.") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders == 0)
+                    Button("+ coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders + 1) }, "Team: \(min(10, p.coders + 1)) coders, about \(cur.tidyShort(coder)) a month more.") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders >= 10)
                     Button(p.selfHours > 0 ? "Stop coding" : "Code yourself") {
                         store.act { $0.setSoftwareSelfCoding(companyID: co.id, on: p.selfHours == 0) }
                         store.show(p.selfHours > 0 ? "You stopped coding on it." : "You code 20 hours a week on it.", tone: "n")
@@ -646,7 +679,7 @@ private struct SoftwarePart: View {
                     Spacer()
                     Menu(p.modelName) {
                         ForEach(SoftwareProducts.models, id: \.id) { m in
-                            Button(m.name) { store.act { $0.setSoftwareModel(companyID: co.id, model: m.id) }; store.show("Customers now pay: \(m.name.lowercased()).", tone: "n") }
+                            Button(m.name) { store.settle(store.act { $0.setSoftwareModel(companyID: co.id, model: m.id) }, "Customers now pay: \(m.name.lowercased()).", same: "Customers already pay that way.") }
                         }
                     }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
                 }
@@ -654,7 +687,7 @@ private struct SoftwarePart: View {
                     Text("Your companies pay").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     Spacer()
                     ForEach([0, 50, 100], id: \.self) { pct in
-                        Button("\(pct)%") { store.act { $0.setSoftwareInternalPercent(companyID: co.id, percent: pct) } }
+                        Button("\(pct)%") { store.act { $0.setSoftwareInternalPercent(companyID: co.id, percent: pct) }; store.saved("\(pct)% of the product's capacity goes to your own companies.") }
                             .buttonStyle(SmallOutlineButtonStyle()).opacity(p.internalPercent == pct ? 1 : 0.5)
                     }
                 }

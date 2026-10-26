@@ -19,11 +19,14 @@ struct LedgerApp: App {
         UITabBar.appearance().standardAppearance = tabs
         UITabBar.appearance().scrollEdgeAppearance = tabs
         let serif = UIFont.systemFont(ofSize: 18, weight: .medium).fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: 18) } ?? UIFont.systemFont(ofSize: 18)
+        // Fonts and colours of the titles only. Whether a bar is solid is decided per screen by `.ledgerScreen()` (applied by
+        // `ledgerBackground()`), not by this global appearance, so scrolled content never draws over the Back button.
         let bars = UINavigationBarAppearance()
         bars.configureWithTransparentBackground()
         bars.titleTextAttributes = [.foregroundColor: ivory, .font: serif]
         bars.largeTitleTextAttributes = [.foregroundColor: ivory]
         UINavigationBar.appearance().standardAppearance = bars
+        UINavigationBar.appearance().compactAppearance = bars
         UINavigationBar.appearance().scrollEdgeAppearance = bars
         UITableViewCell.appearance().backgroundColor = UIColor(red: 0.067, green: 0.075, blue: 0.082, alpha: 1)
     }

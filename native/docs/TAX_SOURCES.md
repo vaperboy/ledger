@@ -139,8 +139,7 @@ Added October 2026 from my own knowledge of the 2025/26 rules, then re-checked i
 month for a standard week; the game converts it with the exchange rate and indexes it with inflation like the market wage.
 `statutory: false` means there is no national statutory minimum: the figure is a floor from collective agreements (or a regional
 minimum) and is enforced in the game as if it were law. Where the real minimum is higher than what the game's existing wage table
-pays for its cheapest job, the data holds a **game-scaled** value (about 85% of the cheapest market wage) and `realMinMonthly` keeps
-the real figure, so the wage tables are not rebalanced.
+pays for its cheapest job, the data used to hold a game-scaled value. **Superseded (October 2026 consistency pass, below):** `minMonthly` is now the real figure everywhere and `realMinMonthly` is gone; the table rows below that say "game-scaled" show the old values.
 
 | Country | Min wage / month | Std week | Overtime premium | Notice (weeks) | Severance (weeks) | Leave days | Probation |
 |---|---|---:|---:|---|---|---:|---|
@@ -242,3 +241,14 @@ Germany (TzBfG section 14), France (Code du travail L1242-8, L1243-13), Spain (E
 the Netherlands (BW 7:668a), Poland (Kodeks pracy art. 25(1)); the EU framework is Directive 1999/70/EC. These references are leads, not verified.
 Fixed-term indemnities at the end of a term (some countries) are a separate gap (`expiry` in `severanceReasons`).
 
+
+
+## Consistency pass: overdraft rate, leave, minimum wage, Mexico (October 2026)
+
+**Overdraft interest.** Was a flat 14% (company) and 16% (private account). Now policy rate + country margin, `economy.overdraftMargin` in `countries.json` (0.10 if missing; the player's private account pays 0.02 more; a company abroad uses its own country's starting policy rate shift). The reference economy (NO, policy rate 4%, margin 0.10) still gets 14% / 16%. Margins are game approximations of local bank spreads (0.06 JP to 0.20 BR), not sourced figures. Code: `Banking.overdraftRate`.
+
+**Leave days.** Two fields disagreed (`work.leaveWeeks` x 5 against `labour.leaveDays`: BR 25 vs 30, AE 21.5 vs 30, FI 25 vs 30, SG 10 vs 14). `work.leaveWeeks` is removed; `labour.leaveDays` (statutory paid annual leave of a new hire) is the only field, with `leaveUnit: "calendar"` where the law counts calendar days. `LabourRules.leaveWeeks` derives weeks (days / 5, or / 7 for calendar days) for the payroll holiday cover in `CompanyCosts.wages`. Decisions: BR 30 calendar days (CLT art. 130), AE 30 calendar days (Labour Law), FI 25 working days (Annual Holidays Act, 2 to 2.5 days a month), SG 7 days in the first year (rising by one a year to 14; the game uses the new-hire figure). Others unchanged (from knowledge, 5-day-week basis; not re-verified by search).
+
+**Minimum wage scale.** Nine countries (NO, SE, PL, LT, KR, BR, MX, IT, FI) held a game-scaled `minMonthly` (about 85% of the cheapest market wage) plus `realMinMonthly`. `minMonthly` now holds the real figure (old `realMinMonthly`) and `realMinMonthly` is removed, so minimum and median wage are on the same scale (both local currency, both converted by the same rate). Effect: the cheapest jobs in those countries are lifted to the real minimum by the existing pay floor; wage costs there rise (deliberate; no golden file changed). Mexico: the median wage 9,500 MXN was below its own real minimum (9,577), so the median was raised to 14,500 MXN (minimum / median 0.66, in line with 0.55 to 0.7 elsewhere; an approximation, not a sourced median). Minimum / median now runs from 0.22 (AE, no statutory minimum) to 0.72; US 0.25 (federal USD 7.25), SG 0.39 (no minimum). NO 37,000 (2024 cleaning minimum x 37.5 h, 2026 figure unverified), SE 25,000, IT 1,500 and FI 2,200 (collective-agreement floors, from knowledge) stay unverified. A test keeps minimum / median between 0.2 and 0.85 in all 23. The other medians were not re-checked against real data.
+
+**Mexico UMA and IMSS** (searched October 2026): UMA 2026 = MXN 117.31 a day, 3,566.22 a month, 42,794.64 a year (INEGI, in force 1 Feb 2026 to 31 Jan 2027; month = day x 30.4): the data value 117.31 is correct. IMSS employer 2026: illness and maternity fixed 20.40% of the UMA plus 1.10% of pay above 3 UMA and 0.70% cash benefits, pensioners' medical 1.05%, disability and life 1.75%, retirement 2.00%, childcare 1.00%, work risk 0.54% to 7.59% by class, Infonavit 5.00%, old age and severance (CEAV) 3.15% to 7.51% by wage band, rising to 11.875% in 2030; employee: illness 0.40% above 3 UMA and 0.25% cash, pensioners 0.375%, disability and life 0.625%, CEAV 1.125%. Cap 25 UMA. The current `tax.employer.contributions` table (edited elsewhere) approximates these with flat blended rates and class I risk; it is not touched here. Sources: INEGI UMA page, contadormx.com and elcontribuyente.mx IMSS 2026 tables (one source gave 6.422% for the top CEAV band; unresolved).

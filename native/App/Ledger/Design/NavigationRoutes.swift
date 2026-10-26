@@ -80,14 +80,7 @@ extension String {
     /// Engine-written text with "£11 k" / "£2.5 M" / "£1.2 bn" tidied to "£11k" / "£2.5M" / "£1.2bn" and "2\u{00A0}751" to "2,751".
     /// Only a number followed by the unit is touched, so a name such as "Mr M Smith" is left alone.
     /// Display only; `Currency.short` itself stays as the golden tests pin it.
-    var tidyText: String {
-        var t = self
-        if t.contains("\u{00A0}") || t.contains(" k") || t.contains(" M") || t.contains(" bn") {
-            t = t.replacingOccurrences(of: "(?<=\\d)[\\u00A0\\u202F ](k|M|bn)\\b", with: "$1", options: .regularExpression)
-            t = t.replacingOccurrences(of: "(?<=\\d)\\u00A0(?=\\d{3}\\b)", with: ",", options: .regularExpression)
-        }
-        return t
-    }
+    var tidyText: String { tidyMoney }
 }
 
 extension GameEngine {

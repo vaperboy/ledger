@@ -93,7 +93,7 @@ public struct GameEngine {
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         if story == .loan {
-            state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business from the Phone.", tone: "good")
+            state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business with + on the Company tab.", tone: "good")
         } else {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }

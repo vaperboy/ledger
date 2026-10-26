@@ -60,13 +60,7 @@ struct ReportsContent: View {
                 .padding(.horizontal, -Theme.Space.margin)
             if let r = current {
                 picker(r, all)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(ReportPage.allCases, id: \.self) { p in
-                            Button(p.rawValue) { page = p }.buttonStyle(QuietButtonStyle(tint: page == p ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
-                }
+                SectionTabs(items: ReportPage.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -Theme.Space.margin)
                 switch page {
                 case .summary: summaryPage(r, all)
                 case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)
@@ -115,7 +109,7 @@ struct ReportsContent: View {
             }
             .buttonStyle(.plain).disabled(i == 0).accessibilityLabel("Earlier report")
             VStack(alignment: .leading, spacing: 1) {
-                Text(r.title).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                Text(r.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
                 Text(r.range).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             Spacer(minLength: 8)
@@ -373,7 +367,7 @@ struct ReportsContent: View {
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Circle().fill(Theme.tone(e.tone)).frame(width: 5, height: 5)
-                            Text(e.text).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(e.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }

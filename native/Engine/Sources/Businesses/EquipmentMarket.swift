@@ -359,12 +359,14 @@ public enum EquipmentMarket {
         return .ok
     }
 
-    public static func cancelSubscription(_ s: inout GameState, companyID: Int, equipmentID: String) {
-        guard let i = s.companyIndex(companyID) else { return }
+    @discardableResult
+    public static func cancelSubscription(_ s: inout GameState, companyID: Int, equipmentID: String) -> Bool {
+        guard let i = s.companyIndex(companyID) else { return false }
         var eq = s.companies[i].value("eq")
-        guard !eq[equipmentID]["sub"].isNull else { return }
+        guard !eq[equipmentID]["sub"].isNull else { return false }
         eq = .object(eq.object.filter { $0.key != equipmentID })
         s.companies[i].set("eq", eq)
+        return true
     }
 
     // MARK: The used market
@@ -656,11 +658,13 @@ public enum EquipmentMarket {
     }
 
     /// End a lease on equipment (the units go back). The monthly cost stops.
-    public static func endLease(_ s: inout GameState, companyID: Int, equipmentID: String) {
-        guard let i = s.companyIndex(companyID) else { return }
+    @discardableResult
+    public static func endLease(_ s: inout GameState, companyID: Int, equipmentID: String) -> Bool {
+        guard let i = s.companyIndex(companyID), !s.companies[i].value("lease")[equipmentID].isNull || !s.companies[i].value("eqL")[equipmentID].isNull else { return false }
         var lease = s.companies[i].value("lease"), eqL = s.companies[i].value("eqL")
         lease = .object(lease.object.filter { $0.key != equipmentID }); eqL = .object(eqL.object.filter { $0.key != equipmentID })
         s.companies[i].set("lease", lease); s.companies[i].set("eqL", eqL)
+        return true
     }
 
     // MARK: Reading for the screens
@@ -711,7 +715,7 @@ public enum EquipmentMarket {
     /// Equipment health as far as the owner can tell, 0 to 1 (nil if the company owns nothing that wears).
     public static func health(_ co: Company) -> Double? {
         var vals: [Double] = []
-        for (_, list) in co.value("units").object { for u in list.array { vals.append(seen(u)) } }
+        for (_, list) in co.value("units").object.sorted(by: { $0.key < $1.key }) { for u in list.array { vals.append(seen(u)) } }
         for v in co.value("veh").array { vals.append(seen(v)) }
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }

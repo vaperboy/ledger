@@ -271,10 +271,10 @@ final class LabourRulesTests: XCTestCase {
         XCTAssertEqual(entry("MX")["period"].string, "day")
         XCTAssertEqual(entry("MX", 1)["amount"].double, 440.87, accuracy: 1e-9)
         XCTAssertEqual(entry("MX", 1)["region"].string, "northern border zone")
-        XCTAssertEqual(rule("MX")["realMinMonthly"].double, 315.04 * 30.4, accuracy: 1)
+        XCTAssertEqual(rule("MX")["minMonthly"].double, 315.04 * 30.4, accuracy: 1)
         XCTAssertEqual(entry("KR")["amount"].double, 10320)
-        XCTAssertEqual(rule("KR")["realMinMonthly"].double, 2_156_880)
-        XCTAssertEqual(rule("BR")["realMinMonthly"].double, 1621)
+        XCTAssertEqual(rule("KR")["minMonthly"].double, 2_156_880)
+        XCTAssertEqual(rule("BR")["minMonthly"].double, 1621)
         XCTAssertEqual(entry("BR")["hourly"].double, 7.37, accuracy: 1e-9)
         XCTAssertEqual(entry("FR")["amount"].double, 12.31, accuracy: 1e-9)
         XCTAssertEqual(entry("FR")["effective"].string, "2026-06-01")
@@ -287,9 +287,7 @@ final class LabourRulesTests: XCTestCase {
         XCTAssertEqual(entry("IE")["ageBand"].string, "20+")
         XCTAssertEqual(entry("US")["amount"].double, 7.25, accuracy: 1e-9)
         XCTAssertEqual(entry("US")["region"].string, "federal")
-        // the game-scaled minima follow the market wage (85% of the cheapest wage), so they stay below the real figure
-        for code in ["SE", "PL", "LT", "KR", "BR", "MX", "IT", "FI"] {
-            XCTAssertGreaterThan(rule(code)["realMinMonthly"].double, LabourRules(code: code).minMonthly, "\(code) scaled below real")
-        }
+        // no game-scaled minimum is left: the field holds the real figure
+        for code in ["NO", "SE", "PL", "LT", "KR", "BR", "MX", "IT", "FI"] { XCTAssertTrue(rule(code)["realMinMonthly"].isNull, code) }
     }
 }

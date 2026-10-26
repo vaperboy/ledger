@@ -125,7 +125,8 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var registrationFee: Double
     public var conversionFee: Double
     public var companyForms: [String: String]
-    public var leaveWeeks: Double
+    /// Added to the policy rate to get the overdraft rate (`economy.overdraftMargin`).
+    public var overdraftMargin: Double
     /// Fuel price, mileage rate, motor insurance, road tax and company-car benefit, where the data has sourced figures (empty otherwise).
     public var vehicleRules: VehicleRules = .none
     public var firstNames: [String]
@@ -139,10 +140,6 @@ public struct Country: Equatable, Sendable, Identifiable {
 
     /// Employer's total payroll multiplier: wages cost this much more than the gross pay. Original: `OC()`.
     public var employerCostFactor: Double { 1 + employerSocial + employerPension + employerInjury }
-
-    /// The employer's whole on-cost rate for one wage (accounting units a month): contributions by the country's table or flat rate, plus pension
-    /// and injury cover. The one rate that payroll, notice, severance, bonuses and vehicle benefits all use.
-    public func employerOnCost(monthlyWage: Double) -> Double { employerSocialRate(monthlyWage: monthlyWage) + employerPension + employerInjury }
 
     /// What one unit of pay at this wage costs the employer: `1 + employerOnCost`.
     public func payrollFactor(monthlyWage: Double) -> Double { 1 + employerOnCost(monthlyWage: monthlyWage) }
@@ -158,6 +155,10 @@ public struct Country: Equatable, Sendable, Identifiable {
         }
         return charged / monthlyWage + statePayrollTax
     }
+
+    /// The employer's full on-cost rate for one wage: contributions (`employerSocialRate`) plus pension and injury. The one rate behind payroll
+    /// (`employerCostFactor` is 1 + this at the median wage), notice paid in lieu, contract talks and vehicle running costs.
+    public func employerOnCost(monthlyWage: Double) -> Double { employerSocialRate(monthlyWage: monthlyWage) + employerPension + employerInjury }
 
     /// Median monthly gross wage in accounting units: the reference economy's median times this country's wage level.
     /// Every money limit that is really "a number of months of an ordinary wage" (loan floors, income assumptions) derives from this.
@@ -247,7 +248,7 @@ extension Country {
         registrationFee = jsRound(B(p["companies"]["registrationFee"].double))
         conversionFee = B(p["companies"]["conversionFee"].double)
         companyForms = p["companies"]["forms"].object.mapValues { $0.string }
-        leaveWeeks = p["work"]["leaveWeeks"].double
+        overdraftMargin = eco["overdraftMargin"].isNull ? 0.10 : eco["overdraftMargin"].double
         vehicleRules = VehicleRules(pack: p)
         firstNames = p["names"]["first"].array.map { $0.string }
         lastNames = p["names"]["last"].array.map { $0.string }

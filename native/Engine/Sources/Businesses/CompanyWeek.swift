@@ -472,7 +472,7 @@ public enum CompanyWeek {
         co = s.companies[i]
         if co.cash < 0 {
             co.weeksNegative += 1
-            let interest = -co.cash * 0.14 / 52
+            let interest = -co.cash * Banking.overdraftRate(state: s, country: w3.country(co), home: w3.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)) / 52
             s.companies[i] = co
             Ledger.moveRaw(&s, .company(id), -interest)
             var b = s.companies[i].books; b.add("int", interest); s.companies[i].books = b

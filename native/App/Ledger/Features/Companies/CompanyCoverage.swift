@@ -89,7 +89,7 @@ struct CompanyCoverageScreen: View {
                             Image(systemName: p.isOn ? "checkmark.shield.fill" : "shield").foregroundStyle(p.isOn ? Theme.gain : Theme.ivoryFaint)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(p.blurb).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
+                                Text(p.blurb.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 1) {

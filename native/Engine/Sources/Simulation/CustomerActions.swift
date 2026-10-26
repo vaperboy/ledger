@@ -187,7 +187,9 @@ public extension GameEngine {
         update { s, d, _ in r = KeyAccounts.meet(&s, companyID: companyID, accountID: accountID, data: d) }
         return r
     }
-    mutating func dropAccount(companyID: Int, accountID: Int) { update { s, _, _ in KeyAccounts.drop(&s, companyID: companyID, accountID: accountID) } }
+    /// True when the key-account contract existed and is ended.
+    @discardableResult
+    mutating func dropAccount(companyID: Int, accountID: Int) -> Bool { var ok = false; update { s, _, _ in ok = KeyAccounts.drop(&s, companyID: companyID, accountID: accountID) }; return ok }
     mutating func setAccountDiscount(companyID: Int, accountID: Int, percent: Int) { update { s, _, _ in KeyAccounts.setDiscount(&s, companyID: companyID, accountID: accountID, percent: percent) } }
 
     // MARK: Rivals
@@ -396,8 +398,14 @@ public extension GameEngine {
                          backupsCost: Cyber.monthly(co, level: 0, backups: true, cur: cur), trainingCost: Cyber.trainingCost(co, cur: cur), insured: co.value("ins")["cyber"].bool,
                          monthlyNow: Cyber.monthly(co, level: st.level, backups: st.backups, cur: cur), heads: Cyber.heads(co))
     }
-    mutating func setCyberLevel(companyID: Int, level: Int) { update { s, _, _ in Cyber.setLevel(&s, companyID: companyID, level: level) } }
-    mutating func toggleBackups(companyID: Int) { update { s, _, _ in Cyber.toggleBackups(&s, companyID: companyID) } }
+    @discardableResult
+    mutating func setCyberLevel(companyID: Int, level: Int) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.company(companyID)?.value("cy56") ?? .null }) { s, _, _ in Cyber.setLevel(&s, companyID: companyID, level: level) }
+    }
+    @discardableResult
+    mutating func toggleBackups(companyID: Int) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.company(companyID)?.value("cy56") ?? .null }) { s, _, _ in Cyber.toggleBackups(&s, companyID: companyID) }
+    }
     mutating func trainStaff(companyID: Int) -> ActionResult {
         var msg: String?
         update { s, d, _ in msg = Cyber.train(&s, companyID: companyID, data: d) }
@@ -421,7 +429,9 @@ public extension GameEngine {
         update { s, d, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage, data: d) }
         return r
     }
-    mutating func fireDataAnalyst() { update { s, _, _ in MarketMap.fireDataAnalyst(&s) } }
+    /// True when there was a data analyst to let go.
+    @discardableResult
+    mutating func fireDataAnalyst() -> Bool { var ok = false; update { s, _, _ in ok = MarketMap.fireDataAnalyst(&s) }; return ok }
     func economyWeight() -> MarketMap.Weight { MarketMap.weight(state, data: data) }
     /// Ask your market analyst for a report now (market map), or your data analyst for one on a company or all of them.
     mutating func orderMarketReport(marketKey: String) -> ActionResult {
@@ -498,9 +508,20 @@ public extension GameEngine {
         update { s, d, _ in r = SoftwareProducts.start(&s, companyID: companyID, type: type, model: model, name: name, data: d) }
         return r
     }
-    mutating func setSoftwareCoders(companyID: Int, coders: Int) { update { s, _, _ in SoftwareProducts.setCoders(&s, companyID: companyID, coders: coders) } }
+    @discardableResult
+    mutating func setSoftwareCoders(companyID: Int, coders: Int) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let co = s.company(companyID), !co.value("swp").isNull else { return "This company has no software product." }
+            if coders > 10 { return "Ten coders is the most." }
+            if coders < 0 { return "There are no coders left to let go." }
+            return nil
+        }, probe: { $0.company(companyID)?.value("swp") ?? .null }) { s, _, _ in SoftwareProducts.setCoders(&s, companyID: companyID, coders: coders) }
+    }
     mutating func setSoftwareSelfCoding(companyID: Int, on: Bool) { update { s, _, _ in SoftwareProducts.setSelfCoding(&s, companyID: companyID, on: on) } }
-    mutating func setSoftwareModel(companyID: Int, model: String) { update { s, d, _ in SoftwareProducts.setModel(&s, companyID: companyID, model: model, data: d) } }
+    @discardableResult
+    mutating func setSoftwareModel(companyID: Int, model: String) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in SoftwareProducts.setModel(&s, companyID: companyID, model: model, data: d) }
+    }
     mutating func setSoftwareInternalPercent(companyID: Int, percent: Int) { update { s, _, _ in SoftwareProducts.setInternalPercent(&s, companyID: companyID, percent: percent) } }
     func ownSoftwareOffers(buyerID: Int, equipmentName: String) -> [SoftwareProducts.Offer] { SoftwareProducts.offers(state, equipmentName: equipmentName, buyerID: buyerID) }
     mutating func useOwnSoftware(companyID: Int, equipmentID: String, producerID: Int) -> SoftwareProducts.AdoptResult {
