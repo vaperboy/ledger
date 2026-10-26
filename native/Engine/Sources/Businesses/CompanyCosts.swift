@@ -91,6 +91,22 @@ public enum CompanyCosts {
         return (bd.fixedWeekly * size06 + Knobs.effect(co, bd, "w", w, sum: true)) * w.inflationIndex
     }
 
+    /// The week's instalments on leased equipment (service included) and leased vehicles, with their input VAT. A lease is a contract: it runs while
+    /// the company is open or temporarily closed, and ends only when the company is wound up or fails (`EquipmentMarket.endAllLeases`).
+    static func leaseInstalments(_ s: inout GameState, companyIndex i: Int, data: GameData) {
+        let id = s.companies[i].id
+        for (_, monthly) in s.companies[i].value("eqL").object.sorted(by: { $0.key < $1.key }) where monthly.double > 0 {
+            let amount = monthly.double / 4.33
+            Payments.companyPays(&s, companyID: id, amount: amount, category: "oth")
+            Vat.input(&s, companyIndex: i, net: amount, data: data)
+        }
+        for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {
+            let amount = v["lease"].double * 12 / 52
+            Payments.companyPays(&s, companyID: id, amount: amount, category: "oth")
+            Vat.input(&s, companyIndex: i, net: amount, data: data)
+        }
+    }
+
     /// Accountant's fee for the week. Original: `accWeek`.
     public static func accountant(_ co: Company, _ w: World) -> Double {
         let c = w.currency(co)

@@ -53,6 +53,7 @@ public enum Failure {
         if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
         s.companies[i].staff = []
         s.companies[i].managerID = nil
+        EquipmentMarket.endAllLeases(&s, companyIndex: i)   // the lessors take their things back
         s.companies[i].status = .bust
         Ledger.set(&s, .company(co.id), to: 0)
         s.stats.bankruptcies += 1
