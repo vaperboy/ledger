@@ -3,8 +3,9 @@ import Simulation
 import Finance
 import Businesses
 
-/// Today's summary, the top of the Company tab: net worth with its chart and four figures, the report prompt and a few priorities
-/// (the companies list follows below it, then the Next day bar). First steps and goals live in More > Goals; "Coming up" is in Money.
+/// Today's summary, the top of the Company tab, in the order a business owner reads it: what I am worth and where it is heading,
+/// whether the money holds this month (profit, cash, what falls due), what needs me, then a quiet line for a finished report.
+/// The companies list follows below it, then the Next day bar. First steps and goals live in More > Goals.
 struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     var engine: GameEngine
@@ -15,13 +16,14 @@ struct HomeSummary: View {
             HomeHeader(engine: e)
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.xl) {
-                    VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e) }
-                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e) }
+                    VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e); MoneyPulseSection(engine: e) }
+                    VStack(spacing: Theme.Space.l) { SuggestionCard(engine: e); ReportPromptSection(engine: e) }
                 }
             } else {
                 NetWorthSection(engine: e)
-                ReportPromptSection(engine: e)
+                MoneyPulseSection(engine: e)
                 SuggestionCard(engine: e)
+                ReportPromptSection(engine: e)
             }
         }
     }
@@ -74,12 +76,7 @@ struct NetWorthSection: View {
                 .minimumScaleFactor(0.55).lineLimit(1)
             changeLine(week: week, month: month)
             NetWorthChart(engine: engine, days: days).padding(.top, 6)
-            KeyFigures(items: [
-                .init(label: CashWording.personal, value: store.short(nw.personal)),
-                .init(label: "Invested", value: store.short(nw.investments)),
-                .init(label: "Companies", value: store.short(nw.companies)),
-                .init(label: "Debt", value: owed > 0 ? "−" + store.short(owed) : store.short(0), tint: owed > 0 ? Theme.loss : Theme.ivory),
-            ], columns: 4).padding(.top, 10)
+            NetWorthMix(nw: nw, owed: owed).padding(.top, 8)
         }
     }
 
@@ -117,6 +114,92 @@ struct PeriodPicker: View {
             }
         }
     }
+}
+
+/// What the net worth is made of: one flat bar (neutral shades, no decorative colour) and a single legend line. Secondary to
+/// the figure itself, so it stays small; what is owed shows in red only when there is something owed.
+struct NetWorthMix: View {
+    @EnvironmentObject var store: GameStore
+    var nw: NetWorth
+    var owed: Double
+
+    var body: some View {
+        let parts: [(label: String, value: Double, shade: Double)] = [
+            ("Private", nw.personal, 0.85), ("Companies", nw.companies, 0.55), ("Invested", nw.investments, 0.35), ("Luxury", nw.luxury, 0.2),
+        ].filter { $0.value > 0.5 }
+        let sum = max(1, parts.reduce(0) { $0 + $1.value })
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { g in
+                HStack(spacing: 1.5) {
+                    ForEach(parts, id: \.label) { p in
+                        Rectangle().fill(Theme.ivory.opacity(p.shade)).frame(width: max(2, (g.size.width - 1.5 * Double(parts.count - 1)) * p.value / sum))
+                    }
+                }
+            }
+            .frame(height: 4)
+            WrapRow(spacing: 10) {
+                ForEach(parts, id: \.label) { p in
+                    HStack(spacing: 4) {
+                        Rectangle().fill(Theme.ivory.opacity(p.shade)).frame(width: 7, height: 7)
+                        Text(p.label).foregroundStyle(Theme.ivoryFaint)
+                        Text(store.short(p.value)).foregroundStyle(Theme.ivoryMuted)
+                    }
+                }
+                if owed > 0.5 {
+                    HStack(spacing: 4) {
+                        Text("Owed").foregroundStyle(Theme.ivoryFaint)
+                        Text("−" + store.short(owed)).foregroundStyle(Theme.loss)
+                    }
+                }
+            }
+            .font(.system(size: 11.5).monospacedDigit())
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: This month
+
+/// The second thing an owner asks after "what am I worth": does the money hold? Profit this month across every company, the cash
+/// that can pay, and what falls due in the next 30 days, with a clear covered/short answer. Tapping it opens Group > Money.
+struct MoneyPulseSection: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+
+    var body: some View {
+        let o = engine.financeOverview(companyID: nil)
+        let short = o.shortfall > 0
+        let profitTint: Color = o.monthProfit < -0.5 ? Theme.loss : o.monthProfit > 0.5 ? Theme.gain : Theme.ivory
+        let dueSub: String = short ? "short by " + store.short(o.shortfall) : (o.dueWithin30Days > 0.5 ? "covered" : "nothing due")
+        Button {
+            Haptics.tap(); store.moneySection = .overview; store.jump(to: .group)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("This month").capsLabel()
+                    Spacer()
+                    HStack(spacing: 3) {
+                        Text("Money").font(.system(size: 11.5))
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                    }.foregroundStyle(Theme.gold)
+                }
+                KeyFigures(items: [
+                    .init(label: "Profit", value: signed(o.monthProfit), tint: profitTint, sub: "year " + signed(o.yearProfit)),
+                    .init(label: CashWording.group, value: store.short(o.cashAvailable), tint: o.cashAvailable < 0 ? Theme.loss : Theme.ivory, sub: "incl. private"),
+                    .init(label: "Due in 30 days", value: store.short(o.dueWithin30Days), tint: short ? Theme.loss : Theme.ivory, sub: dueSub),
+                ])
+                if short {
+                    Label("Cash will not cover what falls due. Open Money to see the dates.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens Group money")
+    }
+
+    private func signed(_ v: Double) -> String { abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v)) }
 }
 
 // MARK: Next day

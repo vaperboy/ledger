@@ -6,36 +6,44 @@ struct ReportPromptSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
 
+    /// A finished week, month or year report is news, not a headline: one quiet row under the priorities with the result and a
+    /// way to read it. The full report lives in Group > Money > Reports.
     var body: some View {
         if let r = engine.pendingReportPrompt() {
             let net = r.group.pnl.netProfit
-            LedgerSection(title: "Last " + r.kind.noun, trailing: {
+            HStack(alignment: .center, spacing: 10) {
+                Button {
+                    store.reportRequest = ReportRef(kind: r.kind, id: r.id)
+                    store.moneySection = .reports
+                    store.jump(to: .group)
+                    store.act { $0.dismissReportPrompt(r) }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "doc.text").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(width: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(r.title) report is ready").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                            HStack(spacing: 4) {
+                                Text("Profit").foregroundStyle(Theme.ivoryFaint)
+                                Text(signed(net)).foregroundStyle(Theme.change(net))
+                                Text("· net worth").foregroundStyle(Theme.ivoryFaint)
+                                Text(signed(r.netWorthChange)).foregroundStyle(Theme.change(r.netWorthChange))
+                            }
+                            .font(.system(size: 12).monospacedDigit())
+                        }
+                        Spacer(minLength: 6)
+                        Text("Read").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 Button { store.act { $0.dismissReportPrompt(r) } } label: {
                     Image(systemName: "xmark").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.ivoryFaint).padding(6)
                 }
                 .buttonStyle(.plain).accessibilityLabel("Dismiss the report")
-            }) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(store.short(net)).font(.hero(26)).foregroundStyle(net < 0 ? Theme.loss : Theme.ivory)
-                        Text("profit · " + r.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                        Spacer(minLength: 8)
-                        Text(signed(r.netWorthChange)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.change(r.netWorthChange))
-                        Text("net worth").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    if let first = r.summary.first {
-                        Text(first.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                    }
-                    Button {
-                        store.reportRequest = ReportRef(kind: r.kind, id: r.id)
-                        store.moneySection = .reports
-                        store.jump(to: .group)
-                        store.act { $0.dismissReportPrompt(r) }
-                    } label: {
-                        Text("Read the full report")
-                    }.buttonStyle(QuietButtonStyle())
-                }
             }
+            .padding(.vertical, 10)
+            .overlay(alignment: .top) { Hairline() }
         }
     }
 

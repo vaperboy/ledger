@@ -30,7 +30,7 @@ only where something can be acted on. Flat by default; compact cards only where 
 Spacing: screen margin 22, section gap 16, row padding 9–10. Corners: 0 for content; capsule for the Next day pill and chips only.
 
 ## Screen recipes
-- **Home**: date + country line, player name (serif 25), NET WORTH label with 1W/1M/1Y/ALL at the right, hero (serif 40), change line, chart, 4-up key figures, NEEDS YOUR ATTENTION (icon, company, text, chevron), COMPANIES (dot, name · trade, profit, cash), Next day pill.
+- **Home** (owner's order, 26 Oct): date + country line, player name (serif 25), NET WORTH label with 1W/1M/3M/1Y/ALL, hero (serif 40), change line, chart, a thin neutral composition bar with one legend line (Private, Companies, Invested, Luxury, Owed in red); THIS MONTH (tappable to Money): Profit (year below) | Cash across group | Due in 30 days (covered / short by, red warning line when short); PRIORITIES (icon, text, action, chevron, See all in Inbox); a quiet one-row 'report is ready' line with Read and dismiss; COMPANIES; Next day pill.
 - **Group**: title, VALUE OF HOLDINGS hero (serif 36) + 30-day change, allocation bar (flat segments), 3 × 2 key figures, revenue/profit chart, table Company | Value | Profit | revenue sparkline with health under the name.
 - **Company**: back link, name (serif 26), trade · city · form · health, underline section tabs, PROFIT hero (serif 34) with margin and revenue growth at the right, key figures, chart, WHAT IS GOING ON with section links, LAST WEEK with thin bars and the bottleneck.
 - **Lists and forms** (Bank, Settings, Invest, Staff…): rows with a hairline between, label left, value right, chevron when it opens; grouped by small-caps headers. Controls are text-weight, not filled.
