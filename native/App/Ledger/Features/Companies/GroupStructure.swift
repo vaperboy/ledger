@@ -116,6 +116,35 @@ struct GroupStructureOverview: View {
         chainsSection(chains)
         franchiseSection(franchisors, franchised, chains: chains)
         standAloneSection(alone)
+        dividendsAndTax(live)
+    }
+
+    // MARK: Dividends and group tax
+
+    /// Last quarter's dividend decision and the group-tax position, per company, for the companies that have either. Read-only; each row opens the company's Finances.
+    @ViewBuilder private func dividendsAndTax(_ live: [Company]) -> some View {
+        let rows = live.filter { engine.lastDividendDecision(companyID: $0.id) != nil || engine.groupTaxContribution(companyID: $0.id) != nil }
+        if !rows.isEmpty {
+            LedgerSection(title: "Dividends and group tax", trailing: { Text("\(rows.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(rows.prefix(8).enumerated()), id: \.element.id) { n, c in
+                        if n > 0 { Hairline() }
+                        let cur = engine.currency(for: c)
+                        let d = engine.lastDividendDecision(companyID: c.id)
+                        let t = engine.groupTaxContribution(companyID: c.id)
+                        let net: (_ v: (out: Double, in: Double)) -> Double = { $0.in - $0.out }
+                        NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
+                            GroupLinkRow(title: c.name,
+                                         sub: (d.map { ($0.paid > 0 ? "Last quarter paid \(cur.tidyShort($0.paid))" : "Last quarter skipped") + " on profit \(cur.tidyShort($0.profit))" } ?? "No dividend decided yet")
+                                            + (t.map { " · group tax this year \(cur.tidyShort(net($0.thisYear))), last year \(cur.tidyShort(net($0.lastYear)))" } ?? ""),
+                                         subTint: (d?.paid ?? 1) > 0 ? Theme.ivoryFaint : Theme.caution)
+                        }.buttonStyle(.plain)
+                    }
+                    if rows.count > 8 { Text("The rest are in each company's Finances.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6) }
+                    Text("Group tax is what came in (+) or went out (−) between group companies. The policy is set in the company's owners.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
+            }
+        }
     }
 
     // MARK: Stand alone
