@@ -204,7 +204,7 @@ public enum Payday {
         let payMonth = cfg.lateSince != nil ? cfg.lateMonth : mi
         if cfg.ownerPaidMonth != payMonth && ownerOnPayroll(co) {
             cfg.ownerPaidMonth = payMonth
-            let cost = co.ownerMonthlySalary * country.employerCostFactor
+            let cost = co.ownerMonthlySalary * country.payrollFactor(monthlyWage: co.ownerMonthlySalary)
             s.companies[i].addPayable("wages", cost)
             Payments.book(&s, companyID: co.id, category: "wages", amount: cost)
             co = s.companies[i]

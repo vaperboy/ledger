@@ -26,21 +26,17 @@ public enum Wages {
     }
 }
 
-/// What the payroll costs. The one place that adds up a company's pay for a week: the weekly accrual (`CompanyCosts.wages`), the estimates of
-/// the cash due, the weekly cost behind runway and overdraft room, the event formulas and the team screens all read it, so they cannot drift apart.
+/// What the payroll costs. The one place that adds up a company's standing pay for a week: the weekly accrual (`CompanyCosts.wages`), the estimates
+/// of the cash due, the weekly cost behind runway and overdraft room and the event formulas all read it, so they cannot drift apart.
 public enum Payroll {
-    /// Gross pay of one week before commission and bonuses: the staff on the payroll (not those laid off for the season) with cover for paid
-    /// leave and sick days added, and the manager.
-    public static func weeklyGross(_ co: Company, country: Country) -> Double {
+    /// One week of standing payroll with the employer's on-cost: staff pay with cover for paid leave and sick days (those laid off for the season
+    /// left out unless asked), plus the manager. Each wage carries its own on-cost rate (`Country.payrollFactor`), which matters where
+    /// contributions are capped. Commission and bonuses are not included.
+    public static func weeklyCost(_ co: Company, country: Country, skipOffSeason: Bool = true) -> Double {
         let cover = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3
-        var gross = co.staff.reduce(0) { $0 + ($1.isOffSeason ? 0 : $1.monthlyWage * 12 / 52 * cover) }
-        if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
-        return gross
+        var cost = 0.0
+        for m in co.staff where !(skipOffSeason && m.isOffSeason) { cost += m.monthlyWage * 12 / 52 * cover * country.payrollFactor(monthlyWage: m.monthlyWage) }
+        if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
+        return cost
     }
-
-    /// The same for a month.
-    public static func monthlyGross(_ co: Company, country: Country) -> Double { weeklyGross(co, country: country) * 52 / 12 }
-
-    /// A week of payroll with the employer's charges.
-    public static func weeklyCost(_ co: Company, country: Country) -> Double { weeklyGross(co, country: country) * country.employerCostFactor }
 }

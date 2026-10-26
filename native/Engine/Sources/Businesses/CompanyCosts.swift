@@ -46,10 +46,8 @@ public enum CompanyCosts {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        var gross = Payroll.weeklyGross(co, country: country)   // pay with leave cover, and the manager
-        gross += co.status == .closed ? 0 : commission(&co, bd, w)
-        gross *= f
-        let cost = gross * country.employerCostFactor
+        let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
+        let cost = (Payroll.weeklyCost(co, country: country) + commissionPay * country.employerCostFactor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * country.employerCostFactor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }

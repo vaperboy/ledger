@@ -83,7 +83,4 @@ public extension GameEngine {
     func tradeName(_ co: Company) -> String { data.catalog[co.type]?.name ?? co.type }
     func cityName(_ co: Company) -> String { data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? co.cityID }
     func currency(for co: Company) -> Currency { context.currency(co.countryCode, state) }
-
-    /// The company's last twelve closed months, oldest first.
-    func monthlyProfitSeries(_ co: Company) -> [Double] { co.monthlyHistory.suffix(12).map { $0.profit } }
 }

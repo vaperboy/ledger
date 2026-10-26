@@ -148,7 +148,7 @@ public struct GameEngine {
             if m.actionID == "acct" { KeyAccounts.answer(&s, message: m, option: idx); return true }
             if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
-            if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }
+            if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }   // rival group bids ("g27bid")
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
@@ -156,8 +156,13 @@ public struct GameEngine {
             if Stories.handlesAnswer(m.actionID) { Stories.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == Press.interviewAction { Press.answerInterview(&s, questionIndex: m.value("data")["q"].int, option: idx); return true }
             if m.actionID == WeatherEvents.prepareAction { WeatherEvents.answerPrepare(&s, data: d, message: m, option: idx); return true }
-            Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
-            return true
+            if m.actionID == "pay29" || m.actionID == "pay29all" {
+                Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
+                return true
+            }
+            // An action nobody handles must not be marked as answered: the message stays open and the problem is logged.
+            s.note("Unknown inbox action \"\(m.actionID)\": the answer was not applied.", tone: "bad")
+            return false
         }
         if ok { ReportCounters.add(&state, ReportCounters.Key.answered, 1) }
         return ok
@@ -252,6 +257,7 @@ public struct GameEngine {
         for i in state.companies.indices {
             let id = state.companies[i].id
             guard let b = coBefore[id] else { continue }
+            guard state.companies[i].status.isLive else { continue }   // sold or bust during the week: nothing is held back for a company that is gone
             let d = state.companies[i].cash - b
             if d != 0 {
                 var one = 0.0

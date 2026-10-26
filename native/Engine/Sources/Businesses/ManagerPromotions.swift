@@ -193,7 +193,6 @@ extension ManagerModel {
         let co = s.companies[ci]
         let first = firstName(n.name)
         let cur = World(state: s, data: data).currency(co)
-        n.set("promoPost", post.id)
         let k11: JSONValue = .object(["post": .string(post.id), "t": .string(post.title), "wage": .number(w), "bonus": .number(u.bonus), "duties": .array(u.duties.map { .string($0) }), "auth": .number(Double(u.authority)),
                                       "rep": .string(u.report), "w0": .number(Double(s.week)), "from": .object(["co": .number(Double(co.id)), "role": .string(c.role)])])
         let shares = u.sharesPercent > 0 && co.form == .limited && co.ownership > u.sharesPercent

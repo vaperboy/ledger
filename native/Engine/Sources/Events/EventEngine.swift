@@ -33,14 +33,22 @@ public enum EventEngine {
     }
 
     /// Replace formulas in an effects object by their rounded numbers. Original: `resolveFx`.
-    static func resolve(_ fx: JSONValue, _ ctx: Context) -> JSONValue {
+    ///
+    /// Money amounts written as plain numbers (`cash`, `fine`, `loss`, `bonus`, `owner`) are at the reference price level and are
+    /// scaled here to the company's country (`currency.scaledPrice`). Amounts from a formula are already in the company's money
+    /// (they come from its own weekly figures) and are not scaled again.
+    static let moneyKeys: Set<String> = ["cash", "fine", "loss", "bonus", "owner"]
+    static func resolve(_ fx: JSONValue, _ ctx: Context, currency: Currency? = nil) -> JSONValue {
         switch fx {
         case .object(let o):
             if let e = o["expr"], o.count == 1 { return .number(jsRound(Formula(e.string).evaluate(ctx.variables))) }
             var out: [String: JSONValue] = [:]
-            for (k, v) in o { out[k] = resolve(v, ctx) }
+            for (k, v) in o {
+                if let cur = currency, moneyKeys.contains(k), case .number(let n) = v { out[k] = .number(cur.scaledPrice(n)) }
+                else { out[k] = resolve(v, ctx, currency: currency) }
+            }
             return .object(out)
-        case .array(let a): return .array(a.map { resolve($0, ctx) })
+        case .array(let a): return .array(a.map { resolve($0, ctx, currency: currency) })
         default: return fx
         }
     }
@@ -111,20 +119,21 @@ public enum EventEngine {
 
     static func fire(_ s: inout GameState, companyIndex i: Int, _ e: GameEvent, ctx: Context, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
+        let cur = Currency(country: fc.country(of: co, s), rates: fc.rates(s))
         if SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) { return }
         var title = e.text.replacingOccurrences(of: "{n}", with: co.name)
         // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
         title = title.replacingOccurrences(of: "{eq}", with: machine)
         if e.automatic {
-            apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx), ctx: ctx, event: e, data: data, context: fc)
+            apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx, currency: cur), ctx: ctx, event: e, data: data, context: fc)
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)
             s.note(title, tone: e.tone, companyID: co.id)
             return
         }
         if e.options.isEmpty { s.note(title, tone: e.tone, companyID: co.id); return }
         if e.lawyerHelps && co.value("law")["own"].bool { title += " Your law firm handles it, costs drop." }
-        let options = e.options.map { JSONValue.option($0.label, $0.detail, effects: resolve($0.effects, ctx).object) }
+        let options = e.options.map { JSONValue.option($0.label, $0.detail, effects: resolve($0.effects, ctx, currency: cur).object) }
         let decision = decider(co, options: options, state: s)
         if decision == .manager {
             let pick = choose(co, options: options, ctx: ctx, quality: ManagerModel.quality(co, bd(data, co), people: s.people), random: &s.random)

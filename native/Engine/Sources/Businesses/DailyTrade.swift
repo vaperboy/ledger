@@ -312,8 +312,6 @@ public enum DailyTrade {
             staff[k].raw["ws"] = .null
         }
         co.staff = staff
-        let ow = co.value("ows")
-        co.set("olw", (!ow.isNull && ow["w"].int == wk) ? .object(["u": .number(ow["u"].double), "r": .number(ow["r"].double)]) : .null)
         co.raw["ows"] = .null
         s.companies[i] = co
         if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay, category: "wages") }

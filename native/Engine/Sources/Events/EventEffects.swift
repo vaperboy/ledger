@@ -22,10 +22,9 @@ extension EventEngine {
             let g = fx["gamble"]
             apply(&s, companyIndex: i, s.random.chance(g["p"].double) ? g["ok"] : g["bad"], ctx: ctx, event: e, data: data, context: fc)
         }
-        // Whole thousands are written at the reference price level and scaled to the company's country.
-        func scaled(_ v: Double) -> Double { v == v.rounded() && abs(v).truncatingRemainder(dividingBy: 1000) == 0 ? (v < 0 ? -1 : 1) * currency.scaledPrice(abs(v)) : v }
+        // Amounts arrive already in the company's money: `EventEngine.resolve` scaled the reference-level numbers.
         if fx["cash"].double != 0 {
-            let fc2 = scaled(fx["cash"].double)
+            let fc2 = fx["cash"].double
             if fc2 < 0 { Payments.companyPays(&s, companyID: id, amount: -fc2, category: "oth", label: "Event cost") }
             else { Payments.companyReceives(&s, companyID: id, amount: fc2, category: "rev", label: "Event income") }
         }
@@ -57,7 +56,7 @@ extension EventEngine {
         }
         if fx["warn"].bool { addModifier(&s, i, key: "dem", multiplier: 0.93, weeks: 6) }
         if fx["fine"].double != 0 {
-            Payments.companyPays(&s, companyID: id, amount: scaled(fx["fine"].double), category: "fine", label: "Fine")
+            Payments.companyPays(&s, companyID: id, amount: fx["fine"].double, category: "fine", label: "Fine")
         }
         var co = s.companies[i]
         if fx["rep"].double != 0 { co.reputation = clamp(co.reputation + fx["rep"].double * 1.5, 0, 100) }
