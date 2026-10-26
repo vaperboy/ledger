@@ -20,6 +20,9 @@ public enum Vat {
         return w.country(co).vat.rate(for: bd.vatCategory)
     }
 
+    /// Trade families whose income (interest, premiums, fees on money) is an exempt supply.
+    static let exemptSupplyFamilies: Set<String> = ["fin", "hold"]
+
     /// Input VAT on a purchase of `net` (repairs, lease instalments, fuel, premises upkeep): standard-rated supplies. A VAT-registered company
     /// reclaims it through its VAT account; one below the threshold cannot, and it becomes a cost. Insurance premiums and interest are exempt
     /// supplies and never come here. Sales-tax countries have no reclaimable input tax. The country data has no passenger-car restriction, so
@@ -32,7 +35,10 @@ public enum Vat {
         let vat = jsRound(net * country.vat.standard)
         guard vat > 0 else { return }
         Ledger.moveRaw(&s, .company(co.id), -vat)
-        if isExempt(s.companies[i], w) {
+        // A company whose supplies are all exempt (banking, insurance, funds, a holding living on interest) charges no VAT and so cannot
+        // reclaim any: the input VAT is a cost for it however large its turnover.
+        let exemptSupplier = data.catalog[co.type].map { exemptSupplyFamilies.contains($0.family) } ?? false
+        if exemptSupplier || isExempt(s.companies[i], w) {
             var b = s.companies[i].books; b.add("oth", vat); s.companies[i].books = b
         } else {
             s.companies[i].vatBalance -= vat
