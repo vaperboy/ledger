@@ -62,11 +62,11 @@ public enum Valuation {
         let stockPrices = s.rest["stocks"]?.object ?? [:]
         let cryptoPrices = s.rest["crypto"]?.object ?? [:]
         let inv = s.rest["inv"] ?? .null
-        for (sym, h) in inv["stocks"].object { stocks += h["q"].double * (stockPrices[sym]?["p"].double ?? 0) }
-        for (sym, h) in inv["crypto"].object { crypto += h["q"].double * (cryptoPrices[sym]?["p"].double ?? 0) }
+        for (sym, h) in inv["stocks"].object.sorted(by: { $0.key < $1.key }) { stocks += h["q"].double * (stockPrices[sym]?["p"].double ?? 0) }
+        for (sym, h) in inv["crypto"].object.sorted(by: { $0.key < $1.key }) { crypto += h["q"].double * (cryptoPrices[sym]?["p"].double ?? 0) }
         for d in inv["deposits"].array { funds += d["bal"].double }
         let fundPx = s.rest["fundPx"]?.object ?? [:]
-        for (k, h) in inv["funds"].object { funds += h["q"].double * (fundPx[k]?.double ?? 100) }
+        for (k, h) in inv["funds"].object.sorted(by: { $0.key < $1.key }) { funds += h["q"].double * (fundPx[k]?.double ?? 100) }
         if let fm = s.rest["fm"], !fm.isNull { funds += fm["bal"].double }
         // Private equity funds the player is invested in
         funds += (s.rest["pe56"]?["mine"].array ?? []).filter { $0["st"].string == "live" }.reduce(0) { $0 + $1["nav"].double }

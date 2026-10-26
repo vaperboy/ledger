@@ -542,7 +542,7 @@ public enum Franchising {
         if f["term"].double > 0 && !f["w0"].isNull && f["end"].isNull { f["end"] = .number(f["w0"].double + f["term"].double * 52) }
         // The brand's marketing fund takes its share of sales; where the agreement requires local marketing, what the unit does not
         // spend itself goes to the fund instead. Both are costs of the franchisee; the brand is outside the player's books.
-        let spent = co.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        let spent = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
         let topUp = max(0, rev * FranchiseStandards.requiredShare(co) - spent)
         let due = rev * (f["roy"].double + f["mkt"].double) + topUp
         let can = max(0, min(due + f["owed"].double, co.cash))

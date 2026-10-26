@@ -600,7 +600,7 @@ public enum FootballModel {
         rev += tv
         var spons = 0.0
         var sp = fm["sp"]
-        for (k, v) in sp.object { if v["until"].double > Double(s.week) { spons += v["wk"].double } else { sp[k] = .null } }
+        for (k, v) in sp.object.sorted(by: { $0.key < $1.key }) { if v["until"].double > Double(s.week) { spons += v["wk"].double } else { sp[k] = .null } }
         sp = .object(sp.object.filter { !$0.value.isNull })
         fm["sp"] = sp
         rev += spons

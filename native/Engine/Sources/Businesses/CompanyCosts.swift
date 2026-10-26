@@ -134,7 +134,7 @@ public enum CompanyCosts {
         var total = 0.0, weight = 0.0, eqv = 0.0
         var upkeep = 0.0
         var eq = co.value("eq")
-        for (id, r) in eq.object {
+        for (id, r) in eq.object.sorted(by: { $0.key < $1.key }) {
             if id == "fit" && r["bv"].double > 0 {
                 let d = min(r["bv"].double, r["cost"].double / ((r["life"].isNull ? 10 : r["life"].double) * 52))
                 eq[id]["bv"] = .number(r["bv"].double - d)
