@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
 import Finance
 import Businesses
 
@@ -138,7 +139,7 @@ public extension GameEngine {
             let first = bosses.first
             let runner = first?.name ?? TeamOverview.you
             let delegated = first != nil
-            let wages = co.staff.reduce(0) { $0 + $1.monthlyWage } + (co.managerID != nil ? co.managerMonthlyWage : 0)
+            let wages = Payroll.monthlyGross(co, country: World(state: s, data: data).country(co))
             let chainID = co.value("chain").isNull ? nil : co.value("chain").int
             var mine: [TeamOverview.Issue] = []
             func add(_ kind: TeamOverview.Issue.Kind, _ title: String, _ detail: String, _ sev: Int, by: String, msg: Int? = nil) {

@@ -9,7 +9,7 @@ extension World {
 
     /// The statutory (or agreed) minimum monthly pay, in accounting units, for someone contracted `hours` a week at this company.
     public func minimumWage(_ co: Company, hours: Double = StaffModel.fullWeekHours) -> Double {
-        labour(co).minimumMonthly(hours: hours, rate: currency(co).rate, inflation: economy.inflation, week: week)
+        labour(co).minimumMonthly(hours: hours, rate: currency(co).rate, inflationIndex: economy.inflationIndex)
     }
 
     /// The one-off payments for letting someone go, kept apart: notice (or pay in lieu, with the employer charge at this wage), severance, and any

@@ -226,7 +226,9 @@ public enum StaffPerks {
             let on = onPerks(co)
             if on.isEmpty { continue }
             let monthly = on.filter { $0.id != "car" }.reduce(0) { $0 + monthlyCost(co, $1, currency: w.currency(co)) }
-            if monthly > 0 { Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52, category: "wages", label: "Staff perks") }
+            // Benefits in kind attract the employer's charges like pay does (the country's shared on-cost at the median wage, as overtime does).
+            let country = w.country(co)
+            if monthly > 0 { Payments.companyPays(&s, companyID: co.id, amount: monthly * 12 / 52 * (1 + country.employerOnCost(monthlyWage: country.medianMonthlyWage)), category: "wages", label: "Staff perks") }
             if on.contains(where: { $0.tiredness > 0 }) {
                 var staff = s.companies[i].staff
                 for k in staff.indices where staff[k].tiredness > 0 {

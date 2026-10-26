@@ -130,7 +130,7 @@ public enum PersonalEquipment {
                 guard let e = bd.equipment.first(where: { $0.id == v["eq"].string }), let std = e.vehicleModels?.first,
                       !veh[v["model"].string].isNull, !veh[std].isNull else { continue }
                 let x = veh[v["model"].string][4].double / max(0.05, veh[std][4].double) - 1
-                if x > 0 { Payments.companyPays(&s, companyID: co.id, amount: x * cur.scaledPrice(450), category: "oth") }
+                if x > 0 { Payments.companyPays(&s, companyID: co.id, amount: x * cur.scaledPrice(450), category: "oth"); Vat.input(&s, companyIndex: i, net: x * cur.scaledPrice(450), data: data) }
             }
         }
     }

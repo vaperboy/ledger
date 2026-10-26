@@ -35,8 +35,8 @@ public struct World {
     }
     public func trade(_ co: Company) -> Trade? { catalog[co.type] }
 
-    /// Prices grow with inflation over the years. Original: `Math.pow(1 + S.econ.infl, S.week / 52)`.
-    public var inflationIndex: Double { pow(1 + economy.inflation, Double(state.week) / 52) }
+    /// Prices grow with inflation over the years: the cumulative index in the economy (each week's inflation applied once).
+    public var inflationIndex: Double { economy.inflationIndex }
 
     /// The competitor market a company sells in. Original: `S.mk[mkKey(co)]`.
     public func market(for co: Company) -> JSONValue? {

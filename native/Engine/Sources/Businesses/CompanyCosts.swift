@@ -46,11 +46,8 @@ public enum CompanyCosts {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
-        var gross = 0.0
-        for m in co.staff where !m.isOffSeason { gross += m.monthlyWage * 12 / 52 * holiday }
+        var gross = Payroll.weeklyGross(co, country: country)   // pay with leave cover, and the manager
         gross += co.status == .closed ? 0 : commission(&co, bd, w)
-        if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
         gross *= f
         let cost = gross * country.employerCostFactor
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
@@ -105,7 +102,7 @@ public enum CompanyCosts {
         if w.state.hasHeadOffice("acc") { fee *= 0.8 }
         let heads = Double(co.staff.count + (co.managerID != nil ? 1 : 0))
         let sz = max(1, pow(heads / 8, 0.6))
-        return fee * sz * pow(1 + max(0, w.economy.inflation), Double(w.week) / 52) * 12 / 52
+        return fee * sz * w.inflationIndex * 12 / 52
     }
 
     /// Insurance premium for one product, per week. Original: `insPremium`.
@@ -182,7 +179,7 @@ public enum CompanyCosts {
         co.set("eqc", weight != 0 ? total / weight : 1)
         co.set("eqv", eqv)
         s.companies[i] = co
-        if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel") }
+        if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel"); Vat.input(&s, companyIndex: i, net: fuel, data: data) }
         if upkeep > 0 {
             let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
             SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)   // on the repair terms agreed (SupplyTerms)
@@ -190,7 +187,7 @@ public enum CompanyCosts {
     }
 
     /// Owned premises follow the housing market and cost 1% of their value per year to keep. Original: `premValueWeek`.
-    public static func premisesValue(_ s: inout GameState, companyIndex i: Int) {
+    public static func premisesValue(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         var co = s.companies[i]
         var prem = co.value("prem")
         guard prem["owned"].bool, prem["val"].double > 0 else { return }
@@ -200,6 +197,8 @@ public enum CompanyCosts {
         prem["hw"] = .number(housing)
         co.set("prem", prem)
         s.companies[i] = co
-        Payments.companyPays(&s, companyID: co.id, amount: prem["val"].double * 0.01 / 52, category: "oth")
+        let upkeep = prem["val"].double * 0.01 / 52
+        Payments.companyPays(&s, companyID: co.id, amount: upkeep, category: "oth")
+        Vat.input(&s, companyIndex: i, net: upkeep, data: data)
     }
 }

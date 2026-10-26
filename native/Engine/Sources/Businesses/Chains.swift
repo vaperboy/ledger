@@ -521,7 +521,7 @@ public enum Chains {
             var changed = false
             for k in staff.indices {
                 guard let base = data.catalog.tables.roles[staff[k].role]?.baseMonthlyWage, let person = s.people[staff[k].id] else { continue }
-                let market = Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: rates)
+                let market = Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: rates)
                 let tgt = market * staff[k].partTimeShare * (0.7 + person.skill / 160) * (1 + ch["rules"]["pay"].double + c.value("off")["pay"].double)
                 if staff[k].monthlyWage < tgt * 0.97 { staff[k].monthlyWage = (tgt / 100).rounded() * 100; changed = true }
             }

@@ -37,6 +37,9 @@ public struct Economy: JSONRecord {
     /// Demand index around 1.0. Original: `dem`.
     public var demand: Double { get { num("dem", 1) } set { set("dem", newValue) } }
     public var inflation: Double { get { num("infl", 0.03) } set { set("infl", newValue) } }
+    /// Cumulative price level since the game began (1 at the start). Grows every week by the inflation of that week (`WorldWeek.economy`), so
+    /// a change in the rate moves prices from then on and never rewrites the past. Every price that follows inflation reads this.
+    public var inflationIndex: Double { get { num("ix", 1) } set { set("ix", newValue) } }
     public var fuel: Double { get { num("fuel", 1) } set { set("fuel", newValue) } }
     public var materials: Double { get { num("mat", 1) } set { set("mat", newValue) } }
     public var power: Double { get { num("power", 1) } set { set("power", newValue) } }

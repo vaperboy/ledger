@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
 import Finance
 import Businesses
 
@@ -19,11 +20,12 @@ public enum EventEngine {
         var variables: [String: Double]
     }
 
-    static func context(for co: Company, data: GameData, employerFactor: Double, costIndex: Double = 1) -> Context {
+    static func context(for co: Company, data: GameData, country: Country) -> Context {
+        let costIndex = country.costIndex
         let h = co.monthlyHistory.suffix(3)
         let wk: Double = !h.isEmpty ? max(h.reduce(0) { $0 + $1.revenue } / (Double(h.count) * 4.35), 1000 * costIndex)
                                     : (co.value("lastW").isNull ? 3000 * costIndex : max(co.lastWeekRevenue, 1000 * costIndex))
-        let pay = co.staff.reduce(0) { $0 + $1.monthlyWage } * 12 / 52 * employerFactor
+        let pay = Payroll.weeklyCost(co, country: country)
         let eqv = co.num("eqv") != 0 ? co.num("eqv") : (CompanyFigures.equipmentBookValue(co) != 0 ? CompanyFigures.equipmentBookValue(co) : 50000 * costIndex)
         let v: [String: Double] = ["wk": wk, "pay": pay, "eqv": eqv, "co.eqc": co.num("eqc", 1), "co.q": co.quality, "co.mgrQ": co.num("mgrQ"),
                                    "co.payGap": co.num("payGap"), "co.books": co.num("books", 0.5), "co.rep": co.reputation]
@@ -55,8 +57,7 @@ public enum EventEngine {
         }
         let w = World(state: s, data: data)
         let risk = Knobs.effect(s.companies[i], bd, "r", w)
-        let employerFactor = w.country(s.companies[i]).employerCostFactor
-        let c = context(for: s.companies[i], data: data, employerFactor: employerFactor, costIndex: w.country(s.companies[i]).costIndex)
+        let c = context(for: s.companies[i], data: data, country: w.country(s.companies[i]))
         for id in bd.eventIDs {
             let co = s.companies[i]
             guard let e = library[id] else { continue }
@@ -198,7 +199,7 @@ public enum EventEngine {
         let m = s.inbox[k]
         guard m.options.indices.contains(idx) else { return false }
         if m.kind == "decision", let i = s.companyIndex(m.companyID) {
-            let ctx = context(for: s.companies[i], data: data, employerFactor: fc.country(of: s.companies[i], s).employerCostFactor, costIndex: fc.country(of: s.companies[i], s).costIndex)
+            let ctx = context(for: s.companies[i], data: data, country: fc.country(of: s.companies[i], s))
             let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
             apply(&s, companyIndex: i, m.options[idx]["fx"], ctx: ctx, event: e, data: data, context: fc)
         } else if !m.actionID.isEmpty {
@@ -223,7 +224,7 @@ public enum EventEngine {
                     let v = -abs(o["fx"]["cash"].double)
                     if v > best { best = v; bestIndex = n }
                 }
-                let ctx = context(for: s.companies[ci], data: data, employerFactor: fc.country(of: s.companies[ci], s).employerCostFactor, costIndex: fc.country(of: s.companies[ci], s).costIndex)
+                let ctx = context(for: s.companies[ci], data: data, country: fc.country(of: s.companies[ci], s))
                 let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
                 apply(&s, companyIndex: ci, m.options[bestIndex]["fx"], ctx: ctx, event: e, data: data, context: fc)
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", bestIndex); s.inbox[k].set("auto", 1)

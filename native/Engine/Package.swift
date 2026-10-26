@@ -23,7 +23,7 @@ let package = Package(
         .target(name: "GameCore"),
         .target(name: "Countries", dependencies: ["GameCore"], resources: [.copy("Resources")]),
         .target(name: "Employees", dependencies: ["GameCore", "Countries"]),
-        .target(name: "Finance", dependencies: ["GameCore", "Countries"]),
+        .target(name: "Finance", dependencies: ["GameCore", "Countries", "Employees"]),
         .target(name: "Businesses", dependencies: ["GameCore", "Countries", "Employees", "Finance"], resources: [.copy("Resources")]),
         .target(name: "Investments", dependencies: ["GameCore", "Countries", "Finance"]),
         .target(name: "Events", dependencies: ["GameCore", "Countries", "Finance", "Businesses"], resources: [.copy("Resources")]),

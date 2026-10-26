@@ -98,9 +98,9 @@ public struct LabourRules: Equatable, Sendable {
 
     /// The lowest monthly pay (accounting units) for someone contracted `hours` a week. It is pro rata to a standard week and follows
     /// inflation like the market wage does. `rate` is the currency's accounting units per local unit.
-    public func minimumMonthly(hours: Double, rate: Double, inflation: Double, week: Int) -> Double {
+    public func minimumMonthly(hours: Double, rate: Double, inflationIndex: Double) -> Double {
         guard hasMinimum else { return 0 }
-        return minMonthly * rate * pow(1 + inflation, Double(week) / 52) * max(0, hours) / stdHours
+        return minMonthly * rate * inflationIndex * max(0, hours) / stdHours
     }
 
     // MARK: Overtime

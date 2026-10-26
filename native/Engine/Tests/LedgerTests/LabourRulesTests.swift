@@ -78,11 +78,11 @@ final class LabourRulesTests: XCTestCase {
 
     func testMinimumWageIsPerWeekAndInflationLinked() {
         let de = LabourRules(code: "DE")
-        let full = de.minimumMonthly(hours: de.stdHours, rate: 10, inflation: 0, week: 0)
+        let full = de.minimumMonthly(hours: de.stdHours, rate: 10, inflationIndex: 1)
         XCTAssertEqual(full, de.minMonthly * 10, accuracy: 1e-6)
-        XCTAssertEqual(de.minimumMonthly(hours: de.stdHours / 2, rate: 10, inflation: 0, week: 0), full / 2, accuracy: 1e-6)
-        XCTAssertGreaterThan(de.minimumMonthly(hours: de.stdHours, rate: 10, inflation: 0.03, week: 104), full)
-        XCTAssertEqual(LabourRules().minimumMonthly(hours: 40, rate: 1, inflation: 0, week: 0), 0, "no entry, no minimum")
+        XCTAssertEqual(de.minimumMonthly(hours: de.stdHours / 2, rate: 10, inflationIndex: 1), full / 2, accuracy: 1e-6)
+        XCTAssertGreaterThan(de.minimumMonthly(hours: de.stdHours, rate: 10, inflationIndex: pow(1.03, 2)), full)
+        XCTAssertEqual(LabourRules().minimumMonthly(hours: 40, rate: 1, inflationIndex: 1), 0, "no entry, no minimum")
     }
 
     func testHiringNeverPaysUnderTheMinimum() throws {

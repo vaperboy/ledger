@@ -100,7 +100,7 @@ public enum RentalModel {
         for (i, f) in [0.35, 0.6, 1, 1.7].enumerated() {
             let units = max(2, jsRound(tUnits * f * r.range(0.85, 1.2)))
             let per = home.roundedStep(tPrice * pow(city.rent, 0.8) * w.economy.housing * r.range(0.9, 1.12), about: 1000)
-            let rentU = jsRound((k == "com" ? 1.8 : 1.3) * bd.ticket * pow(city.rent, 0.8) * r.range(0.9, 1.1) * pow(1 + w.economy.inflation, Double(w.week) / 52))
+            let rentU = jsRound((k == "com" ? 1.8 : 1.3) * bd.ticket * pow(city.rent, 0.8) * r.range(0.9, 1.1) * w.economy.inflationIndex)
             let label: String
             switch k {
             case "res": label = "Block of \(Int(units)) flats"

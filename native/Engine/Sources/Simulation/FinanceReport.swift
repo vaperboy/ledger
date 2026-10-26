@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
 import Finance
 import Businesses
 
@@ -87,7 +88,7 @@ public extension GameEngine {
         var o = FinanceOverview()
         let s = state
         let today = Payday.dayNumber(week: s.week, day: s.day)
-        let cos = s.liveCompanies.filter { $0.type != "hold" && (companyID == nil || $0.id == companyID) }
+        let cos = s.liveCompanies.filter { companyID == nil || $0.id == companyID }   // holding companies too: net worth counts their cash and taxes
         for co in cos {
             let b = co.books
             o.monthRevenue += b.month["rev"] ?? 0; o.monthProfit += Books.profit(b.month)
@@ -138,7 +139,7 @@ public extension GameEngine {
             let country = context.country(of: co, s)
             if Payday.hasPayroll(co) {
                 let np = Payday.nextPay(co, config: cfg, today: today)
-                let est = (co.payables["wages"] ?? 0) + Payday.weeklyWageCost(co, employerFactor: country.employerCostFactor) * Double(max(0, (np - today) / 7))
+                let est = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: country) * Double(max(0, (np - today) / 7))
                 let mode = Payday.mode(of: co, trade: bd, config: cfg)
                 add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, essential: true, company: co.id)
             }

@@ -190,9 +190,11 @@ public enum SupplyTerms {
         let co = s.companies[i]
         guard let t = repairTerm(s, co, data: data) else {
             Payments.companyPays(&s, companyID: co.id, amount: amount, category: "oth", label: label)
+            Vat.input(&s, companyIndex: i, net: amount, data: data)
             return true
         }
         let price = amount * (1 + t.priceEffect)
+        Vat.input(&s, companyIndex: i, net: price, data: data)   // repairs are standard-rated: the VAT is settled with the supplier when the work is done
         if t.days == 0 {
             Payments.companyPays(&s, companyID: co.id, amount: price, category: "oth", label: label)
             return true

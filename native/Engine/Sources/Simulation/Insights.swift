@@ -77,10 +77,10 @@ public extension GameEngine {
         }
         h.rating = Pricing.rating(co)
         h.weeklyCost = weeklyCost(co)
-        h.weeksOfCash = h.weeklyCost > 0 ? max(0, co.cash) / h.weeklyCost : 0
+        h.weeksOfCash = CompanyFigures.weeksOfCash(cash: co.cash, weeklyCost: h.weeklyCost)
         let recent = hist.suffix(3)
         let monthlyProfit = recent.isEmpty ? 0 : recent.reduce(0) { $0 + $1.profit } / Double(recent.count)
-        if monthlyProfit < 0 { h.runwayWeeks = max(0, co.cash) / (-monthlyProfit * 12 / 52) }
+        h.runwayWeeks = CompanyFigures.runwayWeeks(cash: co.cash, weeklyLoss: -monthlyProfit * 12 / 52)
         if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
         if co.status == .open, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) {
             h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label

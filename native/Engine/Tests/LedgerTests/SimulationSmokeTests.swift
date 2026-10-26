@@ -336,7 +336,7 @@ extension SimulationSmokeTests {
                 let co = e.state.company(id)!
                 let w = World(state: e.state, data: e.data)
                 let base = e.data.catalog.tables.roles[role]!.baseMonthlyWage
-                mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, week: e.state.week, rates: w.rates)
+                mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, rates: w.rates)
                 for c in cs { ratios.append(c.askingMonthlyWage / (mkt * (0.7 + c.skill / 160))); skills.append(c.skill); asks.append(c.askingMonthlyWage) }
             }
             let n = Double(ratios.count)
@@ -358,7 +358,7 @@ extension SimulationSmokeTests {
             for m in co.staff {
                 let p = e.state.people[m.id]!
                 let base = e.data.catalog.tables.roles[m.role]!.baseMonthlyWage
-                let mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, week: e.state.week, rates: w.rates)
+                let mkt = Wages.market(baseMonthlyWage: base, country: w.country(co), city: w.city(co)!, economy: e.state.economy, rates: w.rates)
                 let gap = (mkt * (0.7 + p.skill / 160) - m.monthlyWage) / mkt
                 sumGap += gap; n += 1
                 rows.append("role=\(m.role) wage=\(Int(m.monthlyWage)) ask=\(Int(p.askingMonthlyWage)) mkt=\(Int(mkt)) skill=\(Int(p.skill)) gap=\(String(format: "%.3f", gap)) pt=\(m.partTimeShare)")

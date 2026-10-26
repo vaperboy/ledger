@@ -64,7 +64,7 @@ public enum Misconduct {
 
     static func yearRevenue(_ s: GameState, _ i: Int, data: GameData, context fc: FinanceContext) -> Double {
         let co = s.companies[i], k = fc.country(of: co, s)
-        return EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk * 52
+        return EventEngine.context(for: co, data: data, country: k).wk * 52
     }
 
     /// Chance per week that open cases are found. Grows with size, with each repeat and with the country's strictness.
