@@ -16,11 +16,11 @@ struct FlatRow: View {
             if rule { Hairline() }
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    if !sub.isEmpty { Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                    Text(label.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                    if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
-                Text(value).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing)
+                Text(value.tidyText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing)
             }
             .padding(.vertical, 9)
         }

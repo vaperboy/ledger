@@ -86,7 +86,10 @@ struct FranchisorCard: View {
         }
         .confirmationDialog("End this contract?", isPresented: Binding(get: { terminate != nil }, set: { if !$0 { terminate = nil } }), titleVisibility: .visible) {
             Button("End contract", role: .destructive) {
-                if let u = terminate { store.act { $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }; Haptics.success() }
+                if let u = terminate {
+                    if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
+                    else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
+                }
                 terminate = nil
             }
         } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }

@@ -62,7 +62,7 @@ struct CompanyMarketing: View {
                             Text("Length").font(.caption).foregroundStyle(Theme.ivoryMuted)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
-                                    ForEach(Marketing.lengthChoices(ch) + [0], id: \.self) { w in
+                                    ForEach(Marketing.lengthChoices(ch).filter { $0 > 0 } + [0], id: \.self) { w in
                                         Button(w == 0 ? "Until I stop it" : "\(w) weeks") { length[ch.id] = w }
                                             .buttonStyle(QuietButtonStyle(tint: (length[ch.id] ?? 0) == w ? Theme.gold : Theme.ivoryMuted))
                                     }
@@ -72,7 +72,7 @@ struct CompanyMarketing: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
                                     Button("Off") { ask(ch, 0, cur) }.buttonStyle(QuietButtonStyle(tint: budget == 0 ? Theme.gold : Theme.ivoryFaint))
-                                    ForEach(ch.budgets(in: cur), id: \.self) { b in
+                                    ForEach(ch.budgets(in: cur).filter { $0 > 0 }, id: \.self) { b in
                                         Button(cur.tidyShort(b) + "/wk") { ask(ch, b, cur) }.buttonStyle(QuietButtonStyle(tint: budget == b ? Theme.gold : Theme.ivoryMuted))
                                     }
                                 }

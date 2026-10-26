@@ -139,6 +139,7 @@ private struct AccountRow: View {
     var engine: GameEngine
     var company: Company
     var account: KeyAccounts.Account
+    @State private var pending: PendingAction?
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: 6) {
@@ -177,8 +178,16 @@ private struct AccountRow: View {
                     }
                 }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 Spacer()
-                Button("End contract") { store.act { $0.dropAccount(companyID: company.id, accountID: account.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                Button("End contract…") {
+                    pending = PendingAction(title: "End the contract with \(account.name)?",
+                                            message: "Their regular orders stop at once and you would have to win them over again to get them back." + (account.owed > 0 ? " They still owe you \(cur.tidyShort(account.owed)) on invoices." : ""),
+                                            button: "End contract", destructive: true) {
+                        if store.act({ $0.dropAccount(companyID: company.id, accountID: account.id) }) == true { Haptics.warning(); store.show("Contract with \(account.name) ended.", tone: "n") }
+                        else { store.show("That contract is already gone.", tone: "warn") }
+                    }
+                }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
             }
         }.padding(.vertical, 8)
+        .confirmAction($pending)
     }
 }

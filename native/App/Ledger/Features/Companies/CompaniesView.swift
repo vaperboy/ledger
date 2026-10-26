@@ -35,7 +35,7 @@ struct CompaniesView: View {
                                 Text("Company").font(.serifTitle(28))
                                 Spacer()
                                 if !cos.isEmpty {
-                                    Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }) staff")
+                                    Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }.peopleText)")
                                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 }
                             }
@@ -85,7 +85,6 @@ struct CompaniesView: View {
             }
             .ledgerBackground()
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
             .phoneToolbar()
@@ -214,10 +213,16 @@ struct CompanyTable: View {
                 ForEach(rows, id: \.co.id) { r in
                     Hairline().gridCellUnsizedAxes(.horizontal)
                     GridRow {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(r.co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                            Text("\(engine.tradeName(r.co)) · \(engine.cityName(r.co))").font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                        }
+                        Button { Haptics.tap(); open(r.co.id) } label: {
+                            HStack(spacing: 6) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(r.co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).lineLimit(1)
+                                    Text("\(engine.tradeName(r.co)) · \(engine.cityName(r.co))").font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                }
+                                Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
+                            }.contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                        .accessibilityHint("Opens the company")
                         HealthChip(label: r.h.label)
                         num(store.short(r.h.revenueTTM, in: r.co))
                         num(store.short(r.h.profitTTM, in: r.co), Theme.change(r.h.profitTTM) == Theme.ivoryMuted ? Theme.ivory : Theme.change(r.h.profitTTM))
@@ -229,8 +234,6 @@ struct CompanyTable: View {
                         Text(r.h.bottleneck ?? "–").font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
                     }
                     .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                    .onTapGesture { open(r.co.id) }
                 }
             }
         }
@@ -297,6 +300,7 @@ struct CompanyRow: View {
             Text((h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co)).font(.system(size: 13.5).monospacedDigit())
                 .foregroundStyle(h.profitTTM < 0 ? Theme.loss : Theme.ivory).frame(width: 62, alignment: .trailing)
             Sparkline(values: Array(h.revenueSeries.suffix(12)), tint: growing ? Theme.gain : Theme.loss, filled: false).frame(width: 46, height: 20)
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
         }
         .padding(.vertical, 9)
         .contentShape(Rectangle())

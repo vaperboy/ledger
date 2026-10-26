@@ -69,14 +69,14 @@ struct ListRow: View {
         HStack(spacing: Theme.Space.m) {
             IconBadge(symbol: symbol, tint: tint)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+                Text(title.tidyText).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.caption).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
             }
             Spacer(minLength: 8)
             if !trailing.isEmpty || !trailingSub.isEmpty {
                 VStack(alignment: .trailing, spacing: 2) {
-                    if !trailing.isEmpty { Text(trailing).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(trailingTint) }
-                    if !trailingSub.isEmpty { Text(trailingSub).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(trailingTint) }
+                    if !trailingSub.isEmpty { Text(trailingSub.tidyText).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                 }
             }
             if chevron { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
@@ -221,7 +221,7 @@ struct Chip: View {
     var body: some View {
         HStack(spacing: 4) {
             if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint).frame(width: 5, height: 5) }
-            Text(text).font(.system(size: 11.5, weight: .medium))
+            Text(text.tidyText).font(.system(size: 11.5, weight: .medium))
         }
         .foregroundStyle(tint)
     }
@@ -236,8 +236,8 @@ struct Stat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-            Text(value).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
-            if !sub.isEmpty { Text(sub).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
+            Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
+            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
         }
     }
 }

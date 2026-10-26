@@ -531,12 +531,14 @@ public enum FootballModel {
         return (0..<4).map { _ in generateCoach(&s, club: club, kind: kind, boost: s.random.range(-8, 12), country: country, data: data) }
     }
 
-    public static func hire(_ s: inout GameState, companyID: Int, coach c: Coach, kind: String) {
-        guard let i = s.companyIndex(companyID) else { return }
+    @discardableResult
+    public static func hire(_ s: inout GameState, companyID: Int, coach c: Coach, kind: String) -> Bool {
+        guard let i = s.companyIndex(companyID), s.companies[i].type == "club" else { return false }
         var fm = s.companies[i].value("fm")
         var h = c; h.kind = kind; h.interim = false
         if kind == "coach" { fm["coach"] = h.json; fm["coachNew"] = 0 } else { fm["asst"] = h.json }
         s.companies[i].set("fm", fm)
+        return true
     }
 
     public static func dismissAssistant(_ s: inout GameState, companyID: Int) {

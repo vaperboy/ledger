@@ -65,8 +65,9 @@ struct CompanyMoneySummary: View {
             CompanyPaymentStress(engine: engine, company: company)
             if !o.upcoming.isEmpty {
                 LedgerSection(title: "Coming up", trailing: {
-                    NavigationLink { FinanceView(companyID: company.id) } label: {
-                        Text("Taxes and costs  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                    // Stays inside this company's Finances section: no second "Group money" screen in the Company tab.
+                    Button { withAnimation(.snappy(duration: 0.2)) { part = .payroll }; Haptics.choose() } label: {
+                        Text("Payroll and bills  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
                     }.buttonStyle(.plain)
                 }) {
                     VStack(spacing: 0) {

@@ -64,7 +64,7 @@ struct GroupLinkRow: View {
             }
             Spacer(minLength: 8)
             if !trailing.isEmpty { Text(trailing).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).lineLimit(1) }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.gold.opacity(0.85))
         }
         .padding(.vertical, 9).contentShape(Rectangle())
     }

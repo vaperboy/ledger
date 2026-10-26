@@ -249,22 +249,26 @@ public enum Headquarters {
         return .ok
     }
 
-    public static func fire(_ s: inout GameState, personID: Int) {
-        guard var o = s.rest["office"] else { return }
+    @discardableResult
+    public static func fire(_ s: inout GameState, personID: Int) -> Bool {
+        guard var o = s.rest["office"], o["staff"].array.contains(where: { $0["id"].int == personID }) else { return false }
         if var n = s.people[personID] { n.employerID = 0; s.people[personID] = n }
         o["staff"] = .array(o["staff"].array.filter { $0["id"].int != personID })
         s.rest["office"] = o
         ManagerModel.removeSeat(&s, personID: personID)
+        return true
     }
 
     /// Tick one item of the paperwork of a main-office employee. Original: `ACT.hqtick`.
-    public static func tickPaperwork(_ s: inout GameState, personID: Int, item: String) {
-        guard var o = s.rest["office"] else { return }
+    @discardableResult
+    public static func tickPaperwork(_ s: inout GameState, personID: Int, item: String) -> Bool {
+        guard var o = s.rest["office"] else { return false }
         var l = o["staff"].array
-        guard let k = l.firstIndex(where: { $0["id"].int == personID }) else { return }
+        guard let k = l.firstIndex(where: { $0["id"].int == personID }) else { return false }
         l[k]["onb"][item] = .number(1)
         o["staff"] = .array(l)
         s.rest["office"] = o
+        return true
     }
     public static func paperwork(_ s: GameState, personID: Int) -> [(key: String, text: String, done: Bool)] {
         guard let st = staff(s).first(where: { $0["id"].int == personID }) else { return [] }

@@ -30,7 +30,7 @@ struct InboxView: View {
         var messages: [Message]
     }
 
-    private var waitingCount: Int { store.engine?.state.inbox.filter { msg in msg.status == "open" }.count ?? 0 }
+    private var waitingCount: Int { store.openDecisionCount }
 
     private func matches(_ m: Message) -> Bool {
         switch tab {

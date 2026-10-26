@@ -41,7 +41,7 @@ struct PhoneShell: View {
             ForEach(AppTab.allCases) { tab in
                 TabContent(tab: tab)
                     .tabItem { Label(tab.title, systemImage: tab.symbol) }
-                    .badge(tab == .inbox ? store.unreadCount : 0)
+                    .badge(tab == .inbox ? store.openDecisionCount : 0)
                     .tag(tab)
             }
         }
@@ -73,7 +73,7 @@ struct SidebarShell: View {
                 Section {
                     ForEach(AppTab.allCases) { tab in
                         SidebarLabel(title: tab.title, symbol: tab.symbol)
-                            .badge(tab == .inbox ? store.unreadCount : 0)
+                            .badge(tab == .inbox ? store.openDecisionCount : 0)
                             .tag(tab)
                     }
                 }

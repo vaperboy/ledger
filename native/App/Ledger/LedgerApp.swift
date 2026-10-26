@@ -19,11 +19,20 @@ struct LedgerApp: App {
         UITabBar.appearance().standardAppearance = tabs
         UITabBar.appearance().scrollEdgeAppearance = tabs
         let serif = UIFont.systemFont(ofSize: 18, weight: .medium).fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: 18) } ?? UIFont.systemFont(ofSize: 18)
+        // Transparent at the top of a screen, but solid page colour once content scrolls under it, so scrolled content never draws
+        // over the Back button, the title or the status bar.
         let bars = UINavigationBarAppearance()
         bars.configureWithTransparentBackground()
         bars.titleTextAttributes = [.foregroundColor: ivory, .font: serif]
         bars.largeTitleTextAttributes = [.foregroundColor: ivory]
-        UINavigationBar.appearance().standardAppearance = bars
+        let scrolled = UINavigationBarAppearance()
+        scrolled.configureWithOpaqueBackground()
+        scrolled.backgroundColor = UIColor(red: 0.067, green: 0.075, blue: 0.082, alpha: 1)
+        scrolled.shadowColor = ivory.withAlphaComponent(0.09)
+        scrolled.titleTextAttributes = bars.titleTextAttributes
+        scrolled.largeTitleTextAttributes = bars.largeTitleTextAttributes
+        UINavigationBar.appearance().standardAppearance = scrolled
+        UINavigationBar.appearance().compactAppearance = scrolled
         UINavigationBar.appearance().scrollEdgeAppearance = bars
         UITableViewCell.appearance().backgroundColor = UIColor(red: 0.067, green: 0.075, blue: 0.082, alpha: 1)
     }

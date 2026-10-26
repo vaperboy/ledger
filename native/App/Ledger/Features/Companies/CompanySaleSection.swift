@@ -57,7 +57,7 @@ struct CompanySaleSection: View {
     /// What the sale does: what you are paid, which loans are settled, who loses a job, what the buyer does with it.
     private func consequences(_ o: CompanySale.Offer, _ cur: Currency) -> String {
         let loans = engine.state.loans.filter { $0.companyID == company.id }.reduce(0) { $0 + $1.balance }
-        var t = "The company's \(company.staff.count) staff leave your payroll"
+        var t = "The company's staff (\(company.staff.count.peopleText)) leave your payroll"
         if loans > 0 { t += " and its loans of \(cur.tidyShort(loans)) are settled" }
         t += ". Gains are taxed. \(o.note) This cannot be undone."
         return t

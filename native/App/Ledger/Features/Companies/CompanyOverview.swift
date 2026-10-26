@@ -27,17 +27,17 @@ struct CompanyOverview: View {
         let h = engine.companyHealth(co)
         if sizeClass == .regular {
             HStack(alignment: .top, spacing: Theme.Space.l) {
-                VStack(alignment: .leading, spacing: Theme.Space.l) { health(co, h); needsYou(co); whoRunsIt(co); diagnosis(co) }
-                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open && !isSpecial { operations(co, h) }; performance(co, h) }
+                VStack(alignment: .leading, spacing: Theme.Space.l) { health(co, h); needsYou(co); diagnosis(co) }
+                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open && !isSpecial { operations(co, h) }; performance(co, h); whoRunsIt(co) }
             }
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 health(co, h)
                 needsYou(co)
-                whoRunsIt(co)
                 diagnosis(co)
                 if co.status == .open && !isSpecial { operations(co, h) }
                 performance(co, h)
+                whoRunsIt(co)
             }
         }
     }
@@ -48,6 +48,11 @@ struct CompanyOverview: View {
         Haptics.choose()
     }
     private func goMoney(_ part: CompanyMoneyPart) { moneyPart = part; go(.finances) }
+
+    /// Staff matters shown under "Needs you" (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
+    private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
+        engine.teamOverview().issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+    }
 
     // 1. Health: the verdict in words, then the figures that decide what happens next
     private func health(_ co: Company, _ h: CompanyHealth) -> some View {
@@ -70,7 +75,7 @@ struct CompanyOverview: View {
                       sub: h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : String(format: "%.0f weeks of costs", h.weeksOfCash)),
                 .init(label: "Revenue", value: store.short(h.revenueTTM, in: co), sub: "12 months"),
                 .init(label: "Margin", value: h.marginTTM.map { String(format: "%.1f%%", $0 * 100) } ?? "–"),
-                .init(label: "Costs a week", value: store.short(h.weeklyCost, in: co), sub: "\(co.staff.count) staff"),
+                .init(label: "Costs a week", value: store.short(h.weeklyCost, in: co), sub: co.staff.count.peopleText),
                 .init(label: "Debt", value: store.short(h.debt, in: co), tint: h.debt > 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Value", value: store.short(h.value, in: co), sub: "book + goodwill"),
             ]).padding(.top, 12)
@@ -101,12 +106,13 @@ struct CompanyOverview: View {
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count
         // The same list the Team tab shows (paperwork, worn-out staff, a manager leaving or struggling), so the two screens never disagree.
-        let matters = engine.teamOverview().issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+        let matters = staffMatters(co)
         let nobody = co.status == .open && co.type != "hold" && co.managerID == nil && co.ownerHours == 0 && engine.decisionChain(companyID: co.id).isEmpty
         let setupLeft = co.status == .setup ? engine.openingChecklist(companyID: co.id).filter { !$0.isDone }.count : 0
         let behind = engine.state.loans.contains { $0.companyID == co.id && $0.int("miss") > 0 } || co.int("supCut") > 0 || co.num("vatOver") > 1 || co.int("loanCall") != 0
+        if !(asks.isEmpty && setupLeft == 0 && co.status != .closed && !behind && people == 0 && matters.isEmpty && !nobody) {
         LedgerSection(title: "Needs you", trailing: {
-            if !asks.isEmpty { Text("\(asks.count) decision\(asks.count == 1 ? "" : "s")").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+            if !asks.isEmpty { Text(asks.count.countText("decision")).font(.system(size: 11)).foregroundStyle(Theme.caution) }
         }) {
             VStack(spacing: 0) {
                 ForEach(Array(asks.prefix(3).enumerated()), id: \.element.id) { n, m in
@@ -116,16 +122,14 @@ struct CompanyOverview: View {
                     }
                 }
                 if asks.count > 3 { Text("and \(asks.count - 3) more in Inbox").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4) }
-                if setupLeft > 0 { divider(asks.isEmpty); row(symbol: "checklist", tint: Theme.caution, title: "\(setupLeft) thing\(setupLeft == 1 ? "" : "s") left before opening", sub: "Documents, premises, equipment, stock", action: "Setup") { go(.setup) } }
+                if setupLeft > 0 { divider(asks.isEmpty); row(symbol: "checklist", tint: Theme.caution, title: "\(setupLeft.countText("thing")) left before opening", sub: "Documents, premises, equipment, stock", action: "Setup") { go(.setup) } }
                 if co.status == .closed { divider(asks.isEmpty && setupLeft == 0); row(symbol: "moon.zzz", tint: Theme.caution, title: "Closed", sub: "Reopen it or close down for good", action: "Settings") { goMoney(.settings) } }
                 if behind { divider(false); row(symbol: "exclamationmark.triangle", tint: Theme.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Finances") { goMoney(.summary) } }
                 if !matters.isEmpty { divider(false); row(symbol: "doc.badge.ellipsis", tint: Theme.caution, title: matters.count == 1 ? matters[0].title : "\(matters.count) staff matters need you", sub: matters.count == 1 ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Team") { go(.staff) } }
                 if people > 0 { divider(false); row(symbol: "person.crop.circle.badge.exclamationmark", tint: Theme.caution, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Team") { go(.staff) } }
                 if nobody { divider(false); row(symbol: "person.fill.questionmark", tint: Theme.loss, title: "No one runs it", sub: "You do not work here and there is no manager", action: "Team") { go(.staff) } }
-                if asks.isEmpty && setupLeft == 0 && co.status != .closed && !behind && people == 0 && matters.isEmpty && !nobody {
-                    Text("Nothing waiting for you here.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
-                }
             }
+        }
         }
     }
 
@@ -166,7 +170,7 @@ struct CompanyOverview: View {
                         FlatRow(label: co.ownerHours > 0 ? "You" : "No one", value: co.ownerHours > 0 ? "\(Int(co.ownerHours.rounded())) h a week" : "–",
                                 sub: co.ownerHours > 0 ? "You work here yourself; a manager can take the day-to-day off you" : "Hire a manager or put in hours under Operations", rule: false)
                     }
-                    FlatRow(label: "Team", value: "\(co.staff.count) \(co.staff.count == 1 ? "person" : "people")", sub: co.staff.isEmpty ? "" : store.short(co.staff.reduce(0) { $0 + $1.monthlyWage }, in: co) + " a month in wages")
+                    FlatRow(label: "Team", value: co.staff.count.peopleText, sub: co.staff.isEmpty ? "" : store.short(co.staff.reduce(0) { $0 + $1.monthlyWage }, in: co) + " a month in wages")
                 }
             }
         }
@@ -174,7 +178,9 @@ struct CompanyOverview: View {
 
     // 4. Why, and where to act: findings from the company's own numbers, each with a way to the section that changes it
     private func diagnosis(_ co: Company) -> some View {
-        let items = engine.insights(for: co, limit: 5)
+        // "Needs you" already lists missing paperwork: do not show the same finding twice.
+        let paperShown = staffMatters(co).contains { $0.kind == .paperwork }
+        let items = Array(engine.insights(for: co, limit: 6).filter { !(paperShown && $0.id == "paper") }.prefix(5))
         return LedgerSection("What is going on") {
             VStack(spacing: 0) {
                 if items.isEmpty { Text("Nothing stands out yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading) }

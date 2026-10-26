@@ -179,7 +179,7 @@ struct ManagerSheet: View {
                         .init(label: "Reputation", value: "\(card.reputation)"),
                         .init(label: "Quality", value: "\(card.quality)"),
                     ], columns: 4)
-                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps) staff with paperwork missing count against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     if card.fraud > 0 { Text("Fraud was found under this manager.").font(.system(size: 11.5)).foregroundStyle(Theme.loss) }
                 }
                 if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }

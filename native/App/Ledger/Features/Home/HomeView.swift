@@ -3,8 +3,8 @@ import Simulation
 import Finance
 import Businesses
 
-/// Today's summary, the top of the Company tab: net worth, the report prompt, the suggestion, what is coming up, first steps and goals.
-/// (The company list that used to be a card here is the Company tab's own list below it.)
+/// Today's summary, the top of the Company tab: net worth with its chart and four figures, the report prompt and a few priorities
+/// (the companies list follows below it, then the Next day bar). First steps and goals live in More > Goals; "Coming up" is in Money.
 struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     var engine: GameEngine
@@ -16,15 +16,12 @@ struct HomeSummary: View {
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.xl) {
                     VStack(spacing: Theme.Space.l) { NetWorthSection(engine: e) }
-                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e); ComingUpCard(engine: e); FirstStepsCard(engine: e); GoalsCard(engine: e) }
+                    VStack(spacing: Theme.Space.l) { ReportPromptSection(engine: e); SuggestionCard(engine: e) }
                 }
             } else {
                 NetWorthSection(engine: e)
                 ReportPromptSection(engine: e)
                 SuggestionCard(engine: e)
-                ComingUpCard(engine: e)
-                FirstStepsCard(engine: e)
-                GoalsCard(engine: e)
             }
         }
     }
