@@ -95,6 +95,11 @@ public extension GameEngine {
     func owners(companyID: Int) -> [Shareholders.Holder] { Shareholders.holders(state, companyID: companyID) }
     func ownersPower(companyID: Int) -> (kind: Shareholders.Power, text: String)? { state.company(companyID).map { Shareholders.power($0) } }
     func dividendPolicy(companyID: Int) -> String { state.company(companyID).map { Shareholders.policy($0) } ?? "none" }
+    /// What the last quarterly dividend decision did (shown under the dividend policy): the week, what was paid (0 if skipped) and the profit it was based on.
+    func lastDividendDecision(companyID: Int) -> (week: Int, paid: Double, profit: Double)? {
+        guard let d = state.company(companyID)?.value("dq27"), !d.isNull else { return nil }
+        return (d["w"].int, d["paid"].double, d["pr"].double)
+    }
     @discardableResult
     mutating func setDividendPolicy(companyID: Int, policy: String) -> SettingResult {
         applySetting(refuse: { s in

@@ -195,11 +195,6 @@ public enum EquipmentUnits {
             for r in repairs { Payments.companyPays(&s, companyID: s.companies[i].id, amount: r.0, category: "oth", label: r.1); Vat.input(&s, companyIndex: i, net: r.0, data: data) }
             syncCondition(&s, companyIndex: i, equipmentID: id)
         }
-        // Leased equipment: the monthly instalment, service included
-        for (_, monthly) in s.companies[i].value("eqL").object.sorted(by: { $0.key < $1.key }) where monthly.double > 0 {
-            Payments.companyPays(&s, companyID: s.companies[i].id, amount: monthly.double / 4.33, category: "oth")
-            Vat.input(&s, companyIndex: i, net: monthly.double / 4.33, data: data)
-        }
         // Vehicles
         var vehicles = s.companies[i].value("veh").array
         for n in vehicles.indices {
