@@ -131,14 +131,7 @@ public extension GameEngine {
     }
 
     private static func billsOf(_ co: Company) -> Double {
-        let p = co.payables
-        var b: Double = p["wages"] ?? 0
-        b += p["other"] ?? 0
-        b += p["inv"] ?? 0
-        b += p["rent"] ?? 0
-        b += max(0, co.vatBalance)
-        b += p["tax"] ?? 0
-        return b
+        CompanyFigures.billsOwed(co)
     }
 
     private static func windUpFigures(_ co: Company, _ s: GameState) -> (rest: Double, debts: Double) {
@@ -153,6 +146,7 @@ public extension GameEngine {
         var done = false
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
+            HeldMoney.settle(&s, companyID: companyID)   // the days of this week not yet released belong to the company being closed down
             let co = s.companies[i]
             let cash: Double = max(0, co.cash) + max(0, CompanyFigures.assets(co) - co.cash) * 0.55
             let ownLoans = s.loans.filter { $0.companyID == co.id }

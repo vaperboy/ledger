@@ -19,13 +19,7 @@ public enum Failure {
         let p = co.payables
         let ownLoans = s.loans.filter { $0.companyID == co.id }
         let loanBalance = ownLoans.reduce(0) { $0 + $1.balance }
-        var debts: Double = loanBalance
-        debts += p["wages"] ?? 0
-        debts += p["other"] ?? 0
-        debts += p["inv"] ?? 0
-        debts += p["rent"] ?? 0
-        debts += max(0, co.vatBalance)
-        debts += p["tax"] ?? 0
+        var debts: Double = loanBalance + CompanyFigures.billsOwed(co)
         debts -= min(0, co.cash)
         var personalHit = 0.0
         // Secured lenders are paid first from what the company owns; only what is left of a guaranteed loan lands on the owner.
