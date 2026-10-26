@@ -171,8 +171,11 @@ struct CompanySettings: View {
     private func confirmWindUp(_ back: Double, _ cur: Currency) {
         let name = company.name, staff = company.staff.count
         pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true) {
+            // Closing against every other owner and board seat: they remember it (their mood drops, the Inbox gets a line).
+            let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
             if store.act({ $0.windUpCompany(companyID: company.id) }) == true {
-                Haptics.warning(); store.show("\(name) is closed down and its things sold.", tone: "n")
+                if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
+                Haptics.warning(); store.show("\(name) is closed down and its things sold." + (alone ? " The other owners did not want this." : ""), tone: "n")
             } else {
                 store.show("\(name) could not be wound up.", tone: "warn")
             }

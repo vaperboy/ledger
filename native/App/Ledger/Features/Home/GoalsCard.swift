@@ -23,6 +23,13 @@ struct GoalsCard: View {
                         if let t = store.act({ $0.claimFirstStep(id: next.id) }) ?? nil { Haptics.success(); store.show(t, tone: "good") }
                     }
                 }
+                if engine.firstStepRewards != nil {
+                    let hidden = engine.firstStepRewardsHidden
+                    Button(hidden ? "Show the first-step rewards again" : "Hide the first-step rewards") {
+                        _ = store.act { $0.setFirstStepsHidden(!hidden) }
+                        store.show(hidden ? "First-step rewards are back." : "First-step rewards hidden. Rewards you have not claimed stay available.", tone: "n")
+                    }.font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.vertical, 6)
+                }
                 Hairline()
                 if let path = engine.currentAmbition, let name = engine.ambitionPaths.first(where: { $0.id == path })?.name {
                     let ms = engine.ambitionMilestones(path: path)

@@ -14,6 +14,7 @@ struct CompanyCustomers: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             reviews
             accounts
+            creditCheck
             CompanyContracts(engine: engine, company: company)
             security
         }
@@ -77,6 +78,27 @@ struct CompanyCustomers: View {
                         AccountRow(engine: engine, company: company, account: a)
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: Credit check
+
+    /// Only for trades that invoice businesses: checking a buyer's credit before selling on account costs a little and cuts unpaid invoices.
+    @ViewBuilder private var creditCheck: some View {
+        if let t = engine.tradeInfo(companyID: company.id), t.businessShare > 0, company.status.isLive {
+            let on = company.value("flags")["ccheck"].bool
+            LedgerSection(title: "Credit check", trailing: { Text(on ? "on" : "off").font(.system(size: 11)).foregroundStyle(on ? Theme.gain : Theme.ivoryFaint) }) {
+                Toggle(isOn: Binding(get: { on }, set: { v in
+                    _ = store.act { $0.setCreditCheck(companyID: company.id, on: v) }
+                    store.show(v ? "Buyers' credit is checked before you sell on account." : "Credit checks switched off.", tone: "n")
+                })) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Check buyers before selling on account").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Costs about 0.4% of what you invoice to businesses. Benefit: unpaid invoices become about 70% less likely. Risk of leaving it off: a bad debt is written off in full.")
+                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    }
+                }.tint(Theme.gold)
             }
         }
     }

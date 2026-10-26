@@ -41,8 +41,12 @@ struct CompanySaleSection: View {
             }
             .confirmationDialog("Sell \(company.name)?", isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible, presenting: confirming) { o in
                 Button("Sell for " + cur.tidyShort(o.price * company.ownership / 100), role: .destructive) {
+                    let alone = engine.boardVote(kind: "sell", companyID: company.id).pushedThroughAlone
                     let got = store.act { $0.update { s, data, ctx in CompanySale.accept(&s, companyID: company.id, offerID: o.id, data: data, context: ctx) } }
-                    if store.engine?.state.company(company.id)?.status == .sold { Haptics.success(); store.show("\(company.name) is sold to \(o.buyer).", tone: "good") }
+                    if store.engine?.state.company(company.id)?.status == .sold {
+                        if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
+                        Haptics.success(); store.show("\(company.name) is sold to \(o.buyer)." + (alone ? " The other owners did not want this." : ""), tone: "good")
+                    }
                     else { _ = got; Haptics.warning(); store.show("The sale did not go through: the other owners may be blocking it.", tone: "warn") }
                 }
                 Button("Cancel", role: .cancel) {}
