@@ -667,6 +667,12 @@ public enum EquipmentMarket {
         return true
     }
 
+    /// The company ends for good (wound up or bankrupt): every lease ends with it and the lessor takes the things back (no instalment, no asset).
+    public static func endAllLeases(_ s: inout GameState, companyIndex i: Int) {
+        s.companies[i].set("lease", .object([:])); s.companies[i].set("eqL", .object([:]))
+        s.companies[i].set("veh", .array(s.companies[i].value("veh").array.filter { $0["mode"].string != "lease" }))
+    }
+
     // MARK: Reading for the screens
 
     /// One line of the "needed" list: what is required, what the company has and the lowest price.
