@@ -83,6 +83,12 @@ struct CompanyEnergy: View {
         }
     }
 
+    private func fieldSub(_ f: EnergyModel.FieldInfo) -> String {
+        if f.state == "dev" { return "In development · \(f.weeksToProduction) weeks to production" }
+        if f.state == "prod" { return "Producing about \(Int(f.weeklyBarrels.rounded())) kbbl a week" }
+        return "Depleted"
+    }
+
     private var buildWeeks: Int { EnergyModel.source(of: company).buildWeeks }
 
     // MARK: Oil and gas
@@ -110,7 +116,7 @@ struct CompanyEnergy: View {
                     if fields.isEmpty { Text("No fields yet. Buy a stake in a producing field for income right away, or drill.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(fields.enumerated()), id: \.element.id) { n, f in
                         FlatRow(label: f.name, value: String(format: "%.1f M bbl left", f.millionBarrelsLeft),
-                                sub: f.state == "dev" ? "In development · \(f.weeksToProduction) weeks to production" : f.state == "prod" ? "Producing about \(Int(f.weeklyBarrels.rounded())) kbbl a week" : "Depleted",
+                                sub: fieldSub(f),
                                 rule: n > 0)
                     }
                 }
@@ -152,9 +158,11 @@ struct CompanyEnergy: View {
                 switch store.act({ $0.exploreForOil(companyID: company.id) }) {
                 case .hit?: Haptics.success(); store.show("Discovery! Check your inbox.", tone: "good")
                 case .dry?: Haptics.warning(); store.show("A dry well.", tone: "bad")
-                default: store.show("Not enough cash.", tone: "warn")
+                default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
                 }
             }
+        } message: {
+            Text("The well costs \(cur.tidyShort(drill)) from company cash and most wells find nothing. A discovery takes about three years to produce.")
         }
     }
 }
@@ -198,8 +206,8 @@ struct CompanySalmon: View {
             }
             LedgerSection("Routine") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) } })).tint(Theme.gold)
-                    Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) } })).tint(Theme.gold)
+                    Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
+                    Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
                     Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }

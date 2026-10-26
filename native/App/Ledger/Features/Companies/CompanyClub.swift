@@ -40,17 +40,40 @@ struct CompanyClub: View {
         Text(r).font(.system(size: 12, weight: .semibold)).foregroundStyle(r == "W" ? Theme.gain : r == "L" ? Theme.loss : Theme.ivoryMuted).frame(width: 16)
     }
 
+    private func seasonItems(_ c: FootballModel.Summary, _ cur: Currency) -> [KeyFigures.Item] {
+        let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
+        let fill: String = c.fill > 0 ? "\(Int((c.fill * 100).rounded()))%" : "–"
+        let strengthSub: String = "strength \(Int(c.squadStrength.rounded()))"
+        return [
+            .init(label: "Position", value: pos),
+            .init(label: "Points", value: "\(c.points)", sub: "from \(c.played) games"),
+            .init(label: "Squad", value: FootballModel.wordForStrength(c.squadStrength), sub: strengthSub),
+            .init(label: "Club value", value: cur.tidyShort(c.clubValue)),
+            .init(label: "Titles", value: "\(c.titles)"),
+            .init(label: "Stadium full", value: fill),
+        ]
+    }
+
+    private func wageBinding(_ c: FootballModel.Summary) -> Binding<Double> {
+        let options: [Double] = [0.55, 0.65, 0.8]
+        let nearest: Double = options.min { abs($0 - c.wageShare) < abs($1 - c.wageShare) } ?? 0.65
+        return Binding<Double>(get: { nearest }, set: { (v: Double) in
+            store.act { $0.setClubWageShare(companyID: company.id, share: v) }
+            store.saved("player wages \(Int(v * 100))% of revenue")
+        })
+    }
+
+    private func ticketBinding(_ c: FootballModel.Summary) -> Binding<Int> {
+        Binding<Int>(get: { c.ticketLevel }, set: { (v: Int) in
+            store.act { $0.setClubTicketLevel(companyID: company.id, level: v) }
+            store.saved("ticket prices \(["low", "normal", "high"][min(2, max(0, v + 1))])")
+        })
+    }
+
     private func season(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         LedgerSection(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
-                KeyFigures(items: [
-                    .init(label: "Position", value: c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"),
-                    .init(label: "Points", value: "\(c.points)", sub: "from \(c.played) games"),
-                    .init(label: "Squad", value: FootballModel.wordForStrength(c.squadStrength), sub: "strength \(Int(c.squadStrength.rounded()))"),
-                    .init(label: "Club value", value: cur.tidyShort(c.clubValue)),
-                    .init(label: "Titles", value: "\(c.titles)"),
-                    .init(label: "Stadium full", value: c.fill > 0 ? "\(Int((c.fill * 100).rounded()))%" : "–"),
-                ])
+                KeyFigures(items: seasonItems(c, cur))
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
                 if !c.form.isEmpty { HStack(spacing: 2) { ForEach(Array(c.form.suffix(8).enumerated()), id: \.offset) { _, r in form(r) } }.padding(.bottom, 6) }
                 if c.debt > 0 { FlatRow(label: "Club debt", value: cur.tidyShort(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
@@ -72,11 +95,11 @@ struct CompanyClub: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Player wages, share of revenue").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SectionTabs(items: [0.55, 0.65, 0.8], title: { "\(Int($0 * 100))%" },
-                                selection: Binding(get: { [0.55, 0.65, 0.8].min { abs($0 - c.wageShare) < abs($1 - c.wageShare) } ?? 0.65 }, set: { v in store.act { $0.setClubWageShare(companyID: company.id, share: v) } }))
+                                selection: wageBinding(c))
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("Ticket prices").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SectionTabs(items: [-1, 0, 1], title: { ["Low", "Normal", "High"][$0 + 1] },
-                                selection: Binding(get: { c.ticketLevel }, set: { v in store.act { $0.setClubTicketLevel(companyID: company.id, level: v) } }))
+                                selection: ticketBinding(c))
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("A bigger wage budget buys a stronger squad but eats the profit. Cheaper tickets fill the stadium and build the fan base.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
@@ -152,6 +175,7 @@ struct CompanyClub: View {
                 Button(p == nil ? "Find one" : "Replace") {
                     hiringKind = kind
                     candidates = store.act { $0.clubCandidates(companyID: company.id, kind: kind) } ?? []
+                    if candidates.isEmpty { store.show("Nobody suitable is available right now.", tone: "warn") }
                 }.buttonStyle(QuietButtonStyle())
             }.padding(.vertical, 9)
         }
