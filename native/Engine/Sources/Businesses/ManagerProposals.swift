@@ -217,8 +217,10 @@ extension ManagerModel {
         var a = co.value("asst")
         guard a["npc"].int != 0, let n = s.people[a["npc"].int], co.status == .open else { return }
         if a["duties"].array.contains(where: { $0.string == "paper" }), !co.value("insr").isNull, co.value("ins").object.values.allSatisfy({ !$0.bool }) {
-            var ins = co.value("ins"); ins["liab"] = 1
-            let hasPlace = co.value("prem")["m2"].double > 0
+            // A policy the owner switched off themselves (`insOwn`) stays off: the assistant only fills gaps the owner left.
+            let own = co.value("insOwn")
+            var ins = co.value("ins"); if own["liab"].isNull { ins["liab"] = 1 }
+            let hasPlace = co.value("prem")["m2"].double > 0 && own["prop"].isNull
             if hasPlace { ins["prop"] = 1 }
             s.companies[ci].set("ins", ins)
             s.note("\(n.name) took out basic liability\(hasPlace ? " and property" : "") insurance for \(co.name).", tone: "n", companyID: co.id)

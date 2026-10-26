@@ -176,6 +176,7 @@ public extension GameEngine {
             if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
             s.companies[i].staff = []
             s.companies[i].managerID = nil
+            EquipmentMarket.endAllLeases(&s, companyIndex: i)
             s.companies[i].status = .sold
             Ledger.set(&s, .company(co.id), to: 0)
             s.stats.companiesSold += 1

@@ -124,4 +124,61 @@ final class ModelRulesTests: XCTestCase {
             XCTAssertEqual(r.dueWeek, s.week + 26)
         }
     }
+
+    /// A lease is a contract: a company shut for a spell still pays the instalments; wound up or bankrupt, the lease ends and the lessor takes the things back.
+    func testLeasesRunWhileClosedAndEndWithTheCompany() throws {
+        var (e, id) = try cafe()
+        e.update { s, d, ctx in
+            let i = s.companyIndex(id)!
+            let bd = d.catalog["cafe"]!
+            s.companies[i].set("eqL", .object(["oven": .number(433)]))
+            s.companies[i].set("lease", .object(["oven": .number(1)]))
+            s.companies[i].set("veh", .array([.object(["mode": "lease", "lease": 520]), .object(["mode": "own"])]))
+            var shut = s
+            shut.companies[i].status = .closed
+            shut.companies[i].set("closeW", .number(4)); shut.companies[i].set("closeTot", .number(4))
+            var shutNoLease = shut
+            shutNoLease.companies[i].set("eqL", .object([:])); shutNoLease.companies[i].set("veh", .array([]))
+            CompanyWeek.closedWeek(&shut, i, bd, d)
+            CompanyWeek.closedWeek(&shutNoLease, i, bd, d)
+            let instalments = 433 / 4.33 + 520.0 * 12 / 52
+            XCTAssertGreaterThan(shutNoLease.companies[i].cash - shut.companies[i].cash, instalments * 0.99, "equipment and vehicle instalments are still charged")
+            Failure.bankrupt(&s, companyIndex: i, reason: "cash", data: d, context: ctx)
+            XCTAssertTrue(s.companies[i].value("eqL").object.isEmpty)
+            XCTAssertTrue(s.companies[i].value("lease").object.isEmpty)
+            XCTAssertEqual(s.companies[i].value("veh").array.count, 1, "only the owned vehicle stays")
+        }
+    }
+
+    /// The same rule on a real job of a played builder: the client holds the trade's retention back on the milestone payments, the held money waits
+    /// as a receivable of that job, and once the job is complete it falls due after the defect period and then arrives.
+    func testRetentionIsWithheldAndReleasedOnARealJob() throws {
+        var (_, e, id) = try ProjectTradeTests.play("construction", seed: 7, years: 1)
+        var rate = 0.0
+        e.update { _, d, _ in rate = d.catalog["construction"]?.trait("retention") ?? 0 }
+        XCTAssertGreaterThan(rate, 0)
+        var held: [Int: Double] = [:]      // job id: the amount held back while the job was in hand
+        var released: [Int: Int] = [:]     // job id: the week its held money fell due
+        var paidOut: Set<Int> = []
+        for _ in 0..<(26 * 7 * 3) {
+            e.nextDay()
+            for m in e.openDecisions { e.answer(messageID: m.id, option: 0) }
+            guard let co = e.state.company(id) else { break }
+            for r in co.receivables where r.int("pj") > 0 {
+                let job = r.int("pj")
+                if r.flag("held") { held[job] = r.amount }
+                else if released[job] == nil {
+                    released[job] = r.dueWeek
+                    XCTAssertGreaterThan(r.dueWeek, e.state.week, "due after the defect period, not at once")
+                    XCTAssertLessThanOrEqual(r.dueWeek, e.state.week + CompanyWeek.defectWeeks)
+                }
+            }
+            for job in released.keys where !paidOut.contains(job) && !co.receivables.contains(where: { $0.int("pj") == job }) { paidOut.insert(job) }
+            if !paidOut.isEmpty { break }
+        }
+        XCTAssertFalse(held.isEmpty, "retention was withheld on a real job")
+        XCTAssertTrue(held.values.allSatisfy { $0 > 0 })
+        XCTAssertFalse(released.isEmpty, "a completed job releases its retention")
+        XCTAssertFalse(paidOut.isEmpty, "and the money arrives after the defect period")
+    }
 }
