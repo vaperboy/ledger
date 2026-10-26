@@ -41,7 +41,7 @@ CI: `.github/workflows/native-ios.yml` runs the engine tests on macOS, builds th
 
 Start screen: *Continue*, *New game* (name, home country), or *Bring a save from the web game* (file or pasted text; the original is kept).
 Home shows net worth with today / week change, what needs you, cash / invested / companies with their histories, a first-steps guide,
-and the **Next day** button above the tab bar (the small button next to it skips ahead until something needs you).
+and the **Next day** button above the tab bar.
 Companies, Group, Phone (new company, bank, invest, tax, news, stats, activity, settings) and Inbox are the other tabs.
 
 ## Where to read next

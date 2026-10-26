@@ -207,17 +207,6 @@ public struct GameEngine {
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }
 
-    /// Go on until something needs the player: a decision, bad news, game over, or `maxDays`. Original: "Until needed".
-    public mutating func advanceUntilNeeded(maxDays: Int = 26 * 7) -> (days: Int, reason: String?) {
-        var n = 0
-        while n < maxDays && !state.isGameOver {
-            let r = nextDay()
-            n += 1
-            if let m = r.newMessages.first(where: { $0.status == "open" || (!$0.isRead && $0.tone == "bad") }) { return (n, m.title) }
-        }
-        return (n, state.isGameOver ? "Game over" : nil)
-    }
-
     mutating func tradeAndPay(day: Int) {
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)
