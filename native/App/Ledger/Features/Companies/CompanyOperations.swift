@@ -19,7 +19,7 @@ struct CompanyOperations: View {
                         Spacer()
                         Text(String(format: "%+.1f", company.priceLevel)).font(.system(.subheadline, design: .default).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
-                    Slider(value: Binding(get: { company.priceLevel }, set: { v in store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) } }), in: -3...3, step: 0.5)
+                    Slider(value: Binding(get: { company.priceLevel }, set: { v in store.settle(store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) }, "Price level saved.", same: "Price level is already that.") }), in: -3...3, step: 0.5)
                         .tint(Theme.gold)
                     Text("Cheaper brings more customers, dearer more profit per sale. The right spot depends on your trade and area.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
@@ -34,7 +34,7 @@ struct CompanyOperations: View {
                             Text(company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself").font(.caption).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        StepperPill(value: Binding(get: { company.ownerHours }, set: { v in store.act { $0.setOwnerHours(companyID: company.id, hours: v) } }), range: 0...80, step: 5)
+                        StepperPill(value: Binding(get: { company.ownerHours }, set: { v in store.settle(store.act { $0.setOwnerHours(companyID: company.id, hours: v) }, "Hours saved.", same: "Hours are already that.") }), range: 0...80, step: 5)
                     }
                     Text("Your hours across all companies cannot exceed 80.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }

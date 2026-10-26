@@ -39,8 +39,11 @@ public extension GameEngine {
     mutating func releaseExecutive(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseExecutive(&s, level: level, chainID: chainID, regionalID: regionalID, data: d) }; return r
     }
-    mutating func setExecutiveAuthority(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) {
-        update { s, _, _ in ManagerModel.setExecutiveAuthority(&s, level: level, chainID: chainID, regionalID: regionalID, authority: authority, buy: buy) }
+    @discardableResult
+    mutating func setExecutiveAuthority(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) -> SettingResult {
+        applySetting(probe: { s in .array([.object(s.rest), Chains.chain(s, id: chainID ?? -1) ?? .null]) }) { s, _, _ in
+            ManagerModel.setExecutiveAuthority(&s, level: level, chainID: chainID, regionalID: regionalID, authority: authority, buy: buy)
+        }
     }
     mutating func releaseGroupCEO() { update { s, _, _ in ManagerModel.releaseGroupCEO(&s) } }
     /// Deals above this amount always come to you.

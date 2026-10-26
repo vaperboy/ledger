@@ -87,7 +87,13 @@ public extension GameEngine {
             else { Chains.setRule(&s, chainID: chainID, rule: rule) }
         }
     }
-    mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) { update { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) } }
+    @discardableResult
+    mutating func setStoreRule(companyID: Int, rule: Chains.StoreRule) -> SettingResult {
+        applySetting(refuse: { s in
+            guard let co = s.company(companyID) else { return "That store no longer exists." }
+            return Chains.chain(s, of: co) == nil ? "That store is not part of a chain." : nil
+        }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) }
+    }
 
     mutating func openChainStore(chainID: Int, cityID: String, size: Double) -> Result<Int, CompanySetup.StartError> {
         var r: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)

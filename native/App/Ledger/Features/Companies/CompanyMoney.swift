@@ -244,9 +244,9 @@ struct CompanyOwnerMoney: View {
         }
     }
     private func setSalary(_ v: Double, _ cur: Currency) {
-        store.act { $0.setOwnerSalary(companyID: company.id, monthly: v) }
+        let result = store.act { $0.setOwnerSalary(companyID: company.id, monthly: v) }
         let now = store.engine?.state.company(company.id)?.ownerMonthlySalary ?? 0
         salary = now
-        store.show(now > 0 ? "Your salary is now \(cur.tidyDisplay(now)) a month." : "You no longer take a salary.", tone: "n")
+        store.settle(result, now > 0 ? "Your salary is now \(cur.tidyDisplay(now)) a month." : "You no longer take a salary.", same: "Your salary is already that.")
     }
 }

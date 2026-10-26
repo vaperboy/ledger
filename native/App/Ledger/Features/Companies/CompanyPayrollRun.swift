@@ -83,9 +83,7 @@ struct CompanyPayrollRun: View {
         pending = PendingAction(title: "Change who runs payroll?",
                                 message: "From the next pay day: \(name.lowercased()). " + (c.monthlyFee > 0 ? "Cost about \(cur.tidyShort(c.monthlyFee)) a month. " : "No fee, but you have to approve each month. ") + describe(mode, c.monthlyFee, cur),
                                 button: "Change") {
-            store.act { $0.setPayrollMode(companyID: id, mode: mode) }
-            Haptics.success()
-            store.show("Payroll is now run by: \(name.lowercased()).", tone: "good")
+            if store.settle(store.act { $0.setPayrollMode(companyID: id, mode: mode) }, "Payroll is now run by: \(name.lowercased()).", same: "Payroll is already run that way.", tone: "good") { Haptics.success() }
         }
     }
 

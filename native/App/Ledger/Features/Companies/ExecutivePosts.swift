@@ -101,8 +101,8 @@ struct ExecutivePosts: View {
                 HStack(spacing: 16) {
                     AuthorityPicker(level: lvl, currency: cur, limit: p.rec["buy"].double,
                                     limitSteps: [50000.0, 100000, 250000, 600000, 2000000].map { cur.scaledPrice($0) },
-                                    setLevel: { l in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) } },
-                                    setLimit: { v in store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) } })
+                                    setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
+                                    setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
                     Button("Let go") { releasing = p }.foregroundStyle(Theme.loss)
                 }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
