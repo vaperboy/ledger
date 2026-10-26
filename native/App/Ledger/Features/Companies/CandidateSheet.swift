@@ -45,8 +45,9 @@ struct WorkerHireRow: View {
         let cur = engine.currency(for: company)
         let tried = !person.value("trialRes").isNull
         let market = engine.marketWage(role: person.role, companyID: company.id)
+        let claims = engine.claimedExperienceYears(personID: person.id).map { " · Claims \(Int($0.rounded())) \(Int($0.rounded()) == 1 ? "year" : "years")" } ?? ""
         CandidateHireRow(person: person, currency: cur,
-                         subtitle: "Says \(StaffProfile.band(person.claimedSkill).lowercased()) (\(Int(person.claimedSkill.rounded()))) · age \(person.age)",
+                         subtitle: "Says \(StaffProfile.band(person.claimedSkill).lowercased()) (\(Int(person.claimedSkill.rounded()))) · age \(person.age)" + claims,
                          market: market, factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in hire(wage) }) {
             VStack(alignment: .leading, spacing: 6) {
                 SectionTabs(items: kinds, title: { $0.rawValue }, selection: $kind)
@@ -66,8 +67,8 @@ struct WorkerHireRow: View {
             if sells {
                 SectionTabs(items: Plan.allCases, title: { $0.rawValue }, selection: $plan)
                 if plan != .salary {
-                    HStack(spacing: 8) {
-                        Text("Commission").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Commission").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    WrapRow {
                         ForEach([0.0] + PayPlans.rateSteps, id: \.self) { r in
                             Button(r == 0 ? "Usual" : "\(Int((r * 100).rounded()))%") { rate = r }.buttonStyle(QuietButtonStyle(tint: abs(rate - r) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
                         }
@@ -76,8 +77,8 @@ struct WorkerHireRow: View {
                          : "What you offer is the base salary; commission on their sales comes on top.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            HStack(spacing: 8) {
-                Text("Contract").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Contract").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            WrapRow {
                 Button("Permanent") { term = 0 }.buttonStyle(QuietButtonStyle(tint: term == 0 ? Theme.gold : Theme.ivoryMuted))
                 ForEach(FixedTerm.termChoices, id: \.self) { w in
                     Button("\(w) wk") { term = w }.buttonStyle(QuietButtonStyle(tint: term == w ? Theme.gold : Theme.ivoryMuted))
@@ -90,13 +91,14 @@ struct WorkerHireRow: View {
     private func trial() {
         if let seen = store.act({ $0.startTrialWeek(personID: person.id, companyID: company.id) }) ?? nil {
             Haptics.success(); store.show("After a week their work looks like \(Int(seen)) skill.", tone: "n")
-        } else { Haptics.warning(); store.show("Could not arrange a trial week: the company needs the cash.", tone: "warn") }
+        } else { Haptics.warning(); store.show("Could not arrange a trial week: the company needs \(store.short(engine.marketWage(role: person.role, companyID: company.id) / 4, in: company)) in cash.", tone: "warn") }
     }
 
     private func hire(_ wage: Double) -> HireFeedback {
         let t = terms, pid = person.id, cid = company.id
         let result: Hiring.HireResult? = store.act { $0.hire(personID: pid, companyID: cid, monthlyWage: wage, terms: t) }
         let fb = HireFeedback.from(result, name: person.name)
+        if !fb.isHired { Haptics.warning() }
         store.show(fb.text, tone: fb.isHired ? "good" : "warn")
         return fb
     }

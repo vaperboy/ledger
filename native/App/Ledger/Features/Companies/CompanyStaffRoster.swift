@@ -63,7 +63,7 @@ struct CompanyStaffRoster: View {
                         let open = expanded.contains(role) || !q.isEmpty
                         Button { withAnimation(.snappy(duration: 0.2)) { if open { expanded.remove(role) } else { expanded.insert(role) } } } label: {
                             HStack {
-                                Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).frame(width: 14)
+                                Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold).frame(width: 14)
                                 Text(roleLabel(role)).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                                 Text("\(members.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                 Spacer()
@@ -78,7 +78,7 @@ struct CompanyStaffRoster: View {
                         row(m, cur, showIssues: false)
                     }
                 }
-                if !q.isEmpty && shown.isEmpty { Text("No one matches.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).padding(.vertical, 8) }
+                if !q.isEmpty && shown.isEmpty { Text("No one matches \"\(query)\".").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
                 footer(cur)
             }
         }
@@ -107,7 +107,7 @@ struct CompanyStaffRoster: View {
                 }
                 Spacer(minLength: 6)
                 Text(cur.tidyShort(m.monthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
+                Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
             }.padding(.vertical, 8).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
@@ -117,29 +117,29 @@ struct CompanyStaffRoster: View {
         let papers = staff.reduce(0) { $0 + StaffExtras.missing($1).count }
         if papers > 0 {
             HStack {
-                Text("\(papers) paperwork item\(papers == 1 ? "" : "s") missing. An inspection can fine you.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                Label("\(papers) paperwork \(papers == 1 ? "item" : "items") missing. An inspection can fine you.", systemImage: "doc.badge.ellipsis").font(.caption).foregroundStyle(Theme.caution)
                 Spacer()
                 Button("Do all") {
                     var done = 0
                     for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
                     let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
                     if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
-                    else if done > 0 { store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
+                    else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
                     else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
                 }
-                    .font(.caption.weight(.semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                    .buttonStyle(QuietButtonStyle())
             }.padding(.top, 8)
         }
         if staff.count > 1 {
             HStack {
                 Text("Cutting costs").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 Spacer()
-                Menu("Lay off the weakest") {
+                Menu {
                     ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
                         let p = engine.layoffPreview(companyID: company.id, count: n)
                         Button("\(n) · saves \(cur.tidyShort(p.savesPerMonth)) a month, severance \(cur.tidyShort(p.severance))") { confirmLayOff(n, p, cur) }
                     }
-                }.font(.caption.weight(.semibold)).foregroundStyle(Theme.loss)
+                } label: { Text("Lay off the weakest  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.loss).padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.loss.opacity(0.45), lineWidth: 0.75)) }
             }.padding(.top, 8)
         }
     }
@@ -148,7 +148,7 @@ struct CompanyStaffRoster: View {
         pending = PendingAction(title: "Lay off \(n) \(n == 1 ? "person" : "people")?", message: "\(p.names.joined(separator: ", ")). Saves \(cur.tidyDisplay(p.savesPerMonth)) a month; severance of \(cur.tidyDisplay(p.severance)) is paid now and the mood of the rest drops.", button: "Lay off", destructive: true) {
             let ids = store.act { $0.layOffStaff(companyID: company.id, count: n) } ?? []
             Haptics.warning()
-            store.show(ids.isEmpty ? "No one was let go." : "\(ids.count) \(ids.count == 1 ? "person" : "people") let go. The rest are shaken.", tone: "n")
+            store.show(ids.isEmpty ? "No one was let go." : "\(ids.count) \(ids.count == 1 ? "person" : "people") let go: \(cur.tidyDisplay(p.savesPerMonth)) a month saved, severance \(cur.tidyDisplay(p.severance)) paid. The rest are shaken.", tone: ids.isEmpty ? "warn" : "n")
         }
     }
 }
@@ -236,24 +236,24 @@ struct StaffProfileView: View {
         LedgerSection("What you can do") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if let talk = e.contractTalk(personID: staffID), talk.isRequest {
-                    Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
+                    Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
                 }
-                Button("Contract discussion…") { discussing = true }.buttonStyle(GoldButtonStyle())
-                HStack {
+                Button("Contract discussion…") { discussing = true }.buttonStyle(QuietButtonStyle())
+                WrapRow {
                     if p.problem != nil { Button("Talk to them") { talk(p) }.buttonStyle(QuietButtonStyle()) }
-                    Button("Written warning") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
+                    Button("Written warning…") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
                 }
                 if !StaffExtras.missing(m).isEmpty {
                     Button("Paperwork done (\(StaffExtras.missing(m).count))") {
                         let done = store.act { $0.completePaperwork(companyID: companyID, personID: staffID) } ?? 0
-                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { store.show("Nothing could be ticked.", tone: "warn") }
+                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
                     }
                         .buttonStyle(QuietButtonStyle())
                 }
                 if !p.courses.isEmpty {
                     Menu("Send on a course") {
                         ForEach(p.courses, id: \.id) { c in
-                            Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { course(c, p) }
+                            Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { confirmCourse(c, p, cur) }
                         }
                     }.buttonStyle(QuietButtonStyle())
                     Text("Results vary: a course can change nothing, and a good result may tempt a competitor to poach them.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -276,12 +276,17 @@ struct StaffProfileView: View {
         }
     }
 
+    private func confirmCourse(_ c: StaffProfile.Course, _ p: StaffProfile.Profile, _ cur: Currency) {
+        pending = PendingAction(title: "Send \(p.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from company cash. Skill may rise by up to \(Int(c.maxGain.rounded())) points, or not at all; a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur) { course(c, p) }
+    }
+
     private func course(_ c: StaffProfile.Course, _ p: StaffProfile.Profile) {
         let r: StaffProfile.CourseResult? = store.act { $0.sendOnCourse(companyID: companyID, staffID: staffID, courseID: c.id) }
         switch r {
         case .done(let msg)?: Haptics.success(); store.show("\(c.name): \(msg).", tone: "good")
-        case .cash?: store.show("Not enough cash for the course.", tone: "warn")
-        default: store.show("That course is not available.", tone: "warn")
+        case .cash?: Haptics.warning(); store.show("Not enough cash for \(c.name).", tone: "warn")
+        case nil: break
+        default: Haptics.warning(); store.show("That course is not available.", tone: "warn")
         }
     }
 

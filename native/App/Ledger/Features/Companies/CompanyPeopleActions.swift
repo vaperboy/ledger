@@ -23,7 +23,7 @@ struct CompanyTargetsCard: View {
             LedgerSection(title: "Targets and budget", trailing: { Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if st.standing.isEmpty {
-                        Text("No targets this month yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("No targets this month yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     }
                     ForEach(Array(st.standing.enumerated()), id: \.offset) { n, s in
                         if n > 0 { Hairline() }
@@ -42,9 +42,10 @@ struct CompanyTargetsCard: View {
                             Text("Approved.").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
                         } else {
                             Text("Waiting for your approval. Approving makes these the numbers the manager is judged on this year; you can still change targets each month.")
-                                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                             Button("Approve the budget") {
-                                if store.act({ $0.approveBudget(companyID: company.id) }) == true { Haptics.success(); store.show("Budget approved.", tone: "good") }
+                                if store.act({ $0.approveBudget(companyID: company.id) }) == true { Haptics.success(); store.show("Budget \(b.year) approved: sales \(cur.tidyShort(b.rev)), profit \(cur.tidyShort(b.profit)).", tone: "good") }
+                                else { Haptics.warning(); store.show("The budget could not be approved now.", tone: "warn") }
                             }.buttonStyle(QuietButtonStyle())
                         }
                     }
@@ -83,7 +84,7 @@ struct CompanyTargetsCard: View {
                             Text("Benefit: " + benefitLine + " This also approves the year's budget.")
                             Text("Risk: " + riskLine)
                         }.font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        Button("Set targets") { confirm = true }.buttonStyle(GoldButtonStyle())
+                        Button("Set targets…") { confirm = true }.buttonStyle(QuietButtonStyle())
                     } else if !st.canSet && !st.setter.isOwner {
                         Text("\(st.setter.name) sets the targets here.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
@@ -93,9 +94,13 @@ struct CompanyTargetsCard: View {
             .confirmationDialog("Set the targets for this month?", isPresented: $confirm, titleVisibility: .visible) {
                 Button("Set targets") {
                     if store.act({ $0.setTargets(companyID: company.id, mode: mode, bonus: bonus) }) == true { Haptics.success(); store.show("Targets set.", tone: "good") }
-                    else { store.show("Not possible now.", tone: "warn") }
+                    else { Haptics.warning(); store.show("Targets cannot be set now.", tone: "warn") }
                 }
-            } message: { Text("The bonus level and the year's budget are confirmed with them.") }
+            } message: {
+                let cur = engine.currency(for: company)
+                let perTarget = engine.targetPreview(companyID: company.id, mode: mode).map { $0.hasManager ? $0.bonusPerTarget[min(2, max(0, bonus))] : 0 } ?? 0
+                Text((perTarget > 0 ? "Bonus up to \(cur.tidyDisplay(perTarget * 3)) a month if all three are met. " : "No bonus is paid. ") + "The year's budget is confirmed with them.")
+            }
         }
     }
 }
@@ -138,8 +143,8 @@ struct CompanyPerksCard: View {
                                 }
                             }
                             Spacer(minLength: 8)
-                            Button(on ? "On" : "Add") {
-                                if on { let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil; Haptics.tap(); if r == nil { store.show("Not possible right now.", tone: "warn") } } else { pending = p }
+                            Button(on ? "On · switch off" : "Add…") {
+                                if on { let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil; Haptics.tap(); store.show(r == nil ? "Not possible right now." : "\(p.name) switched off.", tone: r == nil ? "warn" : "n") } else { pending = p }
                             }.buttonStyle(QuietButtonStyle(tint: on ? Theme.gain : Theme.gold))
                         }.padding(.vertical, 9)
                     }
@@ -151,7 +156,7 @@ struct CompanyPerksCard: View {
                 if let pg = pendingGroup {
                     Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: pg.perk.id, group: pg.group.id))) a month") {
                         let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: pg.perk.id, group: pg.group.id) } ?? nil
-                        if r == true { Haptics.success(); store.show("\(pg.perk.name) added for \(pg.group.name.lowercased()).", tone: "good") } else { store.show("Not possible right now.", tone: "warn") }
+                        if r == true { Haptics.success(); store.show("\(pg.perk.name) added for \(pg.group.name.lowercased()).", tone: "good") } else { Haptics.warning(); store.show("Not possible right now.", tone: "warn") }
                         pendingGroup = nil
                     }
                 }
@@ -164,7 +169,7 @@ struct CompanyPerksCard: View {
                 if let p = pending {
                     Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month") {
                         let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil
-                        if r == true { Haptics.success(); store.show("\(p.name) added.", tone: "good") } else { store.show("Not possible right now.", tone: "warn") }
+                        if r == true { Haptics.success(); store.show("\(p.name) added.", tone: "good") } else { Haptics.warning(); store.show("Not possible right now.", tone: "warn") }
                         pending = nil
                     }
                 }
@@ -211,12 +216,12 @@ struct SuccessorSection: View {
         let waiting = engine.successorCandidates(companyID: company.id)
         VStack(alignment: .leading, spacing: 8) {
             if waiting.isEmpty {
-                Button("Find a successor · \(cur.tidyShort(ManagerModel.searchFee(currency: cur)))") { confirm = true }.buttonStyle(QuietButtonStyle())
+                Button("Find a successor · \(cur.tidyShort(ManagerModel.searchFee(currency: cur)))…") { confirm = true }.buttonStyle(QuietButtonStyle())
                 Text("Cost: the executive search fee. Benefit: four candidates to choose from before the handover, so the company is not left without a manager. Risk: none may suit, and the fee is not refunded.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
                 CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
-                    CandidateHireRow(person: p, currency: cur, market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in
+                    CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(engine, p), market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in
                         let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }, name: p.name, company: company.name)
                         if fb.isHired { store.show(fb.text, tone: "good") }
                         return fb
@@ -226,8 +231,8 @@ struct SuccessorSection: View {
         }
         .confirmationDialog("Start the search?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Pay \(cur.tidyShort(ManagerModel.searchFee(currency: cur))) and search") {
-                if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found.", tone: "good") }
-                else { store.show("Not enough cash for the search.", tone: "warn") }
+                if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found. Search paid: \(cur.tidyShort(ManagerModel.searchFee(currency: cur))).", tone: "good") }
+                else { Haptics.warning(); store.show("The search found no one, or the company cannot pay \(cur.tidyShort(ManagerModel.searchFee(currency: cur))).", tone: "warn") }
             }
         } message: { Text("Three people from the trade and one generalist. The list stays for about six months.") }
     }

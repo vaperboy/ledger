@@ -43,7 +43,7 @@ struct CompaniesView: View {
                                 LedgerSection("No companies yet") {
                                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                                         Text("Pick a trade, see the full start-up cost, then decide.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                        Button("Choose a trade") { path.append(.newCompany) }.buttonStyle(GoldButtonStyle())
+                                        Button("Choose a trade") { path.append(.newCompany) }.buttonStyle(QuietButtonStyle())
                                     }
                                 }
                             } else {
@@ -55,7 +55,12 @@ struct CompaniesView: View {
                                     }
                                 }) {
                                     if cos.count >= 8 { filterBar(chains) }
-                                    if rows.isEmpty { Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
+                                    if rows.isEmpty {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                                            Button("Clear the search and filter") { query = ""; chainFilter = "all" }.buttonStyle(QuietButtonStyle())
+                                        }.padding(.vertical, 8)
+                                    }
                                     if sizeClass == .regular {
                                         CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
                                     } else {
@@ -242,7 +247,10 @@ struct CompanyRow: View {
         let growing = (h.revenueGrowth ?? 0) >= 0
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(co.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                HStack(spacing: 5) {
+                    if CompaniesView.urgency(co, h) == 0 { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10)).foregroundStyle(Theme.loss).accessibilityLabel("Needs attention") }
+                    Text(co.name).font(.system(size: 13.5, weight: CompaniesView.urgency(co, h) == 0 ? .semibold : .regular)).foregroundStyle(Theme.ivory).lineLimit(1)
+                }
                 HStack(spacing: 0) {
                     Text(engine.tradeName(co) + " · ").foregroundStyle(Theme.ivoryFaint)
                     if co.status == .open { Text(h.label).foregroundStyle(HealthChip.tint(h.label)) } else { Text(co.status == .setup ? "Setting up" : co.status.rawValue.capitalized).foregroundStyle(Theme.ivoryMuted) }

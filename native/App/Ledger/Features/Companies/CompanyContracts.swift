@@ -16,6 +16,7 @@ struct CompanyContracts: View {
     @State private var openTender: Int? = nil
     @State private var priceIndex = 3
     @State private var higherQuality = false
+    @State private var pending: PendingAction?
     private let prices: [Double] = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1]
 
     var body: some View {
@@ -23,6 +24,7 @@ struct CompanyContracts: View {
             contracts
             tenders
         }
+        .confirmAction($pending)
     }
 
     // MARK: Contracts
@@ -30,6 +32,12 @@ struct CompanyContracts: View {
     @ViewBuilder private var contracts: some View {
         let list = engine.volumeContracts(companyID: company.id)
         let orders = engine.bookedOrders(companyID: company.id)
+        if list.isEmpty && orders.isEmpty {
+            LedgerSection("Volume contracts") {
+                Text("No volume contracts yet. Offers from business customers arrive in the Inbox; volume tenders, when there are any, are listed below.")
+                    .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
         if !list.isEmpty || !orders.isEmpty {
             let load = engine.contractLoad(companyID: company.id)
             LedgerSection(title: "Volume contracts", trailing: {
@@ -72,7 +80,8 @@ struct CompanyContracts: View {
                     Spacer(minLength: 8)
                     if c.warnings > 0 { Chip(text: "\(Int(c.warnings)) warning\(Int(c.warnings) == 1 ? "" : "s")", tint: Theme.caution) }
                     else if let d { Text("\(d.weeksLeft) wk left").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
-                }
+                    Image(systemName: openContract == c.id ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
+                }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if openContract == c.id, let d {
                 contractSheet(c, d)
@@ -100,7 +109,8 @@ struct CompanyContracts: View {
                     Spacer()
                     Button("End the contract") {
                         let ok = store.act { $0.endContract(companyID: company.id, contractID: c.id) }
-                        if ok == true { Haptics.warning(); openContract = nil } else { store.show("The contract could not be ended.", tone: "warn") }
+                        if ok == true { Haptics.warning(); openContract = nil; store.show("Contract with \(c.customer) ended. Penalty about \(store.short(0.4 * d.price * c.units, in: company)).", tone: "n") }
+                        else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
                         ending = nil
                     }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 }
@@ -150,7 +160,8 @@ struct CompanyContracts: View {
                     Spacer(minLength: 8)
                     if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
                     else { Text("\(weeksToBid) wk to bid").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold) }
-                }
+                    Image(systemName: openTender == t.id ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
+                }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if openTender == t.id { tenderSheet(t, qualifies: q.ok, hasBid: mine != nil, weeksToBid: weeksToBid) }
         }.padding(.vertical, 9)
@@ -181,7 +192,7 @@ struct CompanyContracts: View {
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }.buttonStyle(SmallOutlineButtonStyle())
+                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }.buttonStyle(QuietButtonStyle())
             } else if !qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             } else {
@@ -190,15 +201,20 @@ struct CompanyContracts: View {
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
                 }.tint(Theme.gold)
-                Button("Send the bid") {
-                    let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: pf, higherQuality: higherQuality) }
-                    switch r {
-                    case .sent?: Haptics.success(); store.show("Bid sent. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil
-                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company to write the bid.", tone: "warn")
-                    case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                    default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
+                Button("Send the bid…") {
+                    let hq = higherQuality
+                    pending = PendingAction(title: "Bid \(Int((pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
+                                            button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company)) {
+                        let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: pf, higherQuality: hq) }
+                        switch r {
+                        case .sent?: Haptics.success(); store.show("Bid sent at \(Int((pf * 100).rounded()))% of list. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil
+                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company to write the bid (\(store.short(t.bidCost, in: company))).", tone: "warn")
+                        case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                        case nil: break
+                        default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
+                        }
                     }
-                }.buttonStyle(SmallGoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }.padding(.bottom, 4)
     }

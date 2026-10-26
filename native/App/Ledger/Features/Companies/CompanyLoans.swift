@@ -21,12 +21,21 @@ struct CompanyLoans: View {
         let cur = engine.currency(for: company)
         let loans = engine.state.loans.filter { $0.companyID == company.id }
         let shift = Banking.countryRateShift(companyID: company.id, state: engine.state, context: engine.context)
+        let missedTotal = loans.reduce(0) { $0 + $1.int("miss") }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if missedTotal > 0 || company.int("loanCall") != 0 {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.loss).padding(.top, 2)
+                    Text(company.int("loanCall") != 0 ? "The bank has called a loan. Pay the next instalment in time or the company is wound up."
+                         : "\(missedTotal) missed \(missedTotal == 1 ? "instalment" : "instalments"). Penalties are added each month until the loan is back on track.")
+                        .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             LedgerSection(title: "What the company owes", trailing: {
                 Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
                     .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
             }) {
-                if loans.isEmpty { Text("This company has no loans.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+                if loans.isEmpty { Text("This company has no loans. Borrowing is below.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                 VStack(spacing: 0) {
                     ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                         if n > 0 { Hairline() }
@@ -39,8 +48,8 @@ struct CompanyLoans: View {
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.tidyShort(l.balance)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Button("Repay…") { repaying = l }.font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                                Text(cur.tidyShort(l.balance)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Button("Repay…") { repaying = l }.buttonStyle(QuietButtonStyle())
                             }
                         }.padding(.vertical, 9)
                     }
@@ -79,20 +88,21 @@ struct CompanyLoans: View {
                 }
                 Text(company.form == .soleTrader ? "As a sole trader you are personally liable: if the company cannot pay, the bank comes to you." : "A limited company borrows on its own account; the instalments come out of company cash at month end.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                Button("Take the loan") { confirmBorrow(cur) }.buttonStyle(QuietButtonStyle())
+                Button("Take the loan…") { confirmBorrow(cur) }.buttonStyle(QuietButtonStyle()).disabled(company.flag("loanFrozen") || (loanAmount > 0 && loanAmount > offer.maximum))
             }
         }
     }
 
     private func confirmBorrow(_ cur: Currency) {
-        guard loanAmount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
+        guard loanAmount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
         let amount = loanAmount, months = term
         let pay = engine.companyLoanPayment(amount: amount, termMonths: months, companyID: company.id)
         pending = PendingAction(title: "Borrow \(cur.tidyDisplay(amount))?", message: "\(cur.tidyDisplay(pay)) a month for \(months) months, \(cur.tidyDisplay(pay * Double(months))) in total. Missed instalments add penalties and can get the loan called.", button: "Take the loan") {
             switch store.act({ $0.takeLoan(kind: "biz", amount: amount, termMonths: months, companyID: company.id) }) {
             case .ok?: Haptics.success(); loanAmount = 0; store.show("Loan granted: \(cur.tidyDisplay(amount)) paid into \(company.name).", tone: "good")
-            case .tooSmall?: store.show("The bank won't lend that little.", tone: "warn")
-            default: Haptics.warning(); store.show("The bank declined.", tone: "bad")
+            case .tooSmall?: Haptics.warning(); store.show("The bank won't lend that little.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("The bank declined \(cur.tidyDisplay(amount)). Try a smaller amount or a longer term.", tone: "bad")
             }
         }
     }
@@ -106,6 +116,7 @@ struct RepayLoanSheet: View {
     var company: Company
     var loan: Loan
     @State private var amount = 0.0
+    @State private var pending: PendingAction?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -119,9 +130,10 @@ struct RepayLoanSheet: View {
                         .init(label: "Company cash", value: cur.tidyShort(cash), tint: cash < loan.balance ? Theme.caution : Theme.ivory),
                     ])
                     AmountField(title: "Repay", currency: cur, amount: $amount)
+                    if cash < loan.balance { Text("The company holds less than the whole balance: put money in first to repay it all.").font(.caption).foregroundStyle(Theme.caution) }
                     HStack {
-                        Button("Repay this amount") { repay(min(amount, loan.balance), cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
-                        Button("Repay all") { repay(loan.balance, cur) }.buttonStyle(QuietButtonStyle())
+                        Button("Repay this amount…") { confirmRepay(min(amount, loan.balance), cur, cash) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
+                        Button("Repay all…") { confirmRepay(loan.balance, cur, cash) }.buttonStyle(QuietButtonStyle())
                     }
                     Text("Paid from the company's cash, with no fee for paying early. Less owed means less interest; the monthly instalment falls with the balance.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -133,6 +145,13 @@ struct RepayLoanSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
+        .confirmAction($pending)
+    }
+
+    private func confirmRepay(_ v: Double, _ cur: Currency, _ cash: Double) {
+        guard v > 0 else { return }
+        pending = PendingAction(title: "Repay \(cur.tidyDisplay(v))?", message: "Leaves \(cur.tidyDisplay(cash - v)) in company cash. No fee for paying early; the balance falls to \(cur.tidyDisplay(max(0, loan.balance - v))).",
+                                button: "Repay", destructive: v >= cash * 0.9, amount: v, currency: cur) { repay(v, cur) }
     }
 
     private func repay(_ v: Double, _ cur: Currency) {
