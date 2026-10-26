@@ -12,11 +12,15 @@ struct RichListView: View {
             let st = RichList.standing(e.state, data: e.data, context: e.context)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Your place in \(e.homeCountry.name)").capsLabel()
+                        Text(st.rank.map { "#\($0.formatted())" } ?? "Not placed").font(.hero(36)).foregroundStyle(st.rank == nil ? Theme.ivoryMuted : Theme.gold)
+                        if !movement(st).isEmpty { Text(movement(st)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+                    }
                     KeyFigures(items: [
-                        .init(label: "Your place", value: st.rank.map { "#\($0)" } ?? "–", tint: Theme.gold,
-                              sub: movement(st)),
                         .init(label: "Net worth", value: store.short(max(0, st.netWorth))),
-                        .init(label: "Best place", value: st.best.map { "#\($0)" } ?? "–")
+                        .init(label: "Best place", value: st.best.map { "#\($0)" } ?? "–"),
+                        .init(label: "Awards won", value: "\(Awards.wonCount(e.state))")
                     ], columns: 3)
                     if let r = st.rank, r > 100 {
                         Text("Number 100 has \(store.short(st.hundredth)). \(store.short(max(0, st.hundredth - st.netWorth))) to go.")

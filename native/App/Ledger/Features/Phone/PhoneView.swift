@@ -13,26 +13,45 @@ struct PhoneView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 if let e = store.engine {
-                    Card {
-                        VStack(spacing: Theme.Space.m) {
-                            row(.goals, goalsLine(e)); Hairline()
-                            row(.news, e.news.first?.text ?? "No news yet")
-                            Hairline()
-                            row(.stats, "Best net worth " + store.short(max(e.state.stats.peakNetWorth, e.netWorth.total)) + " · week \(e.state.week + 1)")
-                            Hairline()
-                            row(.achievements, achievementsLine(e)); Hairline()
-                            row(.richList, richLine(e)); Hairline()
-                            row(.ranking, rankingLine(e)); Hairline()
-                            row(.worldAround, "Public image, people you know, favours and maps"); Hairline()
-                            row(.activity, e.state.statement.first.map { $0.label + " " + (($0.amount >= 0 ? "+" : "−") + store.short(abs($0.amount))) } ?? "Nothing has moved yet")
-                            Hairline()
-                            row(.luxury, e.luxuryPieces.isEmpty ? "Cars, watches, art, yachts, jets, homes and estates" : "\(e.luxuryPieces.count) pieces · worth " + store.short(e.luxuryValue))
-                            Hairline()
+                    let nw = e.netWorth.total
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        KeyFigures(items: [
+                            .init(label: "Net worth", value: store.short(nw), tint: nw < 0 ? Theme.loss : Theme.ivory),
+                            .init(label: "Best so far", value: store.short(max(e.state.stats.peakNetWorth, nw))),
+                            .init(label: "Week", value: "\(e.state.week + 1)")
+                        ])
+                        LedgerSection("Play") {
+                            VStack(spacing: 0) {
+                                row(.goals, goalsLine(e), accent: goalsOpen(e))
+                                Hairline()
+                                row(.news, e.news.first?.text ?? "No news yet")
+                                Hairline()
+                                row(.worldAround, "Public image, people you know, favours and maps")
+                            }
+                        }
+                        LedgerSection("Your record") {
+                            VStack(spacing: 0) {
+                                row(.stats, "Best net worth " + store.short(max(e.state.stats.peakNetWorth, nw)) + " · week \(e.state.week + 1)")
+                                Hairline()
+                                row(.achievements, achievementsLine(e))
+                                Hairline()
+                                row(.richList, richLine(e))
+                                Hairline()
+                                row(.ranking, rankingLine(e))
+                                Hairline()
+                                row(.activity, e.state.statement.first.map { $0.label + " " + (($0.amount >= 0 ? "+" : "−") + store.short(abs($0.amount))) } ?? "Nothing has moved yet")
+                                Hairline()
+                                row(.luxury, e.luxuryPieces.isEmpty ? "Cars, watches, art, yachts, jets, homes and estates" : "\(e.luxuryPieces.count) pieces · worth " + store.short(e.luxuryValue))
+                            }
+                        }
+                        LedgerSection("This device") {
                             row(.settings, "How much you decide, saving, haptics")
                         }
                     }
                     .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                } else {
+                    Text("No game is open.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(Theme.Space.margin)
                 }
             }
             .ledgerBackground()
@@ -58,10 +77,15 @@ struct PhoneView: View {
         }
     }
 
-    private func row(_ dest: PhoneDestination, _ preview: String) -> some View {
+    /// A row that opens a page: the chevron says it can be tapped; champagne marks one with something waiting.
+    private func row(_ dest: PhoneDestination, _ preview: String, accent: Bool = false) -> some View {
         Button { Haptics.tap(); path.append(dest) } label: {
-            ListRow(symbol: dest.symbol, tint: Theme.ivoryMuted, title: dest.title, subtitle: preview, chevron: true).contentShape(Rectangle())
+            ListRow(symbol: dest.symbol, tint: accent ? Theme.gold : Theme.ivoryMuted, title: dest.title, subtitle: preview, chevron: true).contentShape(Rectangle())
         }.buttonStyle(.plain)
+    }
+
+    private func goalsOpen(_ e: GameEngine) -> Bool {
+        !e.firstStepRewardsHidden && (e.firstStepRewards ?? []).contains { !$0.done }
     }
 
     private func goalsLine(_ e: GameEngine) -> String {
