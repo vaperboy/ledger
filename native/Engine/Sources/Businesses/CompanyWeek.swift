@@ -75,6 +75,7 @@ public enum CompanyWeek {
         let fixed = bd.fixedWeekly * pow(s.companies[i].size, 0.6) * 0.5
         _ = w
         Payments.companyPays(&s, companyID: s.companies[i].id, amount: fixed, category: "oth")
+        CompanyCosts.leaseInstalments(&s, companyIndex: i, data: data)   // leases are contracts: they run while the company is shut for a spell
         // Software plans keep charging while closed unless the owner paused them when closing (original: `weekCo.after`, `subPause`).
         if !s.companies[i].value("subPause").bool {
             for (_, rec) in s.companies[i].value("eq").object.sorted(by: { $0.key < $1.key }) where !rec["sub"].isNull {
@@ -457,18 +458,7 @@ public enum CompanyWeek {
         co = s.companies[i]
         let fixed = CompanyCosts.fixedOverhead(co, bd, w)
         Payments.companyPays(&s, companyID: id, amount: fixed, category: "oth")
-        // VAT on purchases of overhead (half of the overhead is VAT-bearing)
-        let vr = Vat.rate(co, bd, w)
-        let country = w.country(co)
-        if fixed > 0 && vr > 0 && !country.usesSalesTax {
-            let vf = vr * fixed * 0.5
-            Ledger.moveRaw(&s, .company(id), -jsRound(vf))
-            s.companies[i].vatBalance -= vf
-        } else if fixed > 0 && Vat.isExempt(co, w) {
-            let vf = country.vat.rate(for: bd.vatCategory) * fixed * 0.5
-            Ledger.moveRaw(&s, .company(id), -jsRound(vf))
-            var b = s.companies[i].books; b.add("oth", vf); s.companies[i].books = b
-        }
+        Vat.input(&s, companyIndex: i, net: fixed, data: data)   // input VAT on the overhead, by the country's rules
         accountantFee(&s, i, data: data)
         // Insurance
         let w2 = World(state: s, data: data)
@@ -479,12 +469,7 @@ public enum CompanyWeek {
         }
         if premium > 0, co2.value("flags")["premUntil"].double > Double(s.week) { premium *= 1 + co2.value("flags")["premUp"].double }   // repriced after a lost lawsuit (Aftermath)
         if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins"); Advisers.premiumsPaid(&s, i, total: premium) }
-        // Leased vehicles
-        for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {
-            let instalment = v["lease"].double * 12 / 52
-            Payments.companyPays(&s, companyID: id, amount: instalment, category: "oth")
-            Vat.input(&s, companyIndex: i, net: instalment, data: data)
-        }
+        CompanyCosts.leaseInstalments(&s, companyIndex: i, data: data)   // leased equipment and vehicles
         CompanyCosts.premisesValue(&s, companyIndex: i, data: data)
         Marketing.weekly(&s, companyIndex: i, bd, data: data, tables: marketing)
         EquipmentUnits.before(&s, companyIndex: i, bd, data: data)
