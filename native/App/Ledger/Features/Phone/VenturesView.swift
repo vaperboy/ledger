@@ -674,6 +674,26 @@ private struct SoftwarePart: View {
                         store.show(p.selfHours > 0 ? "You stopped coding on it." : "You code 20 hours a week on it.", tone: "n")
                     }.buttonStyle(SmallOutlineButtonStyle())
                 }
+                if engine.canRaiseFunding(companyID: co.id) {
+                    let wait = engine.weeksUntilNextPitch(companyID: co.id)
+                    let ask = engine.suggestedFundingAmount(companyID: co.id)
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Raise money for \(co.name)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                            Text(wait > 0 ? "You can pitch again in \(wait.weeksText)." : "Investors: \(engine.investorInterest(companyID: co.id).word). Asks for about \(cur.tidyShort(ask)) for new shares.")
+                                .font(.system(size: 11)).foregroundStyle(wait > 0 ? Theme.caution : Theme.ivoryFaint)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Pitch") {
+                            switch store.act({ $0.pitchToInvestors(companyID: co.id, amount: ask) }) {
+                            case .offers(let n)?: Haptics.success(); store.show("\(n) investor\(n == 1 ? "" : "s") made an offer: see the company's Finances.", tone: "good")
+                            case .none?: store.show("No investor bit this time.", tone: "warn")
+                            case .tooSoon(let w)?: store.show("Too soon to pitch again: \(w.weeksText) to go.", tone: "n")
+                            default: store.show("Only a limited company can raise money from investors.", tone: "warn")
+                            }
+                        }.buttonStyle(SmallOutlineButtonStyle()).frame(width: 90).disabled(wait > 0)
+                    }
+                }
                 HStack {
                     Text("Customers pay").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     Spacer()
