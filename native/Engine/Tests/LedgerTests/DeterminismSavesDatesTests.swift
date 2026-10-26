@@ -159,9 +159,10 @@ final class DeterminismSavesDatesTests: XCTestCase {
         var sorted = 0.0
         for k in keys.sorted() { sorted += a.value("eq")[k]["bv"].double }
         XCTAssertEqual(CompanyFigures.equipmentBookValue(a), sorted, "equipment is added in key order")
-        let fa = CompanyFigures.weeklyCostEstimate(a, fixedCost: 100, employerFactor: 1.2)
-        XCTAssertEqual(fa, CompanyFigures.weeklyCostEstimate(b, fixedCost: 100, employerFactor: 1.2))
-        XCTAssertEqual(fa, CompanyFigures.weeklyCostEstimate(c, fixedCost: 100, employerFactor: 1.2))
+        let k = GameData.bundledForTests.countries.resolve("GB", orHome: "GB")
+        let fa = CompanyFigures.weeklyCostEstimate(a, fixedCost: 100, country: k)
+        XCTAssertEqual(fa, CompanyFigures.weeklyCostEstimate(b, fixedCost: 100, country: k))
+        XCTAssertEqual(fa, CompanyFigures.weeklyCostEstimate(c, fixedCost: 100, country: k))
     }
 
     // MARK: (2) Saves

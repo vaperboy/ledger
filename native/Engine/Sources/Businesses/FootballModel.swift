@@ -618,7 +618,8 @@ public enum FootballModel {
         let wages = fm["wage"].double * R / 52
         let coachW = (fm["coach"].isNull ? 0 : fm["coach"]["wage"].double) + (fm["asst"].isNull ? 0 : fm["asst"]["wage"].double)
         let ops = R * 0.3 / 52
-        var cogs = wages + coachW + ops
+        var cogs = ops   // the playing and coaching wages go to the wages line (below), not the cost of sales
+        var wageBill = wages + coachW
         fm["wk"] = .object(["tv": .number(tv), "spons": .number(spons), "merch": .number(merch), "match": .number(md), "wages": .number(wages), "coaches": .number(coachW), "ops": .number(ops)])
         if let r = res {
             var last = fm["last"].array
@@ -643,7 +644,7 @@ public enum FootballModel {
             fm = s.companies[i].value("fm")
         }
         // The round-24 step: extra wages for players signed (or saved by selling), signings written off over three years.
-        cogs += fm["xw"].double * R / 52
+        wageBill += fm["xw"].double * R / 52
         var dep = 0.0
         var amort = fm["amort"].array
         for k in amort.indices where amort[k]["left"].double > 0 { dep += amort[k]["a"].double; amort[k]["left"] = .number(amort[k]["left"].double - 1) }
@@ -652,6 +653,7 @@ public enum FootballModel {
         if dep > 0 { fm["book"] = .number(max(0, fm["book"].double - dep)) }
         s.companies[i].set("fm", fm)
         if dep > 0 { Payments.book(&s, companyID: co.id, category: "dep", amount: dep) }
+        if wageBill > 0 { Payments.companyPays(&s, companyID: co.id, amount: wageBill, category: "wages", label: "Players' and coaches' wages") }
         // Bids for your players arrive while a transfer window is open.
         if let win = transferWindow(s, lg) {
             let open = s.inbox.contains { $0.actionID == "club24" && $0.companyID == co.id && $0.status == "open" }
@@ -720,8 +722,21 @@ public enum FootballModel {
         if d["done"].bool { return }
         if let k = s.inbox.firstIndex(where: { $0.id == m.id }) { var dd = d; dd["done"] = 1; s.inbox[k].set("data", dd) }
         guard idx == 0 else { return }
-        Payments.companyReceives(&s, companyID: m.companyID, amount: d["fee"].double, category: "rev", label: "Transfer fee received")
         var fm = s.companies[i].value("fm")
+        // The player's remaining book value (his share of the unamortised signing fees) is written off at the sale; the sale books only the
+        // difference to the fee, once: a gain in revenue or a loss.
+        let share = fm["sq"].double > 0 ? clamp(d["pts"].double / fm["sq"].double, 0, 1) : 0
+        var am = fm["amort"].array
+        var writeOff = 0.0
+        for k in am.indices { writeOff += share * am[k]["a"].double * am[k]["left"].double; am[k]["a"] = .number(am[k]["a"].double * (1 - share)) }
+        fm["amort"] = .array(am)
+        fm["book"] = .number(max(0, fm["book"].double - writeOff))
+        s.companies[i].set("fm", fm)
+        Payments.companyReceives(&s, companyID: m.companyID, amount: d["fee"].double, category: nil, label: "Transfer fee received")
+        let result = jsRound(d["fee"].double) - writeOff
+        if result > 0 { Payments.book(&s, companyID: m.companyID, category: "rev", amount: result) }
+        else if result < 0 { Payments.book(&s, companyID: m.companyID, category: "loss", amount: -result) }
+        fm = s.companies[i].value("fm")
         fm["sq"] = .number(fm["sq"].double - d["pts"].double)
         fm["xw"] = .number(max(-0.05, fm["xw"].double - d["xw"].double))
         fm["tout"] = .number(fm["tout"].double + d["fee"].double)

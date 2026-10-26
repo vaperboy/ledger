@@ -91,7 +91,7 @@ final class AuditFixesTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 200_000_000) else { return XCTFail("start") }
         hireOne(&e, id, wage: med * 10)
         let co = e.state.company(id)!
-        let est = CompanyCosts.standingWeeklyPayroll(co, country: mx)
+        let est = Payroll.weeklyCost(co, country: mx)
         let holiday: Double = 1 + LabourRules(country: mx).leaveWeeks / 52 * 0.3
         var expected = 0.0
         for m in co.staff { expected += m.monthlyWage * 12 / 52 * holiday * mx.payrollFactor(monthlyWage: m.monthlyWage) }
@@ -105,7 +105,7 @@ final class AuditFixesTests: XCTestCase {
         e.update { s, d, _ in
             let i = s.companyIndex(id)!
             let country = World(state: s, data: d).country(s.companies[i])
-            let est = Payday.weeklyWageCost(s.companies[i], country: country)
+            let est = Payroll.weeklyCost(s.companies[i], country: country)
             let booked = CompanyCosts.wages(&s, companyIndex: i, d.catalog[s.companies[i].type]!, data: d)
             XCTAssertGreaterThan(est, 0)
             XCTAssertEqual(est, booked, accuracy: 1e-6, "the estimate and the accrual are the same function")

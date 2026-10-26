@@ -44,9 +44,9 @@ public enum EnergyModel {
 
     /// One week of a power plant, as a pure function of its inputs (so it can be compared with the original).
     /// `noise` is one standard normal draw. Original: `FAM.energy.power`.
-    public static func powerWeek(megawattsBought: Double, building: Double, week: Int, month: Int, source src: Source, hedge: Int,
+    public static func powerWeek(megawattsBought: Double, building: Double, month: Int, source src: Source, hedge: Int,
                                  capacityFactor tw: Double, opexRate: Double, condition cond: Double, technicianFTE: Double,
-                                 capacityModifier: Double, demandModifier: Double, economyPower: Double, inflation: Double, noise: Double) -> PowerResult {
+                                 capacityModifier: Double, demandModifier: Double, economyPower: Double, inflationIndex: Double, noise: Double) -> PowerResult {
         var r = PowerResult()
         r.megawatts = max(0, megawattsBought - building)
         r.megawattsBuilding = building
@@ -56,7 +56,7 @@ public enum EnergyModel {
         r.capacityMWh = mw * 168 * tw * src.cf * r.season
         let raw = mw * 168 * tw * src.cf * r.season * (0.75 + 0.25 * cond) * (0.8 + 0.2 * r.crew) * capacityModifier * (1 + noise * 0.08)
         r.outputMWh = min(raw, r.capacityMWh)
-        let idx = pow(1 + inflation, Double(week) / 52)
+        let idx = inflationIndex
         let spot = 650 * economyPower * idx
         let fixed = 650 * 1.0 * idx
         let share = hedgeShare[min(2, max(0, hedge))]
@@ -89,10 +89,10 @@ public enum EnergyModel {
         let tables = data.catalog.tables
         let fte = StaffModel.fullTimeEquivalents(role: "windtech", staff: co.staff, people: s.people, week: s.week, salesRoles: tables.salesRoles)
         let noise = s.random.gauss()
-        let r = powerWeek(megawattsBought: bought, building: building, week: s.week, month: GameCalendar.month(week: s.week), source: source(of: co),
+        let r = powerWeek(megawattsBought: bought, building: building, month: GameCalendar.month(week: s.week), source: source(of: co),
                           hedge: co.value("knob")["hedge"].int, capacityFactor: bd.trait("cf") ?? 0.36, opexRate: bd.trait("opex") ?? 0.025,
                           condition: cond, technicianFTE: fte, capacityModifier: DemandModel.modifier(co, "cap"),
-                          demandModifier: DemandModel.modifier(co, "dem"), economyPower: s.economy.power, inflation: s.economy.inflation, noise: noise)
+                          demandModifier: DemandModel.modifier(co, "dem"), economyPower: s.economy.power, inflationIndex: s.economy.inflationIndex, noise: noise)
         fm["mw"] = .number(r.megawatts)
         fm["inb"] = .number(r.megawattsBuilding)
         fm["readyIn"] = nextReady.map { .number($0 - Double(s.week)) } ?? .null
@@ -114,21 +114,21 @@ public enum EnergyModel {
     static let neutralDiscoveries = ["Aurora", "Boreas", "Cobalt", "Drake", "Ember", "Fulmar", "Gannet", "Heron"]
 
     /// Long-run price per barrel and the share sold on term contracts. Original: the 'sell' knob in `FAM.energy.oil`.
-    public static func oilPrice(contracts: Bool, economyOil: Double, inflation: Double, week: Int) -> Double {
-        let lr = 780 * pow(pow(1 + inflation, Double(week) / 52), 0.5)
+    public static func oilPrice(contracts: Bool, economyOil: Double, inflationIndex: Double) -> Double {
+        let lr = 780 * pow(inflationIndex, 0.5)
         let term = contracts ? 0.6 : 0.0
         return lr * economyOil * (1 - term) + lr * 0.95 * term
     }
 
     /// Cost of lifting a barrel. Original: `R24.oilLift`.
-    public static func liftingCost(materials: Double, inflation: Double, week: Int) -> Double {
-        200 * (0.7 + 0.3 * materials) * pow(pow(1 + inflation, Double(week) / 52), 0.5)
+    public static func liftingCost(materials: Double, inflationIndex: Double) -> Double {
+        200 * (0.7 + 0.3 * materials) * pow(inflationIndex, 0.5)
     }
 
     /// What a stake of `kbbl` thousand barrels costs. Original: `oilAcquire`.
     public static func stakePrice(kbbl: Double, economyOil: Double) -> Double { jsRound(kbbl * 1000 * 190 * pow(economyOil, 0.5)) }
 
-    public static func explorationCost(inflation: Double, week: Int) -> Double { jsRound(300e6 * pow(1 + inflation, Double(week) / 52)) }
+    public static func explorationCost(inflationIndex: Double) -> Double { jsRound(300e6 * inflationIndex) }
 
     /// One producing field for one week: the barrels (thousand), the book value used up. Original: the 'prod' branch.
     public static func fieldWeek(reserves: Double, initialRate q0: Double, age: Int, plateau: Double, capacityModifier: Double, crew: Double,
@@ -146,7 +146,7 @@ public enum EnergyModel {
         var fields = fm["fields"].array
         // A manager buys stakes in producing fields when there is money; frontier strategy adds exploration.
         let risk = co.value("knob")["risk"].isNull ? 1 : co.value("knob")["risk"].int
-        let infl = pow(1 + s.economy.inflation, Double(s.week) / 52)
+        let infl = s.economy.inflationIndex
         if let mid = co.managerID, s.people[mid] != nil, co.status == .open, Double(s.week) - (fm["autoW"].isNull ? -99 : fm["autoW"].double) >= 26,
            Double(fields.filter { $0["st"].string != "depleted" }.count) < 2 + co.size {
             let k = [10000.0, 5000, 2000, 1000].first { co.cash > $0 * 1000 * 190 * pow(s.economy.oil, 0.5) + 60e6 * infl + co.lastWages * 26 }
@@ -163,7 +163,7 @@ public enum EnergyModel {
             }
             co = s.companies[i]
         }
-        let price = oilPrice(contracts: co.value("knob")["sell"].int == 1, economyOil: s.economy.oil, inflation: s.economy.inflation, week: s.week)
+        let price = oilPrice(contracts: co.value("knob")["sell"].int == 1, economyOil: s.economy.oil, inflationIndex: s.economy.inflationIndex)
         let fte = StaffModel.fullTimeEquivalents(role: "offshore", staff: co.staff, people: s.people, week: s.week, salesRoles: data.catalog.tables.salesRoles)
         let crew = min(1, fte / max(1, 10 * co.size))
         let capMod = DemandModel.modifier(co, "cap")
@@ -206,7 +206,7 @@ public enum EnergyModel {
         co.set("fm", fm)
         s.companies[i] = co
         let rev = bbl * 1000 * price * DemandModel.modifier(co, "dem")
-        let cogs = bbl * 1000 * liftingCost(materials: s.economy.materials, inflation: s.economy.inflation, week: s.week)
+        let cogs = bbl * 1000 * liftingCost(materials: s.economy.materials, inflationIndex: s.economy.inflationIndex)
         return CompanyWeek.WeekContext(units: bbl, rev: rev, cogs: cogs, D: bbl, cap: bbl, util: 0.8, price: price, paidDuringWeek: 0)
     }
 
@@ -234,7 +234,7 @@ public enum EnergyModel {
     public static func explore(_ s: inout GameState, _ i: Int, data: GameData) -> DealResult {
         let co = s.companies[i]
         let id = co.id
-        let c = explorationCost(inflation: s.economy.inflation, week: s.week)
+        let c = explorationCost(inflationIndex: s.economy.inflationIndex)
         if co.cash < c { return .cash }
         let before = s.companies[i].cash
         Payments.companyPays(&s, companyID: id, amount: c, category: "oth", label: "Exploration well")
@@ -244,7 +244,7 @@ public enum EnergyModel {
         var fm = s.companies[i].value("fm")
         fm["expl"] = .number(fm["expl"].double + spent)
         var fields = fm["fields"].array
-        let infl = pow(1 + s.economy.inflation, Double(s.week) / 52)
+        let infl = s.economy.inflationIndex
         if ok {
             let vol = jsRound(exp(s.random.gauss() * 0.9 + 4.4)) * 1000
             let names = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode).pack["flavour"]["oilDiscoveries"].array.map { $0.string }

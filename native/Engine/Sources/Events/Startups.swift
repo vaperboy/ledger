@@ -52,7 +52,7 @@ public enum Startups {
         return Founded(id: f["id"].int, name: f["name"].string, productName: f["secn"].string, sectorName: StartupProducts.sector(f["sec"].string)?.name ?? "",
                        live: f["st"].string == "live", exited: f["st"].string == "exit", stage: f["stage"].int, ownership: f["pct"].double, valuation: f["val"].double,
                        cash: cash, burn: burn, invested: f["in"].double, exitValue: f["exitV"].double, quality: f["q"].double, traction: f["tr"].double,
-                       runwayWeeks: burn > 0 ? max(0, Int(cash / burn)) : 0,
+                       runwayWeeks: CompanyFigures.runwayWeeks(cash: cash, weeklyLoss: burn).map { Int($0) } ?? 0,
                        offers: f["offers"].array.enumerated().map { n, o in Funding.FundOffer(id: n, kind: o["k"].string, name: o["name"].string, amount: o["amt"].double, preMoney: o["pre"].double, pct: o["pct"].double, says: o["says"].string, countered: o["ctr"].bool) },
                        product: product(f["sw16"]))
     }
@@ -90,7 +90,7 @@ public enum Startups {
         let speed = Double(devs) + selfH / 40 * 0.7, wk = speed > 0 ? Int((d.work / speed).rounded(.up)) : nil
         let dc = builderCost(id, cur)
         return Plan(seed: seed, builders: devs, weeksToTest: wk.map { Int((Double($0) / 2).rounded(.up)) }, weeksToSell: wk, buildersMonthly: Double(devs) * dc,
-                    runwayWeeks: Int((cur.scaledPrice(d.seed) * m / (cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52)).rounded()),
+                    runwayWeeks: Int((CompanyFigures.runwayWeeks(cash: seed, weeklyLoss: cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52) ?? 0).rounded()),
                     interest: Funding.interest(s, capitalNeed: d.capitalNeed, traction: 0.05), capitalNeed: d.capitalNeed)
     }
     /// Your own companies that could use this product, with the effect each would get.
@@ -314,9 +314,10 @@ public enum Startups {
                 s.news("Startup \(name) shuts down.", tone: "n")
                 list[k] = f; continue
             }
-            if f["cash"].double < f["burn"].double * 6 && !f["warn"].bool {
+            let runway = CompanyFigures.runwayWeeks(cash: f["cash"].double, weeklyLoss: f["burn"].double)
+            if (runway ?? .infinity) < 6 && !f["warn"].bool {
                 f["warn"] = 1
-                s.addMessage(from: name, title: "\(name) has about \(Int(f["cash"].double / max(1, f["burn"].double))) weeks of money left",
+                s.addMessage(from: name, title: "\(name) has about \(Int(runway ?? 0)) weeks of money left",
                              body: "Raise a round or put in more money, or it shuts down.", tone: "bad")
             }
             if s.week >= f["wNext"].int {

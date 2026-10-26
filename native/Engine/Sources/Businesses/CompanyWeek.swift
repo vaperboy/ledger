@@ -194,12 +194,20 @@ public enum CompanyWeek {
 
     /// Week-to-week spread of what a shop really sells around what demand and capacity allow (one standard deviation, as a share).
     static let salesNoise = 0.045
+    /// Weeks after a job is complete before the retention is paid (the defect period).
+    static let defectWeeks = 26
 
     struct WeekContext {
         var units: Double, rev: Double, cogs: Double, D: Double, cap: Double, util: Double, price: Double
         var paidDuringWeek: Double
         /// The cost of sales is only an accounting entry (a developer pays for land and building as they fall due).
         var cogsIsAccounting = false
+        /// Part of the week's purchases (`cogs`) that went into stock instead of the cost of sales, or, when negative, stock used up and expensed (salmon).
+        var stockChange = 0.0
+        /// Project retention: what clients held back this week on milestone payments (job id: net), and the jobs completed this week whose
+        /// held-back money now starts its defect period.
+        var retentionHeld: [Int: Double] = [:]
+        var retentionReleased: [Int] = []
         /// What each business customer ordered this week at the prices they pay (net of VAT): they pay on the trade's terms, some of them late.
         var acct: [(id: Int, rev: Double)] = []
     }
@@ -323,7 +331,8 @@ public enum CompanyWeek {
         let rev = jsRound(ctx.rev), cogs = jsRound(ctx.cogs)
         var books = co.books
         books.add("rev", rev)
-        books.add("cogs", cogs)
+        books.add("cogs", cogs - jsRound(ctx.stockChange))
+        if ctx.stockChange != 0 { co.inventory += jsRound(ctx.stockChange) }
         co.set("lastW", .object(["units": .number(ctx.units), "rev": .number(rev), "cogs": .number(cogs), "D": .number(ctx.D), "cap": .number(ctx.cap), "util": .number(ctx.util)]))
         let cashShare = 1 - bd.businessShare
         let gross = rev * (1 + vr)
@@ -347,8 +356,30 @@ public enum CompanyWeek {
                 acctInvoices.append((a.id, jsRound(cashPart + creditPart), s.week + bd.paymentTermsWeeks + late, late, h.next() < odds))
             }
         }
-        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek - acctCash, category: nil, label: nil)
+        // Retention the clients held back: part of the week's takings that is not received now. It waits as a receivable of the job until the
+        // job is complete and the defect period has passed.
+        var heldCash = 0.0, heldCredit = 0.0
+        for (_, net) in ctx.retentionHeld.sorted(by: { $0.key < $1.key }) {
+            heldCash += net * (1 + vr) * cashShare
+            heldCredit += net * (country.usesSalesTax ? 1 : 1 + vr) * bd.businessShare
+        }
+        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek - acctCash - heldCash, category: nil, label: nil)
         co = s.companies[i]
+        for (job, net) in ctx.retentionHeld.sorted(by: { $0.key < $1.key }) where net > 0 {
+            let part = jsRound(net * (1 + vr) * cashShare + net * (country.usesSalesTax ? 1 : 1 + vr) * bd.businessShare)
+            var recv = co.receivables
+            if let k = recv.firstIndex(where: { $0.int("pj") == job && $0.flag("held") }) { recv[k].amount += part }
+            else { var r = Receivable(amount: part, dueWeek: s.week + 1000, willDefault: false); r.set("pj", job); r.set("held", true); recv.append(r) }
+            co.receivables = recv
+        }
+        for job in ctx.retentionReleased {
+            var recv = co.receivables
+            for k in recv.indices where recv[k].int("pj") == job && recv[k].flag("held") {
+                recv[k].raw.removeValue(forKey: "held")
+                recv[k].dueWeek = s.week + Self.defectWeeks
+            }
+            co.receivables = recv
+        }
         for inv in acctInvoices where inv.amount > 0 {
             var r = Receivable(amount: inv.amount, dueWeek: inv.due, willDefault: inv.bad)
             r.set("ac", inv.id); r.set("ld", inv.late)
@@ -359,7 +390,7 @@ public enum CompanyWeek {
             let t = bd.paymentTermsWeeks + extra
             let defaultOdds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
             var recv = co.receivables
-            recv.append(Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds)))
+            recv.append(Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit - heldCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds)))
             co.receivables = recv
             if co.value("flags")["ccheck"].bool {
                 s.companies[i] = co
@@ -402,6 +433,7 @@ public enum CompanyWeek {
         let w0 = World(state: s, data: data)
         var customersPaid: [(account: Int, late: Int, amount: Double)] = []
         for r in co.receivables {
+            if r.flag("held") { remaining.append(r); continue }   // retention on a job still in hand
             if r.int("ic") != 0 { remaining.append(r); continue }   // an invoice to one of your own companies: settled with `SupplyTerms`
             if s.week >= r.dueWeek {
                 if r.int("ac") != 0 && !r.willDefault { customersPaid.append((r.int("ac"), r.int("ld"), r.amount)) }
@@ -449,9 +481,11 @@ public enum CompanyWeek {
         if premium > 0 { Payments.companyPays(&s, companyID: id, amount: premium, category: "ins"); Advisers.premiumsPaid(&s, i, total: premium) }
         // Leased vehicles
         for v in s.companies[i].value("veh").array where v["mode"].string == "lease" {
-            Payments.companyPays(&s, companyID: id, amount: v["lease"].double * 12 / 52, category: "oth")
+            let instalment = v["lease"].double * 12 / 52
+            Payments.companyPays(&s, companyID: id, amount: instalment, category: "oth")
+            Vat.input(&s, companyIndex: i, net: instalment, data: data)
         }
-        CompanyCosts.premisesValue(&s, companyIndex: i)
+        CompanyCosts.premisesValue(&s, companyIndex: i, data: data)
         Marketing.weekly(&s, companyIndex: i, bd, data: data, tables: marketing)
         EquipmentUnits.before(&s, companyIndex: i, bd, data: data)
         CompanyCosts.equipmentWeek(&s, companyIndex: i, utilisation: ctx.util == 0 ? 0.6 : ctx.util, bd, data: data)

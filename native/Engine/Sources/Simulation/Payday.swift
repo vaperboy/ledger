@@ -173,9 +173,6 @@ public enum Payday {
     static func payslips(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (ownerOnPayroll(co) ? 1 : 0) }
     static func hasPayroll(_ co: Company) -> Bool { payslips(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
-    /// What payroll costs in a week. Original: `weekWages`.
-    static func weeklyWageCost(_ co: Company, country: Country) -> Double { CompanyCosts.standingWeeklyPayroll(co, country: country) }
-
     /// Fee when the accountant or the manager's software runs payroll. Original: `feeOf`.
     static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double {
         let n = Double(max(1, payslips(co)))
@@ -475,7 +472,7 @@ public enum Payday {
                 cfg.reminderMonth = key
                 s.companies[i].set("pr29", cfg.json)
                 let country = context.country(of: s.companies[i], s)
-                let est = (s.companies[i].payables["wages"] ?? 0) + weeklyWageCost(s.companies[i], country: country) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
+                let est = (s.companies[i].payables["wages"] ?? 0) + Payroll.weeklyCost(s.companies[i], country: country) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
                 if md == .manual && cfg.approvedMonth != key {
                     if s.policy.autoPayroll && s.companies[i].cash >= est {
                         // Routine payroll the company can pay: approved by the owner's standing policy, no question asked.

@@ -110,7 +110,7 @@ public enum Aftermath {
             guard let i = s.companyIndex(item.companyID), s.companies[i].status == .open else { continue }
             let co = s.companies[i]
             let country = fc.country(of: co, s)
-            let ctx = EventEngine.context(for: co, data: data, employerFactor: country.employerCostFactor, costIndex: country.costIndex)
+            let ctx = EventEngine.context(for: co, data: data, country: country)
             if item.kind == "copycat" {
                 s.note("\(co.name): the lost case encourages another customer to claim.", tone: "bad", companyID: co.id)
                 Lawsuits.begin(&s, companyIndex: i, weeklyRevenue: ctx.wk, data: data)

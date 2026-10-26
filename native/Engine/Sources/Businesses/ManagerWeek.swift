@@ -60,7 +60,7 @@ extension ManagerModel {
     static func marketWage(_ s: GameState, _ co: Company, role: String, data: GameData) -> Double {
         let w = World(state: s, data: data)
         guard let base = data.catalog.tables.roles[role]?.baseMonthlyWage, let city = w.city(co) else { return 0 }
-        return Wages.market(baseMonthlyWage: base, country: w.country(co), city: city, economy: s.economy, week: s.week, rates: w.rates)
+        return Wages.market(baseMonthlyWage: base, country: w.country(co), city: city, economy: s.economy, rates: w.rates)
     }
 
     /// Paperwork, mistakes of the inexperienced, and the monthly pay review. Original: `mgrStaffWork`.

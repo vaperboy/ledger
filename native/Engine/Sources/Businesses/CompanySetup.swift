@@ -308,7 +308,7 @@ public enum CompanySetup {
         co.set("unitsW", 0); co.set("mgrQ", 0); co.set("eqc", 1); co.set("books", 0.5); co.set("group", 0)
         // What the owner's own work would cost to replace: a buyer has to pay someone to do it. Used to value the company.
         if let role = bd.standardStaff.first?.role, let base = data.catalog.tables.roles[role]?.baseMonthlyWage, bd.ownerFTE > 0 {
-            co.set("ownWage", .number(jsRound(Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: World(state: s, data: data).rates))))
+            co.set("ownWage", .number(jsRound(Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: World(state: s, data: data).rates))))
         }
         // A brand-new name is known only to friends and family.
         co.awareness = min(co.awareness, 10)
@@ -411,7 +411,7 @@ public enum CompanySetup {
         for (i, st) in bd.standardStaff.enumerated() {
             let n = (i == 0 && bd.ownerFTE >= 1) ? max(0, st.count - 1) : st.count
             let base = data.catalog.tables.roles[st.role]?.baseMonthlyWage ?? 40000
-            r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, week: s.week, rates: w.rates) * country.employerCostFactor
+            r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: w.rates) * country.employerCostFactor
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
         RentalFinance.addEstimate(&r, bd, size: size, city: city, currency: w.currency(co), tmp, w)

@@ -40,25 +40,6 @@ public enum CompanyCosts {
         return c
     }
 
-    /// The standing payroll of one week, employer on-cost included: staff pay with the cover for paid leave, plus the manager.
-    /// The one function behind both the accrual (`wages`) and every payroll estimate, so the two cannot drift apart. Each wage carries its own
-    /// on-cost rate (`Country.payrollFactor`), which matters where contributions are capped (Mexico). Commission is not included.
-    /// With `sickWeek` (the accrual), someone who fell sick last week costs what the country's sick-pay law makes the employer pay
-    /// (`LabourRules.employerSickPay`) instead of the full wage; estimates leave it out. `capScale` carries the price drift of a flat statutory rate.
-    public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true, sickWeek: Int? = nil, capScale: Double = 1) -> Double {
-        let labour = LabourRules(country: country)
-        let holiday = 1 + labour.leaveWeeks / 52 * 0.3  // cover for paid leave (sick pay is by law, below)
-        var cost = 0.0
-        for m in co.staff where !(skipOffSeason && m.isOffSeason) {
-            let weekly = m.monthlyWage * 12 / 52
-            let pay = (sickWeek != nil && m.sickUntilWeek == sickWeek)
-                ? labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: capScale) : weekly * holiday
-            cost += pay * country.payrollFactor(monthlyWage: m.monthlyWage)
-        }
-        if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
-        return cost
-    }
-
     /// Accrue this week's payroll. `factor` < 1 for a closed company. Returns the cost incl. employer charges.
     @discardableResult
     public static func wages(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, factor f: Double = 1) -> Double {
@@ -66,7 +47,7 @@ public enum CompanyCosts {
         let w = World(state: s, data: data)
         let country = w.country(co)
         let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
-        let cost = (standingWeeklyPayroll(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * country.employerCostFactor) * f
+        let cost = (Payroll.weeklyCost(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * country.employerCostFactor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * country.employerCostFactor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
@@ -119,7 +100,7 @@ public enum CompanyCosts {
         if w.state.hasHeadOffice("acc") { fee *= 0.8 }
         let heads = Double(co.staff.count + (co.managerID != nil ? 1 : 0))
         let sz = max(1, pow(heads / 8, 0.6))
-        return fee * sz * pow(1 + max(0, w.economy.inflation), Double(w.week) / 52) * 12 / 52
+        return fee * sz * w.inflationIndex * 12 / 52
     }
 
     /// Insurance premium for one product, per week. Original: `insPremium`.
@@ -196,7 +177,7 @@ public enum CompanyCosts {
         co.set("eqc", weight != 0 ? total / weight : 1)
         co.set("eqv", eqv)
         s.companies[i] = co
-        if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel") }
+        if fuel > 0 { Payments.companyPays(&s, companyID: co.id, amount: fuel, category: "oth", label: "Fuel"); Vat.input(&s, companyIndex: i, net: fuel, data: data) }
         if upkeep > 0 {
             let fixDisc = Suppliers.repairDiscount(s, company: co, data: data)   // the repair supplier's discount (fixDisc)
             SupplyTerms.payRepairs(&s, companyIndex: i, amount: upkeep * (1 - fixDisc), label: nil, data: data)   // on the repair terms agreed (SupplyTerms)
@@ -204,7 +185,7 @@ public enum CompanyCosts {
     }
 
     /// Owned premises follow the housing market and cost 1% of their value per year to keep. Original: `premValueWeek`.
-    public static func premisesValue(_ s: inout GameState, companyIndex i: Int) {
+    public static func premisesValue(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         var co = s.companies[i]
         var prem = co.value("prem")
         guard prem["owned"].bool, prem["val"].double > 0 else { return }
@@ -214,6 +195,8 @@ public enum CompanyCosts {
         prem["hw"] = .number(housing)
         co.set("prem", prem)
         s.companies[i] = co
-        Payments.companyPays(&s, companyID: co.id, amount: prem["val"].double * 0.01 / 52, category: "oth")
+        let upkeep = prem["val"].double * 0.01 / 52
+        Payments.companyPays(&s, companyID: co.id, amount: upkeep, category: "oth")
+        Vat.input(&s, companyIndex: i, net: upkeep, data: data)
     }
 }

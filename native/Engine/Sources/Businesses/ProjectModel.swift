@@ -140,6 +140,8 @@ public enum ProjectModel {
         public var hoursDone: Double { get { num("done") } set { set("done", newValue) } }
         public var contractValue: Double { get { num("v") } set { set("v", newValue) } }
         public var paid: Double { get { num("paid") } set { set("paid", newValue) } }
+        /// Retention held back by the client on the milestone payments so far (net of VAT); paid after completion and the defect period.
+        public var retained: Double { get { num("ret") } set { set("ret", newValue) } }
         /// Materials and subcontractors as a share of what the client pays.
         public var costShare: Double { get { num("cf") } set { set("cf", newValue) } }
         /// Working days the job is held up (an event can do this).
@@ -217,6 +219,9 @@ public enum ProjectModel {
         var rev = 0.0, cogs = 0.0, paid = 0.0, units = 0.0
         var finished = [0.0, 0.0, 0.0]
         var names: [String] = []
+        /// Retention withheld on milestone payments this week (job id: net amount), and the jobs completed this week that had some.
+        var held: [Int: Double] = [:]
+        var released: [Int] = []
 
         init(week: Int) { self.week = week }
         init(json j: JSONValue) {
@@ -227,6 +232,8 @@ public enum ProjectModel {
             rev = j["rev"].double; cogs = j["cogs"].double; paid = j["paid"].double; units = j["units"].double
             finished = (0..<3).map { j["fin"][$0].double }
             names = j["names"].array.map { $0.string }
+            held = Dictionary(uniqueKeysWithValues: j["held"].object.compactMap { k, v in Int(k).map { ($0, v.double) } })
+            released = j["rel"].array.map { $0.int }
         }
         var json: JSONValue {
             var d: [String: JSONValue] = [:]
@@ -235,7 +242,9 @@ public enum ProjectModel {
                             "big": .number(big), "tooBig": .number(tooBig), "used": .number(used), "H": .number(hoursAvailableToday),
                             "Hw": .number(hoursPerWeekSum), "Dh": .number(requestedHours), "rev": .number(rev), "cogs": .number(cogs),
                             "paid": .number(paid), "units": .number(units), "fin": .array(finished.map { .number($0) }),
-                            "names": .array(names.map { .string($0) })])
+                            "names": .array(names.map { .string($0) }),
+                            "held": .object(Dictionary(uniqueKeysWithValues: held.map { (String($0.key), JSONValue.number($0.value)) })),
+                            "rel": .array(released.map { .number(Double($0)) })])
         }
     }
 

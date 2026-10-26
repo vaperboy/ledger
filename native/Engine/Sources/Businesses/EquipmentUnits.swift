@@ -192,12 +192,13 @@ public enum EquipmentUnits {
                 }
             }
             var units = s.companies[i].value("units"); units[id] = .array(list); s.companies[i].set("units", units)
-            for r in repairs { Payments.companyPays(&s, companyID: s.companies[i].id, amount: r.0, category: "oth", label: r.1) }
+            for r in repairs { Payments.companyPays(&s, companyID: s.companies[i].id, amount: r.0, category: "oth", label: r.1); Vat.input(&s, companyIndex: i, net: r.0, data: data) }
             syncCondition(&s, companyIndex: i, equipmentID: id)
         }
         // Leased equipment: the monthly instalment, service included
         for (_, monthly) in s.companies[i].value("eqL").object.sorted(by: { $0.key < $1.key }) where monthly.double > 0 {
             Payments.companyPays(&s, companyID: s.companies[i].id, amount: monthly.double / 4.33, category: "oth")
+            Vat.input(&s, companyIndex: i, net: monthly.double / 4.33, data: data)
         }
         // Vehicles
         var vehicles = s.companies[i].value("veh").array
@@ -214,7 +215,7 @@ public enum EquipmentUnits {
                 let (text, cost) = breakVehicle(&s, &v, name: vname, tables: tables, currency: cur)
                 reports.append(text)
                 vehicles[n] = v
-                if cost > 0 { s.companies[i].set("veh", .array(vehicles)); Payments.companyPays(&s, companyID: s.companies[i].id, amount: cost, category: "oth", label: "Repair: " + vname) }
+                if cost > 0 { s.companies[i].set("veh", .array(vehicles)); Payments.companyPays(&s, companyID: s.companies[i].id, amount: cost, category: "oth", label: "Repair: " + vname); Vat.input(&s, companyIndex: i, net: cost, data: data) }
             }
         }
         s.companies[i].set("veh", .array(vehicles))

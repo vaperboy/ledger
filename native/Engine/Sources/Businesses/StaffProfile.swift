@@ -77,7 +77,7 @@ public enum StaffProfile {
     static func marketPay(_ s: GameState, _ co: Company, _ m: StaffMember, data: GameData) -> Double {
         let w = World(state: s, data: data)
         let base = data.catalog.tables.roles[m.role]?.baseMonthlyWage ?? 40000
-        let market = w.city(co).map { Wages.market(baseMonthlyWage: base, country: w.country(co), city: $0, economy: s.economy, week: s.week, rates: w.rates) } ?? base
+        let market = w.city(co).map { Wages.market(baseMonthlyWage: base, country: w.country(co), city: $0, economy: s.economy, rates: w.rates) } ?? base
         return market * m.partTimeShare
     }
 

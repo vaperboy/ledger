@@ -35,10 +35,10 @@ public extension GameEngine {
     }
 
     func oilStakePrice(thousandBarrels: Double) -> Double { EnergyModel.stakePrice(kbbl: thousandBarrels, economyOil: state.economy.oil) }
-    func explorationCost() -> Double { EnergyModel.explorationCost(inflation: state.economy.inflation, week: state.week) }
+    func explorationCost() -> Double { EnergyModel.explorationCost(inflationIndex: state.economy.inflationIndex) }
     func oilPricePerBarrel(companyID: Int) -> Double {
         let sell = state.company(companyID)?.value("knob")["sell"].int ?? 0
-        return EnergyModel.oilPrice(contracts: sell == 1, economyOil: state.economy.oil, inflation: state.economy.inflation, week: state.week)
+        return EnergyModel.oilPrice(contracts: sell == 1, economyOil: state.economy.oil, inflationIndex: state.economy.inflationIndex)
     }
     func powerPlant(companyID: Int) -> EnergyModel.PlantSummary? { state.company(companyID).map { EnergyModel.plant($0) } }
     func oilFields(companyID: Int) -> [EnergyModel.FieldInfo] { state.company(companyID).map { EnergyModel.fields($0) } ?? [] }

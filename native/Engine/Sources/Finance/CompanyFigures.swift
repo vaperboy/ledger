@@ -1,5 +1,7 @@
 import Foundation
 import GameCore
+import Countries
+import Employees
 
 /// Accounting figures of a company, computed from its saved state. Originals in engine/money/money.js.
 ///
@@ -77,14 +79,19 @@ public enum CompanyFigures {
     }
 
     /// What the company spends in a typical week; sets its overdraft room. Original: `coWeekCost`.
-    public static func weeklyCostEstimate(_ co: Company, fixedCost: Double, employerFactor: Double) -> Double {
-        let staffPay = co.staff.reduce(0) { $0 + $1.monthlyWage } * 12 / 52 * employerFactor
-        let mgr = co.managerMonthlyWage * 12 / 52 * employerFactor
+    public static func weeklyCostEstimate(_ co: Company, fixedCost: Double, country: Country) -> Double {
+        let payroll = Payroll.weeklyCost(co, country: country)
         let prem = co.value("prem")
         let rent = (!prem.isNull && !prem["owned"].bool && prem["m2"].double > 0) ? prem["rent"].double * prem["m2"].double / 52 : 0
         let marketing = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
-        return staffPay + mgr + rent + fixedCost * pow(co.size, 0.6) + marketing + co.value("lastW")["cogs"].double * 0.5
+        return payroll + rent + fixedCost * pow(co.size, 0.6) + marketing + co.value("lastW")["cogs"].double * 0.5
     }
+
+    /// How long the money lasts, two labelled meanings (the only definitions; every screen and message uses one of them).
+    /// `weeksOfCash`: the cash divided by what the company spends in a normal week (its weekly cost), however the week goes.
+    public static func weeksOfCash(cash: Double, weeklyCost: Double) -> Double { weeklyCost > 0 ? max(0, cash) / weeklyCost : 0 }
+    /// `runwayWeeks`: weeks until the cash is gone at the rate it is actually being lost; nil when nothing is being lost.
+    public static func runwayWeeks(cash: Double, weeklyLoss: Double) -> Double? { weeklyLoss > 0 ? max(0, cash) / weeklyLoss : nil }
 
     /// How far below zero a company's account may go. Original: `coOverdraft`.
     public static func overdraftRoom(weeklyCost: Double) -> Double { max(0, weeklyCost * 3) }

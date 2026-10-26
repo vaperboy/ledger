@@ -66,7 +66,7 @@ public enum StaffRoutine {
                 if m.monthlyWage < floor { m.monthlyWage = floor.rounded(.up); lifted += 1 }
             }
             let base = tables.roles[m.role]?.baseMonthlyWage ?? 40000
-            let market = (w.city(co).map { Wages.market(baseMonthlyWage: base, country: country, city: $0, economy: s.economy, week: s.week, rates: w.rates) } ?? base) * m.partTimeShare
+            let market = (w.city(co).map { Wages.market(baseMonthlyWage: base, country: country, city: $0, economy: s.economy, rates: w.rates) } ?? base) * m.partTimeShare
             let gap = StaffRoutine.payGap(market: market, person: n, member: m)
             payGap = max(payGap, gap)
             let tenure = Double(s.week - (m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week))

@@ -24,7 +24,7 @@ public enum StrategicDecisions {
         let cur: Currency
         func wk(_ s: GameState) -> Double {
             let c = s.companies[i], k = fc.country(of: c, s)
-            return EventEngine.context(for: c, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+            return EventEngine.context(for: c, data: data, country: k).wk
         }
         func yr(_ s: GameState) -> Double { wk(s) * 52 }
         func payroll(_ s: GameState) -> Double { s.companies[i].staff.reduce(0) { $0 + $1.monthlyWage } }
@@ -96,7 +96,7 @@ public enum StrategicDecisions {
         let n = co.staff.count, age = s.week - (co.openedWeek ?? co.foundedWeek)
         if age < 52 || (n <= 3 && co.managerID == nil) { return "start" }
         let k = fc.country(of: co, s)
-        let wk = EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+        let wk = EventEngine.context(for: co, data: data, country: k).wk
         if n > 15 || (co.managerID != nil && wk * 52 > fc.currency(co.countryCode, s).scaledPrice(20e6)) { return "est" }
         return "grow"
     }
@@ -114,7 +114,7 @@ public enum StrategicDecisions {
                      cond: { s, co, data in (data.catalog[co.type]?.businessShare ?? 0) > 0.15 && co.value("lastW")["util"].double < 0.85 },
                      make: { s, i, data, fc in
                          let k = fc.country(of: s.companies[i], s)
-                         let wk = EventEngine.context(for: s.companies[i], data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: s.companies[i], data: data, country: k).wk
                          return .object(["v": num(r1000(wk * 52 * 0.3))]) },
                      title: { co, _, _ in "A big customer wants a contract with \(co.name)" },
                      body: { _, d, cur in "A large customer offers work worth about \(cur.display(d["v"].double)) a year, about 30% of what you sell today. They want 10% off and 60 days to pay." },
@@ -130,7 +130,7 @@ public enum StrategicDecisions {
                      cond: { _, co, _ in !co.value("eq").object.isEmpty },
                      make: { s, i, data, fc in
                          let k = fc.country(of: s.companies[i], s)
-                         let wk = EventEngine.context(for: s.companies[i], data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: s.companies[i], data: data, country: k).wk
                          return .object(["c": num(jsRound(max(fc.currency(s.companies[i].countryCode, s).scaledPrice(8000), wk * 0.15))), "eq": .string(EventEngine.pickEquipmentName(&s, companyIndex: i, data: data))]) },
                      title: { co, _, _ in "Essential equipment breaks down at \(co.name)" },
                      body: { _, d, cur in "The \(d["eq"].string) is out. A fast repair costs about \(cur.display(d["c"].double * 1.6)); the normal one about \(cur.display(d["c"].double)) but takes two weeks." },
@@ -254,7 +254,7 @@ public enum StrategicDecisions {
                      cond: { s, co, _ in co.form == .limited && ebit12(co, s) > 0 },
                      make: { s, i, data, fc in
                          let co = s.companies[i], k = fc.country(of: co, s)
-                         let wk = EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: co, data: data, country: k).wk
                          let nw = Valuation.netWorth(s, trades: data.catalog).total
                          let off = Banking.offer(kind: "biz", amount: 1000, company: co, state: s, netWorth: nw, context: fc)
                          let a = r1000(min(off.maximum, wk * 52 * 0.4))
@@ -325,7 +325,7 @@ public enum StrategicDecisions {
         L.append(Def(id: "e_audit", cls: "crisis", stages: ["grow", "est"], w: 2, def: 0,
                      make: { s, i, data, fc in
                          let co = s.companies[i], k = fc.country(of: co, s)
-                         let wk = EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: co, data: data, country: k).wk
                          return .object(["c": num(jsRound(max(fc.currency(co.countryCode, s).scaledPrice(15000), wk * 0.3)))]) },
                      title: { co, _, _ in "Inspectors find problems at \(co.name)" },
                      body: { _, d, cur in "A compliance audit lists several deficiencies. Fixing them costs about \(cur.display(d["c"].double)). Serious ones can mean fines or closure." },
@@ -406,7 +406,7 @@ public enum StrategicDecisions {
                      cond: { _, co, data in ["svc", "retail", "logi", "prod"].contains(data.catalog[co.type]?.family ?? "") },
                      make: { s, i, data, fc in
                          let co = s.companies[i], k = fc.country(of: co, s)
-                         let wk = EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: co, data: data, country: k).wk
                          return .object(["c": num(r1000(max(fc.currency(co.countryCode, s).scaledPrice(50000), wk * 52 * 0.03)))]) },
                      title: { co, _, _ in "New technology changes \(co.name)'s trade" },
                      body: { _, d, cur in "A new kind of software and equipment is spreading through the trade. Early users cut costs and win customers who expect it. Getting it costs about \(cur.display(d["c"].double))." },
@@ -417,7 +417,7 @@ public enum StrategicDecisions {
         L.append(Def(id: "x_claim", cls: "crisis", w: 2, def: 0,
                      make: { s, i, data, fc in
                          let co = s.companies[i], k = fc.country(of: co, s)
-                         let wk = EventEngine.context(for: co, data: data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                         let wk = EventEngine.context(for: co, data: data, country: k).wk
                          let who = s.random.pick(["a former employee", "a supplier", "a customer", "a competitor"])
                          return .object(["c": num(r1000(max(fc.currency(co.countryCode, s).scaledPrice(30000), wk * 52 * 0.01))), "who": .string(who)]) },
                      pre: { s, x in pay(&s, x, x.d["c"].double * 0.2, "oth", "Lawyers") },

@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
 
 /// Static knowledge the money code needs: the countries, the trade catalogue and lending hooks.
 /// Built once when the game starts and passed to every Finance function.
@@ -25,7 +26,7 @@ public struct FinanceContext: Sendable {
     /// What the company spends in a typical week; sets its overdraft room. Original: `coWeekCost`.
     public func weeklyCost(_ co: Company, _ s: GameState) -> Double {
         let fixed = trades.facts(for: co.type)?.fixedWeekly ?? 0
-        return CompanyFigures.weeklyCostEstimate(co, fixedCost: fixed, employerFactor: country(of: co, s).employerCostFactor)
+        return CompanyFigures.weeklyCostEstimate(co, fixedCost: fixed, country: country(of: co, s))
     }
 
     /// How far below zero the company's account may go. Original: `coOverdraft`.

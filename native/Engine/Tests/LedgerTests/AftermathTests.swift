@@ -27,7 +27,7 @@ final class AftermathTests: XCTestCase {
     func ev(_ id: String) -> GameEvent { GameEvent(id: id, json: .object([:])) }
     func apply(_ s: inout GameState, _ id: Int, event: String, fx: JSONValue, data: GameData, ctx: FinanceContext) {
         let i = s.companyIndex(id)!
-        let c = EventEngine.context(for: s.companies[i], data: data, employerFactor: 1)
+        let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
         EventEngine.apply(&s, companyIndex: i, fx, ctx: c, event: ev(event), data: data, context: ctx)
     }
     /// Move the clock until everything queued is due, then fire it.
@@ -52,7 +52,7 @@ final class AftermathTests: XCTestCase {
                 var asked: Message? = nil
                 e.update { s, data, ctx in
                     let i = s.companyIndex(id)!
-                    let c = EventEngine.context(for: s.companies[i], data: data, employerFactor: 1)
+                    let c = EventEngine.context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
                     EventEngine.fire(&s, companyIndex: i, template, ctx: c, data: data, context: ctx)
                     asked = s.inbox.first { $0.status == "open" && $0.str("ev") == "aft_" + kind }
                 }

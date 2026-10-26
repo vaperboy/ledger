@@ -13,10 +13,10 @@ final class SpecialTradesDifferentialTests: XCTestCase {
         XCTAssertEqual(g["power"].array.count, 36)
         for c in g["power"].array {
             let src = EnergyModel.sources[c["src"].int]
-            let r = EnergyModel.powerWeek(megawattsBought: c["bought"].double, building: c["building"].double, week: c["week"].int,
+            let r = EnergyModel.powerWeek(megawattsBought: c["bought"].double, building: c["building"].double, 
                                           month: GameCalendar.month(week: c["week"].int), source: src, hedge: c["hedge"].int, capacityFactor: 0.36, opexRate: 0.025,
                                           condition: c["cond"].double, technicianFTE: c["fte"].double, capacityModifier: c["capMod"].double,
-                                          demandModifier: c["demMod"].double, economyPower: c["econPower"].double, inflation: c["infl"].double, noise: c["noise"].double)
+                                          demandModifier: c["demMod"].double, economyPower: c["econPower"].double, inflationIndex: pow(1 + c["infl"].double, Double(c["week"].int) / 52), noise: c["noise"].double)
             let tag = "src \(c["src"].int) hedge \(c["hedge"].int) week \(c["week"].int)"
             assertClose(r.outputMWh, c["mwh"].double, tol: 1e-12, "mwh \(tag)")
             assertClose(r.revenue, c["rev"].double, tol: 1e-12, "rev \(tag)")
@@ -30,7 +30,7 @@ final class SpecialTradesDifferentialTests: XCTestCase {
         let g = try golden()
         for c in g["field"].array {
             let infl = c["infl"].double, week = c["week"].int
-            let price = EnergyModel.oilPrice(contracts: c["sell"].int == 1, economyOil: c["econOil"].double, inflation: infl, week: week)
+            let price = EnergyModel.oilPrice(contracts: c["sell"].int == 1, economyOil: c["econOil"].double, inflationIndex: pow(1 + infl, Double(week) / 52))
             assertClose(price, c["price"].double, tol: 1e-12, "price")
             let defs: [(res: Double, q0: Double, age: Int, bv: Double, plat: Double)] = [(8000, 27.2, 10, 1.5e9, 0), (60000, 168, 120, 4e9, 104)]
             var bbl = 0.0, assets = 1e9 + 3.9e9 / 156
@@ -44,11 +44,11 @@ final class SpecialTradesDifferentialTests: XCTestCase {
             }
             assertClose(bbl, c["units"].double, tol: 1e-12, "barrels")
             assertClose(bbl * 1000 * price * c["demMod"].double, c["rev"].double, tol: 1e-12, "revenue")
-            assertClose(bbl * 1000 * EnergyModel.liftingCost(materials: c["mat"].double, inflation: infl, week: week), c["cogs"].double, tol: 1e-12, "lifting cost")
+            assertClose(bbl * 1000 * EnergyModel.liftingCost(materials: c["mat"].double, inflationIndex: pow(1 + infl, Double(week) / 52)), c["cogs"].double, tol: 1e-12, "lifting cost")
             assertClose(assets, c["assets"].double, tol: 1e-12, "assets")
         }
         for s in g["stake"].array { assertClose(EnergyModel.stakePrice(kbbl: s["k"].double, economyOil: 1.3), s["price"].double, tol: 0, "stake") }
-        assertClose(EnergyModel.explorationCost(inflation: g["explore"]["infl"].double, week: g["explore"]["week"].int), g["explore"]["cost"].double, tol: 0, "exploration")
+        assertClose(EnergyModel.explorationCost(inflationIndex: pow(1 + g["explore"]["infl"].double, Double(g["explore"]["week"].int) / 52)), g["explore"]["cost"].double, tol: 0, "exploration")
     }
 
     func testSalmonCyclesMatchOriginal() throws {

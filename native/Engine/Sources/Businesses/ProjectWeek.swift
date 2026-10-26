@@ -73,13 +73,17 @@ public enum ProjectWeek {
 
         func backlogHours() -> Double { jobs.reduce(0) { $0 + ($1.inHours ? $1.remainingHours : 0) } }
 
-        func payJob(_ j: inout ProjectModel.Job, _ amount: Double) -> Double {
+        /// A payment from the client. A milestone payment (`retain`) has the trade's retention held back: it is revenue now, but the client keeps
+        /// that share until the job is complete and the defect period is over (it waits as a receivable, see `CompanyWeek.book`).
+        func payJob(_ j: inout ProjectModel.Job, _ amount: Double, retain: Bool = false) -> Double {
             let amt = jsRound(min(amount, j.contractValue - j.paid))
             if amt <= 0 { return 0 }
             j.paid += amt
             L.rev += amt
             L.cogs += amt * j.costShare
-            let cash = jsRound(amt * (1 + vat) * (1 - bd.businessShare))
+            let held = retain ? jsRound(amt * (bd.trait("retention") ?? 0)) : 0
+            if held > 0 { j.retained += held; L.held[j.id, default: 0] += held }
+            let cash = jsRound((amt - held) * (1 + vat) * (1 - bd.businessShare))
             if cash != 0 { Payments.companyReceives(&s, companyID: id, amount: cash, category: nil, label: nil) }
             L.paid += cash
             return amt
@@ -178,7 +182,7 @@ public enum ProjectWeek {
             if use <= 0 { continue }
             if jobs[k].milestones == nil { jobs[k].milestones = !isEvent && (jobs[k].sizeClass == 2 || jobs[k].hours > 2 * Hw) }
             if jobs[k].hoursDone == 0 && jobs[k].milestones == true {
-                let dep = payJob(&jobs[k], jobs[k].contractValue * 0.3)
+                let dep = payJob(&jobs[k], jobs[k].contractValue * 0.3, retain: true)
                 if dep > 0 && jobs[k].sizeClass == 2 {
                     s.note("Started: \(jobs[k].what.lowercased()) for \(jobs[k].client). Deposit paid: \(cur.short(dep)).", tone: "n", companyID: id)
                 }
@@ -188,7 +192,7 @@ public enum ProjectWeek {
             L.used += use
             jobs[k].progress = min(1, jobs[k].hoursDone / jobs[k].hours)
             if jobs[k].milestones == true && jobs[k].progress >= 0.5 && jobs[k].paid < jobs[k].contractValue * 0.69 {
-                _ = payJob(&jobs[k], jobs[k].contractValue * 0.7 - jobs[k].paid)
+                _ = payJob(&jobs[k], jobs[k].contractValue * 0.7 - jobs[k].paid, retain: true)
             }
         }
 
@@ -199,6 +203,7 @@ public enum ProjectWeek {
             var j = jobs[k]
             let prep = min(1, j.hoursDone / j.hours)
             let last = payJob(&j, j.contractValue - j.paid)
+            if j.retained > 0 { L.released.append(j.id) }   // complete: the defect period of the retention starts
             jobs[k] = j
             doneCount += 1
             L.units += 1
@@ -270,8 +275,10 @@ public enum ProjectWeek {
         let spec = ProjectModel.specs[bd.id]!
         let avgH = fm["avgH41"].double != 0 ? fm["avgH41"].double : ProjectModel.averageHours(spec, ProjectModel.mix(s.companies[i], bd))
         let hvl = fm["hvl41"].double
-        let ctx = CompanyWeek.WeekContext(units: L.units, rev: L.rev, cogs: L.cogs, D: L.requestedHours / avgH, cap: L.hoursPerWeekSum / avgH,
+        var ctx = CompanyWeek.WeekContext(units: L.units, rev: L.rev, cogs: L.cogs, D: L.requestedHours / avgH, cap: L.hoursPerWeekSum / avgH,
                                           util: L.hoursPerWeekSum > 0 ? min(1, L.used / L.hoursPerWeekSum) : 0, price: avgH * hvl, paidDuringWeek: L.paid)
+        ctx.retentionHeld = L.held
+        ctx.retentionReleased = L.released
         fm["wk41"] = .object(["w": .number(Double(wk)), "req": .number(L.requests), "took": .number(L.took), "lost": .number(L.lost), "tooBig": .number(L.tooBig),
                               "big": .number(L.big), "used": .number(jsRound(L.used)), "H": .number(jsRound(L.hoursPerWeekSum)),
                               "fin": .array(L.finished.map { .number($0) }), "names": .array(L.names.prefix(4).map { .string($0) }), "rev": .number(jsRound(L.rev))])

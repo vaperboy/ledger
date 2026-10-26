@@ -34,6 +34,7 @@ public enum WorldWeek {
         E.salmon = clamp(meanRevert(E.salmon, 1.0, 0.03, 0.03, &s.random), 0.55, 1.8)
         E.housing = clamp(E.housing * (1 + 0.0007 + (E.demand - 1) * 0.004 - (E.policyRate - 0.04) * 0.012 / 4 + s.random.gauss() * 0.0025), 0.6, 2.2)
         E.inflation = clamp(E.inflation + (0.025 + (E.demand - 1) * 0.15 - E.inflation) * 0.01 + s.random.gauss() * 0.0003, 0.0, 0.1)
+        E.inflationIndex *= pow(1 + E.inflation, 1.0 / 52)
         s.economy = E
         if GameCalendar.isMonthEnd(week: s.week) {
             let home = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)

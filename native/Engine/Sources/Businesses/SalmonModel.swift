@@ -7,13 +7,16 @@ import Finance
 /// over a year. Disease (sea lice, storms, algae) lowers the number of fish. Original: `FAM.salmon` (engine/company/family_basic.js).
 ///
 /// Kept in the save under `fm`: `coh` [{n fish, kg each, age weeks, dead, illx extra illness}], `bio` tonnes in the water,
-/// `price` per kilo. `flags.autoStock` and `flags.harvest` set to 0 stop stocking and harvesting.
+/// `price` per kilo. Each cohort also carries `cost`: what it has cost so far (smolt, feed and site), held in the company's stock as a biological asset
+/// and expensed as cost of sales only when the cohort is harvested. `flags.autoStock` and `flags.harvest` set to 0 stop stocking and harvesting.
 public enum SalmonModel {
     public struct Cohort: Equatable {
         public var n: Double, kg: Double, age: Double, dead: Double, illness: Double
-        init(_ j: JSONValue) { n = j["n"].double; kg = j["kg"].double; age = j["age"].double; dead = j["dead"].double; illness = j["illx"].double }
-        var json: JSONValue { .object(["n": .number(n), "kg": .number(kg), "age": .number(age), "dead": .number(dead), "illx": .number(illness)]) }
-        public init(n: Double, kg: Double, age: Double, dead: Double, illness: Double) { self.n = n; self.kg = kg; self.age = age; self.dead = dead; self.illness = illness }
+        /// Cost carried so far (the cohort's book value as stock).
+        public var cost: Double
+        init(_ j: JSONValue) { n = j["n"].double; kg = j["kg"].double; age = j["age"].double; dead = j["dead"].double; illness = j["illx"].double; cost = j["cost"].double }
+        var json: JSONValue { .object(["n": .number(n), "kg": .number(kg), "age": .number(age), "dead": .number(dead), "illx": .number(illness), "cost": .number(cost)]) }
+        public init(n: Double, kg: Double, age: Double, dead: Double, illness: Double, cost: Double = 0) { self.n = n; self.kg = kg; self.age = age; self.dead = dead; self.illness = illness; self.cost = cost }
     }
 
     /// Spot price per kilo at the market index. Original: `84 * S.econ.salmon`.
@@ -21,7 +24,7 @@ public enum SalmonModel {
 
     /// Smolt in a new cohort: a fish count from the farm's size, then divided by the density choice (as in the original).
     public static func smoltCount(tonnes: Double, densityCapacityEffect k: Double) -> Double { jsRound(tonnes / 4.6 * 1000 * 0.98 / k) }
-    public static func smoltCost(count: Double, inflation: Double, week: Int) -> Double { count * 14.5 * pow(1 + inflation, Double(week) / 52) }
+    public static func smoltCost(count: Double, inflationIndex: Double) -> Double { count * 14.5 * inflationIndex }
 
     /// One week of one cohort: growth, deaths and feed cost. `chanceHit` is the roll for a sudden disease event.
     /// Original: the `fm.coh.forEach` body.
@@ -38,14 +41,18 @@ public enum SalmonModel {
         return g * c.n * 1.25 * 27 * (1 + feedChange)
     }
 
-    public struct StepResult { public var revenue = 0.0, cogs = 0.0, biomass = 0.0, tonnes = 0.0; public var harvests: [(tonnes: Double, revenue: Double)] = [] }
+    /// `cogs` is what the week cost to grow the fish (bought, and added to the cohorts' cost); `harvestCost` is the cost carried by the cohorts harvested, released to cost of sales.
+    public struct StepResult { public var revenue = 0.0, cogs = 0.0, harvestCost = 0.0, biomass = 0.0, tonnes = 0.0; public var harvests: [(tonnes: Double, revenue: Double)] = [] }
 
     /// One week of all cohorts: growth, deaths, feed and site cost, and the harvest of ripe cohorts (removed from the list).
     public static func step(_ cohorts: inout [Cohort], growWeeks: Double, growthQuality: Double, illness: Double, feedChange: Double, month: Int, spot: Double, harvest: Bool, diseaseHits: [Bool]) -> StepResult {
         var r = StepResult()
         for k in cohorts.indices {
-            r.cogs += growWeek(&cohorts[k], growWeeks: growWeeks, growthQuality: growthQuality, illness: illness, feedChange: feedChange, month: month, diseaseHit: diseaseHits[k])
-            r.biomass += cohorts[k].n * cohorts[k].kg / 1000
+            let feed = growWeek(&cohorts[k], growWeeks: growWeeks, growthQuality: growthQuality, illness: illness, feedChange: feedChange, month: month, diseaseHit: diseaseHits[k])
+            let biomass = cohorts[k].n * cohorts[k].kg / 1000
+            r.cogs += feed
+            r.biomass += biomass
+            cohorts[k].cost += feed + biomass * 1000 * 0.15   // feed and the site's cost for this cohort go into its cost
         }
         var kept: [Cohort] = []
         for c in cohorts {
@@ -53,6 +60,7 @@ public enum SalmonModel {
                 let t = c.n * c.kg * 0.88 / 1000
                 r.revenue += t * 1000 * spot
                 r.tonnes += t
+                r.harvestCost += c.cost
                 r.harvests.append((t, t * 1000 * spot))
             } else { kept.append(c) }
         }
@@ -76,10 +84,14 @@ public enum SalmonModel {
         // Stock a new cohort if there is none, or the last is older than 38 weeks and there are fewer than two, and the cash allows.
         if autoStock, cohorts.count < 2, cohorts.isEmpty || (cohorts.last?.age ?? 0) > 38 {
             let n = smoltCount(tonnes: tonnes, densityCapacityEffect: Knobs.effect(co, bd, "k", w))
-            let cost = smoltCost(count: n, inflation: s.economy.inflation, week: s.week)
+            let cost = smoltCost(count: n, inflationIndex: s.economy.inflationIndex)
             if co.cash > cost * 1.1 {
-                Payments.companyPays(&s, companyID: co.id, amount: cost, category: "cogs", label: "Smolt")
-                cohorts.append(Cohort(n: n, kg: 0.1, age: 0, dead: 0, illness: 0))
+                // Smolt is stock, not an expense: paid now, carried as a biological asset, and expensed when the cohort is harvested.
+                let before = s.companies[i].cash
+                Payments.companyPays(&s, companyID: co.id, amount: cost, category: nil, label: "Smolt")
+                let paid = before - s.companies[i].cash
+                s.companies[i].inventory += paid
+                cohorts.append(Cohort(n: n, kg: 0.1, age: 0, dead: 0, illness: 0, cost: paid))
                 s.note("New salmon cohort stocked at \(co.name).", tone: "n", companyID: co.id)
             }
         }
@@ -97,7 +109,9 @@ public enum SalmonModel {
         fm["price"] = .number(spot)
         co.set("fm", fm)
         s.companies[i] = co
-        return CompanyWeek.WeekContext(units: units, rev: rev, cogs: cogs, D: 0, cap: 0, util: 0.7, price: spot * 1000, paidDuringWeek: 0)
+        var ctx = CompanyWeek.WeekContext(units: units, rev: rev, cogs: cogs, D: 0, cap: 0, util: 0.7, price: spot * 1000, paidDuringWeek: 0)
+        ctx.stockChange = cogs - r.harvestCost   // the week's growing costs go into the stock; the harvested cohorts' cost comes out of it
+        return ctx
     }
 
     /// An illness event hits every cohort. Original: `FAM.salmon.fx`.

@@ -274,7 +274,7 @@ extension StrategicDecisions {
                             _ = Payments.companyPays(&s, companyID: c.id, amount: scaled(s, c, x.data, 150000), category: "oth", label: "Lawyers: competition case")
                             if s.random.chance(0.45) {
                                 let k = x.fc.country(of: c, s)
-                                let wk = EventEngine.context(for: c, data: x.data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                                let wk = EventEngine.context(for: c, data: x.data, country: k).wk
                                 _ = Payments.companyPays(&s, companyID: c.id, amount: wk * 52 * 0.04, category: "fine", label: "Competition fine")
                             } else { s.note("The authority closed the case against \(c.name).", tone: "good", companyID: c.id) } }]))
 
@@ -331,7 +331,7 @@ extension StrategicDecisions {
                      cond: { s, co, data in
                          let k = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
                          let c = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode)
-                         let wk = EventEngine.context(for: co, data: data, employerFactor: c.employerCostFactor, costIndex: c.costIndex).wk
+                         let wk = EventEngine.context(for: co, data: data, country: c).wk
                          return co.form == .limited && co.ownership > 80 && s.week - co.foundedWeek < 156 && wk * 52 > k.scaledPrice(2e6) },
                      make: { s, i, data, _ in .object(["v": .number((value(s.companies[i], s, data) * 1.6 / 1000).rounded() * 1000)]) },
                      title: { co, _, _ in "Venture capital wants to invest in \(co.name)" },
@@ -346,7 +346,7 @@ extension StrategicDecisions {
                             Funding.addBoardSeats(&s, x.i, 1) },
                         Opt(label: "Borrow instead", detail: "Keep the shares, take on debt.") { s, x in
                             let c = s.companies[x.i], k = x.fc.country(of: c, s)
-                            let wk = EventEngine.context(for: c, data: x.data, employerFactor: k.employerCostFactor, costIndex: k.costIndex).wk
+                            let wk = EventEngine.context(for: c, data: x.data, country: k).wk
                             let nw = Valuation.netWorth(s, trades: x.data.catalog).total
                             _ = Banking.take(kind: "biz", amount: (wk * 52 * 0.2 / 1000).rounded() * 1000, termMonths: 60, company: c, state: &s, netWorth: nw, context: x.fc) },
                         Opt(label: "Grow on your own profits", detail: "") { _, _ in }]))
