@@ -119,7 +119,14 @@ struct CompanyStaffRoster: View {
             HStack {
                 Text("\(papers) paperwork item\(papers == 1 ? "" : "s") missing. An inspection can fine you.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 Spacer()
-                Button("Do all") { for m in staff { store.act { $0.completePaperwork(companyID: company.id, personID: m.id) } }; Haptics.success(); store.show("Paperwork done for everyone.", tone: "good") }
+                Button("Do all") {
+                    var done = 0
+                    for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
+                    let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
+                    if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
+                    else if done > 0 { store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
+                    else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+                }
                     .font(.caption.weight(.semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
             }.padding(.top, 8)
         }
@@ -237,7 +244,10 @@ struct StaffProfileView: View {
                     Button("Written warning") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
                 }
                 if !StaffExtras.missing(m).isEmpty {
-                    Button("Paperwork done (\(StaffExtras.missing(m).count))") { store.act { $0.completePaperwork(companyID: companyID, personID: staffID) }; Haptics.success(); store.show("Paperwork done.", tone: "good") }
+                    Button("Paperwork done (\(StaffExtras.missing(m).count))") {
+                        let done = store.act { $0.completePaperwork(companyID: companyID, personID: staffID) } ?? 0
+                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { store.show("Nothing could be ticked.", tone: "warn") }
+                    }
                         .buttonStyle(QuietButtonStyle())
                 }
                 if !p.courses.isEmpty {

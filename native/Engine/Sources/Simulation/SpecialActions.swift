@@ -126,12 +126,24 @@ public extension GameEngine {
         update { s, d, _ in r = FootballModel.candidates(&s, companyID: companyID, kind: kind, data: d) }
         return r
     }
-    mutating func hireCoach(companyID: Int, coach: FootballModel.Coach, kind: String) { update { s, _, _ in FootballModel.hire(&s, companyID: companyID, coach: coach, kind: kind) } }
-    mutating func dismissCoach(companyID: Int, kind: String) {
+    /// True when the coach was taken on (the company is a club).
+    @discardableResult
+    mutating func hireCoach(companyID: Int, coach: FootballModel.Coach, kind: String) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = FootballModel.hire(&s, companyID: companyID, coach: coach, kind: kind) }
+        return ok
+    }
+    /// True when there was someone in the post to let go.
+    @discardableResult
+    mutating func dismissCoach(companyID: Int, kind: String) -> Bool {
+        var ok = false
         update { s, d, _ in
             guard let i = s.companyIndex(companyID) else { return }
+            let fm = s.companies[i].value("fm")
+            ok = kind == "coach" ? !fm["coach"].isNull : !fm["asst"].isNull
             if kind == "coach" { FootballModel.sackManager(&s, companyIndex: i, reason: "your decision", data: d) } else { FootballModel.dismissAssistant(&s, companyID: companyID) }
         }
+        return ok
     }
     func transferWindow(companyID: Int) -> (name: String?, weeksToOpen: Int) { FootballModel.window(state, companyID: companyID) }
     func signingFee(companyID: Int, tier: Int) -> Double { FootballModel.signingFee(state, companyID: companyID, tier: tier) }

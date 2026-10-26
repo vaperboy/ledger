@@ -19,17 +19,17 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
-enum PhoneDestination: Hashable, CaseIterable { case news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
+enum PhoneDestination: Hashable, CaseIterable { case goals, news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
     /// Title and symbol, shared by the More sheet, the toolbar menu and the iPad sidebar so the three always agree.
     var title: String {
         switch self {
-        case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
+        case .goals: return "Goals"; case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
         case .achievements: return "Achievements"; case .richList: return "Rich list"; case .ranking: return "Biggest companies"; case .worldAround: return "World around you"
         }
     }
     var symbol: String {
         switch self {
-        case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
+        case .goals: return "target"; case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
         case .settings: return "gearshape.fill"; case .achievements: return "rosette"; case .richList: return "list.number"; case .ranking: return "building.2.fill"
         case .worldAround: return "person.2.wave.2.fill"
         }
@@ -95,9 +95,9 @@ final class GameStore: ObservableObject {
 
     // MARK: Formatting (home currency)
 
-    func money(_ v: Double) -> String { engine?.homeCurrency.display(v) ?? String(Int(v)) }
+    func money(_ v: Double) -> String { (engine?.homeCurrency.display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double) -> String { (engine?.homeCurrency.short(v) ?? String(Int(v))).tidyMoney }
-    func money(_ v: Double, in co: Company) -> String { engine?.currency(for: co).display(v) ?? String(Int(v)) }
+    func money(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).display(v) ?? String(Int(v))).tidyMoney }
     func short(_ v: Double, in co: Company) -> String { (engine?.currency(for: co).short(v) ?? String(Int(v))).tidyMoney }
 
     // MARK: Saving and loading
@@ -294,11 +294,17 @@ final class GameStore: ObservableObject {
     }
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
+    /// Decisions waiting for an answer: the one number behind the Inbox tab badge and the Decisions tab badge.
+    var openDecisionCount: Int { engine?.state.inbox.filter { $0.status == "open" }.count ?? 0 }
 }
 
 extension Int {
     /// "1 week", "3 weeks".
     var weeksText: String { "\(self) \(self == 1 ? "week" : "weeks")" }
+    /// "1 person", "12 people": the one way to count employees on screen.
+    var peopleText: String { "\(self) \(self == 1 ? "person" : "people")" }
+    /// "1 decision", "3 decisions": a count with a regular plural ("s", or `plural` for the others, like "companies").
+    func countText(_ singular: String, plural: String? = nil) -> String { "\(self) \(self == 1 ? singular : (plural ?? singular + "s"))" }
 }
 
 extension Currency {

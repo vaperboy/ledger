@@ -105,8 +105,11 @@ public extension GameEngine {
     mutating func hireOffice(role: String, personID: Int, monthlyWage: Double) -> Headquarters.HireResult {
         var r = Headquarters.HireResult.refuse; update { s, d, _ in r = Headquarters.hire(&s, role: role, personID: personID, monthlyWage: monthlyWage, data: d) }; return r
     }
-    mutating func fireOffice(personID: Int) { update { s, _, _ in Headquarters.fire(&s, personID: personID) } }
-    mutating func tickOfficePaperwork(personID: Int, item: String) { update { s, _, _ in Headquarters.tickPaperwork(&s, personID: personID, item: item) } }
+    /// True when that person worked in the group office and has been let go.
+    @discardableResult
+    mutating func fireOffice(personID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.fire(&s, personID: personID) }; return ok }
+    @discardableResult
+    mutating func tickOfficePaperwork(personID: Int, item: String) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.tickPaperwork(&s, personID: personID, item: item) }; return ok }
     func officePaperwork(personID: Int) -> [(key: String, text: String, done: Bool)] { Headquarters.paperwork(state, personID: personID) }
     mutating func toggleOfficeAssignment(role: String, companyID: Int) { update { s, _, _ in Headquarters.toggleAssignment(&s, role: role, companyID: companyID) } }
     mutating func setReports(frequency: Int? = nil, detail: String? = nil, only: String? = nil) { update { s, _, _ in Headquarters.setReports(&s, frequency: frequency, detail: detail, only: only) } }

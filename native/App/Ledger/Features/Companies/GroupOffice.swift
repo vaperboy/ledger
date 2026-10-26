@@ -140,13 +140,17 @@ struct HeadOfficeSection: View {
             }
             HStack(spacing: 16) {
                 if !open.isEmpty {
-                    Button("Paperwork done (\(open.count))") { for p in open { store.act { $0.tickOfficePaperwork(personID: id, item: p.key) } }; Haptics.success() }
+                    Button("Paperwork done (\(open.count))") {
+                        let done = open.filter { p in store.act({ $0.tickOfficePaperwork(personID: id, item: p.key) }) == true }.count
+                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { store.show("Nothing could be ticked.", tone: "warn") }
+                    }
                 }
                 Spacer(minLength: 0)
                 Button("Let go") {
                     let name = x["name"].string
                     pending = PendingAction(title: "Let \(name) go?", message: "What they do for the group stops at once. " + engine.officeRoleResult(role: x["role"].string), button: "Let go", destructive: true) {
-                        store.act { $0.fireOffice(personID: id) }; Haptics.warning(); store.show("\(name) has left the group office.")
+                        if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("\(name) has left the group office.", tone: "n") }
+                        else { store.show("\(name) is no longer in the group office.", tone: "warn") }
                     }
                 }.foregroundStyle(Theme.loss)
             }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)

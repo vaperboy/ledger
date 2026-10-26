@@ -44,12 +44,14 @@ struct CompanyEquipmentScreen: View {
         case all(equipmentID: String, name: String)
         case vehicle(id: Int, name: String)
         case cancelPlan(equipmentID: String, name: String)
+        case endLease(equipmentID: String, name: String, units: Int, monthly: String)
         var id: String {
             switch self {
             case .unit(let e, let u, _): return "u\(e)\(u)"
             case .all(let e, _): return "a\(e)"
             case .vehicle(let v, _): return "v\(v)"
             case .cancelPlan(let e, _): return "c\(e)"
+            case .endLease(let e, _, _, _): return "l\(e)"
             }
         }
     }
@@ -108,6 +110,7 @@ struct CompanyEquipmentScreen: View {
         case .all(_, let n)?: return "Sell all \(n)?"
         case .vehicle(_, let n)?: return "Sell \(n)?"
         case .cancelPlan(_, let n)?: return "Cancel \(n)?"
+        case .endLease(_, let n, _, _)?: return "End the lease of \(n)?"
         case nil: return ""
         }
     }
@@ -117,11 +120,13 @@ struct CompanyEquipmentScreen: View {
         case .all?: return "You get about 70% of book value. Capacity may collapse."
         case .vehicle?: return "You get roughly 78% of its book value. A loan on it is settled; a lease just ends."
         case .cancelPlan?: return "It stops working right away."
+        case .endLease(_, _, let units, let monthly)?: return "The \(units) leased \(units == 1 ? "unit goes" : "units go") back at once and the capacity they gave is lost until you replace \(units == 1 ? "it" : "them"). The \(monthly) a month stops."
         case nil: return ""
         }
     }
     private func pendingButton(_ p: Pending) -> String {
         if case .cancelPlan = p { return "Cancel plan" }
+        if case .endLease = p { return "End the lease" }
         return "Sell"
     }
     private func confirm(_ p: Pending) {
@@ -131,13 +136,16 @@ struct CompanyEquipmentScreen: View {
             store.show(v > 0 ? "Sold for \(store.short(v))." : "Not sold.", tone: v > 0 ? "good" : "warn")
         case .all(let eq, _):
             let v = store.act { $0.sellAllEquipment(companyID: companyID, equipmentID: eq) } ?? 0
-            store.show("Sold for \(store.short(v)).", tone: "good")
+            store.show(v > 0 ? "Sold for \(store.short(v))." : "Nothing was sold.", tone: v > 0 ? "good" : "warn")
         case .vehicle(let id, _):
             let v = store.act { $0.sellVehicle(companyID: companyID, vehicleID: id) } ?? 0
             store.show(v > 0 ? "Sold for \(store.short(v))." : "Vehicle returned.", tone: "good")
         case .cancelPlan(let eq, _):
-            store.act { $0.cancelSubscription(companyID: companyID, equipmentID: eq) }
-            store.show("Plan cancelled.", tone: "n")
+            let gone = store.act { $0.cancelSubscription(companyID: companyID, equipmentID: eq) } ?? false
+            store.show(gone ? "Plan cancelled." : "The plan could not be cancelled.", tone: gone ? "n" : "warn")
+        case .endLease(let eq, let name, _, _):
+            if store.act({ $0.endEquipmentLease(companyID: companyID, equipmentID: eq) }) == true { Haptics.warning(); store.show("Lease of \(name) ended.", tone: "n") }
+            else { store.show("There is no lease of \(name) to end.", tone: "warn") }
         }
         pending = nil
     }
@@ -233,7 +241,7 @@ struct CompanyEquipmentScreen: View {
                     }
                     if o.leasedCount > 0 {
                         FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.tidyShort(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
-                        Button("End the lease") { store.act { $0.endEquipmentLease(companyID: companyID, equipmentID: o.equipmentID) }; store.show("Lease ended.") }.buttonStyle(QuietButtonStyle())
+                        Button("End the lease…") { pending = .endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly)) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                     }
                     HStack(spacing: Theme.Space.m) {
                         NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: o.equipmentID) } label: { Text(o.subscription != nil ? "Plans" : "Buy more").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }

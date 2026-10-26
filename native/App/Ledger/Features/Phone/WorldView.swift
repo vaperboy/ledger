@@ -218,7 +218,8 @@ struct DataAnalystCard: View {
                             }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                             Button("Let them go") {
                                 pending = PendingAction(title: "Let your data analyst go?", message: "Market shares, rivals and forecasts go back to guesses until you hire another. Their desk in the main office is freed.", button: "Let go", destructive: true) {
-                                    store.act { $0.fireDataAnalyst() }; Haptics.warning(); store.show("Your data analyst has left.", tone: "n")
+                                    if store.act({ $0.fireDataAnalyst() }) == true { Haptics.warning(); store.show("Your data analyst has left.", tone: "n") }
+                                    else { store.show("You have no data analyst.", tone: "warn") }
                                 }
                             }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                         }

@@ -120,8 +120,9 @@ struct CompanyClub: View {
                                 Button("Hire…") {
                                     let kind = hiringKind
                                     pending = PendingAction(title: "Hire \(cd.name)?", message: "\(cur.display(cd.wage)) a week for a \(kind == "coach" ? "manager" : "assistant manager") of quality \(cd.quality). Whoever holds the post now is replaced.", button: "Hire") {
-                                        store.act { $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }
-                                        candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(kind == "coach" ? "manager" : "assistant manager").", tone: "good")
+                                        if store.act({ $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }) == true {
+                                            candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(kind == "coach" ? "manager" : "assistant manager").", tone: "good")
+                                        } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(kind == "coach" ? "manager" : "assistant manager") now.", tone: "warn") }
                                     }
                                 }.buttonStyle(QuietButtonStyle())
                             }.padding(.vertical, 8)
@@ -144,7 +145,8 @@ struct CompanyClub: View {
                 Spacer()
                 if let p { Button("Dismiss…") {
                     pending = PendingAction(title: "Dismiss \(p.name)?", message: kind == "coach" ? "The assistant steps in until you hire a new manager. Results can suffer in between." : "The club has no assistant until you hire one.", button: "Dismiss", destructive: true) {
-                        store.act { $0.dismissCoach(companyID: company.id, kind: kind) }; Haptics.warning(); store.show("\(p.name) has gone.", tone: "n")
+                        if store.act({ $0.dismissCoach(companyID: company.id, kind: kind) }) == true { Haptics.warning(); store.show("\(p.name) has gone.", tone: "n") }
+                        else { store.show("\(p.name) is no longer in post.", tone: "warn") }
                     }
                 }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
                 Button(p == nil ? "Find one" : "Replace") {

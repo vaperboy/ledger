@@ -37,7 +37,9 @@ public extension GameEngine {
         return r
     }
     /// Original: `ACT.fmfire`. A new set of candidates is made next time.
-    mutating func dismissFundManager() { update { s, _, _ in FinanceManager.fire(&s) } }
+    /// True when a fund manager was let go (the managed money is back in the account).
+    @discardableResult
+    mutating func dismissFundManager() -> Bool { var ok = false; update { s, _, _ in ok = FinanceManager.fire(&s) }; return ok }
 
     /// Holdings run by the office finance manager. Original: `finSt().holds`.
     var holdingsRunByFinanceManager: [Int] { FinanceManager.managedHoldings(state) }

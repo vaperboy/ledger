@@ -88,7 +88,9 @@ public extension GameEngine {
         update { s, d, _ in r = EquipmentMarket.subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: plan, offer: offer, data: d) }
         return r
     }
-    mutating func cancelSubscription(companyID: Int, equipmentID: String) { update { s, _, _ in EquipmentMarket.cancelSubscription(&s, companyID: companyID, equipmentID: equipmentID) } }
+    /// True when the plan existed and is now cancelled.
+    @discardableResult
+    mutating func cancelSubscription(companyID: Int, equipmentID: String) -> Bool { var ok = false; update { s, _, _ in ok = EquipmentMarket.cancelSubscription(&s, companyID: companyID, equipmentID: equipmentID) }; return ok }
     @discardableResult
     mutating func sellEquipmentUnit(companyID: Int, equipmentID: String, unitID: Int) -> Double {
         var v = 0.0
@@ -107,7 +109,13 @@ public extension GameEngine {
         update { s, _, _ in v = EquipmentMarket.sellVehicle(&s, companyID: companyID, vehicleID: vehicleID) }
         return v
     }
-    mutating func endEquipmentLease(companyID: Int, equipmentID: String) { update { s, _, _ in EquipmentMarket.endLease(&s, companyID: companyID, equipmentID: equipmentID) } }
+    /// True when the lease existed and is now ended.
+    @discardableResult
+    mutating func endEquipmentLease(companyID: Int, equipmentID: String) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = EquipmentMarket.endLease(&s, companyID: companyID, equipmentID: equipmentID) }
+        return ok
+    }
     @discardableResult
     mutating func serviceEquipment(companyID: Int, equipmentID: String) -> EquipmentMarket.Result {
         var r = EquipmentMarket.Result.notPossible

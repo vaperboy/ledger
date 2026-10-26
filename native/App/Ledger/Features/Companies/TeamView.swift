@@ -50,7 +50,6 @@ struct TeamView: View {
             .ledgerBackground()
             .navigationTitle("Team")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .searchable(text: $query, prompt: "Find anyone who works for you")
             .companyRouteDestinations()
             .routeRequests(for: .team, path: $path)
@@ -66,18 +65,18 @@ struct TeamView: View {
         let staff = o.companies.reduce(0) { $0 + $1.staff }
         let wages = o.companies.reduce(0) { $0 + $1.monthlyWages }
         let needed = o.vacancies.filter { $0.needed }.count
-        let mine = o.issues.filter { $0.needsOwner }.count
+        let mine = peopleIssues(o, e).filter { $0.needsOwner }.count
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Team").font(.serifTitle(28))
             if o.companies.isEmpty {
                 Text("No companies yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             } else {
                 KeyFigures(items: [
-                    .init(label: "Need you", value: "\(mine)", tint: mine > 0 ? Theme.caution : Theme.ivory, sub: mine == 0 ? "all in hand" : "decisions and trouble"),
+                    .init(label: "Need you", value: "\(mine)", tint: mine > 0 ? Theme.caution : Theme.ivory, sub: mine == 0 ? "all in hand" : "people matters"),
                     .init(label: "Run by managers", value: "\(byManagers) of \(live.count)", sub: "\(live.count - byManagers) by you"),
                     .init(label: "Posts to fill", value: "\(o.vacancies.count)", tint: needed > 0 ? Theme.loss : Theme.ivory, sub: needed > 0 ? "\(needed) needed now" : "none urgent"),
                 ])
-                Text("\(staff) staff in \(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(store.short(wages)) a month in wages")
+                Text("\(staff.peopleText) in \(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(store.short(wages)) a month in wages")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
         }
@@ -85,9 +84,28 @@ struct TeamView: View {
 
     // MARK: Needs you / handled by managers
 
+    /// The Team tab is about people. Inbox-type decisions (equipment breakdown, press interview, an offer...) stay in the Inbox; only decisions
+    /// that are themselves about people (a raise, a poached manager, a proposal for staff) are listed here.
+    private static func isPeopleDecision(_ m: Message) -> Bool {
+        ["staffx", "mgrraise", "mgrpoach", "prop", "mprop", "mfind11"].contains(m.actionID) || m.actionID.hasPrefix("tg58")
+    }
+    private func peopleIssues(_ o: TeamOverview, _ e: GameEngine) -> [TeamOverview.Issue] {
+        o.issues.filter { i in
+            guard i.kind == .decision else { return true }
+            guard let id = i.messageID, let m = e.state.inbox.first(where: { $0.id == id }) else { return false }
+            return Self.isPeopleDecision(m)
+        }
+    }
+    /// What a company line says needs the owner, without the Inbox-type decisions the engine counts in `issues`.
+    private func forYou(_ l: TeamOverview.CompanyLine, _ e: GameEngine) -> Int {
+        let hidden = e.state.inbox.filter { $0.status == "open" && $0.companyID == l.id && !Self.isPeopleDecision($0) }.count
+        return max(0, l.issues - hidden)
+    }
+
     @ViewBuilder private func needsYou(_ o: TeamOverview, _ e: GameEngine) -> some View {
-        let mine = o.issues.filter { $0.needsOwner }
-        let theirs = o.issues.filter { !$0.needsOwner }
+        let people = peopleIssues(o, e)
+        let mine = people.filter { $0.needsOwner }
+        let theirs = people.filter { !$0.needsOwner }
         LedgerSection(title: "Needs you", trailing: { Text(mine.isEmpty ? "nothing" : "\(mine.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(spacing: 0) {
                 if mine.isEmpty {
@@ -139,7 +157,7 @@ struct TeamView: View {
     /// Opens the exact record an issue is about: the decision in the Inbox, or the company on the section where it is dealt with.
     private func open(_ i: TeamOverview.Issue, _ e: GameEngine) {
         Haptics.tap()
-        if i.kind == .decision, let m = i.messageID { store.openMessage(m); return }
+        if i.kind == .decision, let m = i.messageID { store.openMessage(m); return }  // people decisions are answered in the Inbox
         guard let id = i.companyID else { return }
         let section: CompanySection
         switch i.kind {
@@ -251,7 +269,7 @@ struct TeamView: View {
 
     @ViewBuilder private func companies(_ o: TeamOverview, _ e: GameEngine) -> some View {
         if !o.companies.isEmpty {
-            let lines = o.companies.sorted { ($0.issues, $1.name) > ($1.issues, $0.name) }
+            let lines = o.companies.sorted { (forYou($0, e), $1.name) > (forYou($1, e), $0.name) }
             let grouped = lines.count >= 10
             LedgerSection(title: "Who runs each company", trailing: { Text("\(lines.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 if !grouped {
@@ -300,7 +318,7 @@ struct TeamView: View {
 
     @ViewBuilder private func companyGroup(_ g: LineGroup, _ e: GameEngine) -> some View {
         let open = isOpen(g)
-        let needs = g.lines.reduce(0) { $0 + $1.issues }
+        let needs = g.lines.reduce(0) { $0 + forYou($1, e) }
         let byMgr = g.lines.filter { $0.delegated }.count
         let weak = g.lines.filter { ($0.score ?? 100) < 35 }.count
         Button {
@@ -336,9 +354,9 @@ struct TeamView: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(l.isHolding ? "holding" : "\(l.staff) staff").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(l.isHolding ? "holding" : l.staff.peopleText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
                 if let sc = l.score { Text("score \(sc)").font(.system(size: 11)).foregroundStyle(sc < 35 ? Theme.loss : Theme.ivoryFaint) }
-                if l.issues > 0 { Text("\(l.issues) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                if forYou(l, e) > 0 { Text("\(forYou(l, e)) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }
             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }

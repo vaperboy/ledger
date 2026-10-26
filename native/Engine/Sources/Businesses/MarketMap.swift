@@ -329,13 +329,15 @@ public enum MarketMap {
         return .ok
     }
 
-    public static func fireDataAnalyst(_ s: inout GameState) {
-        guard var office = s.rest["office"] else { return }
+    @discardableResult
+    public static func fireDataAnalyst(_ s: inout GameState) -> Bool {
+        guard var office = s.rest["office"], office["staff"].array.contains(where: { $0["role"].string == dataAnalystRole }) else { return false }
         for st in office["staff"].array where st["role"].string == dataAnalystRole {
             if var p = s.people[st["id"].int] { p.employerID = 0; s.people[p.id] = p }
         }
         office["staff"] = .array(office["staff"].array.filter { $0["role"].string != dataAnalystRole })
         s.rest["office"] = office
+        return true
     }
 
     /// Pay head-office analysts hired here once a month. Original: `officeMonth` (staff part).

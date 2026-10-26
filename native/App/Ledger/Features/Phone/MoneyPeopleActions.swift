@@ -198,7 +198,10 @@ struct FundManagerCard: View {
             }
         }
         .confirmationDialog("Let the fund manager go?", isPresented: $confirmDismiss, titleVisibility: .visible) {
-            Button("Let go", role: .destructive) { store.act { $0.dismissFundManager() }; Haptics.warning() }
+            Button("Let go", role: .destructive) {
+                if store.act({ $0.dismissFundManager() }) == true { Haptics.warning(); store.show("The fund manager is gone. The managed money is back in your account.", tone: "n") }
+                else { store.show("You have no fund manager.", tone: "warn") }
+            }
         } message: { Text("All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.") }
     }
 }
@@ -291,7 +294,10 @@ struct HoldingFinanceManagerCard: View {
         }
         .confirmationDialog("Let the finance manager go?", isPresented: $confirmFire, titleVisibility: .visible) {
             Button("Let go", role: .destructive) {
-                if let id = staffEntry?["id"].int { store.act { $0.fireOffice(personID: id) }; Haptics.warning() }
+                if let id = staffEntry?["id"].int {
+                    if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("The finance manager has left. You run your holdings yourself again.", tone: "n") }
+                    else { store.show("The finance manager is no longer in the group office.", tone: "warn") }
+                }
             }
         } message: { Text("He stops running your holdings, and you run them yourself again.") }
         .confirmationDialog(on ? "Run \(company.name) yourself again?" : "Let the finance manager run \(company.name)?", isPresented: $confirm, titleVisibility: .visible) {

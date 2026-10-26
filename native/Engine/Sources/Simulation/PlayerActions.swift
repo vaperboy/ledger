@@ -192,13 +192,19 @@ public extension GameEngine {
     }
 
     /// Mark a paperwork item as done for a team member. It is free; missing items can be fined in an inspection.
-    mutating func completePaperwork(companyID: Int, personID: Int, key: String? = nil) {
+    /// Returns how many items were missing and are now ticked (0 when the person is not on the payroll or nothing was missing).
+    @discardableResult
+    mutating func completePaperwork(companyID: Int, personID: Int, key: String? = nil) -> Int {
+        var done = 0
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), let k = s.companies[i].staff.firstIndex(where: { $0.id == personID }) else { return }
             var staff = s.companies[i].staff
+            let before = StaffExtras.missing(staff[k]).count
             for it in StaffExtras.items(role: staff[k].role) where key == nil || it.key == key { StaffExtras.tick(&staff[k], key: it.key) }
+            done = before - StaffExtras.missing(staff[k]).count
             s.companies[i].staff = staff
         }
+        return done
     }
 
     // MARK: Money

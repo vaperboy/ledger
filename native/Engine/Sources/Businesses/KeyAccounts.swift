@@ -210,9 +210,11 @@ public enum KeyAccounts {
         return res == .ok ? .ok : res == .wait ? .wait : .cash
     }
 
-    public static func drop(_ s: inout GameState, companyID: Int, accountID: Int) {
-        guard let i = s.companyIndex(companyID) else { return }
+    @discardableResult
+    public static func drop(_ s: inout GameState, companyID: Int, accountID: Int) -> Bool {
+        guard let i = s.companyIndex(companyID), s.companies[i].value("accts").array.contains(where: { $0["id"].int == accountID }) else { return false }
         s.companies[i].set("accts", .array(s.companies[i].value("accts").array.filter { $0["id"].int != accountID }))
+        return true
     }
 
     public static func setDiscount(_ s: inout GameState, companyID: Int, accountID: Int, percent: Int) {

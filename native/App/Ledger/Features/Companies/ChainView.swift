@@ -251,10 +251,13 @@ struct ChainStoreComparison: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 NavigationLink(value: CompanyRoute.company(s.id)) {
+                    HStack(spacing: 6) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(s.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                        Text("\(s.cityName) · \(s.status == .setup ? "setting up" : s.managerName ?? "you run it") · \(s.staff) staff\(s.ownRules > 0 ? " · own rules" : "")")
+                        Text("\(s.cityName) · \(s.status == .setup ? "setting up" : s.managerName ?? "you run it") · \(s.staff.peopleText)\(s.ownRules > 0 ? " · own rules" : "")")
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain)
                 Spacer(minLength: 8)

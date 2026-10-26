@@ -187,7 +187,9 @@ public extension GameEngine {
         update { s, d, _ in r = KeyAccounts.meet(&s, companyID: companyID, accountID: accountID, data: d) }
         return r
     }
-    mutating func dropAccount(companyID: Int, accountID: Int) { update { s, _, _ in KeyAccounts.drop(&s, companyID: companyID, accountID: accountID) } }
+    /// True when the key-account contract existed and is ended.
+    @discardableResult
+    mutating func dropAccount(companyID: Int, accountID: Int) -> Bool { var ok = false; update { s, _, _ in ok = KeyAccounts.drop(&s, companyID: companyID, accountID: accountID) }; return ok }
     mutating func setAccountDiscount(companyID: Int, accountID: Int, percent: Int) { update { s, _, _ in KeyAccounts.setDiscount(&s, companyID: companyID, accountID: accountID, percent: percent) } }
 
     // MARK: Rivals
@@ -421,7 +423,9 @@ public extension GameEngine {
         update { s, d, _ in r = MarketMap.hireDataAnalyst(&s, personID: personID, monthlyWage: monthlyWage, data: d) }
         return r
     }
-    mutating func fireDataAnalyst() { update { s, _, _ in MarketMap.fireDataAnalyst(&s) } }
+    /// True when there was a data analyst to let go.
+    @discardableResult
+    mutating func fireDataAnalyst() -> Bool { var ok = false; update { s, _, _ in ok = MarketMap.fireDataAnalyst(&s) }; return ok }
     func economyWeight() -> MarketMap.Weight { MarketMap.weight(state, data: data) }
     /// Ask your market analyst for a report now (market map), or your data analyst for one on a company or all of them.
     mutating func orderMarketReport(marketKey: String) -> ActionResult {
