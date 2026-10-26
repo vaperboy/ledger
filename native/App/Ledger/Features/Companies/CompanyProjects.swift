@@ -39,12 +39,7 @@ private struct JobList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            KeyFigures(items: [
-                .init(label: board.isEvent ? "Booked" : "Booked ahead", value: board.weeksBooked < 0.2 ? "Nothing yet" : String(format: "%.1f wk", board.weeksBooked),
-                      tint: board.weeksBooked > 3 ? Theme.caution : Theme.ivory, sub: "\(Int(board.bookedHours.rounded())) of \(Int(board.hoursPerWeek.rounded())) h a week"),
-                .init(label: "Still to be paid", value: store.short(board.outstandingPayments, in: company), sub: "on jobs in hand"),
-                .init(label: board.isEvent ? "Delivered" : "Finished", value: "\(board.finishedCount)", sub: "since opening"),
-            ])
+            KeyFigures(items: figureItems)
             LedgerSection(title: board.isEvent ? "Bookings" : "Jobs on the go", trailing: {
                 Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }) {
@@ -65,13 +60,29 @@ private struct JobList: View {
                         }
                     }
                 }
-                Text(board.isEvent
-                     ? "Clients pay 30% when they book and the rest after the event. Preparation goes to the nearest date first; a booking is turned away when the team cannot prepare it in time."
-                     : "Short jobs are paid when finished. Big or long jobs pay 30% at the start, 40% halfway and the rest at the end. Business clients then pay their invoices after a few weeks. New requests are turned away when you are booked more than three weeks ahead.")
+                Text(terms)
                     .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
             tenders
         }
+    }
+
+    private var figureItems: [KeyFigures.Item] {
+        let bookedLabel: String = board.isEvent ? "Booked" : "Booked ahead"
+        let bookedValue: String = board.weeksBooked < 0.2 ? "Nothing yet" : String(format: "%.1f wk", board.weeksBooked)
+        let hours: String = "\(Int(board.bookedHours.rounded())) of \(Int(board.hoursPerWeek.rounded())) h a week"
+        let doneLabel: String = board.isEvent ? "Delivered" : "Finished"
+        return [
+            .init(label: bookedLabel, value: bookedValue, tint: board.weeksBooked > 3 ? Theme.caution : Theme.ivory, sub: hours),
+            .init(label: "Still to be paid", value: store.short(board.outstandingPayments, in: company), sub: "on jobs in hand"),
+            .init(label: doneLabel, value: "\(board.finishedCount)", sub: "since opening"),
+        ]
+    }
+
+    private var terms: String {
+        board.isEvent
+            ? "Clients pay 30% when they book and the rest after the event. Preparation goes to the nearest date first; a booking is turned away when the team cannot prepare it in time."
+            : "Short jobs are paid when finished. Big or long jobs pay 30% at the start, 40% halfway and the rest at the end. Business clients then pay their invoices after a few weeks. New requests are turned away when you are booked more than three weeks ahead."
     }
 
     private func jobRow(_ j: ProjectBoard.JobRow) -> some View {
@@ -108,7 +119,12 @@ private struct JobList: View {
         if ProjectTenders.catalog[company.type] != nil {
             LedgerSection(title: "Tenders", trailing: {
                 if board.hasManager {
-                    Button { store.act { $0.setManagerBids(companyID: company.id, on: !board.managerBids) }; Haptics.choose() } label: {
+                    Button {
+                        let on: Bool = !board.managerBids
+                        store.act { $0.setManagerBids(companyID: company.id, on: on) }
+                        Haptics.choose()
+                        store.saved(on ? "your manager now bids on tenders" : "you bid on tenders yourself")
+                    } label: {
                         Text(board.managerBids ? "Manager bids: on" : "Manager bids: off").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
                     }.buttonStyle(.plain)
                 }
@@ -218,16 +234,13 @@ private struct DevelopmentList: View {
     @State private var sizeIndex = 2
     @State private var financed = true
     @State private var showStart = false
+    @State private var pending: PendingAction?
     private let sizes: [(name: String, factor: Double)] = [("Small", 0.4), ("Half", 0.5), ("Full", 1.0)]
 
     var body: some View {
         let active = board.developments
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            KeyFigures(items: [
-                .init(label: "Running", value: "\(active.count)", sub: "developments"),
-                .init(label: "Tied up in work", value: store.short(active.reduce(0) { $0 + $1.workInProgress }, in: company), sub: "land and building so far"),
-                .init(label: "Finished", value: "\(board.finishedCount)", sub: "sold out"),
-            ])
+            KeyFigures(items: devItems(active))
             LedgerSection(title: "Developments", trailing: {
                 Button { withAnimation(.snappy(duration: 0.2)) { showStart.toggle() }; Haptics.choose() } label: {
                     Text(showStart ? "Close" : "Start a project").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
@@ -265,6 +278,35 @@ private struct DevelopmentList: View {
                 }
             }
         }
+        .confirmAction($pending)
+    }
+
+    private func devItems(_ active: [ProjectBoard.DevelopmentRow]) -> [KeyFigures.Item] {
+        let tied: Double = active.reduce(0) { $0 + $1.workInProgress }
+        return [
+            .init(label: "Running", value: "\(active.count)", sub: "developments"),
+            .init(label: "Tied up in work", value: store.short(tied, in: company), sub: "land and building so far"),
+            .init(label: "Finished", value: "\(board.finishedCount)", sub: "sold out"),
+        ]
+    }
+
+    private func askStart(_ size: Double, _ q: ProjectDeveloper.Quote?) {
+        let fin: Bool = financed
+        var lines: [String] = []
+        if let q {
+            lines.append("Cash leaves the company now: \(store.money(q.cashNow, in: company)).")
+            if q.financed { lines.append("A construction loan of \(store.short(q.loanAmount, in: company)) is drawn.") }
+            lines.append("If all \(q.units) units sell it brings in about \(store.short(q.expectedRevenue, in: company)).")
+        }
+        lines.append("Zoning takes about six months and can be refused; building costs can overrun; the first income is roughly two years away.")
+        pending = PendingAction(title: "Buy the land and start?", message: lines.joined(separator: "\n"), button: "Start project", amount: q?.cashNow, currency: engine.currency(for: company)) {
+            switch store.act({ $0.startDevelopment(companyID: company.id, size: size, financed: fin) }) {
+            case .started?: Haptics.success(); store.show("Project started. Zoning takes about six months.", tone: "good"); showStart = false
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
+            case .loanRefused?: Haptics.warning(); store.show("The bank will not lend that much. Try a smaller project or fund it with equity.", tone: "warn")
+            default: Haptics.warning(); store.show("The company must be open to start a project.", tone: "warn")
+            }
+        }
     }
 
     private var startSheet: some View {
@@ -281,14 +323,7 @@ private struct DevelopmentList: View {
                 if q.financed { row("Loan", store.short(q.loanAmount, in: company)) }
                 row("Brings in, if all sold", store.short(q.expectedRevenue, in: company))
             }
-            Button("Buy the land and start") {
-                switch store.act({ $0.startDevelopment(companyID: company.id, size: size, financed: financed) }) {
-                case .started?: Haptics.success(); store.show("Project started. Zoning takes about six months.", tone: "good"); showStart = false
-                case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
-                case .loanRefused?: Haptics.warning(); store.show("The bank will not lend that much. Try a smaller project or fund it with equity.", tone: "warn")
-                default: Haptics.warning(); store.show("The company must be open to start a project.", tone: "warn")
-                }
-            }.buttonStyle(SmallGoldButtonStyle())
+            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(SmallGoldButtonStyle())
         }
         .padding(.bottom, 6)
     }
@@ -331,6 +366,7 @@ private struct DevelopmentList: View {
                 ForEach([0.9, 1.0, 1.1], id: \.self) { m in
                     Button {
                         store.act { $0.setDevelopmentPrice(companyID: company.id, projectID: p.id, multiplier: m) }; Haptics.choose()
+                        store.saved("unit price \(m == 1.0 ? "standard" : m < 1 ? "10% lower" : "10% higher")")
                     } label: {
                         Text(m == 0.9 ? "−10%" : m == 1.0 ? "Standard" : "+10%").font(.system(size: 11, weight: .medium))
                             .foregroundStyle(abs(p.priceMultiplier - m) < 0.001 ? Theme.ivory : Theme.ivoryFaint)

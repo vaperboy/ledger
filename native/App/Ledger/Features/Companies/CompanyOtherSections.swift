@@ -34,6 +34,7 @@ struct CompanyOtherSections: View {
                             Button("Apologise") { answer(c, .sorry) }
                             Button("Ignore") { answer(c, .ignore) }
                         }.buttonStyle(QuietButtonStyle())
+                        Text("Refund costs money but settles it. An apology may not be enough. Ignoring it risks a bad review.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }
@@ -113,11 +114,21 @@ struct ChainStaffShortages: View {
                         }
                         Spacer(minLength: 8)
                         if let from = x.spareAtStoreID {
-                            Button("Move one") { if store.act({ $0.lendWorker(from: from, to: x.storeID, role: x.role) }) == true { Haptics.success() } }.buttonStyle(QuietButtonStyle())
+                            Button("Move one") { move(from: from, to: x.storeID, role: x.role) }.buttonStyle(QuietButtonStyle())
                         }
                     }
                 }
             }
+        }
+    }
+
+    private func move(from: Int, to: Int, role: String) {
+        if store.act({ $0.lendWorker(from: from, to: to, role: role) }) == true {
+            Haptics.success()
+            store.show("A \(role) moved to \(engine.state.company(to)?.name ?? "the store").", tone: "good")
+        } else {
+            Haptics.warning()
+            store.show("That worker could not be moved now.", tone: "warn")
         }
     }
 }
