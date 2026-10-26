@@ -60,13 +60,7 @@ struct ReportsContent: View {
                 .padding(.horizontal, -Theme.Space.margin)
             if let r = current {
                 picker(r, all)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(ReportPage.allCases, id: \.self) { p in
-                            Button(p.rawValue) { page = p }.buttonStyle(QuietButtonStyle(tint: page == p ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
-                }
+                SectionTabs(items: ReportPage.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -Theme.Space.margin)
                 switch page {
                 case .summary: summaryPage(r, all)
                 case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)

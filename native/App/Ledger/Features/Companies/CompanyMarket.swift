@@ -93,12 +93,11 @@ struct CompanyMarket: View {
                         Text("\(pct)% off · \(info.discountWeeksLeft) wk left").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                         Button("End the discount") { store.act { $0.endDiscount(companyID: company.id) } }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                     } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
+                        WrapRow {
+                            Group {
                                 ForEach(info.discountOptions, id: \.self) { d in
                                     Button("\(d)%") { discount = d }.buttonStyle(QuietButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
                                 }
-                                Divider().frame(height: 14)
                                 ForEach([1, 2, 4, 6], id: \.self) { w in
                                     Button("\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
                                 }
@@ -385,7 +384,7 @@ struct PriceWarSheet: View {
                             }
                         }
                         LedgerSection("How long") {
-                            ScrollView(.horizontal, showsIndicators: false) { HStack { ForEach([6, 10, 14, 20], id: \.self) { w in
+                            WrapRow { Group { ForEach([6, 10, 14, 20], id: \.self) { w in
                                 Button("\(w) weeks") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint)) } } }
                         }
                         if let c = chosen, let est = e.warEstimate(companyID: companyID, rivalID: c.id, weeks: weeks) {

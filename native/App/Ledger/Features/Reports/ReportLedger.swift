@@ -43,8 +43,8 @@ struct ReportMovements: View {
                     .init(label: "Movements", value: "\(list.count)"),
                 ], columns: 3)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     Button("All") { kind = nil; limit = 60 }.buttonStyle(QuietButtonStyle(tint: kind == nil ? Theme.gold : Theme.ivoryFaint))
                     ForEach(CompanyMovement.Kind.allCases, id: \.self) { k in
                         let n = all.filter { $0.kind == k }.count

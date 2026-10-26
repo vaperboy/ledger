@@ -644,7 +644,7 @@ struct EquipmentShopView: View {
         HStack {
             Text("How to pay").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
             Spacer()
-            SectionTabs(items: [false, true], title: { $0 ? "Finance" : "Cash" }, selection: $finance).fixedSize()
+            SectionTabs(items: [false, true], title: { $0 ? "Finance" : "Cash" }, selection: $finance)
         }
     }
 

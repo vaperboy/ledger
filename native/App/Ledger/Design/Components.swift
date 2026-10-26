@@ -320,35 +320,90 @@ struct AmountField: View {
     }
 }
 
-/// Section switcher: text with a champagne underline under the chosen one and a hairline beneath the row.
-/// A small red count may sit beside a title.
+/// Chips that wrap onto further lines instead of scrolling sideways. Put the chips directly inside (a Group is fine).
+struct WrapRow: Layout {
+    var spacing: CGFloat = 8
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(proposal.width ?? 320, subviews).size
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let r = arrange(bounds.width, subviews)
+        for (i, f) in r.frames.enumerated() {
+            subviews[i].place(at: CGPoint(x: bounds.minX + f.minX, y: bounds.minY + f.minY), proposal: ProposedViewSize(f.size))
+        }
+    }
+    private func arrange(_ width: CGFloat, _ subviews: Subviews) -> (size: CGSize, frames: [CGRect]) {
+        var x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0, maxX: CGFloat = 0
+        var frames: [CGRect] = []
+        for v in subviews {
+            let s = v.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            if x > 0 && x + s.width > width { x = 0; y += rowH + spacing; rowH = 0 }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: s))
+            x += s.width + spacing; rowH = max(rowH, s.height); maxX = max(maxX, x - spacing)
+        }
+        return (CGSize(width: maxX, height: y + rowH), frames)
+    }
+}
+
+/// Section switcher, never scrolls sideways (owner rule). Up to 5 items: one equal-width row. More than 5: a fixed
+/// row of `primary` (default the first 4) plus a "More" menu listing the rest. The chosen fixed item has a champagne
+/// underline; the menu marks the chosen item with a checkmark and "More" turns accent when the choice is inside it.
+/// A small red count may sit beside a title (counts of hidden items roll up onto "More"). Tap targets are 44 pt tall.
 struct SectionTabs<T: Hashable>: View {
     var items: [T]
+    var primary: [T]? = nil
     var title: (T) -> String
     @Binding var selection: T
     var badge: (T) -> Int = { _ in 0 }
+
+    private var fixed: [T] {
+        if let primary { let p = primary.filter { items.contains($0) }; return p.count < items.count ? p : items }
+        return items.count <= 5 ? items : Array(items.prefix(4))
+    }
+    private var rest: [T] { items.filter { !fixed.contains($0) } }
+
+    private func countView(_ n: Int) -> some View {
+        Text("\(n)").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.page)
+            .padding(.horizontal, 5).padding(.vertical, 1).background(Capsule().fill(Theme.loss))
+    }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 20) {
-                ForEach(items, id: \.self) { item in
-                    let on = selection == item
-                    Button { selection = item; Haptics.choose() } label: {
-                        HStack(spacing: 5) {
-                            Text(title(item)).font(.system(size: 14, weight: on ? .semibold : .regular))
-                            if badge(item) > 0 {
-                                Text("\(badge(item))").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.page)
-                                    .padding(.horizontal, 5).padding(.vertical, 1).background(Capsule().fill(Theme.loss))
-                            }
+        HStack(spacing: 4) {
+            ForEach(fixed, id: \.self) { item in
+                let on = selection == item
+                Button { selection = item; Haptics.choose() } label: {
+                    cell(title(item), count: badge(item), on: on, more: false)
+                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+            }
+            if !rest.isEmpty {
+                let inRest = rest.contains(selection)
+                Menu {
+                    ForEach(rest, id: \.self) { item in
+                        Button { selection = item; Haptics.choose() } label: {
+                            let n = badge(item)
+                            let t = n > 0 ? "\(title(item)) (\(n))" : title(item)
+                            if selection == item { Label(t, systemImage: "checkmark") } else { Text(t) }
                         }
-                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-                        .padding(.vertical, 9)
-                        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
-                    }.buttonStyle(.plain)
+                    }
+                } label: {
+                    cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true)
                 }
             }
-            .padding(.horizontal, Theme.Space.margin)
         }
+        .padding(.horizontal, Theme.Space.margin)
         .background(alignment: .bottom) { Hairline() }
+    }
+
+    private func cell(_ text: String, count: Int, on: Bool, more: Bool) -> some View {
+        HStack(spacing: 3) {
+            Text(text).font(.system(size: 14, weight: on ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.6)
+            if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
+            if count > 0 { countView(count) }
+        }
+        .foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
+        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
     }
 }
 

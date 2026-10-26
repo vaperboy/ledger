@@ -39,8 +39,8 @@ struct CompanyHowYouSell: View {
                                 }
                             }
                         } else {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
+                            WrapRow {
+                                Group {
                                     ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
                                         Button(o.name) { choose(knob, i, cur) }
                                             .buttonStyle(QuietButtonStyle(tint: i == value ? Theme.gold : Theme.ivoryMuted))

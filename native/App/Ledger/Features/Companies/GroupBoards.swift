@@ -169,8 +169,8 @@ struct BoardView: View {
                     Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
                 Text("Add to the board (a search costs a fee)").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, 4)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                WrapRow {
+                    Group {
                         ForEach(engine.seatRoles) { r in
                             Button(r.title) {
                                 let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil

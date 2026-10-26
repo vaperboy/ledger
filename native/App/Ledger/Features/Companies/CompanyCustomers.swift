@@ -159,8 +159,8 @@ private struct AccountRow: View {
                 Spacer()
                 Text(account.discount == 0 ? "Full price" : "\(account.discount)% off").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     ForEach(KeyAccounts.discounts, id: \.self) { d in
                         Button("\(d)%") { store.act { $0.setAccountDiscount(companyID: company.id, accountID: account.id, percent: d) } }
                             .buttonStyle(QuietButtonStyle(tint: account.discount == d ? Theme.gold : Theme.ivoryFaint))

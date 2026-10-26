@@ -314,8 +314,8 @@ struct ChainRulesSection: View {
         let cur = engine.homeCurrency
         return VStack(alignment: .leading, spacing: 4) {
             Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     Button("Each store decides") {
                         if current.isNull { return }
                         pending = PendingAction(title: "Leave \(knob.name) to each store?", message: "Stores keep what they sell by now and can change it themselves, each paying its own changeover.", button: "Leave to stores") {

@@ -187,8 +187,8 @@ private struct FoundedCard: View {
                         }
                     }.padding(.vertical, 4)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                WrapRow {
+                    Group {
                         Button("Raise a round") {
                             switch store.act({ $0.pitchStartupRound(startupID: f.id) }) {
                             case .offers(let n)?: Haptics.success(); store.show("\(n) investor\(n == 1 ? "" : "s") made an offer.", tone: "good")

@@ -319,8 +319,8 @@ struct FranchiseTalkView: View {
     private func choice(_ title: String, _ options: [(Double, String)], current: Double, set: @escaping (Double) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
+            WrapRow {
+                Group {
                     ForEach(options, id: \.0) { o in
                         Button(o.1) { set(o.0) }.buttonStyle(QuietButtonStyle(tint: abs(current - o.0) < 0.0001 ? Theme.gold : Theme.ivoryFaint)).font(.caption)
                     }
