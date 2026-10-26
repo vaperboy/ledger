@@ -84,6 +84,8 @@ struct BoardView: View {
             .navigationTitle("Board")
             .navigationBarTitleDisplayMode(.inline)
             .confirmAction($pending)
+            // Every result is also a toast, so it is seen when the line at the top has scrolled away.
+            .onChange(of: message) { _, new in if !new.isEmpty { store.show(new, tone: "n") } }
         } else {
             Text("This board no longer meets.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -184,7 +186,9 @@ struct BoardView: View {
                     HStack {
                         Text("\(p.name) · \(p.str("advBg"))").font(.caption).foregroundStyle(Theme.ivory).lineLimit(2)
                         Spacer()
-                        Button("Seat · \(store.short(fee)) a month") { seat(p, fee: fee) }.buttonStyle(SmallGoldButtonStyle()).fixedSize()
+                        Button("Seat · \(store.short(fee)) a month") {
+                            pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them") { seat(p, fee: fee) }
+                        }.buttonStyle(SmallGoldButtonStyle()).fixedSize()
                     }
                 }
             }

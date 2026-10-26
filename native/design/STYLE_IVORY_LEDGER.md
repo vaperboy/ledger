@@ -1,16 +1,16 @@
 # Style: Ivory Ledger
 
 Editorial private banking. A quiet dark page, flat sections divided by hairlines, serif for the figures that matter, champagne
-only where something can be acted on. No cards, no boxes, no icon tiles.
+only where something can be acted on. Flat by default; compact cards only where they truly help (see DESIGN_RULES revision 26 Oct).
 
 ## Rules
-1. **No containers.** Content sits on the page. Sections are separated by a 0.5 pt hairline and 14–18 pt of space, never by a filled box or a border.
+1. **Flat by default (no unnecessary containers).** Content sits on the page. Sections are separated by a 0.5 pt hairline and 14–18 pt of space, never by a filled box or a border.
 2. **Three levels of type.** Serif (New York, `.serif`) for the hero figure of a screen and the screen title; Inter-like system sans for everything else; small caps (10.5 pt, semibold, +1.6 tracking, champagne) for section labels.
 3. **Figures are tabular.** Every number uses monospaced digits and right-aligns in tables.
 4. **Colour means something.** Champagne = label / link / the one action. Green = gain, red = loss, amber = warning. Nothing is coloured for decoration.
 5. **Density without noise.** Key figures sit in a joined row with vertical hairlines (3 across). Tables have a small-caps header, one line per row, a sparkline for trend.
 6. **Charts are small and honest.** Hairline grid, 1.4 pt line, a soft fill only under the main series, scale fitted to the data (never from zero for net worth).
-7. **One primary action.** Next day is the only filled champagne control, a pill bottom right with a 7-segment week progress at the left.
+7. **One primary action.** Next day is the only persistent filled champagne control (selected, destructive, disabled and urgent states have their own treatments), a pill bottom right with a 7-segment week progress at the left.
 8. **Glass only floats.** The native tab bar and the Next day capsule may use the system material; nothing in the content does.
 
 ## Tokens

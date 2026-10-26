@@ -97,13 +97,17 @@ struct AbroadOptionsView: View {
         let cur = e.context.currency(o.countryCode, e.state)
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
-                Text(o.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                Text(o.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                 if present { Chip(text: "You operate here", tint: Theme.gold) }
                 Spacer()
                 Text(cur.tidyShort(o.estimatedStartCost)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
             }
             Text("Registration about \(Int(o.registrationWeeks)) weeks" + (o.hasDesk ? " (your head-office desk there speeds it up)" : " (slower without a head-office desk there)")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            Button("Register in \(o.name)") {
+            let liquid = Payments.liquid(e.state)
+            let affordable = o.estimatedStartCost <= liquid
+            Text(affordable ? "You can cover this from cash and savings." : "More than your cash and savings today; registration would fail until you have the money.")
+                .font(.system(size: 11)).foregroundStyle(affordable ? Theme.ivoryFaint : Theme.caution)
+            Button("Register in \(o.name) for about \(cur.tidyShort(o.estimatedStartCost))") {
                 pending = PendingAction(title: "Register \(co.name) in \(o.name)?",
                                         message: "Start-up cost about \(cur.tidyDisplay(o.estimatedStartCost)), taken from your own cash and savings once the company is registered. It is a separate limited company that must finish the foreign registration (about \(Int(o.registrationWeeks)) weeks) and get local permits before it opens. " + (o.hasDesk ? "" : "Without a head-office desk for \(o.name), new local rules can bring fines. ") + "Most new foreign operations run at a loss for a while.",
                                         button: "Register") {

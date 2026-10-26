@@ -77,6 +77,7 @@ struct LuxuryView: View {
                                 }
                                 Spacer(minLength: 8)
                                 Text(store.short(it.price)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(e.state.cash >= it.price ? Theme.ivory : Theme.ivoryFaint)
+                                Image(systemName: openItem == it.id ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.gold)
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         if openItem == it.id { detail(e, it) }
@@ -126,9 +127,12 @@ struct LuxuryView: View {
             .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? Theme.gain : Theme.ivory, sub: income > 0 ? "a month, before tax" : ""),
         ])
         if pieces.isEmpty {
-            Text("Nothing yet. What you buy is kept here.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Nothing yet. What you buy is kept here, with its upkeep and what it earns.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+            }
         }
-        LedgerSection("Pieces") {
+        if !pieces.isEmpty { LedgerSection(title: "Pieces", trailing: { Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(spacing: 0) {
                 ForEach(Array(pieces.enumerated()), id: \.element.id) { n, p in
                     VStack(alignment: .leading, spacing: 0) {
@@ -145,13 +149,14 @@ struct LuxuryView: View {
                                     Text(Int((p.gain * 100).rounded()) == 0 ? "unchanged" : (p.gain > 0 ? "up " : "down ") + "\(abs(Int((p.gain * 100).rounded())))%")
                                         .font(.system(size: 10.5)).foregroundStyle(Theme.change(p.gain))
                                 }
+                                Image(systemName: openPiece == p.id ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.gold)
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         if openPiece == p.id { manage(e, p) }
                     }
                 }
             }
-        }
+        } }
         let perks = perkLines(pieces)
         if !perks.isEmpty {
             LedgerSection("What it does for you") {
@@ -200,13 +205,15 @@ struct LuxuryView: View {
             if !uses.isEmpty && p.use != "museum" {
                 Text("Use").capsLabel(Theme.ivoryFaint).padding(.top, 8)
                 SectionTabs(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
-                            selection: Binding(get: { p.use }, set: { v in store.act { $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) } })).padding(.horizontal, -Theme.Space.margin)
+                            selection: Binding(get: { p.use }, set: { v in
+                                if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } })).padding(.horizontal, -Theme.Space.margin)
                 if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"
                 SectionTabs(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
-                            selection: Binding(get: { open }, set: { v in store.act { $0.setCastleOpen(pieceID: p.id, open: v) } })).padding(.horizontal, -Theme.Space.margin)
+                            selection: Binding(get: { open }, set: { v in
+                                if store.act({ $0.setCastleOpen(pieceID: p.id, open: v) }) != nil { store.saved(v ? "the castle is open for events." : "the castle is private.") } })).padding(.horizontal, -Theme.Space.margin)
             }
             LendPieceSection(engine: e, piece: p)
             HStack(spacing: Theme.Space.m) {
@@ -226,11 +233,13 @@ struct LuxuryView: View {
                 }
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
+                        pending = PendingAction(title: "Host a retreat on the island?", message: "Paid from your cash. Possible once every three months.", button: "Host") {
                         switch store.act({ $0.hostIslandRetreat() }) {
                         case .ok?: store.show("A retreat on the island.", tone: "good")
                         case .wait?: store.show("Your last retreat was less than three months ago.", tone: "warn")
                         case .notEnoughCash?: store.show("Not enough cash for the retreat.", tone: "warn")
-                        default: break
+                        default: store.show("Not possible right now.", tone: "warn")
+                        }
                         }
                     }.buttonStyle(SmallOutlineButtonStyle())
                     Button("A week off") {
@@ -243,7 +252,7 @@ struct LuxuryView: View {
                 if p.use == "museum" && p.until > e.state.week {
                     Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(Theme.ivoryFaint)
                 } else {
-                    Button("Sell") { pendingSell = p }.buttonStyle(SmallOutlineButtonStyle())
+                    Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))") { pendingSell = p }.buttonStyle(SmallOutlineButtonStyle())
                 }
             }.padding(.vertical, 10)
         }
