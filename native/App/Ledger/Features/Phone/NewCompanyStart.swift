@@ -49,9 +49,9 @@ struct TradeDetailView: View {
                             risks(plan)
                             if plan.registrationShortfall > 0 {
                                 Text("Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.")
-                                    .font(.caption).foregroundStyle(Theme.caution)
+                                    .font(.caption).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                             }
-                            Button("Review and start") { pending = confirmation(e, t, plan, form, city, cityName, cur) }
+                            Button("Review and start · \(cur.tidyShort(plan.total))") { pending = confirmation(e, t, plan, form, city, cityName, cur) }
                                 .buttonStyle(GoldButtonStyle()).disabled(plan.registrationShortfall > 0)
                         } else if ban == nil {
                             Text("This trade cannot be priced here.").font(.caption).foregroundStyle(Theme.ivoryFaint)

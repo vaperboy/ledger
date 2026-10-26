@@ -167,7 +167,7 @@ struct BrandMeetingView: View {
                             Text("Entry fee \(cur.tidyShort(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
                         }
                     }
-                    LedgerSection(title: "Facts", trailing: { Button(showFacts ? "Hide" : "Show") { showFacts.toggle() }.font(.system(size: 11)).foregroundStyle(Theme.gold).buttonStyle(.plain) }) {
+                    LedgerSection(title: "Facts", trailing: { Button(showFacts ? "Hide" : "Show") { showFacts.toggle() }.buttonStyle(QuietButtonStyle()) }) {
                         if showFacts {
                             VStack(spacing: 0) {
                                 FlatRow(label: "Units open", value: "\(b.units)", rule: false)

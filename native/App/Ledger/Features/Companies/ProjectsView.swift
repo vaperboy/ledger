@@ -88,7 +88,7 @@ struct ProjectsView: View {
                 LedgerSection(title: "Under way", trailing: { Text("by next date").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
                     VStack(spacing: 0) { ForEach(Array(underWay.prefix(cap).enumerated()), id: \.element.id) { n, l in if n > 0 { Hairline() }; ProjectTimelineRow(line: l, now: week) } }
                     if underWay.count > 12 {
-                        Button(showAll ? "Show fewer" : "Show all \(underWay.count)") { showAll.toggle() }.font(.system(size: 12)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 6)
+                        Button(showAll ? "Show fewer" : "Show all \(underWay.count)") { showAll.toggle() }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
                     }
                 }
             }

@@ -80,8 +80,8 @@ struct ReportsContent: View {
     @ViewBuilder private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         Group {
                 hero(r)
-                keyFigures(r)
                 summary(r)
+                keyFigures(r)
                 trend(r, all)
         }
         Group {
@@ -209,7 +209,7 @@ struct ReportsContent: View {
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
         let rows = order.compactMap { r.company($0) }
         return LedgerSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
-            Text("Net profit  ·  change").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Net profit  ·  change  ·  tap to open").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
             if rows.isEmpty {
                 Text("No company has figures for this period.").font(.caption).foregroundStyle(Theme.ivoryFaint)
@@ -236,6 +236,7 @@ struct ReportsContent: View {
                                     Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.change(c.pnl.netProfit - b))
                                 }
                             }
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
                         }
                         .padding(.vertical, 9)
                         .contentShape(Rectangle())

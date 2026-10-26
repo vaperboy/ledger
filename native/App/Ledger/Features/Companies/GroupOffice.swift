@@ -152,8 +152,8 @@ struct HeadOfficeSection: View {
                         if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("\(name) has left the group office.", tone: "n") }
                         else { store.show("\(name) is no longer in the group office.", tone: "warn") }
                     }
-                }.foregroundStyle(Theme.loss)
-            }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+            }.buttonStyle(QuietButtonStyle())
         }.padding(.vertical, 8)
     }
 
@@ -263,7 +263,7 @@ struct HeadOfficeSection: View {
             }
             if managed.count > shown.count || allReviews {
                 Button(allReviews ? "Show only the weak ones" : "Show all \(managed.count) managers") { allReviews.toggle() }
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                    .buttonStyle(QuietButtonStyle())
             }
         }.padding(.vertical, 8)
     }
@@ -294,7 +294,7 @@ struct HeadOfficeSection: View {
                     }
                 }
                 Spacer(minLength: 0)
-            }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+            }.buttonStyle(QuietButtonStyle())
         }.padding(.vertical, 8)
     }
 
@@ -436,7 +436,7 @@ struct SuppliersGroupSection: View {
                                     Button(current ? "End the goods deal" : "Buy goods through them for all") { agree(current ? nil : v.id) }
                                 }
                                 Spacer(minLength: 0)
-                            }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                            }.buttonStyle(QuietButtonStyle())
                         }.padding(.vertical, 8)
                     }
                 }
