@@ -27,12 +27,11 @@ struct CompanySaleSection: View {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("A quiet private sale draws fewer buyers and is slower; staff and rivals do not hear. A broker finds more buyers for a 4% fee, but word gets out.")
                             .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                        HStack {
-                            Button("Quiet private sale") { Haptics.tap(); store.act { $0.update { s, _, _ in CompanySale.startListing(&s, companyID: company.id, broker: false) } } }
-                                .buttonStyle(SmallOutlineButtonStyle())
-                            Button("Use a broker") { Haptics.tap(); store.act { $0.update { s, _, _ in CompanySale.startListing(&s, companyID: company.id, broker: true) } } }
-                                .buttonStyle(SmallOutlineButtonStyle())
+                        WrapRow {
+                            Button("Quiet private sale") { list(broker: false) }.buttonStyle(QuietButtonStyle())
+                            Button("Use a broker (4% fee)") { list(broker: true) }.buttonStyle(QuietButtonStyle())
                         }
+                        Text("Listing is not a sale: nothing is sold until you accept an offer, and you can take it off the market at any time.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }
@@ -58,6 +57,14 @@ struct CompanySaleSection: View {
 
     private struct TalkID: Identifiable { var id: Int }
 
+    private func list(broker: Bool) {
+        Haptics.tap()
+        store.act { $0.update { s, _, _ in CompanySale.startListing(&s, companyID: company.id, broker: broker) } }
+        if CompanySale.listing(store.engine?.state ?? engine.state, companyID: company.id) != nil {
+            store.show(broker ? "\(company.name) is on the market through a broker. Offers arrive over the coming weeks." : "\(company.name) is quietly on the market. Offers arrive over the coming weeks.", tone: "n")
+        } else { Haptics.warning(); store.show("It could not be put on the market now.", tone: "warn") }
+    }
+
     /// What the sale does: what you are paid, which loans are settled, who loses a job, what the buyer does with it.
     private func consequences(_ o: CompanySale.Offer, _ cur: Currency) -> String {
         let loans = engine.state.loans.filter { $0.companyID == company.id }.reduce(0) { $0 + $1.balance }
@@ -72,7 +79,7 @@ struct CompanySaleSection: View {
             Text("On the market since " + GameCalendar.dateString(week: l.since) + (l.broker ? " through a broker" : ", a quiet private sale") + " · \(l.offers.count) offer\(l.offers.count == 1 ? "" : "s")")
                 .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
             if l.offers.isEmpty {
-                Text("No offers yet. Buyers show up over the coming weeks.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                Text("No offers yet. Buyers show up over the coming weeks.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             }
             ForEach(Array(l.offers.enumerated()), id: \.element.id) { i, o in
                 if i > 0 { Hairline() }
@@ -83,17 +90,17 @@ struct CompanySaleSection: View {
                         Text(cur.tidyShort(o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
                     }
                     Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        Button("Accept") { Haptics.tap(); confirming = o }.buttonStyle(SmallGoldButtonStyle())
-                        Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(SmallOutlineButtonStyle())
-                        Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
+                    WrapRow {
+                        Button("Accept…") { Haptics.tap(); confirming = o }.buttonStyle(QuietButtonStyle())
+                        Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(QuietButtonStyle())
+                        Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(QuietButtonStyle())
                     }
                 }.padding(.vertical, 6)
             }
             Button("Take it off the market") {
                 store.act { $0.update { s, _, _ in CompanySale.withdraw(&s, companyID: company.id) } }
                 if CompanySale.listing(store.engine?.state ?? engine.state, companyID: company.id) == nil { store.show("\(company.name) is off the market.", tone: "n") } else { Haptics.warning(); store.show("It could not be taken off the market now.", tone: "warn") }
-            }.buttonStyle(SmallOutlineButtonStyle())
+            }.buttonStyle(QuietButtonStyle())
         }
     }
 }
@@ -134,32 +141,32 @@ struct BuyerTalkSheet: View {
                             }
                         }
                         LedgerSection("Ask") {
-                            HStack {
-                                Button("What happens to my staff?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "staff") } }.buttonStyle(SmallOutlineButtonStyle())
-                                Button("How would you pay?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "pay") } }.buttonStyle(SmallOutlineButtonStyle())
+                            WrapRow {
+                                Button("What happens to my staff?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "staff") }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
+                                Button("How would you pay?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "pay") }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
                             }
                         }
                         LedgerSection("Name your price") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 AmountField(title: "Your price for the whole company", currency: cur, amount: $ask)
-                                HStack {
+                                WrapRow {
                                     ForEach([0.03, 0.08, 0.15], id: \.self) { f in
-                                        Button("+\(Int(f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(SmallOutlineButtonStyle())
+                                        Button("+\(Int(f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
                                     }
                                 }
                                 Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                                 Button(ask > 0 ? "Ask \(cur.tidyShort(ask * mine)) for your share" : "Enter a price above") {
                                     switch store.act({ $0.counterBuyer(companyID: companyID, offerID: offerID, price: ask) }) {
                                     case .agreed(let p)?: Haptics.success(); store.show("\(o.buyer) agrees to \(cur.tidyShort(p * mine)).", tone: "good")
-                                    case .stretched(let p)?: store.show("They stretch to \(cur.tidyShort(p * mine)) and no further.", tone: "n")
+                                    case .stretched(let p)?: Haptics.tap(); store.show("They stretch to \(cur.tidyShort(p * mine)) and no further.", tone: "n")
                                     case .refused?: Haptics.warning(); store.show("Far above what it is worth to them.", tone: "warn")
                                     case .walkedAway?: Haptics.warning(); store.show("\(o.buyer) walked away.", tone: "bad"); dismiss()
-                                    default: store.show("That is what they offered. Sign, or ask for more.", tone: "n")
+                                    default: store.show("That is what they offered (\(cur.tidyShort(o.price * mine))). Sign, or ask for more.", tone: "n")
                                     }
                                 }.buttonStyle(QuietButtonStyle()).disabled(ask <= 0)
                             }
                         }
-                        Button("Sign at \(cur.tidyShort(o.price * mine))") { dismiss(); onSign(o) }.buttonStyle(GoldButtonStyle())
+                        Button("Sign at \(cur.tidyShort(o.price * mine))…") { dismiss(); onSign(o) }.buttonStyle(QuietButtonStyle())
                     }
                     .padding(Theme.Space.margin)
                 } else {

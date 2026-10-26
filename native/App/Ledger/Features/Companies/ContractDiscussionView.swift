@@ -41,7 +41,9 @@ struct ContractDiscussionView: View {
                 topics(e)
                 editor(e, co, cur)
                 preview(e, co, cur)
-                if !reply.isEmpty { Text(reply).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                if !reply.isEmpty {
+                    Label(reply, systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
+                }
                 send(e, co, n, cur)
             } else {
                 Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted)
@@ -84,7 +86,7 @@ struct ContractDiscussionView: View {
                     if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     consequenceLines(pv, cur)
                     partWay(talk, cur)
-                    HStack(spacing: 10) {
+                    WrapRow {
                         Button("Agree") { answer(.accept, e, n, cur, pv) }.buttonStyle(QuietButtonStyle())
                         if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
                         Button("Decline") { answer(.decline, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
@@ -117,8 +119,8 @@ struct ContractDiscussionView: View {
         let p = t.proposal
         if [.payRise, .promotion, .hours].contains(p.topic), p.amount > 0 {
             let from = t.offered > 0 ? t.offered : (p.topic == .hours ? p.amount : 0)
-            HStack(spacing: 8) {
-                Text("Meet them part way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Meet them part way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            WrapRow {
                 ForEach([0.25, 0.5, 0.75], id: \.self) { share in
                     let v = from + (p.amount - from) * share
                     Button(p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500))) {
@@ -203,7 +205,7 @@ struct ContractDiscussionView: View {
                     if let on = options.first(where: { $0.id == choice })?.on { Text(on ? "It is on now: confirming switches it off." : "It is off now: confirming switches it on.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
                 case .notice:
                     Text("Extra weeks of notice on top of the law, owed both ways: they work them if they resign, you pay them if you let them go without cause.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 8) {
+                    WrapRow {
                         ForEach([0] + ContractTalk.noticeExtraChoices, id: \.self) { w in
                             Button(w == 0 ? "Law only" : "+\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryMuted))
                         }
@@ -216,7 +218,7 @@ struct ContractDiscussionView: View {
     }
 
     private func steps(_ values: [Double], current: Double, _ set: @escaping (Double) -> Void) -> some View {
-        HStack(spacing: 8) {
+        WrapRow {
             ForEach(values, id: \.self) { v in
                 Button("\(Int((v * 100).rounded()))%") { set(v) }.buttonStyle(QuietButtonStyle(tint: abs(current - v) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
             }
@@ -224,7 +226,7 @@ struct ContractDiscussionView: View {
     }
 
     @ViewBuilder private func pick(_ options: [ContractTalk.Choice]) -> some View {
-        if options.isEmpty { Text("Nothing to choose here.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+        if options.isEmpty { Text("Nothing to choose here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
         ForEach(Array(options.enumerated()), id: \.element.id) { n, o in
             if n > 0 { Hairline() }
             Button { choice = o.id; if topic == .promotion, let ask = promotionAsk(o.id) { pay = ask } } label: {
@@ -299,7 +301,7 @@ struct ContractDiscussionView: View {
                     else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
                 }
         }
-        .buttonStyle(GoldButtonStyle())
+        .buttonStyle(QuietButtonStyle())
         .disabled(!pv.blocked.isEmpty)
     }
 
@@ -329,11 +331,11 @@ struct ContractDiscussionView: View {
         case .counter(let amount, _, let t):
             reply = t; Haptics.tap()
             if topic == .payRise { percent = amount } else if topic == .promotion { pay = amount }
-        case .delayed(_, let t): store.show(t, tone: "n"); reply = ""
+        case .delayed(_, let t): Haptics.tap(); store.show(t, tone: "n"); reply = ""
         case .declined(let t): Haptics.warning(); store.show(t, tone: "warn"); reply = ""
         case .unwilling(let t): Haptics.warning(); reply = t
         case .resigned(let t): Haptics.warning(); store.show(t, tone: "bad"); reply = ""
-        case .notPossible(let t): reply = t
+        case .notPossible(let t): Haptics.warning(); reply = t; store.show(t, tone: "warn")
         }
         if let e = store.engine, let co = e.state.company(companyID), !isEmployee(co) { dismiss() }
     }

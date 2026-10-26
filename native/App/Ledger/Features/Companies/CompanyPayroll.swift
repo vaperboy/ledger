@@ -25,7 +25,7 @@ struct CompanyPayroll: View {
                 VStack(alignment: .leading, spacing: 6) {
                     if due.isEmpty {
                         Text("Nothing is waiting: no wages are owed and no rent or supplier bills have built up this month.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     } else {
                         VStack(spacing: 0) {
                             ForEach(due) { u in
@@ -57,13 +57,14 @@ struct CompanyPayroll: View {
                             .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                     }
                     if info.isLate {
-                        Text("Wages are late, so a change waits until they are paid.").font(.system(size: 12)).foregroundStyle(Theme.loss)
+                        Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
                     }
                     VStack(spacing: 0) {
                         ForEach(info.choices) { c in
                             Button { choose(c, info) } label: {
                                 ListRow(symbol: c.isCurrent ? "checkmark.circle.fill" : (c.isQueued ? "clock" : "circle"),
-                                        tint: c.isCurrent ? Theme.gold : Theme.ivoryMuted, title: c.label, subtitle: timing(c, info))
+                                        tint: c.isCurrent ? Theme.gold : Theme.ivoryMuted, title: c.label, subtitle: timing(c, info),
+                                        trailing: c.isCurrent ? "Current" : (c.isQueued ? "Queued" : ""), chevron: !c.isCurrent)
                             }.buttonStyle(.plain)
                         }
                     }
@@ -93,8 +94,9 @@ struct CompanyPayroll: View {
             switch store.act({ $0.setPayday(companyID: company.id, day: day) }) {
             case .changedNow?: Haptics.success(); store.show("Pay day is now the \(name). First paid \(first).", tone: "good")
             case .queued?: Haptics.success(); store.show("Pay day moves to the \(name) after this month's payroll (\(nextPay)).", tone: "good")
-            case .queueCleared?: store.show("The waiting change was dropped. Pay day stays the \(current).", tone: "n")
+            case .queueCleared?: Haptics.tap(); store.show("The waiting change was dropped. Pay day stays the \(current).", tone: "n")
             case .unchanged?: store.show("That is already the pay day.", tone: "n")
+            case nil: break
             default: Haptics.warning(); store.show("The pay day could not be changed.", tone: "warn")
             }
         }

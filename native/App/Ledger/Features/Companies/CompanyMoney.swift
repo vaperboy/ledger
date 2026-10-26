@@ -192,7 +192,7 @@ struct CompanyOwnerMoney: View {
                         }
                     }
                     if amount > 0 {
-                        Text("Company cash after putting in: \(cur.tidyDisplay(company.cash + amount)). Your account: \(store.money(max(0, engine.state.cash - amount * 1)))")
+                        Text("Company cash after putting in: \(cur.tidyDisplay(company.cash + amount)).")
                             .font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
                     if company.form == .limited {

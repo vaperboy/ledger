@@ -238,7 +238,7 @@ struct StaffProfileView: View {
                 if let talk = e.contractTalk(personID: staffID), talk.isRequest {
                     Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
                 }
-                Button("Contract discussion…") { discussing = true }.buttonStyle(GoldButtonStyle())
+                Button("Contract discussion…") { discussing = true }.buttonStyle(QuietButtonStyle())
                 WrapRow {
                     if p.problem != nil { Button("Talk to them") { talk(p) }.buttonStyle(QuietButtonStyle()) }
                     Button("Written warning…") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())

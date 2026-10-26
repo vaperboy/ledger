@@ -281,7 +281,7 @@ struct CompanySetupSection: View {
             if company.status == .setup {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Button("Fill in what is missing…") { confirmQuickSetup() }.buttonStyle(QuietButtonStyle())
-                    Button("Open for business") { open() }.buttonStyle(GoldButtonStyle()).disabled(!left.isEmpty && !left.allSatisfy { $0.id == "stockcash" })
+                    Button("Open for business") { open() }.buttonStyle(QuietButtonStyle()).disabled(!left.isEmpty && !left.allSatisfy { $0.id == "stockcash" })
                     if !left.isEmpty { Text("Opens by itself once every item is done and the paperwork is approved.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                 }
             }

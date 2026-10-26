@@ -147,7 +147,7 @@ struct TeamSlotSheet: View {
                             store.show((list.isEmpty ? "The search found no one." : "\(list.count) candidates found.") + " Search paid: \(cur.tidyShort(fee)).", tone: list.isEmpty ? "warn" : "n")
                         } else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
                     }
-                }.buttonStyle(GoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }

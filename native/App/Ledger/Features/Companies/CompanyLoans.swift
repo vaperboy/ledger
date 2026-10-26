@@ -88,7 +88,7 @@ struct CompanyLoans: View {
                 }
                 Text(company.form == .soleTrader ? "As a sole trader you are personally liable: if the company cannot pay, the bank comes to you." : "A limited company borrows on its own account; the instalments come out of company cash at month end.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                Button("Take the loan…") { confirmBorrow(cur) }.buttonStyle(GoldButtonStyle()).disabled(company.flag("loanFrozen") || (loanAmount > 0 && loanAmount > offer.maximum))
+                Button("Take the loan…") { confirmBorrow(cur) }.buttonStyle(QuietButtonStyle()).disabled(company.flag("loanFrozen") || (loanAmount > 0 && loanAmount > offer.maximum))
             }
         }
     }

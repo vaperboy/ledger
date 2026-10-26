@@ -35,10 +35,10 @@ struct CompanyPayrollRun: View {
                                 if o.companyCash < max(o.wageShortfall, o.wagesOwed) {
                                     Text("Company cash is \(cur.tidyShort(o.companyCash)): put money in first or only part can be paid. See You and owners.").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                                 }
-                                Button("Run payroll now…") { runNow(o, cur) }.buttonStyle(GoldButtonStyle())
+                                Button("Run payroll now…") { runNow(o, cur) }.buttonStyle(QuietButtonStyle())
                             }
                         } else if o.needsApproval {
-                            Button("Approve this month's payroll…") { approve(o, cur) }.buttonStyle(GoldButtonStyle())
+                            Button("Approve this month's payroll…") { approve(o, cur) }.buttonStyle(QuietButtonStyle())
                         }
                     }
                     Hairline().padding(.vertical, 4)

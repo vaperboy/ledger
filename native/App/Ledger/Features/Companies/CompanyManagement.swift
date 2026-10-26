@@ -328,7 +328,7 @@ struct ManagerSheet: View {
                 if let list = store.act({ $0.searchManagers(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) candidates found. Search paid: \(cur.tidyShort(fee)).", tone: "n") }
                 else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
             }
-        }.buttonStyle(GoldButtonStyle())
+        }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
             CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p, extra: ManagerModel.typeTitles[p.str("mtype")] ?? "Manager"),
@@ -465,7 +465,7 @@ struct AssistantSheet: View {
                 if let list = store.act({ $0.searchAssistants(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) applicants. Job ad paid: \(cur.tidyShort(fee)).", tone: "n") }
                 else { Haptics.warning(); store.show("Not enough cash for the job ad (\(cur.tidyShort(fee))).", tone: "warn") }
             }
-        }.buttonStyle(GoldButtonStyle())
+        }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Place a job ad to see applicants." : "Everyone has taken another job. Place a new ad.") { p in
             CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .assistant, companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in

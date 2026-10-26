@@ -22,9 +22,10 @@ struct CompanySettings: View {
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if company.status == .closed { closing(cur) }
             legalForm(cur)
             rename(cur)
-            closing(cur)
+            if company.status != .closed { closing(cur) }
             windUp(cur)
             documents(cur)
         }
@@ -57,7 +58,8 @@ struct CompanySettings: View {
             case .ok?: Haptics.success(); store.show("\(company.name) is now a limited company.", tone: "good")
             case .notEnoughCash?: Haptics.warning(); store.show("You need \(cur.tidyDisplay(total)) in your own account.", tone: "warn")
             case .alreadyLimited?: store.show("It is already a limited company.", tone: "n")
-            default: store.show("Not possible.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("It cannot be converted now.", tone: "warn")
             }
         }
     }
@@ -87,11 +89,12 @@ struct CompanySettings: View {
         pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename") {
             switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
             case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
-            case .tooShort?: store.show("Choose a different name of at least two letters.", tone: "warn")
-            case .nameTaken?: store.show("Another company already has that name.", tone: "warn")
+            case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
+            case .nameTaken?: Haptics.warning(); store.show("Another company already has that name.", tone: "warn")
             case .notEnoughCash?: Haptics.warning(); store.show("The company needs \(cur.tidyDisplay(cost)) in cash.", tone: "warn")
-            case .partOfChain?: store.show("A chain store carries the chain's name.", tone: "warn")
-            default: store.show("Not possible.", tone: "warn")
+            case .partOfChain?: Haptics.warning(); store.show("A chain store carries the chain's name.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("It cannot be renamed now.", tone: "warn")
             }
         }
     }
@@ -110,7 +113,8 @@ struct CompanySettings: View {
                     Button("Reopen now") {
                         switch store.act({ $0.reopenCompany(companyID: company.id) }) {
                         case .ok?: Haptics.success(); store.show("\(company.name) is open again.", tone: "good")
-                        default: store.show("It is not closed.", tone: "warn")
+                        case nil: break
+                        default: Haptics.warning(); store.show("It is not closed.", tone: "warn")
                         }
                     }.buttonStyle(QuietButtonStyle())
                 }
@@ -150,8 +154,9 @@ struct CompanySettings: View {
         pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
             switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp, pauseSubscriptions: pauseSubscriptions) }) {
             case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
-            case .notOpen?: store.show("Only an open company can be closed.", tone: "warn")
-            default: store.show("Not possible.", tone: "warn")
+            case .notOpen?: Haptics.warning(); store.show("Only an open company can be closed.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("It cannot be closed now.", tone: "warn")
             }
         }
     }
@@ -186,7 +191,7 @@ struct CompanySettings: View {
                 if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
                 Haptics.warning(); store.show("\(name) is closed down and its things sold." + (alone ? " The other owners did not want this." : ""), tone: "n")
             } else {
-                store.show("\(name) could not be wound up.", tone: "warn")
+                Haptics.warning(); store.show("\(name) could not be wound up.", tone: "warn")
             }
         }
     }
@@ -196,7 +201,7 @@ struct CompanySettings: View {
     @ViewBuilder private func documents(_ cur: Currency) -> some View {
         let lic = engine.financeOverview(companyID: company.id).licences
         if !lic.isEmpty {
-            LedgerSection(title: "Documents and permits", trailing: { Text("✓ held").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            LedgerSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
                     ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.tidyShort(l.amount) : "free", sub: l.detail, rule: n > 0) }
                 }

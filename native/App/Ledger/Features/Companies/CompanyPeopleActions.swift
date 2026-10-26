@@ -84,7 +84,7 @@ struct CompanyTargetsCard: View {
                             Text("Benefit: " + benefitLine + " This also approves the year's budget.")
                             Text("Risk: " + riskLine)
                         }.font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        Button("Set targets…") { confirm = true }.buttonStyle(GoldButtonStyle())
+                        Button("Set targets…") { confirm = true }.buttonStyle(QuietButtonStyle())
                     } else if !st.canSet && !st.setter.isOwner {
                         Text("\(st.setter.name) sets the targets here.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
