@@ -152,4 +152,25 @@ final class TeamOverviewStructureTests: XCTestCase {
         XCTAssertEqual(now.members.first { $0.id == "md" }?.employer, "Your group office")
         XCTAssertTrue(now.groupOffice.established)
     }
+
+    func testSearchFindsGroupOfficePeopleWithTheirEmployer() throws {
+        var e = try ChainsTests.engine("UK")
+        let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
+        open(&e, a); open(&e, b)
+        XCTAssertTrue(e.teamPeopleSearch(query: "").isEmpty)
+        XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
+        let cand = try XCTUnwrap(e.searchOffice(role: "pa", mode: .network)?.first)
+        XCTAssertEqual(e.hireOffice(role: "pa", personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)
+        XCTAssertEqual(e.state.people[cand.id]?.employerID, -3, "group office people carry employer -3")
+        let hit = try XCTUnwrap(e.teamPeopleSearch(query: String(cand.name.prefix(4))).first { $0.name == cand.name }, "the assistant is found by name")
+        XCTAssertEqual(hit.employer, "Your group office"); XCTAssertEqual(hit.scope, "group"); XCTAssertNil(hit.companyID)
+        XCTAssertTrue(e.teamPeopleSearch(query: hit.role).contains { $0.name == cand.name }, "found by job")
+        XCTAssertTrue(e.teamPeopleSearch(query: "group office").contains { $0.name == cand.name }, "searchable by employer label")
+        // Company people are still found, with their company as employer, and nobody is listed twice.
+        let ids = e.teamPeopleSearch(query: "a").map { $0.id }
+        XCTAssertEqual(ids.count, Set(ids).count)
+        let staffer = try XCTUnwrap(e.state.company(a)?.staff.first)
+        let sName = try XCTUnwrap(e.state.people[staffer.id]?.name)
+        XCTAssertTrue(e.teamPeopleSearch(query: sName).contains { $0.companyID == a && $0.employer == e.state.company(a)?.name })
+    }
 }

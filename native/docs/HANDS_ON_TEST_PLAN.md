@@ -335,6 +335,17 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.O9 | Team: "Handled by your managers" | A row with a chevron under Needs you, not a separate heading; tap opens/closes the list | | NOT TESTED | | |
 | T9.O10 | Team and Group: every row that opens something or fills a post | Has a chevron or a gold "Fill ›", "Set up ›", "Find ›", "Move ›" cue; plain information is plain text | | NOT TESTED | | |
 
+### 9.E Engine fixes (fix/open-engine) — screens NOT TESTED by hand (engine tests: FranchiseStandardsTests, ManagerTargetsTests, FixedTermTests, CompanyScreensTests, ProjectMilestonesTests, TeamOverviewStructureTests, ChainsTests)
+| ID | Steps | Expected | Result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| T9.E1 | A franchise unit (national brand) that is also a store of your own chain; set the chain's marketing to normal or heavy | The chain buys only the channels the franchise agreement allows; for a global brand it buys none; the store's Marketing tab names the franchise agreement (not "the chain runs this") when you try a forbidden channel | | NOT TESTED | | |
+| T9.E2 | Company with a manager, first months: look at the manager's targets card and the demand note | No "chasing a bonus" lift and no targets until the first month with targets; afterwards targets and the lift appear each month | | NOT TESTED | | |
+| T9.E3 | Contract term of a worker in a country whose labour data sets a maximum (none does yet; set `fixedTermMaxWeeks` in a test build) | A renewal that would pass the maximum is refused with the reason; the Inbox question four weeks before the end offers "Make permanent / Let it end"; no answer makes the contract permanent on the date | | NOT TESTED | | |
+| T9.E4 | Projects tab: a builder's open job | Shows the planned finish week on the last stage and "N weeks late" when past it; a job from an old save shows no date | | NOT TESTED | | |
+| T9.E5 | Two owner-run companies with staff; Inbox shows "Approve payroll"; approve one company in Company > Payroll | The Inbox message now lists only the other company; approving the second closes the message (and approving in the Inbox approves both in Company) | | NOT TESTED | | |
+| T9.E6 | Team > search a group office person's name, or "group office" | Found with their job and employer ("Your group office" or the holding); a hit with no company is shown but does not open | | NOT TESTED | | |
+| T9.E7 | Start a franchised unit and pick a place (engine API `franchiseStartPlan`; the picker UI is a separate task) | Plan shows places to rent or buy plus the entry fee; the unit opens in the chosen place, bought or rented | | NOT TESTED | | |
+
 
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |

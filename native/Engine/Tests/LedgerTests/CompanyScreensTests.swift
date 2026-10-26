@@ -105,6 +105,52 @@ final class CompanyScreensTests: XCTestCase {
         XCTAssertNil(e.runLatePayrollNow(companyID: id))
     }
 
+    /// Two owner-run companies with staff, played until the Inbox asks to approve payroll for them.
+    private func twoCompaniesAwaitingPayrollApproval() throws -> (GameEngine, [Int], Message) {
+        var e = try game()
+        e.update { s, _, _ in s.policy.autoPayroll = false }   // routine payroll is approved by policy otherwise
+        var ids: [Int] = []
+        for _ in 0..<2 {
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+            ids.append(id)
+        }
+        var days = 0
+        while !e.openDecisions.contains(where: { $0.actionID == "pay29all" }), days < 200 * 7 { e.nextDay(); days += 1 }
+        let msg = try XCTUnwrap(e.openDecisions.first { $0.actionID == "pay29all" }, "an approval message")
+        XCTAssertTrue(ids.allSatisfy { id in msg.value("data")["ids"].array.contains { $0.int == id } }, "one message for both companies")
+        return (e, ids, msg)
+    }
+
+    func testApprovingPayrollInCompanyClosesTheInboxMessageOnceEveryCompanyIsApproved() throws {
+        var (e, ids, msg) = try twoCompaniesAwaitingPayrollApproval()
+        XCTAssertEqual(e.approvePayroll(companyID: ids[0]), .approved)
+        let mid = try XCTUnwrap(e.state.inbox.first { $0.id == msg.id })
+        XCTAssertEqual(mid.status, "open", "the other company still waits")
+        XCTAssertEqual(mid.value("data")["ids"].array.map { $0.int }, [ids[1]], "the message now asks only about the company left")
+        XCTAssertEqual(e.approvePayroll(companyID: ids[1]), .approved)
+        let done = try XCTUnwrap(e.state.inbox.first { $0.id == msg.id })
+        XCTAssertEqual(done.status, "done")
+        XCTAssertTrue(done.isRead)
+        XCTAssertTrue(e.openDecisions.filter { $0.actionID == "pay29all" }.isEmpty)
+        XCTAssertTrue(ids.allSatisfy { e.payrollOverview(companyID: $0)!.isApproved })
+    }
+
+    func testAnsweringThePayrollMessageInTheInboxApprovesBothCompaniesInCompany() throws {
+        var (e, ids, msg) = try twoCompaniesAwaitingPayrollApproval()
+        XCTAssertTrue(e.answer(messageID: msg.id, option: 0))
+        XCTAssertEqual(e.state.inbox.first { $0.id == msg.id }?.status, "done")
+        XCTAssertTrue(ids.allSatisfy { e.payrollOverview(companyID: $0)!.isApproved })
+        XCTAssertEqual(e.approvePayroll(companyID: ids[0]), .alreadyApproved)
+    }
+
+    func testApprovingInCompanyFirstThenTheInboxMessageNeedsNoAnswer() throws {
+        var (e, ids, msg) = try twoCompaniesAwaitingPayrollApproval()
+        XCTAssertEqual(e.approvePayroll(companyID: ids[0]), .approved)
+        XCTAssertEqual(e.approvePayroll(companyID: ids[1]), .approved)
+        XCTAssertFalse(e.answer(messageID: msg.id, option: 0), "already closed")
+        XCTAssertEqual(e.state.inbox.first { $0.id == msg.id }?.status, "done")
+    }
+
     func testMovingAHomeCompanyIntoAPlaceAndBack() throws {
         var e = try game()
         guard case .success(let id) = e.startCompany(tradeID: "cons", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { return XCTFail() }

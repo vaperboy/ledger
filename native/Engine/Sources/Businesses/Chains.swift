@@ -483,7 +483,8 @@ public enum Chains {
                         guard let c = marketing.channels[k] else { return 0 }
                         return Marketing.channelAffinity(bd, k, marketing.affinityByFamily, marketing.affinityByTrade) * ((1 - bd.audience) * c.localShare + bd.audience * c.businessShare) * c.efficiency
                     }
-                    let ks = marketing.channels.keys.filter { k in let c = marketing.channels[k]!; return !c.isPrimeTime && !c.isNational && !c.isHighVariance }
+                    // A store that is also a franchise unit may only get channels its franchise agreement allows locally.
+                    let ks = marketing.channels.keys.filter { k in let c = marketing.channels[k]!; return !c.isPrimeTime && !c.isNational && !c.isHighVariance && FranchiseStandards.campaignRefusal(co, channel: k) == nil }
                         .sorted { fit($0) != fit($1) ? fit($0) > fit($1) : $0 < $1 }.prefix(2)
                     let b = (max(rev * sh, sh > 0 ? Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values)).scaledPrice(300) : 0) / Double(max(1, ks.count))).rounded()
                     var mkt = co.value("mkt")

@@ -78,26 +78,26 @@ public struct NewCompanyOutcome: Equatable {
 public extension GameEngine {
     /// A copy of the state with a throw-away company, so a listing and its terms can be priced before the company exists. The account
     /// is topped up in the copy so registration never hides the numbers (affordability is reported separately).
-    private func previewCompany(tradeID: String, cityID: String, form: LegalForm, size: Double) -> (state: GameState, companyID: Int)? {
+    private func previewCompany(tradeID: String, cityID: String, form: LegalForm, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
         var tmp = state
         tmp.cash += Double(Int32.max)
         let cx = FinanceContext(countries: data.countries, trades: data.catalog)
-        guard case .success(let id) = CompanySetup.create(&tmp, tradeID: tradeID, cityID: cityID, form: form, size: size, name: "tmp", data: data, context: cx) else { return nil }
+        guard case .success(let id) = CompanySetup.create(&tmp, tradeID: tradeID, cityID: cityID, form: form, size: size, name: "tmp", countryCode: countryCode, data: data, context: cx) else { return nil }
         return (tmp, id)
     }
 
     /// The full plan for a trade in a city. `pick` nil means the standard rented place.
-    func newCompanyPlan(tradeID: String, cityID: String, form: LegalForm, size: Double, pick: NewCompanyPlan.Pick? = nil) -> NewCompanyPlan? {
+    func newCompanyPlan(tradeID: String, cityID: String, form: LegalForm, size: Double, pick: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> NewCompanyPlan? {
         guard let bd = data.catalog[tradeID] else { return nil }
         var probe = state
         probe.cash += Double(Int32.max)
-        guard let est = CompanySetup.estimate(tradeID: tradeID, cityID: cityID, form: form, size: size, state: probe, data: data) else { return nil }
+        guard let est = CompanySetup.estimate(tradeID: tradeID, cityID: cityID, form: form, size: size, countryCode: countryCode, state: probe, data: data) else { return nil }
         let kind: NewCompanyPlan.PremisesKind = {
             guard let k = bd.premisesKind, k != "none" else { return .none }
             return k == "home" ? .home : .place
         }()
         var options: [NewCompanyPlan.PremisesOption] = []
-        if kind == .place, let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, form: form, size: size), let co = tmp.company(id) {
+        if kind == .place, let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, countryCode: countryCode), let co = tmp.company(id) {
             let w = World(state: tmp, data: data)
             for l in CompanySetup.listings(for: co, bd, w) {
                 guard let t = CompanySetup.premisesTerms(co, l, data: data, world: w) else { continue }

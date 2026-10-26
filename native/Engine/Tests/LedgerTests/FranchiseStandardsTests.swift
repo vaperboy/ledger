@@ -92,6 +92,31 @@ final class FranchiseStandardsTests: XCTestCase {
         XCTAssertEqual(e.setCampaign(companyID: indep, channel: "tiktok", weeklyBudget: budget), .done)
     }
 
+    /// A franchise unit that also belongs to the owner's own chain: the chain's brand marketing may only buy channels the franchise
+    /// agreement allows, and the refusal shown for a forbidden channel names the franchise, not the chain.
+    func testChainBrandMarketingRespectsTheFranchiseAgreement() throws {
+        for tier in [3, 4] {
+            var e = try ChainsTests.engine()
+            let b = try XCTUnwrap(brands(e, tier: tier).first)
+            let id = franchisee(&e, b)
+            ChainsTests.season(&e, id)
+            e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
+            var chainID = 0
+            e.update { s, _, _ in chainID = Chains.make(&s, companyID: id, name: "Mixed") ?? 0 }
+            XCTAssertNotEqual(chainID, 0)
+            e.setChainRule(chainID: chainID, rule: .marketing("heavy"))
+            ChainsTests.play(&e, days: 21)
+            let co = try XCTUnwrap(e.state.company(id))
+            for ch in co.value("mk12").array { XCTAssertNil(FranchiseStandards.campaignRefusal(co, channel: ch.string), "tier \(tier): chain bought \(ch.string)") }
+            for (ch, _) in co.value("mkt").object { XCTAssertNil(FranchiseStandards.campaignRefusal(co, channel: ch), "tier \(tier): running \(ch)") }
+            if tier == 4 { XCTAssertTrue(co.value("mk12").array.isEmpty); XCTAssertTrue(co.value("mkt").object.isEmpty) }
+            // a forbidden channel is refused for the franchise reason, and the plan says so
+            let forbidden = try XCTUnwrap(e.marketing.channels.keys.sorted().first { FranchiseStandards.campaignRefusal(co, channel: $0) != nil })
+            if case .refused(let why) = e.setCampaign(companyID: id, channel: forbidden, weeklyBudget: 20_000) { XCTAssertTrue(why.contains(b.name), why) } else { XCTFail("forbidden") }
+            XCTAssertNotNil(e.campaignPlan(companyID: id, channel: forbidden, weeklyBudget: 20_000, weeks: nil)?.blocked)
+        }
+    }
+
     func testRequiredLocalMarketingTopsUpTheBrandFundAndTheBooksBalance() throws {
         for seed in [3, 11, 29] {
             var e = try ChainsTests.engine(seed: seed)

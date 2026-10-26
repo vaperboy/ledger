@@ -534,6 +534,27 @@ public enum Payday {
     }
 
     /// The player's answer to a payroll message.
+    /// The Inbox "Approve payroll" message and the Company screen's approval are one thing: once a company is approved, whichever way, it drops
+    /// off every open approval message, and a message with nobody left to approve is resolved (read and done).
+    static func closeApprovalMessages(_ s: inout GameState, today t: Int) {
+        for k in s.inbox.indices where s.inbox[k].status == "open" && s.inbox[k].actionID == "pay29all" {
+            let d = s.inbox[k].value("data")
+            let mi = d["mi"].int
+            let left = d["ids"].array.filter { idv in
+                guard let i = s.companyIndex(idv.int) else { return false }
+                let cfg = config(s.companies[i], today: t)
+                return cfg.paidMonth < mi && cfg.approvedMonth < mi
+            }
+            if left.count == d["ids"].array.count { continue }
+            if left.isEmpty {
+                s.inbox[k].set("status", "done"); s.inbox[k].set("pick", 0); s.inbox[k].isRead = true
+            } else {
+                var nd = d; nd["ids"] = .array(left)
+                s.inbox[k].set("data", nd)
+            }
+        }
+    }
+
     public static func answer(_ s: inout GameState, action: String, data: JSONValue, option: Int, companyID: Int, data gd: GameData, context: FinanceContext) {
         let t = dayNumber(week: s.week, day: s.day)
         if action == "pay29all" {
@@ -544,6 +565,7 @@ public enum Payday {
                 var cfg = config(s.companies[i], today: t)
                 if cfg.paidMonth < mi && cfg.lateSince == nil { cfg.approvedMonth = mi; s.companies[i].set("pr29", cfg.json) }
             }
+            closeApprovalMessages(&s, today: t)
             s.note("Payroll approved. It goes out on payday.", tone: "good")
         } else if action == "pay29", let i = s.companyIndex(companyID), data["k"].string == "late", option == 0 {
             let cfg = config(s.companies[i], today: t)

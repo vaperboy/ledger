@@ -119,6 +119,88 @@ final class FixedTermTests: XCTestCase {
         XCTAssertGreaterThan(t.severanceWeeks, 0); XCTAssertGreaterThan(t.noticeWeeks, 0)
     }
 
+    // MARK: Maximum duration (optional labour data; empty = nothing is limited or converted)
+
+    private func limited(weeks: Double = 0, renewals: Double = 0) -> (GameState, GameData, Company) -> LabourRules {
+        { _, _, _ in var l = LabourRules(); l.fixedTermMaxWeeks = weeks; l.fixedTermMaxRenewals = renewals; return l }
+    }
+
+    func testNoLimitInTheDataMeansNothingIsBlockedOrConverted() throws {
+        let lab = LabourRules()
+        XCTAssertEqual(lab.fixedTermMaxWeeks, 0); XCTAssertEqual(lab.fixedTermMaxRenewals, 0)
+        var (e, id) = try shop()
+        let (pid, _) = hire(&e, id)
+        _ = e.contractPropose(companyID: id, personID: pid, proposal: .init(.term, choice: "fixed:104"))
+        for _ in 0..<5 { guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.term, choice: "fixed:104")) else { return XCTFail("renewals are unlimited by default") } }
+        XCTAssertNil(FixedTerm.renewalBlock(lab, try XCTUnwrap(member(e, id, pid)), weeks: 104, now: e.state.week))
+        // and at the end date the job simply ends
+        e.update { s, d, _ in
+            let ci = s.companyIndex(id)!
+            var st = s.companies[ci].staff; let k = st.firstIndex { $0.id == pid }!; st[k].set("ft", s.week); s.companies[ci].staff = st
+            FixedTerm.weekly(&s, data: d)
+        }
+        XCTAssertNil(member(e, id, pid))
+    }
+
+    func testRenewalsPastTheMaximumDurationAreRefusedAndTheContractBecomesPermanent() throws {
+        var (e, id) = try shop()
+        let (pid, _) = hire(&e, id, terms: Hiring.Terms(fixedTermWeeks: 52))
+        let lab = limited(weeks: 104)(e.state, e.data, e.state.company(id)!)
+        var m = try XCTUnwrap(member(e, id, pid))
+        XCTAssertNil(FixedTerm.renewalBlock(lab, m, weeks: 26, now: e.state.week), "52 + 26 is inside 104")
+        XCTAssertNil(FixedTerm.renewalBlock(lab, m, weeks: 52, now: e.state.week), "52 + 52 is exactly the maximum")
+        XCTAssertNotNil(FixedTerm.renewalBlock(lab, m, weeks: 104, now: e.state.week), "52 + 104 is over")
+        // a first term longer than the maximum is not allowed either
+        e.update { s, _, _ in
+            let ci = s.companyIndex(id)!
+            var st = s.companies[ci].staff; let k = st.firstIndex { $0.id == pid }!; st[k].raw.removeValue(forKey: "ft"); st[k].raw.removeValue(forKey: "ftl"); st[k].raw.removeValue(forKey: "fts"); s.companies[ci].staff = st
+        }
+        m = try XCTUnwrap(member(e, id, pid))
+        XCTAssertNotNil(FixedTerm.renewalBlock(limited(weeks: 26)(e.state, e.data, e.state.company(id)!), m, weeks: 52, now: e.state.week))
+        XCTAssertNil(FixedTerm.renewalBlock(limited(weeks: 26)(e.state, e.data, e.state.company(id)!), m, weeks: 26, now: e.state.week))
+    }
+
+    func testAtTheMaximumTheOwnerMustDecideAndNoAnswerMakesItPermanent() throws {
+        var (e, id) = try shop()
+        let (pid, _) = hire(&e, id, terms: Hiring.Terms(fixedTermWeeks: 52))
+        // Two terms of 52 weeks make the 104-week maximum: the second one is the last.
+        _ = e.contractPropose(companyID: id, personID: pid, proposal: .init(.term, choice: "fixed:52"))
+        let lab = limited(weeks: 104)
+        e.update { s, d, _ in
+            let ci = s.companyIndex(id)!
+            var st = s.companies[ci].staff; let k = st.firstIndex { $0.id == pid }!
+            st[k].set("fts", s.week - 100); st[k].set("ft", s.week + 4); st[k].set("ftl", 52); s.companies[ci].staff = st
+            FixedTerm.weekly(&s, data: d, labour: lab)
+        }
+        let msg = try XCTUnwrap(e.openDecisions.first { $0.actionID == FixedTerm.action })
+        XCTAssertEqual(msg.options.count, 2)
+        XCTAssertTrue(msg.options[0]["l"].string.lowercased().contains("permanent"), "\(msg.options)")
+        // Unanswered: on the end date the contract turns permanent instead of ending.
+        e.update { s, d, _ in s.week += 5; FixedTerm.weekly(&s, data: d, labour: lab) }
+        let after = try XCTUnwrap(member(e, id, pid), "still employed")
+        XCTAssertFalse(FixedTerm.isFixed(after)); XCTAssertNil(after.raw["fts"]); XCTAssertNil(after.raw["ftr"])
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
+    func testAnsweringLetItEndAtTheMaximumStillEndsTheJobAndPermanentAnswerConverts() throws {
+        for pick in [0, 1] {
+            var (e, id) = try shop()
+            let (pid, _) = hire(&e, id, terms: Hiring.Terms(fixedTermWeeks: 52))
+            let lab = limited(renewals: 1)
+            e.update { s, d, _ in
+                let ci = s.companyIndex(id)!
+                var st = s.companies[ci].staff; let k = st.firstIndex { $0.id == pid }!
+                st[k].set("ftr", 1); st[k].set("ft", s.week + 3); s.companies[ci].staff = st
+                FixedTerm.weekly(&s, data: d, labour: lab)
+            }
+            let msg = try XCTUnwrap(e.openDecisions.first { $0.actionID == FixedTerm.action })
+            XCTAssertTrue(e.answer(messageID: msg.id, option: pick))
+            e.update { s, d, _ in s.week += 4; FixedTerm.weekly(&s, data: d, labour: lab) }
+            if pick == 0 { XCTAssertEqual(member(e, id, pid).map { FixedTerm.isFixed($0) }, false, "made permanent") }
+            else { XCTAssertNil(member(e, id, pid), "let go on the date") }
+        }
+    }
+
     func testTheTermSurvivesASave() throws {
         var (e, id) = try shop()
         let (pid, _) = hire(&e, id, terms: Hiring.Terms(fixedTermWeeks: 52))

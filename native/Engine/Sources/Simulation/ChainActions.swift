@@ -187,15 +187,34 @@ public extension GameEngine {
         return (est, t.fee, size)
     }
 
+    /// The New company plan for a franchised unit: the same picture as `newCompanyPlan` (places to rent or buy, what the pick costs, risks), priced in the
+    /// country the franchise application is for, plus the entry fee the franchisor charges on top of it. Nil when the terms are not agreed.
+    func franchiseStartPlan(brandID: String, cityID: String, form: LegalForm, pick: NewCompanyPlan.Pick? = nil) -> (plan: NewCompanyPlan, fee: Double)? {
+        guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID), let est = franchiseStartEstimate(brandID: brandID, cityID: cityID, form: form) else { return nil }
+        let country = franchiseApplication(brandID)["country"].string
+        guard let plan = newCompanyPlan(tradeID: b.tradeID, cityID: cityID, form: form, size: est.size, pick: pick, countryCode: country.isEmpty ? nil : country) else { return nil }
+        return (plan, t.fee)
+    }
+
     /// Open a company under a brand whose terms you agreed. Original: `ACT.ncgo` with `st.fran`/`st.deal`, `applyBrand`.
     mutating func startFranchisedCompany(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
+        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, form: form, name: name, accountantID: accountantID, pick: nil, fundWith: amount).map { $0.companyID }
+    }
+
+    /// Open a franchised unit and take the picked place (rent or buy) before the standard set-up does everything else; with no pick it is the
+    /// standard rented place, exactly as `startFranchisedCompany`. The place is the franchisee's own premises, so the brand's rent rules apply to it.
+    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID) else { return .failure(.notAllowedHere) }
         let country = franchiseApplication(brandID)["country"].string
         let cc = country.isEmpty ? state.homeCountryCode : country
         let size = data.countries[cc].flatMap { c in c.city(cityID).flatMap { city in data.catalog[b.tradeID].map { CompanySetup.recommendedSize($0, city: city, brandStrength: b.strength / 100) } } }
         let nm = (name?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 }
         let r = startCompany(tradeID: b.tradeID, cityID: cityID, form: form, size: size, name: nm, countryCode: cc, accountantID: accountantID, fundWith: amount, quickSetup: false)
-        guard case .success(let id) = r else { return r }
+        guard case .success(let id) = r else {
+            if case .failure(let e) = r { return .failure(e) }
+            return .failure(.notAllowedHere)
+        }
+        var out = NewCompanyOutcome(companyID: id, premises: nil, setupNotes: [])
         update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             if s.companies[i].cash >= t.fee {
@@ -205,9 +224,13 @@ public extension GameEngine {
             } else {
                 s.note("Not enough funding for the franchise fee, so \(s.companies[i].name) starts independent.", tone: "bad", companyID: id)
             }
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: d)
+            if let pick, let bd = d.catalog[s.companies[i].type], let k = bd.premisesKind, k != "none", k != "home",
+               let l = CompanySetup.listings(for: s.companies[i], bd, World(state: s, data: d)).first(where: { $0.index == pick.listingIndex }) {
+                out.premises = CompanySetup.setPremises(&s, companyID: id, listing: l, buy: pick.buy, data: d)
+            }
+            out.setupNotes = CompanySetup.quickSetup(&s, companyID: id, data: d)
         }
-        return r
+        return .success(out)
     }
 
     func franchiseeInfo(companyID: Int) -> JSONValue { state.company(companyID)?.value("franchise") ?? .null }

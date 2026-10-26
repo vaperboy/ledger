@@ -30,7 +30,7 @@ public enum PremisesExtras {
     /// A team of four or more has outgrown the kitchen table.
     public static func hasOutgrownHome(_ co: Company, _ bd: Trade) -> Bool { isAtHome(co, bd) && heads(co) >= 4 }
 
-    /// Six places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
+    /// Five places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
     static func listings(_ co: Company, _ bd: Trade, _ w: World) -> [CompanySetup.Listing] {
         let want = wantedSquareMetres(co, bd)
         var r = HashedRandom("\(w.state.seed):pl37:\(co.type):\(co.cityID):\(Int(want)):\(w.week / 26)")

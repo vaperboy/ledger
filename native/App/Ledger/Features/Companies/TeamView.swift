@@ -351,47 +351,32 @@ struct TeamView: View {
 
     // MARK: Search across everyone
 
-    private struct Found: Identifiable { var id: String; var name: String; var role: String; var companyID: Int; var companyName: String }
-
     @ViewBuilder private func searchResults(_ e: GameEngine) -> some View {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let found = everyone(e).filter { $0.name.lowercased().contains(q) || $0.role.lowercased().contains(q) || $0.companyName.lowercased().contains(q) }
+        let found = e.teamPeopleSearch(query: query)
         LedgerSection(title: "Search", trailing: { Text("\(found.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             if found.isEmpty { Text("No one matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
             VStack(spacing: 0) {
                 ForEach(Array(found.prefix(100).enumerated()), id: \.element.id) { n, f in
                     if n > 0 { Hairline() }
-                    Button { Haptics.tap(); path.append(.companyAt(f.companyID, .staff)) } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(f.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                Text("\(f.role) · \(f.companyName)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 8).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    if let companyID = f.companyID {
+                        Button { Haptics.tap(); path.append(.companyAt(companyID, .staff)) } label: { searchRow(f, opens: true) }.buttonStyle(.plain)
+                    } else {
+                        searchRow(f, opens: false)
+                    }
                 }
             }
         }
     }
 
-    private func everyone(_ e: GameEngine) -> [Found] {
-        var out: [Found] = []
-        for co in e.state.companies where co.status.isLive {
-            if let mid = co.managerID, let p = e.state.people[mid] {
-                out.append(Found(id: "m\(co.id)", name: p.name, role: e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager", companyID: co.id, companyName: co.name))
+    /// One search hit: name, job and who employs them (a company, a chain, a holding or the group office).
+    private func searchRow(_ f: TeamSearchResult, opens: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(f.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text("\(f.role) · \(f.employer)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
             }
-            for slot in e.teamSlots(companyID: co.id) {
-                if let pid = slot.personID, let p = e.state.people[pid] {
-                    out.append(Found(id: "t\(co.id)-\(slot.id)", name: p.name, role: slot.title, companyID: co.id, companyName: co.name))
-                }
-            }
-            for m in co.staff {
-                let role = m.role.prefix(1).uppercased() + m.role.dropFirst()
-                out.append(Found(id: "s\(co.id)-\(m.id)", name: e.state.people[m.id]?.name ?? role, role: role, companyID: co.id, companyName: co.name))
-            }
-        }
-        return out
+            Spacer()
+            if opens { Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+        }.padding(.vertical, 8).contentShape(Rectangle())
     }
 }

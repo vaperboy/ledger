@@ -57,6 +57,10 @@ public struct LabourRules: Equatable, Sendable {
     public var massLayoffNoticeWeeks = 0.0
     /// Weeks before a fixed term ends by which the employer must say whether it will be renewed (0 = the game's default review time applies).
     public var fixedTermNoticeWeeks = 0.0
+    /// The longest a person may be kept on successive fixed terms with the same employer, in weeks (0 = no limit in the data), and the most renewals
+    /// of a fixed term (0 = no limit). Past either limit the contract becomes permanent. No country lists them until a statute is sourced.
+    public var fixedTermMaxWeeks = 0.0
+    public var fixedTermMaxRenewals = 0.0
 
     public init() {}
 
@@ -78,6 +82,7 @@ public struct LabourRules: Equatable, Sendable {
         if !j["fundFineReasons"].isNull { fundFineReasons = Set(j["fundFineReasons"].array.map { $0.string }) }
         massLayoffNoticeWeeks = n("massLayoffNoticeWeeks")
         fixedTermNoticeWeeks = n("fixedTermNoticeWeeks")
+        fixedTermMaxWeeks = n("fixedTermMaxWeeks"); fixedTermMaxRenewals = n("fixedTermMaxRenewals")
     }
 
     public init(country: Country) { self.init(code: country.code) }

@@ -286,7 +286,7 @@ public enum ProjectTenders {
         let wks = max(2, jsRound((tw["wks"] ?? 6) * (1.2 + s.random.next() * 0.6)))
         let cf = max(0.05, (((tw["mat"] ?? 0.5) + (tw["sub"] ?? 0)) * (1 + s.random.gauss() * (tw["over"] ?? 0.1))) / pf)
         let job: [String: JSONValue] = ["id": .number(Double(s.makeID())), "v": .number(jsRound(t.worth * pf)), "wks": .number(wks), "p": 0, "cf": .number(cf),
-                                       "delay": 0, "w0": .number(Double(s.week)), "client": .string(t.buyer), "pub": .number(t.isPublicBuyer ? 1 : 0)]
+                                       "delay": 0, "w0": .number(Double(s.week)), "due": .number(Double(s.week) + wks), "client": .string(t.buyer), "pub": .number(t.isPublicBuyer ? 1 : 0)]
         jobs.append(.object(job))
         fm["jobs"] = .array(jobs)
         s.companies[i].set("fm", fm)

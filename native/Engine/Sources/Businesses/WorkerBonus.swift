@@ -59,7 +59,7 @@ public enum WorkerBonus {
     }
 
     /// Does the company have what the plan is judged on: monthly targets (managed, or set by the owner)?
-    public static func hasTargets(_ co: Company, week: Int) -> Bool { !(ManagerTargets.current(co, week: week)?.isNull ?? true) }
+    public static func hasTargets(_ co: Company, week: Int) -> Bool { ManagerTargets.current(co, week: week) != nil }
 
     static func accrue(_ s: inout GameState, _ ci: Int, _ k: Int, _ amount: Double, _ lines: inout [String: Double]) {
         guard amount > 0 else { return }

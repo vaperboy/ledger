@@ -120,8 +120,8 @@ public extension GameEngine {
             guard let i = s.companyIndex(companyID), let c = channels[channel] else { result = .refused("unknown channel"); return }
             if c.offered(in: World(state: s, data: data).country(s.companies[i])) == nil { result = .refused("not available in this country"); return }
             if let only = c.onlyInCountry, only != s.companies[i].countryCode { result = .refused("not available in this country"); return }
-            if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
             if weeklyBudget > 0, let why = FranchiseStandards.campaignRefusal(s.companies[i], channel: channel) { result = .refused(why); return }
+            if Marketing.runByChain(s.companies[i], channel: channel, state: s) { result = .refused("the chain runs this marketing"); return }
             var mkt = s.companies[i].value("mkt")
             var mktEnd = s.companies[i].value("mktEnd")
             let cur = mkt[channel]
