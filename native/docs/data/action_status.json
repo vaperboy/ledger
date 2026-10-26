@@ -1,11 +1,11 @@
 {
  "abrgo": [
-  "ENGINE_ONLY",
-  "expandAbroad (CompanyTabActions.swift:51); App has no caller"
+  "COVERED_UI",
+  "expandAbroad->ExpandAbroadView.swift"
  ],
  "abrset": [
-  "ENGINE_ONLY",
-  "expandAbroad (CompanyTabActions.swift:51); App has no caller"
+  "COVERED_UI",
+  "expandAbroad->ExpandAbroadView.swift"
  ],
  "acad36": [
   "PRESENTATION",
@@ -80,8 +80,8 @@
   "Documents.apply exists (Documents.swift:75); only wrapper is applyForChainDocument (chains); no per-company permit-apply action"
  ],
  "arep": [
-  "ENGINE_ONLY",
-  "requestAnalystReport (Engine/Sources/Simulation/ExecutiveActions.swift:112)"
+  "COVERED_UI",
+  "requestAnalystReport->GroupOffice.swift"
  ],
  "artview": [
   "PRESENTATION",
@@ -129,11 +129,11 @@
  ],
  "autoset": [
   "COVERED_UI",
-  "quickSetup->CompanyDetailView.swift"
+  "quickSetup->CompanyOverview.swift"
  ],
  "autostock": [
-  "ENGINE_ONLY",
-  "setAutoStock (Engine/Sources/Simulation/MiscActions.swift:220)"
+  "COVERED_UI",
+  "setSalmonAutomation->CompanyEnergy.swift (setAutoStock is an engine internal)"
  ],
  "away56": [
   "PRESENTATION",
@@ -141,11 +141,11 @@
  ],
  "b12go": [
   "COVERED_UI",
-  "boardVote->GroupBoards.swift"
+  "boardVote->CompanySaleSection.swift/CompanySettings.swift"
  ],
  "b13go": [
-  "ENGINE_ONLY",
-  "recordPushedThrough (Engine/Sources/Businesses/ManagerBoards.swift:273)"
+  "COVERED_UI",
+  "recordPushedThrough->CompanySaleSection.swift/CompanySettings.swift"
  ],
  "b14go": [
   "PRESENTATION",
@@ -217,7 +217,7 @@
  ],
  "boarddeal": [
   "COVERED_UI",
-  "agreeSupplierDeal (SupplierActions.swift:33); App GroupOffice.swift:270"
+  "agreeSupplierDeal->GroupOffice.swift"
  ],
  "books": [
   "PRESENTATION",
@@ -233,11 +233,11 @@
  ],
  "brandfacts": [
   "COVERED_UI",
-  "meeting->VenturesView.swift/FranchiseBrandsView.swift"
+  "meeting->FranchiseBrandsView.swift/GroupBoards.swift"
  ],
  "brandopen": [
   "COVERED_UI",
-  "meeting->VenturesView.swift/FranchiseBrandsView.swift"
+  "meeting->FranchiseBrandsView.swift/GroupBoards.swift"
  ],
  "brandpick": [
   "COVERED_UI",
@@ -261,7 +261,7 @@
  ],
  "buyeq": [
   "COVERED_UI",
-  "buyNew via GameEngine.buyEquipmentItem (App CompanyEquipment)"
+  "buyEquipmentItem->CompanyEquipment.swift"
  ],
  "buyprop": [
   "COVERED_UI",
@@ -289,23 +289,23 @@
  ],
  "car7": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "carallow": [
   "COVERED_UI",
-  "toggleOwnCar->CompanyOtherSections.swift"
+  "toggleOwnCar->CompanyOtherSections.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
  ],
  "carc": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "cash41in": [
   "COVERED_UI",
   "putMoneyInto->CompanyHolding.swift/CompanyMoney.swift"
  ],
  "ccheck": [
-  "ENGINE_ONLY",
-  "setCreditCheck (Engine/Sources/Simulation/MiscActions.swift:218)"
+  "COVERED_UI",
+  "setCreditCheck->CompanyCustomers.swift"
  ],
  "ccsheet": [
   "PRESENTATION",
@@ -341,7 +341,7 @@
  ],
  "ch12join": [
   "COVERED_UI",
-  "joinChain->CompanyChain.swift"
+  "joinChain->ChainView.swift"
  ],
  "ch12lend": [
   "COVERED_UI",
@@ -353,7 +353,7 @@
  ],
  "ch12new": [
   "COVERED_UI",
-  "openChainStore->CompanyChain.swift"
+  "openChainStore->ChainView.swift"
  ],
  "ch12off": [
   "COVERED_UI",
@@ -361,7 +361,7 @@
  ],
  "ch12rule": [
   "COVERED_UI",
-  "setChainRule->CompanyChain.swift"
+  "setChainRule->ChainView.swift"
  ],
  "ch12store": [
   "PRESENTATION",
@@ -373,27 +373,27 @@
  ],
  "ch16rp": [
   "COVERED_UI",
-  "setChainRule->CompanyChain.swift"
+  "setChainRule->ChainView.swift"
  ],
  "ch27k": [
   "COVERED_UI",
-  "setSupplier->CompanyChain.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "ch27off": [
   "COVERED_UI",
-  "clearSupplier->CompanyChain.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "ch27set": [
   "COVERED_UI",
-  "setSupplier->CompanyChain.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "ch39off": [
   "COVERED_UI",
-  "stopBuyingFromAccount->CompanyChain.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "ch39set": [
   "COVERED_UI",
-  "buyFromAccount->CompanyChain.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "cinject": [
   "COVERED_UI",
@@ -412,8 +412,8 @@
   ""
  ],
  "clgo": [
-  "ENGINE_ONLY",
-  "closeCompany (Engine/Sources/Simulation/MiscActions.swift:93)"
+  "COVERED_UI",
+  "closeCompany->CompanySettings.swift"
  ],
  "closepop": [
   "PRESENTATION",
@@ -477,7 +477,7 @@
  ],
  "cofin": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "complres": [
   "COVERED_UI",
@@ -488,12 +488,12 @@
   ""
  ],
  "convgo": [
-  "ENGINE_ONLY",
-  "convertToLimited (Engine/Sources/Simulation/MiscActions.swift:196)"
+  "COVERED_UI",
+  "convertToLimited->CompanySettings.swift"
  ],
  "cosal": [
-  "ENGINE_ONLY",
-  "setOwnerSalary (Engine/Sources/Simulation/PlayerActions.swift:171)"
+  "COVERED_UI",
+  "setOwnerSalary->CompanyMoney.swift"
  ],
  "cosold": [
   "PRESENTATION",
@@ -569,15 +569,15 @@
  ],
  "docourse": [
   "COVERED_UI",
-  "sendOnCourse->CompanyTeam.swift"
+  "sendOnCourse->CompanyStaffRoster.swift"
  ],
  "docsall": [
   "COVERED_UI",
-  "quickSetup->CompanyDetailView.swift"
+  "quickSetup->CompanyOverview.swift"
  ],
  "doraise": [
   "COVERED_UI",
-  "raise->VenturesView.swift/CompanyTeam.swift"
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
  ],
  "dow56go": [
   "NOT_PORTED",
@@ -601,15 +601,15 @@
  ],
  "eqbrand": [
   "COVERED_UI",
-  "offers->VenturesView.swift/MoneyPeopleActions.swift"
+  "offers->CandidateSheet.swift/ChainView.swift"
  ],
  "eqmode": [
   "COVERED_UI",
-  "EquipmentMarket.Payment passed to buyEquipmentItem"
+  "EquipmentMarket.Payment->CompanySourcing.swift"
  ],
  "eqpick": [
   "COVERED_UI",
-  "offers->VenturesView.swift/MoneyPeopleActions.swift"
+  "offers->CandidateSheet.swift/ChainView.swift"
  ],
  "eqsheet": [
   "PRESENTATION",
@@ -685,23 +685,23 @@
  ],
  "fireceo": [
   "ENGINE_ONLY",
-  "releaseGroupCEO (Engine/Sources/Businesses/ManagerTeam.swift:442)"
+  "releaseGroupCEO: legacy-save repair only (the group CEO post was replaced in round 56); App has no caller, intentionally. See docs/audit/reachability.md"
  ],
  "firehq": [
   "COVERED_UI",
-  "fireOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "fireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "fireregional": [
   "COVERED_UI",
   "releaseExecutive->ExecutivePosts.swift"
  ],
  "firestaff": [
-  "COVERED_PARTIAL",
-  "App calls fire() (Hiring.fire, no cause/warnings/unfair dismissal); StaffProfile.dismiss via dismissStaff has no App caller"
+  "COVERED_UI",
+  "dismissStaff->CompanyStaffRoster.swift"
  ],
  "fixv": [
   "COVERED_UI",
-  "chooseRepairSupplier (SupplierActions.swift:26); mapping by name, UNVERIFIED that App calls it"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "fmadd": [
   "COVERED_UI",
@@ -725,15 +725,15 @@
  ],
  "fmwd": [
   "COVERED_UI",
-  "withdrawFromFundManager (MoneyPeopleActions)"
+  "withdrawFromFundManager->MoneyPeopleActions.swift"
  ],
  "found": [
   "COVERED_UI",
-  "startCompany->NewCompanyView.swift"
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
  ],
  "found28": [
-  "ENGINE_ONLY",
-  "Giving.give / startFoundation via GameEngine.give, startFoundation (WorldAndGivingActions.swift:17,22); no App caller"
+  "COVERED_UI",
+  "give/startFoundation->GivingView.swift"
  ],
  "fpitch": [
   "COVERED_UI",
@@ -772,8 +772,8 @@
   "claimFirstStep->GoalsCard.swift"
  ],
  "fs58off": [
-  "ENGINE_ONLY",
-  "setFirstStepsHidden (Engine/Sources/Simulation/MiscActions.swift:351)"
+  "COVERED_UI",
+  "setFirstStepsHidden->GoalsCard.swift"
  ],
  "fshut": [
   "COVERED_UI",
@@ -816,8 +816,8 @@
   ""
  ],
  "give28": [
-  "ENGINE_ONLY",
-  "Giving.give / startFoundation via GameEngine.give, startFoundation (WorldAndGivingActions.swift:17,22); no App caller"
+  "COVERED_UI",
+  "give/startFoundation->GivingView.swift"
  ],
  "go": [
   "PRESENTATION",
@@ -837,27 +837,27 @@
  ],
  "hirego": [
   "COVERED_UI",
-  "hire->MoneyPeopleActions.swift/ExecutivePosts.swift"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "hirehq": [
   "COVERED_UI",
-  "hireOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "hireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "hk54b": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "hk54h": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "hk54k": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "hk54s": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "hlist": [
   "COVERED_UI",
@@ -881,7 +881,7 @@
  ],
  "home37": [
   "COVERED_UI",
-  "giveUpPremises->CompanyOtherSections.swift"
+  "giveUpPremises->CompanyWorkplace.swift"
  ],
  "hq56t": [
   "PRESENTATION",
@@ -889,7 +889,7 @@
  ],
  "hqas": [
   "ENGINE_ONLY",
-  "toggleOfficeAssignment (Engine/Sources/Simulation/ExecutiveActions.swift:105)"
+  "toggleOfficeAssignment: writes staff[].cos, which no engine rule reads yet; not wired so the screen does not offer a setting with no effect. See docs/audit/reachability.md"
  ],
  "hqcandopen": [
   "PRESENTATION",
@@ -901,7 +901,7 @@
  ],
  "hqoffer": [
   "COVERED_UI",
-  "hireOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "hireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "hqref": [
   "COVERED_UI",
@@ -909,11 +909,11 @@
  ],
  "hqsearch": [
   "COVERED_UI",
-  "searchOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "searchOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "hqstep56": [
   "COVERED_UI",
-  "searchOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "searchOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "hqtab": [
   "PRESENTATION",
@@ -921,7 +921,7 @@
  ],
  "hqtick": [
   "COVERED_UI",
-  "tickOfficePaperwork->MoneyPeopleActions.swift/GroupOffice.swift"
+  "tickOfficePaperwork->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "hraise": [
   "COVERED_UI",
@@ -949,19 +949,19 @@
  ],
  "hysGo": [
   "COVERED_PARTIAL",
-  "setKnob (PlayerActions.swift:49) only stores the option: no changeover cost/capacity penalty (changeover, hys56c), no multi-select toggle, no required-document check, no chain lock"
+  "changeKnob/toggleKnobOption->CompanyHowYouSell.swift (changeover cost exists in KnobChange.swift); document check and chain lock not re-verified"
  ],
  "hysPick": [
   "COVERED_PARTIAL",
-  "setKnob (PlayerActions.swift:49) only stores the option: no changeover cost/capacity penalty (changeover, hys56c), no multi-select toggle, no required-document check, no chain lock"
+  "changeKnob/toggleKnobOption->CompanyHowYouSell.swift (changeover cost exists in KnobChange.swift); document check and chain lock not re-verified"
  ],
  "hysTog": [
   "COVERED_PARTIAL",
-  "setKnob (PlayerActions.swift:49) only stores the option: no changeover cost/capacity penalty (changeover, hys56c), no multi-select toggle, no required-document check, no chain lock"
+  "changeKnob/toggleKnobOption->CompanyHowYouSell.swift (changeover cost exists in KnobChange.swift); document check and chain lock not re-verified"
  ],
  "inflset": [
-  "ENGINE_ONLY",
-  "setInflationHold (Engine/Sources/Simulation/MiscActions.swift:223)"
+  "COVERED_UI",
+  "setInflationHold->CompanyOperations.swift"
  ],
  "injhold": [
   "COVERED_UI",
@@ -981,35 +981,35 @@
  ],
  "lh12fire": [
   "COVERED_UI",
-  "fireOffice->MoneyPeopleActions.swift/GroupOffice.swift"
+  "fireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
  ],
  "lh12set": [
-  "ENGINE_ONLY",
-  "setRightHand (Engine/Sources/Businesses/Headquarters.swift:363)"
+  "COVERED_UI",
+  "setRightHand->GroupOffice.swift"
  ],
  "loadfile": [
   "COVERED_UI",
-  "GameStore.importLegacy (App GameStore.swift:105) -> SaveStore.importLegacy"
+  "GameStore.importLegacy->GameStore.swift/SettingsView.swift"
  ],
  "loadpaste": [
   "COVERED_UI",
-  "GameStore.importLegacy (App GameStore.swift:105) -> SaveStore.importLegacy"
+  "GameStore.importLegacy->GameStore.swift/SettingsView.swift"
  ],
  "loango": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "loansheet": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "loanterm": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "logo": [
   "COVERED_UI",
-  "layOffStaff (App CompanyTeam.swift:150)"
+  "layOffStaff->CompanyStaffRoster.swift"
  ],
  "loset": [
   "PRESENTATION",
@@ -1036,8 +1036,8 @@
   "buyLuxury->LuxuryView.swift"
  ],
  "lx56din": [
-  "ENGINE_ONLY",
-  "hostYachtDinner (Engine/Sources/Simulation/WorldAndGivingActions.swift:57)"
+  "COVERED_UI",
+  "hostYachtDinner->LuxuryView.swift"
  ],
  "lx56use": [
   "COVERED_UI",
@@ -1084,12 +1084,12 @@
   ""
  ],
  "md56": [
-  "ENGINE_ONLY",
-  "setManagerDuty (Engine/Sources/Businesses/ManagerProposals.swift:37)"
+  "COVERED_UI",
+  "setManagerDuty->CompanyManagement.swift"
  ],
  "md56give": [
-  "ENGINE_ONLY",
-  "setManagerDuty (Engine/Sources/Businesses/ManagerProposals.swift:37)"
+  "COVERED_UI",
+  "setManagerDuty->CompanyManagement.swift"
  ],
  "menuback": [
   "PRESENTATION",
@@ -1101,7 +1101,7 @@
  ],
  "menuload": [
   "COVERED_UI",
-  "load->GameStore.swift/CompanyContracts.swift"
+  "load->CompanyContracts.swift/GameStore.swift"
  ],
  "menunew": [
   "COVERED_UI",
@@ -1121,19 +1121,19 @@
  ],
  "mgrhirego": [
   "COVERED_UI",
-  "hireManager->CompanyPeopleActions.swift/CompanyManagement.swift"
+  "hireManager->CompanyManagement.swift/CompanyPeopleActions.swift"
  ],
  "mgrmove": [
   "COVERED_UI",
-  "moveManager->CompanyManagement.swift"
+  "moveManager->CompanyManagement.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
  ],
  "mgrmovego": [
   "COVERED_UI",
-  "moveManager->CompanyManagement.swift"
+  "moveManager->CompanyManagement.swift [STALE: the named function no longer exists; owner to confirm where this lives]"
  ],
  "mgrraise": [
   "COVERED_UI",
-  "giveManagerRaise->CompanyManagement.swift, yearly->FinanceView.swift/RichListView.swift, raise->VenturesView.swift/CompanyTeam.swift, ask->FranchiseBrandsView.swift/CompanyManagement.swift, answered->CompanyTeam.swift/GroupOffice.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "mgrref": [
   "COVERED_UI",
@@ -1149,11 +1149,11 @@
  ],
  "mhire56": [
   "COVERED_UI",
-  "hireManager->CompanyPeopleActions.swift/CompanyManagement.swift"
+  "hireManager->CompanyManagement.swift/CompanyPeopleActions.swift"
  ],
  "mkt26hire": [
   "COVERED_UI",
-  "hire->MoneyPeopleActions.swift/ExecutivePosts.swift"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "mkt26rep": [
   "COVERED_UI",
@@ -1177,7 +1177,7 @@
  ],
  "msgpick": [
   "COVERED_UI",
-  "answer->GameStore.swift/Components.swift"
+  "answer->CandidateSheet.swift/CompanyClub.swift"
  ],
  "mstep56": [
   "PRESENTATION",
@@ -1188,8 +1188,8 @@
   ""
  ],
  "mtgo2": [
-  "ENGINE_ONLY",
-  "meetForProposals (Engine/Sources/Businesses/ManagerProposals.swift:159)"
+  "COVERED_UI",
+  "meetForProposals->GroupOffice.swift"
  ],
  "mtwho": [
   "COVERED_UI",
@@ -1201,11 +1201,11 @@
  ],
  "ncgo": [
   "COVERED_UI",
-  "startCompany->NewCompanyView.swift"
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
  ],
  "ncset": [
   "COVERED_UI",
-  "startCompany->NewCompanyView.swift"
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
  ],
  "negsend": [
   "COVERED_UI",
@@ -1265,15 +1265,15 @@
  ],
  "ns13city": [
   "COVERED_UI",
-  "startCompany->NewCompanyView.swift"
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
  ],
  "ns13go": [
   "COVERED_UI",
-  "openChainStore->CompanyChain.swift"
+  "openChainStore->ChainView.swift"
  ],
  "ns13size": [
   "COVERED_UI",
-  "startCompany->NewCompanyView.swift, size->LedgerApp.swift/LedgerCharts.swift"
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
  ],
  "nx59all": [
   "PRESENTATION",
@@ -1289,11 +1289,11 @@
  ],
  "offer": [
   "COVERED_UI",
-  "hire->MoneyPeopleActions.swift/ExecutivePosts.swift"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "offer7": [
   "COVERED_UI",
-  "hire->MoneyPeopleActions.swift/ExecutivePosts.swift"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "officepop": [
   "COVERED_UI",
@@ -1313,11 +1313,11 @@
  ],
  "onbtick": [
   "COVERED_UI",
-  "completePaperwork->CompanyTeam.swift"
+  "completePaperwork->CompanyStaffRoster.swift"
  ],
  "opendec": [
   "COVERED_UI",
-  "answer->GameStore.swift/Components.swift"
+  "answer->CandidateSheet.swift/CompanyClub.swift"
  ],
  "opendep": [
   "COVERED_UI",
@@ -1344,12 +1344,12 @@
   "setOwnerHours->CompanyOperations.swift"
  ],
  "ownpick": [
-  "ENGINE_ONLY",
-  "chooseOwnAdviser (Engine/Sources/Simulation/CompanyTabActions.swift:32)"
+  "COVERED_UI",
+  "chooseOwnAdviser->CompanyCoverage.swift"
  ],
  "ownsw": [
-  "ENGINE_ONLY",
-  "useOwnSoftware (Engine/Sources/Simulation/CustomerActions.swift:506)"
+  "COVERED_UI",
+  "useOwnSoftware->CompanyEquipment.swift"
  ],
  "p11back": [
   "PRESENTATION",
@@ -1357,11 +1357,11 @@
  ],
  "p11duty": [
   "COVERED_UI",
-  "offerPromotion->CompanyManagement.swift, part->Glass.swift/FranchiseBrandsView.swift, terms->MoneyPeopleActions.swift/FranchiseBrandsView.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "p11offer": [
   "COVERED_UI",
-  "offerPromotion->CompanyManagement.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "p11set": [
   "PRESENTATION",
@@ -1369,15 +1369,15 @@
  ],
  "p11talk": [
   "COVERED_UI",
-  "promotionPosts->CompanyManagement.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "p17go": [
-  "ENGINE_ONLY",
-  "pitchProductToRival (Engine/Sources/Simulation/VentureActions.swift:122)"
+  "COVERED_UI",
+  "pitchProductToRival->VenturesView.swift"
  ],
  "p17open": [
-  "ENGINE_ONLY",
-  "rivalTargetsForProduct (Engine/Sources/Simulation/VentureActions.swift:120)"
+  "COVERED_UI",
+  "rivalTargetsForProduct->VenturesView.swift"
  ],
  "pa56": [
   "PRESENTATION",
@@ -1385,7 +1385,7 @@
  ],
  "pay7": [
   "COVERED_UI",
-  "hire->MoneyPeopleActions.swift/ExecutivePosts.swift"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "payrate": [
   "PRESENTATION",
@@ -1412,16 +1412,16 @@
   "sellFundStake->VenturesView.swift"
  ],
  "perfauto": [
-  "ENGINE_ONLY",
-  "setPerformanceAnalystAuto (Engine/Sources/Simulation/ExecutiveActions.swift:107)"
+  "COVERED_UI",
+  "setPerformanceAnalystAuto->GroupOffice.swift"
  ],
  "perloan": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "perloango": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift, kind->Components.swift/WorldView.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "phapp": [
   "PRESENTATION",
@@ -1437,7 +1437,7 @@
  ],
  "pickacc": [
   "COVERED_UI",
-  "changeAccountant->CompanyOtherSections.swift"
+  "chooseAdviser->CompanyCoverage.swift (accountant section)"
  ],
  "pickgo": [
   "PRESENTATION",
@@ -1465,7 +1465,7 @@
  ],
  "pk58t": [
   "COVERED_UI",
-  "toggle->FranchiseBrandsView.swift/CompanyWaysToSell.swift"
+  "toggle->CompanyCoverage.swift/CompanyCustomers.swift"
  ],
  "plgo": [
   "COVERED_PARTIAL",
@@ -1473,7 +1473,7 @@
  ],
  "ploanT": [
   "COVERED_UI",
-  "takeLoan->BankView.swift/CompanyMoney.swift"
+  "takeLoan->BankView.swift/CompanyLoans.swift"
  ],
  "plopen": [
   "COVERED_PARTIAL",
@@ -1504,24 +1504,24 @@
   "change of pay day: no function (grep nday/setPayDay: none)"
  ],
  "pr29mode": [
-  "ENGINE_ONLY",
-  "setPayrollMode (Engine/Sources/Simulation/PlayerActions.swift:207)"
+  "COVERED_UI",
+  "setPayrollMode->CompanyPayrollRun.swift"
  ],
  "pr29ok": [
   "COVERED_UI",
-  "answer->GameStore.swift/Components.swift"
+  "answer->CandidateSheet.swift/CompanyClub.swift"
  ],
  "pr29run": [
-  "ENGINE_ONLY",
-  "Payday.runPayroll(.manual) only reachable from the inbox answer (Payday.swift:498); no player \"run payroll now\" wrapper"
+  "COVERED_UI",
+  "Payday->CompanyPayrollRun.swift"
  ],
  "premset": [
   "COVERED_UI",
-  "takePremises->CompanyEquipment.swift"
+  "takePremises->CompanyEquipment.swift/CompanyWorkplace.swift"
  ],
  "premsheet": [
   "COVERED_UI",
-  "premisesListings->CompanyEquipment.swift, takePremises->CompanyEquipment.swift"
+  "premisesListings->CompanyEquipment.swift/CompanyWorkplace.swift"
  ],
  "pricestep": [
   "COVERED_UI",
@@ -1561,11 +1561,11 @@
  ],
  "promoboss": [
   "COVERED_UI",
-  "offerPromotion->CompanyManagement.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "promogo": [
   "COVERED_UI",
-  "offerPromotion->CompanyManagement.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "promoset": [
   "PRESENTATION",
@@ -1604,8 +1604,8 @@
   "Ledger Pro store/skins (App Store purchase layer)"
  ],
  "provpick": [
-  "ENGINE_ONLY",
-  "chooseAdviser (Engine/Sources/Simulation/CompanyTabActions.swift:26)"
+  "COVERED_UI",
+  "chooseAdviser->CompanyCoverage.swift"
  ],
  "provsheet": [
   "PRESENTATION",
@@ -1613,7 +1613,7 @@
  ],
  "pt48": [
   "COVERED_UI",
-  "hire(terms: Hiring.Terms) MiscActions.swift:234; App CompanyOtherSections.swift:229"
+  "hire->CandidateSheet.swift/CompanyClub.swift"
  ],
  "pwend": [
   "COVERED_UI",
@@ -1637,15 +1637,15 @@
  ],
  "raisesheet": [
   "COVERED_UI",
-  "raise->VenturesView.swift/CompanyTeam.swift"
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
  ],
  "rb56": [
   "PRESENTATION",
   ""
  ],
  "rb56go": [
-  "ENGINE_ONLY",
-  "renameChain (Engine/Sources/Simulation/MiscActions.swift:58)"
+  "COVERED_UI",
+  "renameChain->ChainView.swift"
  ],
  "rd56go": [
   "COVERED_UI",
@@ -1672,8 +1672,8 @@
   "rentOffice->GroupOffice.swift"
  ],
  "reopen": [
-  "ENGINE_ONLY",
-  "reopenCompany (Engine/Sources/Simulation/MiscActions.swift:114)"
+  "COVERED_UI",
+  "reopenCompany->CompanySettings.swift"
  ],
  "repaireq": [
   "COVERED_UI",
@@ -1681,11 +1681,11 @@
  ],
  "repaygo": [
   "COVERED_UI",
-  "repayLoan->BankView.swift"
+  "repayLoan->BankView.swift/CompanyLoans.swift"
  ],
  "repaysheet": [
   "COVERED_UI",
-  "repayLoan->BankView.swift"
+  "repayLoan->BankView.swift/CompanyLoans.swift"
  ],
  "repdone": [
   "PRESENTATION",
@@ -1697,7 +1697,7 @@
  ],
  "repset": [
   "ENGINE_ONLY",
-  "setReports (Engine/Sources/Businesses/Headquarters.swift:98)"
+  "setReports: writes office.rep (freq/detail/only), which no engine rule reads yet; not wired for the same reason. See docs/audit/reachability.md"
  ],
  "res36t": [
   "PRESENTATION",
@@ -1725,7 +1725,7 @@
  ],
  "rivclose": [
   "COVERED_UI",
-  "buyRival->CompanyMarket.swift, company->ScreenshotTests.swift/GameStore.swift, absorbRival->CompanyMarket.swift"
+  "buyRival->CompanyMarket.swift"
  ],
  "rivfin27": [
   "COVERED_UI",
@@ -1760,8 +1760,8 @@
   ""
  ],
  "rn56go": [
-  "ENGINE_ONLY",
-  "renameCompany (Engine/Sources/Simulation/MiscActions.swift:35)"
+  "COVERED_UI",
+  "renameCompany->CompanySettings.swift"
  ],
  "rv56": [
   "PRESENTATION",
@@ -1781,23 +1781,23 @@
  ],
  "saleacc": [
   "COVERED_UI",
-  "accept->CompanySaleSection.swift/FranchiseBrandsView.swift"
+  "accept->CompanyClub.swift/CompanyMarket.swift"
  ],
  "salecounter": [
   "COVERED_UI",
-  "counter->CompanySaleSection.swift/FranchiseBrandsView.swift"
+  "counter->CompanyClub.swift/CompanyMarket.swift"
  ],
  "salectr": [
   "COVERED_UI",
-  "counter->CompanySaleSection.swift/FranchiseBrandsView.swift"
+  "counter->CompanyClub.swift/CompanyMarket.swift"
  ],
  "saledec": [
   "COVERED_UI",
-  "decline->CompanySaleSection.swift"
+  "decline->ChainView.swift/CompanySaleSection.swift"
  ],
  "saledec7": [
   "COVERED_UI",
-  "decline->CompanySaleSection.swift"
+  "decline->ChainView.swift/CompanySaleSection.swift"
  ],
  "salego": [
   "COVERED_UI",
@@ -1812,24 +1812,24 @@
   "listSharesForSale->CompanyOwnership.swift"
  ],
  "saleq": [
-  "ENGINE_ONLY",
-  "askBuyer (Engine/Sources/Simulation/VentureActions.swift:23)"
+  "COVERED_UI",
+  "askBuyer->CompanySaleSection.swift"
  ],
  "saletab": [
   "COVERED_UI",
   "listSharesForSale->CompanyOwnership.swift"
  ],
  "saletalk": [
-  "ENGINE_ONLY",
-  "counterBuyer (Engine/Sources/Simulation/VentureActions.swift:25)"
+  "COVERED_UI",
+  "counterBuyer->CompanySaleSection.swift"
  ],
  "salewd": [
   "COVERED_UI",
-  "withdraw->CompanySaleSection.swift"
+  "withdraw->CompanySaleSection.swift/ProjectTimelineViews.swift"
  ],
  "savefile": [
   "COVERED_UI",
-  "save->GameStore.swift/SettingsView.swift"
+  "save->CompanyCoverage.swift/CompanySourcing.swift"
  ],
  "sc56": [
   "PRESENTATION",
@@ -1841,7 +1841,7 @@
  ],
  "sellco": [
   "COVERED_UI",
-  "accept->CompanySaleSection.swift/FranchiseBrandsView.swift"
+  "accept->CompanyClub.swift/CompanyMarket.swift"
  ],
  "selleq": [
   "COVERED_UI",
@@ -1872,8 +1872,8 @@
   "sellVehicle->CompanyEquipment.swift"
  ],
  "setbig": [
-  "ENGINE_ONLY",
-  "setGroupLimit (Engine/Sources/Businesses/ManagerTeam.swift:449)"
+  "COVERED_UI",
+  "setGroupLimit->ExecutivePosts.swift"
  ],
  "setcat": [
   "PRESENTATION",
@@ -1901,7 +1901,7 @@
  ],
  "setknob": [
   "COVERED_UI",
-  "setKnob->CompanyOperations.swift"
+  "changeKnob/toggleKnobOption->CompanyHowYouSell.swift"
  ],
  "setltv": [
   "PRESENTATION",
@@ -1913,11 +1913,11 @@
  ],
  "setpay": [
   "COVERED_UI",
-  "setPayModel->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "setrate": [
   "COVERED_UI",
-  "setCommissionRate->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "setstory": [
   "NOT_PORTED",
@@ -1929,7 +1929,7 @@
  ],
  "shopbuy": [
   "COVERED_UI",
-  "buyEquipmentItem->CompanyEquipment.swift, buyVehicleItem->CompanyEquipment.swift, buyUsedItem->CompanyEquipment.swift"
+  "buyEquipmentItem->CompanyEquipment.swift"
  ],
  "shopcls": [
   "PRESENTATION",
@@ -1953,7 +1953,7 @@
  ],
  "shopvc": [
   "COVERED_UI",
-  "make->FranchiseBrandsView.swift/CompanyProperties.swift, list->Components.swift/AchievementsView.swift"
+  "make->ChainSuppliers.swift/CompanyOwnership.swift"
  ],
  "slotdel": [
   "PRESENTATION",
@@ -1969,11 +1969,11 @@
  ],
  "srcc": [
   "COVERED_UI",
-  "choice->CompanyFranchise.swift/CompanyEquipment.swift"
+  "choice->BankView.swift/ChainSuppliers.swift"
  ],
  "srcv": [
   "COVERED_UI",
-  "vendor->CompanySourcing.swift, choice->CompanyFranchise.swift/CompanyEquipment.swift"
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
  ],
  "st27": [
   "COVERED_UI",
@@ -1981,7 +1981,7 @@
  ],
  "stab": [
   "COVERED_UI",
-  "foundedStartups (VenturesView)"
+  "foundedStartups->InvestView.swift/VenturesView.swift"
  ],
  "startgame": [
   "COVERED_UI",
@@ -1989,15 +1989,15 @@
  ],
  "stfix": [
   "COVERED_UI",
-  "offerFixedSalary->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "stfull": [
   "COVERED_UI",
-  "offerFullTime->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "sthrs": [
   "COVERED_UI",
-  "setStaffHours->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "stockpol": [
   "COVERED_UI",
@@ -2009,11 +2009,11 @@
  ],
  "stpart": [
   "COVERED_UI",
-  "offerPartTime->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "stseas": [
   "COVERED_UI",
-  "toggleSeason->CompanyOtherSections.swift"
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
  ],
  "stt56": [
   "PRESENTATION",
@@ -2048,20 +2048,20 @@
   "setWayToSell->CompanyWaysToSell.swift"
  ],
  "swdev": [
-  "ENGINE_ONLY",
-  "setSoftwareCoders (Engine/Sources/Simulation/CustomerActions.swift:501)"
+  "COVERED_UI",
+  "setSoftwareCoders->VenturesView.swift"
  ],
  "swint": [
-  "ENGINE_ONLY",
-  "setSoftwareInternalPercent (Engine/Sources/Simulation/CustomerActions.swift:504)"
+  "COVERED_UI",
+  "setSoftwareInternalPercent->VenturesView.swift"
  ],
  "swmodel": [
-  "ENGINE_ONLY",
-  "setSoftwareModel (Engine/Sources/Simulation/CustomerActions.swift:503)"
+  "COVERED_UI",
+  "setSoftwareModel->VenturesView.swift"
  ],
  "swself": [
-  "ENGINE_ONLY",
-  "setSoftwareSelfCoding (Engine/Sources/Simulation/CustomerActions.swift:502)"
+  "COVERED_UI",
+  "setSoftwareSelfCoding->VenturesView.swift"
  ],
  "tab": [
   "PRESENTATION",
@@ -2069,11 +2069,11 @@
  ],
  "talkstaff": [
   "COVERED_UI",
-  "raise->VenturesView.swift/CompanyTeam.swift"
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
  ],
  "tcAS": [
-  "ENGINE_ONLY",
-  "create (Engine/Sources/Businesses/CompanySetup.swift:277)"
+  "COVERED_UI",
+  "chooseAdviser->CompanyCoverage.swift (accountant section; the accountant is also chosen at start-up)"
  ],
  "tg58f": [
   "COVERED_UI",
@@ -2125,11 +2125,11 @@
  ],
  "tnd56set": [
   "COVERED_UI",
-  "bid->CompanyClub.swift/CompanyContracts.swift, price->WorldView.swift/InvestView.swift, quality->Components.swift/CompanyOtherSections.swift, choice->CompanyFranchise.swift/CompanyEquipment.swift"
+  "bid->CompanyClub.swift/CompanyContracts.swift"
  ],
  "toggleins": [
-  "ENGINE_ONLY",
-  "toggleInsurancePolicy (Engine/Sources/Simulation/CompanyTabActions.swift:39)"
+  "COVERED_UI",
+  "toggleInsurancePolicy->CompanyCoverage.swift"
  ],
  "tohold": [
   "COVERED_UI",
@@ -2145,7 +2145,7 @@
  ],
  "trial": [
   "COVERED_UI",
-  "startTrialWeek->CompanyOtherSections.swift"
+  "startTrialWeek->CandidateSheet.swift"
  ],
  "trset": [
   "PRESENTATION",
@@ -2169,7 +2169,7 @@
  ],
  "untilneeded": [
   "COVERED_UI",
-  "App GameStore.untilNeeded loops engine.nextDay (advanceUntilNeeded itself has no caller)"
+  "App->LedgerApp.swift"
  ],
  "verifyag": [
   "COVERED_UI",
@@ -2177,19 +2177,19 @@
  ],
  "vmeet": [
   "COVERED_UI",
-  "lunchWithSupplier->GroupOffice.swift"
+  "lunchWithSupplier->CompanySourcing.swift/GroupOffice.swift"
  ],
  "w17dev": [
   "COVERED_UI",
   "changeBuilders->VenturesView.swift"
  ],
  "w17int": [
-  "ENGINE_ONLY",
-  "setProductInternalPrice (Engine/Sources/Simulation/VentureActions.swift:119)"
+  "COVERED_UI",
+  "setProductInternalPrice->VenturesView.swift"
  ],
  "w17self": [
-  "ENGINE_ONLY",
-  "toggleOwnerHoursOnProduct (Engine/Sources/Simulation/VentureActions.swift:116)"
+  "COVERED_UI",
+  "toggleOwnerHoursOnProduct->VenturesView.swift"
  ],
  "w17use": [
   "COVERED_UI",
@@ -2197,7 +2197,7 @@
  ],
  "warnstaff": [
   "COVERED_UI",
-  "warnStaff->CompanyTeam.swift"
+  "warnStaff->CompanyStaffRoster.swift"
  ],
  "weekrep": [
   "PRESENTATION",
@@ -2212,8 +2212,8 @@
   ""
  ],
  "winduo": [
-  "ENGINE_ONLY",
-  "windUpCompany (Engine/Sources/Simulation/MiscActions.swift:151)"
+  "COVERED_UI",
+  "windUpCompany->CompanySettings.swift"
  ],
  "wr35co": [
   "PRESENTATION",

@@ -4,13 +4,8 @@ import GameCore
 import Finance
 import Simulation
 
-/// The Money tab: what is owed and coming, the bank, investments, taxes, where the money goes, and the books.
-struct MoneyView: View {
-    var body: some View { NavigationStack { FinanceView() } }
-}
-
 /// Finance & taxes: what is owed, what is coming, where the money goes, and the books. Everything comes from `FinanceOverview`.
-/// For the whole empire (the Money tab) it also holds the bank and investments; for one company only that company's money.
+/// For the whole empire (Group > Money) it also holds the bank and investments; for one company only that company's money.
 struct FinanceView: View {
     typealias Section = MoneySection
     @EnvironmentObject var store: GameStore

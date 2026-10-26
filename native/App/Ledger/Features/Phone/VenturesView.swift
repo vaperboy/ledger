@@ -242,6 +242,41 @@ private struct FoundedCard: View {
                             }
                         }
                     }
+                    if !users.isEmpty || !p.usedBy.isEmpty {
+                        HStack {
+                            Text("Your companies pay").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            Spacer()
+                            ForEach([0, 50, 100], id: \.self) { pct in
+                                Button("\(pct)%") {
+                                    store.act { $0.setProductInternalPrice(startupID: f.id, percent: Double(pct)) }
+                                    store.show("Your own companies pay \(pct)% of the list price for \(f.productName.isEmpty ? "the product" : f.productName).", tone: "n")
+                                }.buttonStyle(SmallOutlineButtonStyle()).opacity(Int(p.internalPrice.rounded()) == pct ? 1 : 0.5)
+                            }
+                        }
+                    }
+                    let rivals = engine.rivalTargetsForProduct(startupID: f.id)
+                    if !rivals.isEmpty {
+                        Text("Sell it to rivals").capsLabel(Theme.ivoryFaint).padding(.top, 4)
+                        ForEach(rivals) { r in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(r.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                                    Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int((r.odds * 100).rounded()))% chance they sign · relationship \(Int(r.relationship.rounded())) of 100")
+                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                                Spacer()
+                                if !r.alreadyCustomer {
+                                    Button("Pitch") {
+                                        switch store.act({ $0.pitchProductToRival(startupID: f.id, rivalID: r.id) }) {
+                                        case .some(.some(true)): Haptics.success(); store.show("\(r.name) signed up for \(f.name).", tone: "good")
+                                        case .some(.some(false)): store.show("\(r.name) said no this time. You can ask again in a few weeks.", tone: "warn")
+                                        default: store.show("That pitch is not possible now.", tone: "warn")
+                                        }
+                                    }.buttonStyle(SmallOutlineButtonStyle()).disabled(r.waitWeeks > 0)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -453,6 +453,7 @@ struct EquipmentShopView: View {
     @State private var selected: String? = nil
     @State private var quantity = 0
     @State private var finance = false
+    @State private var pendingOwn: PendingAction?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let need = e.equipmentNeeds(companyID: companyID).first(where: { $0.equipmentID == equipmentID }) {
@@ -476,6 +477,7 @@ struct EquipmentShopView: View {
                         .init(label: "Needed", value: need.need > 0 ? "\(Int(need.need))" : "–"),
                         .init(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory),
                     ])
+                    if need.kind == "soft" { ownSoftware(e, need, cur) }
                     if need.isVehicle { vehicles(e, co, need, current, cur) }
                     else if current == .used { used(e, co, need, cur) }
                     else if need.subscription && current == .new { plans(e, co, need, cur) }
@@ -485,6 +487,7 @@ struct EquipmentShopView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            .confirmAction($pendingOwn)
             .ledgerBackground()
             .navigationTitle("Shop")
             .navigationBarTitleDisplayMode(.inline)
@@ -551,6 +554,44 @@ struct EquipmentShopView: View {
                 Button(lease ? "Lease \(q)" : one ? "Buy licence" : "Buy \(q)") {
                     report(store.act { $0.buyEquipmentItem(companyID: companyID, equipmentID: equipmentID, offer: sel, quantity: q, payment: lease ? .lease : useFinance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
                 }.buttonStyle(GoldButtonStyle())
+            }
+        }
+    }
+
+    // MARK: Your own software
+
+    /// A product one of your own companies builds that does this job: the buyer pays the producer its internal price (set where the product is managed).
+    @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
+        let offers = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
+        if !offers.isEmpty {
+            LedgerSection(title: "From your own companies", trailing: { Text("\(offers.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
+                        let producer = e.state.company(o.producerID)?.name ?? "your company"
+                        if n > 0 { Hairline() }
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text("Built by \(producer) · \(o.modelName.lowercased())" + (o.tested ? " · test version: less reliable" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Text(o.cost == 0 ? "free" : cur.tidyShort(o.cost) + (o.monthly ? "/mo" : "")).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Button("Use it") { confirmOwn(o, producer, cur) }.buttonStyle(QuietButtonStyle())
+                        }.padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    private func confirmOwn(_ o: SoftwareProducts.Offer, _ producer: String, _ cur: Currency) {
+        let id = companyID, equip = equipmentID
+        let price = o.cost == 0 ? "at no charge" : "for \(cur.tidyDisplay(o.cost))" + (o.monthly ? " a month" : " once")
+        pendingOwn = PendingAction(title: "Use \(o.name)?", message: "This company takes \(o.name) from \(producer) \(price); the money goes to \(producer). " + (o.tested ? "It is still a test version and may let you down. " : "") + "It replaces any other software of this kind here.", button: "Use it") {
+            switch store.act({ $0.useOwnSoftware(companyID: id, equipmentID: equip, producerID: o.producerID) }) {
+            case .ok?: Haptics.success(); store.show("Now using \(o.name) from \(producer).", tone: "good")
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
+            default: Haptics.warning(); store.show("Not possible.", tone: "warn")
             }
         }
     }

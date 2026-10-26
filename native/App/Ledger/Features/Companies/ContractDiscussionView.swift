@@ -102,6 +102,11 @@ struct ContractDiscussionView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivory)
                     partWay(talk, cur)
+                    Button("Drop this talk") {
+                        _ = store.act { $0.contractWithdraw(personID: personID) }
+                        reply = ""
+                        store.show("Talk dropped. Nothing changes for \(first(n)).", tone: "n")
+                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 }
             }
         }
