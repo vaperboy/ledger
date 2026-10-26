@@ -138,7 +138,7 @@ public extension GameEngine {
             let country = context.country(of: co, s)
             if Payday.hasPayroll(co) {
                 let np = Payday.nextPay(co, config: cfg, today: today)
-                let est = (co.payables["wages"] ?? 0) + Payday.weeklyWageCost(co, employerFactor: country.employerCostFactor) * Double(max(0, (np - today) / 7))
+                let est = (co.payables["wages"] ?? 0) + Payday.weeklyWageCost(co, country: country) * Double(max(0, (np - today) / 7))
                 let mode = Payday.mode(of: co, trade: bd, config: cfg)
                 add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, essential: true, company: co.id)
             }

@@ -40,19 +40,25 @@ public enum CompanyCosts {
         return c
     }
 
+    /// The standing payroll of one week, employer on-cost included: staff pay with the cover for paid leave and sick days, plus the manager.
+    /// The one function behind both the accrual (`wages`) and every payroll estimate, so the two cannot drift apart. Each wage carries its own
+    /// on-cost rate (`Country.payrollFactor`), which matters where contributions are capped (Mexico). Commission is not included.
+    public static func standingWeeklyPayroll(_ co: Company, country: Country, skipOffSeason: Bool = true) -> Double {
+        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
+        var cost = 0.0
+        for m in co.staff where !(skipOffSeason && m.isOffSeason) { cost += m.monthlyWage * 12 / 52 * holiday * country.payrollFactor(monthlyWage: m.monthlyWage) }
+        if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
+        return cost
+    }
+
     /// Accrue this week's payroll. `factor` < 1 for a closed company. Returns the cost incl. employer charges.
     @discardableResult
     public static func wages(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, data: GameData, factor f: Double = 1) -> Double {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
-        var gross = 0.0
-        for m in co.staff where !m.isOffSeason { gross += m.monthlyWage * 12 / 52 * holiday }
-        gross += co.status == .closed ? 0 : commission(&co, bd, w)
-        if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
-        gross *= f
-        let cost = gross * country.employerCostFactor
+        let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
+        let cost = (standingWeeklyPayroll(co, country: country) + commissionPay * country.employerCostFactor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
         let bonus = co.num("bnPend") * country.employerCostFactor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }

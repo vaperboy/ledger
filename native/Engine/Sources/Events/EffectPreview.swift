@@ -43,9 +43,6 @@ public enum EffectPreview {
         return out
     }
 
-    // Whole thousands are written at the reference price level and scaled to the company's country (see EventEngine.apply).
-    static func whole(_ v: Double, _ cur: Currency) -> Double {
-        let a = abs(v)
-        return a == a.rounded() && a.truncatingRemainder(dividingBy: 1000) == 0 ? cur.scaledPrice(a) : a
-    }
+    // Amounts are already in the company's money (scaled in `EventEngine.resolve`).
+    static func whole(_ v: Double, _ cur: Currency) -> Double { abs(v) }
 }

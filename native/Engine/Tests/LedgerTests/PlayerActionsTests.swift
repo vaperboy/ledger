@@ -55,11 +55,11 @@ final class PreviewAndAdvisorTests: XCTestCase {
 
     func testFirstStepsAndSuggestionsFollowTheGame() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
-        XCTAssertEqual(try XCTUnwrap(e.firstStepRewards).filter { $0.done }.count, 0)
+        XCTAssertEqual(e.firstStepRewards?.filter { $0.done }.count, 0)
         XCTAssertTrue(e.suggestions().contains { $0.action == .newCompany })
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
         guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 10_000_000) else { return XCTFail() }
-        XCTAssertTrue(try XCTUnwrap(e.firstStepRewards).first { $0.id == "co" }!.done)
+        XCTAssertTrue(e.firstStepRewards?.first { $0.id == "co" }?.done == true)
         for _ in 0..<10 { e.nextDay() }
         let h = e.dayHistory
         XCTAssertEqual(h.netWorth.count, 11, "one history entry for the start and one per day")

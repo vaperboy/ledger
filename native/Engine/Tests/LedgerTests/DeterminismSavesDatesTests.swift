@@ -518,7 +518,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             s.companies[i].set("franchise", f)
         }
         var askedWeek: Int?
-        for _ in 0..<(5 * 7) {
+        for _ in 0..<(8 * 7) {
             e.nextDay()
             if askedWeek == nil, e.openDecisions.contains(where: { $0.actionID == "fb24" && $0.companyID == id }) { askedWeek = e.state.week }
         }

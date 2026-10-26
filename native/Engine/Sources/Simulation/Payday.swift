@@ -174,9 +174,7 @@ public enum Payday {
     static func hasPayroll(_ co: Company) -> Bool { payslips(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
     /// What payroll costs in a week. Original: `weekWages`.
-    static func weeklyWageCost(_ co: Company, employerFactor oc: Double) -> Double {
-        (co.staff.reduce(0) { $0 + $1.monthlyWage } + co.managerMonthlyWage) * 12 / 52 * oc
-    }
+    static func weeklyWageCost(_ co: Company, country: Country) -> Double { CompanyCosts.standingWeeklyPayroll(co, country: country) }
 
     /// Fee when the accountant or the manager's software runs payroll. Original: `feeOf`.
     static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double {
@@ -209,7 +207,7 @@ public enum Payday {
         let payMonth = cfg.lateSince != nil ? cfg.lateMonth : mi
         if cfg.ownerPaidMonth != payMonth && ownerOnPayroll(co) {
             cfg.ownerPaidMonth = payMonth
-            let cost = co.ownerMonthlySalary * country.employerCostFactor
+            let cost = co.ownerMonthlySalary * country.payrollFactor(monthlyWage: co.ownerMonthlySalary)
             s.companies[i].addPayable("wages", cost)
             Payments.book(&s, companyID: co.id, category: "wages", amount: cost)
             co = s.companies[i]
@@ -477,7 +475,7 @@ public enum Payday {
                 cfg.reminderMonth = key
                 s.companies[i].set("pr29", cfg.json)
                 let country = context.country(of: s.companies[i], s)
-                let est = (s.companies[i].payables["wages"] ?? 0) + weeklyWageCost(s.companies[i], employerFactor: country.employerCostFactor) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
+                let est = (s.companies[i].payables["wages"] ?? 0) + weeklyWageCost(s.companies[i], country: country) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
                 if md == .manual && cfg.approvedMonth != key {
                     if s.policy.autoPayroll && s.companies[i].cash >= est {
                         // Routine payroll the company can pay: approved by the owner's standing policy, no question asked.
