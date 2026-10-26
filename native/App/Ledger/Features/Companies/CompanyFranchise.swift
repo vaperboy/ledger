@@ -34,7 +34,8 @@ struct FranchiseeCard: View {
         }
         .confirmationDialog("Leave the franchise?", isPresented: $confirmLeave, titleVisibility: .visible) {
             Button("Pay \(cur.tidyShort(buyout)) and leave", role: .destructive) {
-                if store.act({ $0.leaveFranchise(companyID: company.id) }) == true { Haptics.success(); store.show("\(company.name) is now independent.") }
+                if store.act({ $0.leaveFranchise(companyID: company.id) }) == true { Haptics.success(); store.show("\(company.name) is now independent.", tone: "good") }
+                else { Haptics.warning(); store.show("The franchise could not be left now. The company may not have the cash for the buyout.", tone: "warn") }
             }
         } message: {
             Text("You pay \(cur.tidyShort(buyout)) to buy out the contract (including any royalties you owe), put up new signs, and lose much of the brand awareness. No more royalties after that.")
@@ -104,9 +105,9 @@ struct FranchisorCard: View {
                 Button("Apply for franchise documents · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")))") {
                     switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "fran") }) {
                     case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                    case .notYet(let why)?: store.show(why, tone: "warn")
-                    case .notEnoughCash?: store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                    default: break
+                    case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
+                    default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
                     }
                 }.buttonStyle(QuietButtonStyle()).padding(.top, 10)
             } else {
@@ -139,6 +140,7 @@ struct FranchisorCard: View {
             Button("Launch franchise") {
                 let f = fee > 0 ? fee : cur.scaledPrice(150_000)
                 if store.act({ $0.launchFranchise(companyID: company.id, entryFee: f, royalty: royalty, support: support) }) == .ok { Haptics.success(); store.show("Franchise launched.", tone: "good") }
+                else { Haptics.warning(); store.show("The franchise could not be launched now.", tone: "warn") }
             }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
             Text("Applicants come as the brand grows. You agree the terms with each one in a talk; units pay the fee and royalties, struggle, renew, leave or are ended.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }.padding(.top, 10)
@@ -150,14 +152,16 @@ struct FranchisorCard: View {
         let f = engine.franchiseSystem(companyID: company.id)
         let units = f["units"].array
         let apps = engine.franchiseApplicants(companyID: company.id)
-        KeyFigures(items: [
+        let setupWords: [String] = ["Franchisee pays", "Half covered", "Fully covered"]
+        let items: [KeyFigures.Item] = [
             .init(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double)),
             .init(label: "Units open", value: "\(units.count)"),
             .init(label: "Income last week", value: cur.tidyShort(f["income"].double)),
             .init(label: "Fee", value: cur.tidyShort(f["fee"].double)),
             .init(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 0)),
-            .init(label: "Set-up", value: ["Franchisee pays", "Half covered", "Fully covered"][min(2, f["supp"].int)]),
-        ])
+            .init(label: "Set-up", value: setupWords[min(2, max(0, f["supp"].int))]),
+        ]
+        KeyFigures(items: items)
         if !units.isEmpty {
             Text("Units").capsLabel(Theme.ivoryFaint).padding(.top, 10)
             ForEach(Array(units.enumerated()), id: \.offset) { n, u in
@@ -171,7 +175,7 @@ struct FranchisorCard: View {
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(cur.tidyShort(u["rev"].double) + " / wk").font(.system(size: 13.5).monospacedDigit()).foregroundStyle(u["prof"].double < 0 ? Theme.loss : Theme.ivory)
-                        Button("End contract") { terminate = u["id"].int }.font(.system(size: 11.5)).foregroundStyle(Theme.loss).buttonStyle(.plain)
+                        Button("End contract…") { terminate = u["id"].int }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                     }
                 }.padding(.vertical, 9)
             }
@@ -212,8 +216,8 @@ struct FranchisorCard: View {
                     switch store.act({ $0.sellMasterFranchise(companyID: company.id, country: masterCountry.isEmpty ? countries[0].code : masterCountry) }) {
                     case .ok?: Haptics.success(); store.show("Master franchise signed.", tone: "good")
                     case .cash?: store.show("Not enough cash for the legal work.", tone: "warn")
-                    case .banned(let why)?: store.show(why, tone: "warn")
-                    default: store.show("Not possible.", tone: "warn")
+                    case .banned(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                    default: Haptics.warning(); store.show("Not possible.", tone: "warn")
                     }
                 }.buttonStyle(QuietButtonStyle())
             }

@@ -69,15 +69,7 @@ struct AcquisitionSheet: View {
                                 }
                             }
                         }
-                        LedgerSection("Cash and costs") {
-                            VStack(spacing: 0) {
-                                FlatRow(label: "Price to the owner", value: cur.tidyShort(price), rule: false)
-                                if ch.extraCost > 0 { FlatRow(label: ownsCompany(ch.kind) ? "Set-up money for the new company" : "Extra cost of this choice", value: cur.tidyShort(ch.extraCost)) }
-                                if ch.loan > 0 { FlatRow(label: "Loan from your bank", value: "−" + cur.tidyShort(ch.loan), sub: "\(cur.tidyShort(ch.loanMonthly)) a month for 8 years at \(Currency.percent(ch.loanRate, decimals: 2))", tint: Theme.caution) }
-                                FlatRow(label: "Cash you need", value: cur.tidyShort(ch.cashNeeded), sub: ownsCompany(ch.kind) ? "includes a \(cur.tidyShort(plan.reserve)) reserve the purchase insists on" : "", tint: ch.affordable ? Theme.ivory : Theme.loss)
-                                FlatRow(label: "You have", value: cur.tidyShort(ownsCompany(ch.kind) ? plan.liquid : plan.cash), sub: ownsCompany(ch.kind) ? "cash and savings" : "current account")
-                            }
-                        }
+                        costs(plan, ch, price: price, cur: cur)
                         LedgerSection("What changes") {
                             VStack(alignment: .leading, spacing: 8) {
                                 labelled("You get", fx.gets)
@@ -102,6 +94,24 @@ struct AcquisitionSheet: View {
             .navigationTitle("Acquisition").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
             .confirmAction($pending)
+        }
+    }
+
+    @ViewBuilder private func costs(_ plan: AcquisitionPlan, _ ch: AcquisitionPlan.Choice, price: Double, cur: Currency) -> some View {
+        let owns: Bool = ownsCompany(ch.kind)
+        let extraLabel: String = owns ? "Set-up money for the new company" : "Extra cost of this choice"
+        let loanSub: String = "\(cur.tidyShort(ch.loanMonthly)) a month for 8 years at \(Currency.percent(ch.loanRate, decimals: 2))"
+        let needSub: String = owns ? "includes a \(cur.tidyShort(plan.reserve)) reserve the purchase insists on" : ""
+        let have: Double = owns ? plan.liquid : plan.cash
+        let haveSub: String = owns ? "cash and savings" : "current account"
+        LedgerSection("Cash and costs") {
+            VStack(spacing: 0) {
+                FlatRow(label: "Price to the owner", value: cur.tidyShort(price), rule: false)
+                if ch.extraCost > 0 { FlatRow(label: extraLabel, value: cur.tidyShort(ch.extraCost)) }
+                if ch.loan > 0 { FlatRow(label: "Loan from your bank", value: "−" + cur.tidyShort(ch.loan), sub: loanSub, tint: Theme.caution) }
+                FlatRow(label: "Cash you need", value: cur.tidyShort(ch.cashNeeded), sub: needSub, tint: ch.affordable ? Theme.ivory : Theme.loss)
+                FlatRow(label: "You have", value: cur.tidyShort(have), sub: haveSub)
+            }
         }
     }
 

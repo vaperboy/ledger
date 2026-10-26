@@ -87,7 +87,7 @@ struct GrowIntoChain: View {
                         case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
                         case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                        default: break
+                        default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
                         }
                     }.buttonStyle(QuietButtonStyle()).padding(.top, 10).disabled(reqs.contains { !$0.ok })
                 }
