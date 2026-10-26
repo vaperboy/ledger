@@ -36,6 +36,8 @@ public struct PayrollOverview: Equatable, Sendable {
     public var lateReason: String
     public var wagesOwed: Double
     public var companyCash: Double
+    /// What the last payroll run could not pay (0 when none is outstanding): feeds the late-payroll display.
+    public var wageShortfall: Double = 0
 }
 
 public enum PayrollApprovalResult: Equatable, Sendable { case approved, alreadyApproved, notNeeded(String) }
@@ -73,7 +75,7 @@ public extension GameEngine {
                                nextPayDay: next, nextPayText: Payday.dateText(next),
                                needsApproval: mode == .manual && Payday.hasPayroll(co) && !late && cfg.paidMonth < key && cfg.approvedMonth != key,
                                isApproved: cfg.approvedMonth == key && cfg.paidMonth < key, autoApproves: s.policy.autoPayroll, isLate: late, lateReason: reason,
-                               wagesOwed: co.payables["wages"] ?? 0, companyCash: co.cash)
+                               wagesOwed: co.payables["wages"] ?? 0, companyCash: co.cash, wageShortfall: co.wageShortfall)
     }
 
     /// The owner approves the coming pay day's payroll (what the Inbox "Approve payroll" message does, for one company).
