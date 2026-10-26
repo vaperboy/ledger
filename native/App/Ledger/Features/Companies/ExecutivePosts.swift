@@ -104,8 +104,8 @@ struct ExecutivePosts: View {
                                     setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
                                     setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
-                    Button("Let go") { releasing = p }.foregroundStyle(Theme.loss)
-                }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                    Button("Let go") { releasing = p }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                }.buttonStyle(QuietButtonStyle())
             } else {
                 searchButton(p, cur)
             }

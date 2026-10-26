@@ -145,7 +145,7 @@ struct GroupStructureOverview: View {
                         }.buttonStyle(.plain)
                     }
                     if rows.count > 8 && q.isEmpty {
-                        Button(aloneAll ? "Show fewer" : "Show all \(rows.count)") { aloneAll.toggle() }.font(.system(size: 12)).foregroundStyle(Theme.gold).buttonStyle(.plain).padding(.top, 6)
+                        Button(aloneAll ? "Show fewer" : "Show all \(rows.count)") { aloneAll.toggle() }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
                     }
                     Text("Profit is the last twelve months. Comparisons across all companies stay under Company.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
                 }
