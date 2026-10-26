@@ -1,5 +1,51 @@
 # Design rules for screen work (binding for every design agent)
 
+## REVISION 26 Oct 2026 (owner) - supersedes any conflicting older line below and in design/STYLE_IVORY_LEDGER.md
+
+### 1. Visual identity
+- Ivory Ledger: dark page, flat sections, hairline dividers, restrained champagne accents, serif titles and hero figures, small champagne section labels, tabular numerals.
+- Flat is the default. NO UNNECESSARY cards or boxes: a compact card or bordered container is allowed for genuinely independent entities, financial summaries, warnings or complex comparisons when it improves scanning. Never a decorative card to fill space.
+- Colour carries meaning (green gain, red loss, amber warning, champagne primary action) and never alone: pair with a sign, icon or word.
+- Next Day is the only persistent primary navigation/game-advance control with the filled champagne treatment. Selected, destructive, disabled and urgent states get their own distinct treatments. Do not make every button equally important.
+- Clear contrast, legible text, sensible tap targets, iPhone and iPad layouts. Same design system, not identical screens: a balance sheet, employee profile, franchise agreement and inbox have different needs.
+
+### 2. Where things live
+- Company: one company's operations, finances, performance and company-local workforce. Company-local staff and operations are distinct from group-level executives, shared services and chain/franchise oversight.
+- Team: the people and management hierarchy the player is responsible for (roles, delegation, authority, scope). It must not dump every employee into the management overview, but ordinary workers and profiles stay reachable where the user needs to manage them.
+- Group: ownership and structure: holdings, chains, franchises, boards, stakes, genuine group finances and services.
+- Projects, Inbox, Money keep their own destinations. Never a tab named Assistant, Regional, Chief or similar. Do not invent destinations or duplicate systems to expose a feature.
+- One underlying person record; role, employer and scope shown accurately; views filter to the relevant people by default; never duplicate records.
+- Default, not absolute: people decisions under Team, local operations under Company, structure under Group. Resolve edge cases by the scope of the task and the entity managed (a store manager's day-to-day staffing sits under that store; hiring a group executive or changing chain-wide authority sits under Team or Group by scope).
+- Business scope: company actions affect one company; chain actions only that chain; franchise rules follow the agreement; group actions only the entities they govern. Do not assume separate chains share employees, policies, suppliers or marketing without an explicit arrangement. Several entry points to one action must use the same engine action and the same validation and consequences.
+
+### 3. Navigation
+- No side-scrolling menus. Company overview: Overview, Team, Finances, Operations, secondary under More. Adapt spacing/layout to device size instead of squeezing a row.
+- Keep navigation history, tab state and scroll position where practical; clear ways back; returning from a task never lands on an unrelated default.
+
+### 4. Screen quality and interaction
+- Most decision-relevant first: cash and liquidity, performance, material risks, overdue obligations, decisions needed. Do not turn screens into dashboards of equally loud numbers. Secondary data compact; headings selective.
+- Interactive rows are distinguishable (chevron/button style/accent), whole intended tap target works, accessible labels and states.
+- Confirmation depends on risk and reversibility: required for material spending, borrowing, firing, closing a business, ownership changes and irreversible actions; NOT for routine reversible tasks. Always show relevant cost, consequence and risk before the user commits.
+- Every action handles success, refusal and failure honestly (show success only after success, explain refusals). Plain navigation needs no toast.
+- Empty/locked/unavailable states are real, explain why and what unlocks them; never fabricate balances, staff, opportunities or results.
+- Money: always the central currency/number formatters, in the currency of the relevant company, account, country or transaction (not always the home currency); never build money strings or hardcode symbols.
+- Support accessibility settings and text scaling; layouts must survive long figures and companies with many staff and locations.
+
+### 5. Gameplay and architecture
+- Game rules, validation, calculations and financial effects live in the engine, never in views. Views render state and send existing actions.
+- A visual redesign must not silently change mechanics, saves, engine actions or calculations.
+- Business type decides which operating systems apply; chain, franchise and group add only their own rules.
+
+### 6. Economics
+- No arbitrary growth floors/caps, no guaranteed profit from upgrades or sales methods; outcomes emerge from decisions, management, demand, competition, costs, capital and modelled constraints. Every operating choice has realistic costs, requirements, trade-offs and uncertainty and may be unsuitable. No hidden rubber-banding; fix the economic error instead of masking it. Test strong and weak outcomes across businesses and seeds; unusual results are signals to investigate.
+
+### 7. Implementation
+- Inspect before declaring missing/broken; integrate into the existing system; no duplicate implementations or needless wrappers; focused changes; no overlapping agents on the same files; preserve saves and uncommitted work; report real changes, verified tests, remaining issues and untested areas.
+
+---
+(Older rules follow; where they conflict with the revision above, the revision wins.)
+
+
 Owner's rules, collected in one place. Engine behaviour, balance and sales methods are also bound by `SIMULATION_RULES.md`. Each agent works on ONE category only and reads this file first.
 
 ## Where things live (one primary home per feature)
