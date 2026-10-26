@@ -12,7 +12,15 @@ final class RentalFinanceDifferentialTests: XCTestCase {
         // Intended difference, not a regression: the Swift game has named, living rivals (strategy, fortune) whose strength moves the
         // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
         if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
+        Self.originalInflation(&s)
         return (s, try Golden.load("rf_oracle"), try GameData.bundled())
+    }
+
+    /// Intended difference, not a regression: the original priced inflation as pow(1 + rate, week / 52), i.e. today's rate applied back to
+    /// week 0. The Swift game keeps a cumulative index (each week's inflation applied once, Economy.inflationIndex), which a save from the
+    /// original does not have (it reads as 1). To compare everything else exactly, put the original's figure into the index.
+    static func originalInflation(_ s: inout GameState) {
+        s.economy.inflationIndex = pow(1 + s.economy.inflation, Double(s.week) / 52)
     }
 
     func index(_ s: GameState, _ g: JSONValue, _ key: String) -> Int { s.companyIndex(g["ids"][key].int)! }
@@ -40,6 +48,7 @@ final class RentalFinanceDifferentialTests: XCTestCase {
             guard let bd = data.catalog[s.companies[i].type] else { XCTFail("no trade"); continue }
             for (n, row) in rows.array.enumerated() {
                 s.week += 1
+                Self.originalInflation(&s)
                 let ctx = RentalFinance.week(&s, i, bd, data: data)
                 let tag = "\(key)#\(n)"
                 let o = row["ctx"]
