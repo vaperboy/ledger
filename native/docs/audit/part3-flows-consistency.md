@@ -35,4 +35,36 @@ Intercompany VAT (`IntercompanySupply.transferVat`: supplier owes, buyer reclaim
 4. A closed or sold company's seven-day remainder is now settled into cash before liquidation; a sale price is fixed by the offer, so the buyer's gain or loss of that remainder is not priced.
 
 ## Not audited
-Repairs, leases beyond the line above, project, rental, finance, energy, salmon, holding and club weekly models, bonuses, perks and commission postings were not read in this pass.
+Repairs, leases beyond the line above, project, rental, finance, energy, salmon, holding and club weekly models, bonuses, perks and commission postings were not read in this pass (see part 3b below).
+
+---
+
+# Part 3b: repairs, leases, vehicles, special models, bonuses, perks, commission
+
+Branch worktree-agent-a2e144f76b512b20b. Test: `Tests/LedgerTests/SpecialModelMoneyTests.swift` (one seeded game per model: construction, developer, rental, bank, insurer, fund, power, salmon, football club, holding with a cafe; 52 weeks, `Ledger.gaps` empty, the 26 weekly reports add up to the books of the group and of each company). Passed locally. Reports are differences of the books, so "report = books" holds wherever a posting uses a books category; the check is that no money is lost between them.
+
+| Item | Verdict |
+|---|---|
+| Repairs and breakdowns (`EquipmentUnits`, `SupplyTerms.payRepairs`) | SAFE: cash and books `oth` through `Payments`, or booked at once with an invoice on repair terms; gaps empty. No VAT on repairs (unsure 1) |
+| Vehicle leases, fuel, motor insurance, vehicle tax (`VehicleRunning`, `CompanyWeek`) | SAFE: one path; fuel in cost of sales for fuel trades, own line otherwise (no double count); lease payments `oth`, no upkeep on leased vehicles. The mileage double count from the stage-2 audit is gone (only `PersonalEquipment` books it) |
+| Manager target bonuses (monthly, year-end) were paid straight from cash with no employer charges, while profit bonus, worker bonuses and commission carry `employerCostFactor` | DEFECT, fixed: added to `bnPend` and paid through payroll (`CompanyCosts.wages`): same charges, same payable, same books line. Paid on payday instead of the day it is judged |
+| Holding company interest on its own cash: trade data had VAT "std" and 20% business share, so interest was charged VAT (cash created, VAT owed) and 20% of it was invoiced with a 1.2% chance of default | DEFECT, fixed in `trades.json` (`hold`: vat "zero", b2b 0, as the bank and insurer already are). Test `testHoldingYearAndNoVATOnItsOwnInterest` |
+| Project (milestones, receivables, bad debts) | SAFE: `payJob` cash = amount x (1+VAT) x cash share, the rest is a receivable in `book` (default chance, VAT reclaimed on write-off). Retention is not modelled, only milestones 30/40/30 |
+| Rental (rent, vacancy, mortgage, valuation) | SAFE for cash and gaps: mortgage cash in/out through `Ledger`, interest in `int`; revaluation goes to `reval`, not the books; a sale books the gain over current value as `rev` or `loss` |
+| Finance (premiums, claims, deposits, loan book, fees) | SAFE: new loans and deposits move cash without P&L; loan losses `loss` with the book reduced; performance fee `rev`; storm claims `loss` |
+| Energy (build, revenue, hedge, depletion) | SAFE: capex through `Payments` with no category, depletion booked `dep`, discovery sale `rev` |
+| Salmon cohorts and harvest | SAFE for cash and gaps. Smolt expensed as `cogs` when stocked, revenue only at harvest, so profit is lumpy (unsure 4) |
+| Holding dividends up and down, tax group | SAFE in the test year (gaps empty, reports agree); dividends via `Payments.payDividend` |
+| Football (wages, transfers, prize money) | SAFE for cash and gaps. Signing fees are capex amortised in `dep`; prize money and transfer income are `rev` |
+| Staff perks | SAFE for posting: `wages`, weekly, once (employer charges: unsure 5) |
+| Commission | SAFE: accrued in `CompanyCosts.wages` with `employerCostFactor`, in `wages` once |
+| Worker bonus plans | SAFE: `bnPend` through payroll |
+| Own companies as suppliers, cars, perks, commission (stage-2 batches) | Partly landed: `VehicleRunning` (2B/2E), `PayPlans`, `WorkerBonus` (3C, 4B), `StaffPerks` with role groups (3A). Not re-audited line by line |
+
+## Unsure, for the owner (not changed)
+1. Repairs, own-line fuel, leases and premises upkeep carry no VAT, while overhead carries half-VAT (same question as item 1 above).
+2. Rental: property tax is part of the cost of sales, so the input-VAT reclaim in `CompanyWeek.book` is also applied to it (property tax has no VAT). Small; only for a VAT-registered rental company in a standard category (parking).
+3. Football: players' and coaches' wages are in cost of sales (`cogs`), so a club's wages line in reports is zero. A sold player's remaining book value is not written off.
+4. Salmon: smolt cost is expensed at stocking instead of held as stock until harvest.
+5. Perks bypass employer charges (benefits in kind); depends on country rules.
+6. Retention on project payments is not modelled (design question, not a posting defect).

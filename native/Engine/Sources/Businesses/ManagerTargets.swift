@@ -12,7 +12,7 @@ import Finance
 /// set by the first level above the manager (regional, chain or managing director) or by you. Hitting targets pays the manager a bonus,
 /// lifts mood and the scorecard (`Headquarters.review` reads the log); missing most of them brings a talk, and after three bad months
 /// the boss asks whether to replace the manager. The budget for the year is drafted from last year, tightened by the boss or approved
-/// by you; meeting both sales and profit at the year end pays a year-end bonus. All of it is paid through `Payments.companyPays`.
+/// by you; meeting both sales and profit at the year end pays a year-end bonus. All of it goes through payroll (`bnPend`, then `CompanyCosts.wages`), so it carries the employer's charges.
 ///
 /// Saved on the company as `tg58` {m (this month's targets), y (the budget), log, bo (bonus level 0...2), bad, own, ownMode, easy, push,
 /// warn58, years}, the same shape as the original so saves carry over. Month numbers are `GameCalendar.monthIndex` (year * 12 + month).
@@ -225,7 +225,8 @@ public enum ManagerTargets {
         let n = hit.values.filter { $0 }.count, managed = co.managerID != nil
         let bonus = managed ? jsRound(Double(n) * bonusRate(t) * co.managerMonthlyWage) : 0
         if bonus > 0 {
-            Payments.companyPays(&s, companyID: co.id, amount: bonus, category: "wages", label: "Bonus: monthly targets met")
+            // Paid through payroll (`bnPend`, picked up by `CompanyCosts.wages`) like every other bonus: same employer charges, same payable.
+            s.companies[ci].set("bnPend", s.companies[ci].num("bnPend") + bonus)
             s.companies[ci].set("mgrBonusLast", bonus)
         }
         if managed { s.companies[ci].set("mood", clamp(ManagerModel.mood(co) + [-4, -1, 2, 4][n] + (bonus > 0 ? 1 : 0), 0, 100)) }
@@ -271,7 +272,7 @@ public enum ManagerTargets {
         var bonus = 0.0
         if managed && okR && okP {
             bonus = jsRound(co.managerMonthlyWage * [0, 1, 1.5][min(2, max(0, t["bo"].isNull ? 1 : t["bo"].int))])
-            if bonus > 0 { Payments.companyPays(&s, companyID: co.id, amount: bonus, category: "wages", label: "Bonus: the year's budget met") }
+            if bonus > 0 { s.companies[ci].set("bnPend", s.companies[ci].num("bnPend") + bonus) }   // through payroll, with the employer's charges
         }
         if managed { s.companies[ci].set("mood", clamp(ManagerModel.mood(co) + (okR && okP ? 8 : !okR && !okP ? -4 : 1), 0, 100)) }
         var years = t["years"].array
