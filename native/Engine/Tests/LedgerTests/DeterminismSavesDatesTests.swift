@@ -425,7 +425,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertTrue(biz.contains { $0.note == "last" }, tag("the 36 month loan is paid off and gone"))
         }
 
-        // Year end: company tax falls due 26 weeks later and is paid at the first month close from then on; the personal assessment runs at each year end.
+        // Year end: company tax falls due the country's number of weeks later and is paid at the first month close from then on; the personal assessment runs at each year end.
         let yearEnds = (1...W).filter { GameCalendar.isYearEnd(week: $0) }
         XCTAssertEqual(r.events.filter { $0.kind == "personalYear" }.map { $0.week }, yearEnds, tag("the annual personal tax assessment runs at each year end"))
         for id in r.companies {

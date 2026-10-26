@@ -370,6 +370,7 @@ public struct GameEngine {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
         snapshot()
-        Failure.checkOver(&state, data: data, context: context, liquidate: { s, need in Brokerage.liquidate(&s, need: need); FinanceManager.cashIn(&s, need: need) })
+        let ctx = context
+        Failure.checkOver(&state, data: data, context: ctx, liquidate: { s, need in Brokerage.liquidate(&s, need: need, currency: ctx.homeCurrency(s)); FinanceManager.cashIn(&s, need: need) })
     }
 }

@@ -93,7 +93,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
                 let nw = 400_000_000.0
                 let before = s.cash + s.savings
                 PersonalFinance.yearEnd(&s, context: ctx, netWorth: nw, ownedCompanyValue: 0)
-                let expected = 1_000_000 * c.dividendTax + 400_000 * c.dividendTax + 20_000 * c.dividendTax
+                let expected = 1_000_000 * c.capitalGainsTax + 400_000 * c.dividendTax + 20_000 * c.savingsInterestTax
                     + max(0, nw - c.wealthThreshold) * c.wealthRate
                 XCTAssertEqual(before - (s.cash + s.savings), expected, accuracy: 3, "\(code) year-end tax")
                 XCTAssertEqual(s.tax.gains, 0, "\(code) tax year reset")

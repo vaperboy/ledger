@@ -46,9 +46,16 @@ public enum CompanyCosts {
         var co = s.companies[i]
         let w = World(state: s, data: data)
         let country = w.country(co)
-        let holiday = 1 + LabourRules(country: country).leaveWeeks / 52 * 0.3  // cover for paid leave and sick days
+        let labour = LabourRules(country: country)
+        let holiday = 1 + labour.leaveWeeks / 52 * 0.3  // cover for paid leave (sick pay is by law, below)
         var gross = 0.0
-        for m in co.staff where !m.isOffSeason { gross += m.monthlyWage * 12 / 52 * holiday }
+        for m in co.staff where !m.isOffSeason {
+            let weekly = m.monthlyWage * 12 / 52
+            // Someone who fell sick last week costs what the country's sick-pay law makes the employer pay, not the full wage.
+            if m.sickUntilWeek == s.week {
+                gross += labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: w.inflationIndex)
+            } else { gross += weekly * holiday }
+        }
         gross += co.status == .closed ? 0 : commission(&co, bd, w)
         if co.managerID != nil { gross += co.managerMonthlyWage * 12 / 52 }
         gross *= f

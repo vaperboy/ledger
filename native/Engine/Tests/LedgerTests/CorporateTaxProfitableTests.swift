@@ -6,7 +6,7 @@ import Businesses
 @testable import Simulation
 
 /// Audit part 2: a profitable limited company for one fiscal year in each of the 23 countries.
-/// Tax = rate x (profit - loss carried forward), accrued month by month, settled once due (26 weeks after year end).
+/// Tax = rate x (profit - loss carried forward), accrued month by month, settled once due (the country's `corporateTaxDueWeeks` after year end).
 final class CorporateTaxProfitableTests: XCTestCase {
     func testProfitableLimitedCompanyPaysRateTimesProfitAfterLossCarryInEveryCountry() throws {
         let codes = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1).data.countries.countries.map { $0.code }
@@ -40,7 +40,7 @@ final class CorporateTaxProfitableTests: XCTestCase {
                 let c2 = s.companies[s.companyIndex(id)!]
                 XCTAssertTrue(c2.taxDue, code)
                 XCTAssertEqual(c2.taxPrevYear, expected, accuracy: 1, code)
-                XCTAssertEqual(c2.taxDueWeek, s.week + 26, code)
+                XCTAssertEqual(c2.taxDueWeek, s.week + data.countries.resolve(code, orHome: code).corporateTaxDueWeeks, code)
                 // Not paid early: a month end before the due week leaves the cash alone.
                 Ledger.moveRaw(&s, .company(id), 100_000_000)
                 s.week = c2.taxDueWeek - 1

@@ -148,7 +148,7 @@ final class FinanceOverviewTests: XCTestCase {
         XCTAssertLessThanOrEqual(one.costTotalThisYear, o.costTotalThisYear + 1)
         XCTAssertTrue(o.notes.last?.contains("estimates") ?? false)
         XCTAssertEqual(o.countryName, e.homeCountry.name)
-        XCTAssertEqual(o.rules.count, 7)
+        XCTAssertEqual(o.rules.count, 9)
         XCTAssertTrue(o.licences.allSatisfy { $0.amount >= 0 && !$0.label.contains("{") }, "licence lines are priced and their text tokens resolved")
         XCTAssertTrue(o.basis.hasPrefix("Estimate"), "rates are labelled as estimates until somebody has checked them")
     }

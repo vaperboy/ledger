@@ -43,6 +43,19 @@ public enum Taxes {
         max(0, dividends - max(0, shield)) * c.dividendTax
     }
 
+    /// Tax on realised capital gains of a private investor (`tax.capitalGains`).
+    public static func capitalGainsTax(_ gains: Double, in c: Country) -> Double { max(0, gains) * c.capitalGainsTax }
+
+    /// Tax on savings and deposit interest (`tax.savingsInterest`).
+    public static func savingsInterestTax(_ interest: Double, in c: Country) -> Double { max(0, interest) * c.savingsInterestTax }
+
+    /// The most of a year's profit that carried-forward losses may offset: `free` plus `share` of the profit above it
+    /// (Germany 1M + 60%, France 1M + 50%, the US 80%); the whole profit where the country has no cap.
+    public static func lossOffsetLimit(profit: Double, in c: Country) -> Double {
+        let p = max(0, profit)
+        return min(p, c.lossFree) + c.lossShare * max(0, p - c.lossFree)
+    }
+
     /// Special industry rates (oil, salmon, hydro) fall back to the given default. Original: `specialTax`.
     public static func specialRate(_ kind: String, in c: Country, fallback: Double) -> Double {
         c.specialTax[kind] ?? fallback

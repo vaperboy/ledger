@@ -270,11 +270,11 @@ public extension GameEngine {
 
     mutating func buyInvestment(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> Brokerage.BuyResult {
         var r = Brokerage.BuyResult.notEnoughCash
-        update { s, _, _ in r = Brokerage.buy(&s, kind, symbol, amount: amount) }
+        update { s, _, ctx in r = Brokerage.buy(&s, kind, symbol, amount: amount, currency: ctx.homeCurrency(s)) }
         return r
     }
     mutating func sellInvestment(_ kind: Brokerage.Kind, symbol: String, fraction: Double) {
-        update { s, _, _ in Brokerage.sell(&s, kind, symbol, fraction: fraction) }
+        update { s, _, ctx in Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s)) }
     }
     mutating func moveToSavings(_ amount: Double) -> Bool {
         var ok = false
