@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Employees
 
 /// Runs the Swift finance code on saves produced by the original game and compares with what the original
 /// computed on the same save (Golden/nw_*.json were made by tools/ref/runon.js).
@@ -30,8 +31,15 @@ final class FinanceDifferentialTests: XCTestCase {
             assertClose(CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week), g["ebit12"].double, tol: 1e-9, "ebit12")
             assertClose(CompanyFigures.fixedAssets(co), g["coAssets"].double, tol: 1e-9, "fixed assets")
             assertClose(CompanyFigures.equipmentBookValue(co), g["eqBook"].double, tol: 1e-9, "equipment")
-            assertClose(ctx.weeklyCost(co, s), g["weekCost"].double, tol: 1e-9, "week cost")
-            assertClose(ctx.overdraftRoom(co, s), g["od"].double, tol: 1e-9, "overdraft room")
+            // Deliberate difference from the original (the one Payroll.weeklyCost): standing pay now carries cover for paid leave and sick days
+            // (leaveWeeks / 52 * 0.3 on top of each wage, with its on-cost). The original's coWeekCost had only the on-cost. Everything else
+            // in the week cost, and the overdraft room (three weeks of it), must still match the original exactly.
+            let country = ctx.country(of: co, s)
+            let cover = LabourRules(country: country).leaveWeeks / 52 * 0.3
+            let leaveCover = co.staff.filter { !$0.isOffSeason }.reduce(0.0) { $0 + $1.monthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: $1.monthlyWage) * cover }
+            XCTAssertGreaterThan(leaveCover, 0)
+            assertClose(ctx.weeklyCost(co, s), g["weekCost"].double + leaveCover, tol: 1e-9, "week cost")
+            assertClose(ctx.overdraftRoom(co, s), g["od"].double + 3 * leaveCover, tol: 1e-9, "overdraft room")
         }
     }
 
