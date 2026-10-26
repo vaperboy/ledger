@@ -72,16 +72,23 @@ struct CompanyAccounts: View {
     @ViewBuilder private func balance(_ cur: Currency) -> some View {
         if let b = engine.companyBalanceSheet(companyID: company.id) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
+                if b.equity < 0 {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.loss).padding(.top, 2)
+                        Text("The company owes more than it owns. Banks lend less, and a limited company in this state should be recapitalised or wound up.")
+                            .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 KeyFigures(items: [
                     .init(label: "Owns", value: cur.tidyShort(b.totalAssets)),
                     .init(label: "Owes", value: cur.tidyShort(b.totalDebts), tint: b.totalDebts > 0 ? Theme.loss : Theme.ivory),
-                    .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.gain),
+                    .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.gain, sub: "owns minus owes"),
                 ])
                 LedgerSection(title: "What it owns", trailing: { Text(cur.tidyShort(b.totalAssets)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
                     VStack(spacing: 0) { ForEach(Array(b.assets.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), sub: l.detail, tint: l.amount < 0 ? Theme.loss : Theme.ivory, rule: n > 0) } }
                 }
                 LedgerSection(title: "What it owes", trailing: { Text(cur.tidyShort(b.totalDebts)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
-                    if b.debts.isEmpty { Text("No debts.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+                    if b.debts.isEmpty { Text("No debts.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     VStack(spacing: 0) { ForEach(Array(b.debts.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0) } }
                 }
                 LedgerSection("Equity") {
@@ -91,7 +98,6 @@ struct CompanyAccounts: View {
                         if b.distributed > 0 { FlatRow(label: "Paid out as dividends", value: cur.tidyShort(b.distributed)) }
                         FlatRow(label: "Equity (owns minus owes)", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory)
                     }
-                    if b.equity < 0 { Text("The company owes more than it owns. Banks lend less, and a limited company in this state should be recapitalised or wound up.").font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true) }
                 }
             }
         }
@@ -161,7 +167,7 @@ struct CompanyAccounts: View {
     private func transactions(_ cur: Currency) -> some View {
         let tx = company.transactions
         return LedgerSection(title: "Latest transactions", trailing: { Text("newest first · up to 40").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            if tx.isEmpty { Text("No transactions recorded yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+            if tx.isEmpty { Text("No transactions recorded yet. Sales, bills and transfers appear here once the company has traded.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
             VStack(spacing: 0) {
                 ForEach(Array(tx.enumerated()), id: \.offset) { n, t in
                     FlatRow(label: t["l"].string, value: (t["a"].double < 0 ? "−" : "+") + cur.tidyShort(abs(t["a"].double)), sub: "Week \(t["w"].int + 1)",

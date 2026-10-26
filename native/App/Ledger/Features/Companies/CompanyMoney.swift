@@ -48,6 +48,7 @@ struct CompanyMoneySummary: View {
         let h = engine.companyHealth(company)
         let o = engine.financeOverview(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            CompanyPaymentStress(engine: engine, company: company)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Company cash").capsLabel()
                 Text(cur.tidyDisplay(company.cash)).font(.hero(34)).foregroundStyle(company.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
@@ -62,7 +63,6 @@ struct CompanyMoneySummary: View {
                     .init(label: "Your account", value: store.short(engine.state.cash)),
                 ]).padding(.top, 8)
             }
-            CompanyPaymentStress(engine: engine, company: company)
             if !o.upcoming.isEmpty {
                 LedgerSection(title: "Coming up", trailing: {
                     // Stays inside this company's Finances section: no second "Group money" screen in the Company tab.
@@ -98,7 +98,7 @@ struct CompanyMoneySummary: View {
                     Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
             }.padding(.vertical, 9).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
@@ -122,7 +122,7 @@ struct CompanyMoneySummary: View {
                     }
                 }
             } else {
-                Text("The first report arrives when this company has been through a full week.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                Text("The first report arrives when this company has been through a full week.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             }
         }
     }
@@ -157,7 +157,10 @@ struct CompanyPaymentStress: View {
         }
     }
     private func line(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.caption).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: tint == Theme.ivoryMuted ? "info.circle" : "exclamationmark.triangle.fill").font(.system(size: 12)).foregroundStyle(tint).padding(.top, 2)
+            Text(text).font(.system(size: 13.5, weight: tint == Theme.ivoryMuted ? .regular : .medium)).foregroundStyle(tint == Theme.ivoryMuted ? Theme.ivoryMuted : Theme.ivory).fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -181,12 +184,16 @@ struct CompanyOwnerMoney: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     AmountField(title: "Amount", currency: cur, amount: $amount)
                     HStack {
-                        Button("Put in") { putIn() }.buttonStyle(QuietButtonStyle())
+                        Button("Put in") { putIn(cur) }.buttonStyle(QuietButtonStyle())
                         if company.form == .limited {
-                            Button("Pay a dividend") { confirmDividend(cur) }.buttonStyle(QuietButtonStyle())
+                            Button("Pay a dividend…") { confirmDividend(cur) }.buttonStyle(QuietButtonStyle())
                         } else {
-                            Button("Take out") { takeOut() }.buttonStyle(QuietButtonStyle())
+                            Button("Take out") { takeOut(cur) }.buttonStyle(QuietButtonStyle())
                         }
+                    }
+                    if amount > 0 {
+                        Text("Company cash after putting in: \(cur.tidyDisplay(company.cash + amount)). Your account: \(store.money(max(0, engine.state.cash - amount * 1)))")
+                            .font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                     }
                     if company.form == .limited {
                         Text("Most you can pay out now: \(cur.tidyDisplay(engine.maximumDividend(companyID: company.id))). Dividends come from retained profit and are taxed on your return.")
@@ -218,28 +225,32 @@ struct CompanyOwnerMoney: View {
         .onAppear { salary = company.ownerMonthlySalary }
     }
 
-    private func putIn() {
-        guard amount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
-        if store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved into \(company.name).", tone: "good") }
-        else { Haptics.warning(); store.show("You don't have that much available.", tone: "warn") }
+    private func putIn(_ cur: Currency) {
+        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
+        let v = amount
+        if store.act({ $0.putMoneyInto(companyID: company.id, amount: v) }) == true { Haptics.success(); store.show("\(cur.tidyDisplay(v)) moved into \(company.name).", tone: "good") }
+        else { Haptics.warning(); store.show("You don't have \(cur.tidyDisplay(v)) available.", tone: "warn") }
     }
-    private func takeOut() {
-        guard amount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
-        switch store.act({ $0.takeMoneyOut(companyID: company.id, amount: amount) }) {
-        case .ok?: Haptics.success(); store.show("Moved to your account.", tone: "good")
-        case .dividendOnly?: store.show("A limited company can only pay dividends.", tone: "warn")
-        default: Haptics.warning(); store.show("The company doesn't have that much.", tone: "warn")
+    private func takeOut(_ cur: Currency) {
+        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
+        let v = amount
+        switch store.act({ $0.takeMoneyOut(companyID: company.id, amount: v) }) {
+        case .ok?: Haptics.success(); store.show("\(cur.tidyDisplay(v)) moved to your account.", tone: "good")
+        case .dividendOnly?: Haptics.warning(); store.show("A limited company can only pay dividends.", tone: "warn")
+        case nil: break
+        default: Haptics.warning(); store.show("The company doesn't have \(cur.tidyDisplay(v)).", tone: "warn")
         }
     }
     private func confirmDividend(_ cur: Currency) {
-        guard amount > 0 else { store.show("Enter an amount first.", tone: "warn"); return }
+        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
         let amt = amount
-        pending = PendingAction(title: "Pay \(cur.tidyDisplay(amt)) as a dividend?", message: "The cash leaves the company for good. Dividend tax is due on your personal return; co-owners get their share.", button: "Pay dividend") {
+        pending = PendingAction(title: "Pay \(cur.tidyDisplay(amt)) as a dividend?", message: "The cash leaves the company for good: \(cur.tidyDisplay(max(0, company.cash - amt))) stays in it. Dividend tax is due on your personal return; co-owners get their share. Most you can pay now: \(cur.tidyDisplay(engine.maximumDividend(companyID: company.id))).", button: "Pay dividend", destructive: true) {
             switch store.act({ $0.payDividend(companyID: company.id, amount: amt) }) {
-            case .ok?: Haptics.success(); store.show("Dividend paid.", tone: "good")
-            case .noRetainedProfit?: store.show("There are no retained profits to pay out.", tone: "warn")
-            case .notEnoughCash?: store.show("Not enough cash in the company.", tone: "warn")
-            default: store.show("Not possible.", tone: "warn")
+            case .ok?: Haptics.success(); amount = 0; store.show("Dividend of \(cur.tidyDisplay(amt)) paid.", tone: "good")
+            case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("A dividend of that size is not possible now.", tone: "warn")
             }
         }
     }

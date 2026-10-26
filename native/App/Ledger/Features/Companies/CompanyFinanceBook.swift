@@ -10,6 +10,7 @@ struct CompanyFinanceBook: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var pending: PendingAction?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -22,16 +23,20 @@ struct CompanyFinanceBook: View {
                 case .fund: fund(b, cur)
                 }
             }
+            .confirmAction($pending)
+        } else {
+            LedgerSection("Book") { Text("This company has no book of business to show yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
         }
     }
 
     private func regulator(_ b: FinanceBook) -> some View {
         HStack(alignment: .top, spacing: 11) {
-            Image(systemName: "exclamationmark.shield").font(.system(size: 14)).foregroundStyle(Theme.loss).padding(.top, 2)
+            Image(systemName: "exclamationmark.shield.fill").font(.system(size: 15)).foregroundStyle(Theme.loss).padding(.top, 2)
             Text(b.kind == .insurer ? "The regulator restricts the company: solvency is too low, so new business is cut in half. Put capital into the company under Finances."
                                     : "The regulator warns about the capital ratio. Put equity into the company under Finances, or lend less.")
-                .font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.vertical, 4)
     }
 
     // MARK: Insurance
@@ -57,8 +62,8 @@ struct CompanyFinanceBook: View {
                                     .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
-                            Button(p.isOffered ? "Stop selling" : "Offer") { toggle(p) }
-                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(p.isOffered ? Theme.loss : Theme.gold).buttonStyle(.plain)
+                            Button(p.isOffered ? "Stop selling" : "Offer…") { confirmToggle(p, cur) }
+                                .buttonStyle(QuietButtonStyle(tint: p.isOffered ? Theme.loss : Theme.gold))
                         }
                         .padding(.vertical, 9)
                         if n < products.count - 1 { Hairline() }
@@ -67,7 +72,11 @@ struct CompanyFinanceBook: View {
                 Text("Each product needs the regulator's approval, and each salesperson must be verified for it before they sell it. Big storms can hit many policies at once; premiums minus claims is your profit. Your other companies can buy insurance here.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
-            if !sellers.isEmpty {
+            if sellers.isEmpty {
+                LedgerSection("Salespeople") {
+                    Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                }
+            } else {
                 LedgerSection("Salespeople") {
                     VStack(spacing: 0) {
                         ForEach(Array(sellers.enumerated()), id: \.element.id) { n, s in
@@ -79,8 +88,10 @@ struct CompanyFinanceBook: View {
                                         Button(p.name + (s.verified[p.id] != nil ? " (verified or in progress)" : "")) { verify(s.id, p) }
                                     }
                                 } label: {
-                                    Text("Verify for…").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
+                                    Text("Verify for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold)
+                                        .padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75))
                                 }
+                                .disabled(products.allSatisfy { !$0.isOffered })
                             }
                             .padding(.vertical, 9)
                             if n < sellers.count - 1 { Hairline() }
@@ -129,19 +140,27 @@ struct CompanyFinanceBook: View {
 
     // MARK: Actions
 
+    private func confirmToggle(_ p: ProductRow, _ cur: Currency) {
+        if p.isOffered {
+            pending = PendingAction(title: "Stop selling \(p.name)?", message: "Existing policies run on, but no new ones are written. Selling again needs the regulator's approval and its fee again.", button: "Stop selling", destructive: true) { toggle(p) }
+        } else {
+            pending = PendingAction(title: "Offer \(p.name)?", message: "Costs the approval fee of \(cur.tidyDisplay(p.approvalFee)) from company cash. Sales start once the regulator approves and your salespeople are verified for it.", button: "Apply for \(cur.tidyShort(p.approvalFee))", amount: p.approvalFee, currency: cur) { toggle(p) }
+        }
+    }
+
     private func toggle(_ p: ProductRow) {
         switch store.act({ $0.setInsuranceProduct(companyID: company.id, product: p.id, offered: !p.isOffered) }) {
-        case .ok?: Haptics.success(); store.show(p.isOffered ? "Stopped selling." : "Applied for approval.", tone: "good")
+        case .ok?: Haptics.success(); store.show(p.isOffered ? "\(p.name): no longer sold." : "\(p.name): applied for approval.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the approval fee.", tone: "warn")
-        default: store.show("That product cannot be changed now.", tone: "warn")
+        default: Haptics.warning(); store.show("That product cannot be changed now.", tone: "warn")
         }
     }
 
     private func verify(_ personID: Int, _ p: ProductRow) {
         switch store.act({ $0.verifySalesperson(companyID: company.id, personID: personID, product: p.id) }) {
-        case .ok?: Haptics.success(); store.show("Verification started: a few weeks.", tone: "good")
+        case .ok?: Haptics.success(); store.show("Verification for \(p.name) started: a few weeks.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the verification.", tone: "warn")
-        default: store.show("That salesperson cannot be verified for this product.", tone: "warn")
+        default: Haptics.warning(); store.show("That salesperson cannot be verified for this product.", tone: "warn")
         }
     }
 }
