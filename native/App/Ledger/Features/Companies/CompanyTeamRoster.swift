@@ -9,6 +9,17 @@ import Simulation
 /// In Company > Team these posts are rows of the one management list in `CompanyManagement`, so this standalone list only shows
 /// where that list does not (a holding, which has no store manager). Each row opens `TeamSlotSheet` for hire, authority and release.
 /// Chain and group posts are the same kind of rows seen from the chain and from Group (see ExecutivePosts).
+/// What a candidate says about themselves on the CV: age, what they claim to have done (never the real figure), and what they say they can do.
+enum CandidateClaims {
+    static func line(_ engine: GameEngine, _ p: Person, extra: String = "") -> String {
+        var parts = ["Age \(p.age)"]
+        if let y = engine.claimedExperienceYears(personID: p.id) { let n = Int(y.rounded()); parts.append("Claims \(n) \(n == 1 ? "year" : "years")") }
+        parts.append("says \(StaffProfile.band(p.claimedSkill).lowercased())")
+        if !extra.isEmpty { parts.append(extra) }
+        return parts.joined(separator: " · ")
+    }
+}
+
 struct CompanyTeamRoster: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -23,7 +34,8 @@ struct CompanyTeamRoster: View {
         if !CompanyManagement.showsRoster(company) && !slots.isEmpty {
             let cur = engine.currency(for: company)
             LedgerSection(title: "Management", trailing: {
-                Text("\(slots.filter { $0.personID != nil }.count) of \(slots.count) filled").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                let open = slots.filter { $0.personID == nil }.count
+                Text(open > 0 ? "\(open) vacant" : "all filled").font(.system(size: 11.5)).foregroundStyle(open > 0 ? Theme.caution : Theme.ivoryFaint)
             }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(slots.enumerated()), id: \.element.id) { n, slot in
@@ -108,23 +120,24 @@ struct TeamSlotSheet: View {
                 }
             }
         }
-        Button("Let \(p.name.split(separator: " ").first.map(String.init) ?? "them") go") {
+        Button("Let \(p.name.split(separator: " ").first.map(String.init) ?? "them") go…") {
             pending = PendingAction(title: "Let \(p.name) go?",
-                                    message: "Cost: about one month of pay plus employer costs as severance, paid now. Their work goes back to the manager (or to you).",
+                                    message: "Cost: about one month of pay (\(cur.tidyShort(slot.monthlyWage))) plus employer costs as severance, paid now. Their work goes back to the manager (or to you).",
                                     button: "Let go", destructive: true) {
                 let ok = store.act { $0.releaseTeam(companyID: co.id, key: slot.key, regionalID: slot.regionalID) } ?? false
                 if ok { Haptics.warning() }
+                if !ok { Haptics.warning() }
                 store.show(ok ? "\(p.name) has left. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn")
             }
         }
-        .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
+        .buttonStyle(QuietButtonStyle(tint: Theme.loss))
     }
 
     @ViewBuilder private func vacant(_ slot: ManagerModel.TeamSlot, _ co: Company, _ cur: Currency, _ e: GameEngine) -> some View {
         let fee = ManagerModel.searchFee(currency: cur)
         LedgerSection("Vacant") {
             VStack(alignment: .leading, spacing: 10) {
-                Text(slot.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(slot.detail.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
                                             message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",
@@ -132,14 +145,14 @@ struct TeamSlotSheet: View {
                         if let list = store.act({ $0.searchTeam(companyID: co.id, key: slot.key) }) ?? nil {
                             candidates = list.map { $0.id }; Haptics.tap()
                             store.show((list.isEmpty ? "The search found no one." : "\(list.count) candidates found.") + " Search paid: \(cur.tidyShort(fee)).", tone: list.isEmpty ? "warn" : "n")
-                        } else { store.show("Not enough cash for the search.", tone: "warn") }
+                        } else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
                     }
-                }.buttonStyle(QuietButtonStyle())
+                }.buttonStyle(GoldButtonStyle())
             }
         }
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
-            CandidateHireRow(person: p, currency: cur, market: e.goingRate(for: .team(key: slot.key), companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
+            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .team(key: slot.key), companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
                 let r = store.act { $0.hireTeam(companyID: co.id, key: slot.key, personID: p.id, monthlyWage: wage) }
                 let fb = HireFeedback.from(r, name: p.name, role: slot.title)
                 if fb.isHired { candidates = []; store.show(fb.text, tone: "good") }

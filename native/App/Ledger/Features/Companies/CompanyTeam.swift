@@ -18,11 +18,11 @@ struct CompanyTeam: View {
             let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
             let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
             Text("\(boss.name), \(title), runs the team day to day and \(lvl). Anything you change here overrides them; problems they cannot solve reach you in Team.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else if company.status == .open {
             Text(company.ownerHours > 0 ? "You run this team yourself. A manager takes the day-to-day off you once the company is big enough to need one." : "No one runs this team: you do not work here and there is no manager.")
-                .font(.system(size: 12)).foregroundStyle(company.ownerHours > 0 ? Theme.ivoryMuted : Theme.caution).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 12.5, weight: company.ownerHours > 0 ? .regular : .medium)).foregroundStyle(company.ownerHours > 0 ? Theme.ivoryMuted : Theme.caution).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -37,14 +37,13 @@ struct CompanyTeam: View {
             CompanyTargetsCard(engine: engine, company: company)
             CompanyPerksCard(engine: engine, company: company)
             CompanyLabourCard(engine: engine, company: company)
-            Card {
+            LedgerSection("Find workers") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    SectionLabel("Find workers")
                     let roles = engine.hireableRoles(companyID: company.id)
-                    if roles.isEmpty { Text("This trade has no staff roles.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                    if roles.isEmpty { Text("This trade has no staff roles to hire for.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     else {
                         SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.margin)
-                        HStack {
+                        WrapRow {
                             Button("Job ad") { search(.ads) }.buttonStyle(QuietButtonStyle())
                             Button("Network") { search(.network) }.buttonStyle(QuietButtonStyle())
                             Button("Agency") { search(.agency) }.buttonStyle(QuietButtonStyle())
@@ -68,8 +67,9 @@ struct CompanyTeam: View {
     private func search(_ mode: Hiring.SearchMode) {
         guard !role.isEmpty else { return }
         candidates = store.act { $0.searchWorkers(companyID: company.id, role: role, mode: mode) } ?? []
-        Haptics.tap()
-        if candidates.isEmpty { store.show("No one suitable answered.", tone: "n") }
+        let how = mode == .ads ? "The job ad" : mode == .network ? "Your network" : "The agency"
+        if candidates.isEmpty { Haptics.warning(); store.show("\(how) found no one suitable for \(roleName(role).lowercased()).", tone: "warn") }
+        else { Haptics.tap(); store.show("\(how) found \(candidates.count) \(candidates.count == 1 ? "candidate" : "candidates") for \(roleName(role).lowercased()).", tone: "n") }
     }
 
     private func roleName(_ id: String) -> String { id.prefix(1).uppercased() + id.dropFirst() }

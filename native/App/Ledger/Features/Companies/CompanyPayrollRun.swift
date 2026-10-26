@@ -19,14 +19,26 @@ struct CompanyPayrollRun: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     if !o.hasPayroll {
                         Text("No one is on the payroll yet, so there is nothing to run. This appears once you hire someone.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     } else {
                         status(o, cur)
                         if o.isLate {
-                            Text(o.lateReason + " Staff are waiting; unpaid wages lead to resignations and a wage claim.").font(.system(size: 12.5)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
-                            Button("Run payroll now") { runNow(o, cur) }.buttonStyle(QuietButtonStyle())
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Label("Wages are late", systemImage: "exclamationmark.triangle.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.loss)
+                                    Spacer(minLength: 8)
+                                    if o.wageShortfall > 0 {
+                                        Text("\(cur.tidyShort(o.wageShortfall)) unpaid").font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.loss)
+                                    }
+                                }
+                                Text(o.lateReason + " Staff are waiting; unpaid wages lead to resignations and a wage claim.").font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                                if o.companyCash < max(o.wageShortfall, o.wagesOwed) {
+                                    Text("Company cash is \(cur.tidyShort(o.companyCash)): put money in first or only part can be paid. See You and owners.").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                                }
+                                Button("Run payroll now…") { runNow(o, cur) }.buttonStyle(GoldButtonStyle())
+                            }
                         } else if o.needsApproval {
-                            Button("Approve this month's payroll") { approve(o, cur) }.buttonStyle(GoldButtonStyle())
+                            Button("Approve this month's payroll…") { approve(o, cur) }.buttonStyle(GoldButtonStyle())
                         }
                     }
                     Hairline().padding(.vertical, 4)
@@ -39,7 +51,7 @@ struct CompanyPayrollRun: View {
                                 ListRow(symbol: c.isCurrent ? "checkmark.circle.fill" : (c.unavailable != nil ? "lock" : "circle"),
                                         tint: c.isCurrent ? Theme.gold : Theme.ivoryMuted, title: modeName(c.mode),
                                         subtitle: c.unavailable ?? describe(c.mode, c.monthlyFee, cur),
-                                        trailing: c.monthlyFee > 0 ? cur.tidyShort(c.monthlyFee) : "No fee", trailingSub: c.monthlyFee > 0 ? "a month" : "")
+                                        trailing: c.monthlyFee > 0 ? cur.tidyShort(c.monthlyFee) : "No fee", trailingSub: c.monthlyFee > 0 ? "a month" : "", chevron: !c.isCurrent && c.unavailable == nil)
                             }.buttonStyle(.plain).disabled(c.unavailable != nil)
                         }
                         Text("A change applies from the next pay day. The accountant's fee is per payslip; the manager's payroll software has a monthly fee and now and then misses a step, paying a day or two late.")
@@ -93,7 +105,7 @@ struct CompanyPayrollRun: View {
             switch store.act({ $0.approvePayroll(companyID: id) }) {
             case .approved?: Haptics.success(); store.show("Payroll approved. It goes out on pay day.", tone: "good")
             case .alreadyApproved?: store.show("Already approved.", tone: "n")
-            case .notNeeded(let why)?: store.show(why, tone: "warn")
+            case .notNeeded(let why)?: Haptics.warning(); store.show(why, tone: "warn")
             case nil: break
             }
         }
@@ -101,11 +113,12 @@ struct CompanyPayrollRun: View {
 
     private func runNow(_ o: PayrollOverview, _ cur: Currency) {
         let id = company.id
-        pending = PendingAction(title: "Run payroll now?", message: "Everyone is paid today from company cash (\(cur.tidyShort(o.companyCash))). Owed: about \(cur.tidyShort(o.wagesOwed)).", button: "Run payroll") {
+        let owed = max(o.wageShortfall, o.wagesOwed)
+        pending = PendingAction(title: "Run payroll now?", message: "Everyone is paid today from company cash (\(cur.tidyShort(o.companyCash))). Still unpaid: about \(cur.tidyShort(owed)). " + (o.companyCash < owed ? "The cash does not cover it, so part stays unpaid." : "Leaves about \(cur.tidyShort(o.companyCash - owed)) in the company."), button: "Run payroll", amount: owed, currency: cur) {
             if let r = store.act({ $0.runLatePayrollNow(companyID: id) }) ?? nil {
                 if r.short > 0 { Haptics.warning(); store.show("Paid \(cur.tidyShort(r.paid)); still short by \(cur.tidyShort(r.short)). Put money into the company.", tone: "bad") }
                 else { Haptics.success(); store.show("Payroll run: \(cur.tidyShort(r.paid)) paid.", tone: "good") }
-            } else { store.show("Nothing is late any more.", tone: "n") }
+            } else { Haptics.warning(); store.show("Nothing is late any more.", tone: "n") }
         }
     }
 }
