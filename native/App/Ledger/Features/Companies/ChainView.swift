@@ -93,17 +93,24 @@ struct ChainFigures: View {
     var summary: Chains.Summary
     var currency: Currency
 
+    private var items: [KeyFigures.Item] {
+        let r = summary.reach
+        let profitTint: Color = summary.profit < 0 ? Theme.loss : Theme.ivory
+        let rebate: String = String(format: "%.1f%%", r.rebate * 100)
+        return [
+            .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
+            .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: profitTint),
+            .init(label: "Staff", value: "\(summary.staff)"),
+            .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
+            .init(label: "Buying discount", value: rebate, sub: "of cost of sales"),
+            .init(label: "Franchise units", value: "\(summary.franchiseUnits)"),
+        ]
+    }
+
     var body: some View {
         let r = summary.reach
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            KeyFigures(items: [
-                .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
-                .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: summary.profit < 0 ? Theme.loss : Theme.ivory),
-                .init(label: "Staff", value: "\(summary.staff)"),
-                .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
-                .init(label: "Buying discount", value: String(format: "%.1f%%", r.rebate * 100), sub: "of cost of sales"),
-                .init(label: "Franchise units", value: "\(summary.franchiseUnits)"),
-            ])
+            KeyFigures(items: items)
             RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
             Text(r.nextAt > 0 ? "At \(r.nextAt) outlets the name reaches further: more of the town can know you, demand is a little higher and goods are cheaper." : "A worldwide name.")
                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -400,7 +407,8 @@ struct ChainRulesSection: View {
     private func askStandard(_ knob: Knob, _ option: Int, _ cur: Currency) {
         guard let plan = engine.chainKnobPlan(chainID: chainID, knob: knob.id, value: option) else { return }
         let name = optionNames(knob, option)
-        var lines = [knob.isMulti ? "Every store offers exactly these add-ons from now on and cannot choose otherwise: \(name)." : "Every store sells by \(name) from now on and cannot choose otherwise."]
+        let head: String = knob.isMulti ? "Every store offers exactly these add-ons from now on and cannot choose otherwise: \(name)." : "Every store sells by \(name) from now on and cannot choose otherwise."
+        var lines: [String] = [head]
         if plan.changing == 0 && plan.exceptions == 0 { lines.append("Every store already does.") }
         else {
             lines.append("\(plan.changing) store\(plan.changing == 1 ? "" : "s") change over: \(cur.tidyShort(plan.totalCost)) in all, paid by the stores, with a few weeks at reduced capacity each.")
@@ -452,7 +460,7 @@ struct ChainNewStore: View {
                         pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
                                                 message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
                                                 button: "Open the store") { open(cityID: cityID) }
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 } else {
                     Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }

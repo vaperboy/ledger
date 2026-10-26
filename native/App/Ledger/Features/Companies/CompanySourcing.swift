@@ -86,8 +86,7 @@ struct CompanySourcing: View {
                 Text(input.what).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 if input.id == "goods" {
                     SectionTabs(items: [0, 1, 2], title: { classNames[$0] },
-                                selection: Binding(get: { min(2, max(0, company.value("src")["c"].isNull ? 1 : company.value("src")["c"].int)) },
-                                                   set: { v in store.act { $0.chooseGoodsClass(companyID: company.id, goodsClass: v) } }))
+                                selection: goodsClassBinding)
                         .padding(.horizontal, -Theme.Space.margin)
                     Text("The quality class changes the cost and the quality of everything you buy; the prices below are for the class chosen.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
@@ -110,6 +109,15 @@ struct CompanySourcing: View {
                 }
             }
         }.padding(.vertical, 9)
+    }
+
+    private var goodsClassBinding: Binding<Int> {
+        let src: JSONValue = company.value("src")["c"]
+        let current: Int = min(2, max(0, src.isNull ? 1 : src.int))
+        return Binding<Int>(get: { current }, set: { (v: Int) in
+            store.act { $0.chooseGoodsClass(companyID: company.id, goodsClass: v) }
+            store.saved("goods quality class: \(classNames[min(2, max(0, v))])")
+        })
     }
 
     private func headerLine(_ input: SupplierInput, cur: Currency) -> String {
@@ -156,6 +164,7 @@ struct CompanySourcing: View {
                         if let pf = o.priceFactor { Text("\(Int((pf * 100).rounded()))% of market").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
                         else if let d = o.discount, d > 0 { Text("\(Int((d * 100).rounded()))% off").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
                         if o.isCurrent { Text("Current").font(.system(size: 11)).foregroundStyle(Theme.gold) }
+                        else if o.blocked == nil, input.governedBy == nil, !(o.yearlyVsCurrent.map { abs($0) >= 1 } ?? false) { Text("Switch ›").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold) }
                         else if let v = o.yearlyVsCurrent, abs(v) >= 1 {
                             Text(v > 0 ? "saves \(cur.tidyShort(v)) / yr" : "costs \(cur.tidyShort(-v)) / yr more").font(.system(size: 11).monospacedDigit()).foregroundStyle(v > 0 ? Theme.gain : Theme.caution)
                         }

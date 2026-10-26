@@ -162,7 +162,7 @@ struct ChainSupplyOverview: View {
 
     private func confirmRule(_ r: Row, _ c: ChainSupplierChoice) {
         let plan = engine.chainSupplierPlan(chainID: summary.id, input: r.id, to: c.change)
-        var lines = ["\(r.title): \(c.name) for every store the chain governs.",
+        var lines: [String] = ["\(r.title): \(c.name) for every store the chain governs.",
                      "\(plan.changing) store\(plan.changing == 1 ? "" : "s") will switch; \(plan.lines.filter { !$0.changes && !$0.free }.count) already use it."]
         for l in plan.lines where l.changes && l.reason != nil && !l.free { lines.append("\(l.storeName) cannot and keeps its own: \(l.reason ?? "")") }
         let franchised = plan.lines.filter { $0.free }.count

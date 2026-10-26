@@ -59,9 +59,7 @@ struct CompanyEquipmentScreen: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let needs = e.equipmentNeeds(companyID: companyID)
-            let tabs = EquipmentTab.allCases.filter { t in
-                t == .fleet ? needs.contains { $0.isVehicle } : t == .software ? needs.contains { $0.isSoftware } : t == .premises ? (e.tradeInfo(companyID: companyID)?.premisesKind.map { $0 != "none" && $0 != "home" } ?? false) : true
-            }
+            let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -99,6 +97,21 @@ struct CompanyEquipmentScreen: View {
             } message: { Text(pendingListing.map { "\($0.name), \(Int($0.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back." } ?? "") }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    private func visibleTabs(_ e: GameEngine, _ needs: [EquipmentMarket.Need]) -> [EquipmentTab] {
+        let hasVehicles: Bool = needs.contains { $0.isVehicle }
+        let hasSoftware: Bool = needs.contains { $0.isSoftware }
+        let kind: String? = e.tradeInfo(companyID: companyID)?.premisesKind
+        let hasPremises: Bool = kind.map { $0 != "none" && $0 != "home" } ?? false
+        return EquipmentTab.allCases.filter { (t: EquipmentTab) -> Bool in
+            switch t {
+            case .fleet: return hasVehicles
+            case .software: return hasSoftware
+            case .premises: return hasPremises
+            default: return true
+            }
         }
     }
 
@@ -553,7 +566,7 @@ struct EquipmentShopView: View {
                 FlatRow(label: lease ? "Lease, 3 years, service included" : useFinance ? "Down payment now, loan for the rest" : "Total", value: lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: total)) + "/mo" : useFinance ? cur.tidyShort(total * 0.2) : cur.tidyShort(total))
                 Button(lease ? "Lease \(q)" : one ? "Buy licence" : "Buy \(q)") {
                     report(store.act { $0.buyEquipmentItem(companyID: companyID, equipmentID: equipmentID, offer: sel, quantity: q, payment: lease ? .lease : useFinance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
-                }.buttonStyle(GoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
     }
@@ -650,7 +663,7 @@ struct EquipmentShopView: View {
                 FlatRow(label: useFinance ? "Down payment now, loan for the rest" : "Total", value: cur.tidyShort(useFinance ? sel.price * 0.2 : sel.price))
                 Button("Buy used · \(cur.tidyShort(sel.price))") {
                     report(store.act { $0.buyUsedItem(companyID: companyID, equipmentID: equipmentID, listing: sel, payment: useFinance ? .finance : .cash) }, "Bought.")
-                }.buttonStyle(GoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
     }
@@ -681,7 +694,7 @@ struct EquipmentShopView: View {
                             value: lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(finance ? price * 0.2 : price))
                     Button(lease ? "Lease" : "Buy new") {
                         report(store.act { $0.buyVehicleItem(companyID: companyID, equipmentID: equipmentID, offer: sel, payment: lease ? .lease : finance ? .finance : .cash) }, lease ? "Lease signed." : "Bought.")
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 }
             }
         }

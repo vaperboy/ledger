@@ -7,10 +7,23 @@ import Simulation
 
 /// A holding company's own section: what it is worth, the companies under it, the index fund, and moving money.
 struct CompanyHolding: View {
+    private func figureItems(_ o: HoldingModel.Consolidated, _ cur: Currency) -> [KeyFigures.Item] {
+        let profitTint: Color = o.profitTTM < 0 ? Theme.loss : Theme.ivory
+        return [
+            .init(label: "Holding value", value: cur.tidyShort(o.holdingValue)),
+            .init(label: "Companies", value: cur.tidyShort(o.companiesValue), sub: "your share"),
+            .init(label: "Index fund", value: cur.tidyShort(o.indexFund)),
+            .init(label: "Revenue 12 mo", value: cur.tidyShort(o.revenueTTM), sub: "your share"),
+            .init(label: "Profit 12 mo", value: cur.tidyShort(o.profitTTM), tint: profitTint, sub: "your share"),
+            .init(label: "Cash in group", value: cur.tidyShort(o.cashInGroup)),
+        ]
+    }
+
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @State private var amount = 0.0
+    @State private var pending: PendingAction?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -22,14 +35,7 @@ struct CompanyHolding: View {
             if let o {
                 LedgerSection("Consolidated") {
                     VStack(alignment: .leading, spacing: 0) {
-                        KeyFigures(items: [
-                            .init(label: "Holding value", value: cur.tidyShort(o.holdingValue)),
-                            .init(label: "Companies", value: cur.tidyShort(o.companiesValue), sub: "your share"),
-                            .init(label: "Index fund", value: cur.tidyShort(o.indexFund)),
-                            .init(label: "Revenue 12 mo", value: cur.tidyShort(o.revenueTTM), sub: "your share"),
-                            .init(label: "Profit 12 mo", value: cur.tidyShort(o.profitTTM), tint: o.profitTTM < 0 ? Theme.loss : Theme.ivory, sub: "your share"),
-                            .init(label: "Cash in group", value: cur.tidyShort(o.cashInGroup)),
-                        ])
+                        KeyFigures(items: figureItems(o, cur))
                         if o.groupCovered > 0 {
                             Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, 8)
                         }
@@ -49,10 +55,7 @@ struct CompanyHolding: View {
                                 Spacer(minLength: 8)
                                 VStack(alignment: .trailing, spacing: 3) {
                                     Text(cur.tidyShort(k.share)).font(.system(size: 13.5).monospacedDigit())
-                                    Button("Release") {
-                                        let ok = store.act { $0.releaseFromHolding(companyID: k.id) } ?? false
-                                        Haptics.choose(); store.show(ok ? "Released: it is owned by you directly again." : "It could not be released now.", tone: ok ? "good" : "warn")
-                                    }.font(.system(size: 11.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                                    Button("Release…") { askRelease(k.id, k.name) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                                 }
                             }.padding(.vertical, 9)
                         }
@@ -66,9 +69,7 @@ struct CompanyHolding: View {
                                 HStack {
                                     Text(c.name).font(.system(size: 13.5))
                                     Spacer()
-                                    Button("Add") {
-                                        if store.act({ $0.moveToHolding(companyID: c.id, holdingID: company.id) }) == true { Haptics.success() }
-                                    }.buttonStyle(QuietButtonStyle())
+                                    Button("Add…") { askAdd(c.id, c.name) }.buttonStyle(QuietButtonStyle())
                                 }.padding(.vertical, 6)
                             }
                             Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
@@ -82,28 +83,52 @@ struct CompanyHolding: View {
                         HStack {
                             Button("Put money in") {
                                 if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
-                                else { Haptics.warning(); store.show("You don't have that much available.", tone: "warn") }
+                                else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
                             }.buttonStyle(QuietButtonStyle())
                             Button("Invest in index") {
                                 if amount > 0, store.act({ $0.holdingInvest(holdingID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Invested.", tone: "good") }
-                                else { store.show("Not enough cash in the holding.", tone: "warn") }
+                                else { Haptics.warning(); store.show(amount > 0 ? "Not enough cash in the holding." : "Enter an amount first.", tone: "warn") }
                             }.buttonStyle(QuietButtonStyle())
                             Button("Sell index") {
                                 if amount > 0, store.act({ $0.holdingDivest(holdingID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
-                                else { store.show("Nothing to sell.", tone: "warn") }
+                                else { Haptics.warning(); store.show(amount > 0 ? "Nothing to sell." : "Enter an amount first.", tone: "warn") }
                             }.buttonStyle(QuietButtonStyle())
                         }
-                        Button("Pay a dividend to me") {
-                            switch store.act({ $0.payDividend(companyID: company.id, amount: amount) }) {
-                            case .ok?: Haptics.success(); store.show("Dividend paid.", tone: "good")
-                            case .noRetainedProfit?: store.show("There are no retained profits to pay out.", tone: "warn")
-                            default: store.show("Not enough cash in the holding.", tone: "warn")
-                            }
-                        }.buttonStyle(QuietButtonStyle())
+                        Button("Pay a dividend to me…") { askDividend(cur) }.buttonStyle(QuietButtonStyle())
                         Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund costs 0.66% to sell.")
                             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
+            } else {
+                Text("This holding company has no figures yet.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func askRelease(_ id: Int, _ name: String) {
+        pending = PendingAction(title: "Release \(name)?", message: "It leaves the holding and is owned by you directly again. It drops out of the tax group, and dividends to you are taxed at the normal rate.", button: "Release", destructive: true) {
+            let ok: Bool = store.act { $0.releaseFromHolding(companyID: id) } ?? false
+            Haptics.choose()
+            store.show(ok ? "\(name) is owned by you directly again." : "It could not be released now.", tone: ok ? "good" : "warn")
+        }
+    }
+
+    private func askAdd(_ id: Int, _ name: String) {
+        pending = PendingAction(title: "Put \(name) under this holding?", message: "The holding takes over your shares in it. Dividends then flow into the holding at the lower rate, and at 90% or more in one country it joins the tax group.", button: "Put under holding") {
+            if store.act({ $0.moveToHolding(companyID: id, holdingID: company.id) }) == true { Haptics.success(); store.show("\(name) is now held by \(company.name).", tone: "good") }
+            else { Haptics.warning(); store.show("\(name) could not be moved under the holding.", tone: "warn") }
+        }
+    }
+
+    private func askDividend(_ cur: Currency) {
+        let amt: Double = amount
+        guard amt > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
+        pending = PendingAction(title: "Pay \(cur.tidyShort(amt)) to yourself?", message: "It comes out of the holding's retained profits and is taxed as your income. It cannot be paid back in as a dividend.", button: "Pay dividend", amount: amt, currency: cur) {
+            switch store.act({ $0.payDividend(companyID: company.id, amount: amt) }) {
+            case .ok?: Haptics.success(); store.show("Dividend of \(cur.tidyShort(amt)) paid.", tone: "good")
+            case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
+            default: Haptics.warning(); store.show("Not enough cash in the holding.", tone: "warn")
             }
         }
     }
@@ -159,7 +184,7 @@ struct NewHoldingView: View {
                         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.tidyShort(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
                         default: store.show("Not possible.", tone: "warn")
                         }
-                    }.buttonStyle(GoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)

@@ -32,14 +32,15 @@ struct CompanyProperties: View {
     // MARK: Figures
 
     private func figures(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
-        KeyFigures(items: [
+        let items: [KeyFigures.Item] = [
             .init(label: "Property value", value: cur.tidyShort(pf.totalValue), sub: "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"),
             .init(label: "Rent a week", value: cur.tidyShort(pf.weeklyRent), sub: pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""),
             .init(label: "Let", value: Currency.percent(pf.occupancy, decimals: 0), tint: pf.occupancy < 0.8 ? Theme.caution : Theme.ivory, sub: "\(Int(pf.totalUnits.rounded())) \(pf.unitWord)"),
             .init(label: "Mortgages", value: cur.tidyShort(pf.mortgages), tint: pf.mortgages > 0 ? Theme.loss : Theme.ivory),
             .init(label: "Gain on cost", value: cur.tidyShort(pf.gainOnCost), tint: Theme.change(pf.gainOnCost), sub: "not profit until sold"),
             .init(label: "Staff cover", value: Currency.percent(min(1, pf.staffCover), decimals: 0), tint: pf.staffCover < 0.8 ? Theme.caution : Theme.ivory, sub: "caretakers, managers"),
-        ])
+        ]
+        return KeyFigures(items: items)
     }
 
     // MARK: Owned
@@ -181,7 +182,7 @@ struct CompanyProperties: View {
         case .ok?: Haptics.success(); store.show("Property bought.", tone: "good")
         case .notEnoughCash?: Haptics.warning(); store.show("The company needs more cash for the deposit and costs. Put money in under Finances.", tone: "warn")
         case .loanDeclined?: Haptics.warning(); store.show("The bank will not lend that much.", tone: "warn")
-        default: break
+        default: Haptics.warning(); store.show("The property could not be bought now.", tone: "warn")
         }
     }
 
