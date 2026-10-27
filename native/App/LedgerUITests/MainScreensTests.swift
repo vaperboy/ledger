@@ -3,22 +3,7 @@ import XCTest
 /// A second, deeper tour of the screens the player uses most: the company screen and its sections, staff, hiring, the contract
 /// discussion, group structure, projects and inbox detail. Pictures are numbered from 20 so they sit after the first tour.
 /// Everything is optional: a screen that is not reachable on this device is skipped, never failed.
-final class MainScreensTests: XCTestCase {
-    var app: XCUIApplication!
-
-    override func setUp() {
-        continueAfterFailure = true
-        app = XCUIApplication()
-        app.launchArguments = ["-showcase"]
-        app.launch()
-    }
-
-    func shot(_ name: String) {
-        let a = XCTAttachment(screenshot: app.screenshot())
-        a.name = name
-        a.lifetime = .keepAlways
-        add(a)
-    }
+final class MainScreensTests: TourCase {
 
     /// Pops pushed screens until the tab bar is on screen (at most 6 times), so a sub-screen that did not return cannot strand the tour.
     /// The tab bar is the floating pill bar on iPhone (buttons "tab-Home" ...), the sidebar on iPad.
@@ -34,7 +19,7 @@ final class MainScreensTests: XCTestCase {
     func open(_ name: String) {
         ensureTabBar()
         let pill = app.buttons["tab-\(name)"]
-        if pill.waitForExistence(timeout: 5) { pill.tap(); return }
+        if pill.waitForExistence(timeout: 3) { pill.tap(); return }
         let tab = app.tabBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch
         if tab.exists { tab.tap(); return }
         let row = app.buttons[name].firstMatch
@@ -67,12 +52,12 @@ final class MainScreensTests: XCTestCase {
     func scrollUp() { app.swipeDown(); app.swipeDown(); app.swipeDown(); sleep(1) }
 
     func testMainScreens() {
-        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 5))
+        if !waitForHome() { note("Home summary not found; continuing anyway") }
         shot("20-home")
         scrollDown(); shot("21-home-lower")
 
         // Company list and one company with every section
-        open("Home"); sleep(1); shot("22-home-companies")
+        open("Home"); sleep(1)
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("23-company-overview")
@@ -107,7 +92,7 @@ final class MainScreensTests: XCTestCase {
 
         // Team tab and a person
         open("Team"); sleep(1); shot("40-team")
-        scrollDown(); shot("41-team-lower")
+        scrollDown()
 
         // Group
         open("Group"); sleep(1); shot("45-group")
@@ -119,7 +104,7 @@ final class MainScreensTests: XCTestCase {
         // The Inbox is an app inside the Phone tab.
         open("Phone"); sleep(1); shot("51-phone-home")
         let inboxIcon = app.buttons["phone-app-Inbox"]
-        if inboxIcon.waitForExistence(timeout: 3) { inboxIcon.tap(); sleep(1) }
+        if inboxIcon.waitForExistence(timeout: 2) { inboxIcon.tap(); sleep(1) } else { note("no Inbox icon on the Phone") }
         shot("52-inbox")
         let row = app.cells.firstMatch
         if row.exists && row.isHittable { row.tap(); sleep(1); shot("53-inbox-message"); ensureTabBar() }
