@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bank, pick an account</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 56px 18px 0 18px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="#" aria-label="Back to Phone" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F1EBDD" stroke-width="2" aria-hidden="true"><path d="M15 5 L8 12 L15 19"></path></svg></a>
+      <div style="display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 26px; line-height: 1.1">Bank</span><span style="font-size: 12.5px; color: #A19B8F">Choose an account · payroll waits on Evans Services</span></div>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-end">
+      <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">ALL ACCOUNTS</span><span style="font-family: Newsreader, Georgia, serif; font-size: 30px">£4.24M</span></div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 12px"><span style="color: #A19B8F">Due in 30 days <span style="color: #F1EBDD">£17,452</span></span><span style="color: #7FC79B">✓ covered</span></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">YOU</span>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; color: inherit">
+        <span style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20 C5 14 19 14 19 20"></path></svg></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 500">Personal account</span><span style="font-size: 12px; color: #A19B8F">Savings 1.25% · 1 loan</span></span>
+        <span style="font-size: 15px; font-weight: 500">£3.48M</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+      </a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; color: inherit">
+        <span style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><path d="M4 18 L9 12 L13 15 L20 6 M15 6 H20 V11"></path></svg></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 500">Investments</span><span style="font-size: 12px; color: #A19B8F">Shares · crypto · funds</span></span>
+        <span style="font-size: 15px; font-weight: 500">£0</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+      </a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">YOUR COMPANIES</span>
+      <sc-for list="{{companies}}" as="c" hint-placeholder-count="2">
+        <a href="#" style="display: flex; align-items: center; gap: 12px; background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; color: inherit">
+          <span style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><path d="{{c.icon}}"></path></svg></span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 500">{{c.name}}</span><span style="font-size: 12px; color: {{c.noteColor}}">{{c.note}}</span></span>
+          <sc-if value="{{c.badge}}" hint-placeholder-val="{{ false }}"><span style="min-width: 20px; height: 20px; border-radius: 10px; background: #E5584B; color: #fff; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box">{{c.badge}}</span></sc-if><span style="font-size: 15px; font-weight: 500">{{c.cash}}</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+
+    <span style="font-size: 11.5px; color: #75706A; padding: 0 4px; line-height: 1.5">Loans belong to the account they were taken for. Open an account and choose Loans.</span>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">2</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      companies: [
+        { name: 'Thamesford Partners', note: 'Gym · manager approves payroll · 1 loan', noteColor: '#A19B8F', badge: '', cash: '£412k', icon: 'M4 10 H20 M7 7 V13 M17 7 V13 M2 10 H4 M20 10 H22 M9 10 V17 M15 10 V17' },
+        { name: 'Evans Services', note: 'Payroll £3,109 needs your approval', noteColor: '#E0B064', badge: '1', cash: '£257k', icon: 'M5 9 H17 V15 C17 18 15 19 12 19 H10 C7 19 5 18 5 15 Z M17 10 H19 C21 10 21 14 18 14' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
