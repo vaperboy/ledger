@@ -72,7 +72,7 @@ struct RivalGroupProfileView: View {
     @ViewBuilder private func meaning(_ e: GameEngine, _ g: RivalGroups.Group) -> some View {
         let mine = e.rivalsOfGroup(g.id)
         let overlap: [Company] = e.state.companies.filter { $0.status.isLive && g.trades.contains($0.type) && g.countries.contains($0.countryCode) }
-        MoreBlock(title: "What it means for you", card: false) {
+        MoreBlock("What it means for you", card: false) {
             if overlap.isEmpty && mine.isEmpty {
                 NoteCard(text: "It does not compete with any of your companies right now.", glyph: Glyph.check)
             }
