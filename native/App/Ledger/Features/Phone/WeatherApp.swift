@@ -7,8 +7,8 @@ import Countries
 /// The Weather phone app: it imitates a real weather app. Current conditions for one city, the day hour by hour, the weeks ahead,
 /// a city switcher for the countries where the player has companies, and what the weather does to each company. Its own warning
 /// (storm, heatwave, flood) is read from the engine (`bigWeatherWarnings`) and also shows as a bubble and a banner on the Phone home.
-/// The engine forecast is weekly: the hourly strip is the usual shape of a day around this week's temperature, the weeks ahead are
-/// the engine's own forecast.
+/// The engine forecast is weekly: the weeks ahead are
+/// the engine's own forecast. The separate "Typical day" card only illustrates the usual shape of a day around this week's temperature.
 struct WeatherApp: View {
     @EnvironmentObject var store: GameStore
     @State private var chosen: String? = nil
@@ -21,8 +21,8 @@ struct WeatherApp: View {
                     WeatherWarningCards(engine: e)
                     WeatherCityBar(engine: e, countries: countries(e), selection: Binding(get: { cc }, set: { chosen = $0 }))
                     WeatherNowCard(engine: e, country: cc)
-                    WeatherHourlyCard(engine: e, country: cc)
                     WeatherWeeksCard(engine: e, country: cc)
+                    WeatherHourlyCard(engine: e, country: cc)
                     WeatherCompaniesCard(engine: e, country: cc)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
@@ -144,8 +144,6 @@ struct WeatherNowCard: View {
 
     var body: some View {
         let f = engine.weatherForecast(countryCode: country)
-        let high: Double = (0..<24).map { WeatherText.hourly(mean: f.now.temperature, hour: $0) }.max() ?? f.now.temperature
-        let low: Double = (0..<24).map { WeatherText.hourly(mean: f.now.temperature, hour: $0) }.min() ?? f.now.temperature
         let note: String = f.now.againstNormal > 0.1 ? "Nicer than usual" : (f.now.againstNormal < -0.1 ? "Worse than usual" : "Usual for the month")
         return Card(padding: 18) {
             VStack(spacing: 6) {
@@ -153,7 +151,6 @@ struct WeatherNowCard: View {
                 GlyphView(glyph: Glyph.weather(f.now.kind), size: 34, weight: 1.4)
                 Text(WeatherText.deg(f.now.temperature)).font(.serifTitle(64)).foregroundStyle(Theme.ivory).monospacedDigit()
                 Text(WeatherText.word(f.now.kind)).font(.system(size: 15)).foregroundStyle(Theme.ivoryMuted)
-                Text("High \(WeatherText.deg(high)) · Low \(WeatherText.deg(low))").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                 Text("\(f.now.rainyDays) rainy day\(f.now.rainyDays == 1 ? "" : "s") this week · \(note)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             }
             .frame(maxWidth: .infinity)
@@ -169,7 +166,7 @@ struct WeatherHourlyCard: View {
     var body: some View {
         let f = engine.weatherForecast(countryCode: country)
         let hours: [Int] = [0, 3, 6, 9, 12, 15, 18, 21]
-        return CardSection(title: "Today, hour by hour", trailing: { EmptyView() }) {
+        return CardSection(title: "Typical day (illustration, not a forecast)", trailing: { EmptyView() }) {
             HStack(spacing: 0) {
                 ForEach(hours, id: \.self) { h in
                     VStack(spacing: 8) {
