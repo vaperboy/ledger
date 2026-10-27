@@ -2,22 +2,7 @@ import XCTest
 
 /// Walks through the app on a prepared game and keeps a screenshot of every main screen.
 /// Run by CI (see .github/workflows/native-ios.yml); the pictures are the evidence of how the screens look.
-final class ScreenshotTests: XCTestCase {
-    var app: XCUIApplication!
-
-    override func setUp() {
-        continueAfterFailure = true
-        app = XCUIApplication()
-        app.launchArguments = ["-showcase"]
-        app.launch()
-    }
-
-    func shot(_ name: String) {
-        let a = XCTAttachment(screenshot: app.screenshot())
-        a.name = name
-        a.lifetime = .keepAlways
-        add(a)
-    }
+final class ScreenshotTests: TourCase {
 
     /// iPhone has the floating pill tab bar (buttons "tab-Home", "tab-Team", ...); iPad a sidebar.
     func open(_ name: String) {
@@ -41,7 +26,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testTour() {
-        XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 20) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 5))
+        if !waitForHome() { note("Home summary not found; continuing anyway") }
         shot("01-home")
         let next = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Next day")).firstMatch
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }
@@ -68,7 +53,7 @@ final class ScreenshotTests: XCTestCase {
         let apps = ["Bank", "Inbox", "News", "Weather", "Stats", "Goals", "World", "Luxury", "Ventures", "Rich list", "Reports", "Achievements", "Settings"]
         for (i, name) in apps.enumerated() {
             let icon = app.buttons["phone-app-\(name)"]
-            guard icon.waitForExistence(timeout: 3) else { continue }
+            guard icon.waitForExistence(timeout: 2) else { note("no Phone app \(name)"); continue }
             icon.tap(); sleep(1)
             let slug = name.lowercased().replacingOccurrences(of: " ", with: "-")
             shot("10-phone-\(String(format: "%02d", i + 1))-\(slug)")

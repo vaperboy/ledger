@@ -131,6 +131,7 @@ jobs:
   screenshots:
     runs-on: ${{ matrix.runner }}
     needs: app-build
+    timeout-minutes: 30
     # The iOS 26 run shows the real Liquid Glass; it depends on the runner image having Xcode 26, so it may not block.
     continue-on-error: ${{ matrix.device == 'iphone-ios26' }}
     strategy:
@@ -155,18 +156,30 @@ jobs:
       - name: Pick a simulator
         id: sim
         run: |
-          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -30
-          PAT='${{ matrix.sim }}'
-          NAME=$(xcrun simctl list devices available | grep -E "^ +$PAT" | head -1 | sed -E 's/^ +//; s/ \([0-9A-F-]+\).*//')
-          if [ -z "$NAME" ]; then NAME=$(xcrun simctl list devices available | grep -E "^ +iPhone" | head -1 | sed -E 's/^ +//; s/ \([0-9A-F-]+\).*//'); fi
-          echo "Using: $NAME"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          # The image carries several iOS runtimes (macos-15 also has 26.x); use the one that belongs to this Xcode, by UDID.
+          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -40
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, re, subprocess
+          want = "${{ matrix.xcode }}"
+          pat = "${{ matrix.sim }}".strip()
+          d = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))["devices"]
+          pick = lambda ok: next((x for rt, devs in d.items() for x in devs if ok(rt, x)), None)
+          rtok = lambda rt: re.search(r"iOS-(\d+)", rt) and re.search(r"iOS-(\d+)", rt).group(1) == want
+          best = (pick(lambda rt, x: rtok(rt) and x["name"].startswith(pat))
+                  or pick(lambda rt, x: rtok(rt) and x["name"].startswith("iPhone"))
+                  or pick(lambda rt, x: x["name"].startswith("iPhone")))
+          print("name=" + best["name"])
+          print("udid=" + best["udid"])
+          PY
+      - name: Boot the simulator
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b || true
       - name: Run the UI tour and keep screenshots
         working-directory: native/App
         run: |
           set -o pipefail
           xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 150 -maximum-test-execution-time-allowance 240 \
             -resultBundlePath ../../shots.xcresult CODE_SIGNING_ALLOWED=NO | tail -n 40
       - name: Export the pictures
         if: always()
