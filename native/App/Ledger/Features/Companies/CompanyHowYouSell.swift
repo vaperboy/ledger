@@ -211,13 +211,10 @@ struct CompanyHowYouSell: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// "Setup £x · Ongoing ..." from the engine's quote for switching it on; the engine gives no monthly figure, only whether it adds running costs.
+    /// "Setup £x" from the engine's quote for switching it on. No running cost is shown for add-ons.
     private func offerCostLine(_ q: KnobChangeQuote?, on: Bool, _ cur: Currency) -> String {
         guard let q, !on else { return on ? "On" : "" }
-        let setup: String = q.totalCost > 0 ? "Setup " + cur.tidyShort(q.totalCost) : "No setup cost"
-        let ongoing: String? = q.onPaper.first { $0.lowercased().contains("running costs") }
-        guard let ongoing else { return setup }
-        return setup + " \u{00B7} Ongoing: " + ongoing.prefix(1).lowercased() + ongoing.dropFirst()
+        return q.totalCost > 0 ? "Setup " + cur.tidyShort(q.totalCost) : "No setup cost"
     }
 
     // MARK: Confirmation text

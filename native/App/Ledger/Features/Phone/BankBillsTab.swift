@@ -54,7 +54,7 @@ struct BankBillsList: View {
             if let loanID = Int(u.id.dropFirst(4)) {
                 SmallOutlineButton(title: "Pay now") { BankPay.instalment(store, loanID: loanID) }
             }
-        default:
+        case .bills, .tax, .invoice:   // rent, supplier bills, tax and VAT cannot be paid early
             Text("Leaves on its date").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }
     }

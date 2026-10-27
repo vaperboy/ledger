@@ -128,7 +128,7 @@ struct BuyerTalkSheet: View {
                         }
                         KeyFigures(items: [
                             .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),
-                            .init(label: "Patience", value: String(repeating: "●", count: max(0, o.patience)) + String(repeating: "○", count: max(0, 3 - o.patience)), tint: o.patience <= 1 ? Theme.caution : Theme.ivory),
+                            .init(label: "Mood", value: PatienceWords.feeling(left: o.patience, of: 3).text, tint: PatienceWords.feeling(left: o.patience, of: 3).tint),
                             .init(label: "Open until", value: GameCalendar.dateString(week: o.expiresWeek)),
                         ])
                         if !o.talk.isEmpty {

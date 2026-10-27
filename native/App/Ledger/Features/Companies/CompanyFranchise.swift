@@ -326,7 +326,7 @@ struct FranchiseTalkView: View {
                                     FlatRow(label: "Their profit a year", value: cur.tidyShort(s.theirs), tint: s.theirs < 0 ? Theme.loss : Theme.ivory)
                                     FlatRow(label: "Yours a year", value: cur.tidyShort(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.tidyShort(s.youPutIn))." : "")
                                 }
-                                Text("Patience " + String(repeating: "●", count: max(0, patience)) + String(repeating: "○", count: max(0, (Franchising.patienceDots(for: a.personality)) - max(0, patience))))
+                                Text("Mood: " + PatienceWords.feeling(left: patience, of: Franchising.patienceDots(for: a.personality)).text)
                                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                                 Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(TinyButtonStyle())
                             }
