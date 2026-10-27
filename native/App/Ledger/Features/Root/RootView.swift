@@ -56,7 +56,8 @@ struct PhoneShell: View {
                     .tag(tab)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { PillTabBar(items: items, selection: selection) }
+        .environment(\.tabBarClearance, PillTabBar.height + 16)
+        .overlay(alignment: .bottom) { PillTabBar(items: items, selection: selection) }
         .onChange(of: store.tab) { _, _ in Haptics.tap() }
     }
 }
