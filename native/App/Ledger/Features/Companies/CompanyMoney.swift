@@ -7,11 +7,11 @@ import Businesses
 import Events
 import Simulation
 
-/// The parts of a company's Finances tab. Summary, Statements, Ownership and Settings are the tab row; Payroll and Loans (the hands-on
-/// money controls) open from the Summary and stay available beside the Bank app.
+/// The parts of a company's Finances tab: Summary, Statements, Ownership and Settings. Every payment, loan and money move is in the Bank
+/// app, on this company's account ("Open in Bank").
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
-    case summary = "Summary", accounts = "Statements", payroll = "Payroll", loans = "Loans", owners = "Ownership", settings = "Settings"
-    /// The tab row: payroll and loans open from the Summary instead.
+    case summary = "Summary", accounts = "Statements", owners = "Ownership", settings = "Settings"
+    /// The tab row.
     static let tabs: [CompanyMoneyPart] = [.summary, .accounts, .owners, .settings]
 }
 
@@ -39,12 +39,14 @@ extension CardSection where Trailing == EmptyView {
 }
 
 /// "Open in Bank": all money handling (transfers, loans, deposits, taxes, bills, payroll approval, statements) lives in the Bank app.
-/// Opens the Bank app (plain navigation, so no toast). The Bank app has no per-account link yet, so it opens on its account list.
+/// Opens the Bank app on THIS company's account (plain navigation, so no toast); `tab` picks the Bills tab for the pay buttons.
 struct OpenInBankButton: View {
     @EnvironmentObject var store: GameStore
+    var companyID: Int
     var title = "Open in Bank"
+    var tab: BankTab = .account
     var body: some View {
-        QuietButton(title: title, fullWidth: true) { store.openApp(.bank) }
+        QuietButton(title: title, fullWidth: true) { store.openBank(.company(companyID), tab: tab) }
             .accessibilityHint("Opens the Bank app")
     }
 }
@@ -63,7 +65,6 @@ struct CompanyMoney: View {
             switch part {
             case .summary: CompanyMoneySummary(engine: engine, company: company, part: $part)
             case .accounts: CompanyAccounts(engine: engine, company: company)
-            case .payroll, .loans: CompanyBankDesk(engine: engine, company: company, part: $part)
             case .owners: CompanyOwnerMoney(engine: engine, company: company)
             case .settings: CompanySettings(engine: engine, company: company)
             }
@@ -94,9 +95,6 @@ struct CompanyMoneySummary: View {
             margins(cur, o)
             lastWeekReport(cur)
             ownershipCard(cur)
-            Button { Haptics.choose(); withAnimation(.snappy(duration: 0.2)) { part = .payroll } } label: {
-                CardRow(glyph: Glyph.bank, title: "Payroll, bills and loans", subtitle: "Pay day, what falls due, loans, putting money in or taking it out")
-            }.buttonStyle(.plain)
         }
     }
 
@@ -121,7 +119,7 @@ struct CompanyMoneySummary: View {
                 Text(cur.tidyDisplay(company.cash)).font(.hero(34)).foregroundStyle(cashTint).minimumScaleFactor(0.6).lineLimit(1)
                 Text(runwayText).font(.system(size: 12)).foregroundStyle(runwayTint).fixedSize(horizontal: false, vertical: true)
                 StatStrip(cells: cells)
-                OpenInBankButton()
+                OpenInBankButton(companyID: company.id)
             }
         }
     }
@@ -139,7 +137,7 @@ struct CompanyMoneySummary: View {
             VStack(alignment: .leading, spacing: 10) {
                 StatStrip(cells: cells, ruled: false)
                 Text("Taxes, bills and loan instalments are paid in the Bank app.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                OpenInBankButton(title: "Pay taxes and loans in Bank")
+                OpenInBankButton(companyID: company.id, title: "Pay taxes and loans in Bank", tab: .bills)
             }
         }
     }
@@ -151,7 +149,7 @@ struct CompanyMoneySummary: View {
                     ForEach(Array(o.upcoming.prefix(4).enumerated()), id: \.element.id) { n, u in
                         FlatRow(label: u.title, value: cur.tidyShort(u.amount), sub: u.detail + " · " + u.dateText, rule: n > 0)
                     }
-                    OpenInBankButton(title: "Approve and pay in Bank").padding(.top, 10)
+                    OpenInBankButton(companyID: company.id, title: "Approve and pay in Bank", tab: .bills).padding(.top, 10)
                 }
             }
         }
@@ -289,115 +287,6 @@ struct CompanyPaymentStress: View {
     }
 }
 
-
-// MARK: Payroll, loans and moving money
-
-/// Payroll, bills, loans and money between you and the company. The Bank app is where this is done; these controls are the same
-/// engine actions, kept reachable from here until the Bank lists this company's account.
-struct CompanyBankDesk: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @Binding var part: CompanyMoneyPart
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Button { Haptics.choose(); withAnimation(.snappy(duration: 0.2)) { part = .summary } } label: {
-                HStack(spacing: 6) {
-                    GlyphView(glyph: Glyph.back, size: 12, weight: 2, tint: Theme.gold)
-                    Text("Summary").font(.system(size: 13)).foregroundStyle(Theme.gold)
-                }
-            }.buttonStyle(.plain)
-            Card(padding: 14, radius: Theme.Radius.hero) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Handled in the Bank").capsLabel()
-                    Text("Payroll, bills, taxes, loans and moving money are done in the Bank app. The same controls for \(company.name) are below.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    OpenInBankButton()
-                }
-            }
-            CompanyPayroll(engine: engine, company: company)
-            CompanyMoneyMoves(engine: engine, company: company)
-            CompanyLoans(engine: engine, company: company)
-        }
-    }
-}
-
-/// Money between you and the company (put in, take out) and the owner's salary.
-struct CompanyMoneyMoves: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @State private var amount = 0.0
-    @State private var salary = 0.0
-
-    var body: some View {
-        let cur = engine.currency(for: company)
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            CardSection(title: "Move money", trailing: {
-                Text("Your account " + store.short(engine.state.cash)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-            }) {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    AmountField(title: "Amount", currency: cur, amount: $amount)
-                    HStack {
-                        Button("Put in") { putIn(cur) }.buttonStyle(QuietButtonStyle())
-                        if company.form != .limited {
-                            Button("Take out") { takeOut(cur) }.buttonStyle(QuietButtonStyle())
-                        }
-                    }
-                    if amount > 0 {
-                        Text("Company cash after putting in: \(cur.tidyDisplay(company.cash + amount)).")
-                            .font(.caption2.monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    if company.form == .limited {
-                        Text("A limited company pays money out as dividends (Ownership) or salary.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    } else {
-                        Text("A sole trader's money is yours: taking it out is not taxed again, the profit already is.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    }
-                }
-            }
-            if company.form == .limited {
-                CardSection(title: "Your salary", trailing: {
-                    Text(company.ownerMonthlySalary > 0 ? cur.tidyShort(company.ownerMonthlySalary) + " a month" : "None").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                }) {
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        AmountField(title: "Monthly salary", currency: cur, amount: $salary)
-                        HStack {
-                            Button("Set salary") { setSalary(salary, cur) }.buttonStyle(QuietButtonStyle())
-                            if company.ownerMonthlySalary > 0 { Button("Stop salary") { setSalary(0, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
-                        }
-                        Text("Paid with payroll while the company is open, with employer contributions on top; income tax is withheld. A salary is a cost to the company, a dividend is not.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-        }
-        .onAppear { salary = company.ownerMonthlySalary }
-    }
-
-    private func putIn(_ cur: Currency) {
-        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let v = amount
-        if store.act({ $0.putMoneyInto(companyID: company.id, amount: v) }) == true { Haptics.success(); store.show("\(cur.tidyDisplay(v)) moved into \(company.name).", tone: "good") }
-        else { Haptics.warning(); store.show("You don't have \(cur.tidyDisplay(v)) available.", tone: "warn") }
-    }
-    private func takeOut(_ cur: Currency) {
-        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let v = amount
-        switch store.act({ $0.takeMoneyOut(companyID: company.id, amount: v) }) {
-        case .ok?: Haptics.success(); store.show("\(cur.tidyDisplay(v)) moved to your account.", tone: "good")
-        case .dividendOnly?: Haptics.warning(); store.show("A limited company can only pay dividends.", tone: "warn")
-        case nil: break
-        default: Haptics.warning(); store.show("The company doesn't have \(cur.tidyDisplay(v)).", tone: "warn")
-        }
-    }
-    private func setSalary(_ v: Double, _ cur: Currency) {
-        let result = store.act { $0.setOwnerSalary(companyID: company.id, monthly: v) }
-        let now = store.engine?.state.company(company.id)?.ownerMonthlySalary ?? 0
-        salary = now
-        store.settle(result, now > 0 ? "Your salary is now \(cur.tidyDisplay(now)) a month." : "You no longer take a salary.", same: "Your salary is already that.")
-    }
-}
 
 // MARK: Ownership (company decisions)
 

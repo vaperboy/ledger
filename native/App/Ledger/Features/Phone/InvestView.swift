@@ -4,7 +4,7 @@ import Countries
 import Investments
 import Simulation
 
-/// Shares, crypto and funds, and your fund manager: a section of Group > Money. Startups, private equity and stakes in groups are
+/// Shares, crypto and funds, and your fund manager: the Deposits tab of the Bank Investments account. Startups, private equity and stakes in groups are
 /// ventures with their own workflows and live in the Projects tab; a summary row here opens them.
 struct InvestContent: View {
     @EnvironmentObject var store: GameStore

@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Simulation
 
-/// A full screen of reports (used from a company's Finances). In the Money tab the same content sits inside `FinanceView`.
+/// A full screen of reports (used from a company's Finances). The Bank app Statements tab links here.
 struct ReportsScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int? = nil

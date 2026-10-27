@@ -58,7 +58,10 @@ final class GameStore: ObservableObject {
     private var jumping = false
     /// An app of the Phone tab to open (set by `openApp`, taken by `PhoneHome`).
     @Published var phoneAppRequest: PhoneApp?
+    /// Kept only so an old link to a money section still compiles (`GroupView` forwards it to the Bank app).
     @Published var moneySection: MoneySection?
+    /// An account (and tab) of the Bank app to open (set by `openBank`, taken by `BankApp`).
+    @Published var bankRequest: BankRequest?
     /// Open the Reports section on this report (set by the Home prompt).
     @Published var reportRequest: ReportRef?
     @Published var showNewCompany = false
@@ -242,6 +245,12 @@ final class GameStore: ObservableObject {
         jump(to: .phone)
     }
 
+    /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
+    func openBank(_ account: BankAccountID, tab: BankTab = .account) {
+        bankRequest = BankRequest(account: account, tab: tab)
+        openApp(.bank)
+    }
+
     /// Opens one message in the Inbox app. `InboxView` takes the request on appear and on change, so it works whether or not
     /// the Inbox was built before.
     func openMessage(_ id: Int) {
@@ -252,7 +261,7 @@ final class GameStore: ObservableObject {
     /// Drops every pending navigation request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false; returnTab = nil
-        routeRequest = nil; moneySection = nil; reportRequest = nil
+        routeRequest = nil; moneySection = nil; bankRequest = nil; reportRequest = nil
         openMessageID = nil; phoneAppRequest = nil; showNewCompany = false
     }
 
@@ -261,9 +270,9 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id): openCompany(id)
-        case .openLoans: moneySection = .bank; jump(to: .group)
-        case .openInvest: moneySection = .invest; jump(to: .group)
-        case .openTax: moneySection = .taxes; jump(to: .group)
+        case .openLoans: openBank(.personal, tab: .loans)
+        case .openInvest: openBank(.investments, tab: .deposits)
+        case .openTax: openBank(.personal, tab: .bills)
         case .newCompany: showNewCompany = true; jump(to: .company)
         }
     }
