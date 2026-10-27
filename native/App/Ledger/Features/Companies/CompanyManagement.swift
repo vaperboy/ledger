@@ -266,7 +266,7 @@ struct ManagerSheet: View {
         let notice = co.value("mgrNotice")
         let mgrRole: String = bd.map { ManagerModel.title($0) } ?? "Manager"
         let mgrNote: String = "\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job"
-        PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false, roleKey: "manager", face: FaceTraits.of(m, countryCode: co.countryCode), faceGroup: "\(co.id)")
+        PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false, roleKey: "manager", face: m.faceKey)
         if !notice.isNull {
             CardSection("Leaving") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -567,7 +567,7 @@ struct AssistantSheet: View {
 
     @ViewBuilder private func manage(_ co: Company, _ a: JSONValue, _ n: Person, _ cur: Currency) -> some View {
         let asstNote: String = "\(co.name) · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide."
-        PersonCard(name: n.name, role: "Assistant manager", scope: "store", note: asstNote, wage: cur.tidyShort(a["wage"].double), chevron: false, roleKey: "assistant-manager", face: FaceTraits.of(n, countryCode: co.countryCode), faceGroup: "\(co.id)")
+        PersonCard(name: n.name, role: "Assistant manager", scope: "store", note: asstNote, wage: cur.tidyShort(a["wage"].double), chevron: false, roleKey: "assistant-manager", face: n.faceKey)
         let picked: Int = a["duties"].array.count
         TeamGroup(title: "Jobs", trailing: {
             HStack(spacing: 4) {

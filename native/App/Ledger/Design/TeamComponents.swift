@@ -131,7 +131,7 @@ struct CandidateHireRow<Extra: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 10) {
-                ThumbnailView(kind: .person, key: roleKey, size: 36, initials: person.name, face: FaceTraits.of(person, countryCode: currency.country.code), faceGroup: "candidates")
+                ThumbnailView(kind: .person, key: roleKey, size: 36, initials: person.name, face: person.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(person.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text(subtitle ?? defaultSubtitle).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -273,9 +273,8 @@ struct ManagementRow: View {
     var line: String
     var lineTint: Color = Theme.ivoryFaint
     var wage: String?
-    /// Portrait traits of the person in the post (nil for a vacant post), and the company they work for.
-    var face: FaceTraits? = nil
-    var faceGroup: String = ""
+    /// The portrait key of the person in the post (nil for a vacant post).
+    var face: String? = nil
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 3) {

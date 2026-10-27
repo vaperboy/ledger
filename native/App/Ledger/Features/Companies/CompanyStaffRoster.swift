@@ -98,7 +98,7 @@ struct CompanyStaffRoster: View {
         let wage: String = cur.tidyShort(m.monthlyWage)
         return NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
             PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role,
-                       face: engine.state.people[m.id].map { FaceTraits.of($0, countryCode: company.countryCode) }, faceGroup: "\(company.id)")
+                       face: engine.state.people[m.id]?.faceKey)
         }.buttonStyle(.plain)
     }
 
@@ -201,7 +201,7 @@ struct StaffProfileView: View {
         ]
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                ThumbnailView(kind: .person, key: p.role, size: 48, initials: p.name, face: store.engine?.state.people[staffID].map { FaceTraits.of($0, countryCode: co.countryCode) }, faceGroup: "\(co.id)")
+                ThumbnailView(kind: .person, key: p.role, size: 48, initials: p.name, face: store.engine?.state.people[staffID]?.faceKey)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     HStack(spacing: 5) {

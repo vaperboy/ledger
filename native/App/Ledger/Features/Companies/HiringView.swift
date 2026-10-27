@@ -220,7 +220,7 @@ struct HiringApplicantCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 ThumbnailView(kind: .person, key: applicant.role, size: 40, initials: a.name,
-                              face: FaceTraits.of(id: a.personID, name: a.name, age: a.age, countryCode: currency.country.code), faceGroup: "hiring\(companyID)")
+                              face: a.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(a.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text("\(a.age) · \(roleName) · \(experienceLine)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
