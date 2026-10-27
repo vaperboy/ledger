@@ -80,9 +80,10 @@ public enum MonthEnd {
     /// In day mode wages, rent and suppliers are settled on their own days, so only tax is settled here.
     /// Original: `settle` under R29.
     @discardableResult
-    static func settleTax(_ s: inout GameState, companyIndex i: Int, context: FinanceContext) -> Double {
+    /// `early`: the owner pays before the due week (`GameEngine.payObligationNow`); the same payment, booked the same way.
+    static func settleTax(_ s: inout GameState, companyIndex i: Int, context: FinanceContext, early: Bool = false) -> Double {
         var co = s.companies[i]
-        guard co.taxDue, s.week >= co.taxDueWeek else { return 0 }
+        guard co.taxDue, early || s.week >= co.taxDueWeek else { return 0 }
         let room = context.overdraftRoom(co, s)
         let left = max(0, co.cash + room)
         let due = min(co.payables["tax"] ?? 0, co.taxPrevYear)

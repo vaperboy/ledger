@@ -359,6 +359,34 @@ public enum Payday {
         return (jsRound(paid), jsRound(short))
     }
 
+    /// The owner pays the month's rent and supplier bills before the last day: the same payments `payBills` makes on that day (cash out, the
+    /// "Rent" / suppliers line, the landlord paid), without late fees or the missed-bill record. All or nothing: nothing moves unless the account
+    /// (with its overdraft room) covers everything owed. What accrues afterwards is still paid on the date. Returns what was paid.
+    static func payBillsEarly(_ s: inout GameState, _ i: Int, today t: Int, context: FinanceContext) -> Double? {
+        var co = s.companies[i]
+        let owed = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
+        guard owed > 0, co.cash + context.overdraftRoom(co, s) >= owed else { return nil }
+        var cfg = config(co, today: t)
+        var paid = 0.0
+        for k in ["rent", "other"] {
+            let due = co.payables[k] ?? 0
+            if due <= 0 { continue }
+            s.companies[i] = co
+            Ledger.moveRaw(&s, .company(co.id), -due)
+            co = s.companies[i]
+            let used = !co.value("f30").object.isEmpty
+            co.addTransaction(week: s.week, amount: -jsRound(due), label: k == "rent" ? "Rent" : (used ? "Monthly bills: suppliers, insurance, leasing, fees" : "Suppliers and costs"))
+            if k == "rent" { s.companies[i] = co; PremisesExtras.payLandlord(&s, tenantIndex: i, paid: due); co = s.companies[i] }
+            cfg.arrears[k] = nil
+            co.payables[k] = 0
+            paid += due
+        }
+        co.set("f30", .object([:]))
+        co.set("pr29", cfg.json)
+        s.companies[i] = co
+        return jsRound(paid)
+    }
+
     /// Bills (rent, suppliers) short for four months running, or tax unpaid for six: the company can no longer pay. Used by `Failure`.
     static func unpaidForMonths(_ co: Company, today t: Int) -> Bool {
         config(co, today: t).billShortMonths >= 4 || co.unpaidMonths >= 6

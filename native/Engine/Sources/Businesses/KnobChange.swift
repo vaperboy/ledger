@@ -27,6 +27,9 @@ public struct KnobChangeQuote: Equatable, Sendable {
     /// Why it cannot be done now (chain standard, franchise agreement, still changing over, nothing to change)
     public var blocked: String?
     public var cashShort: Bool
+    /// What the change adds to the running costs each month (negative = saves). An estimate: the weekly overhead the turn charges
+    /// (`CompanyCosts.fixedOverhead`, the "w" effect of the options, at today's prices) times 52/12. Zero for most options.
+    public var monthlyRunningCost: Double = 0
     public var documentFees: Double { documents.reduce(0) { $0 + $1.fee } }
     public var totalCost: Double { changeoverCost + documentFees }
 }
@@ -68,6 +71,13 @@ public enum KnobChange {
         co.value("knob")[k.id].isNull ? k.defaultIndex : co.value("knob")[k.id].int
     }
 
+    /// The running cost one option adds each month, from the same "w" effect `CompanyCosts.fixedOverhead` charges every week
+    /// (at today's prices), times 52/12. An estimate: prices move with inflation.
+    public static func monthlyRunningCost(_ s: GameState, _ data: GameData, option: KnobOption) -> Double {
+        let weekly = (option.effects["w"] ?? 0) * World(state: s, data: data).inflationIndex
+        return weekly * 52 / 12
+    }
+
     /// The quote for setting the knob to `value` (an option index, or the bit mask of a multi-choice knob).
     /// `byChain`: the chain's own standard is being applied, so the chain's lock does not block it.
     public static func quote(_ s: GameState, _ data: GameData, companyID: Int, knob knobID: String, value: Int, byChain: Bool = false) -> KnobChangeQuote? {
@@ -89,12 +99,14 @@ public enum KnobChange {
             let lost = k.options.enumerated().filter { removed & (1 << $0.offset) != 0 }.map { $0.element }
             q.optionName = (gained + lost).map { $0.name }.joined(separator: ", ")
             q.onPaper = lines(gained: gained, lost: lost)
+            q.monthlyRunningCost = gained.reduce(0) { $0 + monthlyRunningCost(s, data, option: $1) } - lost.reduce(0) { $0 + monthlyRunningCost(s, data, option: $1) }
         } else {
             let oldO = k.options.indices.contains(old) ? k.options[old] : nil
             let newO = k.options[value]
             gained = [newO]
             q.optionName = newO.name
             q.onPaper = lines(gained: [newO], lost: oldO.map { [$0] } ?? [])
+            q.monthlyRunningCost = monthlyRunningCost(s, data, option: newO) - (oldO.map { monthlyRunningCost(s, data, option: $0) } ?? 0)
             if isOpen && value != old {
                 let t = transitionWeeks(from: oldO, to: newO)
                 q.transitionWeeks = t.weeks

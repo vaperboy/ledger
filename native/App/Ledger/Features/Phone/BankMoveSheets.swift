@@ -32,6 +32,21 @@ enum BankPay {
         }
     }
 
+    /// Pay a coming rent, supplier, invoice, tax or VAT bill now (`payObligationNow`): the engine settles it exactly as its date would and
+    /// says what happened; the toast is the engine's real result.
+    static func early(_ store: GameStore, _ o: Obligation) {
+        guard let outcome = store.act({ $0.payObligationNow(o) }) else { return }
+        let cur: Currency? = store.engine.flatMap { e in e.state.company(o.companyID).map { e.currency(for: $0) } }
+        switch outcome {
+        case .paid(let amount):
+            let text: String = cur?.tidyShort(amount) ?? store.short(amount)
+            store.settle(.applied, "\(text) paid: \(o.title.tidyText). Nothing more is taken on its date.", tone: "good")
+            Haptics.success()
+        case .refused(let why):
+            store.settle(.refused(why), "")
+        }
+    }
+
     /// Pay one loan instalment early (`repayLoan`). The balance falls by the instalment; there is no fee.
     static func instalment(_ store: GameStore, loanID: Int) {
         guard let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) else { store.show("That loan is already paid off.", tone: "n"); return }

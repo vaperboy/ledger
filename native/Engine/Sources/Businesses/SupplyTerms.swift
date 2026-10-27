@@ -344,14 +344,8 @@ public enum SupplyTerms {
                 let supplierLive = pid != 0 && (s.company(pid)?.status.isLive ?? false)
                 if (room[bid] ?? 0) >= amount - 0.5 {
                     room[bid]! -= amount
-                    Ledger.moveRaw(&s, .company(bid), -amount)
-                    s.companies[bi].addTransaction(week: s.week, amount: -jsRound(amount), label: "Invoice: \(j["n"].string)")
-                    if pid != 0, supplierLive, let si = s.companyIndex(pid) {
-                        Ledger.moveRaw(&s, .company(pid), amount)
-                        s.companies[si].addTransaction(week: s.week, amount: jsRound(amount), label: "Paid by \(co.name)")
-                    }
+                    payNow(&s, j, buyerIndex: bi)
                     gone.insert(k)
-                    closeOut(&s, j, paid: true)
                 } else {
                     let policy = s.economy.policyRate
                     let rate = lateAnnualRate(country: context.country(of: co, s), policyRate: policy) / 52
@@ -388,6 +382,36 @@ public enum SupplyTerms {
                 s.addMessage(from: s.companies[i].name, title: "Suppliers deliver normally again", body: "\(s.companies[i].name) has kept to its payment terms. Suppliers are back on normal terms.", companyID: s.companies[i].id, tone: "good")
             }
         }
+    }
+
+    /// Pay one open invoice in full: the cash moves from the buyer to the supplier (if it is still a live company) and the invoice ends.
+    /// The one payment path, used on the due date (`weekly`) and when the owner pays early (`GameEngine.payObligationNow`).
+    static func payNow(_ s: inout GameState, _ j: JSONValue, buyerIndex bi: Int) {
+        let amount = j["a"].double, bid = j["b"].int, pid = j["p"].int
+        let supplierLive = pid != 0 && (s.company(pid)?.status.isLive ?? false)
+        Ledger.moveRaw(&s, .company(bid), -amount)
+        s.companies[bi].addTransaction(week: s.week, amount: -jsRound(amount), label: "Invoice: \(j["n"].string)")
+        if pid != 0, supplierLive, let si = s.companyIndex(pid) {
+            Ledger.moveRaw(&s, .company(pid), amount)
+            s.companies[si].addTransaction(week: s.week, amount: jsRound(amount), label: "Paid by \(s.companies[bi].name)")
+        }
+        closeOut(&s, j, paid: true)
+    }
+
+    /// Pay early the open invoices of one buyer to one supplier that fall due in the given week. Returns what was paid (0 if none).
+    public static func payEarly(_ s: inout GameState, buyer: Int, providerName: String, dueWeek: Int) -> Double {
+        guard let bi = s.companyIndex(buyer) else { return 0 }
+        var list = raw(s), paid = 0.0
+        var keep: [JSONValue] = []
+        for j in list {
+            if j["b"].int == buyer, j["n"].string == providerName, j["d"].int == dueWeek {
+                paid += j["a"].double
+                payNow(&s, j, buyerIndex: bi)
+            } else { keep.append(j) }
+        }
+        list = keep
+        save(&s, list)
+        return paid
     }
 
     /// An invoice ends (paid, or its buyer is gone): the buyer's payable and the supplier's receivable go with it.

@@ -77,6 +77,13 @@ public extension GameEngine {
         return KnobChange.quote(state, data, companyID: companyID, knob: knob, value: Knobs.mask(KnobChange.currentValue(co, k), option: option, on: on))
     }
 
+    /// What one option of a knob (an add-on) costs to keep each month, in the company's currency: the weekly overhead the turn charges for
+    /// it times 52/12, at today's prices. An estimate. Nil when the company, knob or option does not exist; 0 when the option has no running cost.
+    func knobOptionMonthlyCost(companyID: Int, knob: String, option: Int) -> Double? {
+        guard let co = state.company(companyID), let k = data.catalog[co.type]?.knobs.first(where: { $0.id == knob }), k.options.indices.contains(option) else { return nil }
+        return KnobChange.monthlyRunningCost(state, data, option: k.options[option])
+    }
+
     /// A read-only before/after estimate of that change (customers, capacity, price, sales, what is left after direct costs), as ranges
     /// over the weeks ahead, worked out by the engine's own demand, price, capacity and cost functions. Nil where the trade has no
     /// ordinary weekly sales model. `option` is an option index, or the bit mask of a multi-choice knob.
