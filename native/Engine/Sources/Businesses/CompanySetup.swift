@@ -367,6 +367,10 @@ public enum CompanySetup {
 
     public struct Estimate: Equatable {
         public var documents = 0.0, equipment = 0.0, vehicles = 0.0, premises = 0.0, stock = 0.0, firstPayroll = 0.0, buffer = 0.0
+        /// The part of `premises` that is fit-out (the rest is the three months' rent deposit); for the cost breakdown screens.
+        public var premisesFitOut = 0.0
+        /// Rent a month of the standard place the estimate prices (0 when the trade needs none).
+        public var monthlyRent = 0.0
         /// Down payment and fees on a first property (rental businesses).
         public var property = 0.0
         public var registration = 0.0, shareCapital = 0.0, abroad = 0.0
@@ -405,6 +409,7 @@ public enum CompanySetup {
             let m2 = jsRound(bd.premisesM2 * size)
             let rent = P.rentPerM2Year * city.rent * w.inflationIndex
             r.premises = rent * m2 / 12 * 3 + (data.catalog.tables.fitOut[kind] ?? 0) * m2
+            r.premisesFitOut = (data.catalog.tables.fitOut[kind] ?? 0) * m2
             monthlyRent = rent * m2 / 12
         }
         r.stock = OpeningChecklist.initialStockCost(co, bd, w)
@@ -423,6 +428,7 @@ public enum CompanySetup {
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
+        r.premisesFitOut = min(r.premises, round(r.premisesFitOut)); r.monthlyRent = round(monthlyRent)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
         if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(Ambitions.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) }
