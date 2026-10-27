@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import GameCore
 import Finance
+import Businesses
 import Simulation
 
 /// Stats app: tiles and charts. A grid of figure tiles first (best, now, weeks, sales), then the net worth trend and what it is made
