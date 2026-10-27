@@ -15,6 +15,11 @@ struct SettingsTableRow: View {
     var value: String
     var valueTint: Color = Theme.ivory
     var opens: SettingOpens = .page
+    /// With a glyph the row takes the overview-table look: an icon circle in front, an optional coloured change line under the value,
+    /// and a chevron at the end for both popups and pages.
+    var glyph: String? = nil
+    var change: String = ""
+    var changeTint: Color = Theme.gain
     var action: () -> Void
 
     var body: some View {
@@ -22,6 +27,34 @@ struct SettingsTableRow: View {
             Haptics.tap()
             action()
         } label: {
+            if glyph != nil { overviewRow } else { plainRow }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(opens == .sheet ? "Opens a small sheet to change it" : "Opens a page")
+    }
+
+    private var overviewRow: some View {
+        HStack(spacing: 10) {
+            IconCircle(glyph: glyph ?? Glyph.settings, size: 34)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title.tidyText).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(2)
+                if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(valueTint).lineLimit(2).multilineTextAlignment(.trailing)
+                if !change.isEmpty { Text(change.tidyText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(changeTint).lineLimit(1) }
+            }
+            .frame(maxWidth: 150, alignment: .trailing)
+            GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryFaint)
+        }
+        .padding(.vertical, 9)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
+        .contentShape(Rectangle())
+    }
+
+    private var plainRow: some View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
@@ -36,10 +69,21 @@ struct SettingsTableRow: View {
             .padding(.horizontal, 12).padding(.vertical, 11)
             .overlay(alignment: .bottom) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
             .contentShape(Rectangle())
+    }
+}
+
+/// The settings list of the overview-table look: one bordered card with a caps label and rows made with `SettingsTableRow(glyph:)`.
+struct OverviewSettingsCard<Content: View>: View {
+    var heading: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(heading.uppercased()).capsLabel()
+                VStack(spacing: 0, content: content)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(opens == .sheet ? "Opens a small sheet to change it" : "Opens a page")
     }
 }
 

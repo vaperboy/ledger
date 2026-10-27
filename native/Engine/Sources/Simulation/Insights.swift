@@ -162,3 +162,39 @@ public extension GameEngine {
         return Array(out.sorted { (order[$0.tone] ?? 9) < (order[$1.tone] ?? 9) }.prefix(limit))
     }
 }
+
+
+/// The figures at the top of the Operations tab: how much of the capacity was used last week, what the company makes a week and how that
+/// compares with the month before, and demand against capacity for the last 8 weeks.
+public struct OperationsFigures: Equatable, Sendable {
+    public struct Week: Equatable, Sendable, Identifiable {
+        public var week: Int
+        public var demand: Double
+        public var capacity: Double
+        public var id: Int { week }
+    }
+    public var capacityUse: Double?        // 0...1+, nil before the first trading week
+    public var demandIsLimit: Bool         // demand, not capacity, caps sales
+    public var profitPerWeek: Double?      // last full month / 4.33, nil before the first month closes
+    public var profitChangePerWeek: Double?  // vs the month before, nil when there is none
+    public var weeks: [Week]
+}
+
+public extension GameEngine {
+    func operationsFigures(companyID: Int) -> OperationsFigures? {
+        guard let co = state.company(companyID) else { return nil }
+        let lw = co.value("lastW")
+        let hist = co.monthlyHistory
+        var f = OperationsFigures(capacityUse: nil, demandIsLimit: false, profitPerWeek: nil, profitChangePerWeek: nil, weeks: [])
+        if !lw.isNull, lw["cap"].double > 0 {
+            f.capacityUse = lw["units"].double / lw["cap"].double
+            f.demandIsLimit = lw["D"].double <= lw["cap"].double
+        }
+        if let last = hist.last {
+            f.profitPerWeek = last.profit / 4.33
+            if hist.count >= 2 { f.profitChangePerWeek = (last.profit - hist[hist.count - 2].profit) / 4.33 }
+        }
+        f.weeks = co.value("wkHist").array.map { OperationsFigures.Week(week: $0["w"].int, demand: $0["D"].double, capacity: $0["cap"].double) }
+        return f
+    }
+}

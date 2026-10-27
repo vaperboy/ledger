@@ -335,6 +335,10 @@ public enum CompanyWeek {
         books.add("cogs", cogs - jsRound(ctx.stockChange))
         if ctx.stockChange != 0 { co.inventory += jsRound(ctx.stockChange) }
         co.set("lastW", .object(["units": .number(ctx.units), "rev": .number(rev), "cogs": .number(cogs), "D": .number(ctx.D), "cap": .number(ctx.cap), "util": .number(ctx.util)]))
+        // Demand and capacity of the last 8 weeks, for the Operations chart (display only; nothing reads it back into the economy).
+        var hist: [JSONValue] = co.value("wkHist").array
+        hist.append(.object(["w": .number(Double(s.week)), "D": .number(ctx.D), "cap": .number(ctx.cap)]))
+        co.set("wkHist", .array(Array(hist.suffix(8))))
         let cashShare = 1 - bd.businessShare
         let gross = rev * (1 + vr)
         let grossB2B = country.usesSalesTax ? rev : gross
