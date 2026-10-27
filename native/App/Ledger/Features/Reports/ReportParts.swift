@@ -118,18 +118,18 @@ struct PnLTable: View {
             ReportTableHeader(first: nowTitle, second: beforeTitle, third: "Change")
             row("Revenue", now.revenue, prev.revenue, strong: true)
             ForEach(Array(lines.enumerated()), id: \.offset) { _, pair in
-                Hairline()
+                CardLine()
                 row(pair.0.label, pair.0.amount, pair.1.amount, cost: true)
             }
-            Hairline()
+            CardLine()
             row("Total costs", now.costs, prev.costs, cost: true, strong: true)
-            Hairline()
+            CardLine()
             row("Profit before tax", now.profitBeforeTax, prev.profitBeforeTax, strong: true)
             if now.tax != 0 || prev.tax != 0 {
-                Hairline()
+                CardLine()
                 row("Corporate tax", now.tax, prev.tax, cost: true)
             }
-            Hairline()
+            CardLine()
             row("Net profit", now.netProfit, prev.netProfit, strong: true)
         }
     }

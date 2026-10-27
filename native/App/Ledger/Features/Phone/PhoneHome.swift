@@ -177,7 +177,7 @@ struct PhoneAppScreen: View {
         case .richList:
             RichListView().appScreen(title: app.title, subtitle: app.subtitle)
         case .reports:
-            ReportsScreen().appScreen(title: app.title, subtitle: app.subtitle)
+            ReportsScreen()
         case .settings:
             SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
         }

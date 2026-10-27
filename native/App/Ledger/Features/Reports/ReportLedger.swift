@@ -37,7 +37,7 @@ struct ReportMovements: View {
                 let inflow = list.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }
                 let outflow = list.filter { $0.amount < 0 }.reduce(0) { $0 - $1.amount }
                 let id = companyID ?? 0
-                KeyFigures(items: [
+                FigureCard(items: [
                     .init(label: "Money in", value: fmt.short(inflow, company: id), tint: inflow > 0 ? Theme.gain : Theme.ivory),
                     .init(label: "Money out", value: fmt.short(outflow, company: id)),
                     .init(label: "Movements", value: "\(list.count)"),
@@ -54,14 +54,14 @@ struct ReportMovements: View {
                     }
                 }
             }
-            LedgerSection(title: "Bank movements", trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Bank movements", trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 if list.isEmpty {
                     Text(all.isEmpty ? "No company money moved in this period, or it is older than what the companies keep." : "Nothing of this kind in this period.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(list.prefix(limit).enumerated()), id: \.element.id) { i, m in
-                            if i > 0 { Hairline() }
+                            if i > 0 { CardLine() }
                             row(m, fmt)
                         }
                     }
@@ -102,7 +102,7 @@ struct ReportMovements: View {
                 Spacer(minLength: 8)
                 Text(fmt.signed(m.amount, company: m.companyID)).font(.system(size: 13.5).monospacedDigit())
                     .foregroundStyle(m.amount > 0 ? Theme.gain : Theme.ivory)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
+                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }
@@ -124,18 +124,18 @@ struct ReportBills: View {
         let o = engine.financeOverview(companyID: companyID)
         let paid = engine.companyMovements(companyID: companyID, weeks: report.firstWeek...report.lastWeek).filter { [CompanyMovement.Kind.payroll, .bills, .tax].contains($0.kind) }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            KeyFigures(items: [
+            FigureCard(items: [
                 .init(label: "Due in 30 days", value: fmt.short(o.dueWithin30Days, company: companyID ?? 0)),
                 .init(label: CashWording.available(companyID: companyID), value: fmt.short(o.cashAvailable, company: companyID ?? 0)),
                 .init(label: "Short by", value: o.shortfall > 0 ? fmt.short(o.shortfall, company: companyID ?? 0) : "–", tint: o.shortfall > 0 ? Theme.loss : Theme.ivory),
             ], columns: 3)
-            LedgerSection(title: "Coming due", trailing: { Text("\(o.upcoming.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Coming due", trailing: { Text("\(o.upcoming.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 if o.upcoming.isEmpty {
                     Text("Nothing is due: no payroll, bills, tax or loan instalments are waiting.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(o.upcoming.enumerated()), id: \.element.id) { i, u in
-                            if i > 0 { Hairline() }
+                            if i > 0 { CardLine() }
                             Button { if u.companyID != 0 { store.openCompany(u.companyID, section: .finances) } } label: {
                                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -148,7 +148,7 @@ struct ReportBills: View {
                                         Text(u.daysAway <= 0 ? "Due now" : u.daysAway == 1 ? "Tomorrow" : "\(u.dateText) · \(u.daysAway) days")
                                             .font(.system(size: 10.5)).foregroundStyle(u.daysAway <= 7 ? Theme.caution : Theme.ivoryFaint)
                                     }
-                                    if u.companyID != 0 { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
+                                    if u.companyID != 0 { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim) }
                                 }
                                 .padding(.vertical, 8).contentShape(Rectangle())
                             }
@@ -158,13 +158,13 @@ struct ReportBills: View {
                     }
                 }
             }
-            LedgerSection(title: "Paid in this " + report.kind.noun, trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Paid in this " + report.kind.noun, trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 if paid.isEmpty {
                     Text("No payroll, rent, bills or tax were paid by the companies in this period.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(paid.enumerated()), id: \.element.id) { i, m in
-                            if i > 0 { Hairline() }
+                            if i > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(m.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2)

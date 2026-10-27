@@ -14,9 +14,7 @@ struct ReportsScreen: View {
                     .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .ledgerBackground()
-            .navigationTitle("Reports")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")
         }
     }
 }
@@ -67,7 +65,7 @@ struct ReportsContent: View {
                 case .bills: ReportBills(engine: engine, report: r, companyID: companyID)
                 }
             } else {
-                LedgerSection("No report yet") {
+                CardSection("No report yet") {
                     Text("A report is written each time a week, month or year ends. The first one arrives after your first full week.")
                         .font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
                 }
@@ -85,7 +83,7 @@ struct ReportsContent: View {
                 trend(r, all)
         }
         Group {
-                LedgerSection("Profit and loss") {
+                CardSection("Profit and loss") {
                     PnLTable(now: r.group.pnl, before: r.previous?.pnl, nowTitle: kind.title == "Week" ? "This week" : "This " + kind.noun,
                              beforeTitle: "Before", format: format)
                 }
@@ -102,23 +100,27 @@ struct ReportsContent: View {
 
     private func picker(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         let i = all.firstIndex(where: { $0.id == r.id }) ?? 0
-        return HStack(spacing: 12) {
-            Button { if i > 0 { chosen[kind.rawValue] = all[i - 1].id; Haptics.choose() } } label: {
-                Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(i > 0 ? Theme.gold : Theme.ivoryFaint.opacity(0.4)).frame(width: 36, height: 36)
+        return Card(padding: 8, radius: Theme.Radius.row) {
+            HStack(spacing: 12) {
+                stepButton(glyph: Glyph.back, enabled: i > 0, label: "Earlier report") { chosen[kind.rawValue] = all[i - 1].id }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(r.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                    Text(r.range).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer(minLength: 8)
+                stepButton(glyph: Glyph.chevron, enabled: i < all.count - 1, label: "Later report") { chosen[kind.rawValue] = all[i + 1].id }
             }
-            .buttonStyle(.plain).disabled(i == 0).accessibilityLabel("Earlier report")
-            VStack(alignment: .leading, spacing: 1) {
-                Text(r.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-                Text(r.range).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-            Spacer(minLength: 8)
-            Button { if i < all.count - 1 { chosen[kind.rawValue] = all[i + 1].id; Haptics.choose() } } label: {
-                Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(i < all.count - 1 ? Theme.gold : Theme.ivoryFaint.opacity(0.4)).frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain).disabled(i >= all.count - 1).accessibilityLabel("Later report")
         }
+    }
+
+    private func stepButton(glyph: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
+        Button { Haptics.choose(); action() } label: {
+            GlyphView(glyph: glyph, size: 14, weight: 2, tint: enabled ? Theme.gold : Theme.ivoryDim.opacity(0.5))
+                .frame(width: 36, height: 36)
+                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain).disabled(!enabled).accessibilityLabel(label)
     }
 
     // MARK: Hero and key figures
@@ -128,7 +130,7 @@ struct ReportsContent: View {
         let net = r.group.pnl.netProfit
         let prevNet = r.previous?.pnl.netProfit
         let nwLabel = companyID == nil ? "Net worth" : "Your share's value"
-        return VStack(alignment: .leading, spacing: 6) {
+        return Card(padding: 14, radius: Theme.Radius.hero) { VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Profit after tax").capsLabel()
@@ -154,7 +156,7 @@ struct ReportsContent: View {
             if r.partial {
                 Text("This period began part-way through: the game was saved before reports existed.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
-        }
+        } }
     }
 
     private func keyFigures(_ r: PeriodReport) -> some View {
@@ -171,7 +173,7 @@ struct ReportsContent: View {
             .init(label: "Capacity used", value: f.share(g.capacityUse)),
             .init(label: "Cash at end", value: f.short(g.cashEnd), tint: g.cashEnd < 0 ? Theme.loss : Theme.ivory),
         ]
-        return KeyFigures(items: items, columns: 3)
+        return FigureCard(items: items, columns: 3)
     }
 
     private func summary(_ r: PeriodReport) -> some View {
@@ -182,7 +184,7 @@ struct ReportsContent: View {
         } else {
             lines = r.summary
         }
-        return LedgerSection("In short") {
+        return CardSection("In short") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { _, s in
                     Text(s.tidyMoney).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
@@ -193,7 +195,7 @@ struct ReportsContent: View {
 
     private func trend(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         let upto = all.filter { $0.id <= r.id }.suffix(12)
-        return LedgerSection(title: "Against earlier \(kind.noun)s", trailing: { ChartKey(items: [("Revenue", Theme.gold), ("Profit", Theme.gain)]) }) {
+        return CardSection(title: "Against earlier \(kind.noun)s", trailing: { ChartKey(items: [("Revenue", Theme.gold), ("Profit", Theme.gain)]) }) {
             if upto.count >= 2 {
                 RevenueProfitChart(revenue: upto.map { $0.group.pnl.revenue }, profit: upto.map { $0.group.pnl.netProfit }, format: format.short)
             } else {
@@ -208,7 +210,7 @@ struct ReportsContent: View {
         let f = format
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
         let rows = order.compactMap { r.company($0) }
-        return LedgerSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
+        return CardSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
             Text("Net profit  ·  change  ·  tap to open").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
             if rows.isEmpty {
@@ -236,12 +238,12 @@ struct ReportsContent: View {
                                     Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.change(c.pnl.netProfit - b))
                                 }
                             }
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
+                            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
                         }
                         .padding(.vertical, 9)
                         .contentShape(Rectangle())
                     }.buttonStyle(.plain)
-                    if i < rows.count - 1 { Hairline() }
+                    if i < rows.count - 1 { CardLine() }
                 }
             }
         }
@@ -256,19 +258,19 @@ struct ReportsContent: View {
             let d = y - x
             return ReportTableRow(label: label, first: f.short(x), second: f.short(y), third: f.signed(d), thirdTint: abs(d) < 0.5 ? Theme.ivoryMuted : Theme.change(debt ? -d : d), strong: strong)
         }
-        return LedgerSection(companyID == nil ? "Net worth" : "Value of your share") {
+        return CardSection(companyID == nil ? "Net worth" : "Value of your share") {
             VStack(spacing: 0) {
                 ReportTableHeader(first: "Start", second: "End", third: "Change")
                 if companyID == nil {
                     row("Cash and savings", a.cash, b.cash)
-                    Hairline()
+                    CardLine()
                     row("Investments", a.investments, b.investments)
-                    Hairline()
+                    CardLine()
                     row("Companies", a.companies, b.companies)
-                    if a.luxury != 0 || b.luxury != 0 { Hairline(); row("Luxury items", a.luxury, b.luxury) }
-                    Hairline()
+                    if a.luxury != 0 || b.luxury != 0 { CardLine(); row("Luxury items", a.luxury, b.luxury) }
+                    CardLine()
                     row("Debt and tax owed", a.debt, b.debt, debt: true)
-                    Hairline()
+                    CardLine()
                 }
                 row(companyID == nil ? "Net worth" : "Value", a.total, b.total, strong: true)
             }
@@ -282,26 +284,26 @@ struct ReportsContent: View {
             ReportLine(label: label, value: f.signed(v), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v))
         }
         let other = g.companyCashEnd - g.companyCashStart - g.ownerIn + g.ownerOut - g.loansTaken + g.loansRepaid
-        return LedgerSection("Cash") {
+        return CardSection("Cash") {
             VStack(spacing: 0) {
                 if companyID == nil {
                     ReportLine(label: "Your account at start", value: f.short(g.accountStart))
                     ForEach(g.accountFlows.filter { abs($0.amount) >= 0.5 }) { fl in
-                        Hairline()
+                        CardLine()
                         line(fl.label, fl.amount)
                     }
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true)
-                    Hairline().padding(.vertical, 6)
+                    CardLine().padding(.vertical, 6)
                 }
                 ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart))
-                if g.ownerIn != 0 { Hairline(); line("Put in by you", g.ownerIn) }
-                if g.ownerOut != 0 { Hairline(); line("Paid out to you (dividends, drawings)", -g.ownerOut) }
-                if g.loansTaken != 0 { Hairline(); line("Loans taken", g.loansTaken) }
-                if g.loansRepaid != 0 { Hairline(); line("Loan principal repaid", -g.loansRepaid) }
-                Hairline()
+                if g.ownerIn != 0 { CardLine(); line("Put in by you", g.ownerIn) }
+                if g.ownerOut != 0 { CardLine(); line("Paid out to you (dividends, drawings)", -g.ownerOut) }
+                if g.loansTaken != 0 { CardLine(); line("Loans taken", g.loansTaken) }
+                if g.loansRepaid != 0 { CardLine(); line("Loan principal repaid", -g.loansRepaid) }
+                CardLine()
                 line("Trading, tax, equipment and other", other)
-                Hairline()
+                CardLine()
                 ReportLine(label: companyID == nil ? "Company cash at end" : "Cash at end", value: f.short(g.companyCashEnd), strong: true)
             }
         }
@@ -312,23 +314,23 @@ struct ReportsContent: View {
     private func people(_ r: PeriodReport) -> some View {
         let f = format
         let g = r.group
-        return LedgerSection("Customers and people") {
+        return CardSection("Customers and people") {
             VStack(spacing: 0) {
                 ReportLine(label: "Customers served", value: f.count(g.customers))
-                Hairline()
+                CardLine()
                 ReportLine(label: "Capacity used", value: f.share(g.capacityUse))
-                Hairline()
+                CardLine()
                 ReportLine(label: companyID == nil ? "Average reputation" : "Reputation",
                            value: String(format: "%.0f → %.0f", g.reputationStart, g.reputationEnd),
                            tint: Theme.change(g.reputationEnd - g.reputationStart))
-                Hairline()
+                CardLine()
                 ReportLine(label: "Staff hired / left", value: "\(g.hired) / \(g.left)")
                 if companyID == nil {
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Decisions answered", value: "\(g.decisionsAnswered)")
                 }
                 if g.breakdowns + g.complaints + g.fineCount > 0 {
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Breakdowns / complaints / fines", value: "\(g.breakdowns) / \(g.complaints) / \(g.fineCount)", tint: Theme.caution)
                 }
             }
@@ -338,21 +340,21 @@ struct ReportsContent: View {
     private func yearly(_ r: PeriodReport) -> some View {
         let f = format
         let g = r.group
-        return LedgerSection("Tax and dividends") {
+        return CardSection("Tax and dividends") {
             VStack(spacing: 0) {
                 ReportLine(label: "Tax paid in cash", value: f.short(g.taxPaid))
-                Hairline()
+                CardLine()
                 ReportLine(label: "Corporate tax charged", value: f.short(g.pnl.tax))
                 if companyID == nil {
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Dividends received", value: f.short(g.dividendsReceived))
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Personal income tax settled", value: f.short(g.personalTax))
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Salary and drawings", value: f.short(g.ownerPay))
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))
-                    Hairline()
+                    CardLine()
                     ReportLine(label: "Wealth change", value: f.signed(r.netWorthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? ""),
                                tint: Theme.change(r.netWorthChange), strong: true)
                 }
@@ -363,7 +365,7 @@ struct ReportsContent: View {
     @ViewBuilder private func happened(_ r: PeriodReport) -> some View {
         let events = Array(r.group.events.prefix(8))
         if !events.isEmpty {
-            LedgerSection("What happened") {
+            CardSection("What happened") {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
