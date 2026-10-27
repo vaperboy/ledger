@@ -16,6 +16,8 @@ struct InboxView: View {
     @State private var byCompany = false
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
+    @State private var detailID: Int?
+    @AppStorage("inboxPinned") private var pinnedText = ""
 
     static let page = 60
 
@@ -139,53 +141,127 @@ struct InboxView: View {
         tab = .all; query = ""; companyFilter = nil
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         store.openMessageID = nil
+        detailID = id
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
     }
 
     // MARK: Body
 
-    /// The Inbox app. It is pushed on the Phone tab's stack (which owns the company destinations and the deep-link requests), so it has
-    /// no stack of its own; its options menu sits in the app header.
+    /// The Inbox app, mail style: one row per message (sender icon circle, subject, preview, time, unread dot), swipe actions, and a
+    /// detail sheet that keeps every decision and the company link. It is pushed on the Phone tab's stack (which owns the company
+    /// destinations and the deep-link requests), so it has no stack of its own; its options menu sits in the app header.
     var body: some View {
-            Group {
-                if let e = store.engine {
-                    let list = filtered(e)
-                    let cut = limited(blocks(e, list))
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
-                                if companyFilter != nil { filterLine(e) }
-                                if list.isEmpty { empty(e) }
-                                ForEach(cut.blocks) { b in
-                                    if !b.title.isEmpty { header(b) }
-                                    ForEach(b.messages) { m in MessageCard(message: m, week: e.state.week, ask: ask).id(m.id) }
-                                }
-                                if cut.hidden > 0 {
-                                    QuietButton(title: "Show \(min(Self.page, cut.hidden)) more of \(cut.hidden)", fullWidth: true) { limit += Self.page }
-                                }
-                            }
-                            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
-                            .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                        }
+        Group {
+            if let e = store.engine {
+                let list: [Message] = filtered(e)
+                let cut = limited(blocks(e, list))
+                ScrollViewReader { proxy in
+                    mailList(e, list: list, cut: cut)
                         // A deep link (from Team, a suggestion or a toast) can arrive before this tab was ever shown: take it on appear too,
                         // and clear every filter so the requested one is not hidden.
                         .onAppear { takeRequest(proxy) }
                         .onChange(of: store.openMessageID) { _, _ in takeRequest(proxy) }
+                }
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: Theme.Space.xs) {
+                searchField
+                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
+            }
+            .padding(.vertical, Theme.Space.xs).background(Theme.page)
+        }
+        .onChange(of: tab) { _, _ in limit = Self.page }
+        .onChange(of: query) { _, _ in limit = Self.page }
+        // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
+        .onChange(of: store.routeRequest) { _, _ in detailID = nil }
+        .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
+        .confirmAction($pending)
+        .ledgerBackground()
+        .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
+    }
+
+    private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int)) -> some View {
+        let week: Int = e.state.week
+        return List {
+            if companyFilter != nil { filterLine(e).mailRowStyle() }
+            if list.isEmpty { empty(e).mailRowStyle() }
+            ForEach(cut.blocks) { (b: Block) in
+                if !b.title.isEmpty { header(b).mailRowStyle() }
+                ForEach(b.messages) { (m: Message) in
+                    mailRow(m, week: week)
+                }
+            }
+            if cut.hidden > 0 {
+                QuietButton(title: "Show \(min(Self.page, cut.hidden)) more of \(cut.hidden)", fullWidth: true) { limit += Self.page }
+                    .mailRowStyle()
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+    }
+
+    private func mailRow(_ m: Message, week: Int) -> some View {
+        let pinnedNow: Bool = pinned.contains(m.id)
+        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id })
+            .id(m.id)
+            .mailRowStyle()
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button { togglePin(m.id) } label: { Label(pinnedNow ? "Unpin" : "Pin", systemImage: pinnedNow ? "pin.slash" : "pin") }
+                    .tint(Theme.goldDeep)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if m.status != "open" && !m.isRead {
+                    Button { store.markRead(m.id) } label: { Label("Read", systemImage: "envelope.open") }.tint(Theme.borderStrong)
+                }
+                if m.companyID != 0, store.engine?.state.company(m.companyID) != nil {
+                    Button { store.openCompany(m.companyID, section: MessageCard.section(for: m)) } label: { Label("Company", systemImage: "building.2") }
+                        .tint(Theme.goldDeep)
+                }
+            }
+    }
+
+    // MARK: Pinning (a view preference kept on the device, not game state)
+
+    private var pinned: Set<Int> { Set(pinnedText.split(separator: ",").compactMap { Int($0) }) }
+
+    private func togglePin(_ id: Int) {
+        var set: Set<Int> = pinned
+        if set.contains(id) { set.remove(id) } else { set.insert(id) }
+        pinnedText = set.sorted().map(String.init).joined(separator: ",")
+        Haptics.tap()
+    }
+
+    // MARK: Detail
+
+    @ViewBuilder private var detailSheet: some View {
+        if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack {
+                        Text("Message").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Spacer()
+                        Button { detailID = nil } label: {
+                            GlyphView(glyph: Glyph.close, size: 16, weight: 1.8, tint: Theme.ivory)
+                                .frame(width: 40, height: 40)
+                                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel("Close message")
                     }
+                    MessageCard(message: m, week: e.state.week, full: true, ask: ask)
                 }
+                .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 32)
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: Theme.Space.xs) {
-                    searchField
-                    SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
-                }
-                .padding(.vertical, Theme.Space.xs).background(Theme.page)
-            }
-            .onChange(of: tab) { _, _ in limit = Self.page }
-            .onChange(of: query) { _, _ in limit = Self.page }
+            .scrollIndicators(.hidden)
+            .background(Theme.page.ignoresSafeArea())
             .confirmAction($pending)
-            .ledgerBackground()
-            .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
+            .presentationDetents([.large])
+        } else {
+            Color.clear.onAppear { detailID = nil }
+        }
     }
 
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
@@ -271,6 +347,8 @@ struct MessageCard: View {
     @EnvironmentObject var store: GameStore
     var message: Message
     var week: Int
+    /// The whole card (decisions, outcome, company link) even for an answered, read message: the detail sheet.
+    var full = false
     /// Asks to answer with an option (the Inbox confirms it first).
     var ask: (Message, Int) -> Void
 
@@ -297,16 +375,8 @@ struct MessageCard: View {
         return key.flatMap { CompanySection(key: $0) }
     }
 
-    private var glyph: String {
-        if message.actionID.hasPrefix("pay29") { return Glyph.bank }
-        if message.actionID == "staffx" || message.actionID == "mgrraise" || message.actionID == "mgrpoach" { return Glyph.person }
-        if message.status == "open" { return message.tone == "bad" ? Glyph.warning : Glyph.inbox }
-        switch message.tone { case "bad": return Glyph.warning; case "good": return Glyph.check; default: return Glyph.news }
-    }
-    private var tint: Color {
-        if message.status == "open" { return message.tone == "bad" ? Theme.loss : Theme.gold }
-        return Theme.tone(message.tone == "n" ? "" : message.tone)
-    }
+    private var glyph: String { message.inboxGlyph }
+    private var tint: Color { message.inboxTint }
     private var age: String {
         let d = week - message.week
         return d <= 0 ? "This week" : d == 1 ? "1 week ago" : "\(d) weeks ago"
@@ -314,7 +384,7 @@ struct MessageCard: View {
 
     var body: some View {
         let open = message.status == "open"
-        if !open && message.tone != "bad" && message.isRead {
+        if !full && !open && message.tone != "bad" && message.isRead {
             HStack(alignment: .center, spacing: 10) {
                 IconCircle(glyph: glyph, size: 30, tint: tint)
                 VStack(alignment: .leading, spacing: 1) {

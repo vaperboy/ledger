@@ -22,6 +22,8 @@ struct AchievementsView: View {
                         let list = entries.filter { $0.group == g.id }
                         if !list.isEmpty {
                             CardSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
+                                shelf(list)
+                                CardLine()
                                 VStack(spacing: 0) {
                                     ForEach(Array(list.enumerated()), id: \.element.id) { i, t in
                                         if i > 0 { CardLine() }
@@ -38,6 +40,17 @@ struct AchievementsView: View {
             .scrollIndicators(.hidden)
             .ledgerBackground()
         }
+    }
+
+    /// A shelf of medallions for one group: won trophies in champagne first, then the empty slots.
+    private func shelf(_ list: [Trophies.Entry]) -> some View {
+        let wonCount: Int = list.filter { $0.reachedWeek != nil }.count
+        let columns: [GridItem] = Array(repeating: GridItem(.adaptive(minimum: 40, maximum: 44), spacing: 8), count: 1)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            ForEach(0..<list.count, id: \.self) { i in Medallion(won: i < wonCount, size: 38) }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(wonCount) of \(list.count) won")
     }
 
     private func row(_ t: Trophies.Entry) -> some View {
