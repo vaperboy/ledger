@@ -12,19 +12,33 @@ struct CompanyAccounts: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var page: Page = .pnl
+    @State private var page: Page?
 
+    /// A table of the statements with one figure each; a tap opens that statement on a page of its own.
     var body: some View {
         let cur = engine.currency(for: company)
+        let o = engine.financeOverview(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            SectionTabs(items: Page.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -Theme.Space.margin)
-            switch page {
-            case .pnl: pnl(cur)
-            case .balance: balance(cur)
-            case .cash: cashFlow(cur)
-            case .tax: tax(cur)
-            case .tx: transactions(cur)
+            SettingsTable(heading: "Statement") {
+                SettingsTableRow(title: Page.pnl.rawValue, note: "Week, month, year", value: "Month " + cur.tidyShort(o.monthProfit), valueTint: o.monthProfit < 0 ? Theme.loss : Theme.ivory) { page = .pnl }
+                SettingsTableRow(title: Page.balance.rawValue, note: "What it owns and owes", value: "Cash " + cur.tidyShort(company.cash)) { page = .balance }
+                SettingsTableRow(title: Page.cash.rawValue, note: "Money in and out by month", value: "By month") { page = .cash }
+                SettingsTableRow(title: Page.tax.rawValue, note: "Tax and VAT", value: cur.tidyShort(o.taxesOwed) + " owed", valueTint: o.taxesOwed > 0 ? Theme.caution : Theme.ivory) { page = .tax }
+                SettingsTableRow(title: Page.tx.rawValue, note: "The latest payments", value: "Latest") { page = .tx }
             }
+        }
+        .navigationDestination(item: $page) { (p: Page) in
+            SettingsPage(title: p.rawValue, subtitle: company.name) { statement(p, cur) }
+        }
+    }
+
+    @ViewBuilder private func statement(_ p: Page, _ cur: Currency) -> some View {
+        switch p {
+        case .pnl: pnl(cur)
+        case .balance: balance(cur)
+        case .cash: cashFlow(cur)
+        case .tax: tax(cur)
+        case .tx: transactions(cur)
         }
     }
 

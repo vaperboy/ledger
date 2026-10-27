@@ -11,6 +11,7 @@ struct CompanyMarketing: View {
     /// The length chosen per channel, in weeks; absent or 0 = until you stop it.
     @State private var length: [String: Int] = [:]
     @State private var pending: PendingAction?
+    @State private var open: OpenChannel?
 
     var body: some View {
         let cur: Currency = engine.currency(for: company)
@@ -18,15 +19,38 @@ struct CompanyMarketing: View {
         let channels: [MarketingChannel] = engine.marketingChannels(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             header(cur: cur, mkt: mkt, channels: channels)
-            CompanyWaysToSell(engine: engine, company: company)
             if channels.isEmpty {
                 Text("No marketing channels are open to this business yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            } else {
+                channelTable(channels, cur: cur, mkt: mkt)
             }
-            ForEach(channels, id: \.id) { ch in
-                channelCard(ch, cur: cur, mkt: mkt)
+            CompanyWaysToSell(engine: engine, company: company)
+        }
+        .sheet(item: $open) { (o: OpenChannel) in channelSheet(o.id, cur: cur) }
+    }
+
+    /// A campaign channel opened in its sheet.
+    struct OpenChannel: Identifiable { var id: String }
+
+    /// One row per channel with what it runs at now; a tap opens the small sheet to start, change or stop the campaign.
+    private func channelTable(_ channels: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {
+        SettingsTable(heading: "Campaigns") {
+            ForEach(channels, id: \.id) { (ch: MarketingChannel) in
+                let budget: Double = mkt[ch.id].isNull ? 0 : mkt[ch.id]["b"].double
+                let note: String = ch.isHighVariance ? "Hit or miss" : "Steady"
+                SettingsTableRow(title: ch.name, note: note, value: budget > 0 ? cur.tidyShort(budget) + " a week" : "Off",
+                                 valueTint: budget > 0 ? Theme.gold : Theme.ivoryMuted, opens: .sheet) { open = OpenChannel(id: ch.id) }
             }
         }
-        .confirmAction($pending)
+    }
+
+    @ViewBuilder private func channelSheet(_ id: String, cur: Currency) -> some View {
+        let mkt: JSONValue = company.value("mkt")
+        if let ch = engine.marketingChannels(companyID: company.id).first(where: { $0.id == id }) {
+            PeopleSheet(title: ch.name) { channelCard(ch, cur: cur, mkt: mkt) }
+                .confirmAction($pending)
+                .presentationDetents([.medium, .large])
+        }
     }
 
     private func header(cur: Currency, mkt: JSONValue, channels: [MarketingChannel]) -> some View {

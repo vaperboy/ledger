@@ -13,7 +13,7 @@ struct CompanyClub: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var part: Part = .season
+    @State private var part: Part?
     @State private var candidates: [FootballModel.Coach] = []
     @State private var hiringKind = "coach"
     @State private var pending: PendingAction?
@@ -22,21 +22,43 @@ struct CompanyClub: View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.achievements, title: "Club", blurb: "The season and table, the budget, football staff, transfers and sponsors of your club.")
-            SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part).padding(.horizontal, -Theme.Space.margin)
             if let c = engine.clubSummary(companyID: company.id) {
-                switch part {
-                case .season: season(c, cur)
-                case .budget: budget(c, cur)
-                case .people: people(c, cur)
-                case .transfers: transfers(c, cur)
-                case .sponsors: sponsors(c, cur)
-                case .table: table(c)
-                }
+                season(c, cur)
+                clubTable(c)
             } else {
                 Text("This club has no league data yet.").font(.caption).foregroundStyle(Theme.ivoryFaint)
             }
         }
         .confirmAction($pending)
+        .navigationDestination(item: $part) { (p: Part) in
+            SettingsPage(title: p.rawValue, subtitle: company.name) { clubPage(p) }
+        }
+    }
+
+    /// The season is the page; the club's other areas are rows of a table, each opening a page of its own.
+    private func clubTable(_ c: FootballModel.Summary) -> some View {
+        let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
+        return SettingsTable(heading: "The club") {
+            SettingsTableRow(title: Part.budget.rawValue, note: "Player wages against revenue", value: "Wages \(Int((c.wageShare * 100).rounded()))%") { part = .budget }
+            SettingsTableRow(title: Part.people.rawValue, note: "Coach and football staff", value: "Squad " + FootballModel.wordForStrength(c.squadStrength)) { part = .people }
+            SettingsTableRow(title: Part.transfers.rawValue, note: "Buy and sell players", value: "Open") { part = .transfers }
+            SettingsTableRow(title: Part.sponsors.rawValue, note: "Shirt and stadium deals", value: "Open") { part = .sponsors }
+            SettingsTableRow(title: Part.table.rawValue, note: "The league table", value: pos) { part = .table }
+        }
+    }
+
+    @ViewBuilder private func clubPage(_ p: Part) -> some View {
+        let cur = engine.currency(for: company)
+        if let c = engine.clubSummary(companyID: company.id) {
+            switch p {
+            case .season: season(c, cur)
+            case .budget: budget(c, cur)
+            case .people: people(c, cur)
+            case .transfers: transfers(c, cur)
+            case .sponsors: sponsors(c, cur)
+            case .table: table(c)
+            }
+        }
     }
 
     private func form(_ r: String) -> some View {
