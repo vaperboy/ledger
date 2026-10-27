@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Countries
+import Employees
 import Finance
 import Businesses
 import Simulation
@@ -74,16 +75,21 @@ struct PersonCard: View {
     var chevron = true
     /// The engine role id, for the picture; the displayed role is used when it is not given.
     var roleKey: String? = nil
+    /// Portrait traits of an employee (see FaceSheet) and the company id they work for; the initials show when nil or the sheet is missing.
+    var face: FaceTraits? = nil
+    var faceGroup: String = ""
 
     /// The card of a management row, so the management lists keep their data and take the new look.
     init(row: ManagementRow, chevron: Bool = true) {
         self.name = row.name; self.role = row.role; self.scope = row.scope
         self.note = row.line; self.noteTint = row.lineTint; self.wage = row.wage; self.chevron = chevron
+        self.face = row.face; self.faceGroup = row.faceGroup
     }
 
-    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.ivoryFaint, wage: String? = nil, chevron: Bool = true, roleKey: String? = nil) {
+    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.ivoryFaint, wage: String? = nil, chevron: Bool = true, roleKey: String? = nil, face: FaceTraits? = nil, faceGroup: String = "") {
         self.name = name; self.role = role; self.scope = scope
         self.note = note; self.noteTint = noteTint; self.wage = wage; self.chevron = chevron; self.roleKey = roleKey
+        self.face = face; self.faceGroup = faceGroup
     }
 
     /// The picture of the role while the post is filled; the initials circle until art exists; the plus icon for a vacant post.
@@ -91,7 +97,7 @@ struct PersonCard: View {
         if name == nil {
             TeamInitials(name: nil)
         } else {
-            ThumbnailView(kind: .person, key: roleKey ?? role, size: 42, initials: name)
+            ThumbnailView(kind: .person, key: roleKey ?? role, size: 42, initials: name, face: face, faceGroup: faceGroup)
         }
     }
 
@@ -240,7 +246,8 @@ struct TeamSlotSheet: View {
         if person == nil { line = slot.detail }
         else if slot.key == "ceo" { line = "\(AuthorityWords.label(slot.level))\(slot.level == 1 ? " · spends up to \(cur.tidyShort(slot.buy))" : "")" }
         else { line = "Since \(GameCalendar.dateString(week: slot.since, dayOffset: 0))" }
-        return ManagementRow(name: person?.name, role: slot.title, scope: scope(slot, company: company), line: line, wage: person == nil ? nil : cur.tidyShort(slot.monthlyWage))
+        return ManagementRow(name: person?.name, role: slot.title, scope: scope(slot, company: company), line: line, wage: person == nil ? nil : cur.tidyShort(slot.monthlyWage),
+                             face: person.map { FaceTraits.of($0, countryCode: company.countryCode) }, faceGroup: "\(company.id)")
     }
 
     var body: some View {

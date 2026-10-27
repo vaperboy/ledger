@@ -22,6 +22,8 @@ public struct TeamSearchResult: Identifiable, Equatable, Sendable {
     public var note: String = ""
     /// The note is something to act on (paperwork missing, sick, notice, worn out).
     public var needsAttention: Bool = false
+    /// The person record, for the portrait; nil for post-holders known only by name.
+    public var personID: Int? = nil
 }
 
 public extension GameEngine {
@@ -40,12 +42,12 @@ public extension GameEngine {
             if let mid = co.managerID, let p = state.people[mid] {
                 let leaving = !co.value("mgrNotice").isNull
                 all.append(.init(id: "m\(co.id)", name: p.name, role: tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager", scope: "store", employer: co.name, companyID: co.id, chainID: nil,
-                                 monthlyWage: co.managerMonthlyWage, isManagement: true, note: leaving ? "working notice" : "steady", needsAttention: leaving))
+                                 monthlyWage: co.managerMonthlyWage, isManagement: true, note: leaving ? "working notice" : "steady", needsAttention: leaving, personID: mid))
             }
             for slot in teamSlots(companyID: co.id) {
                 if let pid = slot.personID, let p = state.people[pid] {
                     all.append(.init(id: "t\(co.id)-\(slot.id)", name: p.name, role: slot.title, scope: "company", employer: co.name, companyID: co.id, chainID: nil,
-                                     monthlyWage: slot.monthlyWage, isManagement: true, note: "steady"))
+                                     monthlyWage: slot.monthlyWage, isManagement: true, note: "steady", personID: pid))
                 }
             }
             for m in co.staff {
@@ -59,7 +61,7 @@ public extension GameEngine {
                 else if m.tiredness > 75 { note = "worn out" }
                 else { attention = false }
                 all.append(.init(id: "s\(co.id)-\(m.id)", name: state.people[m.id]?.name ?? role, role: role, scope: "store", employer: co.name, companyID: co.id, chainID: nil,
-                                 monthlyWage: m.monthlyWage, note: note, needsAttention: attention))
+                                 monthlyWage: m.monthlyWage, note: note, needsAttention: attention, personID: m.id))
             }
         }
         // People above and beside the companies: chain people, regional managers, the group managing director, group office staff. The company

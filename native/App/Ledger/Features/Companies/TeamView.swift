@@ -1,4 +1,5 @@
 import SwiftUI
+import Employees
 import GameCore
 import Businesses
 import Simulation
@@ -309,11 +310,17 @@ struct TeamView: View {
         if shown.count > 200 { Text("Showing the first 200 of \(shown.count). Search to narrow it down.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
     }
 
+    /// Portrait traits of a listed person: from the person record when the row has one, else from the name.
+    private func personFace(_ p: TeamSearchResult, _ e: GameEngine) -> FaceTraits {
+        let code: String? = p.companyID.flatMap { e.state.company($0) }?.countryCode
+        if let pid = p.personID, let person = e.state.people[pid] { return FaceTraits.of(person, countryCode: code) }
+        return FaceTraits.named(p.name, countryCode: code)
+    }
+
     private func personCard(_ p: TeamSearchResult, _ e: GameEngine) -> some View {
-        let initials = String(p.name.split(separator: " ").prefix(2).compactMap { $0.first })
         let wage: String = p.monthlyWage > 0 ? ((p.companyID.flatMap { e.state.company($0) }.map { store.short(p.monthlyWage, in: $0) } ?? store.short(p.monthlyWage)) + "/mo") : "no wage"
         return HStack(spacing: 12) {
-            Text(initials).font(.system(size: 13)).foregroundStyle(Theme.gold).frame(width: 38, height: 38).background(Circle().fill(Color(hex: 0x1E1F21)))
+            ThumbnailView(kind: .person, key: p.role, size: 38, initials: p.name, face: personFace(p, e), faceGroup: p.companyID.map { "\($0)" } ?? p.employer)
             VStack(alignment: .leading, spacing: 3) {
                 Text(p.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 HStack(spacing: 6) {
