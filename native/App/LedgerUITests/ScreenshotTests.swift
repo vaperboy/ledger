@@ -57,6 +57,14 @@ final class ScreenshotTests: TourCase {
             icon.tap(); sleep(1)
             let slug = name.lowercased().replacingOccurrences(of: " ", with: "-")
             shot("10-phone-\(String(format: "%02d", i + 1))-\(slug)")
+            if name == "Bank" {
+                // Bank opens on the account picker; choose the first account so the bank itself is still photographed.
+                let pick = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'bank-pick-'")).firstMatch
+                if pick.waitForExistence(timeout: 3) { pick.tap(); sleep(1); shot("10-phone-01-bank-account") }
+                else { note("no Bank picker row") }
+                let out = app.buttons["bank-log-out"]
+                if out.exists && out.isHittable { out.tap(); sleep(1) }
+            }
             goBack(); sleep(1)
         }
     }

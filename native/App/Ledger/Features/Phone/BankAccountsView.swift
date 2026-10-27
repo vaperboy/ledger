@@ -8,6 +8,8 @@ import Simulation
 struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
+    /// The account logged in as: the other rows stay visible but cannot be opened (swapping account goes through Log out).
+    var lockedTo: BankAccountID? = nil
     var onPick: (BankAccountID) -> Void
     @State private var move: BankMoveKind?
 
@@ -99,6 +101,8 @@ struct BankAccountsScreen: View {
             CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
         .buttonStyle(.plain)
+        .disabled(lockedTo != nil && lockedTo != r.id)
+        .opacity(lockedTo != nil && lockedTo != r.id ? 0.5 : 1)
         .accessibilityIdentifier("bank-account-\(r.id.id)")
     }
 

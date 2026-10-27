@@ -42,15 +42,19 @@ struct BankApp: View {
     private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
+    /// The account the player logged in as; nil shows the picker (the first page). `account` is nil on the all-accounts overview.
+    @State private var session: BankAccountID?
     @State private var account: BankAccountID?
     @State private var tab: BankTab = .account
 
     var body: some View {
         Group {
-            if let account {
+            if session == nil {
+                BankPickerScreen { id in tab = .account; account = id; session = id }
+            } else if let account {
                 BankAccountScreen(id: account, tab: $tab)
             } else {
-                BankAccountsScreen { id in tab = .account; account = id }
+                BankAccountsScreen(lockedTo: session) { id in tab = .account; account = id }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -73,11 +77,17 @@ struct BankApp: View {
     private var header: some View {
         let t: (String, String) = titles
         let label: String = account == nil ? "Back to Phone" : "Back to accounts"
-        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label)
+        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label) {
+            if session != nil {
+                SmallOutlineButton(title: "Log out") { logOut() }
+                    .accessibilityIdentifier("bank-log-out")
+            }
+        }
     }
 
     private var titles: (String, String) {
         guard let e = store.engine else { return ("Bank", "") }
+        guard session != nil else { return ("Bank", "Choose an account") }
         guard let account else {
             let n: Int = e.bankAccounts().alertCount
             let who: String = n == 1 ? "a company" : "\(n) companies"
@@ -91,11 +101,16 @@ struct BankApp: View {
         if account != nil { withAnimation(.snappy(duration: 0.2)) { account = nil } } else { dismiss() }
     }
 
+    private func logOut() {
+        withAnimation(.snappy(duration: 0.2)) { account = nil; session = nil; tab = .account }
+    }
+
     private func take() {
         guard let r = store.bankRequest else { return }
         store.bankRequest = nil
         tab = r.tab
         account = r.account
+        session = r.account
     }
 }
 
