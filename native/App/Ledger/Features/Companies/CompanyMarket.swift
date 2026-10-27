@@ -75,10 +75,10 @@ struct CompanyMarket: View {
                     warBlock(weeksLeft: war.weeksLeft, loss: war.loss, cur)
                 } else {
                     changeBlock(info, cur)
-                    Hairline()
+                    CardLine()
                     discountBlock(info, cur)
                     if !engine.rivalRows(company).isEmpty {
-                        Hairline()
+                        CardLine()
                         Button("Start a price war…") { showWar = true }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     }
                 }
@@ -87,7 +87,7 @@ struct CompanyMarket: View {
     }
 
     @ViewBuilder private func warBlock(weeksLeft: Int, loss: Double, _ cur: Currency) -> some View {
-        Hairline()
+        CardLine()
         Text("Price war · \(weeksLeft) wk left · \(cur.tidyShort(loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
         Button("End the price war now") {
             store.act { $0.endPriceWar(companyID: company.id) }
@@ -99,7 +99,7 @@ struct CompanyMarket: View {
     @ViewBuilder private func changeBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
         let tiny: Bool = abs(change) < 0.005
         let label: String = tiny ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.tidyShort(info.yourTicket * (1 + change)))
-        Hairline()
+        CardLine()
         Text("Change price").capsLabel(Theme.ivoryFaint)
         HStack {
             Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
@@ -278,7 +278,7 @@ struct RivalSheet: View {
             MoreBlock(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
                 VStack(spacing: 0) {
                     ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         HStack { Text(f.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(f.value).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }.padding(.vertical, 7)
                     }
                 }
@@ -291,7 +291,7 @@ struct RivalSheet: View {
                     Text("\(d.moodWord) · \(d.temperament)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                     Text(d.nextMove).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     ForEach(Array(d.rival.memory.prefix(6).enumerated()), id: \.offset) { _, m in
-                        Hairline()
+                        CardLine()
                         HStack(alignment: .top) {
                             Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
                             Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
@@ -350,7 +350,7 @@ struct RivalSheet: View {
                         default: Haptics.success(); store.show("Lunch with \(d.rival.owner). The relationship is warmer.", tone: "good")
                         }
                     }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
-                    Hairline()
+                    CardLine()
                     let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
                     Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
                     HStack {
@@ -361,7 +361,7 @@ struct RivalSheet: View {
                     Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(TinyButtonStyle())
                     if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
                     if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(TinyButtonStyle(tint: Theme.gold)) }
-                    Hairline()
+                    CardLine()
                     if co.value("docs")["fran"]["st"].string == "ok" {
                         Button("Open a new site beside them") { openSite() }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     } else {
@@ -466,11 +466,11 @@ struct PriceWarSheet: View {
                         MoreBlock("Who") {
                             VStack(spacing: 0) {
                                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
-                                    if n > 0 { Hairline() }
+                                    if n > 0 { CardLine() }
                                     Button { rivalID = r.id } label: {
                                         HStack { Text(r.rival.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer()
                                             Text(r.sizeWord).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                                            Image(systemName: chosen?.id == r.id ? "checkmark.circle.fill" : "circle").foregroundStyle(chosen?.id == r.id ? Theme.gold : Theme.ivoryFaint)
+                                            GlyphView(glyph: chosen?.id == r.id ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: chosen?.id == r.id ? Theme.gold : Theme.ivoryFaint)
                                         }.padding(.vertical, 9).contentShape(Rectangle())
                                     }.buttonStyle(.plain)
                                 }
@@ -549,7 +549,7 @@ struct MarketView: View {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     NavigationLink { MarketDetailView(marketKey: r.id) } label: {
                         HStack {
                             Text(r.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
@@ -586,7 +586,7 @@ struct MarketView: View {
                 MoreBlock(g.title) {
                     VStack(spacing: 0) {
                         ForEach(Array(g.rows.enumerated()), id: \.element.id) { n, r in
-                            if n > 0 { Hairline() }
+                            if n > 0 { CardLine() }
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(r.name + (r.mine ? " (yours)" : "")).font(.system(size: 13.5)).foregroundStyle(r.mine ? Theme.gold : Theme.ivory).lineLimit(1)
@@ -647,7 +647,7 @@ struct MarketDetailView: View {
                     MoreBlock("Who has the market") {
                         VStack(spacing: 0) {
                             ForEach(Array(d.players.enumerated()), id: \.element.id) { n, p in
-                                if n > 0 { Hairline() }
+                                if n > 0 { CardLine() }
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)

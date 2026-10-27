@@ -53,11 +53,7 @@ struct CompanyEquipmentScreen: View {
             let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(co.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text("Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment health \(Int(($0 * 100).rounded()))%" } ?? ""))
-                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
+                    MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment health \(Int(($0 * 100).rounded()))%" } ?? ""))
                     SectionTabs(items: tabs, title: { $0.rawValue }, selection: $tab).padding(.horizontal, -Theme.Space.margin)
                     switch tab {
                     case .needed: needed(e, co, needs)
@@ -172,8 +168,7 @@ struct CompanyEquipmentScreen: View {
         let inPlace = needs.filter { $0.have + $0.leased > 0 && $0.have + $0.leased >= $0.need }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if !missing.isEmpty {
-                Text((co.status == .setup ? "You cannot open without " : "Work stops without ") + (missing.count > 1 ? "these \(missing.count) items." : missing[0].name.lowercased() + "."))
-                    .font(.system(size: 13)).foregroundStyle(Theme.caution)
+                NoteCard(text: (co.status == .setup ? "You cannot open without " : "Work stops without ") + (missing.count > 1 ? "these \(missing.count) items." : missing[0].name.lowercased() + "."), glyph: Glyph.warning, tint: Theme.caution)
                 needRows("Missing", missing, cur)
             }
             if !short.isEmpty { needRows("Short for your team", short, cur) }
@@ -183,12 +178,12 @@ struct CompanyEquipmentScreen: View {
     }
 
     private func needRows(_ title: String, _ list: [EquipmentMarket.Need], _ cur: Currency) -> some View {
-        LedgerSection(title) {
+        CardSection(title) {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
                     NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: x.equipmentID) } label: {
                         VStack(spacing: 0) {
-                            if n > 0 { Hairline() }
+                            if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(x.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
@@ -197,7 +192,7 @@ struct CompanyEquipmentScreen: View {
                                 Spacer(minLength: 8)
                                 Text(x.have + x.leased > 0 && x.have + x.leased >= x.need ? "Owned" : x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(x.have + x.leased >= max(1, x.need) ? Theme.gain : Theme.ivoryMuted)
-                                Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
+                                MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
                     }.buttonStyle(.plain)
@@ -220,10 +215,10 @@ struct CompanyEquipmentScreen: View {
         let list = e.ownedEquipment(companyID: companyID).filter { $0.kind != "veh" }
         let cur = e.currency(for: co)
         if list.isEmpty {
-            Text("Nothing bought yet. Start under Needed.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+            NoteCard(text: "Nothing bought yet. Start under Needed.")
         }
         ForEach(list) { o in
-            LedgerSection(o.name) {
+            CardSection(o.name) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let s = o.subscription {
                         FlatRow(label: s, value: cur.tidyShort(o.subscriptionMonthly) + "/mo", sub: "Subscription", rule: false)
@@ -240,7 +235,7 @@ struct CompanyEquipmentScreen: View {
                             Spacer(minLength: 8)
                             Text(u.wear).font(.system(size: 12.5)).foregroundStyle(u.seenCondition >= 0.8 ? Theme.gain : u.seenCondition >= 0.48 ? Theme.ivoryMuted : Theme.loss)
                             Button("Sell") { pending = .unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased()) }.buttonStyle(QuietButtonStyle())
-                        }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 || o.subscription != nil || o.licence != nil { Hairline() } }
+                        }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 || o.subscription != nil || o.licence != nil { CardLine() } }
                     }
                     if o.leasedCount > 0 {
                         FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.tidyShort(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
@@ -267,7 +262,7 @@ struct CompanyEquipmentScreen: View {
             }
         }
         if let h = e.equipmentHealth(companyID: companyID) {
-            LedgerSection("Condition") {
+            CardSection("Condition") {
                 VStack(alignment: .leading, spacing: 4) {
                     Meter(label: "Equipment health, as far as you can tell", value: h * 100)
                     Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days. Servicing costs little; replacing costs a lot.")
@@ -284,7 +279,7 @@ struct CompanyEquipmentScreen: View {
         let owned = e.ownedEquipment(companyID: companyID)
         ForEach(needs.filter { $0.isVehicle }) { n in
             let mine = owned.first { $0.equipmentID == n.equipmentID }?.vehicles ?? []
-            LedgerSection(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if mine.isEmpty { Text("No vehicles yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6) }
                     ForEach(Array(mine.enumerated()), id: \.element.id) { i, v in
@@ -297,7 +292,7 @@ struct CompanyEquipmentScreen: View {
                             Spacer(minLength: 8)
                             Text(v.wear).font(.system(size: 12.5)).foregroundStyle(v.seenCondition >= 0.8 ? Theme.gain : v.seenCondition >= 0.48 ? Theme.ivoryMuted : Theme.loss)
                             Button(v.mode == "lease" ? "Return" : "Sell") { pending = .vehicle(id: v.id, name: v.name) }.buttonStyle(QuietButtonStyle())
-                        }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { Hairline() } }
+                        }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { CardLine() } }
                     }
                     NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: n.equipmentID) } label: { Text("Buy, buy used or lease").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }.padding(.top, 8)
                 }
@@ -311,7 +306,7 @@ struct CompanyEquipmentScreen: View {
 
     @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
         if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
-            LedgerSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
                         FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
@@ -325,7 +320,7 @@ struct CompanyEquipmentScreen: View {
     @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
         let run = e.fleetRunningCosts(companyID: companyID)
         if run.total > 0 {
-            LedgerSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
                     if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
@@ -357,14 +352,14 @@ struct CompanyEquipmentScreen: View {
         let owned = e.ownedEquipment(companyID: companyID)
         Text("Small programs are bought once. Bigger systems cost more up front plus yearly updates. Some are only sold as a subscription, priced by how many people use them. You have \(EquipmentMarket.users(co)) \(EquipmentMarket.users(co) == 1 ? "user" : "users").")
             .font(.caption).foregroundStyle(Theme.ivoryMuted)
-        LedgerSection("Software") {
+        CardSection("Software") {
             VStack(spacing: 0) {
                 ForEach(Array(needs.filter { $0.isSoftware }.enumerated()), id: \.element.id) { n, x in
                     let o = owned.first { $0.equipmentID == x.equipmentID }
                     let mode = e.softwareMode(companyID: companyID, equipmentID: x.equipmentID)
                     NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: x.equipmentID) } label: {
                         VStack(spacing: 0) {
-                            if n > 0 { Hairline() }
+                            if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(x.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
@@ -374,7 +369,7 @@ struct CompanyEquipmentScreen: View {
                                 Spacer(minLength: 8)
                                 Text(o?.subscription != nil ? cur.tidyShort(o?.subscriptionMonthly ?? 0) + "/mo" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Owned") : "from " + cur.tidyShort(mode == .subscription ? x.fromPrice / max(1, x.lifeYears) / 12 : x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(o != nil ? Theme.gain : Theme.ivoryMuted)
-                                Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
+                                MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
                     }.buttonStyle(.plain)
@@ -389,7 +384,7 @@ struct CompanyEquipmentScreen: View {
         let cur = e.currency(for: co)
         let prem = co.value("prem")
         let lists = e.premisesListings(companyID: companyID)
-        LedgerSection("Your premises") {
+        CardSection("Your premises") {
             VStack(alignment: .leading, spacing: 0) {
                 if prem.isNull || prem["m2"].double <= 0 {
                     Text("No premises yet. Choose one below.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
@@ -412,13 +407,13 @@ struct CompanyEquipmentScreen: View {
                 }
             }
         }
-        LedgerSection(prem.isNull || prem["m2"].double <= 0 ? "Places to rent" : "Move or buy") {
+        CardSection(prem.isNull || prem["m2"].double <= 0 ? "Places to rent" : "Move or buy") {
             VStack(spacing: 0) {
                 ForEach(Array(lists.enumerated()), id: \.element.id) { n, l in
                     let t = e.premisesTerms(companyID: companyID, listing: l)
                     Button { pendingListing = l } label: {
                         VStack(spacing: 0) {
-                            if n > 0 { Hairline() }
+                            if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(l.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
@@ -466,16 +461,13 @@ struct EquipmentShopView: View {
             let current = modes.contains(mode) ? mode : .new
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(need.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text(EquipmentMarket.kindName(need.kind) + " · lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " · warranty \(Int(need.warrantyYears)) yr new" : ""))
-                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
+                    MoreHeader(glyph: need.isVehicle ? Glyph.suppliers : Glyph.capacity, title: need.name,
+                               blurb: EquipmentMarket.kindName(need.kind) + " · lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " · warranty \(Int(need.warrantyYears)) yr new" : ""))
                     if modes.count > 1 {
                         SectionTabs(items: modes, title: { $0 == .new ? (one ? (need.subscription ? "Plans" : "Licences") : "New") : $0 == .used ? "Used" : "Lease" },
                                     selection: Binding(get: { current }, set: { mode = $0; selected = nil; finance = false })).padding(.horizontal, -Theme.Space.margin)
                     }
-                    KeyFigures(items: [
+                    FigureCard(items: [
                         .init(label: "You have", value: "\(Int((need.have + need.leased).rounded()))"),
                         .init(label: "Needed", value: need.need > 0 ? "\(Int(need.need))" : "–"),
                         .init(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory),
@@ -492,8 +484,7 @@ struct EquipmentShopView: View {
             .scrollIndicators(.hidden)
             .confirmAction($pendingOwn)
             .ledgerBackground()
-            .navigationTitle("Shop")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Shop", subtitle: "Brands, used listings, leases and plans", tab: .company)
         } else {
             Text("Not sold here.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -506,9 +497,9 @@ struct EquipmentShopView: View {
     private func row(_ title: String, _ sub: String, _ right: String, _ id: String, rule: Bool, tint: Color = Theme.ivory) -> some View {
         Button { selected = selected == id ? nil : id } label: {
             VStack(spacing: 0) {
-                if rule { Hairline() }
+                if rule { CardLine() }
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: selected == id ? "checkmark.circle.fill" : "circle").font(.system(size: 14)).foregroundStyle(selected == id ? Theme.gold : Theme.ivoryFaint)
+                    GlyphView(glyph: selected == id ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: selected == id ? Theme.gold : Theme.ivoryFaint)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
                         Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -536,7 +527,7 @@ struct EquipmentShopView: View {
                 }.buttonStyle(.plain)
             }
         }
-        LedgerSection(one ? "Suppliers" : "Brands") {
+        CardSection(one ? "Suppliers" : "Brands") {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, o in
                     let p = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor)
@@ -567,11 +558,11 @@ struct EquipmentShopView: View {
     @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
         let offers = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
         if !offers.isEmpty {
-            LedgerSection(title: "From your own companies", trailing: { Text("\(offers.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "From your own companies", trailing: { Text("\(offers.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
                     ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
                         let producer = e.state.company(o.producerID)?.name ?? "your company"
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
@@ -606,7 +597,7 @@ struct EquipmentShopView: View {
         let owned = e.ownedEquipment(companyID: companyID).first { $0.equipmentID == equipmentID }
         Text("Sold only as a subscription. Pick a provider and a plan. Plans are priced by users: you have \(EquipmentMarket.users(co)).").font(.caption).foregroundStyle(Theme.ivoryMuted)
         ForEach(all) { o in
-            LedgerSection(title: o.name, trailing: { Text(stars(o.rating, o.reviews)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: o.name, trailing: { Text(stars(o.rating, o.reviews)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }) {
                 VStack(spacing: 0) {
                     ForEach(Array(e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o).enumerated()), id: \.element.index) { n, p in
                         HStack(alignment: .firstTextBaseline) {
@@ -619,7 +610,7 @@ struct EquipmentShopView: View {
                             Button(owned?.subscription != nil ? "Switch" : "Subscribe") {
                                 report(store.act { $0.subscribeSoftware(companyID: companyID, equipmentID: equipmentID, plan: p.index, offer: o) }, "Subscribed.")
                             }.buttonStyle(QuietButtonStyle())
-                        }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 { Hairline() } }
+                        }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 { CardLine() } }
                     }
                 }
             }
@@ -634,7 +625,7 @@ struct EquipmentShopView: View {
         if list.isEmpty {
             Text("Nothing for sale this month. New listings appear next month.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
         }
-        LedgerSection("For sale this month") {
+        CardSection("For sale this month") {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
                     row("\(x.name) · \(x.year)",
@@ -667,7 +658,7 @@ struct EquipmentShopView: View {
             let offers = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID)
             let lease = mode == .lease
             Text("Cash, finance (20% down, five years) or lease (three years, service and repairs included).").font(.caption).foregroundStyle(Theme.ivoryMuted)
-            LedgerSection("Makes and models") {
+            CardSection("Makes and models") {
                 VStack(spacing: 0) {
                     ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
                         let price = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)

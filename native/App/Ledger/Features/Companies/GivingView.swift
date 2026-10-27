@@ -19,20 +19,21 @@ struct GivingView: View {
                 let places = e.givingPlaces
                 let place = places.first { $0.key == placeKey } ?? places.first
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    MoreHeader(glyph: Glyph.luxury, title: "Giving back", blurb: "Gifts buy standing in a city; the foundation and your marks last.")
                     summary(e)
                     if let place {
-                        LedgerSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
+                        CardSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("Standing in \(place.name): \(Int(place.standing.rounded())) of 100. It fades slowly; more standing brings a little more demand to your companies there.")
                                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
                                 ForEach(Array(e.giftOptions.enumerated()), id: \.element.id) { n, g in
-                                    if n > 0 { Hairline() }
+                                    if n > 0 { CardLine() }
                                     giftRow(e, g, place)
                                 }
                             }
                         }
                     } else {
-                        LedgerSection("Gifts") {
+                        CardSection("Gifts") {
                             Text("You need a city to give to: open a company or choose a home city first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
@@ -54,7 +55,7 @@ struct GivingView: View {
     private func summary(_ e: GameEngine) -> some View {
         let cur = e.homeCurrency
         let f = e.foundation
-        return KeyFigures(items: [
+        return FigureCard(items: [
             .init(label: "Your cash", value: cur.tidyShort(e.state.cash), sub: "gifts come from you, not a company"),
             .init(label: "Gifts made", value: "\(e.givingMarks.count)", sub: "\(e.givingMarks.filter { $0.yearly }.count) renew each year"),
             .init(label: "Foundation", value: f.map { cur.tidyShort($0.capital) } ?? "None", sub: f.map { "gave \(cur.tidyShort($0.given)) so far" } ?? "not started"),
@@ -118,7 +119,7 @@ struct GivingView: View {
 
     @ViewBuilder private func foundationSection(_ e: GameEngine) -> some View {
         let cur = e.homeCurrency
-        LedgerSection("Foundation") {
+        CardSection("Foundation") {
             if let f = e.foundation {
                 VStack(alignment: .leading, spacing: 6) {
                     FlatRow(label: "Endowment", value: cur.tidyShort(f.capital), rule: false)
@@ -159,13 +160,13 @@ struct GivingView: View {
 
     @ViewBuilder private func marksSection(_ e: GameEngine) -> some View {
         let marks = e.givingMarks
-        LedgerSection("Your marks") {
+        CardSection("Your marks") {
             if marks.isEmpty {
                 Text("Nothing yet. Each gift leaves a named mark here and in your legacy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(marks.enumerated()), id: \.offset) { n, m in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         HStack(alignment: .firstTextBaseline) {
                             Text(m.name).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 8)

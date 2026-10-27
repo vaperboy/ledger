@@ -45,16 +45,16 @@ struct ExecutivePosts: View {
     var body: some View {
         let cur = engine.homeCurrency
         let list = posts
-        LedgerSection(chainID == nil ? "Group management" : "Chain management") {
+        CardSection(chainID == nil ? "Group management" : "Chain management") {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, p in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     row(p, cur)
                 }
                 if chainID != nil { addRegional(cur) }
                 if chainID == nil, !engine.groupManagingDirector.isNull {
                     let big = engine.state.rest["group"]?["big"].double ?? 0
-                    Hairline()
+                    CardLine()
                     Menu("Deals above \(big > 0 ? cur.tidyShort(big) : "any size") always come to you") {
                         ForEach([0.0, 250_000, 1_000_000, 5_000_000, 20_000_000], id: \.self) { v in
                             let amt = cur.scaledPrice(v)
@@ -84,7 +84,8 @@ struct ExecutivePosts: View {
     @ViewBuilder private func row(_ p: Post, _ cur: Currency) -> some View {
         let person = p.rec.isNull ? nil : engine.state.people[p.rec["npc"].int]
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 10) {
+                IconCircle(glyph: person == nil ? Glyph.hire : Glyph.person, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
@@ -135,7 +136,7 @@ struct ExecutivePosts: View {
             })
             let open = Set(engine.state.companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == cid }.map { $0.cityID }).subtracting(have).sorted()
             if !open.isEmpty {
-                Hairline()
+                CardLine()
                 Menu("Add a regional manager…") {
                     ForEach(open, id: \.self) { city in
                         Button(cityLabel(city)) { regionCity = city; startRegionSearch(cur) }

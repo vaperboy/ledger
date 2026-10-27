@@ -26,7 +26,7 @@ struct CompanyTargetsCard: View {
                         Text("No targets this month yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     }
                     ForEach(Array(st.standing.enumerated()), id: \.offset) { n, s in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         HStack(alignment: .firstTextBaseline) {
                             Text(Self.names[s.key] ?? s.key).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                             Spacer(minLength: 8)
@@ -34,7 +34,7 @@ struct CompanyTargetsCard: View {
                         }
                     }
                     if let b = st.budget {
-                        Hairline()
+                        CardLine()
                         Text("Budget \(b.year)\(b.by.isEmpty ? "" : " · drafted by \(b.by)")").capsLabel(Theme.ivoryFaint)
                         FlatRow(label: "Sales", value: "\(cur.tidyShort(b.doneRev)) of \(cur.tidyShort(b.rev))", rule: false)
                         FlatRow(label: "Profit", value: "\(cur.tidyShort(b.doneProfit)) of \(cur.tidyShort(b.profit))", tint: b.doneProfit < 0 ? Theme.loss : Theme.ivory)
@@ -50,7 +50,7 @@ struct CompanyTargetsCard: View {
                         }
                     }
                     if !st.log.isEmpty {
-                        Hairline()
+                        CardLine()
                         Text("Last months").capsLabel(Theme.ivoryFaint)
                         ForEach(Array(st.log.reversed().enumerated()), id: \.offset) { _, l in
                             HStack {
@@ -61,7 +61,7 @@ struct CompanyTargetsCard: View {
                         }
                     }
                     if st.canSet, let pv = engine.targetPreview(companyID: company.id, mode: mode) {
-                        Hairline()
+                        CardLine()
                         Text("Set this month's targets").capsLabel(Theme.ivoryFaint)
                         SectionTabs(items: [0, 1, 2], title: { ["Easy", "Realistic", "Stretch"][$0] }, selection: $mode).padding(.horizontal, -Theme.Space.margin)
                         ForEach(Array(pv.rows.enumerated()), id: \.offset) { _, r in
@@ -129,7 +129,7 @@ struct CompanyPerksCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(engine.staffPerkOptions.enumerated()), id: \.element.id) { n, p in
                         let on = engine.staffPerkIsOn(companyID: company.id, perk: p.id)
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)

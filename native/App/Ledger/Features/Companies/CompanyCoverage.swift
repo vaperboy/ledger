@@ -38,11 +38,8 @@ struct CompanyCoverageScreen: View {
             let cur = e.currency(for: co)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(co.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text("Insurance and advisers").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    KeyFigures(items: [
+                    MoreHeader(glyph: Glyph.reports, title: co.name, blurb: "Insurance and advisers")
+                    FigureCard(items: [
                         .init(label: "Policies on", value: "\(o.activeCount) of \(o.policies.count)", tint: o.activeCount == 0 ? Theme.caution : Theme.ivory),
                         .init(label: "Premiums", value: cur.tidyShort(o.weeklyPremiums * 52 / 12), sub: "a month"),
                         .init(label: "Advisers", value: cur.tidyShort(o.lawMonthly + (o.accountant?.monthlyFee ?? 0)), sub: "a month in fees")
@@ -67,7 +64,7 @@ struct CompanyCoverageScreen: View {
     // MARK: Policies
 
     @ViewBuilder private func policies(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ cur: Currency) -> some View {
-        LedgerSection("Policies") {
+        CardSection("Policies") {
             VStack(alignment: .leading, spacing: 0) {
                 if o.insurer == nil {
                     Text("Choose an insurer below first. Without one a policy cannot be switched on.").font(.caption).foregroundStyle(Theme.caution).padding(.bottom, 6)
@@ -75,10 +72,10 @@ struct CompanyCoverageScreen: View {
                     Text("Tap a policy to switch it on or off. The cost is shown before you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                 }
                 ForEach(Array(o.policies.enumerated()), id: \.element.id) { n, p in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     Button { toggle(p, co, cur, hasInsurer: o.insurer != nil) } label: {
                         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-                            Image(systemName: p.isOn ? "checkmark.shield.fill" : "shield").foregroundStyle(p.isOn ? Theme.gain : Theme.ivoryFaint)
+                            GlyphView(glyph: p.isOn ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: p.isOn ? Theme.gain : Theme.ivoryFaint)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                 Text(p.blurb.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
@@ -121,7 +118,7 @@ struct CompanyCoverageScreen: View {
     @ViewBuilder private func providers(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ kind: Advisers.Kind, _ title: String, _ cur: Currency, empty: String) -> some View {
         let current: AdviserOption? = currentAdviser(kind, o)
         let choices = e.adviserChoices(companyID: companyID, kind: kind)
-        LedgerSection(title) {
+        CardSection(title) {
             VStack(alignment: .leading, spacing: 0) {
                 if let current {
                     Text("Now: \(current.name)").font(.system(size: 13)).foregroundStyle(Theme.ivory).padding(.bottom, 4)
@@ -132,7 +129,7 @@ struct CompanyCoverageScreen: View {
                     Text("No \(title.lowercased()) is on offer in this country right now.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }
                 ForEach(Array(choices.enumerated()), id: \.element.id) { n, a in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(a.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
@@ -144,7 +141,7 @@ struct CompanyCoverageScreen: View {
                     }.padding(.vertical, 9)
                 }
                 if current != nil, kind != .accountant {
-                    Hairline()
+                    CardLine()
                     Button("Drop \(title.lowercased())") { drop(kind, title, current!, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss)).padding(.top, 8)
                 }
             }

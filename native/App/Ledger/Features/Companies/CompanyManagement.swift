@@ -149,7 +149,7 @@ struct ManagerSheet: View {
         let mgrNote: String = "\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job"
         PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false)
         if !notice.isNull {
-            LedgerSection("Leaving") {
+            CardSection("Leaving") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("\(m.name.split(separator: " ").first.map(String.init) ?? "The manager") leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Hire a successor before then and they will hand over.")
                         .font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
@@ -166,11 +166,11 @@ struct ManagerSheet: View {
 
     @ViewBuilder private func performance(_ e: GameEngine, _ co: Company, _ m: Person, _ months: Int) -> some View {
         let bd = e.tradeInfo(companyID: co.id)
-        LedgerSection("Performance") {
+        CardSection("Performance") {
             VStack(alignment: .leading, spacing: 10) {
                 RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id))
                 if let card = e.managerScorecard(companyID: co.id) {
-                    KeyFigures(items: [
+                    FigureCard(items: [
                         .init(label: "Scorecard", value: "\(card.score)", tint: card.score < 35 ? Theme.loss : card.score >= 65 ? Theme.gain : Theme.ivory, sub: CompanyManagement.scoreWord(card.score)),
                         .init(label: "Margin, 3 months", value: String(format: "%.0f%%", card.margin * 100), tint: Theme.change(card.margin)),
                         .init(label: "Reputation", value: "\(card.reputation)"),
@@ -201,7 +201,7 @@ struct ManagerSheet: View {
     @ViewBuilder private func authority(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         let auth = co.value("auth")
         let lvl = Int(auth["lvl"].double)
-        LedgerSection("Decides") {
+        CardSection("Decides") {
             VStack(alignment: .leading, spacing: 10) {
                 AuthorityLevelPicker(level: lvl) { v in
                     store.settle(store.act { $0.setManagerAuthority(companyID: co.id, level: v) }, "\(m.name) now \(GameEngine.authorityText(level: v)).", same: "\(m.name) already works that way.")
@@ -232,7 +232,7 @@ struct ManagerSheet: View {
     @ViewBuilder private func duties(_ e: GameEngine, _ co: Company) -> some View {
         let list = e.managerDuties(companyID: co.id)
         if !list.isEmpty {
-            LedgerSection("Duties") {
+            CardSection("Duties") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(list) { d in
                         Button {
@@ -258,7 +258,7 @@ struct ManagerSheet: View {
 
     @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         if let pv = e.managerProfitBonusPreview(companyID: co.id, share: co.managerProfitBonus) {
-            LedgerSection(title: "Profit share", trailing: {
+            CardSection(title: "Profit share", trailing: {
                 Text(pv.current > 0 ? "\(Int((pv.current * 100).rounded()))% of profit" : "none").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -275,7 +275,7 @@ struct ManagerSheet: View {
     }
 
     @ViewBuilder private func talks(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        LedgerSection("Talk and pay") {
+        CardSection("Talk and pay") {
             VStack(alignment: .leading, spacing: 12) {
                 WrapRow {
                     Button("Meet") {
@@ -413,10 +413,10 @@ struct AssistantSheet: View {
     @ViewBuilder private func manage(_ co: Company, _ a: JSONValue, _ n: Person, _ cur: Currency) -> some View {
         let asstNote: String = "\(co.name) · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide."
         PersonCard(name: n.name, role: "Assistant manager", scope: "store", note: asstNote, wage: cur.tidyShort(a["wage"].double), chevron: false)
-        LedgerSection(title: "Jobs", trailing: { Text("\(a["duties"].array.count) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: "Jobs", trailing: { Text("\(a["duties"].array.count) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(ManagerModel.assistantDuties.enumerated()), id: \.offset) { i, d in
-                    if i > 0 { Hairline() }
+                    if i > 0 { CardLine() }
                     let on = a["duties"].array.contains { $0.string == d.key }
                     Button {
                         let ok = store.act { $0.toggleAssistantDuty(companyID: co.id, duty: d.key) } ?? false
@@ -429,7 +429,7 @@ struct AssistantSheet: View {
                                 Text(d.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
                             Spacer()
-                            Image(systemName: on ? "checkmark.circle.fill" : "circle").foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+                            GlyphView(glyph: on ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: on ? Theme.gold : Theme.ivoryFaint)
                         }.padding(.vertical, 8).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }

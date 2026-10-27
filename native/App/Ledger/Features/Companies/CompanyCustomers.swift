@@ -41,7 +41,7 @@ struct CompanyCustomers: View {
                         RateBar(label: "\(s) star\(s == 1 ? "" : "s")", fraction: Double(r.histogram[s - 1]) / Double(top), tint: s >= 4 ? Theme.gain : s == 3 ? Theme.gold : Theme.loss)
                     }
                     ForEach(r.lines) { line in
-                        Hairline()
+                        CardLine()
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
                                 Text(String(repeating: "★", count: line.stars) + String(repeating: "☆", count: 5 - line.stars)).font(.system(size: 12)).foregroundStyle(Theme.gold)
@@ -121,7 +121,7 @@ struct CompanyCustomers: View {
                     .init(label: "Cyber insurance", value: c.insured ? "Yes" : "No", tint: c.insured ? Theme.gain : Theme.ivory),
                 ])
                 if company.managerID != nil {
-                    Hairline()
+                    CardLine()
                     HStack {
                         Text(c.status.managerPicks ? "Your manager picks the level, keeps the backups and books the training." : "Your choice stands.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                         Spacer()
@@ -129,10 +129,10 @@ struct CompanyCustomers: View {
                     }
                 }
                 ForEach(Cyber.levels.indices, id: \.self) { (i: Int) in
-                    Hairline()
+                    CardLine()
                     levelRow(i, c: c, cur: cur)
                 }
-                Hairline()
+                CardLine()
                 HStack {
                     Button(c.status.backups ? "Offline backups: on" : "Offline backups: off") { Haptics.tap(); store.settle(store.act { $0.toggleBackups(companyID: company.id) }, c.status.backups ? "Offline backups switched off." : "Offline backups switched on.") }
                         .buttonStyle(TinyButtonStyle(tint: c.status.backups ? Theme.gold : Theme.ivoryMuted))
@@ -164,7 +164,7 @@ struct CompanyCustomers: View {
                 }
                 Spacer()
                 Text(costText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.caption).foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+                GlyphView(glyph: on ? Glyph.check : Glyph.ring, size: 14, weight: 1.6, tint: on ? Theme.gold : Theme.ivoryFaint)
             }.contentShape(Rectangle())
         }.buttonStyle(.plain)
     }

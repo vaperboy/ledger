@@ -49,11 +49,11 @@ struct CompanyContracts: View {
                             .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
                     }
                     ForEach(Array(list.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         contractRow(c)
                     }
                     if !orders.isEmpty {
-                        if !list.isEmpty { Hairline() }
+                        if !list.isEmpty { CardLine() }
                         Text("Booked orders").capsLabel(Theme.ivoryFaint).padding(.top, 8).padding(.bottom, 4)
                         ForEach(Array(orders.enumerated()), id: \.offset) { _, o in
                             row("\(o.customer) · \(String(format: "%.1f", o.units)) units", "week \(o.week)")
@@ -80,7 +80,7 @@ struct CompanyContracts: View {
                     Spacer(minLength: 8)
                     if c.warnings > 0 { Chip(text: "\(Int(c.warnings)) warning\(Int(c.warnings) == 1 ? "" : "s")", tint: Theme.caution) }
                     else if let d { Text("\(d.weeksLeft) wk left").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
-                    Image(systemName: openContract == c.id ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
+                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openContract == c.id ? -90 : 90))
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if openContract == c.id, let d {
@@ -133,7 +133,7 @@ struct CompanyContracts: View {
                         Text("Buyers want a set volume every week. Bid a price against your list price; the best score on price and quality wins. Writing a bid costs money even when you lose.")
                             .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
                         ForEach(Array(open.enumerated()), id: \.element.id) { n, t in
-                            if n > 0 { Hairline() }
+                            if n > 0 { CardLine() }
                             tenderRow(t)
                         }
                     }
@@ -160,7 +160,7 @@ struct CompanyContracts: View {
                     Spacer(minLength: 8)
                     if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
                     else { Text("\(weeksToBid) wk to bid").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold) }
-                    Image(systemName: openTender == t.id ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
+                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openTender == t.id ? -90 : 90))
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if openTender == t.id { tenderSheet(t, qualifies: q.ok, hasBid: mine != nil, weeksToBid: weeksToBid) }

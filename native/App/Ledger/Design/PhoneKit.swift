@@ -25,6 +25,7 @@ extension Glyph {
     static let calendar = "M4 6 H20 V20 H4 Z M4 10 H20 M8 3 V7 M16 3 V7"
     static let list = "M5 7 H19 M5 12 H19 M5 17 H19"
     static let people = "M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20 M9 5 A3 3 0 1 0 9 11 A3 3 0 1 0 9 5"
+    static let lock = "M6 11 H18 V20 H6 Z M8 11 V8 A4 4 0 0 1 16 8 V11"
     static let sort = "M7 5 V19 M4 8 L7 5 L10 8 M17 19 V5 M14 16 L17 19 L20 16"
 
     /// The icon for a kind of weather (see `WeatherEvents.kindWords`).
