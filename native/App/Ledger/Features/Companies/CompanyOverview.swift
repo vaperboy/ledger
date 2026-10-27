@@ -167,15 +167,7 @@ struct CompanyOverview: View {
             let wageTotal: Double = co.staff.reduce(0) { $0 + $1.monthlyWage }
             let wages: String = co.staff.isEmpty ? "" : " · " + store.short(wageTotal, in: co) + " a month in wages"
             let title: String = chain.first?.name ?? (co.ownerHours > 0 ? "You" : "No one")
-            let sub: String
-            if let boss = chain.first {
-                let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-                sub = GameEngine.bossTitle(boss.kind, trade: trade) + " · " + lvl
-            } else if co.ownerHours > 0 {
-                sub = "\(Int(co.ownerHours.rounded())) h a week yourself"
-            } else {
-                sub = "Hire a manager or put in hours under Operations"
-            }
+            let sub: String = runsItSubtitle(co, chain, trade)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Who runs it").capsLabel()
                 Button { go(.staff) } label: {
@@ -183,6 +175,15 @@ struct CompanyOverview: View {
                 }.buttonStyle(.plain).disabled(!hasTeam)
             }
         }
+    }
+
+    private func runsItSubtitle(_ co: Company, _ chain: [ManagerModel.Boss], _ trade: Trade?) -> String {
+        if let boss = chain.first {
+            let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
+            return GameEngine.bossTitle(boss.kind, trade: trade) + " · " + lvl
+        }
+        if co.ownerHours > 0 { return "\(Int(co.ownerHours.rounded())) h a week yourself" }
+        return "Hire a manager or put in hours under Operations"
     }
 
     // 4. Why, and where to act: findings from the company's own numbers, each with a way to the tab that changes it
