@@ -4,9 +4,9 @@ import Countries
 import Finance
 import Simulation
 
-/// A list of coming payments with Pay now where the engine allows it: payroll is approved (or, when late, run now) through
-/// `resolvePayrollAlert`; a loan instalment is paid early with `repayLoan`. Rent, supplier bills, invoices, tax and VAT leave by themselves
-/// on their date (the engine has no early payment for them), and the row says so.
+/// A list of coming payments, each with Pay now: payroll is approved (or, when late, run now) through `resolvePayrollAlert`; a loan
+/// instalment is paid early with `repayLoan`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
+/// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
     @EnvironmentObject var store: GameStore
     var account: BankAccountID
@@ -49,13 +49,15 @@ struct BankBillsList: View {
         case .payroll:
             if let a = alerts.first(where: { $0.companyID == u.companyID }) {
                 SmallOutlineButton(title: a.isLate ? "Pay now" : "Approve") { BankPay.resolve(store, companyID: u.companyID) }
+            } else {
+                Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
                 SmallOutlineButton(title: "Pay now") { BankPay.instalment(store, loanID: loanID) }
             }
-        case .bills, .tax, .invoice:   // rent, supplier bills, tax and VAT cannot be paid early
-            Text("Leaves on its date").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        case .bills, .tax, .invoice:
+            SmallOutlineButton(title: "Pay now") { BankPay.early(store, u) }
         }
     }
 }

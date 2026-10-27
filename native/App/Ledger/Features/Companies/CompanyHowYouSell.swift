@@ -192,7 +192,8 @@ struct CompanyHowYouSell: View {
 
     private func offerRow(_ knob: Knob, _ i: Int, _ o: KnobOption, on: Bool, locked: Bool, _ cur: Currency) -> some View {
         let quote: KnobChangeQuote? = engine.knobToggleQuote(companyID: company.id, knob: knob.id, option: i, on: !on)
-        let costLine: String = offerCostLine(quote, on: on, cur)
+        let monthly: Double = engine.knobOptionMonthlyCost(companyID: company.id, knob: knob.id, option: i) ?? 0
+        let costLine: String = offerCostLine(quote, monthly: monthly, on: on, cur)
         let binding = Binding<Bool>(get: { on }, set: { v in toggle(knob, i, v, cur) })
         return HStack(spacing: 12) {
             IconCircle(glyph: Glyph.luxury, size: 36)
@@ -211,10 +212,13 @@ struct CompanyHowYouSell: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// "Setup £x" from the engine's quote for switching it on. No running cost is shown for add-ons.
-    private func offerCostLine(_ q: KnobChangeQuote?, on: Bool, _ cur: Currency) -> String {
-        guard let q, !on else { return on ? "On" : "" }
-        return q.totalCost > 0 ? "Setup " + cur.tidyShort(q.totalCost) : "No setup cost"
+    /// "Setup £x" from the engine's quote for switching it on, and the engine's monthly running cost (an estimate) next to it.
+    private func offerCostLine(_ q: KnobChangeQuote?, monthly: Double, on: Bool, _ cur: Currency) -> String {
+        let running: String = monthly > 0.5 ? "about " + cur.tidyShort(monthly) + " a month to run (estimate)" : ""
+        if on { return running.isEmpty ? "On" : "On, " + running }
+        guard let q else { return running }
+        let setup: String = q.totalCost > 0 ? "Setup " + cur.tidyShort(q.totalCost) : "No setup cost"
+        return running.isEmpty ? setup : setup + ", " + running
     }
 
     // MARK: Confirmation text
@@ -225,6 +229,7 @@ struct CompanyHowYouSell: View {
         if q.changeoverCost > 0 { lines.append("Changeover: \(cur.tidyShort(q.changeoverCost)), paid now.") }
         for d in q.documents { lines.append("\(d.name): \(cur.tidyShort(d.fee)), about \(d.weeks) weeks to approve. It does not work until approved.") }
         if q.totalCost > 0 { lines.append("Total: \(cur.tidyShort(q.totalCost)).") }
+        if abs(q.monthlyRunningCost) > 0.5 { lines.append("Running cost: about \(cur.tidyShort(abs(q.monthlyRunningCost))) a month \(q.monthlyRunningCost > 0 ? "more" : "less") (estimate).") }
         if q.transitionWeeks > 0 { lines.append("\(q.transitionWeeks) week\(q.transitionWeeks == 1 ? "" : "s") at \(Int((1 - q.capacityLoss) * 100))% capacity while the business settles.") }
         if let p = preview {
             lines.append("Estimate for the next \(p.horizon) weeks, a week at a time (low to high, average in brackets):")
