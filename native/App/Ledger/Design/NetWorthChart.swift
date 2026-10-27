@@ -7,6 +7,8 @@ import Simulation
 struct NetWorthChart: View {
     var engine: GameEngine
     var days: Int = 365
+    /// The plot height; Home uses a thin 30 pt line.
+    var height: CGFloat = 66
 
     private struct Point: Identifiable { var id: Int; var value: Double }
 
@@ -32,10 +34,10 @@ struct NetWorthChart: View {
                 .chartYScale(domain: (lo - pad)...(hi + pad))
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
-                .frame(height: 66)
+                .frame(height: height)
                 .animation(.snappy(duration: 0.3), value: days)
             } else {
-                Text("The chart fills in day by day.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: 66)
+                Text("The chart fills in day by day.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: height)
             }
         }
     }

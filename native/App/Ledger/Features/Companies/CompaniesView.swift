@@ -29,59 +29,46 @@ struct CompaniesView: View {
                     let rows = cos.filter(matches).map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
                     let chains = e.chainSummaries
                     ScrollView {
-                        VStack(alignment: .leading, spacing: Theme.Space.l) {
-                            HomeSummary(engine: e)
-                            HStack(alignment: .lastTextBaseline) {
-                                Text("Company").font(.serifTitle(28))
-                                Spacer()
-                                if !cos.isEmpty {
-                                    Text("\(cos.count) \(cos.count == 1 ? "company" : "companies") · \(Set(cos.map { e.cityName($0) }).count) \(Set(cos.map { e.cityName($0) }).count == 1 ? "city" : "cities") · \(cos.reduce(0) { $0 + $1.staff.count }.peopleText)")
-                                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                            }
+                        VStack(alignment: .leading, spacing: 8) {
+                            HomeSummary(engine: e) { path.append(.newCompany) }
                             if cos.isEmpty {
-                                LedgerSection("No companies yet") {
-                                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                                        Text("Pick a trade, see the full start-up cost, then decide.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                        Button("Choose a trade") { path.append(.newCompany) }.buttonStyle(QuietButtonStyle())
+                                Card(padding: 12, radius: Theme.Radius.card) {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("No companies yet").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                                        Text("Pick a trade, see the full start-up cost, then decide.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                                        QuietButton(title: "Choose a trade") { path.append(.newCompany) }
                                     }
                                 }
                             } else {
-                                LedgerSection(title: "Companies", trailing: {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text("Companies").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
+                                    Spacer()
                                     Menu {
                                         Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                                     } label: {
                                         Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                     }
-                                }) {
-                                    if cos.count >= 8 { filterBar(chains) }
-                                    if rows.isEmpty {
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                            Button("Clear the search and filter") { query = ""; chainFilter = "all" }.buttonStyle(QuietButtonStyle())
-                                        }.padding(.vertical, 8)
-                                    }
-                                    if sizeClass == .regular {
-                                        CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
-                                    } else {
-                                        VStack(spacing: 0) {
-                                            HStack(spacing: 8) {
-                                                Text("Company").frame(maxWidth: .infinity, alignment: .leading)
-                                                Text("Value").frame(width: 62, alignment: .trailing)
-                                                Text("Profit").frame(width: 62, alignment: .trailing)
-                                                Text("Rev.").frame(width: 50, alignment: .trailing)
-                                            }
-                                            .font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
-                                            ForEach(Array(rows.enumerated()), id: \.element.co.id) { i, r in
-                                                Hairline()
-                                                NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(.plain)
-                                            }
+                                }
+                                .padding(.top, 2)
+                                if cos.count >= 8 { filterBar(chains) }
+                                if rows.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                                        Button("Clear the search and filter") { query = ""; chainFilter = "all" }.buttonStyle(QuietButtonStyle())
+                                    }.padding(.vertical, 8)
+                                }
+                                if sizeClass == .regular {
+                                    CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
+                                } else {
+                                    VStack(spacing: 5) {
+                                        ForEach(rows, id: \.co.id) { r in
+                                            NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(.plain)
                                         }
                                     }
                                 }
                             }
                         }
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 130)
+                        .padding(.horizontal, 18).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
@@ -90,9 +77,10 @@ struct CompaniesView: View {
                 }
             }
             .ledgerBackground()
+            .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
-            .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
             .routeRequests(for: .company, path: $path)
             .returnBar(for: .company)
             .onAppear { openRequested() }
@@ -123,7 +111,7 @@ struct CompaniesView: View {
             if !chains.isEmpty {
                 SectionTabs(items: ["all"] + chains.map { String($0.id) } + ["independent"],
                             title: { k in k == "all" ? "All" : k == "independent" ? "Independent" : (chains.first { String($0.id) == k }?.name ?? "Chain") },
-                            selection: $chainFilter).padding(.horizontal, -Theme.Space.margin)
+                            selection: $chainFilter).padding(.horizontal, -18)
             }
         }.padding(.bottom, 6)
     }
@@ -235,7 +223,7 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the list: name with trade and health, value, profit and a revenue trend, without opening it.
+/// One company in the list, a slim card as in the Home mockup: icon, name with trade, city and people, value, and profit a year.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -244,29 +232,36 @@ struct CompanyRow: View {
 
     var body: some View {
         let co = company, h = health
-        let growing = (h.revenueGrowth ?? 0) >= 0
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
+        let urgent = CompaniesView.urgency(co, h) == 0
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+        HStack(spacing: 10) {
+            GlyphView(glyph: Glyph.group, size: 16, weight: 1.5)
+            VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 5) {
-                    if CompaniesView.urgency(co, h) == 0 { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10)).foregroundStyle(Theme.loss).accessibilityLabel("Needs attention") }
-                    Text(co.name).font(.system(size: 13.5, weight: CompaniesView.urgency(co, h) == 0 ? .semibold : .regular)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    if urgent { GlyphView(glyph: Glyph.warning, size: 12, weight: 1.9, tint: Theme.loss).accessibilityLabel("Needs attention") }
+                    Text(co.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 }
-                HStack(spacing: 0) {
-                    Text(engine.tradeName(co) + " · ").foregroundStyle(Theme.ivoryFaint)
-                    if co.status == .open { Text(h.label).foregroundStyle(HealthChip.tint(h.label)) } else { Text(co.status == .setup ? "Setting up" : co.status.rawValue.capitalized).foregroundStyle(Theme.ivoryMuted) }
-                    Text(" · " + RunBy.name(engine, co)).foregroundStyle(Theme.ivoryFaint)
-                }
-                .font(.system(size: 11)).lineLimit(1)
+                Text(subtitle(co)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text(store.short(h.value, in: co)).font(.system(size: 13.5).monospacedDigit()).frame(width: 62, alignment: .trailing)
-            Text((h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co)).font(.system(size: 13.5).monospacedDigit())
-                .foregroundStyle(h.profitTTM < 0 ? Theme.loss : Theme.ivory).frame(width: 62, alignment: .trailing)
-            Sparkline(values: Array(h.revenueSeries.suffix(12)), tint: growing ? Theme.gain : Theme.loss, filled: false).frame(width: 46, height: 20)
-            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(store.short(h.value, in: co)).font(.system(size: 13, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text((h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co) + " / yr").font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(h.profitTTM < -0.5 ? Theme.loss : h.profitTTM > 0.5 ? Theme.gain : Theme.ivoryMuted)
+            }
+            .lineLimit(1)
         }
-        .padding(.vertical, 9)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(shape.fill(Theme.surface))
+        .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "Gym · London · 3 people", with the status in place of the people when the company is not open.
+    private func subtitle(_ co: Company) -> String {
+        let tail = co.status == .open ? co.staff.count.peopleText : (co.status == .setup ? "Setting up" : co.status.rawValue.capitalized)
+        return "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(tail)"
     }
 }
 
