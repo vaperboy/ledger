@@ -54,7 +54,7 @@ struct AcquisitionSheet: View {
                             Text("Buy \(r.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                             Text("Agreed price \(cur.tidyDisplay(price)). Choose what it becomes.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                         }
-                        LedgerSection("What it becomes") {
+                        MoreBlock("What it becomes") {
                             VStack(spacing: 0) {
                                 ForEach(Array(plan.choices.enumerated()), id: \.element.id) { n, c in
                                     if n > 0 { Hairline() }
@@ -70,7 +70,7 @@ struct AcquisitionSheet: View {
                             }
                         }
                         costs(plan, ch, price: price, cur: cur)
-                        LedgerSection("What changes") {
+                        MoreBlock("What changes") {
                             VStack(alignment: .leading, spacing: 8) {
                                 labelled("You get", fx.gets)
                                 labelled("Control", fx.control)
@@ -82,7 +82,7 @@ struct AcquisitionSheet: View {
                             pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
-                        }.buttonStyle(QuietButtonStyle()).disabled(!ch.affordable)
+                        }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable)
                         if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
                     }
                     .padding(Theme.Space.margin)
@@ -104,7 +104,7 @@ struct AcquisitionSheet: View {
         let needSub: String = owns ? "includes a \(cur.tidyShort(plan.reserve)) reserve the purchase insists on" : ""
         let have: Double = owns ? plan.liquid : plan.cash
         let haveSub: String = owns ? "cash and savings" : "current account"
-        LedgerSection("Cash and costs") {
+        MoreBlock("Cash and costs") {
             VStack(spacing: 0) {
                 FlatRow(label: "Price to the owner", value: cur.tidyShort(price), rule: false)
                 if ch.extraCost > 0 { FlatRow(label: extraLabel, value: cur.tidyShort(ch.extraCost)) }

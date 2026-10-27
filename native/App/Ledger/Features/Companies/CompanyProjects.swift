@@ -39,8 +39,8 @@ private struct JobList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            KeyFigures(items: figureItems)
-            LedgerSection(title: board.isEvent ? "Bookings" : "Jobs on the go", trailing: {
+            FigureStrip(items: figureItems)
+            MoreBlock(title: board.isEvent ? "Bookings" : "Jobs on the go", trailing: {
                 Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 if board.jobs.isEmpty && board.queuedJobs.isEmpty {
@@ -117,7 +117,7 @@ private struct JobList: View {
     // Tenders: buyers publish work; the best score on price and quality wins.
     @ViewBuilder private var tenders: some View {
         if ProjectTenders.catalog[company.type] != nil {
-            LedgerSection(title: "Tenders", trailing: {
+            MoreBlock(title: "Tenders", trailing: {
                 if board.hasManager {
                     Button {
                         let on: Bool = !board.managerBids
@@ -209,7 +209,7 @@ private struct JobList: View {
                     case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
                     default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
                     }
-                }.buttonStyle(QuietButtonStyle())
+                }.buttonStyle(TinyButtonStyle())
             }
         }
         .padding(.bottom, 4)
@@ -240,8 +240,8 @@ private struct DevelopmentList: View {
     var body: some View {
         let active = board.developments
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            KeyFigures(items: devItems(active))
-            LedgerSection(title: "Developments", trailing: {
+            FigureStrip(items: devItems(active))
+            MoreBlock(title: "Developments", trailing: {
                 Button { withAnimation(.snappy(duration: 0.2)) { showStart.toggle() }; Haptics.choose() } label: {
                     Text(showStart ? "Close" : "Start a project").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
                 }.buttonStyle(.plain)
@@ -260,7 +260,7 @@ private struct DevelopmentList: View {
                 Text("Zoning can be rejected or delayed. Building costs overrun. Sales depend on the housing market.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }
             if !board.finishedDevelopments.isEmpty {
-                LedgerSection("Finished") {
+                MoreBlock("Finished") {
                     VStack(spacing: 0) {
                         ForEach(Array(board.finishedDevelopments.enumerated()), id: \.element.id) { n, f in
                             let profit = f.revenue - f.cost
@@ -323,7 +323,7 @@ private struct DevelopmentList: View {
                 if q.financed { row("Loan", store.short(q.loanAmount, in: company)) }
                 row("Brings in, if all sold", store.short(q.expectedRevenue, in: company))
             }
-            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(QuietButtonStyle())
+            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(TinyButtonStyle())
         }
         .padding(.bottom, 6)
     }

@@ -56,16 +56,15 @@ struct ChainSupplyOverview: View {
         let quiet = all.filter { r in r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair" }
         let rules = engine.chainSupplierRules(chainID: summary.id)
         if !all.isEmpty {
-            LedgerSection(title: "Suppliers", trailing: { Text("\(links.count) from your own").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
+            MoreBlock(title: "Suppliers", card: false, trailing: { Text("\(links.count) from your own").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("The usual provider of each input across the stores, and the stores that differ. Set a chain rule to make one provider the choice for every store the chain governs; without a rule each store chooses its own. A board agreement can set goods for every company.")
-                        .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
+                        .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     ForEach(rules) { rule in
-                        ruleBlock(rule)
-                        Hairline()
+                        EntityCard { ruleBlock(rule) }
                     }
-                    ForEach(Array(active.enumerated()), id: \.element.id) { n, r in
-                        if n > 0 { Hairline() }
+                    ForEach(active) { (r: Row) in
+                        EntityCard {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
@@ -81,24 +80,24 @@ struct ChainSupplyOverview: View {
                                 }.buttonStyle(.plain)
                             }
                             if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                        }.padding(.vertical, 8)
+                        }
+                        }
                     }
-                    Hairline()
                     setRuleMenu(all)
                     if !quiet.isEmpty {
-                        Hairline()
                         Text("All stores buy outside: " + quiet.map { $0.title.lowercased() }.joined(separator: ", ") + ". Open a store's Operations > Suppliers to compare your own companies and business customers.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
+                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }
-                    ForEach(Array(links.enumerated()), id: \.element.id) { n, l in
-                        Hairline()
+                    ForEach(links, id: \.id) { l in
                         let buyer = engine.state.company(l.buyerID)?.name ?? "Store"
                         let supplier = engine.state.company(l.supplierID)?.name ?? "Supplier"
+                        let kindName: String = IntercompanySupply.kind(l.kindID)?.name ?? l.kindID
+                        let sub: String = "\(kindName) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered"
+                        let yearly: String = currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr"
                         NavigationLink(value: CompanyRoute.companyAt(l.buyerID, .operations)) {
-                            GroupLinkRow(title: "\(supplier) → \(buyer)",
-                                         sub: "\(IntercompanySupply.kind(l.kindID)?.name ?? l.kindID) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered",
-                                         trailing: currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr",
-                                         subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
+                            EntityCard {
+                                GroupLinkRow(title: "\(supplier) → \(buyer)", sub: sub, trailing: yearly, subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
+                            }
                         }.buttonStyle(.plain)
                     }
                 }
@@ -134,16 +133,16 @@ struct ChainSupplyOverview: View {
                     Button("Try the stores that differ again") {
                         let r = store.act { $0.setChainSupplier(chainID: summary.id, input: rule.input, to: rule.change) }
                         report(r, rule.providerName)
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                    }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                 }
                 Button("Each store decides") {
                     pending = PendingAction(title: "Release the \(rule.title.lowercased()) rule?", message: "The chain no longer fixes this input. Every store keeps the provider it has now and may change it on its own.", button: "Release") {
                         store.settle(store.act { $0.releaseChainSupplier(chainID: summary.id, input: rule.input) }, "Each store now decides its own \(rule.title.lowercased()).", same: "Each store already decides its own \(rule.title.lowercased()).")
                     }
-                }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                 Spacer(minLength: 0)
             }
-        }.padding(.vertical, 8)
+        }
     }
 
     @ViewBuilder private func setRuleMenu(_ rows: [Row]) -> some View {
@@ -156,8 +155,11 @@ struct ChainSupplyOverview: View {
                 }
             }
         } label: {
-            Text("Set a chain-wide provider").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-        }.padding(.vertical, 8)
+            Text("Set a chain-wide provider")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+                .padding(.horizontal, 10).padding(.vertical, 4).frame(minHeight: 28)
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+        }
     }
 
     private func confirmRule(_ r: Row, _ c: ChainSupplierChoice) {

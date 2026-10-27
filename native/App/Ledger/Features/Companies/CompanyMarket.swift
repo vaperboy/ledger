@@ -39,7 +39,7 @@ struct CompanyMarket: View {
 
     @ViewBuilder private var share: some View {
         if let row = engine.marketRows().first(where: { $0.companyNames.contains(company.name) }) {
-            LedgerSection("Your share") {
+            MoreBlock("Your share") {
                 NavigationLink { MarketDetailView(marketKey: row.id) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -67,9 +67,9 @@ struct CompanyMarket: View {
             .init(label: "Rivals", value: rivalText),
             .init(label: "Margin", value: marginText, tint: (info.margin ?? 0) < 0 ? Theme.loss : Theme.ivory),
         ]
-        return LedgerSection("Price moves") {
+        return MoreBlock("Price moves") {
             VStack(alignment: .leading, spacing: 10) {
-                KeyFigures(items: items)
+                FigureStrip(items: items)
                 if let war = info.war {
                     warBlock(weeksLeft: war.weeksLeft, loss: war.loss, cur)
                 } else {
@@ -78,7 +78,7 @@ struct CompanyMarket: View {
                     discountBlock(info, cur)
                     if !engine.rivalRows(company).isEmpty {
                         Hairline()
-                        Button("Start a price war…") { showWar = true }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                        Button("Start a price war…") { showWar = true }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     }
                 }
             }
@@ -92,7 +92,7 @@ struct CompanyMarket: View {
             store.act { $0.endPriceWar(companyID: company.id) }
             Haptics.tap()
             store.show("The price war is over. Prices go back to normal.", tone: "n")
-        }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+        }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
     }
 
     @ViewBuilder private func changeBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
@@ -104,7 +104,7 @@ struct CompanyMarket: View {
             Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
             Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
         }
-        Button(label) { askChange(info, cur) }.buttonStyle(QuietButtonStyle()).disabled(tiny)
+        Button(label) { askChange(info, cur) }.buttonStyle(TinyButtonStyle()).disabled(tiny)
         if !tiny, let fc = engine.priceForecast(companyID: company.id, byShare: change) {
             HStack {
                 Text("Customers: " + fc.text.customers)
@@ -137,15 +137,15 @@ struct CompanyMarket: View {
             Button("End the discount") {
                 store.act { $0.endDiscount(companyID: company.id) }
                 store.show("The discount has ended.", tone: "n")
-            }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+            }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
         } else {
             WrapRow {
                 Group {
                     ForEach(info.discountOptions, id: \.self) { (d: Int) in
-                        Button("\(d)%") { discount = d }.buttonStyle(QuietButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
+                        Button("\(d)%") { discount = d }.buttonStyle(TinyButtonStyle(tint: discount == d ? Theme.gold : Theme.ivoryFaint))
                     }
                     ForEach([1, 2, 4, 6], id: \.self) { (w: Int) in
-                        Button("\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
+                        Button("\(w) wk") { weeks = w }.buttonStyle(TinyButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint))
                     }
                 }
             }
@@ -153,7 +153,7 @@ struct CompanyMarket: View {
                 Text("You raised prices \(info.raisedWeeksAgo) wk ago. A sale measured against that price can be fined as misleading.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             }
             Text("Every sale is cheaper while it runs, so margin falls. It brings more customers, not a promise of more profit. You can end it early.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            Button("Start \(discount)% off for \(weeks) wk") { askDiscount(info, cur) }.buttonStyle(QuietButtonStyle())
+            Button("Start \(discount)% off for \(weeks) wk") { askDiscount(info, cur) }.buttonStyle(TinyButtonStyle())
         }
     }
 
@@ -172,7 +172,7 @@ struct CompanyMarket: View {
         let rows = engine.rivalRows(company)
         let cur = engine.currency(for: company)
         _ = cur
-        return LedgerSection("Rivals") {
+        return MoreBlock("Rivals") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
@@ -261,7 +261,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func factsSection(_ d: RivalDetail) -> some View {
-            LedgerSection(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
+            MoreBlock(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
                 VStack(spacing: 0) {
                     ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
                         if n > 0 { Hairline() }
@@ -272,7 +272,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func ownerSection(_ d: RivalDetail) -> some View {
-            LedgerSection("The owner") {
+            MoreBlock("The owner") {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(d.moodWord) · \(d.temperament)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                     Text(d.nextMove).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -289,7 +289,7 @@ struct RivalSheet: View {
 
     @ViewBuilder private func groupSection(_ d: RivalDetail) -> some View {
             if let g = d.group {
-                LedgerSection("Group behind it") {
+                MoreBlock("Group behind it") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                         Text("\(g.strategyName): \(g.strategyText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
@@ -300,7 +300,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func reviewsSection(_ d: RivalDetail) -> some View {
-            LedgerSection(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            MoreBlock(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(d.reviews) { r in
                         Text("\(String(repeating: "★", count: r.stars)) \(r.text)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -311,12 +311,12 @@ struct RivalSheet: View {
 
     @ViewBuilder private func cutSection(_ e: GameEngine, _ d: RivalDetail) -> some View {
             if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
-                LedgerSection("\(d.rival.name) cut prices \(cut.pct)%") {
+                MoreBlock("\(d.rival.name) cut prices \(cut.pct)%") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Some of your customers are trying them. It runs until about week \(cut.end).").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                        Button("Match their price") { answerCut(.match) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                        Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                        Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                        Button("Match their price") { answerCut(.match) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+                        Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+                        Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         Text("Doing nothing is also a choice: you lose some customers until the cut ends. You can also buy them out below.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
@@ -326,7 +326,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func actionsSection(_ e: GameEngine, _ co: Company, _ d: RivalDetail, _ cur: Currency) -> some View {
-            LedgerSection("What you can do") {
+            MoreBlock("What you can do") {
                 VStack(alignment: .leading, spacing: 10) {
                     Button("Meet the owner · " + cur.tidyShort(cur.scaledPrice(4000))) {
                         let r = store.act { $0.meetRival(companyID: companyID, rivalID: rivalID) }
@@ -335,7 +335,7 @@ struct RivalSheet: View {
                         case .cash?: store.show("Not enough cash for the lunch.", tone: "warn")
                         default: Haptics.success(); store.show("Lunch with \(d.rival.owner). The relationship is warmer.", tone: "good")
                         }
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     Hairline()
                     let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
                     Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
@@ -344,12 +344,12 @@ struct RivalSheet: View {
                         Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
                     }
                     Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                    Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(QuietButtonStyle())
+                    Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(TinyButtonStyle())
                     if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                    if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+                    if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(TinyButtonStyle(tint: Theme.gold)) }
                     Hairline()
                     if co.value("docs")["fran"]["st"].string == "ok" {
-                        Button("Open a new site beside them") { openSite() }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                        Button("Open a new site beside them") { openSite() }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     } else {
                         Text("A new site beside a rival needs your franchise papers (Chain section).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
@@ -450,7 +450,7 @@ struct PriceWarSheet: View {
                         Text("Price war").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text("Your prices drop to the floor for the weeks you choose. The rival loses money every week, and so do you. If it runs out first it closes, and its customers look for somewhere new. Afterwards your prices go back.")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                        LedgerSection("Who") {
+                        MoreBlock("Who") {
                             VStack(spacing: 0) {
                                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
                                     if n > 0 { Hairline() }
@@ -463,13 +463,13 @@ struct PriceWarSheet: View {
                                 }
                             }
                         }
-                        LedgerSection("How long") {
+                        MoreBlock("How long") {
                             WrapRow { Group { ForEach([6, 10, 14, 20], id: \.self) { w in
-                                Button("\(w) weeks") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint)) } } }
+                                Button("\(w) weeks") { weeks = w }.buttonStyle(TinyButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint)) } } }
                         }
                         if let c = chosen, let est = e.warEstimate(companyID: companyID, rivalID: c.id, weeks: weeks) {
-                            LedgerSection("Your chances") {
-                                KeyFigures(items: [
+                            MoreBlock("Your chances") {
+                                FigureStrip(items: [
                                     .init(label: "They hold out", value: "\(est.holdOutWeeks) wk"),
                                     .init(label: "You hold out", value: est.yourWeeks >= 99 ? "Long" : "\(est.yourWeeks) wk", tint: est.yourWeeks < weeks ? Theme.loss : Theme.ivory),
                                     .init(label: "They close", value: "\(Int((est.odds * 100).rounded()))%"),
@@ -478,7 +478,7 @@ struct PriceWarSheet: View {
                                     .init(label: "Authority", value: est.yourShare >= 0.35 ? "Can fine" : "Low risk", tint: est.yourShare >= 0.35 ? Theme.loss : Theme.ivory),
                                 ])
                             }
-                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(QuietButtonStyle())
+                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(TinyButtonStyle())
                         }
                     }
                     .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
@@ -533,7 +533,7 @@ struct MarketView: View {
         let rows = e.marketRows()
         let weight = e.economyWeight()
         let note: String = weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position." : "At about a third of a local market, the competition authority starts to watch your pricing."
-        return VStack(alignment: .leading, spacing: Theme.Space.l) { LedgerSection("Your share of each market") {
+        return VStack(alignment: .leading, spacing: Theme.Space.l) { MoreBlock("Your share of each market") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
@@ -550,7 +550,7 @@ struct MarketView: View {
             }
         }
             DataAnalystCard()
-            LedgerSection("Your weight in the economy") {
+            MoreBlock("Your weight in the economy") {
                 VStack(spacing: 6) {
                     weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")
                     weightRow("Jobs you provide", "\(weight.jobs)")
@@ -571,7 +571,7 @@ struct MarketView: View {
             let groups = e.reviewBoard()
             if groups.isEmpty { Text("Reviews of you and your rivals appear once a business is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
             ForEach(groups) { g in
-                LedgerSection(g.title) {
+                MoreBlock(g.title) {
                     VStack(spacing: 0) {
                         ForEach(Array(g.rows.enumerated()), id: \.element.id) { n, r in
                             if n > 0 { Hairline() }
@@ -596,7 +596,7 @@ struct MarketView: View {
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             if gs.isEmpty { Text("Groups that compete near you appear once a business is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
             ForEach(gs.prefix(12)) { g in
-                LedgerSection(title: g.name, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                MoreBlock(title: g.name, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("\(g.owner) · \(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : ""))
                             .font(.system(size: 12)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryMuted)
@@ -626,13 +626,13 @@ struct MarketDetailView: View {
                         Text(d.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text(d.subtitle).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
-                    KeyFigures(items: [
+                    FigureStrip(items: [
                         .init(label: "Your share", value: d.shareText),
                         .init(label: "Market a year", value: d.sizeText ?? "Not known"),
                         .init(label: "Your sales", value: store.short(d.yourSales)),
                     ])
-                    if d.history.count >= 3 { LedgerSection("Your share, month by month") { Sparkline(values: d.history).frame(height: 54) } }
-                    LedgerSection("Who has the market") {
+                    if d.history.count >= 3 { MoreBlock("Your share, month by month") { Sparkline(values: d.history).frame(height: 54) } }
+                    MoreBlock("Who has the market") {
                         VStack(spacing: 0) {
                             ForEach(Array(d.players.enumerated()), id: \.element.id) { n, p in
                                 if n > 0 { Hairline() }
@@ -651,10 +651,10 @@ struct MarketDetailView: View {
                         Button("Ask \(d.analystName) for a report now") {
                             let r = store.act { $0.orderMarketReport(marketKey: marketKey) }
                             if case .refused(let why)? = r { store.show(why, tone: "warn") } else { store.show("Report sent to your inbox."); Haptics.success() }
-                        }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                        }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                     }
                     if !d.report.isEmpty {
-                        LedgerSection(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {
+                        MoreBlock(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {
                             VStack(alignment: .leading, spacing: 5) { ForEach(d.report, id: \.self) { Text($0).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) } }
                         }
                     } else {

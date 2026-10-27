@@ -71,9 +71,9 @@ struct CompanyClub: View {
     }
 
     private func season(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
-        LedgerSection(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        MoreBlock(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
-                KeyFigures(items: seasonItems(c, cur))
+                FigureStrip(items: seasonItems(c, cur))
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
                 if !c.form.isEmpty { HStack(spacing: 2) { ForEach(Array(c.form.suffix(8).enumerated()), id: \.offset) { _, r in form(r) } }.padding(.bottom, 6) }
                 if c.debt > 0 { FlatRow(label: "Club debt", value: cur.tidyShort(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
@@ -91,7 +91,7 @@ struct CompanyClub: View {
 
     private func budget(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("Budget") {
+            MoreBlock("Budget") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Player wages, share of revenue").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SegmentedChoice(items: [0.55, 0.65, 0.8], title: { "\(Int($0 * 100))%" },
@@ -102,7 +102,7 @@ struct CompanyClub: View {
                     Text("A bigger wage budget buys a stronger squad but eats the profit. Cheaper tickets fill the stadium and build the fan base.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
-            LedgerSection("A normal week") {
+            MoreBlock("A normal week") {
                 VStack(spacing: 0) {
                     FlatRow(label: "Television", value: cur.tidyShort(c.weekly["tv"] ?? 0), rule: false)
                     FlatRow(label: "Sponsors", value: cur.tidyShort(c.weekly["spons"] ?? 0))
@@ -120,7 +120,7 @@ struct CompanyClub: View {
 
     private func people(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("Football staff") {
+            MoreBlock("Football staff") {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("You do not pick players: the manager does. Every club needs a manager and an assistant. If the manager is sacked, the assistant steps in until you hire a new one.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                     person(c.coach, kind: "coach", title: "Manager", cur)
@@ -128,7 +128,7 @@ struct CompanyClub: View {
                 }
             }
             if !candidates.isEmpty {
-                LedgerSection("Candidates") {
+                MoreBlock("Candidates") {
                     VStack(spacing: 0) {
                         ForEach(Array(candidates.enumerated()), id: \.element.id) { n, cd in
                             if n > 0 { Hairline() }
@@ -145,7 +145,7 @@ struct CompanyClub: View {
                                             candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(kind == "coach" ? "manager" : "assistant manager").", tone: "good")
                                         } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(kind == "coach" ? "manager" : "assistant manager") now.", tone: "warn") }
                                     }
-                                }.buttonStyle(QuietButtonStyle())
+                                }.buttonStyle(TinyButtonStyle())
                             }.padding(.vertical, 8)
                         }
                         Button("Cancel") { candidates = [] }.font(.caption).foregroundStyle(Theme.ivoryFaint).buttonStyle(.plain).padding(.top, 6)
@@ -174,14 +174,14 @@ struct CompanyClub: View {
                     hiringKind = kind
                     candidates = store.act { $0.clubCandidates(companyID: company.id, kind: kind) } ?? []
                     if candidates.isEmpty { store.show("Nobody suitable is available right now.", tone: "warn") }
-                }.buttonStyle(QuietButtonStyle())
+                }.buttonStyle(TinyButtonStyle())
             }.padding(.vertical, 9)
         }
     }
 
     private func transfers(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         let w = engine.transferWindow(companyID: company.id)
-        return LedgerSection("Transfers") {
+        return MoreBlock("Transfers") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Window", value: w.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Closed · opens in \(w.weeksToOpen) wk", rule: false)
                 FlatRow(label: "Bought / sold", value: cur.tidyShort(c.tradedIn) + " / " + cur.tidyShort(c.tradedOut))
@@ -204,7 +204,7 @@ struct CompanyClub: View {
                                     default: store.show("The club needs \(cur.tidyShort(fee)) in cash.", tone: "warn")
                                     }
                                 }
-                            }.buttonStyle(QuietButtonStyle()).disabled(w.name == nil)
+                            }.buttonStyle(TinyButtonStyle()).disabled(w.name == nil)
                         }.padding(.vertical, 9)
                     }
                 }
@@ -216,7 +216,7 @@ struct CompanyClub: View {
     private func sponsors(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ForEach(Array(FootballModel.slots.enumerated()), id: \.offset) { _, slot in
-                LedgerSection(slot.title) {
+                MoreBlock(slot.title) {
                     VStack(spacing: 0) {
                         if let s = c.sponsors.first(where: { $0.slot == slot.key }) {
                             FlatRow(label: s.name, value: cur.tidyShort(s.weekly) + " / wk", sub: String(format: "%.1f years left", s.yearsLeft), rule: false)
@@ -234,7 +234,7 @@ struct CompanyClub: View {
                                             if store.act({ $0.signSponsor(companyID: company.id, slot: slot.key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
                                             else { store.show("That offer is no longer available.", tone: "warn") }
                                         }
-                                    }.buttonStyle(QuietButtonStyle())
+                                    }.buttonStyle(TinyButtonStyle())
                                 }.padding(.vertical, 8)
                             }
                         } else {
@@ -247,7 +247,7 @@ struct CompanyClub: View {
     }
 
     private func table(_ c: FootballModel.Summary) -> some View {
-        LedgerSection("Table") {
+        MoreBlock("Table") {
             VStack(spacing: 0) {
                 ForEach(c.table) { r in
                     HStack {
@@ -282,13 +282,13 @@ struct ClubMarketView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     Text("A professional club. You own it and set the budget, sponsors and ticket prices; the manager picks the players. Many owners will not sell at any price, and clubs come with debt. Most clubs lose money or break even.")
                         .font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                    LedgerSection("League") {
+                    MoreBlock("League") {
                         VStack(alignment: .leading, spacing: 6) {
                             Picker("Country", selection: Binding(get: { code }, set: { country = $0 })) { ForEach(countries) { Text("\($0.flag) \($0.name)").tag($0.code) } }.pickerStyle(.menu)
                             if let info { Text("\(info.name) · \(info.clubs) clubs. Values are rough market estimates.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
-                    LedgerSection("Clubs") {
+                    MoreBlock("Clubs") {
                         VStack(spacing: 0) {
                             ForEach(Array(e.clubsForSale(countryCode: code).enumerated()), id: \.element.id) { n, c in
                                 if n > 0 { Hairline() }
@@ -299,16 +299,16 @@ struct ClubMarketView: View {
                                     }
                                     Spacer()
                                     if c.owner == "you" { Chip(text: "Yours", tint: Theme.gold) }
-                                    else { Button("Make an offer") { offerFor = c; answer = nil }.buttonStyle(QuietButtonStyle()) }
+                                    else { Button("Make an offer") { offerFor = c; answer = nil }.buttonStyle(TinyButtonStyle()) }
                                 }.padding(.vertical, 9)
                             }
                         }
                     }
                     if let cost = e.foundingCost(countryCode: code) {
-                        LedgerSection("Found a new club") {
+                        MoreBlock("Found a new club") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 Text("Start a club in the second tier. It costs about \(cur.tidyShort(cost)) and must earn promotion to the top league (finish in the top three).").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                                Button("Found a club") { confirmFound = true }.buttonStyle(QuietButtonStyle())
+                                Button("Found a club") { confirmFound = true }.buttonStyle(TinyButtonStyle())
                             }
                         }
                     }
@@ -344,7 +344,7 @@ struct ClubMarketView: View {
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
                         default: store.show("The club is no longer for sale.", tone: "warn")
                         }
-                    }.buttonStyle(QuietButtonStyle())
+                    }.buttonStyle(TinyButtonStyle())
                 }
             } else {
                 ForEach([0.9, 1.2, 1.8, 3.0], id: \.self) { f in

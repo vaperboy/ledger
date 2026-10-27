@@ -50,9 +50,9 @@ struct CompanyEnergy: View {
         let cur = engine.currency(for: company)
         let perMW = engine.turbinePrice(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("Power plant") {
+            MoreBlock("Power plant") {
                 VStack(alignment: .leading, spacing: 0) {
-                    KeyFigures(items: [
+                    FigureStrip(items: [
                         .init(label: "Producing", value: "\(Int((p?.megawatts ?? 0).rounded())) MW", sub: p?.source ?? ""),
                         .init(label: "Being built", value: "\(Int((p?.building ?? 0).rounded())) MW", sub: p?.weeksToReady.map { "first ready in \($0) wk" } ?? ""),
                         .init(label: "Output last week", value: "\(Int((p?.outputMWh ?? 0).rounded())) MWh"),
@@ -62,7 +62,7 @@ struct CompanyEnergy: View {
                             tint: engine.state.economy.power < 0.85 ? Theme.loss : engine.state.economy.power > 1.15 ? Theme.gain : Theme.ivory)
                 }
             }
-            LedgerSection("Build more") {
+            MoreBlock("Build more") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack {
                         Text("\(Int(megawatts)) MW").font(.system(size: 15, weight: .medium).monospacedDigit())
@@ -77,7 +77,7 @@ struct CompanyEnergy: View {
                             if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
                             else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
                         }
-                    }.buttonStyle(QuietButtonStyle())
+                    }.buttonStyle(TinyButtonStyle())
                 }
             }
         }
@@ -99,9 +99,9 @@ struct CompanyEnergy: View {
         let price = engine.oilPricePerBarrel(companyID: company.id)
         let drill = engine.explorationCost()
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("Production") {
+            MoreBlock("Production") {
                 VStack(alignment: .leading, spacing: 0) {
-                    KeyFigures(items: [
+                    FigureStrip(items: [
                         .init(label: "Fields", value: "\(fields.filter { $0.state != "depleted" }.count)", sub: "\(fields.filter { $0.state == "dev" }.count) in development"),
                         .init(label: "Last week", value: "\(Int(company.lastWeekUnits.rounded())) kbbl"),
                         .init(label: "Oil price", value: cur.tidyShort(price), sub: "per barrel"),
@@ -111,7 +111,7 @@ struct CompanyEnergy: View {
                             tint: engine.state.economy.oil < 0.85 ? Theme.loss : engine.state.economy.oil > 1.15 ? Theme.gain : Theme.ivory).padding(.top, 8)
                 }
             }
-            LedgerSection("Fields") {
+            MoreBlock("Fields") {
                 VStack(spacing: 0) {
                     if fields.isEmpty { Text("No fields yet. Buy a stake in a producing field for income right away, or drill.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(fields.enumerated()), id: \.element.id) { n, f in
@@ -121,7 +121,7 @@ struct CompanyEnergy: View {
                     }
                 }
             }
-            LedgerSection("Grow") {
+            MoreBlock("Grow") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ForEach([2000.0, 5000, 10000], id: \.self) { k in
                         HStack {
@@ -138,7 +138,7 @@ struct CompanyEnergy: View {
                                     default: Haptics.warning(); store.show("The company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
                                     }
                                 }
-                            }.buttonStyle(QuietButtonStyle())
+                            }.buttonStyle(TinyButtonStyle())
                         }
                         Hairline()
                     }
@@ -148,7 +148,7 @@ struct CompanyEnergy: View {
                             Text("\(cur.tidyShort(drill)) · most wells find nothing; a hit takes about three years to produce").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Button("Drill") { confirmDrill = true }.buttonStyle(QuietButtonStyle())
+                        Button("Drill") { confirmDrill = true }.buttonStyle(TinyButtonStyle())
                     }
                 }
             }
@@ -180,9 +180,9 @@ struct CompanySalmon: View {
         let stocking = company.value("flags")["autoStock"].isNull || company.value("flags")["autoStock"].double != 0
         let harvesting = company.value("flags")["harvest"].isNull || company.value("flags")["harvest"].double != 0
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("In the pens") {
+            MoreBlock("In the pens") {
                 VStack(alignment: .leading, spacing: 0) {
-                    KeyFigures(items: [
+                    FigureStrip(items: [
                         .init(label: "Fish", value: String(format: "%.0f k", cohorts.reduce(0) { $0 + $1.fish } / 1000)),
                         .init(label: "Biomass", value: "\(Int(fm["bio"].double.rounded())) t"),
                         .init(label: "Price a kilo", value: cur.tidyShort(engine.salmonPricePerKilo())),
@@ -204,7 +204,7 @@ struct CompanySalmon: View {
                     Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
                 }
             }
-            LedgerSection("Routine") {
+            MoreBlock("Routine") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
                     Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
