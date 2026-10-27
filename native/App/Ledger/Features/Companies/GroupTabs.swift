@@ -120,78 +120,116 @@ private struct GroupCaps: View {
 
 // MARK: - Overview (GroupA)
 
+/// Group > Overview, laid out like the table-layout mockup: two figure cards, the companies table (every row opens the company, "View all
+/// companies" opens the full list), four count tiles that each open their area, and the latest activity. The money card stays last.
 struct GroupOverviewTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var goStructure: () -> Void
-
-    var body: some View {
-        let live = engine.state.companies.filter { $0.type != "hold" && $0.status.isLive }
-        let health = live.map { engine.companyHealth($0) }
-        let value = engine.netWorth.companies
-        let change = DayHistory.change(engine.dayHistory.companies, days: 30)
-        let profit = health.reduce(0) { $0 + $1.profitTTM }
-        let profitable = health.filter { $0.profitTTM > 0 }.count
-        let chains = engine.chainSummaries
-        let franchisors = live.filter { engine.isFranchisor(companyID: $0.id) }
-        let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
-        VStack(alignment: .leading, spacing: 12) {
-            GroupAttention(engine: engine)
-
-            GroupCard(padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Value of holdings").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                        Text(store.short(value)).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                        if let c = change, abs(c.amount) >= 1 {
-                            Text("\(c.amount >= 0 ? "▲" : "▼") \(store.short(abs(c.amount))) 30 days").font(.system(size: 12)).foregroundStyle(c.amount >= 0 ? Theme.gain : Theme.loss)
-                        } else {
-                            Text("No change yet").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Rectangle().fill(Theme.divider).frame(width: 1)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Profit, 12 months").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                        Text(store.short(profit)).font(.serifTitle(30)).foregroundStyle(profit < 0 ? Theme.loss : Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                        Text(live.isEmpty ? "No companies yet" : "\(profitable) of \(live.count) profitable").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    .padding(.leading, 16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .fixedSize(horizontal: false, vertical: true)
+    /// How far back the change figures look (the engine keeps 140 days of history).
+    enum Period: Int, CaseIterable, Identifiable {
+        case week = 7, month = 30, quarter = 90
+        var id: Int { rawValue }
+        var title: String {
+            switch self {
+            case .week: return "7 days"
+            case .month: return "30 days"
+            case .quarter: return "90 days"
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Structure", link: "View all ›", action: goStructure)
-                HStack(spacing: 8) {
-                    tile("Companies", live.count, "M5 21 V4 H15 V21 M15 9 H19 V21 M3 21 H21")
-                    tile("Chains", chains.count, "M12 5 L5 18 H19 Z M12 5 V12")
-                    tile("Franchises", units, "M4 9 L6 4 H18 L20 9 M5 9 V20 H19 V9")
-                    tile("Holdings", engine.holdingCompanies.count, "M4 8 C4 5 20 5 20 8 C20 11 4 11 4 8 M4 8 V16 C4 19 20 19 20 16 V8")
-                }
-            }
-
-            money
-
-            activity(live)
         }
     }
 
-    private func tile(_ label: String, _ n: Int, _ icon: String) -> some View {
-        Button { Haptics.tap(); goStructure() } label: {
-            VStack(spacing: 3) {
-                GlyphView(glyph: icon, size: 18, weight: 1.5)
-                Text("\(n)").font(.system(size: 18, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
+    @EnvironmentObject var store: GameStore
+    @State private var period: Period = .month
+    var engine: GameEngine
+    var goStructure: () -> Void
+    var openMore: (GroupMorePage) -> Void
+
+    var body: some View {
+        let live = engine.state.companies.filter { $0.status.isLive }
+        VStack(alignment: .leading, spacing: 12) {
+            GroupAttention(engine: engine)
+            figures
+            companiesTable(live)
+            tiles(live)
+            activity(live)
+            money
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(label): \(n)")
+    }
+
+    // MARK: Figures
+
+    /// A change as an arrow with a share (or an amount when the earlier value was too small for a share), coloured by direction.
+    private func changeText(_ c: (amount: Double, share: Double?)?, in co: Company? = nil, suffix: String = "") -> (text: String, tint: Color) {
+        guard let c else { return ("No history yet", Theme.ivoryMuted) }
+        guard abs(c.amount) >= 1 else { return ("No change", Theme.ivoryMuted) }
+        let up = c.amount >= 0
+        let size: String
+        if let share = c.share {
+            size = String(format: "%+.0f%%", share * 100)
+        } else {
+            size = co.map { store.short(abs(c.amount), in: $0) } ?? store.short(abs(c.amount))
+        }
+        return ("\(up ? "▲" : "▼") \(size)\(suffix)", up ? Theme.gain : Theme.loss)
+    }
+
+    private var figures: some View {
+        let days = period.rawValue
+        let value = changeText(DayHistory.change(engine.dayHistory.companies, days: days), suffix: " in \(period.title)")
+        let cash = changeText(engine.groupCashChange(days: days), suffix: " in \(period.title)")
+        return HStack(alignment: .top, spacing: 10) {
+            OverviewFigureCard(label: "Value of holdings", value: store.short(engine.netWorth.companies), note: value.text, noteTint: value.tint)
+            OverviewFigureCard(label: "Group cash", value: store.short(engine.groupCash), note: cash.text, noteTint: cash.tint)
+        }
+    }
+
+    // MARK: Companies table
+
+    private var periodMenu: some View {
+        Menu {
+            ForEach(Period.allCases) { p in
+                Button(p.title) { Haptics.choose(); period = p }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(period.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.ivoryMuted)
+            }
+            .frame(minHeight: 28)
+        }
+        .accessibilityLabel("Change over \(period.title)")
+    }
+
+    private func companyRow(_ c: Company, value: Double) -> OverviewRowData {
+        let ch = changeText(engine.companyValueChange(companyID: c.id, days: period.rawValue), in: c)
+        let id = c.id
+        return OverviewRowData(
+            id: "co\(id)", glyph: c.type == "hold" ? Glyph.bank : Glyph.home, title: c.name,
+            subtitle: "\(engine.tradeName(c)) · \(engine.cityName(c))",
+            value: store.short(value, in: c), valueTint: value < 0 ? Theme.loss : Theme.ivory,
+            note: ch.text, noteTint: ch.tint,
+            action: { store.openCompany(id) })
+    }
+
+    private func companiesTable(_ live: [Company]) -> some View {
+        let ranked = live.map { (co: $0, value: engine.companyHealth($0).value) }.sorted { $0.value > $1.value }
+        let rows = ranked.prefix(5).map { companyRow($0.co, value: $0.value) }
+        return OverviewTable(title: "Companies", rows: Array(rows), emptyText: "No companies yet. Start one from Home.",
+                             footer: "View all companies ›", footerAction: { store.jump(to: .company) }) {
+            periodMenu
+        }
+    }
+
+    // MARK: Count tiles
+
+    private func tiles(_ live: [Company]) -> some View {
+        let operating = live.filter { $0.type != "hold" }
+        let franchisors = operating.filter { engine.isFranchisor(companyID: $0.id) }
+        let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
+        let list: [CountTileData] = [
+            CountTileData(glyph: "M5 21 V4 H15 V21 M15 9 H19 V21 M3 21 H21", count: operating.count, label: "Companies", action: { store.jump(to: .company) }),
+            CountTileData(glyph: "M12 5 L5 18 H19 Z M12 5 V12", count: engine.chainSummaries.count, label: "Chains", action: { openMore(.chains) }),
+            CountTileData(glyph: "M4 9 L6 4 H18 L20 9 M5 9 V20 H19 V9", count: units, label: "Franchises", action: { openMore(.franchises) }),
+            CountTileData(glyph: "M4 8 C4 5 20 5 20 8 C20 11 4 11 4 8 M4 8 V16 C4 19 20 19 20 16 V8", count: engine.holdingCompanies.count, label: "Holdings", action: { openMore(.holdings) }),
+        ]
+        return CountTiles(title: "Structure", link: "View all ›", linkAction: goStructure, tiles: list)
     }
 
     /// This year's revenue, profit and what is owed in tax. Read-only: the Bank app is where the group's money is managed.
@@ -223,21 +261,16 @@ struct GroupOverviewTab: View {
     }
 
     /// The latest dividend decision of each company that has one, newest first; each opens the company's Finances.
-    @ViewBuilder private func activity(_ live: [Company]) -> some View {
+    private func activity(_ live: [Company]) -> some View {
         let rows = live.compactMap { c in engine.lastDividendDecision(companyID: c.id).map { (co: c, d: $0) } }.sorted { $0.d.week > $1.d.week }
-        VStack(alignment: .leading, spacing: 6) {
-            GroupCaps(text: "Latest activity")
-            if rows.isEmpty {
-                Text("Dividend decisions and group tax show here once your companies make profit.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            }
-            ForEach(rows.prefix(3), id: \.co.id) { r in
-                NavigationLink(value: CompanyRoute.companyAt(r.co.id, .finances)) {
-                    CardRow(glyph: Glyph.reports, title: "Dividend reviewed: \(r.co.name)",
-                            subtitle: r.d.paid > 0 ? "Last quarter · paid \(store.short(r.d.paid, in: r.co))" : "Last quarter · skipped",
-                            value: "")
-                }.buttonStyle(.plain)
-            }
+        let items: [ActivityItem] = rows.prefix(5).map { r in
+            let id = r.co.id
+            return ActivityItem(
+                id: "div\(id)", glyph: Glyph.reports, title: "Dividend reviewed: \(r.co.name)",
+                subtitle: r.d.paid > 0 ? "Last quarter · paid \(store.short(r.d.paid, in: r.co))" : "Last quarter · skipped",
+                action: { store.openCompany(id, section: .finances) })
         }
+        return ActivityList(items: items, emptyText: "Dividend decisions and group tax show here once your companies make profit.")
     }
 }
 

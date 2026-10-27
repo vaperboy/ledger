@@ -80,7 +80,7 @@ struct GroupView: View {
 
     @ViewBuilder private func content(_ e: GameEngine) -> some View {
         switch tab {
-        case .overview: GroupOverviewTab(engine: e) { tab = .structure }
+        case .overview: GroupOverviewTab(engine: e, goStructure: { tab = .structure }, openMore: { more = $0; tab = .more })
         case .structure: GroupStructureTab(engine: e) { more = $0; tab = .more }
         case .board: GroupBoardTab(engine: e) { more = $0; tab = .more }
         case .deals: GroupDealsTab(engine: e) { more = $0; tab = .more }
