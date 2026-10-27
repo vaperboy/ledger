@@ -24,10 +24,7 @@ struct TeamView: View {
     @State private var tab: Tab = .overview
     @State private var query = ""
     @State private var filter: PeopleFilter = .all
-    @State private var showDelegated = false
     @State private var showAllScores = false
-    @State private var openGroups: Set<String> = []
-    @State private var closedGroups: Set<String> = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -139,77 +136,58 @@ struct TeamView: View {
 
     // MARK: Overview (TeamA)
 
+    /// The payroll warning, who decides what in the companies that need you most, the count tiles and the latest activity.
     @ViewBuilder private func overview(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        let live = o.companies.filter { !$0.isHolding }
-        let byManagers = live.filter { $0.delegated }.count
+        payrollNotes(alerts)
+        decidesTables(o, e, alerts, limit: 3)
+        peopleTiles(o, e, alerts)
+        activityList(o, e, alerts)
+    }
+
+    /// One amber note per company where nobody approves payroll, with the way to appoint someone.
+    @ViewBuilder private func payrollNotes(_ alerts: [PayrollAlertInfo]) -> some View {
+        ForEach(alerts, id: \.companyID) { a in
+            OverviewNote(text: "Nobody approves payroll at \(a.companyName), so it comes to you every month.", actionTitle: "Appoint",
+                         accessibilityLabel: "Appoint someone at \(a.companyName)") {
+                path.append(.companyAt(a.companyID, .staff))
+            }
+        }
+    }
+
+    private func peopleTiles(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+        let need = peopleIssues(o, e).filter { $0.needsOwner }.count + alerts.count
         let needed = o.vacancies.filter { $0.needed }.count
+        let list: [CountTileData] = [
+            CountTileData(glyph: Glyph.person, count: e.teamPeople().count, label: "People", action: { filter = .all; tab = .people }),
+            CountTileData(glyph: Glyph.warning, count: need, label: "Need you", tint: need > 0 ? Theme.caution : Theme.ivory,
+                          action: { filter = .attention; tab = .people }),
+            CountTileData(glyph: Glyph.ovCalendar, count: o.vacancies.count, label: "Posts to fill", tint: needed > 0 ? Theme.loss : Theme.ivory,
+                          action: { tab = .vacancies }),
+        ]
+        return CountTiles(title: "People", link: "View all ›", linkAction: { filter = .all; tab = .people }, tiles: list)
+    }
+
+    /// What waits for the owner first (payroll to approve, then people trouble above a manager's authority), then what managers handle.
+    private func activityList(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
         let people = peopleIssues(o, e)
-        let mine = people.filter { $0.needsOwner }
-        let theirs = people.filter { !$0.needsOwner }
-        let need = mine.count + alerts.count
-
-        StatStrip(cells: [
-            .init(label: "Need you", value: "\(need)", tint: need > 0 ? Theme.caution : Theme.ivory),
-            .init(label: "Run by managers", value: "\(byManagers) of \(live.count)"),
-            .init(label: "Posts to fill", value: "\(o.vacancies.count)", tint: needed > 0 ? Theme.loss : Theme.ivory),
-        ], ruled: false)
-        .padding(.vertical, 12).teamCard(radius: Theme.Radius.hero)
-
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Needs you", trailing: need == 0 ? "nothing" : "")
-            if need == 0 {
-                Text(o.companies.isEmpty ? "No one works for you yet. Open a company, then hire from its Team section." : "Nothing needs you. Your managers have the rest in hand.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 4)
-            }
-            ForEach(alerts, id: \.companyID) { a in
-                let money = e.state.company(a.companyID).map { store.money(a.amount, in: $0) } ?? store.money(a.amount)
-                needCard(title: "Payroll \(money) needs your approval", note: "\(a.companyName) · \(a.dateText) · no manager or accountant", tint: Theme.caution, beyond: false) {
-                    Haptics.tap(); path.append(.companyAt(a.companyID, .finances))
-                }
-            }
-            ForEach(mine.prefix(12)) { i in
-                needCard(title: i.title, note: i.beyondAuthority ? "Above their authority · \(i.detail)" : i.detail, tint: i.severity >= 3 ? Theme.loss : Theme.caution, beyond: i.beyondAuthority) { open(i, e) }
-            }
-            if mine.count > 12 { Text("And \(mine.count - 12) more in the companies below.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-            if !theirs.isEmpty { handledByManagers(theirs, e) }
+        var items: [ActivityItem] = []
+        for a in alerts {
+            let money = e.state.company(a.companyID).map { store.money(a.amount, in: $0) } ?? store.money(a.amount)
+            let cid = a.companyID
+            items.append(ActivityItem(id: "pay\(cid)", glyph: Glyph.ovCoin, title: "Payroll \(money) needs your approval",
+                                      subtitle: "\(a.companyName) · \(a.dateText) · no manager or accountant",
+                                      action: { path.append(.companyAt(cid, .finances)) }))
         }
-
-        if !o.companies.isEmpty { companies(o, e) }
-    }
-
-    private func needCard(title: String, note: String, tint: Color, beyond: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                GlyphView(glyph: Glyph.warning, size: 16, weight: 1.8, tint: tint)
-                    .frame(width: 34, height: 34).background(Circle().fill(tint.opacity(0.12)))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    Text(note.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 6)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
-            .teamCard().contentShape(Rectangle())
-        }.buttonStyle(.plain)
-    }
-
-    @ViewBuilder private func handledByManagers(_ theirs: [TeamOverview.Issue], _ e: GameEngine) -> some View {
-        Button { withAnimation { showDelegated.toggle() } } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Handled by your managers · \(theirs.count)").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                    if !showDelegated { Text("Staff trouble in companies a manager runs. Their job; open one to look closer.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading) }
-                }
-                Spacer(minLength: 8)
-                Image(systemName: showDelegated ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }.padding(.vertical, 9).contentShape(Rectangle())
-        }.buttonStyle(.plain)
-        if showDelegated {
-            ForEach(theirs) { i in
-                needCard(title: i.title, note: "\(i.handledBy) · \(i.detail)", tint: Theme.ivoryFaint, beyond: false) { open(i, e) }
-            }
+        for i in people.filter({ $0.needsOwner }) {
+            items.append(ActivityItem(id: "own\(i.id)", glyph: Glyph.person, title: i.title,
+                                      subtitle: i.beyondAuthority ? "Above their authority · \(i.detail)" : i.detail, action: { open(i, e) }))
         }
+        for i in people.filter({ !$0.needsOwner }) {
+            items.append(ActivityItem(id: "mgr\(i.id)", glyph: Glyph.person, title: i.title, subtitle: "\(i.handledBy) · \(i.detail)", action: { open(i, e) }))
+        }
+        return ActivityList(items: Array(items.prefix(8)), emptyText: o.companies.isEmpty
+                            ? "No one works for you yet. Open a company, then hire from its Team section."
+                            : "Nothing needs you. Your managers have the rest in hand.")
     }
 
     /// Inbox-type decisions (equipment breakdown, press interview, an offer...) stay in the Inbox; only decisions about people
@@ -242,96 +220,6 @@ struct TeamView: View {
         default: section = .staff
         }
         path.append(.companyAt(id, section))
-    }
-
-    // MARK: Who runs each company
-
-    @ViewBuilder private func companies(_ o: TeamOverview, _ e: GameEngine) -> some View {
-        let lines = o.companies.sorted { (forYou($0, e), $1.name) > (forYou($1, e), $0.name) }
-        let grouped = lines.count >= 10
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Who runs each company", trailing: grouped ? "\(lines.count)" : "")
-            if !grouped {
-                ForEach(lines) { l in
-                    Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e).padding(.horizontal, 14).teamCard() }.buttonStyle(.plain)
-                }
-            } else {
-                ForEach(groupLines(lines), id: \.key) { g in
-                    VStack(spacing: 0) { companyGroup(g, e) }.padding(.horizontal, 14).teamCard()
-                }
-            }
-        }
-    }
-
-    private struct LineGroup { var key: String; var title: String; var kind: String; var lines: [TeamOverview.CompanyLine] }
-
-    /// Chains first, then holdings, then everything else, each with its companies.
-    private func groupLines(_ lines: [TeamOverview.CompanyLine]) -> [LineGroup] {
-        var order: [String] = []
-        var map: [String: LineGroup] = [:]
-        for l in lines {
-            var k = "solo", t = "Single companies", kind = "single"
-            if let c = l.chainID { k = "c\(c)"; t = l.chainName ?? "Chain"; kind = "chain" }
-            else if let h = l.holdingID { k = "h\(h)"; t = l.holdingName ?? "Holding"; kind = "holding" }
-            else if l.isHolding { k = "h\(l.id)"; t = l.name; kind = "holding" }
-            if map[k] == nil { map[k] = LineGroup(key: k, title: t, kind: kind, lines: []); order.append(k) }
-            map[k]?.lines.append(l)
-        }
-        let rank = ["chain": 0, "holding": 1, "single": 2]
-        return order.compactMap { map[$0] }.sorted { (rank[$0.kind] ?? 3, $0.title) < (rank[$1.kind] ?? 3, $1.title) }
-    }
-
-    private func isOpen(_ g: LineGroup) -> Bool {
-        if openGroups.contains(g.key) { return true }
-        if closedGroups.contains(g.key) { return false }
-        return g.lines.contains { $0.issues > 0 } || g.lines.count <= 3
-    }
-
-    @ViewBuilder private func companyGroup(_ g: LineGroup, _ e: GameEngine) -> some View {
-        let open = isOpen(g)
-        let needs = g.lines.reduce(0) { $0 + forYou($1, e) }
-        let byMgr = g.lines.filter { $0.delegated }.count
-        let weak = g.lines.filter { ($0.score ?? 100) < 35 }.count
-        Button {
-            withAnimation {
-                if open { openGroups.remove(g.key); closedGroups.insert(g.key) } else { closedGroups.remove(g.key); openGroups.insert(g.key) }
-            }
-        } label: {
-            HStack(spacing: Theme.Space.m) {
-                Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).frame(width: 14)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(g.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text("\(g.lines.count) \(g.lines.count == 1 ? "company" : "companies") · \(byMgr) with a boss\(weak > 0 ? " · \(weak) weak" : "")")
-                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                }
-                Spacer(minLength: 8)
-                if needs > 0 { Text("\(needs) for you").font(.system(size: 11)).foregroundStyle(Theme.caution) }
-            }.padding(.vertical, 11).contentShape(Rectangle())
-        }.buttonStyle(.plain)
-        if open {
-            ForEach(g.lines) { l in
-                Hairline()
-                Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { companyRow(l, e).padding(.leading, 26) }.buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func companyRow(_ l: TeamOverview.CompanyLine, _ e: GameEngine) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(l.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(l.delegated ? "\(l.managedBy) · \((l.managerTitle ?? "manager").lowercased())\(authorityWord(l.authority))\(l.managerLeaving ? " · leaving" : "")" : "You run it")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(l.isHolding ? "holding" : l.staff.peopleText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
-                if forYou(l, e) > 0 { Text("\(forYou(l, e)) for you").font(.system(size: 12)).foregroundStyle(Theme.gold) }
-                else if let sc = l.score, sc < 35 { Text("score \(sc)").font(.system(size: 12)).foregroundStyle(Theme.loss) }
-            }
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-        }
-        .padding(.vertical, 11).contentShape(Rectangle())
     }
 
     private func authorityWord(_ lvl: Int) -> String {
@@ -438,25 +326,11 @@ struct TeamView: View {
     // MARK: Delegation (TeamC)
 
     @ViewBuilder private func delegation(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        ForEach(alerts, id: \.companyID) { a in
-            HStack(spacing: 10) {
-                GlyphView(glyph: Glyph.warning, size: 16, weight: 1.9, tint: Theme.caution)
-                Text("Nobody approves payroll at \(a.companyName), so it comes to you every month.").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 6)
-                Button { Haptics.tap(); path.append(.companyAt(a.companyID, .staff)) } label: {
-                    Text("Appoint ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-                }.buttonStyle(.plain).accessibilityLabel("Appoint someone at \(a.companyName)")
-            }
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.caution.opacity(0.10)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Color(hex: 0x6A5630), lineWidth: 1))
-        }
+        payrollNotes(alerts)
         if o.companies.isEmpty {
             Text("No companies yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
         }
-        ForEach(o.companies.filter { !$0.isHolding }) { l in delegationCard(l, e, alerts) }
+        decidesTables(o, e, alerts, limit: nil)
         if !o.companies.isEmpty {
             Text("A manager or accountant approves routine payroll and spending up to the limit you set. Anything bigger always comes to you.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryDim).fixedSize(horizontal: false, vertical: true)
@@ -464,55 +338,59 @@ struct TeamView: View {
         performance(o, e)
     }
 
-    private func delegationCard(_ l: TeamOverview.CompanyLine, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+    /// One "Who decides what" table per company, the ones that need you most first. On Overview only `limit` of them show, with a link to all.
+    @ViewBuilder private func decidesTables(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo], limit: Int?) -> some View {
+        let lines = o.companies.filter { !$0.isHolding }.sorted { (forYou($0, e), $1.name) > (forYou($1, e), $0.name) }
+        let shown: [TeamOverview.CompanyLine] = limit.map { Array(lines.prefix($0)) } ?? lines
+        ForEach(shown) { l in
+            OverviewTable(title: "Who decides what", rows: decidesRows(l, e, alerts)) {
+                Text(l.name).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            }
+        }
+        if let limit, lines.count > limit {
+            Button { Haptics.tap(); tab = .delegation } label: {
+                Text("All \(lines.count) companies ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
+            }.buttonStyle(.plain)
+        }
+    }
+
+    /// Runs it, Payroll, Spending and Hiring for one company: who decides now and what to do about it. Pages open the company's Team or
+    /// Finances section; Spending opens a small menu that sets the manager's authority (the engine's own action).
+    private func decidesRows(_ l: TeamOverview.CompanyLine, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> [OverviewRowData] {
         let co = e.state.company(l.id)
-        let auth = co?.value("auth")
         let hasMgr = l.authority >= 0
         let lvl = max(0, l.authority)
         let nobodyPays = alerts.contains { $0.companyID == l.id }
-        func money(_ v: Double) -> String { co.map { store.short(v, in: $0) } ?? store.short(v) }
-        let buy = auth?["buy"].double ?? 0
-        let spend: String = !hasMgr || lvl == 0 ? "Ask me always" : lvl == 1 ? "Manager, up to \(money(buy))" : "Manager decides alone"
-        let hire: String = !hasMgr || lvl == 0 ? "You" : lvl == 1 ? "Manager, up to \(money(buy))" : "Manager decides alone"
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(l.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Spacer()
-                Text(l.staff.peopleText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-            Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: {
-                delegRow("Runs it", l.delegated ? "\(l.managedBy)\(l.managerLeaving ? " (leaving)" : "")" : "You",
-                         l.delegated ? (l.managerTitle ?? "manager").lowercased() : "appoint manager", l.delegated ? Theme.ivoryFaint : Theme.gold)
-            }.buttonStyle(.plain)
-            Button { Haptics.tap(); path.append(.companyAt(l.id, .finances)) } label: {
-                delegRow("Payroll", hasMgr && lvl >= 1 ? "\(l.managedBy), by their rule" : "You, every month",
-                         nobodyPays ? "appoint" : hasMgr && lvl >= 1 ? "rule" : "your call", nobodyPays ? Theme.caution : hasMgr && lvl >= 1 ? Theme.ivoryFaint : Theme.gold)
-            }.buttonStyle(.plain)
-            if hasMgr {
-                Menu {
-                    ForEach([0, 1, 2], id: \.self) { v in
-                        Button(["Asks you first", "Decides within your limits", "Decides on their own"][v]) { setAuthority(l, v) }
-                    }
-                } label: { delegRow("Spending", spend, "set limit", Theme.gold) }
-            } else {
-                Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: { delegRow("Spending", spend, "set limit", Theme.gold) }.buttonStyle(.plain)
-            }
-            Button { Haptics.tap(); path.append(.companyAt(l.id, .staff)) } label: {
-                delegRow("Hiring", hire, hasMgr ? "change" : "delegate", Theme.gold)
-            }.buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading).teamCard(radius: Theme.Radius.hero)
-    }
+        let buy = co?.value("auth")["buy"].double ?? 0
+        let limitText = "up to " + (co.map { store.short(buy, in: $0) } ?? store.short(buy))
+        let spend: String = !hasMgr || lvl == 0 ? "Ask me always" : lvl == 1 ? "Manager, \(limitText)" : "Manager decides alone"
+        let hire: String = !hasMgr || lvl == 0 ? "You" : lvl == 1 ? "Manager, \(limitText)" : "Manager decides alone"
+        let byRule = hasMgr && lvl >= 1
+        let id = l.id
 
-    private func delegRow(_ what: String, _ who: String, _ note: String, _ tint: Color) -> some View {
-        VStack(spacing: 0) {
-            Hairline()
-            HStack(spacing: 8) {
-                Text(what).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(width: 78, alignment: .leading)
-                Text(who).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory).frame(maxWidth: .infinity, alignment: .leading).multilineTextAlignment(.leading)
-                Text("\(note) ›").font(.system(size: 11.5)).foregroundStyle(tint).lineLimit(1)
-            }.padding(.top, 8)
-        }.contentShape(Rectangle())
+        let runs = OverviewRowData(
+            id: "run\(id)", glyph: Glyph.ovKey, title: "Runs it",
+            value: l.delegated ? "\(l.managedBy)\(l.managerLeaving ? " (leaving)" : "")" : "You",
+            note: l.delegated ? (l.managerTitle ?? "manager").lowercased() : "appoint a manager",
+            noteTint: l.delegated ? Theme.ivoryFaint : Theme.caution,
+            action: { path.append(.companyAt(id, .staff)) })
+        let payroll = OverviewRowData(
+            id: "pay\(id)", glyph: Glyph.ovCoin, title: "Payroll",
+            value: byRule ? "\(l.managedBy), by their rule" : "You, every month",
+            note: nobodyPays ? "no accountant" : byRule ? "rule set" : "your call",
+            noteTint: nobodyPays ? Theme.caution : Theme.ivoryFaint,
+            action: { path.append(.companyAt(id, .finances)) })
+        var spending = OverviewRowData(
+            id: "spend\(id)", glyph: Glyph.ovShield, title: "Spending", value: spend, note: "set limit", noteTint: Theme.gold,
+            action: { path.append(.companyAt(id, .staff)) })
+        if hasMgr {
+            let words = ["Asks you first", "Decides within your limits", "Decides on their own"]
+            spending.menu = words.enumerated().map { v, word in OverviewMenuItem(title: word, action: { setAuthority(l, v) }) }
+        }
+        let hiring = OverviewRowData(
+            id: "hire\(id)", glyph: Glyph.person, title: "Hiring", value: hire, note: hasMgr ? "change" : "delegate", noteTint: Theme.gold,
+            action: { path.append(.companyAt(id, .staff)) })
+        return [runs, payroll, hiring, spending]
     }
 
     /// The manager's authority level, reported with the engine's own answer. Reversible, so no confirmation.
