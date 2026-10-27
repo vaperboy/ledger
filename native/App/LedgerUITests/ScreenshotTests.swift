@@ -83,8 +83,10 @@ final class LuxuryTourTests: TourCase {
         icon.tap(); sleep(1)
         // The gate comes first: opening needs an application.
         shot("20-luxury-gate")
-        let apply = app.buttons["luxury-apply"]
-        if apply.waitForExistence(timeout: 3) { apply.tap(); sleep(1) }
+        var apply = app.buttons["luxury-apply"]
+        if !apply.waitForExistence(timeout: 3) { apply = app.buttons["Apply for access"] }
+        if apply.waitForExistence(timeout: 3) { apply.tap(); sleep(2) } else { note("no apply button") }
+        shot("20-luxury-after-apply")
         shot("21-luxury-showroom")
         let hero = app.buttons["luxury-hero"]
         if hero.waitForExistence(timeout: 3) {

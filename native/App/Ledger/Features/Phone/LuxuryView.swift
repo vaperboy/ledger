@@ -26,7 +26,6 @@ struct LuxuryView: View {
             }
         }
         .outsideScreen(P)
-        .accessibilityIdentifier("luxury-app")
     }
 
     private func app(_ e: GameEngine) -> some View {
