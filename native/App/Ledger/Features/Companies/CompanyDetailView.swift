@@ -30,6 +30,7 @@ struct CompanyDetailView: View {
     var companyID: Int
     /// The section to open on (set by the route, never by global state, so it cannot carry over to another company).
     var initialSection: CompanySection? = nil
+    @Environment(\.dismiss) private var dismiss
     @State private var section: CompanySection = .overview
     /// The part of Finances on show; other sections can send the player straight to one (the setup checklist, the overview).
     @State private var moneyPart: CompanyMoneyPart = .summary
@@ -38,17 +39,9 @@ struct CompanyDetailView: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(co.name).font(.serifTitle(26)).foregroundStyle(Theme.ivory).lineLimit(2).minimumScaleFactor(0.7)
-                        HStack(spacing: 6) {
-                            Text("\(e.tradeName(co)) · \(e.cityName(co)) · \(co.form == .limited ? "Ltd" : "Sole trader")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                            if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
-                        }
-                        if let context = contextLine(co, e) {
-                            Text(context).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                        }
+                    if section == .overview, let context = contextLine(co, e) {
+                        Text(context).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }
-                    SectionTabs(items: Self.availableSections(co, e), primary: co.status == .setup ? nil : [.overview, .staff, .finances, .operations], title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section, moneyPart: $moneyPart)
                     case .projects: CompanyProjects(engine: e, company: co)
@@ -74,8 +67,9 @@ struct CompanyDetailView: View {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) { frameHeader(co, e) }
             .onAppear {
                 if co.status == .setup { section = .setup }
                 if let want = initialSection {
@@ -87,6 +81,47 @@ struct CompanyDetailView: View {
             }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    /// The pinned frame: round back button, serif company name, grey subtitle with the status dot, and the fixed underline tab row
+    /// (Overview, Team, Finances, Operations and a More menu for everything else).
+    private func frameHeader(_ co: Company, _ e: GameEngine) -> some View {
+        let form: String = co.form == .limited ? "Ltd" : "Sole trader"
+        let subtitle: String = "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)"
+        let live: Bool = co.status == .open
+        let statusText: String = live ? e.companyHealth(co).label : statusWord(co)
+        let dot: Color = live ? HealthChip.tint(statusText) : (co.status == .setup ? Theme.caution : (co.status == .bust ? Theme.loss : Theme.ivoryMuted))
+        let primary: [CompanySection]? = co.status == .setup ? nil : [.overview, .staff, .finances, .operations]
+        return VStack(spacing: 0) {
+            ReturnLine(tab: store.tab)
+            HStack(spacing: 12) {
+                RoundBackButton { dismiss() }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(co.name).font(.serifTitle(26)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+                    HStack(spacing: 6) {
+                        Text(subtitle.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                        Circle().fill(dot).frame(width: 7, height: 7).accessibilityHidden(true)
+                        Text(statusText).font(.system(size: 12.5)).foregroundStyle(dot).lineLimit(1).fixedSize()
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 8)
+            SectionTabs(items: Self.availableSections(co, e), primary: primary, title: { $0.rawValue }, selection: $section)
+        }
+        .background(Theme.page)
+    }
+
+    private func statusWord(_ co: Company) -> String {
+        switch co.status {
+        case .setup: return "Setting up"
+        case .closed: return "Closed"
+        case .sold: return "Sold"
+        case .bust: return "Bankrupt"
+        default: return co.status.rawValue.capitalized
         }
     }
 
