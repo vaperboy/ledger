@@ -20,9 +20,14 @@ Owner direction. Do not start before the CI screenshot review of run 40493349153
 ## C. Weather becomes its own phone app
 1. New Phone app "Weather" imitating a real weather app: current conditions for the player's city, hourly and daily forecast (engine already has `Glyph.weather`, forecast reads used by News), city switcher for companies abroad.
 2. Own notifications: bubble on the app icon and a banner on the phone home when something big is coming (storm, heatwave, flood) with which companies it affects.
-3. Remove weather from News (keep a link). Engine read for "big event warning" and its effect on companies; tests.
+3. Remove weather from News completely, no link left in News. Engine read for "big event warning" and its effect on companies; tests.
 
 ## D. After A–C
 1. One build, screenshots, review ~10 key screens, one batch of fixes.
 2. Find and fix the UI tour timeout (iPhone/iPad tour fails after ~14 min).
 3. Then the planned long balancing/testing pass (it also tests that the UI is wired).
+
+## E. Owner additions (27 Oct 2026, later) - wait for the owner's go before starting
+1. Weather: no link inside News at all (the Weather app is reached from the Phone home only).
+2. Screenshots: a new run must not leave old pictures in the `ui-shots-*` branches. The workflow publishes with a fresh `git init` and force push, so old files should already be gone; verify. If any old file can remain, put the run's commit short sha and time in every file name (or a visible NEW marker) so new pictures are identifiable.
+3. Phone app icons get colours: each app on the Phone home has its own colour inside the icon (not all champagne), still inside the Ivory Ledger palette and the dark style (muted, harmonious tints, never loud). Colour never alone: keep the glyph and label.
