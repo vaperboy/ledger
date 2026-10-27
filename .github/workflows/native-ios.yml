@@ -130,7 +130,7 @@ jobs:
           retention-days: 30
   screenshots:
     runs-on: ${{ matrix.runner }}
-    needs: [app-build, ipa]
+    needs: app-build
     # The iOS 26 run shows the real Liquid Glass; it depends on the runner image having Xcode 26, so it may not block.
     continue-on-error: ${{ matrix.device == 'iphone-ios26' }}
     strategy:
