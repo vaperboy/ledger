@@ -76,7 +76,7 @@ final class GameStore: ObservableObject {
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Ledger/Saves", isDirectory: true)
         saves = try? SaveStore(directory: base)
-        if isShowcase, let e = try? GameEngine.showcase() { engine = e }
+        if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich")) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
     }
 

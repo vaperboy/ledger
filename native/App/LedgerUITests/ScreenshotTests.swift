@@ -69,3 +69,33 @@ final class ScreenshotTests: TourCase {
         }
     }
 }
+
+/// The Luxury app on a game whose owner is well above the entry level: the entry gate, the Showroom, an item sheet and My Vault.
+final class LuxuryTourTests: TourCase {
+    override var extraLaunchArguments: [String] { ["-showcase-rich"] }
+
+    func testLuxuryTour() {
+        _ = waitForHome()
+        let pill = app.buttons["tab-Phone"]
+        if pill.waitForExistence(timeout: 5) { pill.tap() }
+        let icon = app.buttons["phone-app-Luxury"]
+        guard icon.waitForExistence(timeout: 5) else { note("no Luxury app"); return }
+        icon.tap(); sleep(1)
+        // The gate comes first: opening needs an application.
+        shot("20-luxury-gate")
+        let apply = app.buttons["luxury-apply"]
+        if apply.waitForExistence(timeout: 3) { apply.tap(); sleep(1) }
+        shot("21-luxury-showroom")
+        let hero = app.buttons["luxury-hero"]
+        if hero.waitForExistence(timeout: 3) {
+            hero.tap(); sleep(1)
+            shot("22-luxury-item-sheet")
+            let financed = app.buttons["luxury-settle-financed"]
+            if financed.exists { financed.tap(); sleep(1); shot("23-luxury-item-financed") }
+            let close = app.buttons["luxury-sheet-close"]
+            if close.exists { close.tap(); sleep(1) }
+        } else { note("no flagship card") }
+        let vault = app.buttons["luxury-tab-vault"]
+        if vault.waitForExistence(timeout: 3) { vault.tap(); sleep(1); shot("24-luxury-vault") }
+    }
+}

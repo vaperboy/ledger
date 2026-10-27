@@ -47,13 +47,13 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0x9A3B32), accent2: Color(hex: 0x9A3B32), onAccent: Color(hex: 0xF8F4E8),
         gain: Color(hex: 0x2F6B45), loss: Color(hex: 0x9A3B32), caution: Color(hex: 0x86601E), isLight: true)
 
-    /// Luxury: near-black with antique brass.
+    /// Luxury: obsidian near-black with a muted gold (not the game's champagne), soft rose for upkeep.
     static let luxury = OutsidePalette(
-        ground: Color(hex: 0x0A0907), ground2: Color(hex: 0x16120B), card: Color(hex: 0x14110D), cardDeep: Color(hex: 0x0F0D0A),
-        line: Color(hex: 0x2E2819), lineStrong: Color(hex: 0x4F4328), divider: Color(hex: 0x28231A), hairline: Color(hex: 0x221D12),
-        ink: Color(hex: 0xEFE6D2), inkSoft: Color(hex: 0xB8AC90), inkFaint: Color(hex: 0x998E76), inkDim: Color(hex: 0x7F7560),
-        accent: Color(hex: 0xB8964F), accent2: Color(hex: 0xB8964F), onAccent: Color(hex: 0x0A0907),
-        gain: Color(hex: 0x8FB58A), loss: Color(hex: 0xD08A72), caution: Color(hex: 0xC9A24F))
+        ground: Color(hex: 0x0A0B0E), ground2: Color(hex: 0x12141A), card: Color(hex: 0x171A22), cardDeep: Color(hex: 0x101218),
+        line: Color(hex: 0x262932), lineStrong: Color(hex: 0x4A4128), divider: Color(hex: 0x22252D), hairline: Color(hex: 0x1C1F26),
+        ink: Color(hex: 0xECE8DC), inkSoft: Color(hex: 0xB4B0A4), inkFaint: Color(hex: 0x95928A), inkDim: Color(hex: 0x76746E),
+        accent: Color(hex: 0xC5A059), accent2: Color(hex: 0xE6C775), onAccent: Color(hex: 0x0A0B0E),
+        gain: Color(hex: 0x6FBF9C), loss: Color(hex: 0xD48A94), caution: Color(hex: 0xC9A24F))
 
     /// Ventures: a startup feed in muted teal and violet on dark.
     static let ventures = OutsidePalette(

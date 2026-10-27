@@ -4,12 +4,14 @@ import XCTest
 /// (a scroll or tap that changed nothing) and recording a "note-" attachment instead, so the tour never fails on a missing control.
 class TourCase: XCTestCase {
     var app: XCUIApplication!
+    /// More launch arguments for a tour that needs a differently prepared game (for example "-showcase-rich").
+    var extraLaunchArguments: [String] { [] }
     private var lastShot: Data?
 
     override func setUp() {
         continueAfterFailure = true
         app = XCUIApplication()
-        app.launchArguments = ["-showcase"]
+        app.launchArguments = ["-showcase"] + extraLaunchArguments
         app.launch()
     }
 
