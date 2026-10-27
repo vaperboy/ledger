@@ -39,6 +39,7 @@ enum BankGlyph {
 /// The Bank app: pick an account, then manage it. It shows both screens itself so the header's round back button can go from an account
 /// to the list before it leaves the app; links from elsewhere (a company's "Open in Bank", an Inbox warning) arrive as `store.bankRequest`.
 struct BankApp: View {
+    private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
     @State private var account: BankAccountID?
@@ -61,10 +62,12 @@ struct BankApp: View {
                 header
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
             }
-            .background(Theme.page)
+            .background(P.ground)
         }
         .onAppear { take() }
         .onChange(of: store.bankRequest) { _, _ in take() }
+        // Someone else's bank app, in its own navy and teal, unless the player's own bank is the main bank: then the game's colours.
+        .environment(\.outsidePalette, P)
     }
 
     private var header: some View {
@@ -98,6 +101,7 @@ struct BankApp: View {
 
 /// A caps label over a card, the section style of the Bank app.
 struct BankCard<Content: View>: View {
+    @Environment(\.outsidePalette) private var P
     var title: String = ""
     var trailing: String = ""
     @ViewBuilder var content: () -> Content
@@ -107,7 +111,7 @@ struct BankCard<Content: View>: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(title).capsLabel()
                     Spacer(minLength: 8)
-                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint) }
                 }
             }
             Card(padding: 14, radius: Theme.Radius.hero) { content() }

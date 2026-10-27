@@ -678,7 +678,8 @@ struct TableRow: View {
 /// The outlined secondary button (Continue, Register ...): champagne outline, 8 pt corners, ivory text. Never filled: only Next Day is.
 struct QuietButton: View {
     var title: String
-    var tint: Color = Theme.gold
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
     var fullWidth = false
     var action: () -> Void
 
@@ -689,10 +690,10 @@ struct QuietButton: View {
         } label: {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Theme.ivory)
+                .foregroundStyle(palette.ink)
                 .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 28)
                 .padding(.horizontal, 16).padding(.vertical, 8)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint ?? palette.accent, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

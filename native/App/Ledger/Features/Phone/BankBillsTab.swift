@@ -8,6 +8,7 @@ import Simulation
 /// instalment is paid early with `repayLoan`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
 /// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var account: BankAccountID
     var upcoming: [Obligation]
@@ -17,7 +18,7 @@ struct BankBillsList: View {
         if let e = store.engine {
             let alerts: [PayrollAlert] = e.payrollAlerts()
             VStack(alignment: .leading, spacing: 0) {
-                if upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6) }
+                if upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
                 ForEach(Array(upcoming.enumerated()), id: \.element.id) { n, u in
                     if n > 0 { Hairline() }
                     row(u, alerts, e)
@@ -33,12 +34,12 @@ struct BankBillsList: View {
         return VStack(alignment: .leading, spacing: 4) {
             BankObligationRow(obligation: u, fmt: fmt)
             HStack(spacing: 8) {
-                Text(u.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(u.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 action(u, alerts, e)
             }
             if short && u.daysAway <= 30 && account != .investments {
-                Text("The account does not hold this much yet. Move money in first.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                Text("The account does not hold this much yet. Move money in first.").font(.system(size: 11.5)).foregroundStyle(P.caution)
             }
         }
         .padding(.bottom, 6)
@@ -50,7 +51,7 @@ struct BankBillsList: View {
             if let a = alerts.first(where: { $0.companyID == u.companyID }) {
                 SmallOutlineButton(title: a.isLate ? "Pay now" : "Approve") { BankPay.resolve(store, companyID: u.companyID) }
             } else {
-                Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(P.inkFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
@@ -65,6 +66,7 @@ struct BankBillsList: View {
 /// Bills: what is due in 30 days and whether it is covered, every coming payment, tax and VAT owed, the tax rules and licences, and (for a
 /// company) the pay day and payroll run. The old Group > Money Overview, Taxes and Costs, and the company payroll desk, in one place.
 struct BankBillsTab: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var account: BankAccountID
     var detail: BankAccountDetail
@@ -95,12 +97,12 @@ struct BankBillsTab: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Due in the next 30 days").capsLabel()
                     Spacer()
-                    Chip(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tint: short > 0 ? Theme.loss : Theme.gain)
+                    Chip(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tint: short > 0 ? P.loss : P.gain)
                 }
-                Text(fmt.full(due)).font(.hero(30)).foregroundStyle(short > 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                Text(fmt.full(due)).font(.hero(30)).foregroundStyle(short > 0 ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
                 if short > 0 {
                     Text("This account will not cover what is due. Move money in, sell something or borrow before the dates below.")
-                        .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                        .font(.caption).foregroundStyle(P.loss).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -109,12 +111,12 @@ struct BankBillsTab: View {
     private func taxCard(_ o: FinanceOverview, _ fmt: BankFmt) -> some View {
         BankCard(title: "Tax and VAT", trailing: fmt.short(o.taxesOwed) + " owed") {
             VStack(spacing: 0) {
-                if o.taxes.isEmpty { Text("No tax is owed.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                if o.taxes.isEmpty { Text("No tax is owed.").font(.system(size: 13)).foregroundStyle(P.inkSoft) }
                 ForEach(Array(o.taxes.enumerated()), id: \.element.id) { n, l in
                     FlatRow(label: l.label, value: fmt.full(l.amount), sub: l.detail.tidyMoney, rule: n > 0)
                 }
                 Text("Corporate tax is worked out on taxable profit, after losses carried forward. VAT is collected for the state and is not income. Tax leaves the account on its due date.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                    .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
             }
         }
     }
@@ -125,20 +127,20 @@ struct BankBillsTab: View {
             VStack(alignment: .leading, spacing: 0) {
                 Button { showRules.toggle(); Haptics.choose() } label: {
                     HStack {
-                        Text(showRules ? "Hide the tax rules and licences" : "Show the tax rules and licences").font(.system(size: 13)).foregroundStyle(Theme.gold)
+                        Text(showRules ? "Hide the tax rules and licences" : "Show the tax rules and licences").font(.system(size: 13)).foregroundStyle(P.accent)
                         Spacer()
-                        Image(systemName: showRules ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.gold)
+                        Image(systemName: showRules ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(P.accent)
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain)
                 if showRules {
                     ForEach(Array(o.rules.enumerated()), id: \.element.id) { n, r in FlatRow(label: r.label, value: r.value, rule: true) }
-                    Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                    Text(o.basis).font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)
                     if !o.licences.isEmpty {
                         Text("Licences and registrations").capsLabel().padding(.top, 12)
                         ForEach(Array(o.licences.enumerated()), id: \.element.id) { n, l in
                             FlatRow(label: l.label, value: l.amount > 0 ? store.money(l.amount) : "free", sub: l.detail.tidyMoney, rule: n > 0)
                         }
-                        Text("Fees are the game's estimate of typical official fees. Game estimates, not legal advice.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                        Text("Fees are the game's estimate of typical official fees. Game estimates, not legal advice.").font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)
                     }
                 }
             }

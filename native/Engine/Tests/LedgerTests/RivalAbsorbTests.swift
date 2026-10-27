@@ -119,6 +119,17 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
+    func testPlayerMainBankIsOwnOnlyWithAnOpenOwnBank() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 92)
+        XCTAssertFalse(e.playerMainBankIsOwn)
+        e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
+        guard case .success(let bankID) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000) else { return XCTFail("a bank") }
+        e.update { s, _, _ in s.companies[s.companyIndex(bankID)!].status = .open }
+        XCTAssertTrue(e.playerMainBankIsOwn)
+        e.update { s, _, _ in s.companies[s.companyIndex(bankID)!].status = .closed }
+        XCTAssertFalse(e.playerMainBankIsOwn)
+    }
+
     func testBuyingWithALoanFromYourOwnBank() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 91)
         var id = 0

@@ -79,6 +79,22 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0xC4CAD6), accent2: Color(hex: 0xC9A862), onAccent: Color(hex: 0x0D1526),
         gain: Color(hex: 0x86C4A0), loss: Color(hex: 0xDE9484), caution: Color(hex: 0xC9A862))
 
+    /// Bank (someone else's bank app): deep navy and teal, muted. Not used when the player's own bank is the main bank.
+    static let bank = OutsidePalette(
+        ground: Color(hex: 0x0A1A24), ground2: Color(hex: 0x07121A), card: Color(hex: 0x10252F), cardDeep: Color(hex: 0x0C1F28),
+        line: Color(hex: 0x1F3B47), lineStrong: Color(hex: 0x365A68), divider: Color(hex: 0x1B3440), hairline: Color(hex: 0x16303A),
+        ink: Color(hex: 0xE9F1F3), inkSoft: Color(hex: 0xAFC5CC), inkFaint: Color(hex: 0x8CA7B0), inkDim: Color(hex: 0x748F99),
+        accent: Color(hex: 0x6DB3BE), accent2: Color(hex: 0x7FA6C9), onAccent: Color(hex: 0x07121A),
+        gain: Color(hex: 0x7FC9A2), loss: Color(hex: 0xE59A88), caution: Color(hex: 0xD9B672))
+
+    /// Inbox (a messages app): muted green and blue on a dark blue-grey, like a chat app.
+    static let inbox = OutsidePalette(
+        ground: Color(hex: 0x0F1618), ground2: Color(hex: 0x0A1012), card: Color(hex: 0x1A2528), cardDeep: Color(hex: 0x141D20),
+        line: Color(hex: 0x26343A), lineStrong: Color(hex: 0x3A4D55), divider: Color(hex: 0x202D32), hairline: Color(hex: 0x1B282C),
+        ink: Color(hex: 0xE8EEEF), inkSoft: Color(hex: 0xAEBDC1), inkFaint: Color(hex: 0x8DA0A6), inkDim: Color(hex: 0x738489),
+        accent: Color(hex: 0x7DB89A), accent2: Color(hex: 0x7FA6C4), onAccent: Color(hex: 0x0A1214),
+        gain: Color(hex: 0x84C7A3), loss: Color(hex: 0xE59A88), caution: Color(hex: 0xDDB872))
+
     /// Weather: blues. Deep dusk-blue ground, pale-blue cards, white text; the accent follows the condition
     /// (`kind` is a `WeatherEvents` kind: sun, mixed, rain, snow, heat, cold, storm).
     static func weather(kind: String) -> OutsidePalette {
@@ -112,8 +128,11 @@ extension EnvironmentValues {
 }
 
 extension PhoneApp {
-    /// The app's own palette when it is an outside app; nil for the player's own (insider) apps.
-    var outsidePalette: OutsidePalette? {
+    /// The app's own palette when it is an outside app (Bank only while the player's own bank is not the main bank); nil for the player's own (insider) apps.
+    var outsidePalette: OutsidePalette? { outsidePalette(ownBankIsMain: false) }
+
+    /// The same, with Bank following the game's own look (nil) when the player's own bank is their main bank.
+    func outsidePalette(ownBankIsMain: Bool) -> OutsidePalette? {
         switch self {
         case .weather: return .weather(kind: "sun")
         case .news: return .news
@@ -121,7 +140,9 @@ extension PhoneApp {
         case .ventures: return .ventures
         case .world: return .world
         case .richList: return .richList
-        case .bank, .inbox, .stats, .goals, .reports, .achievements, .settings: return nil
+        case .bank: return ownBankIsMain ? nil : .bank
+        case .inbox: return .inbox
+        case .stats, .goals, .reports, .achievements, .settings: return nil
         }
     }
 }

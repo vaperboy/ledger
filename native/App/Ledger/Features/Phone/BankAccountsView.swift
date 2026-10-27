@@ -6,6 +6,7 @@ import Simulation
 /// Bank, pick an account (BankAccounts.dc.html): the all-accounts total with what is due in 30 days, then YOU (personal, investments) and
 /// YOUR COMPANIES. Loans are not an account: a row only says how many loans the account carries.
 struct BankAccountsScreen: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var onPick: (BankAccountID) -> Void
     @State private var move: BankMoveKind?
@@ -28,12 +29,12 @@ struct BankAccountsScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOUR COMPANIES").capsLabel()
                         if companies.isEmpty {
-                            Text("You have no company yet. Its account appears here once it exists.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text("You have no company yet. Its account appears here once it exists.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
                         }
                         ForEach(companies) { r in row(r, e) }
                     }
                     Text("Loans belong to the account they were taken for. Open an account and choose Loans.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 4)
+                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
@@ -65,8 +66,8 @@ struct BankAccountsScreen: View {
     }
 
     private func totalCard(_ all: BankAccounts) -> some View {
-        let totalTint: Color = all.total < 0 ? Theme.loss : Theme.ivory
-        let coverTint: Color = all.isCovered ? Theme.gain : Theme.loss
+        let totalTint: Color = all.total < 0 ? P.loss : P.ink
+        let coverTint: Color = all.isCovered ? P.gain : P.loss
         let coverText: String = all.isCovered ? "✓ covered" : "Short: not covered"
         return Card(padding: 16, radius: Theme.Radius.hero) {
             HStack(alignment: .bottom) {
@@ -77,8 +78,8 @@ struct BankAccountsScreen: View {
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text("Due in 30 days").foregroundStyle(Theme.ivoryMuted)
-                        Text(store.short(all.dueWithin30Days)).foregroundStyle(Theme.ivory)
+                        Text("Due in 30 days").foregroundStyle(P.inkSoft)
+                        Text(store.short(all.dueWithin30Days)).foregroundStyle(P.ink)
                     }.font(.system(size: 12))
                     Text(coverText).font(.system(size: 12)).foregroundStyle(coverTint)
                 }
@@ -93,7 +94,7 @@ struct BankAccountsScreen: View {
         let glyph: String = r.kind == .personal ? Glyph.person : r.kind == .investments ? Glyph.invest : BankGlyph.company
         let note: String = rowNote(r, fmt)
         let value: String = fmt.short(r.balance)
-        let tint: Color = r.balance < 0 ? Theme.loss : Theme.ivory
+        let tint: Color = r.balance < 0 ? P.loss : P.ink
         return Button { Haptics.tap(); onPick(r.id) } label: {
             CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
@@ -119,11 +120,12 @@ struct BankAccountsScreen: View {
 /// Where the money is: a ring over the accounts that hold some (personal current account, savings, investments, each company), the five
 /// biggest named and the rest together. Only drawn when at least two places hold money; one place is not an allocation.
 struct BankHomeRing: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var all: BankAccounts
     var engine: GameEngine
 
-    private static let palette: [Color] = [Theme.gold, Theme.roseGold, Theme.slateBlue, Theme.gain, Theme.ivoryMuted, Theme.ivoryDim]
+    private var palette: [Color] { [P.accent, Theme.roseGold, Theme.slateBlue, P.gain, P.inkSoft, P.inkDim] }
 
     var body: some View {
         let parts: [PortfolioRingCard.Slice] = slices()
@@ -141,10 +143,10 @@ struct BankHomeRing: View {
         raw.sort { $0.1 > $1.1 }
         var out: [PortfolioRingCard.Slice] = []
         for (i, p) in raw.prefix(5).enumerated() {
-            out.append(PortfolioRingCard.Slice(id: "\(i)-\(p.0)", name: p.0, value: p.1, tint: Self.palette[i % Self.palette.count]))
+            out.append(PortfolioRingCard.Slice(id: "\(i)-\(p.0)", name: p.0, value: p.1, tint: palette[i % palette.count]))
         }
         let rest: Double = raw.dropFirst(5).reduce(0) { $0 + $1.1 }
-        if rest > 0 { out.append(PortfolioRingCard.Slice(id: "other", name: "Other", value: rest, tint: Self.palette[5])) }
+        if rest > 0 { out.append(PortfolioRingCard.Slice(id: "other", name: "Other", value: rest, tint: palette[5])) }
         return out
     }
 }

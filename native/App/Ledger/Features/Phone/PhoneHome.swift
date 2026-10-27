@@ -160,9 +160,11 @@ struct AppIcon: View {
 /// What an app opens. Existing screens are reused as they are; the screen's own navigation bar is replaced by `AppHeader`.
 struct PhoneAppScreen: View {
     var app: PhoneApp
+    @EnvironmentObject var store: GameStore
 
     var body: some View {
-        AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint, palette: app.outsidePalette) { appContent }
+        AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint,
+                        palette: app.outsidePalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { appContent }
     }
 
     @ViewBuilder private var appContent: some View {

@@ -193,12 +193,13 @@ struct RowLine: View {
 /// A quiet link: champagne text and a chevron, 44 pt tall.
 struct LinkLabel: View {
     var text: String
+    @Environment(\.outsidePalette) private var palette
     var body: some View {
         HStack(spacing: 4) {
             Text(text).font(.system(size: 12.5, weight: .medium))
-            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.gold)
+            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: palette.accent)
         }
-        .foregroundStyle(Theme.gold).frame(minHeight: 44).contentShape(Rectangle())
+        .foregroundStyle(palette.accent).frame(minHeight: 44).contentShape(Rectangle())
     }
 }
 

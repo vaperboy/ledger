@@ -7,6 +7,7 @@ import Simulation
 /// with Pay now (`BankBillsList`: payroll approval, loan instalment, or the engine's `payObligationNow`). A payroll run by a manager or an
 /// accountant says so instead of offering a button. Pushed from the Bank home.
 struct BankAllBillsScreen: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
 
     var body: some View {
@@ -20,7 +21,7 @@ struct BankAllBillsScreen: View {
                         if let d = e.bankAccount(r.id), !d.upcoming.isEmpty { group(r, d) }
                     }
                     if groups.allSatisfy({ e.bankAccount($0.id)?.upcoming.isEmpty ?? true }) {
-                        Text("Nothing is due anywhere.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Nothing is due anywhere.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
                     }
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
@@ -32,12 +33,12 @@ struct BankAllBillsScreen: View {
     }
 
     private func summary(_ all: BankAccounts) -> some View {
-        let tint: Color = all.isCovered ? Theme.gain : Theme.loss
+        let tint: Color = all.isCovered ? P.gain : P.loss
         return Card(padding: 16, radius: Theme.Radius.hero) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("DUE IN 30 DAYS").capsLabel()
-                    Text(store.short(all.dueWithin30Days)).font(.hero(30)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.short(all.dueWithin30Days)).font(.hero(30)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Chip(text: all.isCovered ? "Covered" : "Not covered", tint: tint)
@@ -52,7 +53,7 @@ struct BankAllBillsScreen: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(r.name).capsLabel()
                 Spacer(minLength: 8)
-                Text("\(d.upcoming.count) · \(fmt.short(total))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("\(d.upcoming.count) · \(fmt.short(total))").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
             }
             .padding(.horizontal, 2)
             Card(padding: 14, radius: Theme.Radius.hero) {

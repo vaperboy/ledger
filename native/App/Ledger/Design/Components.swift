@@ -364,6 +364,7 @@ struct SectionTabs<T: Hashable>: View {
     var badge: (T) -> Int = { _ in 0 }
     /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
     var sub: Bool = false
+    @Environment(\.outsidePalette) private var palette
 
     private var fixed: [T] {
         if let primary { let p = primary.filter { items.contains($0) }; return p.count < items.count ? p : items }
@@ -428,12 +429,12 @@ struct SectionTabs<T: Hashable>: View {
             if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             if count > 0 { countView(count) }
         }
-        .foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+        .foregroundStyle(on ? palette.accent : palette.inkFaint)
         .padding(.horizontal, spread ? 0 : 12)
         .frame(maxWidth: spread ? .infinity : nil, minHeight: sub ? 34 : 44)
-        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? Theme.hairline : Color.clear))
+        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? palette.hairline : Color.clear))
         .contentShape(Rectangle())
-        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
+        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(palette.accent).frame(height: 1.5) } }
     }
 }
 

@@ -63,6 +63,7 @@ enum BankPay {
 /// a company. Company account: Deposit puts money in from you, Withdraw takes it out to you, Transfer does either. These are the engine's
 /// `moveToSavings`, `putMoneyInto` and `takeMoneyOut`.
 struct BankMoveSheet: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
     var account: BankAccountID
@@ -114,8 +115,8 @@ struct BankMoveSheet: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(leg.title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                    if !leg.note.isEmpty { Text(leg.note).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+                    Text(leg.title).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink)
+                    if !leg.note.isEmpty { Text(leg.note).font(.system(size: 12)).foregroundStyle(P.inkSoft) }
                 }
             }
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -125,10 +126,10 @@ struct BankMoveSheet: View {
                     Button("Half") { amount = max(0, leg.source / 2).rounded() }.buttonStyle(SmallOutlineButtonStyle())
                     Button("All") { amount = max(0, leg.source) }.buttonStyle(SmallOutlineButtonStyle())
                     Spacer(minLength: 0)
-                    Text("Available " + leg.currency.tidyShort(max(0, leg.source))).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Available " + leg.currency.tidyShort(max(0, leg.source))).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
                 }
                 if amount > leg.source + 0.5 {
-                    Text("More than this account can move now.").font(.caption).foregroundStyle(Theme.caution)
+                    Text("More than this account can move now.").font(.caption).foregroundStyle(P.caution)
                 }
             }
             QuietButton(title: amount > 0 ? "\(kind.title) \(leg.currency.tidyShort(amount))" : "Enter an amount", fullWidth: true) { go(leg) }
@@ -140,13 +141,13 @@ struct BankMoveSheet: View {
     @ViewBuilder private func emptyState(_ e: GameEngine) -> some View {
         if let cid = account.companyID, let co = e.state.company(cid), co.form == .limited, kind != .deposit {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("A limited company cannot hand its cash to you directly.").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                Text("A limited company cannot hand its cash to you directly.").font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink)
                 Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid from the company's Ownership section.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                 QuietButton(title: "Open the company", fullWidth: true) { dismiss(); store.openCompany(cid, section: .finances) }
             }
         } else {
-            Text("There is nowhere to move money to yet. Start a company first.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Text("There is nowhere to move money to yet. Start a company first.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
         }
     }
 
