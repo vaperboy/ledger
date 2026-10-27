@@ -5,6 +5,8 @@ import Finance
 import Businesses
 import Simulation
 
+typealias ClubOffer = (id: Int, name: String, weekly: Double, years: Int)
+
 /// A football club's own section: the season and table, the budget, sponsors, staff and transfers.
 struct CompanyClub: View {
     enum Part: String, CaseIterable, Hashable { case season = "Season", budget = "Budget", people = "Staff", transfers = "Transfers", sponsors = "Sponsors", table = "Table" }
@@ -19,6 +21,7 @@ struct CompanyClub: View {
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.achievements, title: "Club", blurb: "The season and table, the budget, football staff, transfers and sponsors of your club.")
             SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part).padding(.horizontal, -Theme.Space.margin)
             if let c = engine.clubSummary(companyID: company.id) {
                 switch part {
@@ -77,6 +80,7 @@ struct CompanyClub: View {
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
                 if !c.form.isEmpty { HStack(spacing: 2) { ForEach(Array(c.form.suffix(8).enumerated()), id: \.offset) { _, r in form(r) } }.padding(.bottom, 6) }
                 if c.debt > 0 { FlatRow(label: "Club debt", value: cur.tidyShort(c.debt), sub: "taken over when you bought the club", tint: Theme.loss) }
+                stadiumCard(c, cur).padding(.top, 10)
                 if !c.seasons.isEmpty {
                     Text("Past seasons").capsLabel().padding(.top, Theme.Space.m)
                     ForEach(Array(c.seasons.enumerated()), id: \.offset) { n, s in
@@ -85,6 +89,25 @@ struct CompanyClub: View {
                 }
                 Text("Results move revenue: a home match brings gate income, a winning side fills the ground and builds the fan base, and a title lifts the club's name. Relegation cuts television money and sponsors.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
+            }
+        }
+    }
+
+    private func stadiumCard(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
+        let fillText: String = c.fill > 0 ? "\(Int((c.fill * 100).rounded()))% full" : "No home match yet"
+        let gate: String = cur.tidyShort(c.weekly["match"] ?? 0)
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.gym, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Stadium").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(fillText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(gate).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text("last home gate").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                }
             }
         }
     }
@@ -120,144 +143,194 @@ struct CompanyClub: View {
 
     private func people(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock("Football staff") {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("You do not pick players: the manager does. Every club needs a manager and an assistant. If the manager is sacked, the assistant steps in until you hire a new one.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
+            MoreBlock("Football staff", card: false) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("You do not pick players: the manager does. Every club needs a manager and an assistant. If the manager is sacked, the assistant steps in until you hire a new one.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     person(c.coach, kind: "coach", title: "Manager", cur)
                     person(c.assistant, kind: "asst", title: "Assistant manager", cur)
                 }
             }
             if !candidates.isEmpty {
-                MoreBlock("Candidates") {
-                    VStack(spacing: 0) {
-                        ForEach(Array(candidates.enumerated()), id: \.element.id) { n, cd in
-                            if n > 0 { Hairline() }
-                            HStack {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(cd.name).font(.system(size: 13.5))
-                                    Text("Age \(cd.age) · \(cd.quality) · asks \(cur.tidyShort(cd.wage)) a week").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                                Spacer()
-                                Button("Hire…") {
-                                    let kind = hiringKind
-                                    pending = PendingAction(title: "Hire \(cd.name)?", message: "\(cur.tidyDisplay(cd.wage)) a week for a \(kind == "coach" ? "manager" : "assistant manager") of quality \(cd.quality). Whoever holds the post now is replaced.", button: "Hire") {
-                                        if store.act({ $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }) == true {
-                                            candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(kind == "coach" ? "manager" : "assistant manager").", tone: "good")
-                                        } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(kind == "coach" ? "manager" : "assistant manager") now.", tone: "warn") }
-                                    }
-                                }.buttonStyle(TinyButtonStyle())
-                            }.padding(.vertical, 8)
-                        }
-                        Button("Cancel") { candidates = [] }.font(.caption).foregroundStyle(Theme.ivoryFaint).buttonStyle(.plain).padding(.top, 6)
+                MoreBlock("Candidates", card: false) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(candidates, id: \.id) { (cd: FootballModel.Coach) in candidateCard(cd, cur) }
+                        HStack { Button("Cancel") { candidates = [] }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }
                     }
                 }
             }
         }
     }
 
-    private func person(_ p: FootballModel.Coach?, kind: String, title: String, _ cur: Currency) -> some View {
-        VStack(spacing: 0) {
-            Hairline()
-            HStack {
+    private func candidateCard(_ cd: FootballModel.Coach, _ cur: Currency) -> some View {
+        let line: String = "Age \(cd.age) · \(cd.quality) · asks \(cur.tidyShort(cd.wage)) a week"
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.person, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 13.5))
-                    Text(p.map { "\($0.name)\($0.interim ? " (interim)" : "") · \($0.quality) · \(cur.tidyShort($0.wage)) a week" } ?? "Vacant").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(cd.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
                 Spacer()
-                if let p { Button("Dismiss…") {
-                    pending = PendingAction(title: "Dismiss \(p.name)?", message: kind == "coach" ? "The assistant steps in until you hire a new manager. Results can suffer in between." : "The club has no assistant until you hire one.", button: "Dismiss", destructive: true) {
-                        if store.act({ $0.dismissCoach(companyID: company.id, kind: kind) }) == true { Haptics.warning(); store.show("\(p.name) has gone.", tone: "n") }
-                        else { store.show("\(p.name) is no longer in post.", tone: "warn") }
+                Button("Hire…") { askHire(cd, cur) }.buttonStyle(TinyButtonStyle())
+            }
+        }
+    }
+
+    private func askHire(_ cd: FootballModel.Coach, _ cur: Currency) {
+        let kind: String = hiringKind
+        let post: String = kind == "coach" ? "manager" : "assistant manager"
+        let message: String = "\(cur.tidyDisplay(cd.wage)) a week for a \(post) of quality \(cd.quality). Whoever holds the post now is replaced."
+        pending = PendingAction(title: "Hire \(cd.name)?", message: message, button: "Hire") {
+            if store.act({ $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }) == true {
+                candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(post).", tone: "good")
+            } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(post) now.", tone: "warn") }
+        }
+    }
+
+    private func person(_ p: FootballModel.Coach?, kind: String, title: String, _ cur: Currency) -> some View {
+        let detail: String = p.map { "\($0.name)\($0.interim ? " (interim)" : "") · \($0.quality) · \(cur.tidyShort($0.wage)) a week" } ?? "Vacant"
+        return EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.person, size: 34)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                     }
-                }.font(.system(size: 12)).foregroundStyle(Theme.loss).buttonStyle(.plain) }
-                Button(p == nil ? "Find one" : "Replace") {
-                    hiringKind = kind
-                    candidates = store.act { $0.clubCandidates(companyID: company.id, kind: kind) } ?? []
-                    if candidates.isEmpty { store.show("Nobody suitable is available right now.", tone: "warn") }
-                }.buttonStyle(TinyButtonStyle())
-            }.padding(.vertical, 9)
+                    Spacer()
+                }
+                HStack(spacing: 8) {
+                    Button(p == nil ? "Find one" : "Replace") {
+                        hiringKind = kind
+                        candidates = store.act { $0.clubCandidates(companyID: company.id, kind: kind) } ?? []
+                        if candidates.isEmpty { store.show("Nobody suitable is available right now.", tone: "warn") }
+                    }.buttonStyle(TinyButtonStyle())
+                    if let p { Button("Dismiss…") { askDismiss(p, kind: kind) }.buttonStyle(TinyButtonStyle(tint: Theme.loss)) }
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private func askDismiss(_ p: FootballModel.Coach, kind: String) {
+        let message: String = kind == "coach" ? "The assistant steps in until you hire a new manager. Results can suffer in between." : "The club has no assistant until you hire one."
+        pending = PendingAction(title: "Dismiss \(p.name)?", message: message, button: "Dismiss", destructive: true) {
+            if store.act({ $0.dismissCoach(companyID: company.id, kind: kind) }) == true { Haptics.warning(); store.show("\(p.name) has gone.", tone: "n") }
+            else { store.show("\(p.name) is no longer in post.", tone: "warn") }
         }
     }
 
     private func transfers(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         let w = engine.transferWindow(companyID: company.id)
-        return MoreBlock("Transfers") {
-            VStack(alignment: .leading, spacing: 0) {
-                FlatRow(label: "Window", value: w.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Closed · opens in \(w.weeksToOpen) wk", rule: false)
-                FlatRow(label: "Bought / sold", value: cur.tidyShort(c.tradedIn) + " / " + cur.tidyShort(c.tradedOut))
-                ForEach(0..<FootballModel.tiers.count, id: \.self) { i in
-                    let t = FootballModel.tiers[i]
-                    VStack(spacing: 0) {
-                        Hairline()
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(t.name).font(.system(size: 13.5))
-                                Text("\(cur.tidyShort(engine.signingFee(companyID: company.id, tier: i))) fee, written off over three years · about +\(String(format: "%.1f", t.strength)) strength").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer()
-                            Button("Sign…") {
-                                let fee = engine.signingFee(companyID: company.id, tier: i)
-                                pending = PendingAction(title: "Sign a \(t.name.lowercased())?", message: "\(cur.tidyDisplay(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.tidyShort(company.cash)).", button: "Sign") {
-                                    switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
-                                    case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
-                                    case .closed?: store.show("The transfer window is closed.", tone: "warn")
-                                    default: store.show("The club needs \(cur.tidyShort(fee)) in cash.", tone: "warn")
-                                    }
-                                }
-                            }.buttonStyle(TinyButtonStyle()).disabled(w.name == nil)
-                        }.padding(.vertical, 9)
-                    }
+        let windowText: String = w.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Closed · opens in \(w.weeksToOpen) wk"
+        let windowItems: [KeyFigures.Item] = [
+            .init(label: "Window", value: windowText, tint: w.name == nil ? Theme.ivoryMuted : Theme.gain),
+            .init(label: "Bought", value: cur.tidyShort(c.tradedIn)),
+            .init(label: "Sold", value: cur.tidyShort(c.tradedOut)),
+        ]
+        return MoreBlock("Transfers", card: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: windowItems) }
+                ForEach(0..<FootballModel.tiers.count, id: \.self) { (i: Int) in tierCard(i, windowOpen: w.name != nil, cur) }
+                Text("Clubs bid for your players while a window is open; you will find the offer in your inbox. Selling brings cash and weakens the team. Signings cost a fee up front and more wages.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func tierCard(_ i: Int, windowOpen: Bool, _ cur: Currency) -> some View {
+        let t = FootballModel.tiers[i]
+        let fee: Double = engine.signingFee(companyID: company.id, tier: i)
+        let strength: String = String(format: "%.1f", t.strength)
+        let line: String = "\(cur.tidyShort(fee)) fee, written off over three years · about +\(strength) strength"
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.hire, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(t.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
-                Text("Clubs bid for your players while a window is open; you will find the offer in your inbox. Selling brings cash and weakens the team. Signings cost a fee up front and more wages.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                Spacer()
+                Button("Sign…") { askSign(i, t.name, fee, cur) }.buttonStyle(TinyButtonStyle()).disabled(!windowOpen)
+            }
+        }
+    }
+
+    private func askSign(_ i: Int, _ tierName: String, _ fee: Double, _ cur: Currency) {
+        let message: String = "\(cur.tidyDisplay(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.tidyShort(company.cash))."
+        pending = PendingAction(title: "Sign a \(tierName.lowercased())?", message: message, button: "Sign") {
+            switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
+            case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
+            case .closed?: store.show("The transfer window is closed.", tone: "warn")
+            default: store.show("The club needs \(cur.tidyShort(fee)) in cash.", tone: "warn")
             }
         }
     }
 
     private func sponsors(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            ForEach(Array(FootballModel.slots.enumerated()), id: \.offset) { _, slot in
-                MoreBlock(slot.title) {
-                    VStack(spacing: 0) {
-                        if let s = c.sponsors.first(where: { $0.slot == slot.key }) {
-                            FlatRow(label: s.name, value: cur.tidyShort(s.weekly) + " / wk", sub: String(format: "%.1f years left", s.yearsLeft), rule: false)
-                        } else if let offers = c.offers[slot.key], !offers.isEmpty {
-                            ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
-                                if n > 0 { Hairline() }
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(o.name).font(.system(size: 13.5))
-                                        Text("\(cur.tidyShort(o.weekly)) a week · \(o.years) year\(o.years == 1 ? "" : "s")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                    }
-                                    Spacer()
-                                    Button("Sign…") {
-                                        pending = PendingAction(title: "Sign \(o.name)?", message: "\(cur.tidyDisplay(o.weekly)) a week for \(o.years) year\(o.years == 1 ? "" : "s") as your \(slot.title.lowercased()). You cannot take another offer for this slot until it ends.", button: "Sign") {
-                                            if store.act({ $0.signSponsor(companyID: company.id, slot: slot.key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
-                                            else { store.show("That offer is no longer available.", tone: "warn") }
-                                        }
-                                    }.buttonStyle(TinyButtonStyle())
-                                }.padding(.vertical, 8)
+            ForEach(Array(FootballModel.slots.enumerated()), id: \.offset) { (_: Int, slot: (key: String, title: String, share: Double)) in
+                sponsorSlot(c, slot.key, slot.title, cur)
+            }
+        }
+    }
+
+    private func sponsorSlot(_ c: FootballModel.Summary, _ key: String, _ title: String, _ cur: Currency) -> some View {
+        MoreBlock(title, card: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                if let s = c.sponsors.first(where: { $0.slot == key }) {
+                    let line: String = String(format: "%.1f years left", s.yearsLeft)
+                    EntityCard {
+                        HStack(spacing: 10) {
+                            IconCircle(glyph: Glyph.richList, size: 34)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(s.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                                Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }
-                        } else {
-                            Text("No offers right now.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            Spacer()
+                            Text(cur.tidyShort(s.weekly) + " / wk").font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
                         }
+                    }
+                } else if let offers = c.offers[key], !offers.isEmpty {
+                    ForEach(Array(offers.enumerated()), id: \.offset) { (_: Int, o: ClubOffer) in offerCard(o, key, title, cur) }
+                } else {
+                    Card(padding: 12, radius: Theme.Radius.row) {
+                        Text("No offers right now.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }
         }
     }
 
+    private func offerCard(_ o: ClubOffer, _ key: String, _ title: String, _ cur: Currency) -> some View {
+        let plural: String = o.years == 1 ? "" : "s"
+        let line: String = "\(cur.tidyShort(o.weekly)) a week · \(o.years) year\(plural)"
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.richList, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(o.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer()
+                Button("Sign…") {
+                    let message: String = "\(cur.tidyDisplay(o.weekly)) a week for \(o.years) year\(plural) as your \(title.lowercased()). You cannot take another offer for this slot until it ends."
+                    pending = PendingAction(title: "Sign \(o.name)?", message: message, button: "Sign") {
+                        if store.act({ $0.signSponsor(companyID: company.id, slot: key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
+                        else { store.show("That offer is no longer available.", tone: "warn") }
+                    }
+                }.buttonStyle(TinyButtonStyle())
+            }
+        }
+    }
+
     private func table(_ c: FootballModel.Summary) -> some View {
-        MoreBlock("Table") {
-            VStack(spacing: 0) {
-                ForEach(c.table) { r in
-                    HStack {
-                        Text("\(r.position)").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint).frame(width: 26, alignment: .leading)
-                        Text(r.name + (r.isYours ? " (you)" : "")).font(.system(size: 13.5, weight: r.isYours ? .semibold : .regular)).foregroundStyle(r.isYours ? Theme.gold : Theme.ivory).lineLimit(1)
-                        Spacer()
-                        Text("\(r.played)").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint).frame(width: 30, alignment: .trailing)
-                        Text("\(r.points)").font(.system(size: 13.5).monospacedDigit()).frame(width: 34, alignment: .trailing)
-                    }.padding(.vertical, 6)
-                    Hairline()
+        let cols: [TableColumn] = [TableColumn(title: "Club"), TableColumn(title: "P", width: 30), TableColumn(title: "Pts", width: 36)]
+        return MoreBlock("Table", card: false) {
+            SharpTable {
+                TableHeader(columns: cols)
+                ForEach(c.table) { (r: FootballModel.TableRow) in
+                    let name: String = "\(r.position)  " + r.name + (r.isYours ? " (you)" : "")
+                    TableRow(columns: cols, title: name, values: ["\(r.played)", "\(r.points)"], selected: r.isYours)
                 }
             }
         }
@@ -280,28 +353,17 @@ struct ClubMarketView: View {
             let cur = e.homeCurrency
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Text("A professional club. You own it and set the budget, sponsors and ticket prices; the manager picks the players. Many owners will not sell at any price, and clubs come with debt. Most clubs lose money or break even.")
-                        .font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    MoreHeader(glyph: Glyph.achievements, title: "A professional club",
+                               blurb: "You own it and set the budget, sponsors and ticket prices; the manager picks the players. Many owners will not sell at any price, and clubs come with debt. Most clubs lose money or break even.")
                     MoreBlock("League") {
                         VStack(alignment: .leading, spacing: 6) {
                             Picker("Country", selection: Binding(get: { code }, set: { country = $0 })) { ForEach(countries) { Text("\($0.flag) \($0.name)").tag($0.code) } }.pickerStyle(.menu)
                             if let info { Text("\(info.name) · \(info.clubs) clubs. Values are rough market estimates.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
-                    MoreBlock("Clubs") {
-                        VStack(spacing: 0) {
-                            ForEach(Array(e.clubsForSale(countryCode: code).enumerated()), id: \.element.id) { n, c in
-                                if n > 0 { Hairline() }
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(c.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                        Text("About \(cur.tidyShort(c.value))\(c.isListed ? " · open to offers" : "")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                    }
-                                    Spacer()
-                                    if c.owner == "you" { Chip(text: "Yours", tint: Theme.gold) }
-                                    else { Button("Make an offer") { offerFor = c; answer = nil }.buttonStyle(TinyButtonStyle()) }
-                                }.padding(.vertical, 9)
-                            }
+                    MoreBlock("Clubs", card: false) {
+                        VStack(spacing: 10) {
+                            ForEach(e.clubsForSale(countryCode: code), id: \.id) { (c: FootballModel.ClubInfo) in clubCard(c, cur) }
                         }
                     }
                     if let cost = e.foundingCost(countryCode: code) {
@@ -317,7 +379,7 @@ struct ClubMarketView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Football clubs")
+            .appScreen(title: "Football clubs", subtitle: "Buy a club or found a new one.")
             .sheet(item: $offerFor) { c in offerSheet(c, cur) }
             .confirmationDialog("Found a new club?", isPresented: $confirmFound, titleVisibility: .visible) {
                 Button("Found it") {
@@ -328,6 +390,22 @@ struct ClubMarketView: View {
                     }
                 }
             } message: { Text("You pay about 40% of its starting value and fund the early seasons yourself.") }
+        }
+    }
+
+    private func clubCard(_ c: FootballModel.ClubInfo, _ cur: Currency) -> some View {
+        let line: String = "About \(cur.tidyShort(c.value))" + (c.isListed ? " · open to offers" : "")
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.achievements, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer()
+                if c.owner == "you" { Chip(text: "Yours", tint: Theme.gold) }
+                else { Button("Make an offer") { offerFor = c; answer = nil }.buttonStyle(TinyButtonStyle()) }
+            }
         }
     }
 
@@ -349,13 +427,18 @@ struct ClubMarketView: View {
             } else {
                 ForEach([0.9, 1.2, 1.8, 3.0], id: \.self) { f in
                     Button { answer = store.act { $0.offerForClub(clubID: c.id, multiple: f) } } label: {
-                        HStack { Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).font(.system(size: 15, weight: .medium)); Spacer(); Text("\(Int(f * 100))% of value").font(.caption).foregroundStyle(Theme.ivoryFaint) }
-                            .padding(.vertical, 8).contentShape(Rectangle())
+                        EntityCard {
+                            HStack {
+                                Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                                Spacer()
+                                Text("\(Int(f * 100))% of value").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                MoreChevron()
+                            }.contentShape(Rectangle())
+                        }
                     }.buttonStyle(.plain)
-                    Hairline()
                 }
             }
-            Button("Close") { offerFor = nil }.font(.caption).foregroundStyle(Theme.ivoryFaint).buttonStyle(.plain)
+            HStack { Button("Close") { offerFor = nil }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }
         }
         .padding(Theme.Space.margin)
         .presentationDetents([.medium])
