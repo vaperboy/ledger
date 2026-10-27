@@ -1,14 +1,17 @@
 import SwiftUI
+import Charts
 import GameCore
 import Businesses
 import Countries
 import Simulation
 
-/// The market around one company: your share, price moves (percent changes, discount, price war) and the named rivals.
+/// The market around one company, in three tabs: where you stand (share over time and against the named rivals),
+/// your pricing (price against the market, price changes, discounts, price war) and the rivals as a ranked table.
 struct CompanyMarket: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var tab: MarketTab = .position
     @State private var change = 0.05
     @State private var discount = 15
     @State private var weeks = 2
@@ -16,12 +19,23 @@ struct CompanyMarket: View {
     @State private var showWar = false
     @State private var pending: PendingAction?
 
+    enum MarketTab: String, CaseIterable, Identifiable {
+        case position, pricing, rivals
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .position: return "Position"
+            case .pricing: return "Pricing"
+            case .rivals: return "Rivals"
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.market, title: "Market", blurb: "Your share, your price against the market, and the named rivals you compete with.")
-            share
-            if let info = engine.priceMoves(company) { priceMoves(info) }
-            rivals
+            MoreHeader(glyph: Glyph.market, title: "Market", blurb: "Where you stand, what you charge against the market, and the rivals you compete with.")
+            SegmentedPill(items: MarketTab.allCases, title: { (t: MarketTab) in t.title }, selection: $tab)
+            tabContent
         }
         .confirmAction($pending)
         .sheet(item: rivalBinding) { r in
@@ -30,77 +44,239 @@ struct CompanyMarket: View {
         .sheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
     }
 
+    @ViewBuilder private var tabContent: some View {
+        switch tab {
+        case .position: position
+        case .pricing: pricing
+        case .rivals: rivals
+        }
+    }
+
     private struct RivalID: Identifiable { var id: Int }
 
     private var rivalBinding: Binding<RivalID?> {
         Binding<RivalID?>(get: { rival.map { RivalID(id: $0) } }, set: { rival = $0?.id })
     }
 
-    // MARK: Share
+    // MARK: Position
 
-    @ViewBuilder private var share: some View {
+    /// One bar of the "against the field" chart.
+    private struct FieldBar: Identifiable {
+        var id: String
+        var name: String
+        var percent: Double
+        var text: String
+        var mine: Bool
+    }
+
+    private struct SharePoint: Identifiable { var id: Int; var share: Double }
+
+    @ViewBuilder private var position: some View {
         if let row = engine.marketRows().first(where: { $0.companyNames.contains(company.name) }) {
-            MoreBlock("Your share") {
-                NavigationLink { MarketDetailView(marketKey: row.id) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text(row.level == .feeling ? "Your own guess" : row.level == .dataAnalyst ? "Your data analyst's estimate" : "Measured by your market analyst")
-                                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer()
-                        Text(row.shareText).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
-                        MoreChevron()
-                    }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+            let detail: MarketDetail? = engine.marketDetail(key: row.id)
+            shareHero(row, detail)
+            fieldBlock(row, detail)
+        } else {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                Text("The market map fills in once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
 
-    // MARK: Price moves
+    private func levelWords(_ row: MarketRow) -> String {
+        switch row.level {
+        case .feeling: return "Your own guess"
+        case .dataAnalyst: return "Your data analyst's estimate"
+        default: return "Measured by your market analyst"
+        }
+    }
+
+    private func shareHero(_ row: MarketRow, _ detail: MarketDetail?) -> some View {
+        let history: [Double] = detail?.history ?? []
+        let moved: Double? = history.count >= 2 ? (history[history.count - 1] - history[history.count - 2]) : nil
+        let changeText: String = moved.map { String(format: "%+.1f points on last month", $0) } ?? "Monthly points appear as months close"
+        let changeTint: Color = (moved ?? 0) < 0 ? Theme.loss : ((moved ?? 0) > 0 ? Theme.gain : Theme.ivoryFaint)
+        return NavigationLink { MarketDetailView(marketKey: row.id) } label: {
+            Card(padding: 14, radius: Theme.Radius.hero) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 10) {
+                        IconCircle(glyph: Glyph.stats, size: 34)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(row.label).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
+                            Text(levelWords(row)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        Spacer(minLength: 6)
+                        MoreChevron()
+                    }
+                    Text(row.shareText).font(.serifTitle(34)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(changeText).font(.system(size: 11.5)).foregroundStyle(changeTint)
+                    shareChart(history)
+                }
+                .contentShape(Rectangle())
+            }
+        }.buttonStyle(.plain)
+    }
+
+    @ViewBuilder private func shareChart(_ history: [Double]) -> some View {
+        if history.count >= 2 {
+            let pts: [SharePoint] = history.enumerated().map { (i: Int, v: Double) in SharePoint(id: i, share: v) }
+            Chart(pts) { (p: SharePoint) in
+                AreaMark(x: .value("Month", p.id), y: .value("Share", p.share))
+                    .foregroundStyle(Theme.gold.opacity(0.12)).interpolationMethod(.monotone)
+                LineMark(x: .value("Month", p.id), y: .value("Share", p.share))
+                    .foregroundStyle(Theme.gold).lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)).interpolationMethod(.monotone)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { (v: AxisValue) in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
+                    AxisValueLabel { if let d = v.as(Double.self) { Text(String(format: "%.0f%%", d)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) } }
+                }
+            }
+            .frame(height: 96)
+        } else {
+            Text("The share line starts after the first month of trading.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+    }
+
+    private func fieldBars(_ detail: MarketDetail?, _ shareText: String) -> [FieldBar] {
+        var bars: [FieldBar] = []
+        if let mine = detail?.history.last { bars.append(FieldBar(id: "me", name: company.name, percent: mine, text: shareText, mine: true)) }
+        for r in engine.rivalRows(company) {
+            guard let e = r.share else { continue }
+            bars.append(FieldBar(id: "r\(r.id)", name: r.rival.name, percent: e.center * 100, text: MarketMap.text(e), mine: false))
+        }
+        return bars.sorted { $0.percent > $1.percent }
+    }
+
+    @ViewBuilder private func fieldBlock(_ row: MarketRow, _ detail: MarketDetail?) -> some View {
+        let bars: [FieldBar] = fieldBars(detail, row.shareText)
+        MoreBlock(title: "Against the field", trailing: {
+            Text("\(max(0, bars.count - 1)) rivals sized").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            if bars.count >= 2 {
+                fieldChart(bars)
+            } else {
+                Text("Rivals appear once the business has opened. Their shares are shown as your analyst sees them.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func fieldChart(_ bars: [FieldBar]) -> some View {
+        Chart(bars) { (b: FieldBar) in
+            BarMark(x: .value("Share", b.percent), y: .value("Name", b.name), height: .fixed(14))
+                .foregroundStyle(b.mine ? Theme.gold : Theme.ivoryDim)
+                .cornerRadius(3)
+                .annotation(position: .trailing, alignment: .leading) {
+                    Text(b.text).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(b.mine ? Theme.gold : Theme.ivoryMuted)
+                }
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis {
+            AxisMarks(position: .leading) { (_: AxisValue) in
+                AxisValueLabel().font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+            }
+        }
+        .chartXScale(range: .plotDimension(endPadding: 56))
+        .frame(height: CGFloat(bars.count) * 30 + 8)
+    }
+
+    // MARK: Pricing
+
+    @ViewBuilder private var pricing: some View {
+        if let info = engine.priceMoves(company) {
+            priceMoves(info)
+        } else {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                Text("Prices can be moved once the business is open and selling.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private struct PriceBar: Identifiable { var id: String; var name: String; var value: Double; var text: String; var mine: Bool }
 
     private func priceMoves(_ info: PriceMovesInfo) -> some View {
         let cur: Currency = engine.currency(for: company)
-        let rivalText: String = info.rivalsAverage.map { cur.tidyShort($0) } ?? "–"
         let marginText: String = info.margin.map { String(format: "%.0f%%", $0 * 100) } ?? "–"
         let items: [KeyFigures.Item] = [
             .init(label: "Your price", value: cur.tidyShort(info.yourTicket), sub: String(format: "%+.0f%% vs market", info.againstMarket * 100)),
-            .init(label: "Rivals", value: rivalText),
             .init(label: "Margin", value: marginText, tint: (info.margin ?? 0) < 0 ? Theme.loss : Theme.ivory),
         ]
-        return MoreBlock("Price moves") {
-            VStack(alignment: .leading, spacing: 10) {
-                FigureStrip(items: items)
-                if let war = info.war {
-                    warBlock(weeksLeft: war.weeksLeft, loss: war.loss, cur)
-                } else {
-                    changeBlock(info, cur)
-                    CardLine()
-                    discountBlock(info, cur)
-                    if !engine.rivalRows(company).isEmpty {
-                        CardLine()
-                        Button("Start a price war…") { showWar = true }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
-                    }
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            Card(padding: 14, radius: Theme.Radius.hero) {
+                VStack(alignment: .leading, spacing: 10) {
+                    FigureStrip(items: items, columns: 2)
+                    priceChart(info, cur)
+                }
+            }
+            priceActions(info, cur)
+        }
+    }
+
+    @ViewBuilder private func priceActions(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
+        if let war = info.war {
+            warBlock(weeksLeft: war.weeksLeft, loss: war.loss, cur)
+        } else {
+            actionCard(glyph: Glyph.invest, title: "Change price") { changeBlock(info, cur) }
+            actionCard(glyph: Glyph.reports, title: "Discount campaign") { discountBlock(info, cur) }
+            if !engine.rivalRows(company).isEmpty {
+                actionCard(glyph: Glyph.warning, title: "Price war") {
+                    Text("Undercut a rival on purpose. It costs revenue while it runs and they may answer.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Button("Start a price war…") { showWar = true }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                 }
             }
         }
     }
 
-    @ViewBuilder private func warBlock(weeksLeft: Int, loss: Double, _ cur: Currency) -> some View {
-        CardLine()
-        Text("Price war · \(weeksLeft) wk left · \(cur.tidyShort(loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
-        Button("End the price war now") {
-            store.act { $0.endPriceWar(companyID: company.id) }
-            Haptics.tap()
-            store.show("The price war is over. Prices go back to normal.", tone: "n")
-        }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+    @ViewBuilder private func priceChart(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
+        if let avg = info.rivalsAverage {
+            let bars: [PriceBar] = [
+                PriceBar(id: "me", name: "You", value: info.yourTicket, text: cur.tidyShort(info.yourTicket), mine: true),
+                PriceBar(id: "rv", name: "Rivals", value: avg, text: cur.tidyShort(avg), mine: false),
+            ]
+            Chart(bars) { (b: PriceBar) in
+                BarMark(x: .value("Price", b.value), y: .value("Who", b.name), height: .fixed(14))
+                    .foregroundStyle(b.mine ? Theme.gold : Theme.ivoryDim).cornerRadius(3)
+                    .annotation(position: .trailing, alignment: .leading) {
+                        Text(b.text).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(b.mine ? Theme.gold : Theme.ivoryMuted)
+                    }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis { AxisMarks(position: .leading) { (_: AxisValue) in AxisValueLabel().font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted) } }
+            .chartXScale(range: .plotDimension(endPadding: 64))
+            .frame(height: 76)
+        } else {
+            Text("No rival prices known yet.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+    }
+
+    private func actionCard<Inner: View>(glyph: String, title: String, @ViewBuilder inner: @escaping () -> Inner) -> some View {
+        EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: glyph, size: 30)
+                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Spacer()
+                }
+                inner()
+            }
+        }
+    }
+
+    private func warBlock(weeksLeft: Int, loss: Double, _ cur: Currency) -> some View {
+        actionCard(glyph: Glyph.warning, title: "Price war on") {
+            Text("\(weeksLeft) wk left · \(cur.tidyShort(loss)) of revenue given up").font(.system(size: 13)).foregroundStyle(Theme.caution)
+            Button("End the price war now") {
+                store.act { $0.endPriceWar(companyID: company.id) }
+                Haptics.tap()
+                store.show("The price war is over. Prices go back to normal.", tone: "n")
+            }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+        }
     }
 
     @ViewBuilder private func changeBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
         let tiny: Bool = abs(change) < 0.005
         let label: String = tiny ? "Pick a change" : String(format: "Set %+.0f%% · %@", change * 100, cur.tidyShort(info.yourTicket * (1 + change)))
-        CardLine()
-        Text("Change price").capsLabel(Theme.ivoryFaint)
         HStack {
             Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
             Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
@@ -130,7 +306,6 @@ struct CompanyMarket: View {
     }
 
     @ViewBuilder private func discountBlock(_ info: PriceMovesInfo, _ cur: Currency) -> some View {
-        Text("Discount campaign").capsLabel(Theme.ivoryFaint)
         if info.discountOptions.isEmpty {
             Text("Not done in this trade.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
         } else if let pct = info.discountPercent {
@@ -170,45 +345,38 @@ struct CompanyMarket: View {
     // MARK: Rivals
 
     private var rivals: some View {
-        let rows = engine.rivalRows(company)
-        return MoreBlock(title: "Rivals", card: false, trailing: {
-            Text("\(rows.count) near you").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-        }) {
-            VStack(spacing: 10) {
-                if rows.isEmpty {
-                    Card(padding: 12, radius: Theme.Radius.row) {
-                        Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    }
+        let rows: [RivalRow] = engine.rivalRows(company).sorted { ($0.share?.center ?? -1) > ($1.share?.center ?? -1) }
+        let cols: [TableColumn] = [TableColumn(title: "Rival"), TableColumn(title: "Share", width: 78), TableColumn(title: "Price", width: 60)]
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Named rivals").capsLabel()
+                Spacer()
+                Text("\(rows.count) near you").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }.padding(.horizontal, 2)
+            if rows.isEmpty {
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                 }
-                ForEach(rows, id: \.id) { (r: RivalRow) in rivalCard(r) }
+            } else {
+                SharpTable {
+                    TableHeader(columns: cols)
+                    ForEach(rows, id: \.id) { (r: RivalRow) in rivalRow(r, cols) }
+                }
             }
         }
     }
 
-    private func rivalCard(_ r: RivalRow) -> some View {
+    private func rivalRow(_ r: RivalRow, _ cols: [TableColumn]) -> some View {
         let name: String = r.rival.name + (r.rival.forSale ? " · for sale" : "")
-        let shareText: String = r.share.map { MarketMap.text($0) + " share" } ?? r.feel
         let discountText: String = r.rival.discountPercent.map { " · \($0)% off" } ?? ""
         let marketingText: String = r.rival.marketing ? " · marketing" : ""
-        let line: String = "\(r.sizeWord) · \(shareText)\(discountText)\(marketingText)"
+        let note: String = "\(r.sizeWord)\(discountText)\(marketingText)"
+        let shareText: String = r.share.map { MarketMap.text($0) } ?? r.feel
         let same: Bool = abs(r.priceGap) < 0.03
         let gapPct: Int = Int((abs(r.priceGap) * 100).rounded())
-        let gapText: String = same ? "Same price" : (r.priceGap > 0 ? "Dearer " : "Cheaper ") + "\(gapPct)%"
+        let gapText: String = same ? "Same" : (r.priceGap > 0 ? "+" : "-") + "\(gapPct)%"
         let gapTint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
-        return Button { rival = r.id } label: {
-            EntityCard {
-                HStack(spacing: 10) {
-                    IconCircle(glyph: Glyph.person, size: 34)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
-                    }
-                    Spacer(minLength: 6)
-                    Text(gapText).font(.system(size: 12)).foregroundStyle(gapTint)
-                    MoreChevron()
-                }.contentShape(Rectangle())
-            }
-        }.buttonStyle(.plain)
+        return TableRow(columns: cols, title: name, note: note, values: [shareText, gapText], valueTints: [Theme.ivory, gapTint]) { rival = r.id }
     }
 }
 

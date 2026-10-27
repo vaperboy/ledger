@@ -1,74 +1,236 @@
 import SwiftUI
+import Charts
 import GameCore
 import Businesses
 import Countries
 import Simulation
 
-/// Customers: what they say (reviews, one system for every trade), the business customers (key accounts) and IT security.
+/// Customers, in three tabs: how happy they are (rating, happy against unhappy, stars, the trend of the reviews and what they wrote),
+/// who buys (consumers against businesses, key accounts, credit check, contracts) and how safe their data is (IT security).
 struct CompanyCustomers: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var tab: CustomerTab = .mood
     @State private var showAll = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.stats, title: "Customers", blurb: "What customers say, who buys in bulk, unpaid invoices and how safe your IT is.")
-            reviews
-            accounts
-            creditCheck
-            CompanyContracts(engine: engine, company: company)
-            security
+    enum CustomerTab: String, CaseIterable, Identifiable {
+        case mood, buyers, security
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .mood: return "Satisfaction"
+            case .buyers: return "Buyers"
+            case .security: return "Security"
+            }
         }
     }
 
-    // MARK: Reviews
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.person, title: "Customers", blurb: "How happy they are, who buys from you and how safe their data is.")
+            SegmentedPill(items: CustomerTab.allCases, title: { (t: CustomerTab) in t.title }, selection: $tab)
+            tabContent
+        }
+    }
 
-    private var reviews: some View {
-        let r = engine.reviewSummary(company, limit: showAll ? 30 : 6)
-        return MoreBlock(title: "Reviews", trailing: {
-            Text(r.enough ? r.word : "No rating yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+    @ViewBuilder private var tabContent: some View {
+        switch tab {
+        case .mood: mood
+        case .buyers: buyers
+        case .security: security
+        }
+    }
+
+    // MARK: Satisfaction
+
+    private struct TrendPoint: Identifiable { var id: Int; var monthsAgo: Int; var stars: Double }
+
+    private struct StarBar: Identifiable { var id: Int; var count: Int }
+
+    @ViewBuilder private var mood: some View {
+        let r: ReviewSummary = engine.reviewSummary(company, limit: max(1, company.value("rv41").array.count))
+        moodHero(r)
+        if r.count > 0 {
+            loyaltyStrip(r)
+            trendBlock(r)
+            starsBlock(r)
+            reviewsBlock(r)
+        } else {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                Text("Reviews arrive once customers come. Quality and reputation decide the stars.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func moodHero(_ r: ReviewSummary) -> some View {
+        let big: String = r.enough ? String(format: "%.1f", r.rating) : "–"
+        let tint: Color = !r.enough ? Theme.ivoryFaint : (r.rating >= 4 ? Theme.gain : (r.rating >= 3 ? Theme.gold : Theme.loss))
+        let items: [KeyFigures.Item] = [
+            .init(label: "Reviews", value: "\(r.count)"),
+            .init(label: "Reputation", value: "\(Int(company.reputation.rounded()))"),
+        ]
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(big).font(.serifTitle(38)).foregroundStyle(tint)
+                    Text("/ 5").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                    Spacer()
+                    Text(r.enough ? r.word : "No rating yet").font(.system(size: 12.5, weight: .medium)).foregroundStyle(tint)
+                }
+                FigureStrip(items: items, columns: 2)
+            }
+        }
+    }
+
+    /// Happy (4 and 5 stars), neutral (3) and unhappy (1 and 2) as one strip. Shares of the reviews written, not of all customers.
+    private func loyaltyStrip(_ r: ReviewSummary) -> some View {
+        let total: Double = Double(max(1, r.count))
+        let h: [Int] = r.histogram
+        let happy: Double = Double((h.count > 4 ? h[3] + h[4] : 0)) / total
+        let neutral: Double = Double(h.count > 2 ? h[2] : 0) / total
+        let unhappy: Double = Double((h.count > 1 ? h[0] + h[1] : 0)) / total
+        return MoreBlock(title: "Happy and unhappy", trailing: {
+            Text("of reviews written").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }) {
             VStack(alignment: .leading, spacing: 10) {
-                FigureStrip(items: [
-                    .init(label: "Rating", value: r.enough ? String(format: "%.1f / 5", r.rating) : "–"),
-                    .init(label: "Reviews", value: "\(r.count)"),
-                    .init(label: "Reputation", value: "\(Int(company.reputation.rounded()))"),
-                ])
-                if r.count > 0 {
-                    let top = max(1, r.histogram.max() ?? 1)
-                    ForEach((1...5).reversed(), id: \.self) { s in
-                        RateBar(label: "\(s) star\(s == 1 ? "" : "s")", fraction: Double(r.histogram[s - 1]) / Double(top), tint: s >= 4 ? Theme.gain : s == 3 ? Theme.gold : Theme.loss)
+                GeometryReader { g in
+                    HStack(spacing: 2) {
+                        Capsule().fill(Theme.gain).frame(width: max(2, g.size.width * CGFloat(happy)))
+                        Capsule().fill(Theme.gold.opacity(0.6)).frame(width: max(2, g.size.width * CGFloat(neutral)))
+                        Capsule().fill(Theme.loss).frame(width: max(2, g.size.width * CGFloat(unhappy)))
                     }
-                    ForEach(r.lines) { line in
-                        CardLine()
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack {
-                                Text(String(repeating: "★", count: line.stars) + String(repeating: "☆", count: 5 - line.stars)).font(.system(size: 12)).foregroundStyle(Theme.gold)
-                                Spacer()
-                                Text(line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                            Text((line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }.frame(height: 8)
+                StatStrip(cells: [
+                    .init(label: "Happy", value: String(format: "%.0f%%", happy * 100), tint: Theme.gain),
+                    .init(label: "Neutral", value: String(format: "%.0f%%", neutral * 100)),
+                    .init(label: "Unhappy", value: String(format: "%.0f%%", unhappy * 100), tint: unhappy > 0.25 ? Theme.loss : Theme.ivory),
+                ], ruled: false)
+            }
+        }
+    }
+
+    /// The average of the stars given in each month of reviews. Customers who quietly leave are not counted one by one: a falling line is the warning.
+    private func trendPoints(_ r: ReviewSummary) -> [TrendPoint] {
+        let groups: [Int: [ReviewLine]] = Dictionary(grouping: r.lines, by: { $0.weeksAgo / 4 })
+        return groups.keys.sorted(by: >).map { (m: Int) -> TrendPoint in
+            let lines: [ReviewLine] = groups[m] ?? []
+            let avg: Double = Double(lines.reduce(0) { $0 + $1.stars }) / Double(max(1, lines.count))
+            return TrendPoint(id: m, monthsAgo: m, stars: avg)
+        }
+    }
+
+    @ViewBuilder private func trendBlock(_ r: ReviewSummary) -> some View {
+        let pts: [TrendPoint] = trendPoints(r)
+        MoreBlock(title: "Mood over time", trailing: {
+            Text("average stars a month").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            if pts.count >= 2 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Chart(pts) { (p: TrendPoint) in
+                        LineMark(x: .value("Months ago", -p.monthsAgo), y: .value("Stars", p.stars))
+                            .foregroundStyle(Theme.gold).lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)).interpolationMethod(.monotone)
+                        PointMark(x: .value("Months ago", -p.monthsAgo), y: .value("Stars", p.stars))
+                            .foregroundStyle(p.stars >= 3.5 ? Theme.gold : Theme.loss).symbolSize(26)
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYScale(domain: 1...5)
+                    .chartYAxis {
+                        AxisMarks(position: .trailing, values: [1, 3, 5]) { (v: AxisValue) in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
+                            AxisValueLabel().font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
-                    if r.count > 6 {
-                        Button(showAll ? "Show fewer" : "Show more") { showAll.toggle() }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
+                    .frame(height: 96)
+                    Text("Customers who simply stop coming are not counted one by one. A falling line is the warning.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+            } else {
+                Text("The line needs reviews from at least two different months.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func starsBlock(_ r: ReviewSummary) -> some View {
+        let bars: [StarBar] = r.histogram.enumerated().map { (i: Int, c: Int) in StarBar(id: i + 1, count: c) }
+        return MoreBlock("Stars given") {
+            Chart(bars) { (b: StarBar) in
+                BarMark(x: .value("Stars", "\(b.id)★"), y: .value("Reviews", b.count))
+                    .foregroundStyle(b.id >= 4 ? Theme.gain : (b.id == 3 ? Theme.gold : Theme.loss))
+                    .cornerRadius(3)
+                    .annotation(position: .top) { Text("\(b.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
+            }
+            .chartYAxis(.hidden)
+            .chartXAxis { AxisMarks { (_: AxisValue) in AxisValueLabel().font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted) } }
+            .frame(height: 110)
+        }
+    }
+
+    private func reviewsBlock(_ r: ReviewSummary) -> some View {
+        let shown: [ReviewLine] = showAll ? r.lines : Array(r.lines.prefix(6))
+        return MoreBlock(title: "What they wrote", card: false, trailing: {
+            if r.lines.count > 6 {
+                Button(showAll ? "Show fewer" : "Show all") { showAll.toggle() }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
+            }
+        }) {
+            ForEach(shown) { (line: ReviewLine) in
+                EntityCard { reviewCard(line) }
+            }
+        }
+    }
+
+    private func reviewCard(_ line: ReviewLine) -> some View {
+        let stars: String = String(repeating: "★", count: line.stars) + String(repeating: "☆", count: max(0, 5 - line.stars))
+        let when: String = line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago"
+        let who: String = (line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)"
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(stars).font(.system(size: 12)).foregroundStyle(Theme.gold)
+                Spacer()
+                Text(when).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }
+            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(who).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }
+    }
+
+    // MARK: Buyers
+
+    @ViewBuilder private var buyers: some View {
+        segments
+        accounts
+        creditCheck
+        CompanyContracts(engine: engine, company: company)
+    }
+
+    /// Who the sales go to: private customers against businesses (the trade's own split), as one bar.
+    @ViewBuilder private var segments: some View {
+        if let t = engine.tradeInfo(companyID: company.id) {
+            let biz: Double = min(1, max(0, t.businessShare))
+            MoreBlock("Who buys") {
+                VStack(alignment: .leading, spacing: 10) {
+                    GeometryReader { g in
+                        HStack(spacing: 2) {
+                            if biz < 1 { Capsule().fill(Theme.gold).frame(width: max(2, g.size.width * CGFloat(1 - biz))) }
+                            if biz > 0 { Capsule().fill(Theme.slateBlue).frame(width: max(2, g.size.width * CGFloat(biz))) }
+                        }
+                    }.frame(height: 8)
+                    StatStrip(cells: [
+                        .init(label: "Private customers", value: String(format: "%.0f%%", (1 - biz) * 100), tint: Theme.gold),
+                        .init(label: "Businesses", value: String(format: "%.0f%%", biz * 100)),
+                    ], ruled: false)
+                    if biz == 0 {
+                        Text("This trade sells to private customers only, so there are no key accounts.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
-                } else {
-                    Text("Reviews arrive once customers come. Quality and reputation decide the stars.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
         }
     }
 
-    // MARK: Business customers
-
     @ViewBuilder private var accounts: some View {
         let info = engine.keyAccountInfo(company)
         if info.allowed || !info.accounts.isEmpty {
-            MoreBlock(title: "Business customers", card: false, trailing: {
-                Text("\(info.accounts.count) of \(info.limit) key accounts").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            MoreBlock(title: "Key accounts", card: false, trailing: {
+                Text("\(info.accounts.count) of \(info.limit)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if info.accounts.isEmpty {
@@ -84,8 +246,6 @@ struct CompanyCustomers: View {
             }
         }
     }
-
-    // MARK: Credit check
 
     /// Only for trades that invoice businesses: checking a buyer's credit before selling on account costs a little and cuts unpaid invoices.
     @ViewBuilder private var creditCheck: some View {

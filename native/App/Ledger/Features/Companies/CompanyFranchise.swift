@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import GameCore
 import Countries
 import Finance
@@ -55,6 +56,7 @@ struct FranchisorCard: View {
     @State private var support = 0
     @State private var masterCountry = ""
     @State private var terminate: Int?
+    @State private var ftab: FranchiseTab = .network
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -163,51 +165,150 @@ struct FranchisorCard: View {
 
     // MARK: Running
 
-    @ViewBuilder private func running(_ cur: Currency) -> some View {
-        let f = engine.franchiseSystem(companyID: company.id)
-        let units = f["units"].array
-        let apps = engine.franchiseApplicants(companyID: company.id)
-        let setupWords: [String] = ["Franchisee pays", "Half covered", "Fully covered"]
-        let items: [KeyFigures.Item] = [
-            .init(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double)),
-            .init(label: "Units open", value: "\(units.count)"),
-            .init(label: "Income last week", value: cur.tidyShort(f["income"].double)),
-            .init(label: "Fee", value: cur.tidyShort(f["fee"].double)),
-            .init(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 0)),
-            .init(label: "Set-up", value: setupWords[min(2, max(0, f["supp"].int))]),
-        ]
-        Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: items) }
-        if !units.isEmpty {
-            Text("Units").capsLabel(Theme.ivoryFaint).padding(.top, 4)
-            ForEach(Array(units.enumerated()), id: \.offset) { (n: Int, u: JSONValue) in unitCard(u, cur) }
-        }
-        Text("Applicants").capsLabel(Theme.ivoryFaint).padding(.top, 4)
-        if apps.isEmpty {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                Text("No applicants right now. Brand strength attracts more.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+    enum FranchiseTab: String, CaseIterable, Identifiable {
+        case network, pipeline, countries
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .network: return "Network"
+            case .pipeline: return "Pipeline"
+            case .countries: return "Countries"
             }
         }
-        ForEach(apps, id: \.id) { (a: Franchising.Applicant) in applicantCard(a, cur) }
-        masterSection(f, cur)
     }
 
-    private func unitCard(_ u: JSONValue, _ cur: Currency) -> some View {
-        let cityName: String = engine.data.countries.city(u["city"].string, preferring: company.countryCode)?.city.name ?? ""
-        let owes: Bool = u["owed"].double > 0.5
-        let owedText: String = owes ? " · owes \(cur.tidyShort(u["owed"].double))" : ""
-        let line: String = "\(cityName)\(owedText) · until \(GameCalendar.dateString(week: u["end"].int, dayOffset: 0))"
-        let revTint: Color = u["prof"].double < 0 ? Theme.loss : Theme.ivory
-        let unitID: Int = u["id"].int
+    /// One franchised unit as the network list shows it.
+    private struct UnitRow: Identifiable {
+        var id: Int
+        var name: String
+        var city: String
+        var revenue: Double
+        var profit: Double
+        var owed: Double
+        var end: Int
+    }
+
+    /// The units of one city, shown together like a pin on a map.
+    private struct CityGroup: Identifiable {
+        var id: String { city }
+        var city: String
+        var units: [UnitRow]
+        var revenue: Double { units.reduce(0) { $0 + $1.revenue } }
+    }
+
+    @ViewBuilder private func running(_ cur: Currency) -> some View {
+        let f = engine.franchiseSystem(companyID: company.id)
+        let units: [UnitRow] = unitRows(f["units"].array)
+        let apps = engine.franchiseApplicants(companyID: company.id)
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            systemHero(f, units: units.count, applicants: apps.count, cur)
+            SegmentedPill(items: FranchiseTab.allCases, title: { (t: FranchiseTab) in t.title }, selection: $ftab)
+            switch ftab {
+            case .network: network(units, f, cur)
+            case .pipeline: pipeline(apps, cur)
+            case .countries: masterSection(f, cur)
+            }
+        }
+    }
+
+    private func unitRows(_ raw: [JSONValue]) -> [UnitRow] {
+        raw.map { (u: JSONValue) -> UnitRow in
+            let city: String = engine.data.countries.city(u["city"].string, preferring: company.countryCode)?.city.name ?? "Elsewhere"
+            return UnitRow(id: u["id"].int, name: u["name"].string, city: city, revenue: u["rev"].double, profit: u["prof"].double, owed: u["owed"].double, end: u["end"].int)
+        }
+    }
+
+    private func systemHero(_ f: JSONValue, units: Int, applicants: Int, _ cur: Currency) -> some View {
+        let setupWords: [String] = ["Franchisee pays", "Half covered", "Fully covered"]
+        let items: [KeyFigures.Item] = [
+            .init(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 0)),
+            .init(label: "Entry fee", value: cur.tidyShort(f["fee"].double)),
+            .init(label: "Set-up", value: setupWords[min(2, max(0, f["supp"].int))]),
+        ]
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    IconCircle(glyph: Glyph.group, size: 34)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(units) \(units == 1 ? "franchisee" : "franchisees")").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Text("Brand: \(FranchiseBrands.brandWord(f["brand"].double)) · \(applicants) waiting to talk").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    Spacer(minLength: 6)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(cur.tidyShort(f["income"].double)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
+                        Text("income last week").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
+                FigureStrip(items: items)
+            }
+        }
+    }
+
+    // MARK: Network
+
+    private func cityGroups(_ units: [UnitRow]) -> [CityGroup] {
+        let grouped: [String: [UnitRow]] = Dictionary(grouping: units, by: { $0.city })
+        return grouped.map { (k: String, v: [UnitRow]) in CityGroup(city: k, units: v.sorted { $0.revenue > $1.revenue }) }
+            .sorted { $0.revenue > $1.revenue }
+    }
+
+    @ViewBuilder private func network(_ units: [UnitRow], _ f: JSONValue, _ cur: Currency) -> some View {
+        if units.isEmpty {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                Text("No unit has opened yet. Talk to the applicants in the pipeline; each one who signs opens a unit under your name.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        } else {
+            revenueChart(units, cur)
+            ForEach(cityGroups(units)) { (g: CityGroup) in cityBlock(g, cur) }
+        }
+    }
+
+    private func revenueChart(_ units: [UnitRow], _ cur: Currency) -> some View {
+        let sorted: [UnitRow] = units.sorted { $0.revenue > $1.revenue }
+        return MoreBlock(title: "Sales by unit", trailing: {
+            Text("a week").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            Chart(sorted) { (u: UnitRow) in
+                BarMark(x: .value("Revenue", max(0, u.revenue)), y: .value("Unit", u.name), height: .fixed(12))
+                    .foregroundStyle(u.profit < 0 ? Theme.loss : Theme.gold).cornerRadius(3)
+                    .annotation(position: .trailing, alignment: .leading) {
+                        Text(cur.tidyShort(u.revenue)).font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                    }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis { AxisMarks(position: .leading) { (_: AxisValue) in AxisValueLabel().font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted) } }
+            .chartXScale(range: .plotDimension(endPadding: 60))
+            .frame(height: CGFloat(sorted.count) * 26 + 8)
+        }
+    }
+
+    private func cityBlock(_ g: CityGroup, _ cur: Currency) -> some View {
+        MoreBlock(title: g.city, card: false, trailing: {
+            Text("\(g.units.count) \(g.units.count == 1 ? "unit" : "units") · \(cur.tidyShort(g.revenue)) / wk").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            ForEach(g.units) { (u: UnitRow) in unitCard(u, cur) }
+        }
+    }
+
+    private func unitCard(_ u: UnitRow, _ cur: Currency) -> some View {
+        let owes: Bool = u.owed > 0.5
+        let owedText: String = owes ? "Owes you \(cur.tidyShort(u.owed)) · " : ""
+        let line: String = "\(owedText)contract until \(GameCalendar.dateString(week: u.end, dayOffset: 0))"
+        let profitText: String = (u.profit < 0 ? "loses " : "profit ") + cur.tidyShort(abs(u.profit))
+        let unitID: Int = u.id
         return EntityCard {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 10) {
                     IconCircle(glyph: Glyph.home, size: 34)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(u["name"].string).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(u.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                         Text(line).font(.system(size: 11)).foregroundStyle(owes ? Theme.loss : Theme.ivoryFaint)
                     }
                     Spacer(minLength: 8)
-                    Text(cur.tidyShort(u["rev"].double) + " / wk").font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(revTint)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(cur.tidyShort(u.revenue) + " / wk").font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                        Text(profitText).font(.system(size: 11).monospacedDigit()).foregroundStyle(u.profit < 0 ? Theme.loss : Theme.ivoryFaint)
+                    }
                 }
                 HStack {
                     Button("End contract…") { terminate = unitID }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
@@ -217,20 +318,52 @@ struct FranchisorCard: View {
         }
     }
 
+    // MARK: Pipeline
+
+    @ViewBuilder private func pipeline(_ apps: [Franchising.Applicant], _ cur: Currency) -> some View {
+        MoreBlock(title: "Applicants", card: false, trailing: {
+            Text("\(apps.count) waiting").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            if apps.isEmpty {
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    Text("No applicants right now. Brand strength attracts more.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+            ForEach(apps, id: \.id) { (a: Franchising.Applicant) in applicantCard(a, cur) }
+        }
+    }
+
+    /// How much of the set-up money the applicant brings, against what the standard terms need.
+    private func coverage(_ a: Franchising.Applicant) -> (need: Double, fraction: Double)? {
+        let terms: Franchising.TalkTerms = engine.standardTalkTerms(companyID: company.id)
+        guard let s = engine.talkSums(companyID: company.id, applicantID: a.id, terms: terms), s.need > 0 else { return nil }
+        return (s.need, min(1, a.capital / s.need))
+    }
+
     private func applicantCard(_ a: Franchising.Applicant, _ cur: Currency) -> some View {
         let cityName: String = engine.data.countries.city(a.cityID, preferring: company.countryCode)?.city.name ?? ""
-        let line: String = "\(cityName) · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))"
+        let line: String = "\(cityName) · \(a.experience) yr experience · \(a.personalityText)"
+        let cover = coverage(a)
+        let coverTint: Color = (cover?.fraction ?? 1) >= 1 ? Theme.gain : Theme.caution
         return NavigationLink { FranchiseTalkView(companyID: company.id, applicantID: a.id) } label: {
             EntityCard {
-                HStack(spacing: 10) {
-                    IconCircle(glyph: Glyph.person, size: 34)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(a.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        IconCircle(glyph: Glyph.person, size: 34)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(a.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                            Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                        }
+                        Spacer()
+                        Text("Talk").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+                        MoreChevron()
                     }
-                    Spacer()
-                    Text("Talk").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-                    MoreChevron()
+                    if let cover {
+                        RateBar(label: "Own money", fraction: cover.fraction, tint: coverTint)
+                        Text("Brings \(cur.tidyShort(a.capital)) of the \(cur.tidyShort(cover.need)) needed on standard terms.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    } else {
+                        Text("Own money \(cur.tidyShort(a.capital))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    }
                 }.contentShape(Rectangle())
             }
         }.buttonStyle(.plain)
