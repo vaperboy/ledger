@@ -33,11 +33,10 @@ protocol PayrollAlertSource {
 }
 
 extension GameEngine: PayrollAlertSource {
-    /// WIRING POINT. Returns no alerts until the engine read `GameEngine.payrollAlerts() -> [PayrollAlert]` exists. When it does,
-    /// replace the body with
-    ///     payrollAlerts().map { PayrollAlertInfo(companyID: $0.companyID, companyName: $0.companyName, amount: $0.amount, dateText: $0.dateText) }
-    /// and nothing else in the app changes: the Bank bubble, the Phone tab count and the banner all read through here.
-    func payrollAlertInfos() -> [PayrollAlertInfo] { [] }
+    /// The engine's payroll alerts: payroll that needs the owner because no manager or accountant approves it.
+    func payrollAlertInfos() -> [PayrollAlertInfo] {
+        payrollAlerts().map { PayrollAlertInfo(companyID: $0.companyID, companyName: $0.companyName, amount: $0.amount, dateText: $0.dateText) }
+    }
 }
 
 /// Reads the engine into Phone alerts and per-app bubble counts.

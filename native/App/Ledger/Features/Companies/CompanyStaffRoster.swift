@@ -40,75 +40,64 @@ struct CompanyStaffRoster: View {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         let shown = staff.filter { q.isEmpty || name($0).lowercased().contains(q) || roleLabel($0.role).lowercased().contains(q) }
         let attention = shown.filter(StaffIssue.needsAttention)
+        let rest = shown.filter { !StaffIssue.needsAttention($0) }
         let big = staff.count > 8
-        LedgerSection(title: "Team", trailing: {
-            Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(cur.tidyShort(staff.reduce(0) { $0 + $1.monthlyWage })) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        let total: String = cur.tidyShort(staff.reduce(0) { $0 + $1.monthlyWage })
+        TeamGroup(title: "People", trailing: {
+            Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(total) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
-            VStack(alignment: .leading, spacing: 0) {
-                if staff.isEmpty {
+            if staff.isEmpty {
+                Card(padding: 14, radius: Theme.Radius.row) {
                     Text(company.ownerHours > 0 ? "No one works here but you." : "No one works here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                 }
-                if staff.count > 12 { search }
-                if !attention.isEmpty {
-                    Text("Needs attention · \(attention.count)").font(.system(size: 10.5, weight: .semibold)).tracking(0.8).textCase(.uppercase).foregroundStyle(Theme.caution).padding(.top, 6).padding(.bottom, 2)
-                    ForEach(Array(attention.enumerated()), id: \.element.id) { n, m in
-                        if n > 0 { Hairline() }
-                        row(m, cur, showIssues: true)
-                    }
-                }
-                let rest = shown.filter { !StaffIssue.needsAttention($0) }
-                if big {
-                    let groups = Dictionary(grouping: rest, by: { $0.role }).sorted { $0.value.count > $1.value.count }
-                    ForEach(groups, id: \.key) { role, members in
-                        let open = expanded.contains(role) || !q.isEmpty
-                        Button { withAnimation(.snappy(duration: 0.2)) { if open { expanded.remove(role) } else { expanded.insert(role) } } } label: {
-                            HStack {
-                                Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold).frame(width: 14)
-                                Text(roleLabel(role)).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                                Text("\(members.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                                Spacer()
-                                Text(cur.tidyShort(members.reduce(0) { $0 + $1.monthlyWage }) + " a month").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                            }.padding(.vertical, 9).contentShape(Rectangle())
-                        }.buttonStyle(.plain).overlay(alignment: .top) { Hairline() }
-                        if open { ForEach(members) { m in row(m, cur, showIssues: false).padding(.leading, 14) } }
-                    }
-                } else {
-                    ForEach(Array(rest.enumerated()), id: \.element.id) { n, m in
-                        if n > 0 || !attention.isEmpty { Hairline() }
-                        row(m, cur, showIssues: false)
-                    }
-                }
-                if !q.isEmpty && shown.isEmpty { Text("No one matches \"\(query)\".").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
-                footer(cur)
             }
+            if staff.count > 12 { search }
+            if !attention.isEmpty {
+                Text("Needs attention · \(attention.count)").font(.system(size: 10.5, weight: .semibold)).tracking(0.8).textCase(.uppercase).foregroundStyle(Theme.caution).padding(.top, 2)
+                ForEach(attention) { m in row(m, cur, showIssues: true) }
+            }
+            if big {
+                let groups = Dictionary(grouping: rest, by: { $0.role }).sorted { $0.value.count > $1.value.count }
+                ForEach(groups, id: \.key) { role, members in
+                    let open = expanded.contains(role) || !q.isEmpty
+                    let pay: String = cur.tidyShort(members.reduce(0) { $0 + $1.monthlyWage }) + " a month"
+                    Button {
+                        Haptics.choose()
+                        withAnimation(.snappy(duration: 0.2)) { if open { expanded.remove(role) } else { expanded.insert(role) } }
+                    } label: {
+                        CardRowLabel(title: roleLabel(role), subtitle: "\(members.count) \(members.count == 1 ? "person" : "people")", value: pay, open: open)
+                    }.buttonStyle(.plain)
+                    if open { ForEach(members) { m in row(m, cur, showIssues: false) } }
+                }
+            } else {
+                ForEach(rest) { m in row(m, cur, showIssues: false) }
+            }
+            if !q.isEmpty && shown.isEmpty { Text("No one matches \"\(query)\".").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
+            footer(cur)
         }
         .confirmAction($pending)
     }
 
     private var search: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-            TextField("Name or role", text: $query).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
-            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain) }
+        HStack(spacing: 8) {
+            GlyphView(glyph: Glyph.person, size: 14, weight: 1.5, tint: Theme.ivoryFaint)
+            TextField("Name or role", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
+            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain).accessibilityLabel("Clear search") }
         }
-        .padding(.horizontal, 10).padding(.vertical, 7).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05))).padding(.bottom, 6)
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
     }
 
     private func name(_ m: StaffMember) -> String { engine.state.people[m.id]?.name ?? roleLabel(m.role) }
 
     private func row(_ m: StaffMember, _ cur: Currency, showIssues: Bool) -> some View {
-        NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name(m)).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    let issues = StaffIssue.list(m)
-                    Text(showIssues || !issues.isEmpty ? ([roleLabel(m.role)] + issues).joined(separator: " · ") : roleLabel(m.role))
-                        .font(.system(size: 11)).foregroundStyle(StaffIssue.needsAttention(m) ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
-                }
-                Spacer(minLength: 6)
-                Text(cur.tidyShort(m.monthlyWage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
-            }.padding(.vertical, 8).contentShape(Rectangle())
+        let issues: [String] = StaffIssue.list(m)
+        let attention: Bool = StaffIssue.needsAttention(m)
+        let note: String = issues.isEmpty ? "" : issues.joined(separator: " · ")
+        let wage: String = cur.tidyShort(m.monthlyWage)
+        return NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
+            PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage)
         }.buttonStyle(.plain)
     }
 
@@ -116,31 +105,42 @@ struct CompanyStaffRoster: View {
         let staff = company.staff
         let papers = staff.reduce(0) { $0 + StaffExtras.missing($1).count }
         if papers > 0 {
-            HStack {
-                Label("\(papers) paperwork \(papers == 1 ? "item" : "items") missing. An inspection can fine you.", systemImage: "doc.badge.ellipsis").font(.caption).foregroundStyle(Theme.caution)
-                Spacer()
-                Button("Do all") {
-                    var done = 0
-                    for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
-                    let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
-                    if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
-                    else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
-                    else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+            Card(padding: 12, radius: Theme.Radius.row, stroke: Theme.caution.opacity(0.5)) {
+                HStack(spacing: 10) {
+                    GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: Theme.caution)
+                    Text("\(papers) paperwork \(papers == 1 ? "item" : "items") missing. An inspection can fine you.").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 6)
+                    TeamAction(title: "Do all") {
+                        var done = 0
+                        for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
+                        let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
+                        if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
+                        else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
+                        else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+                    }
                 }
-                    .buttonStyle(QuietButtonStyle())
-            }.padding(.top, 8)
+            }
         }
         if staff.count > 1 {
-            HStack {
-                Text("Cutting costs").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                Spacer()
-                Menu {
-                    ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
-                        let p = engine.layoffPreview(companyID: company.id, count: n)
-                        Button("\(n) · saves \(cur.tidyShort(p.savesPerMonth)) a month, severance \(cur.tidyShort(p.severance))") { confirmLayOff(n, p, cur) }
+            Card(padding: 12, radius: Theme.Radius.row) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Cutting costs").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text("Lets the weakest go; severance is paid now.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
-                } label: { Text("Lay off the weakest  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.loss).padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.loss.opacity(0.45), lineWidth: 0.75)) }
-            }.padding(.top, 8)
+                    Spacer(minLength: 8)
+                    Menu {
+                        ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
+                            let p = engine.layoffPreview(companyID: company.id, count: n)
+                            Button("\(n) · saves \(cur.tidyShort(p.savesPerMonth)) a month, severance \(cur.tidyShort(p.severance))") { confirmLayOff(n, p, cur) }
+                        }
+                    } label: {
+                        Text("Lay off the weakest").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.loss.opacity(0.7), lineWidth: 1))
+                    }
+                }
+            }
         }
     }
 
@@ -167,6 +167,7 @@ struct StaffProfileView: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let p = e.staffProfile(companyID: companyID, staffID: staffID) {
             let cur = e.currency(for: co)
+            let sub: String = "\(p.roleName) · age \(p.age) · \(p.skillBand.lowercased())"
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     header(p, co, cur)
@@ -174,15 +175,14 @@ struct StaffProfileView: View {
                     record(p, m, cur)
                     actions(e, co, m, p, cur)
                     if let t = p.personality.flatMap({ StaffProfile.personalityText[$0] }) {
-                        LedgerSection("Character") { Text(t).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted) }
+                        TeamGroup("Character") { Card(padding: 14, radius: Theme.Radius.row) { Text(t).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted) } }
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .ledgerBackground()
-            .navigationTitle(co.name).navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: p.name, subtitle: sub, tab: .team)
             .confirmAction($pending)
             .sheet(isPresented: $discussing) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
         } else {
@@ -191,74 +191,103 @@ struct StaffProfileView: View {
     }
 
     private func header(_ p: StaffProfile.Profile, _ co: Company, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(p.name).font(.serifTitle(26)).foregroundStyle(Theme.ivory)
-            Text("\(p.roleName) · age \(p.age) · \(p.skillBand.lowercased())").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-            KeyFigures(items: [
-                .init(label: "Pay", value: cur.tidyShort(p.monthlyWage), sub: p.payBasis == "fix" ? "fixed, a month" : "by the hour, a month"),
-                .init(label: "Skill", value: "\(Int(p.skill.rounded()))", sub: p.skillGainedSinceStart ? "has grown here" : ""),
-                .init(label: "With you", value: p.weeksWithYou >= 52 ? String(format: "%.1f yr", Double(p.weeksWithYou) / 52) : "\(p.weeksWithYou) wk"),
-            ]).padding(.top, 8)
+        let basis: String = p.payBasis == "fix" ? "fixed, a month" : "by the hour, a month"
+        let tenure: String = p.weeksWithYou >= 52 ? String(format: "%.1f yr", Double(p.weeksWithYou) / 52) : "\(p.weeksWithYou) wk"
+        let items: [KeyFigures.Item] = [
+            .init(label: "Pay", value: cur.tidyShort(p.monthlyWage), sub: basis),
+            .init(label: "Skill", value: "\(Int(p.skill.rounded()))", sub: p.skillGainedSinceStart ? "has grown here" : ""),
+            .init(label: "With you", value: tenure),
+        ]
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                TeamInitials(name: p.name, size: 48)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    HStack(spacing: 5) {
+                        TeamBadge(text: p.roleName, tint: Theme.gold)
+                        TeamBadge(text: "company")
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            Card(padding: 14, radius: Theme.Radius.hero) { KeyFigures(items: items) }
         }
     }
 
     private func mood(_ p: StaffProfile.Profile) -> some View {
         let tint: Color = ["Leaving", "Unhappy"].contains(p.mood.word) ? Theme.loss : p.mood.word == "Happy" ? Theme.gain : p.mood.word == "Mixed" ? Theme.caution : Theme.ivoryMuted
-        return LedgerSection(title: "Mood", trailing: { Chip(text: p.mood.word, tint: tint) }) {
-            VStack(alignment: .leading, spacing: 5) {
-                if let pr = p.problem, let t = StaffProfile.problemText[pr] { Text("Problem: this person \(t).").font(.system(size: 13)).foregroundStyle(Theme.caution) }
-                if p.noticeWeeks > 0 { Text("Working their notice: \(p.noticeWeeks) week\(p.noticeWeeks == 1 ? "" : "s") left.").font(.system(size: 13)).foregroundStyle(Theme.loss) }
-                ForEach(p.mood.bad, id: \.self) { Label(String($0.prefix(1).uppercased() + $0.dropFirst()), systemImage: "minus.circle").font(.system(size: 13)).foregroundStyle(Theme.ivory) }
-                ForEach(p.mood.good, id: \.self) { Label(String($0.prefix(1).uppercased() + $0.dropFirst()), systemImage: "plus.circle").font(.system(size: 13)).foregroundStyle(Theme.ivory) }
-                if p.mood.good.isEmpty && p.mood.bad.isEmpty && p.problem == nil { Text("Nothing stands out.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+        return TeamGroup(title: "Mood", trailing: { Chip(text: p.mood.word, tint: tint) }) {
+            Card(padding: 14, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 5) {
+                    if let pr = p.problem, let t = StaffProfile.problemText[pr] { Text("Problem: this person \(t).").font(.system(size: 13)).foregroundStyle(Theme.caution) }
+                    if p.noticeWeeks > 0 { Text("Working their notice: \(p.noticeWeeks) week\(p.noticeWeeks == 1 ? "" : "s") left.").font(.system(size: 13)).foregroundStyle(Theme.loss) }
+                    ForEach(p.mood.bad, id: \.self) { Label(String($0.prefix(1).uppercased() + $0.dropFirst()), systemImage: "minus.circle").font(.system(size: 13)).foregroundStyle(Theme.ivory) }
+                    ForEach(p.mood.good, id: \.self) { Label(String($0.prefix(1).uppercased() + $0.dropFirst()), systemImage: "plus.circle").font(.system(size: 13)).foregroundStyle(Theme.ivory) }
+                    if p.mood.good.isEmpty && p.mood.bad.isEmpty && p.problem == nil { Text("Nothing stands out.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+                }
             }
         }
     }
 
     private func record(_ p: StaffProfile.Profile, _ m: StaffMember, _ cur: Currency) -> some View {
-        LedgerSection("Record") {
-            VStack(spacing: 0) {
-                FlatRow(label: "Hours a week", value: "\(Int(p.hoursPerWeek.rounded()))", rule: false)
-                FlatRow(label: "Last raise", value: p.lastRaiseWeek.map { "\(max(0, (store.engine?.state.week ?? 0) - $0)) weeks ago" } ?? "never", sub: p.underpaid ? "Paid less than the job usually pays" : "")
-                if let plan = p.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: p.bonusPaidThisYear > 0 ? "\(cur.tidyShort(p.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
-                if !p.perks.isEmpty { FlatRow(label: "Perks", value: p.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(p.perksWorth)) a month to them, counted as pay") }
-                if !p.expenses.isEmpty { FlatRow(label: "Expenses paid", value: p.expenses.joined(separator: ", ")) }
-                FlatRow(label: "Contract", value: FixedTerm.endWeek(m).map { "Fixed term to week \($0)" } ?? "Permanent", sub: FixedTerm.endWeek(m).map { "\(max(0, $0 - (store.engine?.state.week ?? 0))) weeks left" } ?? "")
-                FlatRow(label: "Late this quarter", value: "\(p.lateThisQuarter)")
-                FlatRow(label: "Complaints this quarter", value: "\(p.complaintsThisQuarter)")
-                FlatRow(label: "Written warnings", value: "\(p.warnings)", sub: p.dismissalDocumented ? "Enough on file to let them go for cause" : "")
-                FlatRow(label: "Energy", value: p.tiredness > 60 ? "tired" : "fine", sub: "\(p.stamina). \(p.learns)", tint: p.tiredness > 60 ? Theme.caution : Theme.ivory)
+        let week: Int = store.engine?.state.week ?? 0
+        let raise: String = p.lastRaiseWeek.map { "\(max(0, week - $0)) weeks ago" } ?? "never"
+        let term: String = FixedTerm.endWeek(m).map { "Fixed term to week \($0)" } ?? "Permanent"
+        let left: String = FixedTerm.endWeek(m).map { "\(max(0, $0 - week)) weeks left" } ?? ""
+        return TeamGroup("Record") {
+            Card(padding: 14, radius: Theme.Radius.row) {
+                VStack(spacing: 0) {
+                    FlatRow(label: "Hours a week", value: "\(Int(p.hoursPerWeek.rounded()))", rule: false)
+                    FlatRow(label: "Last raise", value: raise, sub: p.underpaid ? "Paid less than the job usually pays" : "")
+                    if let plan = p.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: p.bonusPaidThisYear > 0 ? "\(cur.tidyShort(p.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
+                    if !p.perks.isEmpty { FlatRow(label: "Perks", value: p.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(p.perksWorth)) a month to them, counted as pay") }
+                    if !p.expenses.isEmpty { FlatRow(label: "Expenses paid", value: p.expenses.joined(separator: ", ")) }
+                    FlatRow(label: "Contract", value: term, sub: left)
+                    FlatRow(label: "Late this quarter", value: "\(p.lateThisQuarter)")
+                    FlatRow(label: "Complaints this quarter", value: "\(p.complaintsThisQuarter)")
+                    FlatRow(label: "Written warnings", value: "\(p.warnings)", sub: p.dismissalDocumented ? "Enough on file to let them go for cause" : "")
+                    FlatRow(label: "Energy", value: p.tiredness > 60 ? "tired" : "fine", sub: "\(p.stamina). \(p.learns)", tint: p.tiredness > 60 ? Theme.caution : Theme.ivory)
+                }
             }
         }
     }
 
     @ViewBuilder private func actions(_ e: GameEngine, _ co: Company, _ m: StaffMember, _ p: StaffProfile.Profile, _ cur: Currency) -> some View {
-        LedgerSection("What you can do") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                if let talk = e.contractTalk(personID: staffID), talk.isRequest {
-                    Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
-                }
-                Button("Contract discussion…") { discussing = true }.buttonStyle(QuietButtonStyle())
-                WrapRow {
-                    if p.problem != nil { Button("Talk to them") { talk(p) }.buttonStyle(QuietButtonStyle()) }
-                    Button("Written warning…") { confirmWarn(p) }.buttonStyle(QuietButtonStyle())
-                }
-                if !StaffExtras.missing(m).isEmpty {
-                    Button("Paperwork done (\(StaffExtras.missing(m).count))") {
-                        let done = store.act { $0.completePaperwork(companyID: companyID, personID: staffID) } ?? 0
-                        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+        let missing: Int = StaffExtras.missing(m).count
+        TeamGroup("What you can do") {
+            Card(padding: 14, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    if let talk = e.contractTalk(personID: staffID), talk.isRequest {
+                        Label("\(p.name) has asked about \(talk.proposal.topic.title.lowercased()).", systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
                     }
-                        .buttonStyle(QuietButtonStyle())
-                }
-                if !p.courses.isEmpty {
-                    Menu("Send on a course") {
-                        ForEach(p.courses, id: \.id) { c in
-                            Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { confirmCourse(c, p, cur) }
+                    WrapRow {
+                        TeamAction(title: "Contract discussion") { discussing = true }
+                        if p.problem != nil { TeamAction(title: "Talk to them") { talk(p) } }
+                        TeamAction(title: "Written warning") { warn(p) }
+                        if missing > 0 {
+                            TeamAction(title: "Paperwork done (\(missing))") {
+                                let done = store.act { $0.completePaperwork(companyID: companyID, personID: staffID) } ?? 0
+                                if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
+                            }
                         }
-                    }.buttonStyle(QuietButtonStyle())
-                    Text("Results vary: a course can change nothing, and a good result may tempt a competitor to poach them.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        if !p.courses.isEmpty {
+                            Menu {
+                                ForEach(p.courses, id: \.id) { c in
+                                    Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { confirmCourse(c, p, cur) }
+                                }
+                            } label: {
+                                Text("Send on a course").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1))
+                                    .frame(minHeight: 32)
+                            }
+                        }
+                        TeamAction(title: "Let go", tint: Theme.loss) { confirmDismiss(p, cur) }
+                    }
+                    if !p.courses.isEmpty {
+                        Text("Results vary: a course can change nothing, and a good result may tempt a competitor to poach them.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    }
                 }
-                Button("Let go…") { confirmDismiss(p, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
             }
         }
     }
@@ -269,11 +298,11 @@ struct StaffProfileView: View {
         store.show(ok == true ? "The talk helped: the problem is gone." : "The talk did not help. A warning is noted.", tone: ok == true ? "good" : "warn")
     }
 
-    private func confirmWarn(_ p: StaffProfile.Profile) {
-        pending = PendingAction(title: "Give \(p.name) a written warning?", message: "It goes on file (\(p.warnings) so far). Two warnings make a later dismissal easy to defend, but it can sour the mood. It may also settle a problem.", button: "Give warning") {
-            let worked = store.act { $0.warnStaff(companyID: companyID, staffID: staffID) } ?? nil
-            store.show(worked == true ? "The warning worked. \(p.name) has improved." : "Warning on file for \(p.name).", tone: worked == true ? "good" : "n")
-        }
+    private func warn(_ p: StaffProfile.Profile) {
+        let worked = store.act { $0.warnStaff(companyID: companyID, staffID: staffID) } ?? nil
+        if worked == nil { Haptics.warning(); store.show("The warning could not be given now.", tone: "warn"); return }
+        Haptics.tap()
+        store.show(worked == true ? "The warning worked. \(p.name) has improved." : "Warning on file for \(p.name).", tone: worked == true ? "good" : "n")
     }
 
     private func confirmCourse(_ c: StaffProfile.Course, _ p: StaffProfile.Profile, _ cur: Currency) {
@@ -298,5 +327,31 @@ struct StaffProfileView: View {
             store.show(r.claimedUnfairDismissal ? "\(p.name) is gone, and claimed unfair dismissal: \(cur.tidyDisplay(r.compensation)) paid on top of \(cur.tidyDisplay(r.severance)) severance." : (r.severance > 0 ? "Severance paid: \(cur.tidyDisplay(r.severance))." : "\(p.name) has left."), tone: r.claimedUnfairDismissal ? "bad" : "n")
             dismiss()
         }
+    }
+}
+
+/// A group header of a long list (a role with its head count and pay): a compact card that opens or closes the people under it.
+struct CardRowLabel: View {
+    var title: String
+    var subtitle: String
+    var value: String
+    var open: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(open ? 90 : 0))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                Text(subtitle).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            }
+            Spacer(minLength: 8)
+            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }

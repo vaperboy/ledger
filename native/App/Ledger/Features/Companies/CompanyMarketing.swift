@@ -20,7 +20,7 @@ struct CompanyMarketing: View {
             header(cur: cur, mkt: mkt, channels: channels)
             CompanyWaysToSell(engine: engine, company: company)
             if channels.isEmpty {
-                LedgerSection("Campaigns") { Text("No marketing channels are open to this business yet.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                Text("No marketing channels are open to this business yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
             }
             ForEach(channels, id: \.id) { ch in
                 channelCard(ch, cur: cur, mkt: mkt)
@@ -37,15 +37,18 @@ struct CompanyMarketing: View {
         }.count
         let spendText: String = spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns"
         let plural: String = running == 1 ? "" : "s"
-        return LedgerSection("Awareness") {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(Int(company.awareness.rounded()))%").font(.hero(34))
-                    Spacer()
-                    Chip(text: spendText, tint: spend > 0 ? Theme.gold : Theme.ivoryMuted, symbol: "megaphone.fill")
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("AWARENESS").capsLabel()
+            Card {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(Int(company.awareness.rounded()))%").font(.hero(34)).foregroundStyle(Theme.ivory)
+                        Spacer()
+                        Chip(text: spendText, tint: spend > 0 ? Theme.gold : Theme.ivoryMuted)
+                    }
+                    Text("People who know about you. \(running) campaign\(plural) running.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    Text("Marketing builds awareness, which fades every week. Results vary: some channels pay off well, some do little.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
-                Text("People who know about you. \(running) campaign\(plural) running.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                Text("Marketing builds awareness, which fades every week. Results vary: some channels pay off well, some do little.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
@@ -57,7 +60,7 @@ struct CompanyMarketing: View {
         return Card {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(spacing: Theme.Space.m) {
-                    IconBadge(symbol: symbol(ch.id), tint: budget > 0 ? Theme.gold : Theme.ivoryMuted)
+                    IconCircle(glyph: glyph(ch.id), size: 36, tint: budget > 0 ? Theme.gold : Theme.ivoryMuted)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ch.name).font(.bodyText.weight(.semibold))
                         HStack(spacing: 6) {
@@ -72,7 +75,7 @@ struct CompanyMarketing: View {
                 if plan?.runByChain == true {
                     Text("Run by the chain: it sets this channel's budget for the store.").font(.caption2).foregroundStyle(Theme.caution)
                 } else if let why = plan?.blocked {
-                    Label(why.prefix(1).uppercased() + why.dropFirst() + ".", systemImage: "lock.fill").font(.caption2).foregroundStyle(Theme.caution)
+                    Text(why.prefix(1).uppercased() + why.dropFirst() + ".").font(.caption2).foregroundStyle(Theme.caution)
                 } else {
                     controls(ch, cur: cur, budget: budget)
                 }
@@ -96,17 +99,16 @@ struct CompanyMarketing: View {
         WrapRow {
             Group {
                 ForEach(lengths, id: \.self) { (w: Int) in
-                    Button(w == 0 ? "Until I stop it" : "\(w) weeks") { length[ch.id] = w }
-                        .buttonStyle(QuietButtonStyle(tint: (length[ch.id] ?? 0) == w ? Theme.gold : Theme.ivoryMuted))
+                    OptionPill(title: w == 0 ? "Until I stop it" : "\(w) weeks", on: (length[ch.id] ?? 0) == w) { length[ch.id] = w }
                 }
             }
         }
         Text("Weekly budget (tap to start; a confirmation shows the total)").font(.caption).foregroundStyle(Theme.ivoryMuted)
         WrapRow {
             Group {
-                Button("Off") { ask(ch, 0, cur) }.buttonStyle(QuietButtonStyle(tint: budget == 0 ? Theme.gold : Theme.ivoryFaint))
+                OptionPill(title: "Off", on: budget == 0) { ask(ch, 0, cur) }
                 ForEach(budgets, id: \.self) { (b: Double) in
-                    Button(cur.tidyShort(b) + "/wk") { ask(ch, b, cur) }.buttonStyle(QuietButtonStyle(tint: budget == b ? Theme.gold : Theme.ivoryMuted))
+                    OptionPill(title: cur.tidyShort(b) + "/wk", on: budget == b) { ask(ch, b, cur) }
                 }
             }
         }
@@ -125,9 +127,10 @@ struct CompanyMarketing: View {
         pending = PendingAction(title: "Run \(ch.name)?", message: lines.joined(separator: "\n"), button: "Start campaign") { set(ch.id, budget, weeks) }
     }
 
-    private func symbol(_ id: String) -> String {
-        ["flyer": "doc.richtext.fill", "google": "magnifyingglass", "meta": "person.2.wave.2.fill", "tiktok": "play.rectangle.fill", "local": "radio.fill",
-         "bill": "rectangle.on.rectangle", "seo": "globe", "mail": "envelope.fill", "b2b": "briefcase.fill", "fair": "flag.fill", "ref": "person.line.dotted.person.fill", "primetime": "tv.fill"][id] ?? "megaphone.fill"
+    private func glyph(_ id: String) -> String {
+        let map: [String: String] = ["flyer": Glyph.reports, "google": Glyph.stats, "meta": Glyph.team, "tiktok": Glyph.ventures, "local": Glyph.news,
+                                    "bill": Glyph.news, "seo": Glyph.world, "mail": Glyph.inbox, "b2b": Glyph.bank, "fair": Glyph.goals, "ref": Glyph.person, "primetime": Glyph.luxury]
+        return map[id] ?? Glyph.market
     }
 
     private func set(_ channel: String, _ budget: Double, _ weeks: Int?) {
@@ -138,5 +141,30 @@ struct CompanyMarketing: View {
             let cur = engine.currency(for: company)
             store.show(budget <= 0 ? "Campaign stopped." : "Campaign running at \(cur.tidyShort(budget)) a week.", tone: budget <= 0 ? "n" : "good")
         }
+    }
+}
+
+/// A short outlined choice (a campaign length or budget): the chosen one is washed and outlined in champagne.
+private struct OptionPill: View {
+    var title: String
+    var on: Bool
+    var action: () -> Void
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous)
+        Button {
+            Haptics.choose()
+            action()
+        } label: {
+            Text(title)
+                .font(.system(size: 12.5, weight: on ? .medium : .regular))
+                .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                .padding(.horizontal, 12).frame(minHeight: 34)
+                .background(shape.fill(on ? Theme.goldSelected : Color.clear))
+                .overlay(shape.strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

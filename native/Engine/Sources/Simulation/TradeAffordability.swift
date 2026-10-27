@@ -19,8 +19,8 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
 
     /// Every trade, priced for the home country in `cityID` at the recommended size (a limited company only where the trade needs one).
     /// Funded trades first, cheapest first; then the ones that need more money, cheapest first; then the ones that cannot be started.
-    public static func rows(state s: GameState, data: GameData, cityID: String) -> [TradeAffordability] {
-        let country = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+    public static func rows(state s: GameState, data: GameData, cityID: String, countryCode: String? = nil) -> [TradeAffordability] {
+        let country = data.countries.resolve(countryCode ?? s.homeCountryCode, orHome: s.homeCountryCode)
         let city = country.city(cityID) ?? country.cities[0]
         let available = Payments.liquid(s)
         // A limited company needs its share capital in the account before it can even be priced; price it on a copy that has it.
@@ -29,7 +29,7 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
             let blocked = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
             let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
-            let est = CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: CompanySetup.recommendedSize(t, city: city), state: probe, data: data)
+            let est = CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: CompanySetup.recommendedSize(t, city: city), countryCode: country.code, state: probe, data: data)
             return TradeAffordability(tradeID: t.id, cost: est?.total, available: available, blocked: est == nil ? "Cannot be priced here" : nil)
         }
         func rank(_ r: TradeAffordability) -> Int { r.blocked != nil ? 2 : (r.isFunded ? 0 : 1) }

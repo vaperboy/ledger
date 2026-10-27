@@ -80,6 +80,6 @@ struct RivalGroupProfileView: View {
         }
         .scrollIndicators(.hidden)
         .ledgerBackground()
-        .navigationTitle("Rival group").navigationBarTitleDisplayMode(.inline)
+        .appScreen(title: "Rival group", subtitle: "Who owns it and how it competes", tab: .group)
     }
 }

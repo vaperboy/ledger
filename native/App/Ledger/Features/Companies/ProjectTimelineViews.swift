@@ -75,14 +75,11 @@ struct ProjectTimelineDetail: View {
     var lineID: String
 
     var body: some View {
-        ScrollView {
-            if let e = store.engine, let line = e.projectTimelines().first(where: { $0.id == lineID }), let co = e.state.company(line.companyID) {
+        let found = store.engine.flatMap { e in e.projectTimelines().first(where: { $0.id == lineID }).map { (e, $0) } }
+        return ScrollView {
+            if let (e, line) = found, let co = e.state.company(line.companyID) {
                 let now = e.state.week
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(line.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("\(co.name) · \(kindWord(line.kind)) · \(line.subtitle)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
                     KeyFigures(items: figures(line, co, now))
                     if let p = line.progress { RateBar(label: "Progress", fraction: p, tint: line.delayed ? Theme.caution : Theme.gain) }
                     if let b = line.blocking {
@@ -118,8 +115,8 @@ struct ProjectTimelineDetail: View {
             }
         }
         .scrollIndicators(.hidden)
-        .ledgerBackground()
-        .navigationBarTitleDisplayMode(.inline)
+        .appScreen(title: found.map { $0.1.title.tidyMoney } ?? "Project",
+                   subtitle: found.map { "\($0.1.companyName) · \(kindWord($0.1.kind)) · \($0.1.subtitle)" } ?? "", tab: .projects)
     }
 
     private func figures(_ l: ProjectTimeline, _ co: Company, _ now: Int) -> [KeyFigures.Item] {
@@ -153,5 +150,64 @@ struct ProjectTimelineDetail: View {
                 }
             }
         }.padding(.vertical, 9)
+    }
+}
+
+
+/// The weeks chart of the Timeline tab: one bar per running project over `back` weeks before today and `ahead` weeks after, a white
+/// line for today, amber for late, grey for work that has not started. Drawn with shapes from `ProjectTimeline` start and due weeks.
+struct ProjectWeeksChart: View {
+    var lines: [ProjectTimeline]
+    var now: Int
+    var back = 2
+    var ahead = 12
+
+    private var span: Double { Double(back + ahead) }
+    private func x(_ week: Int, _ w: CGFloat) -> CGFloat { CGFloat(min(max(Double(week - (now - back)) / span, 0), 1)) * w }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 0) {
+                Color.clear.frame(width: 96)
+                GeometryReader { g in
+                    ForEach(Array(stride(from: now - back, to: now + ahead, by: 2).enumerated()), id: \.offset) { _, wk in
+                        Text(shortDate(week: wk)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).fixedSize()
+                            .position(x: x(wk, g.size.width) + 14, y: 7)
+                    }
+                }.frame(height: 14)
+            }
+            ForEach(lines.sorted { ($0.startWeek ?? now) < ($1.startWeek ?? now) }) { l in
+                HStack(spacing: 4) {
+                    Text(l.title.tidyMoney).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).frame(width: 92, alignment: .leading)
+                    GeometryReader { g in
+                        let start = l.startWeek ?? now
+                        let rawEnd = l.dueWeek ?? (now + 4)
+                        let late = l.delayed || l.overdueWeeks > 0
+                        let end = max(rawEnd, late ? now + 1 : start + 1)
+                        let a = x(start, g.size.width), b = max(x(end, g.size.width), a + 6)
+                        ZStack(alignment: .leading) {
+                            ForEach(0..<(back + ahead + 1), id: \.self) { i in
+                                Rectangle().fill(Color(hex: 0x1E1F21)).frame(width: 1).offset(x: CGFloat(i) / CGFloat(span) * g.size.width)
+                            }
+                            Capsule().fill(color(l, late)).opacity(0.85).frame(width: b - a, height: 12).offset(x: a)
+                            Rectangle().fill(Theme.ivory).frame(width: 2, height: 18).offset(x: x(now, g.size.width) - 1)
+                        }.frame(maxHeight: .infinity)
+                    }.frame(height: 22)
+                }
+                .padding(.top, 8)
+                .overlay(alignment: .top) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+            }
+            Text("White line is today. Amber bars are running late.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryDim)
+        }
+        .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 10)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Timeline of \(lines.count) projects: " + lines.map { "\($0.title) due \($0.dueWeek.map { shortDate(week: $0) } ?? "no date")" }.joined(separator: ", "))
+    }
+
+    private func color(_ l: ProjectTimeline, _ late: Bool) -> Color {
+        if late { return Theme.caution }
+        return (l.progress ?? 0) > 0 || l.stages.contains { $0.state == .done && $0.name != "Taken on" && $0.name != "Booked" } ? Theme.gain : Theme.ivoryFaint
     }
 }
