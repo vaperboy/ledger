@@ -21,56 +21,53 @@ struct CompanyPayroll: View {
             if let info = engine.paydayInfo(companyID: company.id) {
                 paydaySection(info)
             }
-            LedgerSection("What falls due") {
-                VStack(alignment: .leading, spacing: 6) {
-                    if due.isEmpty {
+            TeamGroup("What falls due") {
+                if due.isEmpty {
+                    Card(padding: 14, radius: Theme.Radius.row) {
                         Text("Nothing is waiting: no wages are owed and no rent or supplier bills have built up this month.")
                             .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(due) { u in
-                                ListRow(symbol: "calendar", tint: Theme.ivoryMuted, title: u.title, subtitle: u.detail, trailing: cur.tidyShort(u.amount), trailingSub: u.dateText)
-                            }
-                        }
                     }
-                    Text("Wages build up week by week and leave on pay day. Rent and supplier bills leave on the last day of the month. Both come from company cash; if it runs short, wages are late and the bills carry interest.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(due) { u in
+                        CardRow(glyph: Glyph.reports, title: u.title, subtitle: u.detail + (u.dateText.isEmpty ? "" : " · " + u.dateText), value: cur.tidyShort(u.amount), chevron: false)
+                    }
                 }
+                Text("Wages build up week by week and leave on pay day. Rent and supplier bills leave on the last day of the month. Both come from company cash; if it runs short, wages are late and the bills carry interest.")
+                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
         .confirmAction($pending)
     }
 
     @ViewBuilder private func paydaySection(_ info: PaydayInfo) -> some View {
-        LedgerSection(title: "Pay day", trailing: {
+        TeamGroup(title: "Pay day", trailing: {
             Text(info.dayLabel).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                if !info.hasPayroll {
+            if !info.hasPayroll {
+                Card(padding: 14, radius: Theme.Radius.row) {
                     Text("No one is on the payroll yet, so there is nothing to pay. Pay day matters once you hire someone.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("Staff are next paid on \(info.nextPayText). Rent and supplier bills follow on \(info.billText).")
-                        .font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    if let q = info.pendingLabel {
-                        Text("Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
-                    }
-                    if info.isLate {
-                        Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
-                    }
-                    VStack(spacing: 0) {
-                        ForEach(info.choices) { c in
-                            Button { choose(c, info) } label: {
-                                ListRow(symbol: c.isCurrent ? "checkmark.circle.fill" : (c.isQueued ? "clock" : "circle"),
-                                        tint: c.isCurrent ? Theme.gold : Theme.ivoryMuted, title: c.label, subtitle: timing(c, info),
-                                        trailing: c.isCurrent ? "Current" : (c.isQueued ? "Queued" : ""), chevron: !c.isCurrent)
-                            }.buttonStyle(.plain)
+                }
+            } else {
+                Card(padding: 14, radius: Theme.Radius.row) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Staff are next paid on \(info.nextPayText). Rent and supplier bills follow on \(info.billText).")
+                            .font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        if let q = info.pendingLabel {
+                            Text("Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                        }
+                        if info.isLate {
+                            Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
                         }
                     }
-                    Text("A weekend pay day is paid the Friday before. Early in the month last month's takings are in; the last day stacks wages and rent on one day.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
+                ForEach(info.choices) { c in
+                    let tag: String = c.isCurrent ? "Current" : (c.isQueued ? "Queued" : "")
+                    ChoiceCard(title: c.label, subtitle: timing(c, info), trailing: tag, selected: c.isCurrent || c.isQueued) { choose(c, info) }
+                }
+                Text("A weekend pay day is paid the Friday before. Early in the month last month's takings are in; the last day stacks wages and rent on one day.")
+                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -100,14 +97,6 @@ struct CompanyPayroll: View {
             default: Haptics.warning(); store.show("The pay day could not be changed.", tone: "warn")
             }
         }
-        if info.changesImmediately {
-            pending = PendingAction(title: "Move pay day to the \(name)?",
-                                    message: "This month is already paid. From next month staff are paid on \(first) instead of the \(current): \(gap(c)). Staff need notice, and wages then fall due at a different time of the month from your takings.",
-                                    button: "Move pay day", run: run)
-        } else {
-            pending = PendingAction(title: "Move pay day to the \(name)?",
-                                    message: "This month's payroll still goes out on \(nextPay). After it staff are paid on the \(name), first on \(first). Nothing is paid twice or skipped.",
-                                    button: "Queue the change", run: run)
-        }
+        run()
     }
 }

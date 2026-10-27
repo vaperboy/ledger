@@ -20,7 +20,7 @@ struct CompanyTargetsCard: View {
     var body: some View {
         if let st = engine.targetStatus(companyID: company.id) {
             let cur = engine.currency(for: company)
-            LedgerSection(title: "Targets and budget", trailing: { Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            TeamCardGroup(title: "Targets and budget", trailing: { Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if st.standing.isEmpty {
                         Text("No targets this month yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
@@ -125,7 +125,7 @@ struct CompanyPerksCard: View {
         if !company.staff.isEmpty || company.managerID != nil {
             let cur = engine.currency(for: company)
             let total = engine.staffPerksMonthlyTotal(companyID: company.id)
-            LedgerSection(title: "Perks", trailing: { Text(total > 0 ? "\(cur.tidyShort(total)) a month" : "none yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            TeamCardGroup(title: "Perks", trailing: { Text(total > 0 ? "\(cur.tidyShort(total)) a month" : "none yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(engine.staffPerkOptions.enumerated()), id: \.element.id) { n, p in
                         let on = engine.staffPerkIsOn(companyID: company.id, perk: p.id)
