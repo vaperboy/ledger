@@ -1,11 +1,14 @@
 import SwiftUI
 import GameCore
+import Countries
 import Businesses
 import Simulation
 
-/// The parts of Operations, shown as the second row of tabs under the company's own tabs.
+/// Where Operations is: `setup` is the page itself; the others are the full-screen pages a row of its settings table opens
+/// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
-    case setup = "Setup", sell = "How you sell", marketing = "Marketing", premises = "Premises", more = "More"
+    case setup = "Operations", sell = "How you sell", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
+    case equipment = "Equipment", insurance = "Insurance and advisers", workplace = "Where you work"
 }
 
 extension Glyph {
@@ -16,247 +19,155 @@ extension Glyph {
     static let building = "M5 21 V4 H15 V21 M15 9 H19 V21 M3 21 H21 M8 8 H12 M8 12 H12 M8 16 H12"
 }
 
-/// Operations of one company: Setup, How you sell, Marketing, Premises and More (suppliers, equipment, insurance).
+/// The words for the small Operations settings (labels only; the numbers behind them live in the engine).
+enum OpsWords {
+    static let maintenance: [String] = ["Minimal", "Normal", "Thorough"]
+    static let stock: [String] = ["Lean", "Balanced", "Generous"]
+    static func name(_ names: [String], _ i: Int) -> String { names[min(names.count - 1, max(0, i))] }
+    static func price(_ l: Double) -> String {
+        switch l { case ..<(-1.9): return "Bargain"; case ..<(-0.4): return "Below market"; case ..<0.4: return "At market"; case ..<1.9: return "Premium"; default: return "Luxury" }
+    }
+}
+
+/// A small setting changed in a sheet.
+enum OpsSheet: String, Identifiable {
+    case price, hours, maintenance, stock, hold
+    var id: String { rawValue }
+}
+
+/// Operations of one company on ONE page: key figures above, a table of settings (each row one setting with its current value; a
+/// small change opens a sheet, a bigger decision a full page), and warnings and open items below.
 struct CompanyOperations: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
-    @State private var pending: PendingAction?
-    @State private var lastPrice: SettingResult?
+    @State private var sheet: OpsSheet?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            SectionTabs(items: OpsPart.allCases, title: { $0.rawValue }, selection: $part, sub: true)
-                .padding(.horizontal, -Theme.Space.margin)
-            switch part {
-            case .setup: setup
-            case .sell: sell
-            case .marketing: CompanyMarketing(engine: engine, company: company)
-            case .premises: premises
-            case .more: more
-            }
-        }
-        .confirmAction($pending)
-    }
-
-    // MARK: Setup
-
-    @ViewBuilder private var setup: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            priceCard
-            hoursCard
-            upkeepCard
-            CoverageEntryRow(engine: engine, company: company)
-            CompanyWorkplaceSection(engine: engine, company: company)
+            keyFigures
+            settingsTable
+            warnings
             CompanyOtherSections(engine: engine, company: company)
         }
+        .sheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
+        .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
+            OpsPageDestination(part: part, companyID: company.id)
+        }
     }
 
-    private var priceCard: some View {
-        let level: Double = company.priceLevel
-        let signed: String = String(format: "%+.1f", level)
-        let priceBinding = Binding<Double>(get: { company.priceLevel }, set: { v in
-            lastPrice = store.act { $0.setPriceLevel(companyID: company.id, level: (v * 2).rounded() / 2) }
-        })
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("PRICE").capsLabel()
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(priceWord(level)).font(.hero(34)).foregroundStyle(Theme.ivory)
-                        Spacer()
-                        Text(signed).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    Slider(value: priceBinding, in: -3...3, step: 0.5) { editing in
-                        if !editing {
-                            Haptics.tap()
-                            store.settle(lastPrice, "Price: \(priceWord(company.priceLevel)).", same: "Price is already \(priceWord(company.priceLevel)).", tone: "good")
-                        }
-                    }
-                    .tint(Theme.gold)
-                    HStack {
-                        Text("Bargain").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        Spacer()
-                        Text("Luxury").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Text("Cheaper brings more customers, dearer more profit per sale. The right spot depends on your trade and area. The change applies from next week.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    inflationHold
-                }
+    // MARK: Key figures above
+
+    private var marketingSpend: Double {
+        company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+    }
+
+    private var keyFigures: some View {
+        let cur: Currency = engine.currency(for: company)
+        let spend: Double = marketingSpend
+        let spendText: String = spend > 0 ? cur.tidyShort(spend) + " a wk" : "None"
+        let cells: [StatStrip.Cell] = [
+            .init(label: "Price", value: OpsWords.price(company.priceLevel)),
+            .init(label: "Awareness", value: "\(Int(company.awareness.rounded()))%"),
+            .init(label: "Your time", value: "\(Int(company.ownerHours.rounded())) h"),
+            .init(label: "Marketing", value: spendText, tint: spend > 0 ? Theme.gold : Theme.ivoryMuted),
+        ]
+        return Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("How it runs").capsLabel()
+                Text(OpsWords.price(company.priceLevel)).font(.hero(34)).foregroundStyle(Theme.ivory)
+                Text("Cheaper brings more customers, dearer more profit per sale. Changes apply from next week.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                StatStrip(cells: cells)
             }
         }
     }
 
-    private var hoursCard: some View {
-        let hours: Int = Int(company.ownerHours.rounded())
-        let line: String = company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself"
-        let hoursBinding = Binding<Double>(get: { company.ownerHours }, set: { v in
-            store.settle(store.act { $0.setOwnerHours(companyID: company.id, hours: v) }, "Hours saved.", same: "Hours are already that.")
-        })
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("YOUR TIME").capsLabel()
-                Spacer()
-                Text("Max 80 h across all companies").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            }
-            Card {
-                HStack(spacing: Theme.Space.m) {
-                    IconCircle(glyph: Glyph.person)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(hours) hours a week").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(line).font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    Spacer()
-                    StepperPill(value: hoursBinding, range: 0...80, step: 5)
-                }
+    // MARK: Table of settings
+
+    private var settingsTable: some View {
+        SettingsTable {
+            smallRows
+            bigRows
+        }
+    }
+
+    @ViewBuilder private var smallRows: some View {
+        let hold: Bool = company.flag("inflHold")
+        SettingsTableRow(title: "Price", note: "Where you sit against the market", value: OpsWords.price(company.priceLevel) + " " + String(format: "%+.1f", company.priceLevel), opens: .sheet) { sheet = .price }
+        SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", opens: .sheet) { sheet = .hours }
+        SettingsTableRow(title: "Maintenance", note: "Equipment upkeep", value: OpsWords.name(OpsWords.maintenance, company.maintenance), opens: .sheet) { sheet = .maintenance }
+        SettingsTableRow(title: "Stock", note: "How much you keep in hand", value: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)), opens: .sheet) { sheet = .stock }
+        SettingsTableRow(title: "Hold my prices", note: "Keep prices fixed while the market inflates", value: hold ? "On" : "Off", valueTint: hold ? Theme.gold : Theme.ivoryMuted, opens: .sheet) { sheet = .hold }
+    }
+
+    @ViewBuilder private var bigRows: some View {
+        let cur: Currency = engine.currency(for: company)
+        if let trade = engine.tradeInfo(companyID: company.id), !trade.knobs.isEmpty {
+            SettingsTableRow(title: "How you sell", note: "Concept and add-ons", value: sellSummary(trade)) { part = .sell }
+        }
+        SettingsTableRow(title: "Marketing", note: "Campaigns, ways to sell", value: marketingSpend > 0 ? cur.tidyShort(marketingSpend) + " a week" : "No campaigns") { part = .marketing }
+        premisesRow
+        if engine.isHomeTrade(companyID: company.id), company.status.isLive {
+            SettingsTableRow(title: "Where you work", note: "Home, workshop or office", value: engine.isWorkingFromHome(companyID: company.id) ? "At home" : "Own place") { part = .workplace }
+        }
+        if CompanySourcing.isAvailable(engine: engine, company: company) {
+            SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs") { part = .suppliers }
+        }
+        SettingsTableRow(title: "Equipment and fleet", note: "Brands, buy, lease, subscribe", value: "Manage") { part = .equipment }
+        coverageRow
+    }
+
+    @ViewBuilder private var premisesRow: some View {
+        if engine.tradeInfo(companyID: company.id)?.family == "rent" {
+            let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
+            SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")") { part = .premises }
+        } else {
+            let place: String = engine.isWorkingFromHome(companyID: company.id) ? "At home" : company.value("prem")["owned"].bool ? "Owned" : "Rented"
+            SettingsTableRow(title: "Premises", note: "Rent, buy or work from home", value: place) { part = .premises }
+        }
+    }
+
+    @ViewBuilder private var coverageRow: some View {
+        let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
+        let count: Int = o?.activeCount ?? 0
+        let total: Int = o?.policies.count ?? 0
+        SettingsTableRow(title: "Insurance and advisers", note: "Policies, insurer, law firm, accountant",
+                         value: count == 0 ? "Not insured" : "\(count) of \(total) policies", valueTint: count == 0 ? Theme.caution : Theme.ivory) { part = .insurance }
+    }
+
+    /// The company's current choice for each of its "how you sell" knobs, in one line.
+    private func sellSummary(_ trade: Trade) -> String {
+        let names: [String] = trade.knobs.compactMap { (knob: Knob) -> String? in
+            let v: JSONValue = company.value("knob")[knob.id]
+            let i: Int = v.isNull ? knob.defaultIndex : v.int
+            return knob.options.indices.contains(i) ? knob.options[i].name : nil
+        }
+        return names.isEmpty ? "Set" : names.joined(separator: ", ")
+    }
+
+    // MARK: Below: warnings
+
+    @ViewBuilder private var warnings: some View {
+        let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
+        let uninsured: Bool = (o?.activeCount ?? 1) == 0
+        let outgrown: Bool = engine.isHomeTrade(companyID: company.id) && engine.hasOutgrownHome(companyID: company.id)
+        if uninsured || outgrown {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("WORTH A LOOK").capsLabel()
+                if uninsured { warning("Not insured. A bad week has nothing behind it: pick an insurer, then the policies you want.") }
+                if outgrown { warning("The team has outgrown working from home: morale and quality slip every week.") }
             }
         }
     }
 
-    private var upkeepCard: some View {
-        let maintenance = Binding<Int>(get: { company.maintenance }, set: { v in
-            store.act { $0.setMaintenance(companyID: company.id, level: v) }
-            store.saved("Maintenance: \(["minimal", "normal", "thorough"][min(2, max(0, v))])")
-        })
-        let stock = Binding<Int>(get: { company.int("stockPol", 1) }, set: { v in
-            store.act { $0.setStockPolicy(companyID: company.id, level: v) }
-            store.saved("Stock: \(["lean", "balanced", "generous"][min(2, max(0, v))])")
-        })
-        let maintenanceNames: [String] = ["Minimal", "Normal", "Thorough"]
-        let stockNames: [String] = ["Lean", "Balanced", "Generous"]
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("UPKEEP AND STOCK").capsLabel()
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Maintenance").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    SegmentedPill(items: [0, 1, 2], title: { maintenanceNames[$0] }, selection: maintenance)
-                    Text("Stock").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, Theme.Space.xs)
-                    SegmentedPill(items: [0, 1, 2], title: { stockNames[$0] }, selection: stock)
-                    Text("Thorough upkeep costs more but equipment breaks less; generous stock avoids running out but ties up cash.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
+    private func warning(_ text: String) -> some View {
+        Card(padding: 12, radius: Theme.Radius.row) {
+            HStack(alignment: .top, spacing: 10) {
+                GlyphView(glyph: Glyph.warning, size: 16, weight: 1.5, tint: Theme.caution)
+                Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    // MARK: How you sell
-
-    @ViewBuilder private var sell: some View {
-        let trade: Trade? = engine.tradeInfo(companyID: company.id)
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if let trade, !trade.knobs.isEmpty {
-                CompanyHowYouSell(engine: engine, company: company, trade: trade)
-            } else {
-                Text("This business has no choices of how to sell.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
-            }
-            if CompanySourcing.isAvailable(engine: engine, company: company) {
-                suppliersRow
-            }
-        }
-    }
-
-    private var suppliersRow: some View {
-        let chain: JSONValue? = engine.chainOf(companyID: company.id)
-        let chainName: String = chain?["name"].string ?? ""
-        let chainLabel: String = chainName.isEmpty ? "your chain" : chainName
-        let note: String = chain == nil ? "" : "This store belongs to \(chainLabel). Where the chain or a franchise agreement fixes a supplier, the choice is locked for the store and says so."
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("SUPPLIERS").capsLabel()
-            Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    HStack(spacing: Theme.Space.m) {
-                        IconCircle(glyph: Glyph.suppliers)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Compare suppliers").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                            Text("Price, terms and reliability for each input").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                        }
-                        Spacer(minLength: 8)
-                        NavigationLink { CompanySuppliersScreen(companyID: company.id) } label: { thisStoreLabel }
-                            .buttonStyle(.plain)
-                    }
-                    if !note.isEmpty {
-                        HStack(alignment: .top, spacing: 8) {
-                            GlyphView(glyph: Glyph.info, size: 14, weight: 1.6, tint: Theme.ivoryFaint)
-                            Text(note).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var thisStoreLabel: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-        return HStack(spacing: 4) {
-            Text("This store").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.gold)
-        }
-        .padding(.horizontal, 10).padding(.vertical, 4)
-        .frame(minHeight: 30)
-        .overlay(shape.strokeBorder(Theme.borderStrong, lineWidth: 1))
-        .contentShape(Rectangle())
-    }
-
-    // MARK: Premises
-
-    @ViewBuilder private var premises: some View {
-        let family: String? = engine.tradeInfo(companyID: company.id)?.family
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if family == "rent" {
-                CompanyProperties(engine: engine, company: company)
-            } else {
-                NavigationLink { CompanyEquipmentScreen(companyID: company.id, opensOnPremises: true) } label: {
-                    CardRow(glyph: Glyph.building, title: "Premises", subtitle: "Where the business works: rent, buy or work from home")
-                }.buttonStyle(.plain)
-                if engine.isHomeTrade(companyID: company.id) {
-                    Text("Working from home, and moving into a workshop or office, are under Setup.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
-            }
-        }
-    }
-
-    // MARK: More
-
-    @ViewBuilder private var more: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if CompanySourcing.isAvailable(engine: engine, company: company) {
-                NavigationLink { CompanySuppliersScreen(companyID: company.id) } label: {
-                    CardRow(glyph: Glyph.suppliers, title: "Suppliers", subtitle: "Who provides each input, and what a different provider would save or cost")
-                }.buttonStyle(.plain)
-            }
-            EquipmentEntryRow(company: company)
-            CoverageEntryRow(engine: engine, company: company)
-        }
-    }
-
-    /// "Hold my prices": prices stay where they were set while the market inflates, so customers see the company as cheaper over time.
-    /// Switching it off lets prices follow the market again and drops the edge built up so far (the engine resets it).
-    @ViewBuilder private var inflationHold: some View {
-        let held = company.flag("inflHold")
-        let edge = max(0, (company.num("ig", 1) - 1) * 100)
-        Toggle(isOn: Binding(get: { held }, set: { v in setHold(v, edge: edge) })) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Hold my prices").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                Text(held ? (edge >= 0.5 ? "Customers now see you about \(Int(edge.rounded()))% cheaper than if prices had followed inflation. Costs still rise." : "Prices stay where you set them while the market inflates. Costs still rise.")
-                          : "Prices follow inflation by themselves. Switch on to keep them where you set them: customers see you as cheaper over time, but your margin shrinks as costs rise.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            }
-        }.tint(Theme.gold)
-    }
-
-    private func setHold(_ on: Bool, edge: Double) {
-        let id = company.id, name = company.name
-        let apply = {
-            guard store.act({ $0.setInflationHold(companyID: id, hold: on) }) != nil else { store.show("Could not change the price setting.", tone: "warn"); return }
-            store.show(on ? "\(name) now holds its prices." : "\(name)'s prices follow inflation again.", tone: "n")
-        }
-        if !on && edge >= 0.5 {
-            pending = PendingAction(title: "Let prices follow inflation?", message: "The edge built up while holding (about \(Int(edge.rounded()))% cheaper in customers' eyes) is dropped at once.", button: "Let go", run: apply)
-        } else { apply() }
-    }
-
-    private func priceWord(_ l: Double) -> String {
-        switch l { case ..<(-1.9): return "Bargain"; case ..<(-0.4): return "Below market"; case ..<0.4: return "At market"; case ..<1.9: return "Premium"; default: return "Luxury" }
     }
 }
