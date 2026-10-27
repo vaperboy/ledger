@@ -276,7 +276,7 @@ struct PremisesPicker: View {
         }
     }
 
-    private func modeNote(_ o: NewCompanyPlan.Option) -> String {
+    private func modeNote(_ o: NewCompanyPlan.PremisesOption) -> String {
         if buying {
             return "Buying: \(cur.tidyShort(o.purchasePrice)). You pay \(cur.tidyShort(o.downPayment)) down and \(cur.tidyShort(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up."
         }
