@@ -18,7 +18,7 @@ struct CompanySourcing: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var part: Part = .inputs
+    @State private var showSupplying = false
     @State private var open: String?
     /// The provider picked in each input's comparison table, by input id.
     @State private var picked: [String: String] = [:]
@@ -27,8 +27,6 @@ struct CompanySourcing: View {
     @State private var talks: [String: HireFeedback] = [:]
     @State private var lastAsk: [String: Double] = [:]
     private let classNames = Suppliers.goodsClassNames
-
-    private enum Part: String, CaseIterable { case inputs = "Inputs", supplying = "Supplying" }
 
     /// One provider on the price dot plot.
     private struct Dot: Identifiable {
@@ -43,13 +41,17 @@ struct CompanySourcing: View {
         if company.status.isLive, !inputs.isEmpty || !sells.isEmpty {
             let cur = engine.currency(for: company)
             let both: Bool = !inputs.isEmpty && !sells.isEmpty
-            let showSupplying: Bool = inputs.isEmpty || (both && part == .supplying)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 summary(inputs, sells: sells, cur: cur)
                 if both {
-                    SegmentedPill(items: Part.allCases, title: { $0 == .supplying ? "Supplying (\(sells.count))" : "Inputs (\(inputs.count))" }, selection: $part)
+                    SettingsTable(heading: "Sourcing") {
+                        SettingsTableRow(title: "Supplying", note: "Companies you sell to", value: "\(sells.count) \(sells.count == 1 ? "company" : "companies")") { showSupplying = true }
+                    }
                 }
-                if showSupplying { supplying(sells, cur: cur) } else { inputsList(inputs, cur: cur) }
+                if inputs.isEmpty { supplying(sells, cur: cur) } else { inputsList(inputs, cur: cur) }
+            }
+            .navigationDestination(isPresented: $showSupplying) {
+                SettingsPage(title: "Supplying", subtitle: company.name) { supplying(engine.supplyLinks().filter { $0.supplierID == company.id }, cur: cur) }
             }
             .confirmAction($pending)
         }

@@ -17,7 +17,10 @@ struct EquipmentEntryRow: View {
     }
 }
 
-private enum EquipmentTab: String, CaseIterable, Hashable { case needed = "Needed", owned = "Owned", fleet = "Fleet", software = "Software", premises = "Premises" }
+private enum EquipmentTab: String, CaseIterable, Hashable, Identifiable {
+    case needed = "Equipment", fleet = "Fleet", software = "Software", premises = "Premises"
+    var id: String { rawValue }
+}
 
 /// Equipment item by item: what is needed, what is owned unit by unit, the fleet, software and the choice of premises.
 /// Original: `eqUI` and its tabs (features/company/realistic_buying.js).
@@ -26,7 +29,7 @@ struct CompanyEquipmentScreen: View {
     var companyID: Int
     /// Opened from the setup checklist's premises row: start on the choice of premises.
     var opensOnPremises = false
-    @State private var tab: EquipmentTab = .needed
+    @State private var tab: EquipmentTab?
     @State private var pending: Pending? = nil
     @State private var pendingListing: CompanySetup.Listing? = nil
 
@@ -54,14 +57,7 @@ struct CompanyEquipmentScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment health \(Int(($0 * 100).rounded()))%" } ?? ""))
-                    SectionTabs(items: tabs, title: { $0.rawValue }, selection: $tab).padding(.horizontal, -Theme.Space.margin)
-                    switch tab {
-                    case .needed: needed(e, co, needs)
-                    case .owned: owned(e, co)
-                    case .fleet: fleet(e, co, needs)
-                    case .software: software(e, co, needs)
-                    case .premises: premises(e, co)
-                    }
+                    equipmentTable(e, co, needs, tabs)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -69,20 +65,55 @@ struct CompanyEquipmentScreen: View {
             .scrollIndicators(.hidden)
             .ledgerBackground()
             .appScreen(title: "Equipment", subtitle: "Fleet, software and premises", tab: .company)
-            .onAppear { if opensOnPremises && tabs.contains(.premises) { tab = .premises } }
-            .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
-            } message: { Text(pendingMessage) }
-            .confirmationDialog("Where to work", isPresented: Binding(get: { pendingListing != nil }, set: { if !$0 { pendingListing = nil } }), titleVisibility: .visible) {
-                if let l = pendingListing, let t = e.premisesTerms(companyID: companyID, listing: l) {
-                    Button("Rent: \(store.short(t.monthlyRent, in: co)) a month, deposit \(store.short(t.deposit, in: co))") { takePremises(l, buy: false) }
-                    if !(e.tradeInfo(companyID: companyID)?.premisesKind == "slope") {
-                        Button("Buy: \(store.short(t.purchasePrice, in: co)), \(store.short(t.downPayment, in: co)) down") { takePremises(l, buy: true) }
-                    }
-                }
-            } message: { Text(pendingListing.map { "\($0.name), \(Int($0.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back." } ?? "") }
+            .onAppear { if opensOnPremises && tabs.contains(.premises) && tab == nil { tab = .premises } }
+            .navigationDestination(item: $tab) { (t: EquipmentTab) in
+                SettingsPage(title: t.rawValue, subtitle: co.name) { pageContent(t, e, co, needs) }
+                    .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+                        if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
+                    } message: { Text(pendingMessage) }
+                    .confirmationDialog("Where to work", isPresented: Binding(get: { pendingListing != nil }, set: { if !$0 { pendingListing = nil } }), titleVisibility: .visible) {
+                        if let l = pendingListing, let t = e.premisesTerms(companyID: companyID, listing: l) {
+                            Button("Rent: \(store.short(t.monthlyRent, in: co)) a month, deposit \(store.short(t.deposit, in: co))") { takePremises(l, buy: false) }
+                            if !(e.tradeInfo(companyID: companyID)?.premisesKind == "slope") {
+                                Button("Buy: \(store.short(t.purchasePrice, in: co)), \(store.short(t.downPayment, in: co)) down") { takePremises(l, buy: true) }
+                            }
+                        }
+                    } message: { Text(pendingListing.map { "\($0.name), \(Int($0.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back." } ?? "") }
+            }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    /// One row per part of the equipment; each opens its own page.
+    private func equipmentTable(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need], _ tabs: [EquipmentTab]) -> some View {
+        let missing: Int = needs.filter { !$0.isVehicle && !$0.isSoftware && $0.need > 0 && $0.have + $0.leased < $0.need }.count
+        let ownedCount: Int = e.ownedEquipment(companyID: companyID).filter { $0.kind != "veh" }.count
+        return SettingsTable(heading: "Equipment") {
+            ForEach(tabs) { (t: EquipmentTab) in
+                switch t {
+                case .needed:
+                    SettingsTableRow(title: t.rawValue, note: "What is needed, what you own, buy, sell, service",
+                                     value: missing > 0 ? "\(missing) missing" : "\(ownedCount) owned", valueTint: missing > 0 ? Theme.caution : Theme.ivory) { tab = t }
+                case .fleet:
+                    SettingsTableRow(title: t.rawValue, note: "Vehicles, loans and leases", value: "\(needs.filter { $0.isVehicle }.count) kinds") { tab = t }
+                case .software:
+                    SettingsTableRow(title: t.rawValue, note: "Licences and subscriptions", value: "\(needs.filter { $0.isSoftware }.count) kinds") { tab = t }
+                case .premises:
+                    SettingsTableRow(title: t.rawValue, note: "Rent, buy or move", value: e.isWorkingFromHome(companyID: companyID) ? "At home" : co.value("prem")["owned"].bool ? "Owned" : "Rented") { tab = t }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func pageContent(_ t: EquipmentTab, _ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
+        switch t {
+        case .needed:
+            needed(e, co, needs)
+            owned(e, co)
+        case .fleet: fleet(e, co, needs)
+        case .software: software(e, co, needs)
+        case .premises: premises(e, co)
         }
     }
 

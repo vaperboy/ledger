@@ -85,9 +85,34 @@ extension PhoneApp {
 }
 
 /// A page of an app that has several (Stats and Activity, Goals and Achievements, the three World pages). The existing screens are
-/// reused unchanged; the app puts a `SegmentedPill` above them.
-enum PhonePage: String, Hashable {
+/// reused unchanged; the app is a table with one row per page, each opening that page.
+enum PhonePage: String, Hashable, Identifiable {
     case stats = "Stats", activity = "Activity"
     case goals = "Goals", achievements = "Achievements"
     case around = "Around you", biggest = "Biggest companies", records = "Records"
+    var id: String { rawValue }
+
+    var glyph: String {
+        switch self {
+        case .stats: return Glyph.stats
+        case .activity: return Glyph.list
+        case .goals: return Glyph.goals
+        case .achievements: return Glyph.achievements
+        case .around: return Glyph.world
+        case .biggest: return Glyph.building
+        case .records: return Glyph.reports
+        }
+    }
+
+    var note: String {
+        switch self {
+        case .stats: return "Your figures and how they moved"
+        case .activity: return "What you did, week by week"
+        case .goals: return "What you are working towards"
+        case .achievements: return "Trophies and awards"
+        case .around: return "Cities, circles and where you are"
+        case .biggest: return "The biggest companies, ranked"
+        case .records: return "Rival, Top 50, monthly results, crises"
+        }
+    }
 }

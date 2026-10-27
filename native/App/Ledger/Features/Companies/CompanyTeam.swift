@@ -6,11 +6,11 @@ import Simulation
 
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
-    case management = "Management", targets = "Goals", perks = "Perks", labour = "Labour rules", hiring = "Hire someone"
+    case management = "Management", targets = "Goals", perks = "Perks and rules", hiring = "Hire someone"
     var id: String { rawValue }
 }
 
-/// One company's Team tab on ONE page: key figures above, a table of settings (management, goals, perks, labour rules, hiring), and
+/// One company's Team tab on ONE page: key figures above, a table of settings (management, goals, perks and labour rules, hiring), and
 /// the pay run, delegation note and rosters below.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
@@ -85,8 +85,7 @@ struct CompanyTeam: View {
         return SettingsTable(heading: "Team matters") {
             SettingsTableRow(title: "Management", note: "Manager, assistant and posts above them", value: runBy) { page = .management }
             SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
-            SettingsTableRow(title: "Perks", note: "Cars and staff benefits", value: "Choose") { page = .perks }
-            SettingsTableRow(title: "Labour rules", note: "Minimum pay, hours and notice", value: cur.country.name) { page = .labour }
+            SettingsTableRow(title: "Perks and rules", note: "Cars, staff benefits, minimum pay, hours and notice", value: cur.country.name) { page = .perks }
             SettingsTableRow(title: "Hire someone", note: "Job ad, network or agency", value: "Find workers") { page = .hiring }
         }
     }
@@ -114,8 +113,9 @@ struct TeamPageDestination: View {
         switch page {
         case .management: CompanyManagement(engine: e, company: co)
         case .targets: CompanyTargetsCard(engine: e, company: co)
-        case .perks: CompanyPerksCard(engine: e, company: co)
-        case .labour: CompanyLabourCard(engine: e, company: co)
+        case .perks:
+            CompanyPerksCard(engine: e, company: co)
+            CompanyLabourCard(engine: e, company: co)
         case .hiring: EmptyView()
         }
     }

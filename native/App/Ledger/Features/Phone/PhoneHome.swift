@@ -186,29 +186,37 @@ struct PhoneAppScreen: View {
     }
 }
 
-/// An app made of two or three existing screens, switched with a `SegmentedPill` under the header.
+/// An app made of two or three existing screens, as a table: one row per page, each opening that screen.
 struct PhonePagedApp: View {
     var app: PhoneApp
     var pages: [PhonePage]
-    @State private var page: PhonePage
+    @State private var opened: PhonePage?
 
     init(app: PhoneApp, pages: [PhonePage], first: PhonePage) {
         self.app = app
         self.pages = pages
-        _page = State(initialValue: first)
+        _opened = State(initialValue: nil)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SegmentedPill(items: pages, title: { $0.rawValue }, selection: $page)
-                .padding(.horizontal, 18).padding(.bottom, 8)
-            content
+        ScrollView {
+            OverviewSettingsCard(heading: app.title) {
+                ForEach(pages) { (p: PhonePage) in
+                    SettingsTableRow(title: p.rawValue, note: p.note, value: "", glyph: p.glyph) { opened = p }
+                }
+            }
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
+        .scrollIndicators(.hidden)
         .background(Theme.page)
+        .navigationDestination(item: $opened) { (p: PhonePage) in
+            content(p).appScreen(title: p.rawValue, subtitle: app.title)
+        }
         .appScreen(title: app.title, subtitle: app.subtitle)
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(_ page: PhonePage) -> some View {
         switch page {
         case .stats: StatsView()
         case .activity: ActivityView()
@@ -216,7 +224,7 @@ struct PhonePagedApp: View {
         case .achievements: AchievementsView()
         case .around: WorldAroundView()
         case .biggest: RankingView()
-        case .records: WorldRecordsView(page: .rival)
+        case .records: WorldRecordsView()
         }
     }
 }

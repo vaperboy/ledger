@@ -104,6 +104,7 @@ struct SettingsTable<Content: View>: View {
 struct SettingsPage<Content: View>: View {
     var title: String
     var subtitle: String
+    var tab: AppTab = .company
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -113,6 +114,6 @@ struct SettingsPage<Content: View>: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .appScreen(title: title, subtitle: subtitle, tab: .company)
+        .appScreen(title: title, subtitle: subtitle, tab: tab)
     }
 }
