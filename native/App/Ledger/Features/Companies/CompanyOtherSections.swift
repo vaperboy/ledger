@@ -4,12 +4,21 @@ import Countries
 import Businesses
 import Simulation
 
-/// Small flat sections of a company that belong to no bigger screen: customer complaints, developing something new, (giving up premises and changing the
-/// accountant moved to Workplace and Insurance and advisers). Placed at the end of Operations. Ivory Ledger rows, no boxes.
+/// Two small sections of a company that belong to no bigger screen, placed at the end of Operations. Each has its own treatment:
+/// customer complaints are a mailbag (a quote and three ways to answer, each with what it costs), development is a project catalogue
+/// with a progress bar for the one running. (Giving up premises and changing the accountant moved to Workplace and Insurance and advisers.)
 struct CompanyOtherSections: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+
+    /// One open complaint, wrapped so a list of them is Identifiable.
+    private struct Complaint: Identifiable {
+        var id: Int
+        var who: String
+        var text: String
+        var raw: JSONValue
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -18,27 +27,62 @@ struct CompanyOtherSections: View {
         }
     }
 
-    // MARK: Complaints
+    // MARK: Complaints, a mailbag
+
+    private var complaintItems: [Complaint] {
+        engine.openComplaints(companyID: company.id).map { Complaint(id: $0["id"].int, who: $0["who"].string, text: $0["t"].string, raw: $0) }
+    }
 
     @ViewBuilder private var complaints: some View {
-        let open = engine.openComplaints(companyID: company.id)
+        let open: [Complaint] = complaintItems
         if !open.isEmpty {
-            CardSection(title: "Complaints", trailing: { Text("answer within two weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                ForEach(Array(open.enumerated()), id: \.offset) { n, c in
-                    VStack(alignment: .leading, spacing: 6) {
-                        if n > 0 { CardLine() }
-                        Text(c["who"].string).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text("\u{201C}\(c["t"].string)\u{201D}").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        HStack {
-                            Button("Refund") { answer(c, .refund) }
-                            Button("Apologise") { answer(c, .sorry) }
-                            Button("Ignore") { answer(c, .ignore) }
-                        }.buttonStyle(QuietButtonStyle())
-                        Text("Refund costs money but settles it. An apology may not be enough. Ignoring it risks a bad review.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    }
+            TeamGroup(title: "Complaints", trailing: {
+                HStack(spacing: 6) {
+                    RedBubble(count: open.count, size: .small)
+                    Text("answer within two weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+            }) {
+                ForEach(open) { c in complaintCard(c) }
+            }
+        }
+    }
+
+    private func complaintCard(_ c: Complaint) -> some View {
+        Card(padding: 14, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    TeamInitials(name: c.who, size: 34)
+                    Text(c.who).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Spacer(minLength: 0)
+                }
+                Text("\u{201C}\(c.text)\u{201D}").font(.serifTitle(15)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                CardLine()
+                HStack(alignment: .top, spacing: 8) {
+                    answerTile(c, .refund, glyph: Glyph.cost, title: "Refund", note: "Costs money, settles it", tint: Theme.gold)
+                    answerTile(c, .sorry, glyph: Glyph.person, title: "Apologise", note: "Free, may not be enough", tint: Theme.gold)
+                    answerTile(c, .ignore, glyph: Glyph.warning, title: "Ignore", note: "Risks a bad review", tint: Theme.caution)
                 }
             }
         }
+    }
+
+    private func answerTile(_ c: Complaint, _ a: Satisfaction.Answer, glyph: String, title: String, note: String, tint: Color) -> some View {
+        Button {
+            Haptics.tap()
+            answer(c.raw, a)
+        } label: {
+            VStack(spacing: 5) {
+                GlyphView(glyph: glyph, size: 18, weight: 1.6, tint: tint)
+                Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                Text(note).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10).padding(.horizontal, 4)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(tint.opacity(0.6), lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title). \(note)")
     }
 
     private func answer(_ c: JSONValue, _ a: Satisfaction.Answer) {
@@ -51,35 +95,96 @@ struct CompanyOtherSections: View {
         }
     }
 
-    // MARK: Development
+    // MARK: Development, a project catalogue
+
+    private static func kindGlyph(_ kind: String) -> String {
+        switch kind {
+        case "dem": return Glyph.market
+        case "tick": return Glyph.stats
+        case "cogs": return Glyph.settings
+        default: return Glyph.home
+        }
+    }
 
     @ViewBuilder private var development: some View {
         let list = engine.developmentProjects(companyID: company.id)
         if !list.isEmpty, company.status == .open {
             let cur = engine.currency(for: company)
             let run = Development.running(company)
-            CardSection(title: "Develop something new", trailing: {
+            TeamGroup(title: "Develop something new", trailing: {
                 if let run { Text("\(max(0, run.weeksLeft - engine.state.week).weeksText) to go").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                else { Text("one at a time").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
             }) {
                 if let run, let p = list.first(where: { $0.project.id == run.project }) {
-                    FlatRow(label: p.project.name, value: cur.tidyShort(run.cost), sub: "Spent. The team's skill and your quality decide how well it works.", rule: false)
+                    runningCard(p.project, run: run, cur: cur)
                 } else {
-                    ForEach(Array(list.enumerated()), id: \.offset) { n, x in
-                        HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(x.project.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("\(x.project.text) · \(x.project.weeks) weeks · \(cur.tidyShort(x.cost))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer(minLength: 8)
-                            Button("Start") { start(x.project) }.buttonStyle(QuietButtonStyle())
-                        }
-                        if n < list.count - 1 { CardLine() }
+                    ForEach(list, id: \.project.id) { x in projectCard(x.project, cost: x.cost, cur: cur) }
+                }
+                finishedCard
+            }
+        }
+    }
+
+    private func runningCard(_ p: Development.Project, run: (project: String, weeksLeft: Int, cost: Double), cur: Currency) -> some View {
+        let left: Int = max(0, run.weeksLeft - engine.state.week)
+        let fraction: Double = p.weeks > 0 ? min(1, max(0, 1 - Double(left) / Double(p.weeks))) : 1
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: Self.kindGlyph(p.kind))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(p.text).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                let live = Development.finished(company)
-                if !live.isEmpty {
-                    Text("Working now: " + live.map { "\($0["n"].string) (\(Int(($0["mag"].double * 100).rounded()))%)" }.joined(separator: ", "))
-                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                RateBar(label: "Progress", fraction: fraction)
+                StatStrip(cells: [
+                    .init(label: "Spent", value: cur.tidyShort(run.cost)),
+                    .init(label: "To go", value: left.weeksText, tint: Theme.caution),
+                ])
+                Text("The team's skill and your quality decide how well it works.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func projectCard(_ p: Development.Project, cost: Double, cur: Currency) -> some View {
+        Card(padding: 14, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: Self.kindGlyph(p.kind))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(p.text).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                StatStrip(cells: [
+                    .init(label: "Takes", value: p.weeks.weeksText),
+                    .init(label: "Costs", value: cur.tidyShort(cost)),
+                ])
+                HStack {
+                    Text("Paid now; the result is not guaranteed.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Spacer(minLength: 8)
+                    QuietButton(title: "Start") { start(p) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var finishedCard: some View {
+        let live: [JSONValue] = Development.finished(company)
+        if !live.isEmpty {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Working now").capsLabel(Theme.ivoryFaint)
+                    ForEach(Array(live.enumerated()), id: \.offset) { n, d in
+                        if n > 0 { CardLine() }
+                        HStack {
+                            GlyphView(glyph: Glyph.check, size: 14, weight: 1.8, tint: Theme.gain)
+                            Text(d["n"].string).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                            Spacer(minLength: 8)
+                            Text("\(Int((d["mag"].double * 100).rounded()))%").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.gain)
+                        }
+                    }
                 }
             }
         }
@@ -95,28 +200,60 @@ struct CompanyOtherSections: View {
     }
 }
 
-/// Places in a chain that are short of a role, with a sister store that has one to spare.
+/// Places in a chain that are short of a role, with a sister store that has one to spare: each a small transfer card,
+/// the store that needs a worker on one side and the one with a spare on the other.
 struct ChainStaffShortages: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var chainID: Int
 
+    private struct Gap: Identifiable {
+        var id: String
+        var storeID: Int
+        var role: String
+        var spareAt: Int?
+    }
+
+    private var gaps: [Gap] {
+        engine.staffShortages(chainID: chainID).map { Gap(id: "\($0.storeID)-\($0.role)", storeID: $0.storeID, role: $0.role, spareAt: $0.spareAtStoreID) }
+    }
+
     var body: some View {
-        let list = engine.staffShortages(chainID: chainID)
+        let list: [Gap] = gaps
         if !list.isEmpty {
-            CardSection("Short of staff") {
-                ForEach(Array(list.prefix(6).enumerated()), id: \.offset) { n, x in
-                    if n > 0 { CardLine() }
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(engine.state.company(x.storeID)?.name ?? "Store").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("Needs a \(x.role)" + (x.spareAtStoreID.flatMap { engine.state.company($0)?.name }.map { " · \($0) has one spare" } ?? "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        if let from = x.spareAtStoreID {
-                            Button("Move one") { move(from: from, to: x.storeID, role: x.role) }.buttonStyle(QuietButtonStyle())
-                        }
+            TeamGroup(title: "Short of staff", trailing: {
+                Text(list.count == 1 ? "1 place" : "\(list.count) places").font(.system(size: 11)).foregroundStyle(Theme.caution)
+            }) {
+                ForEach(list) { g in gapCard(g) }
+            }
+        }
+    }
+
+    private func storeName(_ id: Int) -> String { engine.state.company(id)?.name ?? "Store" }
+
+    private func gapCard(_ g: Gap) -> some View {
+        Card(padding: 12, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.caution)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(storeName(g.storeID)).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text("Needs a \(g.role)").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
                     }
+                    Spacer(minLength: 0)
+                }
+                if let from = g.spareAt {
+                    CardLine()
+                    HStack(spacing: 8) {
+                        Text(storeName(from)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                        GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.ivoryDim)
+                        Text(storeName(g.storeID)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                        Spacer(minLength: 8)
+                        QuietButton(title: "Move one") { move(from: from, to: g.storeID, role: g.role) }
+                    }
+                    Text("Has one spare; the worker changes store.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                } else {
+                    Text("No sister store has one to spare. Hire for it.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
         }
