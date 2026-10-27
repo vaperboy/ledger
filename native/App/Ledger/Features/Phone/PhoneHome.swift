@@ -157,6 +157,8 @@ struct PhoneAppScreen: View {
             InboxView()
         case .news:
             NewsView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .weather:
+            WeatherApp()
         case .stats:
             PhonePagedApp(app: app, pages: [.stats, .activity], first: .stats)
         case .goals:
