@@ -4,10 +4,19 @@ import Countries
 import Businesses
 import Simulation
 
+/// The full pages a row of the Team table opens.
+enum TeamPage: String, Hashable, Identifiable {
+    case management = "Management", targets = "Goals", perks = "Perks", labour = "Labour rules", hiring = "Hire someone"
+    var id: String { rawValue }
+}
+
+/// One company's Team tab on ONE page: key figures above, a table of settings (management, goals, perks, labour rules, hiring), and
+/// the pay run, delegation note and rosters below.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var page: TeamPage?
 
     /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
     @ViewBuilder private var delegation: some View {
@@ -35,15 +44,79 @@ struct CompanyTeam: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.l) {
+            keyFigures
+            settingsTable
             CompanyPayrollRun(engine: engine, company: company)
             delegation
-            CompanyManagement(engine: engine, company: company)
             CompanyTeamRoster(engine: engine, company: company)
             CompanyStaffRoster(engine: engine, company: company)
-            CompanyTargetsCard(engine: engine, company: company)
-            CompanyPerksCard(engine: engine, company: company)
-            CompanyLabourCard(engine: engine, company: company)
-            TeamGroup("Find workers") { HiringEntry(company: company) }
+        }
+        .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
+    }
+
+    // MARK: Key figures above
+
+    private var runBy: String {
+        if let boss = engine.decisionChain(companyID: company.id).first { return boss.name }
+        return company.ownerHours > 0 ? "You" : "No one"
+    }
+
+    private var keyFigures: some View {
+        let heads: Int = PremisesExtras.heads(company)
+        let cells: [StatStrip.Cell] = [
+            .init(label: "People", value: "\(heads)"),
+            .init(label: "Run by", value: runBy, tint: runBy == "No one" ? Theme.caution : Theme.ivory),
+            .init(label: "Your time", value: "\(Int(company.ownerHours.rounded())) h"),
+        ]
+        return Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("The team").capsLabel()
+                Text("\(heads) \(heads == 1 ? "person" : "people") work here").font(.hero(30)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.7).lineLimit(1)
+                StatStrip(cells: cells)
+            }
+        }
+    }
+
+    // MARK: Table of settings
+
+    private var settingsTable: some View {
+        let cur: Currency = engine.currency(for: company)
+        let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
+        return SettingsTable(heading: "Team matters") {
+            SettingsTableRow(title: "Management", note: "Manager, assistant and posts above them", value: runBy) { page = .management }
+            SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
+            SettingsTableRow(title: "Perks", note: "Cars and staff benefits", value: "Choose") { page = .perks }
+            SettingsTableRow(title: "Labour rules", note: "Minimum pay, hours and notice", value: cur.country.name) { page = .labour }
+            SettingsTableRow(title: "Hire someone", note: "Job ad, network or agency", value: "Find workers") { page = .hiring }
+        }
+    }
+}
+
+/// The full-screen page for one bigger Team decision.
+struct TeamPageDestination: View {
+    @EnvironmentObject var store: GameStore
+    var page: TeamPage
+    var companyID: Int
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            if page == .hiring {
+                HiringView(companyID: companyID)
+            } else {
+                SettingsPage(title: page.rawValue, subtitle: co.name) { content(e, co) }
+            }
+        } else {
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
+        switch page {
+        case .management: CompanyManagement(engine: e, company: co)
+        case .targets: CompanyTargetsCard(engine: e, company: co)
+        case .perks: CompanyPerksCard(engine: e, company: co)
+        case .labour: CompanyLabourCard(engine: e, company: co)
+        case .hiring: EmptyView()
         }
     }
 }

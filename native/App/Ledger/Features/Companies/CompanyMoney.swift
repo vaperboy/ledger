@@ -37,14 +37,33 @@ struct CompanyMoney: View {
     @Binding var part: CompanyMoneyPart
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            SectionTabs(items: CompanyMoneyPart.tabs, title: { $0.rawValue }, selection: $part, sub: true).padding(.horizontal, -Theme.Space.margin)
-            switch part {
-            case .summary: CompanyMoneySummary(engine: engine, company: company, part: $part)
-            case .accounts: CompanyAccounts(engine: engine, company: company)
-            case .owners: CompanyOwnerMoney(engine: engine, company: company)
-            case .settings: CompanySettings(engine: engine, company: company)
+        CompanyMoneySummary(engine: engine, company: company, part: $part)
+            .navigationDestination(isPresented: Binding(get: { part != .summary }, set: { if !$0 { part = .summary } })) {
+                MoneyPageDestination(part: part, companyID: company.id)
             }
+    }
+}
+
+/// The full-screen page a row of the Finances table opens: Statements, Ownership or the company's own settings.
+struct MoneyPageDestination: View {
+    @EnvironmentObject var store: GameStore
+    var part: CompanyMoneyPart
+    var companyID: Int
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            SettingsPage(title: part.rawValue, subtitle: co.name) { content(e, co) }
+        } else {
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
+        switch part {
+        case .summary: EmptyView()
+        case .accounts: CompanyAccounts(engine: e, company: co)
+        case .owners: CompanyOwnerMoney(engine: e, company: co)
+        case .settings: CompanySettings(engine: e, company: co)
         }
     }
 }
@@ -66,12 +85,12 @@ struct CompanyMoneySummary: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             CompanyPaymentStress(engine: engine, company: company)
             cashCard(cur, o)
+            settingsTable(cur, o)
             owedCard(cur, o)
             comingUp(cur, o)
             costs(cur, o)
             margins(cur, o)
             lastWeekReport(cur)
-            ownershipCard(cur)
         }
     }
 
@@ -212,19 +231,21 @@ struct CompanyMoneySummary: View {
         }
     }
 
-    /// Who owns the company and what the owner's share would fetch. The decisions are in the Ownership tab.
-    private func ownershipCard(_ cur: Currency) -> some View {
-        let owners = engine.owners(companyID: company.id)
+    // MARK: Table of settings
+
+    /// One row per area of the company's money; each opens a full page (the decisions there are big: dividends, selling, closing).
+    private func settingsTable(_ cur: Currency, _ o: FinanceOverview) -> some View {
         let canSell = CompanySale.canSell(engine.state, companyID: company.id)
         let whole: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
-        let value: Double = whole * company.ownership / 100
-        var parts: [String] = ["You own \(Int(company.ownership.rounded()))%"]
-        if !owners.isEmpty { parts.append("\(owners.count) other \(owners.count == 1 ? "owner" : "owners")") }
-        if canSell { parts.append("your share is worth about " + cur.tidyShort(value)) }
-        let line: String = parts.joined(separator: " · ")
-        return Button { Haptics.choose(); withAnimation(.snappy(duration: 0.2)) { part = .owners } } label: {
-            CardRow(glyph: Glyph.person, title: "Ownership and sale value", subtitle: line)
-        }.buttonStyle(.plain)
+        let share: String = "You own \(Int(company.ownership.rounded()))%" + (canSell ? ", worth about " + cur.tidyShort(whole * company.ownership / 100) : "")
+        let form: String = company.form == .limited ? "Limited company" : "Sole trader"
+        let closed: Bool = company.status == .closed
+        return SettingsTable(heading: "Money matters") {
+            SettingsTableRow(title: "Statements", note: "Profit and loss, balance sheet, cash flow, tax", value: "Month " + cur.tidyShort(o.monthProfit), valueTint: o.monthProfit < 0 ? Theme.loss : Theme.ivory) { part = .accounts }
+            SettingsTableRow(title: "Ownership", note: "Dividends, owners, shares, selling", value: share) { part = .owners }
+            SettingsTableRow(title: "Legal form and name", note: "Sole trader or limited, rename", value: form) { part = .settings }
+            SettingsTableRow(title: "Trading", note: "Close for a while or wind up", value: closed ? "Closed for now" : "Trading", valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
+        }
     }
 }
 
