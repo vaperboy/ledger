@@ -18,6 +18,7 @@ struct CompanyMarket: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.market, title: "Market", blurb: "Your share, your price against the market, and the named rivals you compete with.")
             share
             if let info = engine.priceMoves(company) { priceMoves(info) }
             rivals
@@ -48,8 +49,8 @@ struct CompanyMarket: View {
                                 .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Text(row.shareText).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.gold)
-                        Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text(row.shareText).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
+                        MoreChevron()
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
@@ -170,29 +171,44 @@ struct CompanyMarket: View {
 
     private var rivals: some View {
         let rows = engine.rivalRows(company)
-        let cur = engine.currency(for: company)
-        _ = cur
-        return MoreBlock("Rivals") {
-            VStack(spacing: 0) {
-                if rows.isEmpty { Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
-                ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
-                    if n > 0 { Hairline() }
-                    Button { rival = r.id } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(r.rival.name + (r.rival.forSale ? " · for sale" : "")).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                Text("\(r.sizeWord) · \(r.share.map { MarketMap.text($0) + " share" } ?? r.feel)" + (r.rival.discountPercent.map { " · \($0)% off" } ?? "") + (r.rival.marketing ? " · marketing" : ""))
-                                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                            }
-                            Spacer()
-                            Text(abs(r.priceGap) < 0.03 ? "Same price" : (r.priceGap > 0 ? "Dearer " : "Cheaper ") + "\(Int((abs(r.priceGap) * 100).rounded()))%")
-                                .font(.system(size: 12)).foregroundStyle(r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted)
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 9).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+        return MoreBlock(title: "Rivals", card: false, trailing: {
+            Text("\(rows.count) near you").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            VStack(spacing: 10) {
+                if rows.isEmpty {
+                    Card(padding: 12, radius: Theme.Radius.row) {
+                        Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    }
                 }
+                ForEach(rows, id: \.id) { (r: RivalRow) in rivalCard(r) }
             }
         }
+    }
+
+    private func rivalCard(_ r: RivalRow) -> some View {
+        let name: String = r.rival.name + (r.rival.forSale ? " · for sale" : "")
+        let shareText: String = r.share.map { MarketMap.text($0) + " share" } ?? r.feel
+        let discountText: String = r.rival.discountPercent.map { " · \($0)% off" } ?? ""
+        let marketingText: String = r.rival.marketing ? " · marketing" : ""
+        let line: String = "\(r.sizeWord) · \(shareText)\(discountText)\(marketingText)"
+        let same: Bool = abs(r.priceGap) < 0.03
+        let gapPct: Int = Int((abs(r.priceGap) * 100).rounded())
+        let gapText: String = same ? "Same price" : (r.priceGap > 0 ? "Dearer " : "Cheaper ") + "\(gapPct)%"
+        let gapTint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
+        return Button { rival = r.id } label: {
+            EntityCard {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.person, size: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                    }
+                    Spacer(minLength: 6)
+                    Text(gapText).font(.system(size: 12)).foregroundStyle(gapTint)
+                    MoreChevron()
+                }.contentShape(Rectangle())
+            }
+        }.buttonStyle(.plain)
     }
 }
 
@@ -254,10 +270,8 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func header(_ d: RivalDetail) -> some View {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(d.rival.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                Text("Owner \(d.rival.owner) · \(Rivals.relationshipWord(d.rival.relationship))" + (d.rival.forSale ? " · open to offers" : "")).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-            }
+            MoreHeader(glyph: Glyph.person, title: d.rival.name,
+                       blurb: "Owner \(d.rival.owner) · \(Rivals.relationshipWord(d.rival.relationship))" + (d.rival.forSale ? " · open to offers" : ""))
     }
 
     @ViewBuilder private func factsSection(_ d: RivalDetail) -> some View {
@@ -447,9 +461,8 @@ struct PriceWarSheet: View {
                     let cur = e.currency(for: co)
                     let chosen = rows.first { $0.id == rivalID } ?? rows.sorted { $0.rival.size < $1.rival.size }.first
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        Text("Price war").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("Your prices drop to the floor for the weeks you choose. The rival loses money every week, and so do you. If it runs out first it closes, and its customers look for somewhere new. Afterwards your prices go back.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        MoreHeader(glyph: Glyph.warning, title: "Price war",
+                                   blurb: "Your prices drop to the floor for the weeks you choose. The rival loses money every week, and so do you. If it runs out first it closes, and its customers look for somewhere new. Afterwards your prices go back.")
                         MoreBlock("Who") {
                             VStack(spacing: 0) {
                                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
@@ -513,7 +526,6 @@ struct MarketView: View {
         ScrollView {
             if let e = store.engine {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Text("Market").font(.serifTitle(28))
                     SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part).padding(.horizontal, -Theme.Space.margin)
                     switch part {
                     case .shares: shares(e)
@@ -526,7 +538,7 @@ struct MarketView: View {
             }
         }
         .ledgerBackground()
-        .navigationBarTitleDisplayMode(.inline)
+        .appScreen(title: "Market", subtitle: "Your share of every market, who is rated best and the groups around you.", tab: .group)
     }
 
     private func shares(_ e: GameEngine) -> some View {
@@ -542,8 +554,8 @@ struct MarketView: View {
                         HStack {
                             Text(r.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                             Spacer()
-                            Text(r.shareText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.gold)
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            Text(r.shareText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
+                            MoreChevron()
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
@@ -596,13 +608,15 @@ struct MarketView: View {
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             if gs.isEmpty { Text("Groups that compete near you appear once a business is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
             ForEach(gs.prefix(12)) { g in
-                MoreBlock(title: g.name, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                MoreBlock(title: g.name, card: true, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("\(g.owner) · \(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : ""))
                             .font(.system(size: 12)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryMuted)
                         Text("Ambition: \(g.ambition)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                         let mine = e.rivalsOfGroup(g.id)
-                        NavigationLink { RivalGroupProfileView(groupID: g.id) } label: { Text("Open profile  ›").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+                        NavigationLink { RivalGroupProfileView(groupID: g.id) } label: {
+                            HStack(spacing: 4) { Text("Open profile").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold); MoreChevron() }.contentShape(Rectangle())
+                        }.buttonStyle(.plain)
                         if !mine.isEmpty { Text("In your markets: " + mine.map { $0.rival.name }.joined(separator: ", ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
                         ForEach(Array(g.moves.prefix(3).enumerated()), id: \.offset) { _, m in
                             Text("Week \(m.week): \(m.text)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
@@ -622,15 +636,13 @@ struct MarketDetailView: View {
         ScrollView {
             if let e = store.engine, let d = e.marketDetail(key: marketKey) {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(d.title.tidyMoney).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text(d.subtitle).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Card(padding: 14, radius: Theme.Radius.hero) {
+                        FigureStrip(items: [
+                            .init(label: "Your share", value: d.shareText),
+                            .init(label: "Market a year", value: d.sizeText ?? "Not known"),
+                            .init(label: "Your sales", value: store.short(d.yourSales)),
+                        ])
                     }
-                    FigureStrip(items: [
-                        .init(label: "Your share", value: d.shareText),
-                        .init(label: "Market a year", value: d.sizeText ?? "Not known"),
-                        .init(label: "Your sales", value: store.short(d.yourSales)),
-                    ])
                     if d.history.count >= 3 { MoreBlock("Your share, month by month") { Sparkline(values: d.history).frame(height: 54) } }
                     MoreBlock("Who has the market") {
                         VStack(spacing: 0) {
@@ -667,6 +679,9 @@ struct MarketDetailView: View {
             }
         }
         .ledgerBackground()
-        .navigationBarTitleDisplayMode(.inline)
+        .appScreen(title: detailTitle, subtitle: detailSubtitle, tab: .group)
     }
+
+    private var detailTitle: String { store.engine?.marketDetail(key: marketKey)?.title.tidyMoney ?? "Market" }
+    private var detailSubtitle: String { store.engine?.marketDetail(key: marketKey)?.subtitle ?? "" }
 }
