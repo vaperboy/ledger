@@ -40,6 +40,9 @@ public extension GameEngine {
 
     /// Your own bank, if you have one, and how much it may lend you for a purchase.
     var ownBank: Company? { RivalAbsorb.ownBank(state) }
+    /// True when the player owns an open bank. The game has no separate "main bank" choice, so an own bank is the main bank: the Bank app
+    /// then follows the game's own look instead of an outside bank's. Read only.
+    var playerMainBankIsOwn: Bool { RivalAbsorb.ownBank(state) != nil }
     func ownBankRoom() -> Double { RivalAbsorb.ownBank(state).map { RivalAbsorb.bankRoom(state, bankID: $0.id, data: data) } ?? 0 }
 
     /// Buy a rival with a loan of `amount` from your own bank. The loan is undone if the purchase is refused.

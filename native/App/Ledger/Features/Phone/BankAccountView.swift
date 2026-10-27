@@ -7,6 +7,7 @@ import Simulation
 /// One account (BankAccount.dc.html): the payroll alert, the tabs, the balance card with the available / overdraft / rate strip, the four
 /// action tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast.
 struct BankAccountScreen: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var id: BankAccountID
     @Binding var tab: BankTab
@@ -42,7 +43,7 @@ struct BankAccountScreen: View {
             .sheet(isPresented: $paying) { BankPaySheet(account: id).presentationDetents([.medium, .large]) }
             .sheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id).presentationDetents([.large]) }
         } else {
-            Text("This account is closed.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(24)
+            Text("This account is closed.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(24)
         }
     }
 
@@ -52,21 +53,21 @@ struct BankAccountScreen: View {
         let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)"
                                     : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
         return HStack(alignment: .center, spacing: 10) {
-            GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: Theme.caution)
-            Text(text.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
+            Text(text.tidyText).font(.system(size: 12.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             Button {
                 Haptics.tap()
                 BankPay.resolve(store, companyID: a.companyID)
             } label: {
-                Text(a.isLate ? "Pay now" : "Approve").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                Text(a.isLate ? "Pay now" : "Approve").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.ink)
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
             }.buttonStyle(.plain)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.caution.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.caution.opacity(0.45), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.caution.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.caution.opacity(0.45), lineWidth: 1))
     }
 
     // MARK: Tabs
@@ -78,12 +79,12 @@ struct BankAccountScreen: View {
                 let on: Bool = tab == t
                 Button { tab = t; Haptics.choose() } label: {
                     Text(t.rawValue).font(.system(size: 12, weight: on ? .medium : .regular))
-                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                        .foregroundStyle(on ? P.ink : P.inkSoft)
                         .lineLimit(1).minimumScaleFactor(0.8)
                         .padding(.horizontal, 9).padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? Theme.goldSelected : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? P.accentSelected : Color.clear))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(on ? P.accent : Color.clear, lineWidth: 1))
                         .overlay(alignment: .topTrailing) {
                             if t == .bills && billsDot { Circle().fill(Theme.alert).frame(width: 8, height: 8).offset(x: -2, y: 3) }
                         }
@@ -94,27 +95,27 @@ struct BankAccountScreen: View {
             }
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 1))
     }
 
     // MARK: Balance
 
     private func balanceCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let label: String = id == .personal ? "Current account" : id == .investments ? "Value of what you hold" : "Company account"
-        let tint: Color = d.balance < 0 ? Theme.loss : Theme.ivory
+        let tint: Color = d.balance < 0 ? P.loss : P.ink
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(label).font(.system(size: 12)).foregroundStyle(Theme.gold)
+                        Text(label).font(.system(size: 12)).foregroundStyle(P.accent)
                         Text(fmt.full(d.balance)).font(.hero(34)).foregroundStyle(tint).minimumScaleFactor(0.55).lineLimit(1)
                     }
                     Spacer(minLength: 8)
                     if let m = d.monthChange, abs(m) >= 0.5 {
                         VStack(alignment: .trailing, spacing: 0) {
-                            Text((m > 0 ? "▲ " : "▼ ") + fmt.short(abs(m))).font(.system(size: 12)).foregroundStyle(Theme.change(m))
-                            Text("this month").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                            Text((m > 0 ? "▲ " : "▼ ") + fmt.short(abs(m))).font(.system(size: 12)).foregroundStyle(P.change(m))
+                            Text("this month").font(.system(size: 12)).foregroundStyle(P.inkFaint)
                         }
                     }
                 }
@@ -122,14 +123,14 @@ struct BankAccountScreen: View {
                     let overdraft: String = d.overdraftUsed > 0 ? fmt.short(d.overdraftUsed) + " used" : fmt.short(d.overdraftLimit)
                     let rate: String = d.overdraftRate.map { Currency.percent($0, decimals: 2) } ?? "–"
                     StatStrip(cells: [
-                        .init(label: "Available", value: fmt.short(d.available), tint: d.available <= 0 ? Theme.loss : Theme.ivory),
-                        .init(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? Theme.caution : Theme.ivory),
+                        .init(label: "Available", value: fmt.short(d.available), tint: d.available <= 0 ? P.loss : P.ink),
+                        .init(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? P.caution : P.ink),
                         .init(label: "Overdraft rate", value: rate),
                     ])
                 }
                 if let s = d.savings {
                     let r: String = d.savingsRate.map { " at " + Currency.percent($0, decimals: 2) } ?? ""
-                    Text("Savings \(fmt.short(s))\(r)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Text("Savings \(fmt.short(s))\(r)").font(.system(size: 12)).foregroundStyle(P.inkSoft)
                 }
             }
         }
@@ -178,9 +179,9 @@ struct BankAccountScreen: View {
             if id == .personal {
                 NavigationLink { ActivityView() } label: {
                     HStack {
-                        Text("Every movement on your account").font(.system(size: 13.5)).foregroundStyle(Theme.gold)
+                        Text("Every movement on your account").font(.system(size: 13.5)).foregroundStyle(P.accent)
                         Spacer()
-                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold)
+                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.accent)
                     }.padding(.vertical, 10).contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
@@ -193,9 +194,9 @@ struct BankAccountScreen: View {
                 HStack {
                     Text("COMING UP").capsLabel()
                     Spacer()
-                    Button { tab = .bills; Haptics.tap() } label: { Text("Bills ›").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+                    Button { tab = .bills; Haptics.tap() } label: { Text("Bills ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(.plain)
                 }.padding(.bottom, 4)
-                if d.upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6) }
+                if d.upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
                 ForEach(Array(d.upcoming.prefix(3).enumerated()), id: \.element.id) { n, u in
                     if n > 0 { Hairline() }
                     BankObligationRow(obligation: u, fmt: fmt)
@@ -210,9 +211,9 @@ struct BankAccountScreen: View {
                 HStack {
                     Text("RECENT").capsLabel()
                     Spacer()
-                    Button { viewAll = true; Haptics.tap() } label: { Text("View all ›").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+                    Button { viewAll = true; Haptics.tap() } label: { Text("View all ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(.plain)
                 }.padding(.bottom, 4)
-                if d.recent.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6) }
+                if d.recent.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
                 ForEach(Array(d.recent.prefix(5).enumerated()), id: \.element.id) { n, t in
                     if n > 0 { Hairline() }
                     BankTransactionRow(transaction: t, fmt: fmt)
@@ -224,18 +225,19 @@ struct BankAccountScreen: View {
 
 /// One coming payment: icon, title, date, amount.
 struct BankObligationRow: View {
+    @Environment(\.outsidePalette) private var P
     var obligation: Obligation
     var fmt: BankFmt
     var body: some View {
         let glyph: String = obligation.kind == .loan ? BankGlyph.transfer : BankGlyph.bill
         HStack(spacing: 10) {
-            IconCircle(glyph: glyph, size: 30, tint: Theme.ivoryMuted)
+            IconCircle(glyph: glyph, size: 30, tint: P.inkSoft)
             VStack(alignment: .leading, spacing: 1) {
-                Text(obligation.title.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                Text(obligation.dateText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(obligation.title.tidyText).font(.system(size: 13.5)).foregroundStyle(P.ink).lineLimit(2)
+                Text(obligation.dateText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
             }
             Spacer(minLength: 8)
-            Text(fmt.short(obligation.amount)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
+            Text(fmt.short(obligation.amount)).font(.system(size: 14).monospacedDigit()).foregroundStyle(P.ink)
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
@@ -244,17 +246,18 @@ struct BankObligationRow: View {
 
 /// One movement: label, date, signed amount.
 struct BankTransactionRow: View {
+    @Environment(\.outsidePalette) private var P
     var transaction: BankTransaction
     var fmt: BankFmt
     var body: some View {
         let sign: String = transaction.amount >= 0 ? "+" : "−"
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(transaction.label.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                Text(transaction.dateText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(transaction.label.tidyText).font(.system(size: 13.5)).foregroundStyle(P.ink).lineLimit(2)
+                Text(transaction.dateText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
             }
             Spacer(minLength: 8)
-            Text(sign + fmt.short(abs(transaction.amount))).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.change(transaction.amount))
+            Text(sign + fmt.short(abs(transaction.amount))).font(.system(size: 14).monospacedDigit()).foregroundStyle(P.change(transaction.amount))
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
@@ -263,6 +266,7 @@ struct BankTransactionRow: View {
 
 /// "View all": the longer list of movements.
 struct BankAllMovementsSheet: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
     var account: BankAccountID
@@ -273,7 +277,7 @@ struct BankAllMovementsSheet: View {
                     let fmt = BankFmt.make(store, account)
                     let list: [BankTransaction] = e.bankTransactions(account, limit: 200)
                     VStack(spacing: 0) {
-                        if list.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                        if list.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(P.inkSoft) }
                         ForEach(Array(list.enumerated()), id: \.element.id) { n, t in
                             if n > 0 { Hairline() }
                             BankTransactionRow(transaction: t, fmt: fmt)
@@ -290,6 +294,7 @@ struct BankAllMovementsSheet: View {
 
 /// The owner's salary from a limited company (moved here from the company's money desk).
 struct BankOwnerSalary: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var company: Company
     @State private var salary = 0.0
@@ -303,10 +308,10 @@ struct BankOwnerSalary: View {
                     AmountField(title: "Monthly salary", currency: cur, amount: $salary)
                     HStack {
                         Button("Set salary") { set(salary, cur) }.buttonStyle(QuietButtonStyle())
-                        if now > 0 { Button("Stop salary") { set(0, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
+                        if now > 0 { Button("Stop salary") { set(0, cur) }.buttonStyle(QuietButtonStyle(tint: P.inkSoft)) }
                     }
                     Text("Paid with payroll while the company is open, with employer contributions on top; income tax is withheld. A salary is a cost to the company, a dividend is not.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .onAppear { salary = now }

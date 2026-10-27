@@ -24,6 +24,7 @@ struct WorldPinShape: Shape {
 /// region chips, and one row per country with a location pin and its key facts (population, currency, your companies and cities).
 /// The three existing World pages (Around you, Biggest companies, Records) open from the foot of the list.
 struct WorldMapApp: View {
+    private var P: OutsidePalette { .world }
     @EnvironmentObject var store: GameStore
     @State private var region: String = "All"
     @State private var opened: PhonePage?
@@ -45,7 +46,7 @@ struct WorldMapApp: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .outsideScreen()
+            .outsideScreen(P)
             .accessibilityIdentifier("world-app")
             .navigationDestination(item: $opened) { (p: PhonePage) in
                 pageContent(p).appScreen(title: p.rawValue, subtitle: "World")
@@ -60,9 +61,9 @@ struct WorldMapApp: View {
         return HStack(spacing: 12) {
             OutsideBack()
             VStack(alignment: .leading, spacing: 1) {
-                Text("World").font(.serifTitle(26)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+                Text("World").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
                 Text(presence.isEmpty ? "No company abroad or at home yet" : "\(sites) \(sites == 1 ? "company" : "companies") in \(presence.count) \(presence.count == 1 ? "country" : "countries")")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
             }
             Spacer(minLength: 0)
         }
@@ -96,8 +97,8 @@ struct WorldMapApp: View {
             }
         }
         .frame(height: 190)
-        .background(shape.fill(Theme.surfaceTable))
-        .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
+        .background(shape.fill(P.cardDeep))
+        .overlay(shape.strokeBorder(P.line, lineWidth: 1))
         .clipShape(shape)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Schematic of the world regions. " + regionSummary(e, presence))
@@ -116,7 +117,7 @@ struct WorldMapApp: View {
             for i in 1..<6 { let x = w * CGFloat(i) / 6; p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: h)) }
             for j in 1..<4 { let y = h * CGFloat(j) / 4; p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: w, y: y)) }
         }
-        .stroke(Theme.hairline, lineWidth: 1)
+        .stroke(P.hairline, lineWidth: 1)
     }
 
     private func regionBlob(_ s: RegionSpot, _ w: CGFloat, _ h: CGFloat, _ e: GameEngine, _ presence: [WorldAround.CountryPresence]) -> some View {
@@ -124,16 +125,16 @@ struct WorldMapApp: View {
         let on: Bool = region == s.name
         let blob = RoundedRectangle(cornerRadius: 26, style: .continuous)
         return ZStack {
-            blob.fill(n > 0 ? Theme.goldWash : Theme.surface)
+            blob.fill(n > 0 ? P.accentWash : P.card)
                 .frame(width: w * s.w, height: h * s.h)
-                .overlay(blob.strokeBorder(on ? Theme.gold : Theme.borderStrong, lineWidth: on ? 1.5 : 1).frame(width: w * s.w, height: h * s.h))
+                .overlay(blob.strokeBorder(on ? P.accent : P.lineStrong, lineWidth: on ? 1.5 : 1).frame(width: w * s.w, height: h * s.h))
             VStack(spacing: 2) {
                 if n > 0 {
-                    WorldPinShape().fill(Theme.gold, style: FillStyle(eoFill: true)).frame(width: 16, height: 22)
-                    Text("\(n)").font(.system(size: 11, weight: .bold).monospacedDigit()).foregroundStyle(Theme.gold)
+                    WorldPinShape().fill(P.accent, style: FillStyle(eoFill: true)).frame(width: 16, height: 22)
+                    Text("\(n)").font(.system(size: 11, weight: .bold).monospacedDigit()).foregroundStyle(P.accent)
                 }
                 Text(s.name.uppercased()).font(.system(size: 8.5, weight: .semibold)).tracking(0.8)
-                    .foregroundStyle(n > 0 ? Theme.ivory : Theme.ivoryFaint).multilineTextAlignment(.center).lineLimit(2)
+                    .foregroundStyle(n > 0 ? P.ink : P.inkFaint).multilineTextAlignment(.center).lineLimit(2)
             }
             .frame(width: w * s.w - 6)
         }
@@ -155,10 +156,10 @@ struct WorldMapApp: View {
     private func chip(_ name: String) -> some View {
         let on: Bool = region == name
         return Button { region = name } label: {
-            Text(name).font(.system(size: 12.5, weight: on ? .semibold : .regular)).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted)
+            Text(name).font(.system(size: 12.5, weight: on ? .semibold : .regular)).foregroundStyle(on ? P.accent : P.inkSoft)
                 .padding(.horizontal, 13).padding(.vertical, 7)
-                .background(Capsule().fill(on ? Theme.goldSelected : Color.clear))
-                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.borderStrong, lineWidth: 1))
+                .background(Capsule().fill(on ? P.accentSelected : Color.clear))
+                .overlay(Capsule().strokeBorder(on ? P.accent : P.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? .isSelected : [])
@@ -182,7 +183,7 @@ struct WorldMapApp: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(list) { (c: Country) in
                 countryRow(e, c, presence.first(where: { $0.id == c.code }))
-                Rectangle().fill(Theme.hairline).frame(height: 1)
+                Rectangle().fill(P.hairline).frame(height: 1)
             }
         }
     }
@@ -194,15 +195,15 @@ struct WorldMapApp: View {
             pin(on: sites > 0)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(c.flag + " " + c.name).font(.serifTitle(17)).foregroundStyle(Theme.ivory)
-                    if home { Text("HOME").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(Theme.gold) }
+                    Text(c.flag + " " + c.name).font(.serifTitle(17)).foregroundStyle(P.ink)
+                    if home { Text("HOME").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(P.accent) }
                 }
-                Text(facts(c)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(facts(c)).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
                 if let here, sites > 0 {
                     let cities: String = here.cities.filter { $0.companies > 0 }.map { "\($0.name) (\($0.companies))" }.joined(separator: ", ")
-                    Text("\(sites) \(sites == 1 ? "company" : "companies"): " + cities).font(.system(size: 12.5)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
+                    Text("\(sites) \(sites == 1 ? "company" : "companies"): " + cities).font(.system(size: 12.5)).foregroundStyle(P.accent).fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("No company here").font(.system(size: 12)).foregroundStyle(Theme.ivoryDim)
+                    Text("No company here").font(.system(size: 12)).foregroundStyle(P.inkDim)
                 }
             }
             Spacer(minLength: 0)
@@ -219,9 +220,9 @@ struct WorldMapApp: View {
     private func pin(on: Bool) -> some View {
         ZStack {
             if on {
-                WorldPinShape().fill(Theme.gold, style: FillStyle(eoFill: true))
+                WorldPinShape().fill(P.accent, style: FillStyle(eoFill: true))
             } else {
-                WorldPinShape().stroke(Theme.ivoryDim, lineWidth: 1.4)
+                WorldPinShape().stroke(P.inkDim, lineWidth: 1.4)
             }
         }
         .frame(width: 20, height: 28)
@@ -238,18 +239,18 @@ struct WorldMapApp: View {
             ForEach(pages) { (p: PhonePage) in
                 Button { opened = p } label: {
                     HStack(spacing: 12) {
-                        GlyphView(glyph: p.glyph, size: 20, weight: 1.5, tint: Theme.gold).frame(width: 28)
+                        GlyphView(glyph: p.glyph, size: 20, weight: 1.5, tint: P.accent).frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(p.rawValue).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
-                            Text(p.note).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text(p.rawValue).font(.system(size: 14.5)).foregroundStyle(P.ink)
+                            Text(p.note).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
                         }
                         Spacer(minLength: 8)
-                        GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
+                        GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim)
                     }
                     .padding(.vertical, 11).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                Rectangle().fill(Theme.hairline).frame(height: 1)
+                Rectangle().fill(P.hairline).frame(height: 1)
             }
         }
         .padding(.top, 10)

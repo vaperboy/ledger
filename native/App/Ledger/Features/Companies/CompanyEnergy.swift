@@ -9,18 +9,19 @@ struct FlatRow: View {
     var label: String
     var value: String
     var sub: String = ""
-    var tint: Color = Theme.ivory
+    var tint: Color? = nil
     var rule = true
+    @Environment(\.outsidePalette) private var palette
     var body: some View {
         VStack(spacing: 0) {
             if rule { Hairline() }
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(label.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                    Text(label.tidyText).font(.system(size: 13.5)).foregroundStyle(palette.ink)
+                    if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(palette.inkFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
-                Text(value.tidyText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing)
+                Text(value.tidyText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint ?? palette.ink).multilineTextAlignment(.trailing)
             }
             .padding(.vertical, 9)
         }

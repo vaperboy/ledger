@@ -36,13 +36,14 @@ struct GlyphView: View {
     var glyph: String
     var size: CGFloat = 22
     var weight: CGFloat = 1.5
-    var tint: Color = Theme.gold
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
         let line: CGFloat = size / 24 * weight
         let style = StrokeStyle(lineWidth: line, lineCap: .butt, lineJoin: .round)
         LedgerIcon(svg: glyph)
-            .stroke(tint, style: style)
+            .stroke(tint ?? palette.accent, style: style)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
@@ -239,12 +240,13 @@ struct RedBubble: View {
 struct IconCircle: View {
     var glyph: String
     var size: CGFloat = 40
-    var tint: Color = Theme.gold
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
-        GlyphView(glyph: glyph, size: size * 0.5, weight: 1.5, tint: tint)
+        GlyphView(glyph: glyph, size: size * 0.5, weight: 1.5, tint: tint ?? palette.accent)
             .frame(width: size, height: size)
-            .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            .overlay(Circle().strokeBorder(palette.lineStrong, lineWidth: 1))
     }
 }
 
@@ -273,15 +275,16 @@ struct AppIconTile: View {
 struct RoundBackButton: View {
     var label = "Back"
     var action: () -> Void
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
         Button {
             Haptics.tap()
             action()
         } label: {
-            GlyphView(glyph: Glyph.back, size: 16, weight: 2, tint: Theme.ivory)
+            GlyphView(glyph: Glyph.back, size: 16, weight: 2, tint: palette.ink)
                 .frame(width: 40, height: 40)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                .overlay(Circle().strokeBorder(palette.lineStrong, lineWidth: 1))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -298,14 +301,15 @@ struct AppHeader<Trailing: View>: View {
     var onBack: (() -> Void)? = nil
     var backLabel = "Back"
     @ViewBuilder var trailing: () -> Trailing
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
         HStack(spacing: 12) {
             if let onBack { RoundBackButton(label: backLabel, action: onBack) }
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.serifTitle(26)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+                Text(title).font(.serifTitle(26)).foregroundStyle(palette.ink).lineLimit(1).minimumScaleFactor(0.7)
                 if !subtitle.isEmpty {
-                    Text(subtitle.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                    Text(subtitle.tidyText).font(.system(size: 12.5)).foregroundStyle(palette.inkSoft).lineLimit(2)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -348,6 +352,7 @@ struct HomeHeader: View {
 /// `trailing` is for a screen's own menu (the Inbox options). Apply it to the content of a `navigationDestination`, not to a tab root.
 struct AppScreen<Trailing: View>: ViewModifier {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.outsidePalette) private var palette
     var title: String
     var subtitle: String
     var tab: AppTab
@@ -365,7 +370,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
                     AppHeader(title: title, subtitle: subtitle, onBack: showsBack ? { dismiss() } : nil, trailing: trailing)
                         .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
                 }
-                .background(Theme.page)
+                .background(palette.ground)
             }
     }
 }
@@ -554,6 +559,7 @@ struct SegmentedPill<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
         HStack(spacing: 4) {
@@ -566,10 +572,10 @@ struct SegmentedPill<T: Hashable>: View {
                     Text(title(item))
                         .font(.system(size: 12.5, weight: on ? .medium : .regular))
                         .lineLimit(1).minimumScaleFactor(0.8)
-                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                        .foregroundStyle(on ? palette.ink : palette.inkSoft)
                         .frame(maxWidth: .infinity, minHeight: 34)
-                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? Theme.goldSelected : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
+                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? palette.accentSelected : Color.clear))
+                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? palette.accent : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -577,8 +583,8 @@ struct SegmentedPill<T: Hashable>: View {
             }
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(palette.cardDeep))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(palette.line, lineWidth: 1))
     }
 }
 
@@ -675,7 +681,8 @@ struct TableRow: View {
 /// The outlined secondary button (Continue, Register ...): champagne outline, 8 pt corners, ivory text. Never filled: only Next Day is.
 struct QuietButton: View {
     var title: String
-    var tint: Color = Theme.gold
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
     var fullWidth = false
     var action: () -> Void
 
@@ -686,10 +693,10 @@ struct QuietButton: View {
         } label: {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Theme.ivory)
+                .foregroundStyle(palette.ink)
                 .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 28)
                 .padding(.horizontal, 16).padding(.vertical, 8)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint ?? palette.accent, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

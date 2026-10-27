@@ -7,6 +7,7 @@ import Simulation
 /// "Owned" badge) and a collection view. Tapping a tile opens the item sheet, where a piece is bought, managed, used or sold.
 /// Original: the Aurum shop (features/screens/hiring_place_swipe_luxury.js) and the manage sheets of lifestyle.js and estates.js.
 struct LuxuryView: View {
+    private var P: OutsidePalette { .luxury }
     /// Which item sheet is open: a shop item to buy, or an owned piece to manage.
     enum LuxurySheet: Identifiable, Hashable {
         case item(String)
@@ -40,7 +41,7 @@ struct LuxuryView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .outsideScreen()
+            .outsideScreen(P)
             .accessibilityIdentifier("luxury-app")
             .sheet(item: $sheet) { (s: LuxurySheet) in sheetContent(e, s) }
         }
@@ -52,13 +53,13 @@ struct LuxuryView: View {
         HStack(alignment: .center, spacing: 12) {
             OutsideBack()
             VStack(alignment: .leading, spacing: 1) {
-                Text("AURUM").font(.system(size: 10.5, weight: .semibold)).tracking(3).foregroundStyle(Theme.gold)
-                Text("Private sales").font(.serifTitle(26)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+                Text("AURUM").font(.system(size: 10.5, weight: .semibold)).tracking(3).foregroundStyle(P.accent)
+                Text("Private sales").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text("Your cash").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-                Text(store.short(max(0, e.state.cash))).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text("Your cash").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
+                Text(store.short(max(0, e.state.cash))).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
             }
         }
     }
@@ -78,10 +79,10 @@ struct LuxuryView: View {
         let name: String = id == "collection" ? "Your collection" : (Luxury.categories.first(where: { $0.id == id })?.name ?? id)
         return Button { tab = id } label: {
             Text(name).font(.system(size: 13, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.gold : Theme.ivoryMuted)
+                .foregroundStyle(on ? P.accent : P.inkSoft)
                 .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Capsule().fill(on ? Theme.goldSelected : Color.clear))
-                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.borderStrong, lineWidth: 1))
+                .background(Capsule().fill(on ? P.accentSelected : Color.clear))
+                .overlay(Capsule().strokeBorder(on ? P.accent : P.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? .isSelected : [])
@@ -95,7 +96,7 @@ struct LuxuryView: View {
         HStack {
             Text(c.name.uppercased()).capsLabel()
             Spacer()
-            Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
         }
         LazyVGrid(columns: columns, spacing: 12) {
             ForEach(c.items, id: \.id) { (it: Luxury.Item) in tile(e, it) }
@@ -111,20 +112,20 @@ struct LuxuryView: View {
                     ThumbnailView(kind: .luxury, key: it.id, size: 96, shape: .square)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.cardDeep))
                     if owned > 0 { ownedBadge(owned) }
                 }
-                Text(it.name).font(.serifTitle(15)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                Text(it.name).font(.serifTitle(15)).foregroundStyle(P.ink).lineLimit(2).multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, minHeight: 38, alignment: .topLeading)
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.short(it.price)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(afford ? Theme.gold : Theme.ivoryFaint)
+                    Text(store.short(it.price)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(afford ? P.accent : P.inkFaint)
                     Spacer(minLength: 4)
-                    if !afford { Text("Out of reach").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint) }
+                    if !afford { Text("Out of reach").font(.system(size: 10)).foregroundStyle(P.inkFaint) }
                 }
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.card))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.line, lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -133,9 +134,9 @@ struct LuxuryView: View {
 
     private func ownedBadge(_ n: Int) -> some View {
         Text(n > 1 ? "OWNED ×\(n)" : "OWNED").font(.system(size: 9, weight: .bold)).tracking(0.8)
-            .foregroundStyle(Theme.page)
+            .foregroundStyle(P.onAccent)
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(Capsule().fill(Theme.gold))
+            .background(Capsule().fill(P.accent))
             .padding(6)
     }
 
@@ -147,7 +148,7 @@ struct LuxuryView: View {
         FigureCard(items: [
             .init(label: "Worth today", value: store.short(e.luxuryValue), sub: "in your name"),
             .init(label: "Upkeep", value: store.short(Luxury.upkeepPerMonth(e.state)), sub: "a month"),
-            .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? Theme.gain : Theme.ivory, sub: income > 0 ? "a month, before tax" : ""),
+            .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? P.gain : P.ink, sub: income > 0 ? "a month, before tax" : ""),
         ])
         if pieces.isEmpty {
             NoteCard(text: "Nothing yet. What you buy is kept here, with its upkeep and what it earns. Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.", glyph: Glyph.luxury)
@@ -155,7 +156,7 @@ struct LuxuryView: View {
             HStack {
                 Text("PIECES").capsLabel()
                 Spacer()
-                Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("tap to manage").font(.system(size: 11)).foregroundStyle(P.inkFaint)
             }
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(pieces, id: \.id) { (p: Luxury.Piece) in pieceTile(p) }
@@ -176,18 +177,18 @@ struct LuxuryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ThumbnailView(kind: .luxury, key: p.item.id, size: 96, shape: .square)
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
-                Text(p.item.name).font(.serifTitle(15)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.cardDeep))
+                Text(p.item.name).font(.serifTitle(15)).foregroundStyle(P.ink).lineLimit(2).multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, minHeight: 38, alignment: .topLeading)
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.short(p.value)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text(store.short(p.value)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
                     Spacer(minLength: 4)
-                    Text(change).font(.system(size: 10.5)).foregroundStyle(Theme.change(p.gain))
+                    Text(change).font(.system(size: 10.5)).foregroundStyle(P.change(p.gain))
                 }
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.card))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.line, lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -204,7 +205,8 @@ struct LuxuryView: View {
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .background(Theme.page.ignoresSafeArea())
+        .background(P.ground.ignoresSafeArea())
+        .environment(\.outsidePalette, P)
         .presentationDetents([.large])
         .confirmAction($pending)
         .confirmationDialog(pendingSell.map { "Sell \($0.item.name)?" } ?? "", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), titleVisibility: .visible) {
@@ -251,11 +253,11 @@ struct LuxuryView: View {
     private func sheetTitle(_ name: String, _ note: String, _ price: String) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
-                Text(note).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(name).font(.serifTitle(24)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
+                Text(note).font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Text(price).font(.serifTitle(22)).foregroundStyle(Theme.gold).monospacedDigit()
+            Text(price).font(.serifTitle(22)).foregroundStyle(P.accent).monospacedDigit()
         }
     }
 
@@ -273,7 +275,7 @@ struct LuxuryView: View {
         VStack(alignment: .leading, spacing: 0) {
             detailThumb(it)
             FlatRow(label: "Upkeep, insurance and storage", value: store.short(it.monthlyUpkeep) + " a month")
-            FlatRow(label: "Value over time", value: it.trend, tint: it.growth > 0 ? Theme.gain : it.growth < -0.06 ? Theme.loss : Theme.ivory)
+            FlatRow(label: "Value over time", value: it.trend, tint: it.growth > 0 ? P.gain : it.growth < -0.06 ? P.loss : P.ink)
             FlatRow(label: "If you sell", value: "\(Int((Luxury.sellFee * 100).rounded()))% in selling costs")
             if let est = Luxury.estateInfo(it.id) {
                 FlatRow(label: est.what, value: "about " + store.short(it.price * est.yearly / 12) + " a month")
@@ -338,11 +340,11 @@ struct LuxuryView: View {
                 }
             }
             if !uses.isEmpty && p.use != "museum" {
-                Text("Use").capsLabel(Theme.ivoryFaint).padding(.top, 8)
+                Text("Use").capsLabel(P.inkFaint).padding(.top, 8)
                 SegmentedPill(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in
                                 if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } }))
-                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
+                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"
@@ -385,7 +387,7 @@ struct LuxuryView: View {
                     }.buttonStyle(GreyOutlineButtonStyle())
                 }
                 if p.use == "museum" && p.until > e.state.week {
-                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(P.inkSoft)
                 } else {
                     Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))") { pendingSell = p }.buttonStyle(GreyOutlineButtonStyle())
                 }

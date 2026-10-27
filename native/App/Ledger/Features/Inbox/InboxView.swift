@@ -7,6 +7,7 @@ import Countries
 /// Decisions and news. Decisions come first, by how soon they expire; each shows what every choice does before you commit and
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
 struct InboxView: View {
+    private var P: OutsidePalette { .inbox }
     enum Tab: String, CaseIterable, Hashable { case all = "All", decisions = "Decisions", risks = "Risks", updates = "Updates" }
     @EnvironmentObject var store: GameStore
     @State private var tab: Tab = .all
@@ -77,7 +78,7 @@ struct InboxView: View {
                 let rest = msgs.filter { $0.status != "open" }
                 let name = id == 0 ? "Group and personal" : (e.state.company(id)?.name ?? "A former company")
                 let note = open.isEmpty ? "\(msgs.count) message\(msgs.count == 1 ? "" : "s")" : "\(open.count) waiting"
-                return Block(id: "co\(id)", title: name, note: note, tint: open.isEmpty ? Theme.ivoryFaint : Theme.caution,
+                return Block(id: "co\(id)", title: name, note: note, tint: open.isEmpty ? P.inkFaint : P.caution,
                              companyID: id != 0 && e.state.company(id) != nil ? id : nil,
                              messages: open.sorted { (Self.urgency($0, week: week), $0.expiresWeek ?? .max) < (Self.urgency($1, week: week), $1.expiresWeek ?? .max) } + rest)
             }
@@ -86,9 +87,9 @@ struct InboxView: View {
         let rest = list.filter { $0.status != "open" }
         var out: [Block] = []
         let bands: [(Int, String, String, Color)] = [
-            (0, "Act this week", "Expires at the end of the week", Theme.loss),
-            (1, "Coming up", "Expires in the next weeks", Theme.caution),
-            (2, "No deadline", "Waits for you", Theme.ivoryFaint),
+            (0, "Act this week", "Expires at the end of the week", P.loss),
+            (1, "Coming up", "Expires in the next weeks", P.caution),
+            (2, "No deadline", "Waits for you", P.inkFaint),
         ]
         for (u, title, note, tint) in bands {
             let msgs = open.filter { Self.urgency($0, week: week) == u }
@@ -169,7 +170,7 @@ struct InboxView: View {
                 searchField
                 SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
             }
-            .padding(.vertical, Theme.Space.xs).background(Theme.page)
+            .padding(.vertical, Theme.Space.xs).background(P.ground)
         }
         .onChange(of: tab) { _, _ in limit = Self.page }
         .onChange(of: query) { _, _ in limit = Self.page }
@@ -179,6 +180,7 @@ struct InboxView: View {
         .confirmAction($pending)
         .ledgerBackground()
         .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
+        .environment(\.outsidePalette, P)
     }
 
     private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int)) -> some View {
@@ -210,15 +212,15 @@ struct InboxView: View {
             .mailRowStyle()
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button { togglePin(m.id) } label: { Label(pinnedNow ? "Unpin" : "Pin", systemImage: pinnedNow ? "pin.slash" : "pin") }
-                    .tint(Theme.goldDeep)
+                    .tint(P.accent2)
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if m.status != "open" && !m.isRead {
-                    Button { store.markRead(m.id) } label: { Label("Read", systemImage: "envelope.open") }.tint(Theme.borderStrong)
+                    Button { store.markRead(m.id) } label: { Label("Read", systemImage: "envelope.open") }.tint(P.lineStrong)
                 }
                 if m.companyID != 0, store.engine?.state.company(m.companyID) != nil {
                     Button { store.openCompany(m.companyID, section: MessageCard.section(for: m)) } label: { Label("Company", systemImage: "building.2") }
-                        .tint(Theme.goldDeep)
+                        .tint(P.accent2)
                 }
             }
     }
@@ -241,12 +243,12 @@ struct InboxView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {
-                        Text("Message").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                        Text("Message").font(.serifTitle(24)).foregroundStyle(P.ink)
                         Spacer()
                         Button { detailID = nil } label: {
-                            GlyphView(glyph: Glyph.close, size: 16, weight: 1.8, tint: Theme.ivory)
+                            GlyphView(glyph: Glyph.close, size: 16, weight: 1.8, tint: P.ink)
                                 .frame(width: 40, height: 40)
-                                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
                                 .contentShape(Circle())
                         }
                         .buttonStyle(.plain).accessibilityLabel("Close message")
@@ -256,7 +258,7 @@ struct InboxView: View {
                 .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)
-            .background(Theme.page.ignoresSafeArea())
+            .background(P.ground.ignoresSafeArea())
             .confirmAction($pending)
             .presentationDetents([.large])
         } else {
@@ -267,15 +269,15 @@ struct InboxView: View {
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
         HStack(spacing: 8) {
-            GlyphView(glyph: Glyph.search, size: 16, weight: 1.8, tint: Theme.ivoryFaint)
-            TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).autocorrectionDisabled()
+            GlyphView(glyph: Glyph.search, size: 16, weight: 1.8, tint: P.inkFaint)
+            TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(P.ink).autocorrectionDisabled()
             if !query.isEmpty {
-                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: Theme.ivoryFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Clear search")
+                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: P.inkFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 12).frame(minHeight: 36)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(P.cardDeep))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         .padding(.horizontal, 18)
     }
 
@@ -299,9 +301,9 @@ struct InboxView: View {
                 store.show("Marked \(n) message\(n == 1 ? "" : "s") as read. Open decisions stay open.", tone: "n")
             }.disabled(store.unreadCount == 0)
         } label: {
-            GlyphView(glyph: Glyph.list, size: 18, weight: 1.8, tint: Theme.ivory)
+            GlyphView(glyph: Glyph.list, size: 18, weight: 1.8, tint: P.ink)
                 .frame(width: 40, height: 40)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
                 .contentShape(Circle())
                 .accessibilityLabel("Inbox options")
         }
@@ -324,9 +326,9 @@ struct InboxView: View {
     private func filterLine(_ e: GameEngine) -> some View {
         let name = companyFilter == 0 ? "Group and personal" : (companyFilter.flatMap { e.state.company($0)?.name } ?? "A former company")
         return HStack {
-            Text("Only " + name).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text("Only " + name).font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
             Spacer()
-            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).frame(minHeight: 36)
+            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).buttonStyle(.plain).frame(minHeight: 36)
         }
     }
 
@@ -336,14 +338,15 @@ struct InboxView: View {
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
             : tab == .decisions ? "No decision is waiting for you." : "Nothing under \(tab.rawValue.lowercased())."
         return VStack(spacing: 8) {
-            IconCircle(glyph: tab == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: Theme.ivoryFaint)
-            Text(text).font(.bodyText).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
+            IconCircle(glyph: tab == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
+            Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.top, 80)
     }
 }
 
 struct MessageCard: View {
+    private var P: OutsidePalette { .inbox }
     @EnvironmentObject var store: GameStore
     var message: Message
     var week: Int
@@ -376,7 +379,7 @@ struct MessageCard: View {
     }
 
     private var glyph: String { message.inboxGlyph }
-    private var tint: Color { message.inboxTint }
+    private var tint: Color { message.inboxTint(P) }
     private var age: String {
         let d = week - message.week
         return d <= 0 ? "This week" : d == 1 ? "1 week ago" : "\(d) weeks ago"
@@ -386,70 +389,78 @@ struct MessageCard: View {
         let open = message.status == "open"
         if !full && !open && message.tone != "bad" && message.isRead {
             HStack(alignment: .center, spacing: 10) {
-                IconCircle(glyph: glyph, size: 30, tint: tint)
+                InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 30)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(text(message.title)).font(.subheadline).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
-                    if let o = store.engine?.answeredOutcome(message) { Text(o).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
+                    Text(text(message.title)).font(.subheadline).foregroundStyle(P.inkSoft).lineLimit(2)
+                    if let o = store.engine?.answeredOutcome(message) { Text(o).font(.caption2).foregroundStyle(P.inkFaint).lineLimit(1) }
                 }
                 Spacer()
-                Text(message.from).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                Text(message.from).font(.caption2).foregroundStyle(P.inkFaint).lineLimit(1)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface.opacity(0.6)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border.opacity(0.7), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card.opacity(0.6)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line.opacity(0.7), lineWidth: 1))
         } else {
-            Card(padding: 14) {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    HStack(alignment: .top, spacing: Theme.Space.m) {
-                        IconCircle(glyph: glyph, size: 40, tint: tint)
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(message.from).font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                                Spacer()
-                                Text(age).font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                                if !message.isRead || open { Circle().fill(open ? Theme.caution : Theme.gold).frame(width: 7, height: 7) }
-                            }
-                            Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                            Text(text(message.body)).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                            if open, let facts = store.engine?.messageFacts(message), !facts.isEmpty {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    ForEach(facts, id: \.self) { f in Text("• " + f).font(.caption2).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                                }.padding(.top, 2)
-                            }
-                            if let o = store.engine?.answeredOutcome(message) {
-                                Text(o).font(.caption2.weight(.medium)).foregroundStyle(Theme.ivoryFaint).padding(.top, 2)
-                            }
-                            if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-                                let sec = Self.section(for: message)
-                                Button { store.openCompany(co.id, section: sec) } label: {
-                                    LinkLabel(text: "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-                                }.buttonStyle(.plain).accessibilityIdentifier("open-company-link")
-                            }
-                        }
-                    }
-                    if open { decision }
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(alignment: .bottom, spacing: 8) {
+                    InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 36)
+                    bubble(open: open)
+                    Spacer(minLength: 24)
                 }
+                if open { decision }
             }
             .onAppear { if !open { store.markRead(message.id) } }
         }
+    }
+
+    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and the link to the company.
+    private func bubble(open: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(message.from).font(.caption.weight(.semibold)).foregroundStyle(tint).lineLimit(1)
+                Spacer(minLength: 8)
+                Text(age).font(.caption2).foregroundStyle(P.inkFaint)
+                if !message.isRead || open { Circle().fill(open ? P.caution : P.accent).frame(width: 7, height: 7) }
+            }
+            Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+            Text(text(message.body)).font(.caption).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            if open, let facts = store.engine?.messageFacts(message), !facts.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(facts, id: \.self) { f in Text("• " + f).font(.caption2).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true) }
+                }.padding(.top, 2)
+            }
+            if let o = store.engine?.answeredOutcome(message) {
+                Text(o).font(.caption2.weight(.medium)).foregroundStyle(P.inkFaint).padding(.top, 2)
+            }
+            if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
+                let sec = Self.section(for: message)
+                Button { store.openCompany(co.id, section: sec) } label: {
+                    LinkLabel(text: "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
+                }.buttonStyle(.plain).accessibilityIdentifier("open-company-link")
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .background(shape.fill(P.card))
+        .overlay(shape.strokeBorder(P.line, lineWidth: 1))
     }
 
     @ViewBuilder private var decision: some View {
         if let exp = message.expiresWeek {
             let left = exp - week
             HStack(spacing: 6) {
-                GlyphView(glyph: Glyph.clock, size: 14, weight: 1.8, tint: left <= 1 ? Theme.loss : Theme.caution)
-                Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").font(.system(size: 12, weight: .medium)).foregroundStyle(left <= 1 ? Theme.loss : Theme.caution)
+                GlyphView(glyph: Glyph.clock, size: 14, weight: 1.8, tint: left <= 1 ? P.loss : P.caution)
+                Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").font(.system(size: 12, weight: .medium)).foregroundStyle(left <= 1 ? P.loss : P.caution)
             }
             .accessibilityElement(children: .combine)
             if let leave = store.engine?.expiryOutcome(message) {
-                Text(leave).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text(leave).font(.caption2).foregroundStyle(P.inkFaint)
             }
         }
         let opts = Array(message.options.enumerated())
         if opts.isEmpty {
-            Text("Nothing to choose here. This is dealt with in the company it concerns.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text("Nothing to choose here. This is dealt with in the company it concerns.").font(.caption).foregroundStyle(P.inkSoft)
         }
         let detailed = message.options.contains { !$0["d"].string.isEmpty || !preview($0).isEmpty }
         if !detailed && opts.count <= 3 {
@@ -467,17 +478,17 @@ struct MessageCard: View {
                 ForEach(opts, id: \.offset) { idx, opt in
                     Button { ask(message, idx) } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ivory)
-                            if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
+                            Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
+                            if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading) }
                             ForEach(preview(opt), id: \.self) { line in
-                                Text("• " + line).font(.caption2).foregroundStyle(Theme.gold.opacity(0.9))
+                                Text("• " + line).font(.caption2).foregroundStyle(P.accent.opacity(0.9))
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? Theme.goldSelected : Theme.surfaceTable))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? Theme.gold : Theme.border, lineWidth: 1))
-                        .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim).padding(.trailing, 12) }
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? P.accentSelected : P.cardDeep))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
+                        .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
                         .contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }

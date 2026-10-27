@@ -8,16 +8,17 @@ struct Card<Content: View>: View {
     var padding: CGFloat = 14
     var rule = true
     var radius: CGFloat = Theme.Radius.card
-    var fill: Color = Theme.surface
-    var stroke: Color = Theme.border
+    var fill: Color? = nil
+    var stroke: Color? = nil
     @ViewBuilder var content: () -> Content
+    @Environment(\.outsidePalette) private var palette
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(shape.fill(fill))
-            .overlay(shape.strokeBorder(stroke, lineWidth: 1))
+            .background(shape.fill(fill ?? palette.card))
+            .overlay(shape.strokeBorder(stroke ?? palette.line, lineWidth: 1))
     }
 }
 
@@ -110,9 +111,11 @@ struct GoldButtonStyle: ButtonStyle {
 
 /// A quiet text button with a champagne outline (8 pt corners) for secondary actions. `QuietButton` in NewLook.swift is the same as a view.
 struct QuietButtonStyle: ButtonStyle {
-    var tint: Color = Theme.gold
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let tint: Color = self.tint ?? palette.accent
+        return configuration.label
             .font(.system(.subheadline).weight(.semibold))
             .lineLimit(1)
             .foregroundStyle(tint)
@@ -204,11 +207,12 @@ struct Stat: View {
     var value: String
     var tint: Color = Theme.ivory
     var sub: String = ""
+    @Environment(\.outsidePalette) private var palette
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            Text(label).font(.system(size: 10.5)).foregroundStyle(palette.inkFaint).lineLimit(1)
             Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
-            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
+            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(palette.inkFaint).lineLimit(1) }
         }
     }
 }
@@ -240,11 +244,12 @@ struct KeyFigures: View {
 }
 
 struct LedgerBackground: ViewModifier {
+    @Environment(\.outsidePalette) private var palette
     func body(content: Content) -> some View {
         content
             .ledgerScreen()
-            .background(Theme.page.ignoresSafeArea())
-            .foregroundStyle(Theme.ivory)
+            .background(palette.ground.ignoresSafeArea())
+            .foregroundStyle(palette.ink)
     }
 }
 
@@ -263,15 +268,16 @@ extension EnvironmentValues {
 struct LedgerScreen: ViewModifier {
     /// Height of the floating tab bar plus margin (0 where there is none); set by `PhoneShell`.
     @Environment(\.tabBarClearance) private var tabBarClearance
+    @Environment(\.outsidePalette) private var palette
 
     func body(content: Content) -> some View {
         content
             .environment(\.tabBarClearance, 0)
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: tabBarClearance) }
-            .toolbarBackground(Theme.page, for: .navigationBar)
+            .toolbarBackground(palette.ground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
-                Color.clear.frame(height: 0).background(Theme.page.ignoresSafeArea(edges: .top))
+                Color.clear.frame(height: 0).background(palette.ground.ignoresSafeArea(edges: .top))
             }
     }
 }
@@ -358,6 +364,7 @@ struct SectionTabs<T: Hashable>: View {
     var badge: (T) -> Int = { _ in 0 }
     /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
     var sub: Bool = false
+    @Environment(\.outsidePalette) private var palette
 
     private var fixed: [T] {
         if let primary { let p = primary.filter { items.contains($0) }; return p.count < items.count ? p : items }
@@ -422,12 +429,12 @@ struct SectionTabs<T: Hashable>: View {
             if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             if count > 0 { countView(count) }
         }
-        .foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+        .foregroundStyle(on ? palette.accent : palette.inkFaint)
         .padding(.horizontal, spread ? 0 : 12)
         .frame(maxWidth: spread ? .infinity : nil, minHeight: sub ? 34 : 44)
-        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? Theme.hairline : Color.clear))
+        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? palette.hairline : Color.clear))
         .contentShape(Rectangle())
-        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
+        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(palette.accent).frame(height: 1.5) } }
     }
 }
 
