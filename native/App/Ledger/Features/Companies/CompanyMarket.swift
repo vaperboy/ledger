@@ -11,7 +11,7 @@ struct CompanyMarket: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var tab: MarketTab = .position
+    @State private var tab: MarketTab?
     @State private var change = 0.05
     @State private var discount = 15
     @State private var weeks = 2
@@ -34,17 +34,32 @@ struct CompanyMarket: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.market, title: "Market", blurb: "Where you stand, what you charge against the market, and the rivals you compete with.")
-            SegmentedPill(items: MarketTab.allCases, title: { (t: MarketTab) in t.title }, selection: $tab)
-            tabContent
+            position
+            marketTable
         }
-        .confirmAction($pending)
-        .sheet(item: rivalBinding) { r in
-            RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
+        .navigationDestination(item: $tab) { (t: MarketTab) in
+            SettingsPage(title: t.title, subtitle: company.name) { tabContent(t) }
+                .confirmAction($pending)
+                .sheet(item: rivalBinding) { r in
+                    RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
+                }
+                .sheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
         }
-        .sheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
     }
 
-    @ViewBuilder private var tabContent: some View {
+    /// Where you stand is the page; pricing and rivals are rows of a table, each opening a page of its own.
+    private var marketTable: some View {
+        let moves: PriceMovesInfo? = engine.priceMoves(company)
+        let against: Double = moves?.againstMarket ?? 0
+        let priceValue: String = moves == nil ? "Not selling yet" : (abs(against) < 0.005 ? "At the market" : Currency.percent(against, decimals: 0) + (against > 0 ? " above" : " below"))
+        let rivalCount: Int = engine.rivalRows(company).count
+        return SettingsTable(heading: "Market") {
+            SettingsTableRow(title: MarketTab.pricing.title, note: "Price against the market, moves, discounts, price war", value: priceValue) { tab = .pricing }
+            SettingsTableRow(title: MarketTab.rivals.title, note: "Named rivals near you, ranked", value: "\(rivalCount) near you") { tab = .rivals }
+        }
+    }
+
+    @ViewBuilder private func tabContent(_ tab: MarketTab) -> some View {
         switch tab {
         case .position: position
         case .pricing: pricing
@@ -688,18 +703,28 @@ struct PriceWarSheet: View {
 struct MarketView: View {
     @EnvironmentObject var store: GameStore
     enum Part: String, CaseIterable, Hashable { case shares = "Market share", reviews = "Reviews", groups = "Groups" }
-    @State private var part: Part = .shares
+    @State private var part: Part?
+
+    @ViewBuilder private func marketPart(_ p: Part, _ e: GameEngine) -> some View {
+        switch p {
+        case .shares: shares(e)
+        case .reviews: reviews(e)
+        case .groups: groups(e)
+        }
+    }
 
     var body: some View {
         ScrollView {
             if let e = store.engine {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part).padding(.horizontal, -Theme.Space.margin)
-                    switch part {
-                    case .shares: shares(e)
-                    case .reviews: reviews(e)
-                    case .groups: groups(e)
+                    shares(e)
+                    SettingsTable(heading: "Around you") {
+                        SettingsTableRow(title: Part.reviews.rawValue, note: "Who is rated best, market by market", value: "\(e.marketRows().count) markets") { part = .reviews }
+                        SettingsTableRow(title: Part.groups.rawValue, note: "The groups around you", value: "See who") { part = .groups }
                     }
+                }
+                .navigationDestination(item: $part) { (p: Part) in
+                    SettingsPage(title: p.rawValue, subtitle: "Market") { marketPart(p, e) }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)

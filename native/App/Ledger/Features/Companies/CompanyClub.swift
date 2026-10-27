@@ -38,11 +38,15 @@ struct CompanyClub: View {
     /// The season is the page; the club's other areas are rows of a table, each opening a page of its own.
     private func clubTable(_ c: FootballModel.Summary) -> some View {
         let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
+        let cur: Currency = engine.currency(for: company)
+        let window = engine.transferWindow(companyID: company.id)
+        let windowText: String = window.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Opens in \(window.weeksToOpen) wk"
+        let sponsorIncome: Double = c.sponsors.reduce(0) { $0 + $1.weekly }
         return SettingsTable(heading: "The club") {
             SettingsTableRow(title: Part.budget.rawValue, note: "Player wages against revenue", value: "Wages \(Int((c.wageShare * 100).rounded()))%") { part = .budget }
             SettingsTableRow(title: Part.people.rawValue, note: "Coach and football staff", value: "Squad " + FootballModel.wordForStrength(c.squadStrength)) { part = .people }
-            SettingsTableRow(title: Part.transfers.rawValue, note: "Buy and sell players", value: "Open") { part = .transfers }
-            SettingsTableRow(title: Part.sponsors.rawValue, note: "Shirt and stadium deals", value: "Open") { part = .sponsors }
+            SettingsTableRow(title: Part.transfers.rawValue, note: "Bought " + cur.tidyShort(c.tradedIn) + ", sold " + cur.tidyShort(c.tradedOut), value: windowText, valueTint: window.name == nil ? Theme.ivoryMuted : Theme.gain) { part = .transfers }
+            SettingsTableRow(title: Part.sponsors.rawValue, note: "\(c.sponsors.count) of \(FootballModel.slots.count) deals signed", value: sponsorIncome > 0 ? cur.tidyShort(sponsorIncome) + " a week" : "No income") { part = .sponsors }
             SettingsTableRow(title: Part.table.rawValue, note: "The league table", value: pos) { part = .table }
         }
     }

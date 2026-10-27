@@ -15,6 +15,7 @@ struct CompanyProperties: View {
     @State private var pendingBuy: PropertyListing? = nil
     @State private var pendingSell: PropertyRow? = nil
     @State private var pending: PendingAction? = nil
+    @State private var detailID: Int? = nil
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -65,8 +66,42 @@ struct CompanyProperties: View {
             if pf.rows.isEmpty {
                 Text("No property yet. Buy one below to start earning rent.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
             }
+            if !pf.rows.isEmpty {
+                SettingsTable(heading: "Property") {
+                    ForEach(pf.rows, id: \.id) { (p: PropertyRow) in
+                        SettingsTableRow(title: p.name, note: "\(Int(p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0))",
+                                         value: cur.tidyShort(p.value), opens: .sheet) { detailID = p.id }
+                    }
+                }
+            }
+        }
+        .confirmAction($pending)
+        .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
+            propertySheet(cur)
+        }
+        .confirmationDialog("Sell this property?", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), presenting: pendingSell) { p in
+            Button("Sell for about " + cur.tidyShort(p.value * 0.975) + (p.mortgage > 0 ? ", repay the mortgage" : ""), role: .destructive) { sell(p) }
+            Button("Keep it", role: .cancel) {}
+        } message: { p in
+            Text("Selling on the market costs 2.5% of the value. \(p.name)")
+        }
+    }
+
+    /// One property in a sheet: its figures and its actions. Renovate and Sell close the sheet and ask on the page.
+    @ViewBuilder private func propertySheet(_ cur: Currency) -> some View {
+        let pf: PropertyPortfolio? = engine.propertyPortfolio(companyID: company.id)
+        if let pf, let p = pf.rows.first(where: { $0.id == detailID }) {
+            PeopleSheet(title: "Property") { propertyCard(p, pf, cur) }
+                .presentationDetents([.medium, .large])
+        } else {
+            PeopleSheet(title: "Property") { Text("This property is gone.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+        }
+    }
+
+    private func propertyCard(_ p: PropertyRow, _ pf: PropertyPortfolio, _ cur: Currency) -> some View {
+        VStack(spacing: Theme.Space.s) {
             VStack(spacing: Theme.Space.s) {
-                ForEach(pf.rows, id: \.id) { p in
+                ForEach([p], id: \.id) { (p: PropertyRow) in
                     Card { VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -85,25 +120,18 @@ struct CompanyProperties: View {
                             if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).font(.caption).foregroundStyle(Theme.loss) }
                         }
                         HStack(spacing: 18) {
-                            Button("Renovate") { pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.", button: "Renovate") { renovate(p) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                            Button("Renovate") { detailID = nil; pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.", button: "Renovate") { renovate(p) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
                             if p.kind == "com" {
                                 Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { withAnimation(.snappy(duration: 0.2)) { openTenants = openTenants == p.id ? nil : p.id } }
                                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
                             }
-                            Button("Sell") { pendingSell = p }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss)
+                            Button("Sell") { detailID = nil; pendingSell = p }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss)
                             Spacer()
                         }.buttonStyle(.plain)
                         if openTenants == p.id { tenants(p, cur) }
                     } }
                 }
             }
-        }
-        .confirmAction($pending)
-        .confirmationDialog("Sell this property?", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), presenting: pendingSell) { p in
-            Button("Sell for about " + cur.tidyShort(p.value * 0.975) + (p.mortgage > 0 ? ", repay the mortgage" : ""), role: .destructive) { sell(p) }
-            Button("Keep it", role: .cancel) {}
-        } message: { p in
-            Text("Selling on the market costs 2.5% of the value. \(p.name)")
         }
     }
 
@@ -142,7 +170,7 @@ struct CompanyProperties: View {
                             Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Button("Sell to them") { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
+                        Button("Sell to them") { detailID = nil; pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
                     }
                 }
             }
@@ -160,20 +188,10 @@ struct CompanyProperties: View {
             SegmentedPill(items: [0.0, 0.4, 0.6], title: { $0 == 0 ? "No loan" : Currency.percent($0, decimals: 0) + " loan" }, selection: $loanToValue)
             Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin. Rents that return less than the loan costs make a mortgage lose money until prices rise.")
                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            VStack(spacing: Theme.Space.s) {
-                ForEach(listings, id: \.id) { L in
-                    Card { HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                            Text("Rent \(cur.tidyShort(L.rentPerUnit)) a week each · gross yield \(Currency.percent(L.grossYield, decimals: 1)) · \(conditionWord(L.condition))")
-                                .font(.caption).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(cur.tidyShort(L.price)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                            Button("Buy") { pendingBuy = L }.font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
-                        }
-                    } }
+            SettingsTable(heading: "Listing") {
+                ForEach(listings, id: \.id) { (L: PropertyListing) in
+                    SettingsTableRow(title: L.name, note: "Rent \(cur.tidyShort(L.rentPerUnit)) a week each · yield \(Currency.percent(L.grossYield, decimals: 1)) · \(conditionWord(L.condition))",
+                                     value: cur.tidyShort(L.price), opens: .sheet) { pendingBuy = L }
                 }
             }
         }

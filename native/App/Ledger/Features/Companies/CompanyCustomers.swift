@@ -11,7 +11,7 @@ struct CompanyCustomers: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var tab: CustomerTab = .mood
+    @State private var tab: CustomerTab?
     @State private var showAll = false
 
     enum CustomerTab: String, CaseIterable, Identifiable {
@@ -29,12 +29,27 @@ struct CompanyCustomers: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.person, title: "Customers", blurb: "How happy they are, who buys from you and how safe their data is.")
-            SegmentedPill(items: CustomerTab.allCases, title: { (t: CustomerTab) in t.title }, selection: $tab)
-            tabContent
+            mood
+            customerTable
+        }
+        .navigationDestination(item: $tab) { (t: CustomerTab) in
+            SettingsPage(title: t.title, subtitle: company.name) { tabContent(t) }
         }
     }
 
-    @ViewBuilder private var tabContent: some View {
+    /// How happy customers are is the page; who buys and how safe their data is are rows that open pages of their own.
+    private var customerTable: some View {
+        let c = engine.cyberInfo(company)
+        let biz: Double = engine.tradeInfo(companyID: company.id)?.businessShare ?? 0
+        let buyers: String = biz >= 0.5 ? "Mostly businesses" : biz > 0 ? "Mixed" : "Private customers"
+        return SettingsTable(heading: "Customers") {
+            SettingsTableRow(title: CustomerTab.buyers.title, note: "Who buys, key accounts, credit check, contracts", value: buyers) { tab = .buyers }
+            SettingsTableRow(title: CustomerTab.security.title, note: "IT protection and cyber insurance", value: Cyber.levels[c.status.level].name,
+                             valueTint: c.insured ? Theme.ivory : Theme.caution) { tab = .security }
+        }
+    }
+
+    @ViewBuilder private func tabContent(_ tab: CustomerTab) -> some View {
         switch tab {
         case .mood: mood
         case .buyers: buyers
