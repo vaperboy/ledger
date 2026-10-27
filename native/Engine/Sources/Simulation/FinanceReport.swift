@@ -22,6 +22,9 @@ public struct RuleLine: Identifiable, Equatable, Sendable {
     public var value: String
 }
 
+/// What a coming payment is for.
+public enum ObligationKind: String, Equatable, Sendable { case payroll, bills, invoice, tax, loan }
+
 /// A payment that is coming. `essential` ones (wages, tax, loans, rent) cannot be skipped without consequences.
 public struct Obligation: Identifiable, Equatable, Sendable {
     public var id: String
@@ -33,6 +36,7 @@ public struct Obligation: Identifiable, Equatable, Sendable {
     public var daysAway: Int
     public var essential: Bool
     public var companyID: Int
+    public var kind: ObligationKind = .bills
 }
 
 /// Everything the Finance & Taxes screen shows, derived from the books, payables, loans and calendar. Nothing here is stored.
@@ -126,10 +130,10 @@ public extension GameEngine {
         }
 
         // What falls due
-        func add(_ id: String, _ title: String, _ detail: String, _ amount: Double, _ day: Int, essential: Bool, company: Int) {
+        func add(_ id: String, _ title: String, _ detail: String, _ amount: Double, _ day: Int, kind: ObligationKind, essential: Bool, company: Int) {
             guard amount > 1 else { return }
             let day = max(day, today)   // anything already due is shown as due today
-            o.upcoming.append(Obligation(id: id, title: title, detail: detail, amount: amount, dayNumber: day, dateText: dateText(day), daysAway: day - today, essential: essential, companyID: company))
+            o.upcoming.append(Obligation(id: id, title: title, detail: detail, amount: amount, dayNumber: day, dateText: dateText(day), daysAway: day - today, essential: essential, companyID: company, kind: kind))
         }
         let c = GameCalendar.civilFromDays(today)
         let monthEnd = Payday.billDate(year: c.year, month: c.month - 1)
@@ -141,10 +145,10 @@ public extension GameEngine {
                 let np = Payday.nextPay(co, config: cfg, today: today)
                 let est = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: country) * Double(max(0, (np - today) / 7))
                 let mode = Payday.mode(of: co, trade: bd, config: cfg)
-                add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, essential: true, company: co.id)
+                add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, kind: .payroll, essential: true, company: co.id)
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
-            add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, essential: true, company: co.id)
+            add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, kind: .bills, essential: true, company: co.id)
             // Supplier invoices on terms (`SupplyTerms`): one line for each week something falls due and each supplier; overdue ones are due today.
             let weekStart = Payday.dayNumber(week: s.week, day: 0)
             var groups: [String: (name: String, day: Int, amount: Double, late: Bool)] = [:]
@@ -155,26 +159,26 @@ public extension GameEngine {
                 groups[key] = g
             }
             for (key, g) in groups.sorted(by: { $0.value.day != $1.value.day ? $0.value.day < $1.value.day : $0.key < $1.key }) {
-                add("inv\(co.id)|\(key)", "Invoice · \(g.name) · \(co.name)", g.late ? "Overdue: carries late interest until paid" : "Paid in full on the due date if the account can cover it", g.amount, g.day, essential: true, company: co.id)
+                add("inv\(co.id)|\(key)", "Invoice · \(g.name) · \(co.name)", g.late ? "Overdue: carries late interest until paid" : "Paid in full on the due date if the account can cover it", g.amount, g.day, kind: .invoice, essential: true, company: co.id)
             }
             let taxOwed = co.payables["tax"] ?? 0
             if co.taxDue, taxOwed > 1 {
                 let due = Payday.dayNumber(week: co.taxDueWeek, day: 0)
-                add("ctax\(co.id)", "Corporate tax · \(co.name)", "For last year", min(taxOwed, co.taxPrevYear), max(due, today), essential: true, company: co.id)
+                add("ctax\(co.id)", "Corporate tax · \(co.name)", "For last year", min(taxOwed, co.taxPrevYear), max(due, today), kind: .tax, essential: true, company: co.id)
             }
             if co.vatBalance > 1 {
                 let freq = max(1, country.vatFilingMonths == 0 ? 2 : country.vatFilingMonths)
                 var m = GameCalendar.monthIndex(week: s.week)
                 while m % freq != freq - 1 { m += 1 }
                 let y = m / 12, mo = m % 12
-                add("vat\(co.id)", "VAT return · \(co.name)", "Filed every \(freq) months", co.vatBalance, Payday.billDate(year: y, month: mo), essential: true, company: co.id)
+                add("vat\(co.id)", "VAT return · \(co.name)", "Filed every \(freq) months", co.vatBalance, Payday.billDate(year: y, month: mo), kind: .tax, essential: true, company: co.id)
             }
         }
         for l in s.loans where l.kind != "start" && l.balance > 1 && (companyID == nil || l.companyID == companyID) {
-            add("loan\(l.id)", "Loan instalment · \(l.name)", "Interest and repayment, at month end", l.monthlyPayment, monthEnd, essential: true, company: l.companyID)
+            add("loan\(l.id)", "Loan instalment · \(l.name)", "Interest and repayment, at month end", l.monthlyPayment, monthEnd, kind: .loan, essential: true, company: l.companyID)
         }
         if companyID == nil, let start = s.loans.first(where: { $0.kind == "start" && $0.balance > 1 }) {
-            add("loan\(start.id)", "Loan instalment · \(start.name)", "Interest and repayment, at month end", start.monthlyPayment, monthEnd, essential: true, company: 0)
+            add("loan\(start.id)", "Loan instalment · \(start.name)", "Interest and repayment, at month end", start.monthlyPayment, monthEnd, kind: .loan, essential: true, company: 0)
         }
         o.upcoming.sort { $0.dayNumber < $1.dayNumber }
         o.dueWithin30Days = o.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }

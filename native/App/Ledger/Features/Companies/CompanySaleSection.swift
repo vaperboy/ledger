@@ -18,7 +18,7 @@ struct CompanySaleSection: View {
             let cur = engine.currency(for: company)
             let value = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
             let listing = CompanySale.listing(engine.state, companyID: company.id)
-            LedgerSection(title: "Sell the company", trailing: {
+            CardSection(title: "Sell the company", trailing: {
                 Text("Worth about " + cur.tidyShort(value * company.ownership / 100)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 if let l = listing {
@@ -132,7 +132,7 @@ struct BuyerTalkSheet: View {
                             .init(label: "Open until", value: GameCalendar.dateString(week: o.expiresWeek)),
                         ])
                         if !o.talk.isEmpty {
-                            LedgerSection("The talk") {
+                            CardSection("The talk") {
                                 VStack(alignment: .leading, spacing: 6) {
                                     ForEach(Array(o.talk.enumerated()), id: \.offset) { _, l in
                                         Text((l.mine ? "You: " : "\(o.buyer): ") + l.text).font(.system(size: 13)).foregroundStyle(l.mine ? Theme.ivoryMuted : Theme.ivory)
@@ -140,13 +140,13 @@ struct BuyerTalkSheet: View {
                                 }
                             }
                         }
-                        LedgerSection("Ask") {
+                        CardSection("Ask") {
                             WrapRow {
                                 Button("What happens to my staff?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "staff") }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
                                 Button("How would you pay?") { store.act { $0.askBuyer(companyID: companyID, offerID: offerID, question: "pay") }; Haptics.tap() }.buttonStyle(QuietButtonStyle())
                             }
                         }
-                        LedgerSection("Name your price") {
+                        CardSection("Name your price") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 AmountField(title: "Your price for the whole company", currency: cur, amount: $ask)
                                 WrapRow {

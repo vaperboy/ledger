@@ -95,14 +95,22 @@ public enum Hiring {
         return name
     }
 
+    /// What a search costs the company. Searching for staff is free in the game; a manager's search and a head-office search are priced elsewhere.
+    public static func searchFee(_ mode: SearchMode) -> Double { 0 }
+
+    /// How many people a search brings.
+    public static func applicantsFound(_ mode: SearchMode) -> ClosedRange<Int> {
+        switch mode {
+        case .agency: return 6...9
+        case .network: return 3...5
+        case .ads: return 3...7
+        }
+    }
+
     /// Advertise, ask around or use an agency. Ads are cheap but bring few; an agency finds more, better ones.
     public static func search(role: String, company co: Company, mode: SearchMode, state s: inout GameState, data: GameData) -> [Person] {
-        let n: Int
-        switch mode {
-        case .agency: n = s.random.int(6, 9)
-        case .network: n = s.random.int(3, 5)
-        case .ads: n = s.random.int(3, 7)
-        }
+        let range = applicantsFound(mode)
+        let n = s.random.int(range.lowerBound, range.upperBound)
         var out: [Person] = []
         for _ in 0..<n {
             let tier: String? = mode == .agency ? s.random.weightedPick([("young", 2.0), ("mid", 6.0), ("senior", 4.0)], weight: { $0.1 })!.0 : nil

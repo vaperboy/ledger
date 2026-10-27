@@ -32,15 +32,30 @@ struct CompanyProperties: View {
     // MARK: Figures
 
     private func figures(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
-        let items: [KeyFigures.Item] = [
-            .init(label: "Property value", value: cur.tidyShort(pf.totalValue), sub: "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"),
-            .init(label: "Rent a week", value: cur.tidyShort(pf.weeklyRent), sub: pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""),
-            .init(label: "Let", value: Currency.percent(pf.occupancy, decimals: 0), tint: pf.occupancy < 0.8 ? Theme.caution : Theme.ivory, sub: "\(Int(pf.totalUnits.rounded())) \(pf.unitWord)"),
-            .init(label: "Mortgages", value: cur.tidyShort(pf.mortgages), tint: pf.mortgages > 0 ? Theme.loss : Theme.ivory),
-            .init(label: "Gain on cost", value: cur.tidyShort(pf.gainOnCost), tint: Theme.change(pf.gainOnCost), sub: "not profit until sold"),
-            .init(label: "Staff cover", value: Currency.percent(min(1, pf.staffCover), decimals: 0), tint: pf.staffCover < 0.8 ? Theme.caution : Theme.ivory, sub: "caretakers, managers"),
+        let count: String = "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"
+        let yield: String = pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""
+        let units: String = "\(Int(pf.totalUnits.rounded())) \(pf.unitWord)"
+        let footer: String = [count, yield, units, "gain on cost is not profit until sold"].filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")
+        let letTint: Color = pf.occupancy < 0.8 ? Theme.caution : Theme.ivory
+        let coverTint: Color = pf.staffCover < 0.8 ? Theme.caution : Theme.ivory
+        let mortgageTint: Color = pf.mortgages > 0 ? Theme.loss : Theme.ivory
+        let first: [StatStrip.Cell] = [
+            StatStrip.Cell(label: "Property value", value: cur.tidyShort(pf.totalValue)),
+            StatStrip.Cell(label: "Rent a week", value: cur.tidyShort(pf.weeklyRent)),
+            StatStrip.Cell(label: "Let", value: Currency.percent(pf.occupancy, decimals: 0), tint: letTint),
         ]
-        return KeyFigures(items: items)
+        let second: [StatStrip.Cell] = [
+            StatStrip.Cell(label: "Mortgages", value: cur.tidyShort(pf.mortgages), tint: mortgageTint),
+            StatStrip.Cell(label: "Gain on cost", value: cur.tidyShort(pf.gainOnCost), tint: Theme.change(pf.gainOnCost)),
+            StatStrip.Cell(label: "Staff cover", value: Currency.percent(min(1, pf.staffCover), decimals: 0), tint: coverTint),
+        ]
+        return Card {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                StatStrip(cells: first, ruled: false)
+                StatStrip(cells: second)
+                Text(footer).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
     }
 
     // MARK: Owned
@@ -50,9 +65,9 @@ struct CompanyProperties: View {
             if pf.rows.isEmpty {
                 Text("No property yet. Buy one below to start earning rent.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
             }
-            VStack(spacing: 0) {
-                ForEach(Array(pf.rows.enumerated()), id: \.element.id) { n, p in
-                    VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: Theme.Space.s) {
+                ForEach(pf.rows, id: \.id) { p in
+                    Card { VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
@@ -79,9 +94,7 @@ struct CompanyProperties: View {
                             Spacer()
                         }.buttonStyle(.plain)
                         if openTenants == p.id { tenants(p, cur) }
-                    }
-                    .padding(.vertical, 10)
-                    if n < pf.rows.count - 1 { Hairline() }
+                    } }
                 }
             }
         }
@@ -144,12 +157,12 @@ struct CompanyProperties: View {
         let listings = engine.propertyListings(companyID: company.id)
         return LedgerSection(title: "For sale in \(engine.cityName(company))", trailing: { Text("new list every month").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
             Text("Mortgage").font(.caption).foregroundStyle(Theme.ivoryMuted)
-            SegmentedChoice(items: [0.0, 0.4, 0.6], title: { $0 == 0 ? "No loan" : Currency.percent($0, decimals: 0) + " loan" }, selection: $loanToValue)
+            SegmentedPill(items: [0.0, 0.4, 0.6], title: { $0 == 0 ? "No loan" : Currency.percent($0, decimals: 0) + " loan" }, selection: $loanToValue)
             Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin. Rents that return less than the loan costs make a mortgage lose money until prices rise.")
                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            VStack(spacing: 0) {
-                ForEach(Array(listings.enumerated()), id: \.element.id) { n, L in
-                    HStack(alignment: .top) {
+            VStack(spacing: Theme.Space.s) {
+                ForEach(listings, id: \.id) { L in
+                    Card { HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
                             Text("Rent \(cur.tidyShort(L.rentPerUnit)) a week each · gross yield \(Currency.percent(L.grossYield, decimals: 1)) · \(conditionWord(L.condition))")
@@ -160,9 +173,7 @@ struct CompanyProperties: View {
                             Text(cur.tidyShort(L.price)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
                             Button("Buy") { pendingBuy = L }.font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold).buttonStyle(.plain)
                         }
-                    }
-                    .padding(.vertical, 9)
-                    if n < listings.count - 1 { Hairline() }
+                    } }
                 }
             }
         }

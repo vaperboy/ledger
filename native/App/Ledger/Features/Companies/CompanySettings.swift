@@ -35,7 +35,7 @@ struct CompanySettings: View {
     // MARK: Legal form
 
     @ViewBuilder private func legalForm(_ cur: Currency) -> some View {
-        LedgerSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+        CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
             if let cost = engine.convertToLimitedCost(companyID: company.id) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
@@ -45,7 +45,7 @@ struct CompanySettings: View {
                     Button("Convert to a limited company…") { confirmConvert(cost, cur) }.buttonStyle(QuietButtonStyle())
                 }
             } else {
-                Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (You and owners).")
+                Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
                     .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -69,7 +69,7 @@ struct CompanySettings: View {
     @ViewBuilder private func rename(_ cur: Currency) -> some View {
         let cost = engine.renameCost(companyID: company.id)
         let inChain = engine.chainOf(companyID: company.id) != nil
-        LedgerSection(title: "Name", trailing: { Text(company.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1) }) {
+        CardSection(title: "Name", trailing: { Text(company.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1) }) {
             if inChain {
                 Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             } else {
@@ -103,7 +103,7 @@ struct CompanySettings: View {
 
     @ViewBuilder private func closing(_ cur: Currency) -> some View {
         if company.status == .closed {
-            LedgerSection(title: "Closed", trailing: {
+            CardSection(title: "Closed", trailing: {
                 let left = company.int("closeW")
                 Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             }) {
@@ -121,7 +121,7 @@ struct CompanySettings: View {
             }
         } else if company.status == .open && company.type != "hold" {
             let notice = engine.closeNoticeTerms(companyID: company.id)
-            LedgerSection("Close for a while") {
+            CardSection("Close for a while") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -167,7 +167,7 @@ struct CompanySettings: View {
         if company.status.isLive {
             let back = engine.windUpEstimate(companyID: company.id)
             let debts = CompanyFigures.debts(company, loans: engine.state.loans)
-            LedgerSection("Close down for good") {
+            CardSection("Close down for good") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -201,7 +201,7 @@ struct CompanySettings: View {
     @ViewBuilder private func documents(_ cur: Currency) -> some View {
         let lic = engine.financeOverview(companyID: company.id).licences
         if !lic.isEmpty {
-            LedgerSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
                     ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.tidyShort(l.amount) : "free", sub: l.detail, rule: n > 0) }
                 }

@@ -15,18 +15,9 @@ struct CoverageEntryRow: View {
         NavigationLink {
             CompanyCoverageScreen(companyID: company.id)
         } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Insurance and advisers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text(summary(o, cur)).font(.caption2).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }
-            .padding(.vertical, 10).contentShape(Rectangle())
+            CardRow(glyph: Glyph.reports, title: "Insurance and advisers", subtitle: summary(o, cur))
         }
         .buttonStyle(.plain)
-        .overlay(alignment: .top) { Hairline() }
     }
 
     private func summary(_ o: CoverageOverview?, _ cur: Currency) -> String {
@@ -65,8 +56,7 @@ struct CompanyCoverageScreen: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Insurance")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Insurance", subtitle: "Policies, insurer, law firm and accountant", tab: .company)
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
         } else {

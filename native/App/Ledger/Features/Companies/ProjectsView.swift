@@ -3,140 +3,111 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Projects tab: time-bound work. "Work" lists what is due across your companies (tenders to bid on, jobs and developments by
-/// next date, each opening its milestones) and one row per project company that opens that company's Projects section; "Ventures" holds startups, funds and stakes.
+/// The Projects tab (new look): header, then underline tabs. Running (cards), Timeline (weeks chart), Bids and offers (open tenders and
+/// things to start), Finished, Ventures. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
+/// (see `ProjectsTabs.swift`). Every company's own Projects section stays reachable from the cards, tender details and the company list.
 struct ProjectsView: View {
-    enum Part: String, CaseIterable, Hashable { case work = "Work", ventures = "Ventures" }
+    enum Part: String, CaseIterable, Hashable { case running = "Running", timeline = "Timeline", bids = "Bids and offers", finished = "Finished", ventures = "Ventures" }
     @EnvironmentObject var store: GameStore
-    @State private var part: Part = .work
+    @State private var part: Part = .running
     @State private var path: [CompanyRoute] = []
-    @State private var search = ""
-
-    @State private var showAll = false
 
     var body: some View {
         NavigationStack(path: $path) {
             if let e = store.engine {
                 let rows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
+                let lines = e.projectTimelines()
+                let running = lines.filter { $0.kind == .job || $0.kind == .event || $0.kind == .development }
                 ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        Text("Projects").font(.serifTitle(28))
-                        SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, badge: { $0 == .work ? openTenders(rows) : 0 }).padding(.horizontal, -Theme.Space.margin)
+                    VStack(alignment: .leading, spacing: 12) {
+                        header(e, running)
+                        ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
                         switch part {
-                        case .work: work(e, rows)
-                        case .ventures: VenturesContent()
+                        case .running: ProjectsRunningTab(engine: e, rows: rows, running: running)
+                        case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
+                        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { part = .ventures })
+                        case .finished: ProjectsFinishedTab(engine: e, rows: rows)
+                        case .ventures:
+                            VenturesContent()
+                            Button { Haptics.tap(); store.openApp(.ventures); store.jump(to: .phone) } label: {
+                                ProjectCardRow(title: "Open Ventures in Phone", sub: "The same startups, funds and stakes, as an app.")
+                            }.buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                    .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 40)
                     .frame(maxWidth: 900).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden)
                 .scrollDismissesKeyboard(.interactively)
                 .ledgerBackground()
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .navigationBar)
+                .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
                 .companyRouteDestinations()
                 .routeRequests(for: .projects, path: $path)
-                .returnBar(for: .projects)
             }
         }
     }
 
-    private static func soonest(_ a: ProjectTimeline, _ b: ProjectTimeline) -> Bool { (a.dueWeek ?? Int.max) < (b.dueWeek ?? Int.max) }
-
-    private func openTenders(_ rows: [(co: Company, board: ProjectBoard)]) -> Int {
-        rows.reduce(0) { $0 + $1.board.tenders.filter { $0.qualifies && $0.myBid == nil }.count }
-    }
-
-    // MARK: Work
-
-    @ViewBuilder private func work(_ e: GameEngine, _ rows: [(co: Company, board: ProjectBoard)]) -> some View {
-        let week = e.state.week
-        let q = search.trimmingCharacters(in: .whitespaces)
-        let all = e.projectTimelines()
-        let shown = q.isEmpty ? all : all.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.companyName.localizedCaseInsensitiveContains(q) || $0.subtitle.localizedCaseInsensitiveContains(q) }
-        let needs = shown.filter { $0.delayed || ($0.kind == .tender && ($0.dueWeek ?? Int.max) - week <= 2) }.sorted(by: Self.soonest)
-        let tenders = shown.filter { $0.kind == .tender && !needs.contains($0) }.sorted(by: Self.soonest)
-        let underWay = shown.filter { $0.kind != .tender && !needs.contains($0) }.sorted(by: Self.soonest)
-        if rows.isEmpty {
-            LedgerSection("Company projects and tenders") {
-                Text("Project companies (builders, agencies, developers) list their jobs, tenders and developments here. None of your companies takes projects yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-        } else {
-            KeyFigures(items: [
-                .init(label: "Project companies", value: "\(rows.count)"),
-                .init(label: "On the go", value: "\(rows.reduce(0) { $0 + $1.board.jobs.count + $1.board.developments.count })", sub: "\(rows.reduce(0) { $0 + $1.board.queuedJobs.count }) waiting"),
-                .init(label: "Tenders to bid", value: "\(openTenders(rows))", tint: openTenders(rows) > 0 ? Theme.gold : Theme.ivory),
-            ])
-            if all.count > 6 {
-                TextField("Search projects and companies", text: $search).textFieldStyle(.plain).padding(.vertical, 8).overlay(alignment: .bottom) { Hairline() }
-            }
-            if all.isEmpty {
-                LedgerSection("Under way") {
-                    Text("Nothing is under way or open for tender. Requests come in through the week; marketing and a good name bring more. Check staff and equipment under each company's Operations if a firm cannot take work.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                }
-            } else if shown.isEmpty {
-                Text("No project matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-            if !needs.isEmpty {
-                LedgerSection(title: "Needs you", trailing: { Text("\(needs.count)").font(.system(size: 12)).foregroundStyle(Theme.caution) }) {
-                    VStack(spacing: 0) { ForEach(Array(needs.prefix(10).enumerated()), id: \.element.id) { n, l in if n > 0 { Hairline() }; ProjectTimelineRow(line: l, now: week) } }
-                }
-            }
-            if !underWay.isEmpty {
-                let cap = showAll ? underWay.count : 12
-                LedgerSection(title: "Under way", trailing: { Text("by next date").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
-                    VStack(spacing: 0) { ForEach(Array(underWay.prefix(cap).enumerated()), id: \.element.id) { n, l in if n > 0 { Hairline() }; ProjectTimelineRow(line: l, now: week) } }
-                    if underWay.count > 12 {
-                        Button(showAll ? "Show fewer" : "Show all \(underWay.count)") { showAll.toggle() }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
-                    }
-                }
-            }
-            if !tenders.isEmpty {
-                LedgerSection(title: "Open tenders", trailing: { Text("\(tenders.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
-                    VStack(spacing: 0) { ForEach(Array(tenders.prefix(8).enumerated()), id: \.element.id) { n, l in if n > 0 { Hairline() }; ProjectTimelineRow(line: l, now: week) } }
-                    if tenders.count > 8 { Text("The rest are in each company's Projects section.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
-                }
-            }
-            LedgerSection("Project companies") {
-                let list = rows.filter { q.isEmpty || $0.co.name.localizedCaseInsensitiveContains(q) }
-                    .sorted { $0.board.outstandingPayments > $1.board.outstandingPayments }
-                VStack(spacing: 0) {
-                    if list.isEmpty { Text("No company matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
-                    ForEach(Array(list.enumerated()), id: \.element.co.id) { n, r in
-                        if n > 0 { Hairline() }
-                        Button { openProjects(r.co.id) } label: { row(r.co, r.board) }.buttonStyle(.plain).accessibilityIdentifier("open-project-company")
-                    }
-                }
+    private func header(_ e: GameEngine, _ running: [ProjectTimeline]) -> some View {
+        let home = e.homeCurrency
+        let committed: Double = running.reduce(0) { acc, l in
+            guard let co = e.state.company(l.companyID) else { return acc }
+            return acc + l.value * e.currency(for: co).rate / max(home.rate, 0.000001)
+        }
+        let sub = running.isEmpty ? "Nothing running" : "\(running.count) running · \(store.short(committed)) committed"
+        return HStack(spacing: 12) {
+            IconCircle(glyph: Glyph.projects, size: 44)
+            AppHeader(title: "Projects", subtitle: sub) {
+                SmallOutlineButton(title: "New project") { part = .bids }
             }
         }
     }
+}
 
-    private func openProjects(_ id: Int) {
-        Haptics.tap()
-        store.openCompany(id, section: .projects)
-    }
+/// Text tabs with a champagne underline on the chosen one and a hairline under the row (ProjectsA).
+struct ProjectUnderlineTabs<T: Hashable>: View {
+    var items: [T]
+    var title: (T) -> String
+    @Binding var selection: T
+    var count: (T) -> Int = { _ in 0 }
 
-    private func row(_ co: Company, _ b: ProjectBoard) -> some View {
-        let open = b.tenders.filter { $0.qualifies && $0.myBid == nil }.count
-        let line: String
-        if b.isDeveloper {
-            line = "\(b.developments.count) \(b.developments.count == 1 ? "development" : "developments") · \(b.finishedCount) finished"
-        } else {
-            line = "\(b.jobs.count) on the go · \(b.queuedJobs.count) waiting · \(open) \(open == 1 ? "tender" : "tenders") open"
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(items, id: \.self) { item in
+                let on = item == selection
+                let n = count(item)
+                Button { if !on { Haptics.choose(); selection = item } } label: {
+                    Text(title(item) + (n > 0 ? " \(n)" : ""))
+                        .font(.system(size: 13.5)).lineLimit(1).minimumScaleFactor(0.75)
+                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8).padding(.bottom, 1)
+                        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 2) } }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
+            }
         }
-        return HStack(spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(co.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+    }
+}
+
+/// A simple tappable card line with a chevron, for links to other screens.
+struct ProjectCardRow: View {
+    var title: String
+    var sub: String = ""
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title.tidyText).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
-            if !b.isDeveloper && b.outstandingPayments > 0 {
-                Text(store.short(b.outstandingPayments, in: co)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-            }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
         }
-        .padding(.vertical, 9)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())
     }
 }

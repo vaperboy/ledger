@@ -98,6 +98,28 @@ public enum CityMarket {
         return clamp((t.isNull ? 0.1 : t.double) * (city?.touristIndex ?? 1), 0, 0.9)
     }
 
+    // MARK: Demand level of a trade in a city
+
+    public enum DemandLevel: String, Sendable, CaseIterable {
+        case high = "High", medium = "Medium", low = "Low"
+    }
+    /// Demand index from which a trade's demand in a city reads "High", and below which it reads "Low" (1 = an average place for an average trade;
+    /// about a third of all city-and-trade pairs fall in each band).
+    public static let demandHighFrom = 1.25, demandLowBelow = 0.85
+
+    /// How many customers an average-priced company of this trade can expect in this city, against an average place: the city's demand level
+    /// times the trade's affordability factor (`demandFactor`, 1 for everyday trades). No margin, no rivals: just the customers.
+    public static func demandIndex(trade id: String, country: Country, city: Country.City, tables: CityMarketTables) -> Double {
+        let lean = tables.trades[id]?.lean ?? 0
+        let f = clamp(pow(affordRatio(trade: id, priceMultiplier: 1, country: country, city: city, tables: tables), lean), tables.demandFloor, tables.demandCeiling)
+        return city.demand * f
+    }
+
+    public static func demandLevel(trade id: String, country: Country, city: Country.City, tables: CityMarketTables) -> DemandLevel {
+        let i = demandIndex(trade: id, country: country, city: city, tables: tables)
+        return i >= demandHighFrom ? .high : i < demandLowBelow ? .low : .medium
+    }
+
     // MARK: Read model for screens
 
     public enum Tier: String, Sendable, CaseIterable { case everyday, premium, luxury }

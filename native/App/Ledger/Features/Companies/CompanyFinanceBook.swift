@@ -25,7 +25,7 @@ struct CompanyFinanceBook: View {
             }
             .confirmAction($pending)
         } else {
-            LedgerSection("Book") { Text("This company has no book of business to show yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+            CardSection("Book") { Text("This company has no book of business to show yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
         }
     }
 
@@ -52,7 +52,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Solvency", value: String(format: "%.2f", b.solvency), tint: b.solvency < 1 ? Theme.loss : Theme.ivory, sub: "needs 1.0"),
                 .init(label: "Storm claims", value: cur.tidyShort(b.claimsPaidByStorms), sub: "so far"),
             ])
-            LedgerSection("Products") {
+            CardSection("Products") {
                 VStack(spacing: 0) {
                     ForEach(Array(products.enumerated()), id: \.element.id) { n, p in
                         HStack(alignment: .firstTextBaseline) {
@@ -73,11 +73,11 @@ struct CompanyFinanceBook: View {
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
             if sellers.isEmpty {
-                LedgerSection("Salespeople") {
+                CardSection("Salespeople") {
                     Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                 }
             } else {
-                LedgerSection("Salespeople") {
+                CardSection("Salespeople") {
                     VStack(spacing: 0) {
                         ForEach(Array(sellers.enumerated()), id: \.element.id) { n, s in
                             HStack(alignment: .firstTextBaseline) {
@@ -114,7 +114,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Central bank", value: cur.tidyShort(b.centralBankLoan), tint: b.centralBankLoan > 0 ? Theme.caution : Theme.ivory, sub: "liquidity loan"),
             ])
-            LedgerSection("How the bank earns") {
+            CardSection("How the bank earns") {
                 Meter(label: "Capital", value: min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
                 Text("The bank earns the gap between what borrowers pay and what savers are paid. Bad loans reduce capital, and rumours can start a run on deposits: a solvent bank short of cash borrows from the central bank and repays as deposits come back. Choose the loan book and funding under Operations. Your other companies borrow cheaper here.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)

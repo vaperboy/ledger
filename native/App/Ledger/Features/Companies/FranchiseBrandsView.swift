@@ -34,8 +34,7 @@ struct FranchisesView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Franchises")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Franchises", subtitle: "Brands that take franchisees", tab: .group)
         }
     }
 }
@@ -120,10 +119,6 @@ struct BrandMeetingView: View {
             let stats = e.franchiseUnitStats(b)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(b.name).font(.serifTitle(26)).foregroundStyle(Theme.ivory)
-                        Text("\(b.tierDescription) · \(FranchiseBrands.brandWord(b.strength))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
                     if !st.ok {
                         Text(st.why.tidyMoney).font(.bodyText).foregroundStyle(Theme.loss)
                     } else if !["invited", "agreed"].contains(a["st"].string) {
@@ -188,8 +183,7 @@ struct BrandMeetingView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Franchise meeting")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: b.name, subtitle: "\(b.tierDescription) · \(FranchiseBrands.brandWord(b.strength))", tab: .group)
         }
     }
 
@@ -249,10 +243,6 @@ struct StartFranchisedView: View {
             let left = max(0, Payments.liquid(e.state) - outlay - fund)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Start under \(b.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("Entry fee \(cur.tidyShort(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
                     LedgerSection("Where and how") {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
                             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
@@ -305,8 +295,7 @@ struct StartFranchisedView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Start a franchise")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Start under \(b.name)", subtitle: "Entry fee \(cur.tidyShort(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years", tab: .group)
             .confirmAction($pending)
         } else {
             Text("These terms have expired. Meet the brand again.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()

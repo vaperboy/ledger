@@ -42,6 +42,28 @@ public struct PayrollOverview: Equatable, Sendable {
 
 public enum PayrollApprovalResult: Equatable, Sendable { case approved, alreadyApproved, notNeeded(String) }
 
+/// A payroll that needs the owner because no manager or accountant approves salary at that company (the Bank app's red bubble).
+public struct PayrollAlert: Equatable, Sendable, Identifiable {
+    public var id: Int { companyID }
+    public var companyID: Int
+    public var companyName: String
+    /// What goes out: the coming pay day's estimate, or the wages owed when payroll is already late.
+    public var amount: Double
+    /// The pay day ("25 February 2027").
+    public var dateText: String
+    public var reason: String
+    public var isLate: Bool
+}
+
+/// What the owner's answer to a payroll alert did.
+public enum PayrollAlertOutcome: Equatable, Sendable {
+    /// The coming pay day is approved; it goes out on pay day.
+    case approved
+    /// Payroll was late and has been run now: what was paid and what is still short.
+    case paidLate(paid: Double, short: Double)
+    case notNeeded(String)
+}
+
 public extension GameEngine {
     func payrollOverview(companyID: Int) -> PayrollOverview? {
         let s = state
@@ -105,6 +127,37 @@ public extension GameEngine {
             out = (r.paid, r.short)
         }
         return out
+    }
+
+    /// Payrolls that wait for the owner: owner-run payroll (no manager or accountant approves it) that is late, or is due and not covered by the
+    /// "Approve routine payroll" rule (the rule approves it by itself only when the company's cash covers the estimate, as `Payday` does).
+    /// It clears when a manager or accountant is appointed or the owner approves.
+    func payrollAlerts() -> [PayrollAlert] {
+        state.liveCompanies.compactMap { co -> PayrollAlert? in
+            guard let o = payrollOverview(companyID: co.id), o.hasPayroll, o.mode == .manual, !o.modeIsFixed else { return nil }
+            if o.isLate {
+                return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(o.wagesOwed, o.wageShortfall), dateText: o.nextPayText,
+                                    reason: o.lateReason.isEmpty ? "Payroll is late." : o.lateReason, isLate: true)
+            }
+            guard o.needsApproval else { return nil }
+            let covered = o.autoApproves && o.companyCash >= o.estimate
+            guard !covered else { return nil }
+            let why = o.autoApproves ? "No manager or accountant approves it, and the company's cash does not cover it yet, so the routine rule cannot approve it."
+                                     : "No manager or accountant is set to approve it, and you have not set payroll to approve itself."
+            return PayrollAlert(companyID: co.id, companyName: co.name, amount: o.estimate, dateText: o.nextPayText, reason: why, isLate: false)
+        }
+    }
+
+    /// The owner's answer to an alert: approve the coming pay day, or run late payroll now. Both are the existing payroll actions
+    /// (`approvePayroll`, `runLatePayrollNow`), so the Inbox message and the company screen stay in step.
+    @discardableResult
+    mutating func resolvePayrollAlert(companyID: Int) -> PayrollAlertOutcome {
+        guard let o = payrollOverview(companyID: companyID) else { return .notNeeded("This company no longer exists.") }
+        if o.isLate, let r = runLatePayrollNow(companyID: companyID) { return .paidLate(paid: r.paid, short: r.short) }
+        switch approvePayroll(companyID: companyID) {
+        case .approved, .alreadyApproved: return .approved
+        case .notNeeded(let why): return .notNeeded(why)
+        }
     }
 
     /// What moving a home-based company back home from its place would return, so the screen can say it before asking.

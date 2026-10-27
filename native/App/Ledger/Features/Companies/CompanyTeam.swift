@@ -17,19 +17,28 @@ struct CompanyTeam: View {
         if let boss = chain.first {
             let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
             let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-            Text("\(boss.name), \(title), runs the team day to day and \(lvl). Anything you change here overrides them; problems they cannot solve reach you in Team.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            note("\(boss.name), \(title), runs the team day to day and \(lvl). Anything you change here overrides them; problems they cannot solve reach you in Team.", tint: Theme.ivoryMuted, medium: false)
         } else if company.status == .open {
-            Text(company.ownerHours > 0 ? "You run this team yourself. A manager takes the day-to-day off you once the company is big enough to need one." : "No one runs this team: you do not work here and there is no manager.")
-                .font(.system(size: 12.5, weight: company.ownerHours > 0 ? .regular : .medium)).foregroundStyle(company.ownerHours > 0 ? Theme.ivoryMuted : Theme.caution).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            let owner: Bool = company.ownerHours > 0
+            note(owner ? "You run this team yourself. A manager takes the day-to-day off you once the company is big enough to need one." : "No one runs this team: you do not work here and there is no manager.",
+                 tint: owner ? Theme.ivoryMuted : Theme.caution, medium: !owner)
+        }
+    }
+
+    private func note(_ text: String, tint: Color, medium: Bool) -> some View {
+        Card(padding: 12, radius: Theme.Radius.row) {
+            HStack(alignment: .top, spacing: 10) {
+                GlyphView(glyph: Glyph.person, size: 16, weight: 1.5, tint: tint)
+                Text(text).font(.system(size: 12.5, weight: medium ? .medium : .regular)).foregroundStyle(tint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
     var body: some View {
         let live = store.engine ?? engine
         VStack(spacing: Theme.Space.l) {
+            CompanyPayrollRun(engine: engine, company: company)
             delegation
             CompanyManagement(engine: engine, company: company)
             CompanyTeamRoster(engine: engine, company: company)
@@ -37,26 +46,28 @@ struct CompanyTeam: View {
             CompanyTargetsCard(engine: engine, company: company)
             CompanyPerksCard(engine: engine, company: company)
             CompanyLabourCard(engine: engine, company: company)
-            LedgerSection("Find workers") {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    let roles = engine.hireableRoles(companyID: company.id)
-                    if roles.isEmpty { Text("This trade has no staff roles to hire for.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-                    else {
-                        SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.margin)
-                        WrapRow {
-                            Button("Job ad") { search(.ads) }.buttonStyle(QuietButtonStyle())
-                            Button("Network") { search(.network) }.buttonStyle(QuietButtonStyle())
-                            Button("Agency") { search(.agency) }.buttonStyle(QuietButtonStyle())
+            TeamGroup("Find workers") {
+                Card(padding: 14, radius: Theme.Radius.card) {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        let roles = engine.hireableRoles(companyID: company.id)
+                        if roles.isEmpty { Text("This trade has no staff roles to hire for.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                        else {
+                            SectionTabs(items: roles, title: { roleName($0) }, selection: $role).padding(.horizontal, -Theme.Space.margin)
+                            WrapRow {
+                                TeamAction(title: "Job ad") { search(.ads) }
+                                TeamAction(title: "Network") { search(.network) }
+                                TeamAction(title: "Agency") { search(.agency) }
+                            }
+                            Text("Ads are cheap and slow, the agency is quick and expensive; better people take better searches.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            if role == "mktan" {
+                                let v = engine.marketAnalystVerdict(companyID: company.id)
+                                Text(v.title + ". " + v.text).font(.caption).foregroundStyle(v.ok ? Theme.ivoryMuted : Theme.caution)
+                            }
                         }
-                        Text("Ads are cheap and slow, the agency is quick and expensive; better people take better searches.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        if role == "mktan" {
-                            let v = engine.marketAnalystVerdict(companyID: company.id)
-                            Text(v.title + ". " + v.text).font(.caption).foregroundStyle(v.ok ? Theme.ivoryMuted : Theme.caution)
+                        CandidateHireList(people: candidates.compactMap { live.state.people[$0.id] }.filter { $0.employerID == 0 },
+                                          emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
+                            WorkerHireRow(engine: live, company: company, person: p)
                         }
-                    }
-                    CandidateHireList(people: candidates.compactMap { live.state.people[$0.id] }.filter { $0.employerID == 0 },
-                                      emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
-                        WorkerHireRow(engine: live, company: company, person: p)
                     }
                 }
             }

@@ -33,14 +33,14 @@ struct CompanyContracts: View {
         let list = engine.volumeContracts(companyID: company.id)
         let orders = engine.bookedOrders(companyID: company.id)
         if list.isEmpty && orders.isEmpty {
-            LedgerSection("Volume contracts") {
+            TeamCardGroup("Volume contracts") {
                 Text("No volume contracts yet. Offers from business customers arrive in the Inbox; volume tenders, when there are any, are listed below.")
                     .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
         if !list.isEmpty || !orders.isEmpty {
             let load = engine.contractLoad(companyID: company.id)
-            LedgerSection(title: "Volume contracts", trailing: {
+            TeamCardGroup(title: "Volume contracts", trailing: {
                 Text("\(Int((load.capacityShare * 100).rounded()))% of capacity").font(.system(size: 11)).foregroundStyle(load.capacityShare > 0.8 ? Theme.caution : Theme.ivoryFaint)
             }) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -126,7 +126,7 @@ struct CompanyContracts: View {
         if engine.projectBoard(companyID: company.id) == nil, ProjectTenders.catalog[company.type] != nil {
             let open = ProjectTenders.openTenders(engine.state, for: company).filter { $0.isVolume }
             if !open.isEmpty {
-                LedgerSection(title: "Volume tenders", trailing: {
+                TeamCardGroup(title: "Volume tenders", trailing: {
                     Text("\(open.count) open").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }) {
                     VStack(alignment: .leading, spacing: 0) {
