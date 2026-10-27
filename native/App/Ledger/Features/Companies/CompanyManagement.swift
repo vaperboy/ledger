@@ -98,7 +98,7 @@ struct CompanyManagement: View {
             out.append(OrgNode(id: "b:" + b.kind + ":\(b.personID)", glyph: Glyph.group, row: row, level: b.level, sheet: nil))
         }
         let mgrLevel: Int? = company.managerID != nil ? Int(company.value("auth")["lvl"].double) : nil
-        out.append(OrgNode(id: "m", glyph: Glyph.company, row: managerRow(cur), level: mgrLevel, sheet: .manager))
+        out.append(OrgNode(id: "m", glyph: Glyph.person, row: managerRow(cur), level: mgrLevel, sheet: .manager))
         out.append(OrgNode(id: "a", glyph: Glyph.people, row: assistantRow(cur), level: nil, sheet: .assistant))
         for slot in engine.teamSlots(companyID: company.id) {
             let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
