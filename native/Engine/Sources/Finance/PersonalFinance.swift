@@ -25,6 +25,9 @@ public enum PersonalFinance {
             + Taxes.dividendTax(s.tax.dividends, shield: s.tax.dividendShield, in: c) + Taxes.savingsInterestTax(s.tax.interest, in: c)
     }
 
+    /// Yearly interest the savings account pays: the policy rate less a margin, never below 0.5%.
+    public static func savingsRate(_ s: GameState) -> Double { max(0.005, s.economy.policyRate - 0.012) }
+
     /// Monthly personal processes: overdraft interest, savings interest, loan instalments, credit score drift.
     /// Original: `personalMonth`.
     public static func monthly(_ s: inout GameState, context: FinanceContext) {
@@ -35,7 +38,7 @@ public enum PersonalFinance {
             s.credit = clamp(s.credit - 0.4, 0, 100)
         }
         if s.savings > 0 {
-            let i = s.savings * max(0.005, s.economy.policyRate - 0.012) / 12
+            let i = s.savings * savingsRate(s) / 12
             s.savings += i
             s.tax.interest += i
         }

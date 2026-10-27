@@ -172,8 +172,8 @@ public extension GameEngine {
         var out: [Person] = []
         update { s, data, _ in
             guard let co = s.company(companyID) else { return }
-            let cost = mode == .agency ? 0.0 : 0.0
-            _ = cost
+            let fee = Hiring.searchFee(mode)   // 0 today: searches are free
+            if fee > 0 { Payments.companyPays(&s, companyID: companyID, amount: fee, category: "oth", label: "Search for staff") }
             out = Hiring.search(role: role, company: co, mode: mode, state: &s, data: data)
         }
         return out

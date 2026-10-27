@@ -78,7 +78,7 @@ public struct NewCompanyOutcome: Equatable {
 public extension GameEngine {
     /// A copy of the state with a throw-away company, so a listing and its terms can be priced before the company exists. The account
     /// is topped up in the copy so registration never hides the numbers (affordability is reported separately).
-    private func previewCompany(tradeID: String, cityID: String, form: LegalForm, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
+    func previewCompany(tradeID: String, cityID: String, form: LegalForm, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
         var tmp = state
         tmp.cash += Double(Int32.max)
         let cx = FinanceContext(countries: data.countries, trades: data.catalog)
