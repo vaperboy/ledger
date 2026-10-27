@@ -39,25 +39,22 @@ private struct JobList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            FigureStrip(items: figureItems)
-            MoreBlock(title: board.isEvent ? "Bookings" : "Jobs on the go", trailing: {
+            MoreHeader(glyph: Glyph.projects, title: board.isEvent ? "Bookings" : "Jobs", blurb: board.isEvent ? "Events booked, what is due and the tenders you can bid for." : "Jobs on the go and waiting, and the tenders you can bid for.")
+            Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: figureItems) }
+            MoreBlock(title: board.isEvent ? "Bookings" : "Jobs on the go", card: false, trailing: {
                 Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }) {
                 if board.jobs.isEmpty && board.queuedJobs.isEmpty {
-                    Text(board.hoursPerWeek > 0 ? "Nothing booked yet. Requests come in through the week; marketing and a good name bring more." : "The firm cannot take work yet: check staff and equipment under Operations.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-                }
-                VStack(spacing: 0) {
-                    ForEach(Array(board.jobs.enumerated()), id: \.element.id) { n, j in
-                        jobRow(j)
-                        if n < board.jobs.count - 1 || !board.queuedJobs.isEmpty { Hairline() }
+                    Card(padding: 12, radius: Theme.Radius.row) {
+                        Text(board.hoursPerWeek > 0 ? "Nothing booked yet. Requests come in through the week; marketing and a good name bring more." : "The firm cannot take work yet: check staff and equipment under Operations.")
+                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                     }
+                }
+                VStack(spacing: 10) {
+                    ForEach(board.jobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
                     if !board.queuedJobs.isEmpty {
-                        Text("Waiting their turn").capsLabel(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10).padding(.bottom, 4)
-                        ForEach(Array(board.queuedJobs.enumerated()), id: \.element.id) { n, j in
-                            jobRow(j)
-                            if n < board.queuedJobs.count - 1 { Hairline() }
-                        }
+                        Text("Waiting their turn").capsLabel(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                        ForEach(board.queuedJobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
                     }
                 }
                 Text(terms)
@@ -86,6 +83,10 @@ private struct JobList: View {
     }
 
     private func jobRow(_ j: ProjectBoard.JobRow) -> some View {
+        EntityCard { jobBody(j) }
+    }
+
+    private func jobBody(_ j: ProjectBoard.JobRow) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -103,7 +104,6 @@ private struct JobList: View {
                 if j.held { Text("Held up").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }
         }
-        .padding(.vertical, 9)
     }
 
     private func subtitle(_ j: ProjectBoard.JobRow) -> String {
@@ -117,43 +117,42 @@ private struct JobList: View {
     // Tenders: buyers publish work; the best score on price and quality wins.
     @ViewBuilder private var tenders: some View {
         if ProjectTenders.catalog[company.type] != nil {
-            MoreBlock(title: "Tenders", trailing: {
+            MoreBlock(title: "Tenders", card: false, trailing: {
                 if board.hasManager {
-                    Button {
+                    Button(board.managerBids ? "Manager bids: on" : "Manager bids: off") {
                         let on: Bool = !board.managerBids
                         store.act { $0.setManagerBids(companyID: company.id, on: on) }
                         Haptics.choose()
                         store.saved(on ? "your manager now bids on tenders" : "you bid on tenders yourself")
-                    } label: {
-                        Text(board.managerBids ? "Manager bids: on" : "Manager bids: off").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(TinyButtonStyle())
                 }
             }) {
                 Text("Buyers publish work, firms bid, and the best score wins: price against quality in the buyer's own weights. Writing a bid costs money even when you lose.")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 if board.tenders.isEmpty {
-                    Text("Nothing is open for tender right now. New ones come every few weeks.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                }
-                VStack(spacing: 0) {
-                    ForEach(Array(board.tenders.enumerated()), id: \.element.id) { n, t in
-                        tenderRow(t)
-                        if n < board.tenders.count - 1 { Hairline() }
+                    Card(padding: 12, radius: Theme.Radius.row) {
+                        Text("Nothing is open for tender right now. New ones come every few weeks.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                     }
+                }
+                VStack(spacing: 10) {
+                    ForEach(board.tenders, id: \.id) { (t: ProjectBoard.TenderRow) in tenderRow(t) }
                 }
                 let results = board.myTenders.filter { $0.outcome != nil }
                 if !results.isEmpty {
                     Text("Results").capsLabel(Theme.ivoryFaint).padding(.top, 6)
-                    VStack(spacing: 0) {
-                        ForEach(Array(results.prefix(5).enumerated()), id: \.element.id) { n, t in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(t.title.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                    Text(t.buyer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    VStack(spacing: 10) {
+                        ForEach(Array(results.prefix(5)), id: \.id) { (t: ProjectBoard.TenderRow) in
+                            let outcomeText: String = t.outcome == "won" ? "Won" : t.outcome == "lost" ? "Lost" : "Closed"
+                            EntityCard {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                        Text(t.buyer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                    }
+                                    Spacer()
+                                    Chip(text: outcomeText, tint: t.outcome == "won" ? Theme.gain : Theme.ivoryMuted)
                                 }
-                                Spacer()
-                                Chip(text: t.outcome == "won" ? "Won" : t.outcome == "lost" ? "Lost" : "Closed", tint: t.outcome == "won" ? Theme.gain : Theme.ivoryMuted)
-                            }.padding(.vertical, 8)
-                            if n < min(5, results.count) - 1 { Hairline() }
+                            }
                         }
                     }
                 }
@@ -162,6 +161,10 @@ private struct JobList: View {
     }
 
     private func tenderRow(_ t: ProjectBoard.TenderRow) -> some View {
+        EntityCard { tenderBody(t) }
+    }
+
+    private func tenderBody(_ t: ProjectBoard.TenderRow) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
                 withAnimation(.snappy(duration: 0.2)) { openTender = openTender == t.id ? nil : t.id }
@@ -176,11 +179,12 @@ private struct JobList: View {
                     Spacer(minLength: 8)
                     if let b = t.myBid { Chip(text: "Bid \(Int((b * 100).rounded()))%", tint: Theme.gold) }
                     else { Text("\(t.weeksToBid) wk to bid").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold) }
+                    MoreChevron()
                 }
+                .contentShape(Rectangle())
             }.buttonStyle(.plain)
             if openTender == t.id { tenderSheet(t) }
         }
-        .padding(.vertical, 9)
     }
 
     private func tenderSheet(_ t: ProjectBoard.TenderRow) -> some View {
@@ -191,7 +195,7 @@ private struct JobList: View {
             if t.myBid != nil {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
-                    .buttonStyle(SmallOutlineButtonStyle())
+                    .buttonStyle(TinyButtonStyle())
             } else if !t.qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             } else {
@@ -240,39 +244,38 @@ private struct DevelopmentList: View {
     var body: some View {
         let active = board.developments
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            FigureStrip(items: devItems(active))
-            MoreBlock(title: "Developments", trailing: {
-                Button { withAnimation(.snappy(duration: 0.2)) { showStart.toggle() }; Haptics.choose() } label: {
-                    Text(showStart ? "Close" : "Start a project").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
-                }.buttonStyle(.plain)
+            MoreHeader(glyph: Glyph.projects, title: "Developments", blurb: "Land, zoning, building and selling units: each development is one project with its own risks.")
+            Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: devItems(active)) }
+            MoreBlock(title: "Developments", card: false, trailing: {
+                Button(showStart ? "Close" : "Start a project") { withAnimation(.snappy(duration: 0.2)) { showStart.toggle() }; Haptics.choose() }.buttonStyle(TinyButtonStyle())
             }) {
-                if showStart { startSheet }
+                if showStart { Card(padding: 14, radius: Theme.Radius.card) { startSheet } }
                 if active.isEmpty && !showStart {
                     Text("No project yet. Buy land and wait for zoning (about six months, and it can be refused), build (about 16 months), then sell the units. The first income arrives roughly two years after you start, so keep cash for the wait.")
                         .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(spacing: 0) {
-                    ForEach(Array(active.enumerated()), id: \.element.id) { n, p in
-                        projectRow(p)
-                        if n < active.count - 1 { Hairline() }
-                    }
+                VStack(spacing: 10) {
+                    ForEach(active, id: \.id) { (p: ProjectBoard.DevelopmentRow) in projectRow(p) }
                 }
                 Text("Zoning can be rejected or delayed. Building costs overrun. Sales depend on the housing market.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }
             if !board.finishedDevelopments.isEmpty {
-                MoreBlock("Finished") {
-                    VStack(spacing: 0) {
-                        ForEach(Array(board.finishedDevelopments.enumerated()), id: \.element.id) { n, f in
-                            let profit = f.revenue - f.cost
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(f.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                    Text("sold for \(store.short(f.revenue, in: company)) · cost \(store.short(f.cost, in: company))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                MoreBlock("Finished", card: false) {
+                    VStack(spacing: 10) {
+                        ForEach(board.finishedDevelopments, id: \.id) { f in
+                            let profit: Double = f.revenue - f.cost
+                            let line: String = "sold for \(store.short(f.revenue, in: company)) · cost \(store.short(f.cost, in: company))"
+                            let result: String = (profit < 0 ? "−" : "+") + store.short(abs(profit), in: company)
+                            EntityCard {
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(f.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text(result).font(.figure(13.5, weight: .semibold)).foregroundStyle(profit < 0 ? Theme.loss : Theme.gain)
                                 }
-                                Spacer(minLength: 8)
-                                Text((profit < 0 ? "−" : "+") + store.short(abs(profit), in: company)).font(.figure(13.5, weight: .semibold)).foregroundStyle(profit < 0 ? Theme.loss : Theme.gain)
-                            }.padding(.vertical, 8)
-                            if n < board.finishedDevelopments.count - 1 { Hairline() }
+                            }
                         }
                     }
                 }
@@ -346,6 +349,10 @@ private struct DevelopmentList: View {
     }
 
     private func projectRow(_ p: ProjectBoard.DevelopmentRow) -> some View {
+        EntityCard { projectBody(p) }
+    }
+
+    private func projectBody(_ p: ProjectBoard.DevelopmentRow) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -363,18 +370,15 @@ private struct DevelopmentList: View {
             HStack {
                 Text("Price per unit \(store.short(p.unitPrice * p.priceMultiplier, in: company))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
                 Spacer()
-                ForEach([0.9, 1.0, 1.1], id: \.self) { m in
-                    Button {
+                ForEach([0.9, 1.0, 1.1], id: \.self) { (m: Double) in
+                    let label: String = m == 0.9 ? "−10%" : m == 1.0 ? "Standard" : "+10%"
+                    let chosen: Bool = abs(p.priceMultiplier - m) < 0.001
+                    Button(label) {
                         store.act { $0.setDevelopmentPrice(companyID: company.id, projectID: p.id, multiplier: m) }; Haptics.choose()
                         store.saved("unit price \(m == 1.0 ? "standard" : m < 1 ? "10% lower" : "10% higher")")
-                    } label: {
-                        Text(m == 0.9 ? "−10%" : m == 1.0 ? "Standard" : "+10%").font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(abs(p.priceMultiplier - m) < 0.001 ? Theme.ivory : Theme.ivoryFaint)
-                            .padding(.bottom, 2).overlay(alignment: .bottom) { if abs(p.priceMultiplier - m) < 0.001 { Rectangle().fill(Theme.gold).frame(height: 1) } }
-                    }.buttonStyle(.plain).padding(.leading, 8)
+                    }.buttonStyle(TinyButtonStyle(tint: chosen ? Theme.gold : Theme.ivoryFaint))
                 }
             }
         }
-        .padding(.vertical, 9)
     }
 }
