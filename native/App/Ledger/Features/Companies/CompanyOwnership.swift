@@ -38,7 +38,7 @@ struct CompanyOwnershipSection: View {
                             }.buttonStyle(QuietButtonStyle())
                         }
                     }.padding(.vertical, 6)
-                    Hairline()
+                    CardLine()
                 }
                 if company.form == .limited && company.type != "hold" {
                     Text("Dividend policy").font(.system(size: 13)).foregroundStyle(Theme.ivory)
@@ -49,7 +49,7 @@ struct CompanyOwnershipSection: View {
                                 .buttonStyle(QuietButtonStyle(tint: on ? Theme.gold : Theme.ivoryMuted))
                         }
                     }
-                    Hairline()
+                    CardLine()
                     Text("Investors: " + engine.investorInterest(companyID: id).word).font(.caption).foregroundStyle(Theme.ivoryMuted)
                     WrapRow {
                         Button("Pitch for " + cur.tidyShort(engine.suggestedFundingAmount(companyID: id))) {
@@ -107,7 +107,7 @@ struct CompanyOwnershipSection: View {
                     }
                 }
                 if company.type == "hold" {
-                    if engine.isListed(companyID: id) { Label("Listed on the exchange", systemImage: "checkmark.circle").font(.caption).foregroundStyle(Theme.gain) }
+                    if engine.isListed(companyID: id) { HStack(spacing: 6) { GlyphView(glyph: Glyph.check, size: 14, weight: 1.6, tint: Theme.gain); Text("Listed on the exchange").font(.caption).foregroundStyle(Theme.gain) } }
                     else {
                         Button("Go public · fee " + cur.tidyShort(engine.listingFee) + "…") {
                             pending = PendingAction(title: "List \(company.name) on the exchange?", message: "A bank takes the holding public for a fee of \(cur.tidyDisplay(engine.listingFee)). The shares can then be traded and raised on.", button: "Go public", destructive: true) {

@@ -27,7 +27,7 @@ struct FranchiseeCard: View {
                         tint: company.quality < minQ ? Theme.loss : Theme.ivory)
                 if !f["end"].isNull { FlatRow(label: "Contract ends", value: GameCalendar.dateString(week: f["end"].int, dayOffset: 0)) }
                 if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.tidyShort(f["owed"].double), sub: "Paid first from the company's cash; unpaid parts pile up.", tint: Theme.loss) }
-                Hairline()
+                CardLine()
                 HStack {
                     Button("Leave the franchise · buyout \(cur.tidyShort(buyout))") { confirmLeave = true }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
                     Spacer()
@@ -104,16 +104,16 @@ struct FranchisorCard: View {
         Text("Others open units under your name for a fee and royalties, once the chain has proven itself. \(reqs.filter { $0.ok }.count) of \(reqs.count) ready.")
             .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 6)
         ForEach(Array(reqs.enumerated()), id: \.element.id) { n, r in
-            if n > 0 { Hairline() }
+            if n > 0 { CardLine() }
             HStack(alignment: .firstTextBaseline) {
-                Image(systemName: r.ok ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
+                GlyphView(glyph: r.ok ? Glyph.check : Glyph.ring, size: 14, weight: 1.6, tint: r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
                 Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                 Spacer(minLength: 8)
                 Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
             }.padding(.vertical, 8)
         }
         if reqs.allSatisfy({ $0.ok }) {
-            Hairline()
+            CardLine()
             if doc.status == "applied" {
                 Text("Franchise documents: about \(doc.weeksLeft) \(doc.weeksLeft == 1 ? "week" : "weeks") left. A lawyer writes the agreement and the disclosure document.").font(.caption).foregroundStyle(Theme.caution).padding(.top, 10)
             } else if doc.status != "ok" {
@@ -321,7 +321,7 @@ struct FranchiseTalkView: View {
                                 }
                                 choice("Contract", [(5.0, "5 years"), (10.0, "10 years")], current: Double(terms.years)) { terms.years = Int($0) }
                                 if let s = sums {
-                                    Hairline()
+                                    CardLine()
                                     FlatRow(label: "They need", value: cur.tidyShort(max(0, s.need)), sub: "They have \(cur.tidyShort(a.capital)) of their own.", tint: a.capital < s.need ? Theme.loss : Theme.ivory, rule: false)
                                     FlatRow(label: "Their profit a year", value: cur.tidyShort(s.theirs), tint: s.theirs < 0 ? Theme.loss : Theme.ivory)
                                     FlatRow(label: "Yours a year", value: cur.tidyShort(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.tidyShort(s.youPutIn))." : "")

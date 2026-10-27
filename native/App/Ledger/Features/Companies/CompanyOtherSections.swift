@@ -23,10 +23,10 @@ struct CompanyOtherSections: View {
     @ViewBuilder private var complaints: some View {
         let open = engine.openComplaints(companyID: company.id)
         if !open.isEmpty {
-            LedgerSection(title: "Complaints", trailing: { Text("answer within two weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Complaints", trailing: { Text("answer within two weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 ForEach(Array(open.enumerated()), id: \.offset) { n, c in
                     VStack(alignment: .leading, spacing: 6) {
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         Text(c["who"].string).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                         Text("\u{201C}\(c["t"].string)\u{201D}").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                         HStack {
@@ -58,7 +58,7 @@ struct CompanyOtherSections: View {
         if !list.isEmpty, company.status == .open {
             let cur = engine.currency(for: company)
             let run = Development.running(company)
-            LedgerSection(title: "Develop something new", trailing: {
+            CardSection(title: "Develop something new", trailing: {
                 if let run { Text("\(max(0, run.weeksLeft - engine.state.week).weeksText) to go").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }) {
                 if let run, let p = list.first(where: { $0.project.id == run.project }) {
@@ -73,7 +73,7 @@ struct CompanyOtherSections: View {
                             Spacer(minLength: 8)
                             Button("Start") { start(x.project) }.buttonStyle(QuietButtonStyle())
                         }
-                        if n < list.count - 1 { Hairline() }
+                        if n < list.count - 1 { CardLine() }
                     }
                 }
                 let live = Development.finished(company)
@@ -104,9 +104,9 @@ struct ChainStaffShortages: View {
     var body: some View {
         let list = engine.staffShortages(chainID: chainID)
         if !list.isEmpty {
-            LedgerSection("Short of staff") {
+            CardSection("Short of staff") {
                 ForEach(Array(list.prefix(6).enumerated()), id: \.offset) { n, x in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(engine.state.company(x.storeID)?.name ?? "Store").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)

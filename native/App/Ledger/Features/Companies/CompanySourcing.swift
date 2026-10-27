@@ -26,7 +26,7 @@ struct CompanySourcing: View {
         let sells = engine.supplyLinks().filter { $0.supplierID == company.id }
         if company.status.isLive, !inputs.isEmpty || !sells.isEmpty {
             let cur = engine.currency(for: company)
-            LedgerSection(title: "Suppliers", trailing: {
+            CardSection(title: "Suppliers", trailing: {
                 if engine.isSuppliedFromInside(companyID: company.id) { Chip(text: "Own supplier", tint: Theme.gain) }
             }) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -37,12 +37,12 @@ struct CompanySourcing: View {
                             .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
                     }
                     ForEach(Array(inputs.enumerated()), id: \.element.id) { n, input in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         inputBlock(input, cur: cur)
                     }
                     ForEach(Array(sells.enumerated()), id: \.element.id) { n, l in
                         if let b = engine.state.company(l.buyerID), let k = IntercompanySupply.kind(l.kindID) {
-                            Hairline()
+                            CardLine()
                             NavigationLink(value: CompanyRoute.companyAt(b.id, .operations)) {
                                 HStack(alignment: .firstTextBaseline) {
                                     VStack(alignment: .leading, spacing: 1) {
@@ -79,7 +79,7 @@ struct CompanySourcing: View {
                     }
                     Spacer(minLength: 8)
                     if let c = input.current { Chip(text: chipText(c), tint: chipTint(c)) }
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.ivoryFaint)
+                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
             if isOpen {
@@ -92,19 +92,19 @@ struct CompanySourcing: View {
                 }
                 if let why = input.governedBy {
                     HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "lock.fill").font(.system(size: 11)).foregroundStyle(Theme.caution)
+                        GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: Theme.caution)
                         Text(why + (why.contains("franchise agreement") ? " Only the franchisor can change it." : " Change it at the chain, or release the rule there so each store decides.")).font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
                 if let none = input.noOwnProvider {
                     HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "lock").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: Theme.ivoryFaint)
                         Text(none).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 ForEach(Array(input.options.enumerated()), id: \.element.id) { n, o in
-                    if n > 0 { Hairline() }
+                    if n > 0 { CardLine() }
                     optionRow(input, o, cur: cur)
                 }
             }
