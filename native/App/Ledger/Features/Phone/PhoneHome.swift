@@ -7,13 +7,20 @@ import Simulation
 /// and a round back button to this home. The tab owns the navigation stack: apps and the companies they link to are pushed on it,
 /// so Back always returns to where the player came from.
 struct PhoneHome: View {
+    /// What the Phone stack holds: an app, or a company a link opened from inside an app. One typed path (not a type-erased
+    /// `NavigationPath`), so a company link tapped in the Inbox is pushed on exactly the stack the Inbox itself sits on.
+    enum Page: Hashable {
+        case app(PhoneApp)
+        case company(CompanyRoute)
+    }
+
     @EnvironmentObject var store: GameStore
-    @State private var path = NavigationPath()
+    @State private var path: [Page] = []
 
     var body: some View {
         NavigationStack(path: $path) {
             home
-                .navigationDestination(for: PhoneApp.self) { app in PhoneAppScreen(app: app) }
+                .navigationDestination(for: Page.self) { (page: Page) in destination(page) }
                 .companyRouteDestinations()
         }
         .onAppear { take() }
@@ -21,16 +28,22 @@ struct PhoneHome: View {
         .onChange(of: store.phoneAppRequest) { _, _ in take() }
     }
 
+    @ViewBuilder private func destination(_ page: Page) -> some View {
+        switch page {
+        case .app(let app): PhoneAppScreen(app: app)
+        case .company(let route): CompanyRouteDestination(route: route)
+        }
+    }
+
     /// Opens the app a link asked for, and pushes a company a link asked for on this tab.
     private func take() {
         if let r = store.routeRequest, r.tab == .phone {
             store.routeRequest = nil
-            path.append(r.route)
+            path.append(.company(r.route))
         }
         if let app = store.phoneAppRequest {
             store.phoneAppRequest = nil
-            path = NavigationPath()
-            path.append(app)
+            path = [.app(app)]
         }
     }
 
@@ -48,7 +61,7 @@ struct PhoneHome: View {
                     ForEach(PhoneApp.allCases) { app in
                         AppIcon(app: app, badge: badges[app] ?? 0) {
                             Haptics.tap()
-                            path.append(app)
+                            path.append(.app(app))
                         }
                     }
                 }
@@ -85,7 +98,7 @@ struct PhoneHome: View {
     private func banner(_ alert: PhoneAlert) -> some View {
         Button {
             Haptics.tap()
-            if alert.messageID != 0 { store.openMessage(alert.messageID) } else { path.append(alert.app) }
+            if alert.messageID != 0 { store.openMessage(alert.messageID) } else { path.append(.app(alert.app)) }
         } label: {
             HStack(spacing: 12) {
                 GlyphView(glyph: alert.app.glyph, size: 18, weight: 1.6, tint: alert.app.tint)

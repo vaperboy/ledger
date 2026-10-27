@@ -25,6 +25,8 @@ struct TeamView: View {
     @State private var query = ""
     @State private var filter: PeopleFilter = .all
     @State private var showAllScores = false
+    /// The "Need you" tile was tapped: the Overview shows only the owner's list (the one the tile counts), in full.
+    @State private var needYouOnly = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -87,7 +89,7 @@ struct TeamView: View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases) { t in
                 let on = t == tab
-                Button { Haptics.tap(); withAnimation(.easeOut(duration: 0.15)) { tab = t } } label: {
+                Button { Haptics.tap(); needYouOnly = false; withAnimation(.easeOut(duration: 0.15)) { tab = t } } label: {
                     Text(t.rawValue).font(.system(size: 13.5)).foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
                         .padding(.bottom, 9).padding(.horizontal, 2)
                         .overlay(alignment: .bottom) { Rectangle().fill(on ? Theme.gold : Color.clear).frame(height: 2) }
@@ -138,10 +140,24 @@ struct TeamView: View {
 
     /// The payroll warning, who decides what in the companies that need you most, the count tiles and the latest activity.
     @ViewBuilder private func overview(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        payrollNotes(alerts)
-        decidesTables(o, e, alerts, limit: 3)
-        peopleTiles(o, e, alerts)
-        activityList(o, e, alerts)
+        if needYouOnly {
+            needYouList(o, e, alerts)
+        } else {
+            payrollNotes(alerts)
+            decidesTables(o, e, alerts, limit: 3)
+            peopleTiles(o, e, alerts)
+            activityList(o, e, alerts)
+        }
+    }
+
+    /// The full "Need you" list: exactly what the tile counts, from the same function the activity list starts with.
+    @ViewBuilder private func needYouList(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+        let items: [ActivityItem] = needYouItems(o, e, alerts)
+        sectionLabel("Need you", trailing: "\(items.count)")
+        ActivityList(items: items, emptyText: "Nothing needs you. Your managers have the rest in hand.")
+        Button { Haptics.tap(); needYouOnly = false } label: {
+            Text("Back to overview ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
+        }.buttonStyle(.plain)
     }
 
     /// One amber note per company where nobody approves payroll, with the way to appoint someone.
@@ -155,12 +171,12 @@ struct TeamView: View {
     }
 
     private func peopleTiles(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        let need = peopleIssues(o, e).filter { $0.needsOwner }.count + alerts.count
+        let need = needYouItems(o, e, alerts).count
         let needed = o.vacancies.filter { $0.needed }.count
         let list: [CountTileData] = [
             CountTileData(glyph: Glyph.person, count: e.teamPeople().count, label: "People", action: { filter = .all; tab = .people }),
             CountTileData(glyph: Glyph.warning, count: need, label: "Need you", tint: need > 0 ? Theme.caution : Theme.ivory,
-                          action: { filter = .attention; tab = .people }),
+                          action: { needYouOnly = true; tab = .overview }),
             CountTileData(glyph: Glyph.ovCalendar, count: o.vacancies.count, label: "Posts to fill", tint: needed > 0 ? Theme.loss : Theme.ivory,
                           action: { tab = .vacancies }),
         ]
@@ -168,8 +184,9 @@ struct TeamView: View {
     }
 
     /// What waits for the owner first (payroll to approve, then people trouble above a manager's authority), then what managers handle.
-    private func activityList(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        let people = peopleIssues(o, e)
+    /// What waits for the owner: payroll nobody approves, then people trouble above a manager's authority. The "Need you" tile counts
+    /// and opens exactly these items.
+    private func needYouItems(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> [ActivityItem] {
         var items: [ActivityItem] = []
         for a in alerts {
             let money = e.state.company(a.companyID).map { store.money(a.amount, in: $0) } ?? store.money(a.amount)
@@ -178,10 +195,17 @@ struct TeamView: View {
                                       subtitle: "\(a.companyName) · \(a.dateText) · no manager or accountant",
                                       action: { path.append(.companyAt(cid, .finances)) }))
         }
-        for i in people.filter({ $0.needsOwner }) {
+        for i in peopleIssues(o, e).filter({ $0.needsOwner }) {
             items.append(ActivityItem(id: "own\(i.id)", glyph: Glyph.person, title: i.title,
                                       subtitle: i.beyondAuthority ? "Above their authority · \(i.detail)" : i.detail, action: { open(i, e) }))
         }
+        return items
+    }
+
+    /// What waits for the owner first, then what managers handle.
+    private func activityList(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+        let people = peopleIssues(o, e)
+        var items: [ActivityItem] = needYouItems(o, e, alerts)
         for i in people.filter({ !$0.needsOwner }) {
             items.append(ActivityItem(id: "mgr\(i.id)", glyph: Glyph.person, title: i.title, subtitle: "\(i.handledBy) · \(i.detail)", action: { open(i, e) }))
         }

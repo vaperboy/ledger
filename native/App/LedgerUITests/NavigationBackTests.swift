@@ -65,7 +65,8 @@ final class NavigationBackTests: TourCase {
         let link = app.buttons["open-company-link"].firstMatch
         guard link.waitForExistence(timeout: 2) else { throw XCTSkip("no Inbox message with a company link in the showcase game") }
         link.tap()
-        try assertCompanyOpen("Inbox")
+        // Strict: the Inbox link must open the company (no skip).
+        XCTAssertTrue(app.buttons["Operations"].waitForExistence(timeout: 5) || app.buttons["Finances"].waitForExistence(timeout: 2), "the Inbox company link should open the company")
         XCTAssertTrue(tapBack(to: "Inbox"))
         // Asserted: Back lands on the Inbox app, not on Home.
         XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 5), "Back should return to the Inbox")
