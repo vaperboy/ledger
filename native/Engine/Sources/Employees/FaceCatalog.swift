@@ -27,30 +27,25 @@ public enum FaceStyle: Sendable {
     public var other: FaceStyle { self == .casual ? .suit : .casual }
 }
 
-/// One portrait: a sheet, a cell and a variant (0 the plain cell; 1 mirrored; 2 a closer offset crop; 3 mirrored, closer and a mild warm grade).
-/// Written "c12.0": the form stored on the person.
+/// One portrait: a sheet and a cell of it. Written "c12": the form stored on the person. An older save may hold "c12.2" (a variant, no longer
+/// used): the part after the dot is ignored, so it reads as the plain cell.
 public struct FaceKey: Hashable, Sendable {
     public var sheet: FaceSheetID
     public var cell: Int
-    public var variant: Int
 
-    public init(sheet: FaceSheetID, cell: Int, variant: Int) { self.sheet = sheet; self.cell = cell; self.variant = variant }
+    public init(sheet: FaceSheetID, cell: Int) { self.sheet = sheet; self.cell = cell }
 
-    public var string: String { "\(sheet.rawValue)\(cell).\(variant)" }
+    public var string: String { "\(sheet.rawValue)\(cell)" }
 
     public init?(_ text: String?) {
         guard let text, let first = text.first, let sheet = FaceSheetID(rawValue: String(first)) else { return nil }
-        let rest = text.dropFirst().split(separator: ".")
-        guard rest.count == 2, let cell = Int(rest[0]), let variant = Int(rest[1]),
-              cell >= 0, cell < sheet.cellCount, variant >= 0, variant < FaceCatalog.variantCount else { return nil }
-        self.init(sheet: sheet, cell: cell, variant: variant)
+        guard let cell = Int(text.dropFirst().split(separator: ".").first ?? ""), cell >= 0, cell < sheet.cellCount else { return nil }
+        self.init(sheet: sheet, cell: cell)
     }
 }
 
 /// What the owner tagged on each portrait, and the deterministic choice of a free one for a person.
 public enum FaceCatalog {
-    public static let variantCount = 4
-
     public struct Tag: Equatable, Sendable { public var gender: Character; public var age: Character; public var region: Character }
 
     /// gender (F/M), age band (Y/M/O), region (S E U A L W) per cell, row by row, left to right.
@@ -154,9 +149,9 @@ public enum FaceCatalog {
         return out.filter { !$0.isEmpty }.map { $0.map { (sheet: $0.sheet, cell: $0.cell) } }
     }
 
-    /// A free portrait for a person, never one `isTaken` refuses: within each preference tier the plain cells first, and only when every plain
-    /// cell of the tier is taken its variants; then the next tier; then the other style. Nil when everything is taken (the screens then show
-    /// initials). Deterministic: the same traits, style, salt and taken set give the same answer.
+    /// A free portrait for a person, never one `isTaken` refuses: the best preference tier that has an unused original, then wider tiers (any
+    /// age, any region, any gender), then the other style. Nil when every original is taken (the screens then show initials). Deterministic: the
+    /// same traits, style, salt and taken set give the same answer.
     public static func pick(_ traits: FaceTraits, style: FaceStyle, salt: String = "", isTaken: (FaceKey) -> Bool) -> FaceKey? {
         let h = stableHash(traits.key + "|" + salt)
         for st in [style, style.other] {
@@ -164,17 +159,8 @@ public enum FaceCatalog {
                 let start = Int(h % UInt64(cells.count))
                 for k in 0..<cells.count {
                     let c = cells[(start + k) % cells.count]
-                    let key = FaceKey(sheet: c.sheet, cell: c.cell, variant: 0)
+                    let key = FaceKey(sheet: c.sheet, cell: c.cell)
                     if !isTaken(key) { return key }
-                }
-                let vStart = Int((h >> 17) % UInt64(variantCount - 1))
-                for step in 0..<(variantCount - 1) {
-                    let variant = 1 + (vStart + step) % (variantCount - 1)
-                    for k in 0..<cells.count {
-                        let c = cells[(start + k) % cells.count]
-                        let key = FaceKey(sheet: c.sheet, cell: c.cell, variant: variant)
-                        if !isTaken(key) { return key }
-                    }
                 }
             }
         }

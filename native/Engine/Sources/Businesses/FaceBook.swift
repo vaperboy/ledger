@@ -48,14 +48,14 @@ public enum FaceBook {
     // MARK: State
 
     /// Keys locked for ever (every person who was ever hired).
-    public static func locks(_ s: GameState) -> Set<String> { Set((s.rest[locksKey]?.array ?? []).map { $0.string }) }
+    public static func locks(_ s: GameState) -> Set<String> { Set((s.rest[locksKey]?.array ?? []).compactMap { FaceKey($0.string)?.string }) }
 
     static func setLocks(_ s: inout GameState, _ keys: Set<String>) { s.rest[locksKey] = .array(keys.sorted().map { .string($0) }) }
 
     /// Every key somebody holds or has locked.
     static func taken(_ s: GameState) -> Set<String> {
         var t = locks(s)
-        for p in s.people.values { if let k = p.faceKey { t.insert(k) } }
+        for p in s.people.values { if let k = FaceKey(p.faceKey) { t.insert(k.string) } }
         return t
     }
 
@@ -96,7 +96,7 @@ public enum FaceBook {
             let employed = p.employerID != 0 && p.employerID != -9
             if employed && !p.everHired { p.set("everHired", true); s.people[id] = p }
             if employed || p.everHired {
-                if let k = p.faceKey { l.insert(k) }
+                if let k = FaceKey(p.faceKey) { l.insert(k.string) }
                 else {
                     let co = s.company(p.employerID)
                     let trade = co.flatMap { data.catalog[$0.type] }

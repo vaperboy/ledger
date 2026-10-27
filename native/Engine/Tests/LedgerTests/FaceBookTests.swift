@@ -119,31 +119,34 @@ final class FaceBookTests: XCTestCase {
 
     func testInitialsWhenEveryFaceIsTaken() throws {
         var e = try engine()
-        let total = FaceSheetID.allCases.map { $0.cellCount }.reduce(0, +) * FaceCatalog.variantCount
+        let total = FaceSheetID.allCases.map { $0.cellCount }.reduce(0, +)
+        XCTAssertEqual(total, 504)
         e.update { s, _, _ in
-            for i in 0..<(total + 50) {
+            for i in 0..<(total + 1) {
                 s.people[6000 + i] = self.person(6000 + i, role: "cashier", age: 20 + i % 45, name: i % 2 == 0 ? "Emma Berg" : "Lars Dahl", hired: 7)
                 FaceBook.assign(personID: 6000 + i, countryCode: i % 3 == 0 ? "IN" : "UK", style: i % 2 == 0 ? .casual : .suit, state: &s)
             }
         }
         let keys = e.state.people.values.compactMap { $0.faceKey }
-        XCTAssertEqual(keys.count, total, "all portraits and variants used once, none repeated")
+        XCTAssertEqual(keys.count, total, "every original used once, none repeated")
         XCTAssertEqual(Set(keys).count, total)
-        XCTAssertEqual(e.state.people.values.filter { $0.faceKey == nil && $0.id >= 6000 }.count, 50)
+        XCTAssertNil(e.state.people[6000 + total]?.faceKey, "the 505th person gets no face")
     }
 
-    func testVariantsOnlyWhenPlainCellsTaken() {
+    func testWidensWhenMatchesAreTakenAndNeverVaries() {
         let traits = FaceTraits(key: "x", gender: "F", ageBand: "Y", region: "S")
         var taken: Set<String> = []
-        // the plain cells of the best tier go first
-        let best = (0..<FaceCatalog.tags(.casual).count).filter { let t = FaceCatalog.tags(.casual)[$0]; return t.gender == "F" && t.age == "Y" && t.region == "S" }
+        let tags = FaceCatalog.tags(.casual)
+        let best = Set((0..<tags.count).filter { tags[$0].gender == "F" && tags[$0].age == "Y" && tags[$0].region == "S" })
         for _ in best {
             let k = FaceCatalog.pick(traits, style: .casual) { taken.contains($0.string) }!
-            XCTAssertEqual(k.variant, 0); XCTAssertEqual(k.sheet, .casual); XCTAssertTrue(best.contains(k.cell))
+            XCTAssertEqual(k.sheet, .casual); XCTAssertTrue(best.contains(k.cell))
             taken.insert(k.string)
         }
+        // the best matches are gone: the next is a wider match, still an original that nobody holds
         let next = FaceCatalog.pick(traits, style: .casual) { taken.contains($0.string) }!
-        XCTAssertTrue(next.variant > 0 || next.sheet != .casual || !best.contains(next.cell))
+        XCTAssertFalse(taken.contains(next.string))
         XCTAssertEqual(FaceKey(next.string), next)
+        XCTAssertEqual(FaceKey("c12.2"), FaceKey(sheet: .casual, cell: 12), "an old save's variant reads as the plain cell")
     }
 }

@@ -72,9 +72,8 @@ enum FaceSheet {
     static func image(_ text: String?) -> CGImage? { image(FaceKey(text)) }
 
     /// The crop rectangle of a cell: a square inside the cell (the faces of the uneven sheets sit in the upper part of a taller cell, so the square
-    /// leans up), a little inside the border; closer and shifted slightly for the zoomed variants.
-    static func cropRect(sheet: FaceSheetID, cell: Int, variant: Int, sheetWidth: Int, sheetHeight: Int) -> CGRect {
-        let zoomed = variant == 2 || variant == 3
+    /// leans up), a little inside the border.
+    static func cropRect(sheet: FaceSheetID, cell: Int, sheetWidth: Int, sheetHeight: Int) -> CGRect {
         var box: CGRect
         var lean = 0.0
         switch sheet {
@@ -88,29 +87,15 @@ enum FaceSheet {
             box = CGRect(x: r.minX * k, y: r.minY * k, width: r.width * k, height: r.height * k)
             lean = sheet == .managers ? 0.25 : 0.1
         }
-        let side = min(box.width, box.height) * (zoomed ? 0.80 : 0.94)
+        let side = min(box.width, box.height) * 0.94
         let slack = box.height - side
-        let cx = box.midX + (zoomed ? box.width * 0.02 : 0)
-        let cy = box.minY + side / 2 + slack * (0.5 - lean) - (zoomed ? box.height * 0.03 : 0)
+        let cx = box.midX
+        let cy = box.minY + side / 2 + slack * (0.5 - lean)
         return CGRect(x: (cx - side / 2).rounded(), y: (cy - side / 2).rounded(), width: side.rounded(), height: side.rounded())
     }
 
     private static func render(_ key: FaceKey, from sheet: CGImage) -> CGImage? {
-        let rect = cropRect(sheet: key.sheet, cell: key.cell, variant: key.variant, sheetWidth: sheet.width, sheetHeight: sheet.height)
-        guard let cropped = sheet.cropping(to: rect) else { return nil }
-        let size = cropped.width
-        guard size > 0, let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
-                                           space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
-                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return cropped }
-        let mirrored = key.variant == 1 || key.variant == 3
-        if mirrored { ctx.translateBy(x: CGFloat(size), y: 0); ctx.scaleBy(x: -1, y: 1) }
-        ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: size, height: size))
-        if key.variant == 3 {
-            // A mild warm grade over the whole picture, background included; faces stay natural.
-            ctx.setBlendMode(.softLight)
-            ctx.setFillColor(CGColor(srgbRed: 0.96, green: 0.78, blue: 0.55, alpha: 0.22))
-            ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
-        }
-        return ctx.makeImage() ?? cropped
+        let rect = cropRect(sheet: key.sheet, cell: key.cell, sheetWidth: sheet.width, sheetHeight: sheet.height)
+        return sheet.cropping(to: rect)
     }
 }
