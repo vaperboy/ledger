@@ -15,29 +15,6 @@ enum CompanyMoneyPart: String, CaseIterable, Hashable {
     static let tabs: [CompanyMoneyPart] = [.summary, .accounts, .owners, .settings]
 }
 
-/// A titled card: the small champagne label above a bordered card holding the content (the new-look replacement of a ruled section).
-struct CardSection<Content: View, Trailing: View>: View {
-    var title: String
-    @ViewBuilder var trailing: () -> Trailing
-    @ViewBuilder var content: () -> Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).capsLabel()
-                Spacer(minLength: 8)
-                trailing()
-            }
-            Card(padding: 14, radius: Theme.Radius.card) { content() }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-extension CardSection where Trailing == EmptyView {
-    init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
-        self.init(title: title, trailing: { EmptyView() }, content: content)
-    }
-}
-
 /// "Open in Bank": all money handling (transfers, loans, deposits, taxes, bills, payroll approval, statements) lives in the Bank app.
 /// Opens the Bank app on THIS company's account (plain navigation, so no toast); `tab` picks the Bills tab for the pay buttons.
 struct OpenInBankButton: View {

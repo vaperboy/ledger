@@ -10,8 +10,6 @@ enum OpsPart: String, CaseIterable, Hashable {
 
 extension Glyph {
     /// Icons for the Operations screens, in the same 24 x 24 outline style as the mockups' set.
-    static let check = "M5 12.5 L10 17.5 L19 7"
-    static let info = "M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M12 11 V16.5 M12 7.5 V8"
     static let cost = "M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M9 12 H15 M9 9 H15 M9 15 H15"
     static let capacity = "M4 18 A8 8 0 0 1 20 18 M12 18 L16 11"
     static let suppliers = "M3 7 H14 V17 H3 Z M14 10 H18 L21 13 V17 H14 M7 19 A1.5 1.5 0 1 0 7 22 M17 19 A1.5 1.5 0 1 0 17 22"
