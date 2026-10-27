@@ -24,7 +24,7 @@ struct BoardsGroupSection: View {
                 }
                 Hairline()
                 Button(action: openInvest) {
-                    GroupLinkRow(title: "Stakes in other groups and the big meeting offer", sub: "Under Money, Invest. Owners, dividends and buy-backs are in each company's Money.")
+                    GroupLinkRow(title: "Stakes in other groups and the big meeting offer", sub: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
                 }.buttonStyle(.plain)
             }
         }
@@ -60,11 +60,6 @@ struct BoardView: View {
             let companies = ManagerModel.boardCompanies(engine.state, key: key)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(engine.boardName(key: key)).font(.serifTitle(26)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text(key.hasPrefix("ch:") ? "Board of the chain · \(companies.count) \(companies.count == 1 ? "store" : "stores")" : "Board of the company")
-                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
                     if !message.isEmpty { Text(message).font(.caption).foregroundStyle(Theme.ivoryMuted) }
                     agenda(engine)
                     table(engine)
@@ -81,8 +76,7 @@ struct BoardView: View {
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Board")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: engine.boardName(key: key), subtitle: key.hasPrefix("ch:") ? "Board of the chain · \(companies.count) \(companies.count == 1 ? "store" : "stores")" : "Board of the company", tab: .group)
             .confirmAction($pending)
             // Every result is also a toast, so it is seen when the line at the top has scrolled away.
             .onChange(of: message) { _, new in if !new.isEmpty { store.show(new, tone: "n") } }

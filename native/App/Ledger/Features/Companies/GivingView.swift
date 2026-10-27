@@ -19,7 +19,6 @@ struct GivingView: View {
                 let places = e.givingPlaces
                 let place = places.first { $0.key == placeKey } ?? places.first
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Text("Giving back").font(.serifTitle(28)).foregroundStyle(Theme.ivory)
                     summary(e)
                     if let place {
                         LedgerSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
@@ -46,7 +45,7 @@ struct GivingView: View {
         }
         .scrollIndicators(.hidden)
         .ledgerBackground()
-        .navigationTitle("Giving back").navigationBarTitleDisplayMode(.inline)
+        .appScreen(title: "Giving back", subtitle: "Gifts, sponsorships and your foundation", tab: .group)
         .confirmAction($pending)
     }
 

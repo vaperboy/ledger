@@ -10,7 +10,7 @@ import Simulation
 struct GroupAttention: View {
     var engine: GameEngine
 
-    private struct Item: Identifiable {
+    struct Item: Identifiable {
         enum Target { case board(String), chain(Int), company(Int, CompanySection), none }
         var id: String
         var title: String
@@ -19,7 +19,7 @@ struct GroupAttention: View {
         var target: Target
     }
 
-    private var items: [Item] {
+    var items: [Item] {
         var out: [Item] = []
         for key in engine.boardKeys where engine.boardIsActive(key: key) {
             let n = engine.boardMeetings(key: key).filter { $0.status.isEmpty }.count
@@ -56,28 +56,30 @@ struct GroupAttention: View {
     var body: some View {
         let list = items
         if !list.isEmpty {
-            LedgerSection(title: "Needs you", trailing: { Text("\(list.count)").font(.system(size: 11)).foregroundStyle(Theme.caution) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(list.prefix(8).enumerated()), id: \.element.id) { n, it in
-                        if n > 0 { Hairline() }
-                        row(it)
-                    }
-                    if list.count > 8 { Text("And \(list.count - 8) more below.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6) }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("NEEDS YOU").font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
+                    Spacer()
+                    Text("\(list.count)").font(.system(size: 11)).foregroundStyle(Theme.caution)
                 }
+                ForEach(list.prefix(8)) { it in row(it) }
+                if list.count > 8 { Text("And \(list.count - 8) more under Structure and Board.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
             }
         }
     }
 
+    private func card(_ it: Item) -> some View {
+        let linked: Bool
+        switch it.target { case .none: linked = false; default: linked = true }
+        return CardRow(glyph: Glyph.warning, title: it.title, subtitle: it.sub, chevron: linked)
+    }
+
     @ViewBuilder private func row(_ it: Item) -> some View {
         switch it.target {
-        case .board(let key): NavigationLink { BoardView(key: key) } label: { GroupLinkRow(title: it.title, sub: it.sub, subTint: it.tint) }.buttonStyle(.plain)
-        case .chain(let id): NavigationLink { ChainView(chainID: id) } label: { GroupLinkRow(title: it.title, sub: it.sub, subTint: it.tint) }.buttonStyle(.plain)
-        case .company(let id, let sec): NavigationLink(value: CompanyRoute.companyAt(id, sec)) { GroupLinkRow(title: it.title, sub: it.sub, subTint: it.tint) }.buttonStyle(.plain)
-        case .none:
-            VStack(alignment: .leading, spacing: 1) {
-                Text(it.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                Text(it.sub).font(.system(size: 11)).foregroundStyle(it.tint)
-            }.padding(.vertical, 9)
+        case .board(let key): NavigationLink { BoardView(key: key) } label: { card(it) }.buttonStyle(.plain)
+        case .chain(let id): NavigationLink { ChainView(chainID: id) } label: { card(it) }.buttonStyle(.plain)
+        case .company(let id, let sec): NavigationLink(value: CompanyRoute.companyAt(id, sec)) { card(it) }.buttonStyle(.plain)
+        case .none: card(it)
         }
     }
 }
@@ -87,6 +89,9 @@ struct GroupAttention: View {
 struct GroupStructureOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    /// Which sections to draw (the More menu shows one at a time). All by default.
+    enum Part: CaseIterable { case figures, holdings, chains, franchises, standAlone, dividends }
+    var parts: Set<Part> = Set(Part.allCases)
     @State private var openBrand: String?
     @State private var aloneQuery = ""
     @State private var aloneAll = false
@@ -99,7 +104,7 @@ struct GroupStructureOverview: View {
         let franchised = live.filter { !$0.value("franchise").isNull }
         let alone = live.filter { $0.value("chain").isNull && $0.value("franchise").isNull && $0.holdingID == 0 && !engine.isFranchisor(companyID: $0.id) }
         let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
-        LedgerSection("Structure") {
+        if parts.contains(.figures) { LedgerSection("Structure") {
             VStack(alignment: .leading, spacing: 0) {
                 KeyFigures(items: [
                     .init(label: "Companies", value: "\(live.count)", sub: "\(Set(live.map { $0.cityID }).count) \(Set(live.map { $0.cityID }).count == 1 ? "city" : "cities")"),
@@ -111,12 +116,12 @@ struct GroupStructureOverview: View {
                 ])
                 if live.isEmpty { Text("Start a company to build a group.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8) }
             }
-        }
-        holdingsSection(holdings, live: live)
-        chainsSection(chains)
-        franchiseSection(franchisors, franchised, chains: chains)
-        standAloneSection(alone)
-        dividendsAndTax(live)
+        } }
+        if parts.contains(.holdings) { holdingsSection(holdings, live: live) }
+        if parts.contains(.chains) { chainsSection(chains) }
+        if parts.contains(.franchises) { franchiseSection(franchisors, franchised, chains: chains) }
+        if parts.contains(.standAlone) { standAloneSection(alone) }
+        if parts.contains(.dividends) { dividendsAndTax(live) }
     }
 
     // MARK: Dividends and group tax

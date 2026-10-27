@@ -3,74 +3,88 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: ownership and structure (what needs you, holdings, chains, franchises, the group office (optional), boards) and, as a second section,
-/// the group's money (finance, bank, investments, taxes, costs, reports) which is `FinanceView` unchanged.
+/// The Group tab, built to the approved mockups: a header with a round icon, the serif title and a grey line, then underline tabs
+/// Overview, Structure, Board, Deals and More (a menu of every other Group page). There is no Money tab here: the group's money is
+/// managed in the Bank app, and Overview carries a "Manage in Bank" link to it. The tabs live in `GroupTabs.swift`.
 struct GroupView: View {
-    enum Part: String, CaseIterable, Hashable { case structure = "Structure", money = "Money" }
     @EnvironmentObject var store: GameStore
     @State private var path: [CompanyRoute] = []
-    @State private var part: Part = .structure
+    @State private var tab: GroupTab = .overview
+    @State private var more: GroupMorePage = .holdings
+    @State private var showGiving = false
+    @State private var showNewHolding = false
 
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part).padding(.top, Theme.Space.s)
-                if part == .money {
-                    FinanceView()
-                } else if let e = store.engine {
-                    structure(e)
+                ReturnLine(tab: .group)
+                header
+                    .padding(.horizontal, 18).padding(.top, 6)
+                GroupTabBar(tab: $tab, more: $more, badges: badges)
+                    .padding(.horizontal, 18).padding(.top, 12)
+                if let e = store.engine {
+                    ScrollView {
+                        content(e)
+                            .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 40)
+                            .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden)
                 }
             }
             .ledgerBackground()
-            .navigationTitle("Group")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
+            .navigationDestination(isPresented: $showGiving) { GivingView() }
+            .navigationDestination(isPresented: $showNewHolding) { NewHoldingView() }
             .routeRequests(for: .group, path: $path)
-            .returnBar(for: .group)
-            .onAppear { takeMoneyRequest() }
-            .onChange(of: store.moneySection) { _, _ in takeMoneyRequest() }
+            .onAppear { sendMoneyToBank() }
+            .onChange(of: store.moneySection) { _, _ in sendMoneyToBank() }
         }
     }
 
-    /// A deep link to a Money section (bank, invest, taxes, reports) switches to Money; `FinanceView` then picks the section.
-    private func takeMoneyRequest() {
-        if store.moneySection != nil { part = .money; path = [] }
+    /// Group > Money is gone. An old deep link to a money section (loans, invest, taxes) opens the Bank app instead.
+    private func sendMoneyToBank() {
+        if store.moneySection != nil { store.moneySection = nil; store.openApp(.bank) }
     }
 
-    /// Decisions first, then the structure (holdings, chains, franchises), then the people and bodies above the companies:
-    /// group management, the main office, the boards. Company figures and comparisons stay under Company.
-    @ViewBuilder private func structure(_ e: GameEngine) -> some View {
-        let live = e.state.companies.filter { $0.type != "hold" && $0.status.isLive }
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                GroupAttention(engine: e)
-                GroupStructureOverview(engine: e)
-                // Group-level posts exist only after the owner has set up a group office (Group office section below).
-                if e.groupOfficeEstablished && live.count >= 2 { ExecutivePosts(engine: e, chainID: nil) }
-                if !live.isEmpty { HeadOfficeSection(engine: e) }
-                BoardsGroupSection(engine: e) { moneyTo(.invest) }
-                HostingSection(engine: e)
-                // One section for the two single-link rows, rather than a heading and divider each.
-                LedgerSection("More") {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if live.contains(where: { $0.status == .open }) {
-                            NavigationLink(value: CompanyRoute.market) {
-                                GroupLinkRow(title: "Market, reviews and rivals", sub: "Rival groups and how your trades compare.")
-                            }.buttonStyle(.plain)
-                            Hairline()
-                        }
-                        NavigationLink { GivingView() } label: {
-                            GroupLinkRow(title: "Gifts, sponsorships and your foundation",
-                                         sub: "\(e.givingMarks.count) \(e.givingMarks.count == 1 ? "mark" : "marks")" + (e.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
-                        }.buttonStyle(.plain)
-                    }
-                }
+    /// Board decisions waiting, as a red count on the Board tab.
+    private var badges: [GroupTab: Int] {
+        guard let e = store.engine else { return [:] }
+        let n = e.boardKeys.filter { e.boardIsActive(key: $0) }.reduce(0) { $0 + e.boardMeetings(key: $1).filter { $0.status.isEmpty }.count }
+        return n > 0 ? [.board: n] : [:]
+    }
+
+    private var subtitle: String {
+        switch tab {
+        case .overview: return "Holdings · Chains · Franchises · Board"
+        case .structure: return "Who owns what"
+        case .board: return "Board, owners and decisions"
+        case .deals: return "Franchise offers, acquisitions and group deals"
+        case .more: return more.sub
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            IconCircle(glyph: Glyph.group, size: 44)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Group").font(.serifTitle(28)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(subtitle).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
-            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if tab == .structure { SmallOutlineButton(title: "Set up holding") { showNewHolding = true } }
         }
-        .scrollIndicators(.hidden)
     }
 
-    private func moneyTo(_ s: MoneySection) { store.moneySection = s }
+    @ViewBuilder private func content(_ e: GameEngine) -> some View {
+        switch tab {
+        case .overview: GroupOverviewTab(engine: e) { tab = .structure }
+        case .structure: GroupStructureTab(engine: e) { more = $0; tab = .more }
+        case .board: GroupBoardTab(engine: e) { more = $0; tab = .more }
+        case .deals: GroupDealsTab(engine: e) { more = $0; tab = .more }
+        case .more: GroupMoreTab(engine: e, page: more, pick: { more = $0 }, showGiving: { showGiving = true })
+        }
+    }
 }
