@@ -12,6 +12,7 @@ enum BankMoveKind: String, Identifiable {
 }
 
 /// Every payment the Bank app can make, as engine calls with their result reported. Used by the alert banner, the Bills tab and Pay bill.
+@MainActor
 enum BankPay {
     /// Approve the coming payroll, or run a late one now (`resolvePayrollAlert`).
     static func resolve(_ store: GameStore, companyID: Int) {
