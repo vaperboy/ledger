@@ -1,5 +1,8 @@
 # Design rules for screen work (binding for every design agent)
 
+**Owner rule, 27 Oct 2026: one screen at a time, never generic.** Every page is designed on its own: its own layout, its own menus or tabs where they make sense, its own graphs and icons, all strictly inside these rules and the approved new-look mockups. Do not build a page by swapping the same section helper into an old screen, and do not bundle screens into one look-alike template. A screen's structure follows its content (a chart or figure strip where numbers matter, a table where things are compared, a timeline where dates matter).
+
+
 ## REVISION 27 Oct 2026 (owner, NEW LOOK) - supersedes the 26 Oct revision and any older line where they conflict
 Reference mockups with exact colours, radii, spacing and icons: `native/design/new-look-2026-10/` (open the `.dc.html` files; README there). Build screens from the shared pieces in `App/Ledger/Design/NewLook.swift` and `Components.swift`, never with ad-hoc boxes or SF Symbols for house icons.
 - **Cards and icons are the house style.** Content sits in bordered `Card`s (#151617 surface, #2B2C2E border, radius 16 for big summary boxes, 14 standard, 12 compact rows, 8 for sharp tables and fields). Icons are the mockups' outline icons (`Glyph`, drawn by `GlyphView` / `IconCircle` / `AppIconTile`), champagne on the dark surface. The "no unnecessary cards" line of the 26 Oct revision is withdrawn; still no decorative card that holds nothing.
