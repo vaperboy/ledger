@@ -17,7 +17,7 @@ public enum FaceBook {
     public static let leaseWeeks = 8
     static let locksKey = "faceLocks"
 
-    // MARK: Which sheet
+    // MARK: Which style
 
     /// Trades whose staff wear suits, by family (finance, property, holdings) ...
     static let suitFamilies: Set<String> = ["fin", "rent", "hold"]
@@ -35,14 +35,14 @@ public enum FaceBook {
         return suitFamilies.contains(trade.family) || suitTrades.contains(trade.id)
     }
 
-    /// The sheet for a person: managers, assistants and head-office people always the suit sheet; others by their business and job.
+    /// The style for a person: managers, assistants and head-office people always business wear; others by their business and job.
     /// `trade` is the business they work in (nil: group level, head office).
-    public static func sheet(for person: Person, trade: Trade?) -> FaceSheetID {
-        if person.role == "manager" || person.role == "fin" || !person.str("mtype").isEmpty { return .suits }
-        guard let trade else { return .suits }
+    public static func style(for person: Person, trade: Trade?) -> FaceStyle {
+        if person.role == "manager" || person.role == "fin" || !person.str("mtype").isEmpty { return .suit }
+        guard let trade else { return .suit }
         guard suitTrade(trade) else { return .casual }
-        if trade.id == "hotel" { return hotelSuitRoles.contains(person.role) ? .suits : .casual }
-        return handsOnRoles.contains(person.role) ? .casual : .suits
+        if trade.id == "hotel" { return hotelSuitRoles.contains(person.role) ? .suit : .casual }
+        return handsOnRoles.contains(person.role) ? .casual : .suit
     }
 
     // MARK: State
@@ -66,12 +66,12 @@ public enum FaceBook {
 
     /// Give a person a portrait if they have none. Returns it (nil when none is free, or the person is unknown). A hired person's key is locked at once.
     @discardableResult
-    public static func assign(personID: Int, countryCode: String?, sheet: FaceSheetID, state s: inout GameState) -> FaceKey? {
+    public static func assign(personID: Int, countryCode: String?, style: FaceStyle, state s: inout GameState) -> FaceKey? {
         guard var p = s.people[personID] else { return nil }
         if let k = FaceKey(p.faceKey) { return k }
         var used = taken(s)
         let traits = FaceTraits.of(p, countryCode: countryCode)
-        guard let key = FaceCatalog.pick(traits, sheet: sheet, isTaken: { used.contains($0.string) }) else { return nil }
+        guard let key = FaceCatalog.pick(traits, style: style, isTaken: { used.contains($0.string) }) else { return nil }
         used.insert(key.string)
         p.set("face", key.string); p.set("faceW", s.week)
         s.people[personID] = p
@@ -102,7 +102,7 @@ public enum FaceBook {
                     let trade = co.flatMap { data.catalog[$0.type] }
                     let code = co?.countryCode ?? s.homeCountryCode
                     let traits = FaceTraits.of(p, countryCode: code)
-                    if let key = FaceCatalog.pick(traits, sheet: sheet(for: p, trade: trade), isTaken: { used.contains($0.string) }) {
+                    if let key = FaceCatalog.pick(traits, style: style(for: p, trade: trade), isTaken: { used.contains($0.string) }) {
                         used.insert(key.string); l.insert(key.string)
                         p.set("face", key.string); p.set("faceW", s.week); s.people[id] = p
                     }

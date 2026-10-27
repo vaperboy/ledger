@@ -79,7 +79,7 @@ public enum FinanceManager {
                 ids.append(.number(Double(id)))
             }
             s.rest["fmPool"] = .array(ids)
-            for v in ids { FaceBook.assign(personID: v.int, countryCode: c.code, sheet: .suits, state: &s) }
+            for v in ids { FaceBook.assign(personID: v.int, countryCode: c.code, style: .suit, state: &s) }
         }
         return candidates(s)
     }

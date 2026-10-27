@@ -82,7 +82,7 @@ public enum Hiring {
         p.set("pers", pers); p.set("sec", sec); p.set("golden", golden)
         s.people[p.id] = p
         // Automatic hiring (managers, auto-staffing) looks at many people nobody sees: they get a portrait only if hired (FaceBook.sweep).
-        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, sheet: FaceBook.sheet(for: p, trade: co.flatMap { data.catalog[$0.type] }), state: &s) }
+        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, style: FaceBook.style(for: p, trade: co.flatMap { data.catalog[$0.type] }), state: &s) }
         return p
     }
 

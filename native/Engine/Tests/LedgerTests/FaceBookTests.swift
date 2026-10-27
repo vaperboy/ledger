@@ -20,16 +20,16 @@ final class FaceBookTests: XCTestCase {
     func testSheetByBusinessAndRole() throws {
         let data = try GameData.bundled()
         let cat = data.catalog
-        XCTAssertEqual(FaceBook.sheet(for: person(1, role: "manager"), trade: cat["cafe"]), .suits)
-        XCTAssertEqual(FaceBook.sheet(for: person(2, role: "lawyer"), trade: cat["law"]), .suits)
-        XCTAssertEqual(FaceBook.sheet(for: person(3, role: "banker"), trade: cat["bank"]), .suits)
-        XCTAssertEqual(FaceBook.sheet(for: person(4, role: "estate"), trade: cat["estate"]), .suits)
-        XCTAssertEqual(FaceBook.sheet(for: person(5, role: "cook"), trade: cat["restaurant"]), .casual)
-        XCTAssertEqual(FaceBook.sheet(for: person(6, role: "plumb"), trade: cat["plumber"]), .casual)
-        XCTAssertEqual(FaceBook.sheet(for: person(7, role: "cleaner"), trade: cat["law"]), .casual)
-        XCTAssertEqual(FaceBook.sheet(for: person(8, role: "recept"), trade: cat["hotel"]), .suits)
-        XCTAssertEqual(FaceBook.sheet(for: person(9, role: "housek"), trade: cat["hotel"]), .casual)
-        XCTAssertEqual(FaceBook.sheet(for: person(10, role: "acct"), trade: nil), .suits)
+        XCTAssertEqual(FaceBook.style(for: person(1, role: "manager"), trade: cat["cafe"]), .suit)
+        XCTAssertEqual(FaceBook.style(for: person(2, role: "lawyer"), trade: cat["law"]), .suit)
+        XCTAssertEqual(FaceBook.style(for: person(3, role: "banker"), trade: cat["bank"]), .suit)
+        XCTAssertEqual(FaceBook.style(for: person(4, role: "estate"), trade: cat["estate"]), .suit)
+        XCTAssertEqual(FaceBook.style(for: person(5, role: "cook"), trade: cat["restaurant"]), .casual)
+        XCTAssertEqual(FaceBook.style(for: person(6, role: "plumb"), trade: cat["plumber"]), .casual)
+        XCTAssertEqual(FaceBook.style(for: person(7, role: "cleaner"), trade: cat["law"]), .casual)
+        XCTAssertEqual(FaceBook.style(for: person(8, role: "recept"), trade: cat["hotel"]), .suit)
+        XCTAssertEqual(FaceBook.style(for: person(9, role: "housek"), trade: cat["hotel"]), .casual)
+        XCTAssertEqual(FaceBook.style(for: person(10, role: "acct"), trade: nil), .suit)
     }
 
     // MARK: Exclusive, locked, released
@@ -41,7 +41,7 @@ final class FaceBookTests: XCTestCase {
                 var p = self.person(1000 + i, role: i % 3 == 0 ? "manager" : "cashier", age: 20 + i % 40, name: i % 2 == 0 ? "Emma Berg" : "Lars Dahl", hired: 7)
                 p.id = 1000 + i
                 s.people[p.id] = p
-                FaceBook.assign(personID: p.id, countryCode: "UK", sheet: FaceBook.sheet(for: p, trade: nil), state: &s)
+                FaceBook.assign(personID: p.id, countryCode: "UK", style: FaceBook.style(for: p, trade: nil), state: &s)
             }
         }
         let keys = e.state.people.values.compactMap { $0.faceKey }
@@ -53,7 +53,7 @@ final class FaceBookTests: XCTestCase {
         var e = try engine()
         e.update { s, data, _ in
             s.people[2000] = self.person(2000, hired: 7)
-            FaceBook.assign(personID: 2000, countryCode: "UK", sheet: .casual, state: &s)
+            FaceBook.assign(personID: 2000, countryCode: "UK", style: .casual, state: &s)
             FaceBook.sweep(&s, data: data)
             // the person leaves: the face stays locked
             var p = s.people[2000]!; p.employerID = 0; s.people[2000] = p
@@ -70,7 +70,7 @@ final class FaceBookTests: XCTestCase {
         var s2 = loaded
         for i in 0..<1500 {
             s2.people[3000 + i] = person(3000 + i, hired: 0)
-            FaceBook.assign(personID: 3000 + i, countryCode: "UK", sheet: .casual, state: &s2)
+            FaceBook.assign(personID: 3000 + i, countryCode: "UK", style: .casual, state: &s2)
         }
         XCTAssertFalse(s2.people.filter { $0.key >= 3000 }.values.contains { $0.faceKey == key })
     }
@@ -86,9 +86,9 @@ final class FaceBookTests: XCTestCase {
         e.update { s, data, _ in
             s.people[4000] = self.person(4000)
             s.people[4001] = self.person(4001, name: "Lars Dahl")
-            let a = FaceBook.assign(personID: 4000, countryCode: "UK", sheet: .casual, state: &s)
+            let a = FaceBook.assign(personID: 4000, countryCode: "UK", style: .casual, state: &s)
             XCTAssertNotNil(a)
-            FaceBook.assign(personID: 4001, countryCode: "UK", sheet: .casual, state: &s)
+            FaceBook.assign(personID: 4001, countryCode: "UK", style: .casual, state: &s)
             // explicit release
             FaceBook.release(personID: 4000, state: &s)
             XCTAssertNil(s.people[4000]?.faceKey)
@@ -99,7 +99,7 @@ final class FaceBookTests: XCTestCase {
             XCTAssertTrue(FaceBook.locks(s).isEmpty)
             // the freed face can go to someone else
             s.people[4002] = self.person(4002)
-            XCTAssertEqual(FaceBook.assign(personID: 4002, countryCode: "UK", sheet: .casual, state: &s), a)
+            XCTAssertEqual(FaceBook.assign(personID: 4002, countryCode: "UK", style: .casual, state: &s), a)
         }
     }
 
@@ -107,7 +107,7 @@ final class FaceBookTests: XCTestCase {
         var e = try engine()
         e.update { s, data, _ in
             s.people[5000] = self.person(5000)
-            FaceBook.assign(personID: 5000, countryCode: "UK", sheet: .casual, state: &s)
+            FaceBook.assign(personID: 5000, countryCode: "UK", style: .casual, state: &s)
             var p = s.people[5000]!; p.employerID = 7; s.people[5000] = p
             s.week += 30
             FaceBook.sweep(&s, data: data)
@@ -119,11 +119,11 @@ final class FaceBookTests: XCTestCase {
 
     func testInitialsWhenEveryFaceIsTaken() throws {
         var e = try engine()
-        let total = (FaceSheetID.casual.cellCount + FaceSheetID.suits.cellCount) * FaceCatalog.variantCount
+        let total = FaceSheetID.allCases.map { $0.cellCount }.reduce(0, +) * FaceCatalog.variantCount
         e.update { s, _, _ in
             for i in 0..<(total + 50) {
                 s.people[6000 + i] = self.person(6000 + i, role: "cashier", age: 20 + i % 45, name: i % 2 == 0 ? "Emma Berg" : "Lars Dahl", hired: 7)
-                FaceBook.assign(personID: 6000 + i, countryCode: i % 3 == 0 ? "IN" : "UK", sheet: i % 2 == 0 ? .casual : .suits, state: &s)
+                FaceBook.assign(personID: 6000 + i, countryCode: i % 3 == 0 ? "IN" : "UK", style: i % 2 == 0 ? .casual : .suit, state: &s)
             }
         }
         let keys = e.state.people.values.compactMap { $0.faceKey }
@@ -136,15 +136,14 @@ final class FaceBookTests: XCTestCase {
         let traits = FaceTraits(key: "x", gender: "F", ageBand: "Y", region: "S")
         var taken: Set<String> = []
         // the plain cells of the best tier go first
-        let tags = FaceCatalog.tags(.casual)
-        let best = (0..<tags.count).filter { tags[$0].gender == "F" && tags[$0].age == "Y" && tags[$0].region == "S" }
+        let best = (0..<FaceCatalog.tags(.casual).count).filter { let t = FaceCatalog.tags(.casual)[$0]; return t.gender == "F" && t.age == "Y" && t.region == "S" }
         for _ in best {
-            let k = FaceCatalog.pick(traits, sheet: .casual) { taken.contains($0.string) }!
-            XCTAssertEqual(k.variant, 0); XCTAssertTrue(best.contains(k.cell))
+            let k = FaceCatalog.pick(traits, style: .casual) { taken.contains($0.string) }!
+            XCTAssertEqual(k.variant, 0); XCTAssertEqual(k.sheet, .casual); XCTAssertTrue(best.contains(k.cell))
             taken.insert(k.string)
         }
-        let next = FaceCatalog.pick(traits, sheet: .casual) { taken.contains($0.string) }!
-        XCTAssertTrue(next.variant > 0 || !best.contains(next.cell))
+        let next = FaceCatalog.pick(traits, style: .casual) { taken.contains($0.string) }!
+        XCTAssertTrue(next.variant > 0 || next.sheet != .casual || !best.contains(next.cell))
         XCTAssertEqual(FaceKey(next.string), next)
     }
 }

@@ -91,7 +91,7 @@ extension ManagerModel {
         p.set("pers", s.random.pick(Hiring.personalities)); p.set("resume", s.random.pick(resumes))
         p.set("golden", exp < 3 && s.random.chance(0.12))
         s.people[p.id] = p
-        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, sheet: .suits, state: &s) }
+        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, style: .suit, state: &s) }
         return p
     }
 
