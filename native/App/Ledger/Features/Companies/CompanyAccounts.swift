@@ -35,7 +35,7 @@ struct CompanyAccounts: View {
         let periods: [Period] = [.init(name: "Week", books: b.week), .init(name: "Month", books: b.month), .init(name: "Year", books: b.year), .init(name: "Last yr", books: b.lastYear)]
         let lines = [Line(key: "rev", label: "Revenue")] + GameEngine.costLabels.filter { $0.key != "tax" }.map { Line(key: $0.key, label: $0.label) }
         let shown = lines.filter { l in periods.contains { abs($0.books[l.key] ?? 0) >= 0.5 } }
-        return LedgerSection(title: "Profit and loss", trailing: {
+        return CardSection(title: "Profit and loss", trailing: {
             NavigationLink { ReportsScreen(companyID: company.id) } label: { Text("Monthly reports  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
         }) {
             VStack(spacing: 0) {
@@ -84,14 +84,14 @@ struct CompanyAccounts: View {
                     .init(label: "Owes", value: cur.tidyShort(b.totalDebts), tint: b.totalDebts > 0 ? Theme.loss : Theme.ivory),
                     .init(label: "Equity", value: cur.tidyShort(b.equity), tint: b.equity < 0 ? Theme.loss : Theme.gain, sub: "owns minus owes"),
                 ])
-                LedgerSection(title: "What it owns", trailing: { Text(cur.tidyShort(b.totalAssets)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
+                CardSection(title: "What it owns", trailing: { Text(cur.tidyShort(b.totalAssets)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
                     VStack(spacing: 0) { ForEach(Array(b.assets.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), sub: l.detail, tint: l.amount < 0 ? Theme.loss : Theme.ivory, rule: n > 0) } }
                 }
-                LedgerSection(title: "What it owes", trailing: { Text(cur.tidyShort(b.totalDebts)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
+                CardSection(title: "What it owes", trailing: { Text(cur.tidyShort(b.totalDebts)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
                     if b.debts.isEmpty { Text("No debts.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                     VStack(spacing: 0) { ForEach(Array(b.debts.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0) } }
                 }
-                LedgerSection("Equity") {
+                CardSection("Equity") {
                     VStack(spacing: 0) {
                         if company.form == .limited { FlatRow(label: "Share capital", value: cur.tidyShort(b.shareCapital), rule: false) }
                         FlatRow(label: "Put in by owners over time", value: cur.tidyShort(b.injected), rule: company.form == .limited)
@@ -107,7 +107,7 @@ struct CompanyAccounts: View {
 
     @ViewBuilder private func cashFlow(_ cur: Currency) -> some View {
         let months = engine.companyCashFlow(companyID: company.id, months: 12)
-        LedgerSection(title: "Cash flow by month", trailing: { Text("closed months").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: "Cash flow by month", trailing: { Text("closed months").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             if months.isEmpty {
                 Text("Cash flow starts after the first full month.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             } else {
@@ -139,7 +139,7 @@ struct CompanyAccounts: View {
     private func tax(_ cur: Currency) -> some View {
         let o = engine.financeOverview(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection(title: "Tax and VAT", trailing: { Text("owed now " + cur.tidyShort(o.taxesOwed)).font(.system(size: 11.5)).foregroundStyle(o.taxesOwed > 0 ? Theme.caution : Theme.ivoryFaint) }) {
+            CardSection(title: "Tax and VAT", trailing: { Text("owed now " + cur.tidyShort(o.taxesOwed)).font(.system(size: 11.5)).foregroundStyle(o.taxesOwed > 0 ? Theme.caution : Theme.ivoryFaint) }) {
                 VStack(spacing: 0) {
                     if company.form == .limited {
                         FlatRow(label: "Profit so far this year", value: cur.tidyShort(company.yearProfitSoFar), rule: false)
@@ -154,7 +154,7 @@ struct CompanyAccounts: View {
                 }
             }
             if !o.rules.isEmpty {
-                LedgerSection("Rules in \(o.countryName)") {
+                CardSection("Rules in \(o.countryName)") {
                     VStack(spacing: 0) { ForEach(Array(o.rules.enumerated()), id: \.element.id) { n, r in FlatRow(label: r.label, value: r.value, rule: n > 0) } }
                     if !o.basis.isEmpty { Text(o.basis).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
@@ -166,7 +166,7 @@ struct CompanyAccounts: View {
 
     private func transactions(_ cur: Currency) -> some View {
         let tx = company.transactions
-        return LedgerSection(title: "Latest transactions", trailing: { Text("newest first · up to 40").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        return CardSection(title: "Latest transactions", trailing: { Text("newest first · up to 40").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             if tx.isEmpty { Text("No transactions recorded yet. Sales, bills and transfers appear here once the company has traded.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
             VStack(spacing: 0) {
                 ForEach(Array(tx.enumerated()), id: \.offset) { n, t in

@@ -14,7 +14,7 @@ struct CompanyOwnershipSection: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let id = company.id
-        LedgerSection(title: "Owners and shares", trailing: { Text("You own \(Int(company.ownership.rounded()))%").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: "Owners and shares", trailing: { Text("You own \(Int(company.ownership.rounded()))%").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 let owners = engine.owners(companyID: id)
                 if owners.isEmpty { Text("You are the only owner.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }

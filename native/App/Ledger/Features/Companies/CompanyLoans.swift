@@ -31,7 +31,7 @@ struct CompanyLoans: View {
                         .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            LedgerSection(title: "What the company owes", trailing: {
+            CardSection(title: "What the company owes", trailing: {
                 Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
                     .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
             }) {
@@ -66,7 +66,7 @@ struct CompanyLoans: View {
     @ViewBuilder private func borrow(_ cur: Currency, _ shift: Double) -> some View {
         let offer = engine.loanOffer(kind: "biz", amount: loanAmount, companyID: company.id)
         let rate = engine.state.economy.policyRate + shift + offer.margin
-        LedgerSection(title: "Borrow for this company", trailing: {
+        CardSection(title: "Borrow for this company", trailing: {
             Text("credit " + offer.creditBand.lowercased()).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
