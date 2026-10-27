@@ -83,8 +83,19 @@ struct LuxuryView: View {
         }
     }
 
+    /// The picture (or the house icon until art arrives) at the top of an item's detail. Always the same 72 pt square, so nothing shifts.
+    private func detailThumb(_ it: Luxury.Item) -> some View {
+        HStack {
+            ThumbnailView(kind: .luxury, key: it.id, size: 72, shape: .square)
+            Spacer(minLength: 0)
+        }
+        .frame(height: 72)
+        .padding(.vertical, 8)
+    }
+
     @ViewBuilder private func detail(_ e: GameEngine, _ it: Luxury.Item) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            detailThumb(it)
             FlatRow(label: "Upkeep, insurance and storage", value: store.short(it.monthlyUpkeep) + " a month")
             FlatRow(label: "Value over time", value: it.trend, tint: it.growth > 0 ? Theme.gain : it.growth < -0.06 ? Theme.loss : Theme.ivory)
             FlatRow(label: "If you sell", value: "\(Int((Luxury.sellFee * 100).rounded()))% in selling costs")

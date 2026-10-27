@@ -133,8 +133,20 @@ struct CompanyMoneySummary: View {
             VStack(alignment: .leading, spacing: 10) {
                 StatStrip(cells: cells, ruled: false)
                 Text("Taxes, bills and loan instalments are paid in the Bank app.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                OpenInBankButton(companyID: company.id, title: "Pay taxes and loans in Bank", tab: .bills)
+                OpenInBankButton(companyID: company.id, title: "Pay taxes and bills in Bank", tab: .bills)
+                loansRow(cur, h.debt)
             }
+        }
+    }
+
+    /// Compact loans row: what the company owes on loans, and the way into its Loans tab in the Bank app (apply and repay live there).
+    private func loansRow(_ cur: Currency, _ debt: Double) -> some View {
+        let loans = engine.state.loans.filter { $0.companyID == company.id && $0.balance > 0 }
+        let monthly = loans.reduce(0) { $0 + $1.monthlyPayment }
+        let sub: String = loans.isEmpty ? "No loans" : "\(loans.count) \(loans.count == 1 ? "loan" : "loans") · \(cur.tidyShort(monthly)) a month"
+        return VStack(alignment: .leading, spacing: 8) {
+            FlatRow(label: "Loans", value: cur.tidyShort(debt), sub: sub, rule: true)
+            OpenInBankButton(companyID: company.id, title: "Open in Bank", tab: .loans)
         }
     }
 
