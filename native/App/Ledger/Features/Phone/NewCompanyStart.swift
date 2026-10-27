@@ -68,8 +68,9 @@ struct TradeDetailView: View {
         }
     }
 
-    // MARK: Summary first
+    // MARK: Funding first
 
+    /// A funding gauge instead of a figure card: how much of the start-up cost your money covers, then the verdict under it.
     private func summary(_ t: Trade, _ plan: NewCompanyPlan?, _ ban: String?, _ cur: Currency) -> some View {
         Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -78,20 +79,35 @@ struct TradeDetailView: View {
                     Text(t.blurb.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
-                if let plan { FigureCard(items: summaryItems(plan, cur)).environment(\.insideCard, true) }
+                if let plan { fundingGauge(plan, cur) }
             }
         }
     }
 
-    private func summaryItems(_ plan: NewCompanyPlan, _ cur: Currency) -> [FigureCard.Item] {
-        let last: FigureCard.Item = plan.shortfall > 0
-            ? .init(label: "Short by", value: cur.tidyShort(plan.shortfall), tint: Theme.loss, sub: "opening waits for money")
-            : .init(label: "Left for you", value: cur.tidyShort(plan.personalLeft), tint: Theme.gain, sub: "after it is funded")
-        return [
-            .init(label: "Start-up cost", value: cur.tidyShort(plan.total), sub: "everything included"),
-            .init(label: "You have", value: cur.tidyShort(plan.available), sub: "account and savings"),
-            last
-        ]
+    private func fundingGauge(_ plan: NewCompanyPlan, _ cur: Currency) -> some View {
+        let covered: Double = plan.total > 0 ? min(1, max(0, plan.available / plan.total)) : 1
+        let tint: Color = plan.shortfall > 0 ? Theme.loss : Theme.gain
+        let verdict: String = plan.shortfall > 0 ? "Short by \(cur.tidyShort(plan.shortfall)): opening waits for money" : "Funded, \(cur.tidyShort(plan.personalLeft)) left for you"
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Start-up cost").capsLabel()
+                Spacer(minLength: 8)
+                Text(cur.tidyShort(plan.total)).font(.system(size: 22, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.border)
+                    Capsule().fill(tint).frame(width: max(6, geo.size.width * covered))
+                }
+            }
+            .frame(height: 6)
+            HStack {
+                Text("You have \(cur.tidyShort(plan.available))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Spacer(minLength: 8)
+                Text(verdict).font(.system(size: 12, weight: .medium)).foregroundStyle(tint).multilineTextAlignment(.trailing)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Where and how
@@ -127,41 +143,47 @@ struct TradeDetailView: View {
 
     // MARK: Cost, risks
 
+    private static let costColumns: [TableColumn] = [TableColumn(title: "Cost line"), TableColumn(title: "Amount", width: 96)]
+
+    private struct CostLine: Identifiable { var id: String { label }; var label: String; var amount: String }
+
+    /// The cost as a ledger statement in a sharp table: one line per item, the total, then what leaves your cash.
     @ViewBuilder private func costLines(_ plan: NewCompanyPlan, _ cur: Currency) -> some View {
         let est = plan.estimate
-        CardSection(title: "Start-up cost", trailing: { Text(cur.tidyShort(plan.total)).font(.figure(15)).foregroundStyle(Theme.ivory) }) {
-            VStack(spacing: 0) {
-                line("Permits and documents", est.documents, cur, first: true)
-                line("Equipment", est.equipment, cur)
-                line("Vehicles (down payment)", est.vehicles, cur)
-                line("Premises", plan.premisesCost, cur)
-                line("Opening stock", est.stock, cur)
-                line("First payroll", est.firstPayroll, cur)
-                line("Registration", est.registration, cur)
-                line("First property (deposit and costs)", est.property, cur)
-                line("Waiting for a licence", est.wait, cur)
-                line("Working buffer", est.buffer, cur)
-                line("Abroad", est.abroad, cur)
-                if est.shareCapital > 0 { FlatRow(label: "Share capital (stays in the company)", value: cur.tidyShort(est.shareCapital), sub: "From your account, on top of the cost above.") }
-                FlatRow(label: "Put into the company from your cash", value: cur.tidyShort(plan.intoCompany), sub: "The cost with a 15% margin, as far as your money goes.")
-                FlatRow(label: "Left in your accounts afterwards", value: cur.tidyShort(plan.personalLeft), tint: plan.personalLeft > 0 ? Theme.gain : Theme.caution)
+        let items: [(String, Double)] = [
+            ("Permits and documents", est.documents), ("Equipment", est.equipment), ("Vehicles (down payment)", est.vehicles),
+            ("Premises", plan.premisesCost), ("Opening stock", est.stock), ("First payroll", est.firstPayroll),
+            ("Registration", est.registration), ("First property (deposit and costs)", est.property),
+            ("Waiting for a licence", est.wait), ("Working buffer", est.buffer), ("Abroad", est.abroad)
+        ]
+        let shown: [CostLine] = items.filter { $0.1 > 0 }.map { CostLine(label: $0.0, amount: cur.tidyShort($0.1)) }
+        let leftTint: Color = plan.personalLeft > 0 ? Theme.gain : Theme.caution
+        SharpTable {
+            TableHeader(columns: Self.costColumns)
+            ForEach(shown) { l in TableRow(columns: Self.costColumns, title: l.label, values: [l.amount]) }
+            TableRow(columns: Self.costColumns, title: "Total", values: [cur.tidyShort(plan.total)], selected: true)
+            if est.shareCapital > 0 {
+                TableRow(columns: Self.costColumns, title: "Share capital", note: "From your account, on top of the cost above; stays in the company.", values: [cur.tidyShort(est.shareCapital)])
             }
+            TableRow(columns: Self.costColumns, title: "Put into the company", note: "The cost with a 15% margin, as far as your money goes.", values: [cur.tidyShort(plan.intoCompany)])
+            TableRow(columns: Self.costColumns, title: "Left in your accounts", values: [cur.tidyShort(plan.personalLeft)], valueTints: [leftTint])
         }
     }
 
-    @ViewBuilder private func line(_ label: String, _ v: Double, _ cur: Currency, first: Bool = false) -> some View {
-        if v > 0 { FlatRow(label: label, value: cur.tidyShort(v), rule: !first) }
-    }
-
+    /// Risks as a ruled list with a warning mark each, not a card of loose text.
     @ViewBuilder private func risks(_ plan: NewCompanyPlan) -> some View {
-        CardSection("Risks") {
-            ForEach(Array(plan.risks.enumerated()), id: \.offset) { _, r in
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Risks").capsLabel().padding(.bottom, 6)
+            ForEach(Array(plan.risks.enumerated()), id: \.offset) { n, r in
+                if n > 0 { Hairline() }
                 HStack(alignment: .top, spacing: 10) {
                     GlyphView(glyph: Glyph.warning, size: 16, weight: 1.4, tint: Theme.caution)
                     Text(r.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(.vertical, 8)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Brands
