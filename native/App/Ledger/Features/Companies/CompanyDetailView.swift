@@ -33,6 +33,8 @@ struct CompanyDetailView: View {
     @State private var section: CompanySection = .overview
     /// The part of Finances on show; other sections can send the player straight to one (the setup checklist, the overview).
     @State private var moneyPart: CompanyMoneyPart = .summary
+    /// The part of Operations on show (Setup, How you sell, Marketing, Premises, More). Marketing and Premises live there.
+    @State private var opsPart: OpsPart = .setup
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -48,13 +50,13 @@ struct CompanyDetailView: View {
                             Text(context).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                         }
                     }
-                    SectionTabs(items: Self.availableSections(co, e), primary: co.status == .setup ? nil : [.overview, .staff, .finances, .operations], title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
+                    SectionTabs(items: Self.tabSections(co, e), primary: co.status == .setup ? nil : [.overview, .staff, .finances, .operations], title: { $0.rawValue }, selection: $section).padding(.horizontal, -Theme.Space.margin)
                     switch section {
                     case .overview: CompanyOverview(engine: e, company: co, section: $section, moneyPart: $moneyPart)
                     case .projects: CompanyProjects(engine: e, company: co)
                     case .staff: CompanyTeam(engine: e, company: co)
                     case .finances: CompanyMoney(engine: e, company: co, part: $moneyPart)
-                    case .operations: CompanyOperations(engine: e, company: co)
+                    case .operations: CompanyOperations(engine: e, company: co, part: $opsPart)
                     case .marketing: CompanyMarketing(engine: e, company: co)
                     case .customers: CompanyCustomers(engine: e, company: co)
                     case .market: CompanyMarket(engine: e, company: co)
@@ -76,6 +78,7 @@ struct CompanyDetailView: View {
             .ledgerBackground()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: section) { _, new in redirect(new, co, e) }
             .onAppear {
                 if co.status == .setup { section = .setup }
                 if let want = initialSection {
@@ -83,11 +86,26 @@ struct CompanyDetailView: View {
                     // A holding has no staff list: its management lives in its own section.
                     let target = (want == .staff && !available.contains(.staff) && available.contains(.holding)) ? .holding : want
                     if available.contains(target) { section = target }
+                    redirect(section, co, e)
                 }
             }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
+    }
+
+    /// Marketing and Premises are parts of Operations: a link to either opens Operations on that part.
+    private func redirect(_ new: CompanySection, _ co: Company, _ e: GameEngine) {
+        guard co.status != .setup, Self.availableSections(co, e).contains(.operations) else { return }
+        if new == .marketing { opsPart = .marketing; section = .operations }
+        else if new == .properties { opsPart = .premises; section = .operations }
+    }
+
+    /// The sections shown as tabs: the same as `availableSections` without Marketing and Properties, which are inside Operations.
+    static func tabSections(_ co: Company, _ e: GameEngine) -> [CompanySection] {
+        let all = availableSections(co, e)
+        guard co.status != .setup, all.contains(.operations) else { return all }
+        return all.filter { $0 != .marketing && $0 != .properties }
     }
 
     /// Where the company sits in the group: its chain, its holding, and who runs it day to day.

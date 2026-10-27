@@ -11,18 +11,9 @@ struct EquipmentEntryRow: View {
         NavigationLink {
             CompanyEquipmentScreen(companyID: company.id)
         } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Equipment, fleet and premises").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text("Pick brands, buy new or used, lease, subscribe, choose where to work").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }
-            .padding(.vertical, 10).contentShape(Rectangle())
+            CardRow(glyph: Glyph.settings, title: "Equipment, fleet and premises", subtitle: "Pick brands, buy new or used, lease, subscribe, choose where to work")
         }
         .buttonStyle(.plain)
-        .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -81,8 +72,7 @@ struct CompanyEquipmentScreen: View {
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Equipment")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Equipment", subtitle: "Fleet, software and premises", tab: .company)
             .onAppear { if opensOnPremises && tabs.contains(.premises) { tab = .premises } }
             .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
