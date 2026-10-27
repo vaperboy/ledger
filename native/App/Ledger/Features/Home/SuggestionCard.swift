@@ -25,7 +25,7 @@ struct SuggestionCard: View {
                         SuggestionRow(item: item)
                         if i < shown.count - 1 { Hairline() }
                     }
-                    Button { Haptics.tap(); store.jump(to: .inbox) } label: {
+                    Button { Haptics.tap(); store.openApp(.inbox) } label: {
                         HStack(spacing: 4) {
                             Text("See all in Inbox").font(.system(size: 13, weight: .medium))
                             Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))

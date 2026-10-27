@@ -15,8 +15,8 @@ final class NavigationBackTests: XCTestCase {
     }
 
     private func open(_ name: String) {
-        let tab = app.tabBars.buttons[name]
-        if tab.exists { tab.tap(); return }
+        let pill = app.buttons["tab-\(name)"]
+        if pill.exists { pill.tap(); return }
         let row = app.buttons[name].firstMatch
         if row.exists { row.tap(); return }
         app.staticTexts[name].firstMatch.tap()
@@ -34,6 +34,9 @@ final class NavigationBackTests: XCTestCase {
             let b = bars.element(boundBy: i).buttons.element(boundBy: 0)
             if b.exists && b.isHittable { b.tap(); return true }
         }
+        // Screens with the new header (Phone apps) have the round back button instead of a navigation bar.
+        let round = app.buttons["back-button"]
+        if round.exists && round.isHittable { round.tap(); return true }
         return false
     }
 
@@ -44,26 +47,29 @@ final class NavigationBackTests: XCTestCase {
     }
 
     func testBackFromHomeSuggestionReturnsToHome() throws {
-        open("Company")
+        open("Home")
         let link = app.buttons["suggestion-open-company"].firstMatch
         guard link.waitForExistence(timeout: 3) else { throw XCTSkip("no Home suggestion opens a company in the showcase game") }
         link.tap()
         assertCompanyOpen("Home")
-        XCTAssertTrue(tapBack(to: "Company"))
+        XCTAssertTrue(tapBack(to: "Home"))
         // Asserted: Back lands on Home (the net-worth summary).
         XCTAssertTrue(app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: 5) || app.staticTexts["NET WORTH"].firstMatch.exists, "Back should return to Home")
     }
 
     func testBackFromInboxCompanyLinkReturnsToInbox() throws {
-        open("Inbox")
-        XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5))
+        open("Phone")
+        let inboxIcon = app.buttons["phone-app-Inbox"]
+        XCTAssertTrue(inboxIcon.waitForExistence(timeout: 5), "the Inbox is an app on the Phone")
+        inboxIcon.tap()
+        XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 5), "the Inbox app should be open")
         let link = app.buttons["open-company-link"].firstMatch
         guard link.waitForExistence(timeout: 3) else { throw XCTSkip("no Inbox message with a company link in the showcase game") }
         link.tap()
         assertCompanyOpen("Inbox")
         XCTAssertTrue(tapBack(to: "Inbox"))
-        // Asserted: Back lands on the Inbox, not on the Company list.
-        XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5), "Back should return to the Inbox")
+        // Asserted: Back lands on the Inbox app, not on Home.
+        XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 5), "Back should return to the Inbox")
         XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists, "Back must not land on Company/Home")
     }
 

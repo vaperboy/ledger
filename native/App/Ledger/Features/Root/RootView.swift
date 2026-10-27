@@ -29,27 +29,39 @@ struct GameShell: View {
         Group {
             if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
         }
-        .sheet(isPresented: $store.showPhone) { PhoneView().environmentObject(store) }
     }
 }
 
-/// iPhone: native bottom tab bar.
+/// iPhone: the floating pill tab bar (Home, Team, Group, Projects, Phone) over the pages. The system tab bar is hidden; the pages stay
+/// alive in a `TabView`, so each tab keeps its navigation stack and scroll position. The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
+
+    private var items: [PillTabItem] {
+        let waiting: Int = store.waitingCount
+        return AppTab.allCases.map { tab in
+            PillTabItem(id: tab.rawValue, title: tab.title, glyph: tab.glyph, badge: tab == .phone ? waiting : 0)
+        }
+    }
+
+    private var selection: Binding<String> {
+        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.tab = t } })
+    }
+
     var body: some View {
         TabView(selection: $store.tab) {
             ForEach(AppTab.allCases) { tab in
                 TabContent(tab: tab)
-                    .tabItem { Label(tab.title, systemImage: tab.symbol) }
-                    .badge(tab == .inbox ? store.openDecisionCount : 0)
+                    .toolbar(.hidden, for: .tabBar)
                     .tag(tab)
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { PillTabBar(items: items, selection: selection) }
         .onChange(of: store.tab) { _, _ in Haptics.tap() }
     }
 }
 
-/// iPad: a sidebar with the same five destinations as the iPhone tab bar, then the More pages, and a wide detail area.
+/// iPad: a sidebar with the same five destinations as the iPhone tab bar and a wide detail area. The Phone destination holds the apps.
 /// Only the chosen tab is in the detail column: keeping hidden tabs alive made every visited tab's toolbar items, title and search
 /// field pile up in the split view's one navigation bar (two More buttons, a stray "+" and the Team search on Group and Inbox).
 /// Each tab owns its navigation stack, so a company opened in Team never appears in Company.
@@ -73,17 +85,10 @@ struct SidebarShell: View {
                 Section {
                     ForEach(AppTab.allCases) { tab in
                         SidebarLabel(title: tab.title, symbol: tab.symbol)
-                            .badge(tab == .inbox ? store.openDecisionCount : 0)
+                            .badge(tab == .phone ? store.waitingCount : 0)
                             .tag(tab)
                     }
                 }
-                Section("More") {
-                    ForEach(PhoneDestination.allCases, id: \.self) { d in
-                        Button { store.openMore(d) } label: { SidebarLabel(title: d.title, symbol: d.symbol) }
-                    }
-                }
-                // While the More sheet is up, its own rows (Stats, Settings, ...) are the ones to reach.
-                .accessibilityHidden(store.showPhone)
             }
             .navigationTitle("Ledger")
             .scrollContentBackground(.hidden)
@@ -102,7 +107,7 @@ struct TabContent: View {
         case .team: TeamView()
         case .group: GroupView()
         case .projects: ProjectsView()
-        case .inbox: InboxView()
+        case .phone: PhoneHome()
         }
     }
 }

@@ -16,7 +16,6 @@ struct InboxView: View {
     @State private var byCompany = false
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
-    @State private var path: [CompanyRoute] = []
 
     static let page = 60
 
@@ -137,7 +136,7 @@ struct InboxView: View {
 
     private func takeRequest(_ proxy: ScrollViewProxy) {
         guard let id = store.openMessageID else { return }
-        tab = .all; query = ""; companyFilter = nil; path = []
+        tab = .all; query = ""; companyFilter = nil
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         store.openMessageID = nil
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
@@ -145,8 +144,9 @@ struct InboxView: View {
 
     // MARK: Body
 
+    /// The Inbox app. It is pushed on the Phone tab's stack (which owns the company destinations and the deep-link requests), so it has
+    /// no stack of its own; its options menu sits in the app header.
     var body: some View {
-        NavigationStack(path: $path) {
             Group {
                 if let e = store.engine {
                     let list = filtered(e)
@@ -178,22 +178,32 @@ struct InboxView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 }).padding(.vertical, Theme.Space.xs).background(Theme.page)
+                VStack(spacing: Theme.Space.xs) {
+                    searchField
+                    SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
+                }
+                .padding(.vertical, Theme.Space.xs).background(Theme.page)
             }
-            .searchable(text: $query, prompt: "Search messages")
             .onChange(of: tab) { _, _ in limit = Self.page }
             .onChange(of: query) { _, _ in limit = Self.page }
             .confirmAction($pending)
             .ledgerBackground()
-            .companyRouteDestinations()
-            .routeRequests(for: .inbox, path: $path)
-            .returnBar(for: .inbox)
-            .navigationTitle("Inbox")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) { optionsMenu }
+            .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
+    }
+
+    /// The search box (the system search field needs a navigation bar, which the app header replaces).
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+            TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).autocorrectionDisabled()
+            if !query.isEmpty {
+                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
+        .padding(.horizontal, 12).frame(minHeight: 36)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(.horizontal, 18)
     }
 
     private var optionsMenu: some View {

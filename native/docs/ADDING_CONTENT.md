@@ -71,6 +71,6 @@ and read it with `Golden.load("name")`.
 1. Add a folder under `App/Ledger/Features`.
 2. Read from `store.engine`; never compute money in the view. Use `Card`, `Stat`, `DeltaPill`, `Sparkline`, `SectionLabel`, `GoldButtonStyle`,
    `QuietButtonStyle` from `Design/Components.swift` and colours from `Theme`.
-3. Reach it from `PhoneView` (a new `PhoneDestination`) or from the tab it belongs to, and from a `Suggestion` if it should be offered
+3. Reach it from an app of the Phone (a new `PhoneApp` case with its `Glyph`, opened in `PhoneAppScreen`) or from the tab it belongs to, and from a `Suggestion` if it should be offered
    on Home (`Simulation/Advisor.swift`).
 4. Add its row in `tools/gen_parity.py` and regenerate `PARITY_CHECKLIST.md`.

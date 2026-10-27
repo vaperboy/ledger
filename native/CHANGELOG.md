@@ -2,6 +2,10 @@
 
 ## Unreleased — native migration (branch `native-swiftui`)
 
+### New look foundation (27 Oct 2026)
+* Shared pieces for the approved new look in `Design/NewLook.swift` (icons from the mockups' SVG paths, `AppHeader` with a round back button, `StatStrip`, `ActionTile`, `ChoiceCard`, `SegmentedPill`, sharp table, `QuietButton`, `SmallOutlineButton`, `RedBubble`, floating `PillTabBar`) and a bordered `Card`; Theme colours and radii set to the mockups.
+* Tabs are Home / Team / Group / Projects / Phone. The Phone tab is an app grid (`PhoneHome`) with red bubbles and a banner for the top alert; Inbox, Bank, News, Stats, Goals, World, Luxury, Ventures, Rich list, Reports, Achievements and Settings open from it. The More sheet is removed.
+
 ### Added
 * Contract discussion (`ContractTalk.swift`, `ContractDiscussionView`): one surface per employee for pay rise, promotion, hours, pay basis, bonus plan, benefits, notice and moving, opened by you or by their request. Cost, quit risk, effect on others and the country's labour rules are shown before you confirm. Nobody refuses a pay rise; declining or delaying a fair request has shown consequences. Commission-only has no base pay at all. The old raise, promote and contract buttons are gone.
 * Negotiation (`Negotiation.swift`, data `negotiation.json`): every hire (worker, manager, assistant, department head, chain and group executive, head office, data analyst) opens at the going rate with the person's ask hidden, and the person answers with a counter, a refusal or, when patience is gone, takes another job; higher posts are more patient; some counters are unrealistic. Pay-raise requests, the sale of a company and the purchase of a rival use the same module. Automatic hiring (`AutoHire.swift`) bargains from low, weighs several candidates and reads real skill; the better the manager, the cheaper and better the hire.

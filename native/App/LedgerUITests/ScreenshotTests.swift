@@ -19,10 +19,10 @@ final class ScreenshotTests: XCTestCase {
         add(a)
     }
 
-    /// iPhone has a tab bar; iPad a sidebar.
+    /// iPhone has the floating pill tab bar (buttons "tab-Home", "tab-Team", ...); iPad a sidebar.
     func open(_ name: String) {
-        let tab = app.tabBars.buttons[name]
-        if tab.exists { tab.tap(); return }
+        let pill = app.buttons["tab-\(name)"]
+        if pill.exists { pill.tap(); return }
         let row = app.buttons[name].firstMatch
         if row.exists { row.tap(); return }
         app.staticTexts[name].firstMatch.tap()
@@ -31,6 +31,8 @@ final class ScreenshotTests: XCTestCase {
     /// Back from a pushed screen: the navigation bar's back button, only when it can really be tapped (on iPad the first
     /// navigation-bar button can be one behind a sheet, which cannot be scrolled to or tapped).
     func goBack() {
+        let round = app.buttons["back-button"]
+        if round.exists && round.isHittable { round.tap(); return }
         let bars = app.navigationBars
         for i in 0..<bars.count {
             let b = bars.element(boundBy: i).buttons.element(boundBy: 0)
@@ -44,7 +46,7 @@ final class ScreenshotTests: XCTestCase {
         let next = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Next day")).firstMatch
         if next.exists { next.tap(); next.tap(); shot("02-home-after-two-days") }
 
-        open("Company"); sleep(1); shot("03-company")
+        open("Home"); sleep(1); shot("03-home")
         // Creating a company starts from the company list's plus button.
         let plus = app.buttons["New company"].firstMatch
         if plus.waitForExistence(timeout: 3) { plus.tap(); sleep(1); shot("03-company-new"); goBack() }
@@ -60,6 +62,17 @@ final class ScreenshotTests: XCTestCase {
         open("Team"); sleep(1); shot("05-team")
         open("Group"); sleep(1); shot("06-group")
         open("Projects"); sleep(1); shot("08-projects")
-        open("Inbox"); sleep(1); shot("09-inbox")
+
+        // The Phone: its home, then every app on the grid, each with a round back button to the home.
+        open("Phone"); sleep(1); shot("09-phone-home")
+        let apps = ["Bank", "Inbox", "News", "Stats", "Goals", "World", "Luxury", "Ventures", "Rich list", "Reports", "Achievements", "Settings"]
+        for (i, name) in apps.enumerated() {
+            let icon = app.buttons["phone-app-\(name)"]
+            guard icon.waitForExistence(timeout: 3) else { continue }
+            icon.tap(); sleep(1)
+            let slug = name.lowercased().replacingOccurrences(of: " ", with: "-")
+            shot("10-phone-\(String(format: "%02d", i + 1))-\(slug)")
+            goBack(); sleep(1)
+        }
     }
 }

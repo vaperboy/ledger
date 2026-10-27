@@ -1,17 +1,23 @@
 import SwiftUI
 import Countries
 
-/// A section of a screen. Ivory Ledger has no boxes: a section is a hairline above and space around the content, so the old
-/// card call sites keep working and simply lose their frame.
+/// The house container (new look): a bordered card on the #151617 surface. Radius per mockup: `Theme.Radius.hero` (16) for the big
+/// summary boxes, `.card` (14, the default) for standard cards, `.row` (12) for compact row cards, `.table` (8) for sharp boxes.
+/// `rule` is kept so older call sites compile; it no longer draws anything. `padding: 0` for content that pads itself.
 struct Card<Content: View>: View {
-    var padding: CGFloat = Theme.Space.l
+    var padding: CGFloat = 14
     var rule = true
+    var radius: CGFloat = Theme.Radius.card
+    var fill: Color = Theme.surface
+    var stroke: Color = Theme.border
     @ViewBuilder var content: () -> Content
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         content()
-            .padding(.vertical, padding == 0 ? 0 : padding * 0.8)
+            .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .top) { if rule { Hairline() } }
+            .background(shape.fill(fill))
+            .overlay(shape.strokeBorder(stroke, lineWidth: 1))
     }
 }
 
@@ -86,7 +92,8 @@ struct ListRow: View {
     }
 }
 
-/// The one filled control: a champagne pill with dark text.
+/// The one filled control: a champagne pill with dark text. House rule: ONLY Next Day uses it; every other action is `QuietButton` /
+/// `QuietButtonStyle` (outline) or `SmallOutlineButton`.
 struct GoldButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -101,7 +108,7 @@ struct GoldButtonStyle: ButtonStyle {
     }
 }
 
-/// A quiet text button with a hairline outline for secondary actions.
+/// A quiet text button with a champagne outline (8 pt corners) for secondary actions. `QuietButton` in NewLook.swift is the same as a view.
 struct QuietButtonStyle: ButtonStyle {
     var tint: Color = Theme.gold
     func makeBody(configuration: Configuration) -> some View {
@@ -110,7 +117,7 @@ struct QuietButtonStyle: ButtonStyle {
             .lineLimit(1)
             .foregroundStyle(tint)
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .overlay(Capsule().strokeBorder(tint.opacity(0.45), lineWidth: 0.75))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint.opacity(0.7), lineWidth: 1))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

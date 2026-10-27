@@ -93,7 +93,6 @@ struct CompaniesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .companyRouteDestinations()
             .toolbar { ToolbarItem(placement: .primaryAction) { Button { path.append(.newCompany) } label: { Label("New company", systemImage: "plus") } } }
-            .phoneToolbar()
             .routeRequests(for: .company, path: $path)
             .returnBar(for: .company)
             .onAppear { openRequested() }

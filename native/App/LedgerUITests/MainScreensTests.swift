@@ -21,9 +21,10 @@ final class MainScreensTests: XCTestCase {
     }
 
     /// Pops pushed screens until the tab bar is on screen (at most 6 times), so a sub-screen that did not return cannot strand the tour.
+    /// The tab bar is the floating pill bar on iPhone (buttons "tab-Home" ...), the sidebar on iPad.
     func ensureTabBar() {
         var tries = 0
-        while !app.tabBars.firstMatch.buttons.firstMatch.isHittable && tries < 6 {
+        while !app.buttons["tab-Home"].isHittable && !app.tabBars.firstMatch.buttons.firstMatch.isHittable && tries < 6 {
             let before = app.navigationBars.count
             goBack(); sleep(1); tries += 1
             if before == 0 { break }
@@ -32,8 +33,10 @@ final class MainScreensTests: XCTestCase {
 
     func open(_ name: String) {
         ensureTabBar()
+        let pill = app.buttons["tab-\(name)"]
+        if pill.waitForExistence(timeout: 5) { pill.tap(); return }
         let tab = app.tabBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch
-        if tab.waitForExistence(timeout: 5) { tab.tap(); return }
+        if tab.exists { tab.tap(); return }
         let row = app.buttons[name].firstMatch
         if row.exists { row.tap(); return }
         let t = app.staticTexts[name].firstMatch
@@ -41,6 +44,8 @@ final class MainScreensTests: XCTestCase {
     }
 
     func goBack() {
+        let round = app.buttons["back-button"]
+        if round.exists && round.isHittable { round.tap(); return }
         let bars = app.navigationBars
         for i in 0..<bars.count {
             let b = bars.element(boundBy: i).buttons.element(boundBy: 0)
@@ -67,7 +72,7 @@ final class MainScreensTests: XCTestCase {
         scrollDown(); shot("21-home-lower")
 
         // Company list and one company with every section
-        open("Company"); sleep(1); shot("22-company-list")
+        open("Home"); sleep(1); shot("22-home-companies")
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("23-company-overview")
@@ -111,7 +116,11 @@ final class MainScreensTests: XCTestCase {
 
         // Projects and Inbox detail
         open("Projects"); sleep(1); shot("50-projects")
-        open("Inbox"); sleep(1); shot("52-inbox")
+        // The Inbox is an app inside the Phone tab.
+        open("Phone"); sleep(1); shot("51-phone-home")
+        let inboxIcon = app.buttons["phone-app-Inbox"]
+        if inboxIcon.waitForExistence(timeout: 3) { inboxIcon.tap(); sleep(1) }
+        shot("52-inbox")
         let row = app.cells.firstMatch
         if row.exists && row.isHittable { row.tap(); sleep(1); shot("53-inbox-message"); ensureTabBar() }
     }

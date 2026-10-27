@@ -10,29 +10,19 @@ import Simulation
 
 /// Five destinations: daily company operations (with today's summary), everyone who works for you, the group (ownership, structure, money),
 /// time-bound projects and investments, and decisions. The old Phone pages sit behind a toolbar button on Company and Group.
+/// The five tabs. The raw values are the route and deep-link names and never change: `.company` is displayed as "Home", and `.phone`
+/// (the Phone tab, home of the apps; Inbox is an app inside it) replaced the old Inbox tab.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case company, team, group, projects, inbox
+    case company, team, group, projects, phone
     var id: String { rawValue }
-    var title: String { switch self { case .company: return "Company"; case .team: return "Team"; case .group: return "Group"; case .projects: return "Projects"; case .inbox: return "Inbox" } }
+    var title: String { switch self { case .company: return "Home"; case .team: return "Team"; case .group: return "Group"; case .projects: return "Projects"; case .phone: return "Phone" } }
+    /// SF Symbol for the iPad sidebar; the floating tab bar uses `glyph`.
     var symbol: String {
-        switch self { case .company: return "building.2"; case .team: return "person.3"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .inbox: return "tray" }
+        switch self { case .company: return "house"; case .team: return "person.3"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
-}
-
-enum PhoneDestination: Hashable, CaseIterable { case goals, news, stats, activity, luxury, settings, achievements, richList, ranking, worldAround
-    /// Title and symbol, shared by the More sheet, the toolbar menu and the iPad sidebar so the three always agree.
-    var title: String {
-        switch self {
-        case .goals: return "Goals"; case .news: return "News"; case .stats: return "Stats"; case .activity: return "Activity"; case .luxury: return "Luxury"; case .settings: return "Settings"
-        case .achievements: return "Achievements"; case .richList: return "Rich list"; case .ranking: return "Biggest companies"; case .worldAround: return "World around you"
-        }
-    }
-    var symbol: String {
-        switch self {
-        case .goals: return "target"; case .news: return "newspaper.fill"; case .stats: return "chart.bar.fill"; case .activity: return "list.bullet.rectangle.fill"; case .luxury: return "sparkles"
-        case .settings: return "gearshape.fill"; case .achievements: return "rosette"; case .richList: return "list.number"; case .ranking: return "building.2.fill"
-        case .worldAround: return "person.2.wave.2.fill"
-        }
+    /// The house icon (SVG path data from the new-look mockups).
+    var glyph: String {
+        switch self { case .company: return Glyph.home; case .team: return Glyph.team; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
 }
 
@@ -66,9 +56,8 @@ final class GameStore: ObservableObject {
     /// A company or record to push onto the navigation stack of `tab` (the tab it was requested from). Taken by `routeRequests`.
     @Published var routeRequest: RouteRequest?
     private var jumping = false
-    @Published var phoneDestination: PhoneDestination? { didSet { if phoneDestination != nil { showPhone = true } } }
-    /// The sheet with news, stats, activity, luxury, settings and the rest (opened from the toolbar of Company and Group).
-    @Published var showPhone = false
+    /// An app of the Phone tab to open (set by `openApp`, taken by `PhoneHome`).
+    @Published var phoneAppRequest: PhoneApp?
     @Published var moneySection: MoneySection?
     /// Open the Reports section on this report (set by the Home prompt).
     @Published var reportRequest: ReportRef?
@@ -223,10 +212,9 @@ final class GameStore: ObservableObject {
     // MARK: Navigation
 
     /// The one way to open a company (or one of its sections) from anywhere: it is pushed onto the navigation stack of the tab the
-    /// player is on (Company, Team, Group, Projects or Inbox), so Back returns to the screen they came from. The More sheet is closed
-    /// first, so a link from it lands on the tab behind it. The request is consumed by that tab (`routeRequests`), so it cannot leak.
+    /// player is on (Home, Team, Group, Projects or Phone), so Back returns to the screen they came from. The request is consumed by
+    /// that tab (`routeRequests`), so it cannot leak.
     func openCompany(_ id: Int, section: CompanySection? = nil) {
-        showPhone = false
         let route: CompanyRoute
         if let section { route = .companyAt(id, section) } else { route = .company(id) }
         routeRequest = RouteRequest(tab: tab, route: route)
@@ -235,7 +223,6 @@ final class GameStore: ObservableObject {
     /// Switches to another tab for a link that cannot be pushed (a message in the Inbox, a Money section, New company) and remembers
     /// where the player came from; the destination shows "Back to <tab>". Switching tabs by hand clears it.
     func jump(to destination: AppTab) {
-        showPhone = false
         guard destination != tab else { return }
         let from = tab
         jumping = true; tab = destination; jumping = false
@@ -249,24 +236,24 @@ final class GameStore: ObservableObject {
         returnTab = nil
     }
 
-    /// Opens one message in the Inbox. `InboxView` takes the request on appear and on change, so it works whether or not
+    /// Opens an app of the Phone tab (Inbox, Bank, News ...), switching to the Phone tab first when needed.
+    func openApp(_ app: PhoneApp) {
+        phoneAppRequest = app
+        jump(to: .phone)
+    }
+
+    /// Opens one message in the Inbox app. `InboxView` takes the request on appear and on change, so it works whether or not
     /// the Inbox was built before.
     func openMessage(_ id: Int) {
         openMessageID = id
-        jump(to: .inbox)
-    }
-
-    /// Opens the More sheet, on `destination` when given (from the toolbar menu or the iPad sidebar).
-    func openMore(_ destination: PhoneDestination? = nil) {
-        Haptics.tap()
-        if let destination { phoneDestination = destination } else { showPhone = true }
+        openApp(.inbox)
     }
 
     /// Drops every pending navigation request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false; returnTab = nil
         routeRequest = nil; moneySection = nil; reportRequest = nil
-        openMessageID = nil; phoneDestination = nil; showPhone = false; showNewCompany = false
+        openMessageID = nil; phoneAppRequest = nil; showNewCompany = false
     }
 
     func go(_ action: Suggestion.Action) {
@@ -282,8 +269,17 @@ final class GameStore: ObservableObject {
     }
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
-    /// Decisions waiting for an answer: the one number behind the Inbox tab badge and the Decisions tab badge.
+    /// Decisions waiting for an answer: the number behind the Inbox app bubble and the Decisions tab badge.
     var openDecisionCount: Int { engine?.state.inbox.filter { $0.status == "open" }.count ?? 0 }
+
+    // MARK: Phone alerts and bubbles
+
+    /// Everything on the Phone that asks for the player, most urgent first (see `PhoneAlert`).
+    var phoneAlerts: [PhoneAlert] { engine.map { PhoneAlerts.all(engine: $0, formatter: self) } ?? [] }
+    /// The red bubble count of each app: Inbox = open decisions, Bank = payroll alerts.
+    var phoneBadges: [PhoneApp: Int] { engine.map { PhoneAlerts.badges(engine: $0) } ?? [:] }
+    /// The number on the Phone tab: every bubble added up (open decisions + payroll alerts).
+    var waitingCount: Int { phoneBadges.values.reduce(0, +) }
 }
 
 extension Int {

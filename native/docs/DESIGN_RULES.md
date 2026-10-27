@@ -1,6 +1,16 @@
 # Design rules for screen work (binding for every design agent)
 
-## REVISION 26 Oct 2026 (owner) - supersedes any conflicting older line below and in design/STYLE_IVORY_LEDGER.md
+## REVISION 27 Oct 2026 (owner, NEW LOOK) - supersedes the 26 Oct revision and any older line where they conflict
+Reference mockups with exact colours, radii, spacing and icons: `native/design/new-look-2026-10/` (open the `.dc.html` files; README there). Build screens from the shared pieces in `App/Ledger/Design/NewLook.swift` and `Components.swift`, never with ad-hoc boxes or SF Symbols for house icons.
+- **Cards and icons are the house style.** Content sits in bordered `Card`s (#151617 surface, #2B2C2E border, radius 16 for big summary boxes, 14 standard, 12 compact rows, 8 for sharp tables and fields). Icons are the mockups' outline icons (`Glyph`, drawn by `GlyphView` / `IconCircle` / `AppIconTile`), champagne on the dark surface. The "no unnecessary cards" line of the 26 Oct revision is withdrawn; still no decorative card that holds nothing.
+- **Back button is round** (`RoundBackButton`, 40 pt, grey outline) on every screen outside Home, and every such screen has its own `AppHeader` (serif title, grey subtitle). Pushed screens get both through `.appScreen(title:subtitle:)`.
+- **Title and "Hello, name" appear only on Home** (`HomeHeader`). Other tabs' roots use an `AppHeader` without the app name or greeting.
+- **Only Next Day is a filled button.** Everything else is an outline: `QuietButton` (champagne outline, 8 pt), `SmallOutlineButton` ("New company": small grey outline, replaces the plus), `ChoiceCard` / `SegmentedPill` for selection. `GoldButtonStyle` is reserved for Next Day.
+- **Tabs:** Home (route name `.company`), Team, Group, Projects, Phone (`.phone`), in a floating pill tab bar (`PillTabBar`) with the selected tab in a champagne pill and red bubbles. **Inbox is an app inside Phone, not a tab.** The Phone tab bubble is the total waiting count (open decisions + payroll alerts). Everything that used to be in More is an app on the Phone grid.
+- **Red bubbles** (`RedBubble`) carry counts only (Inbox decisions; the Bank app and a company's account row when no manager or accountant approves payroll).
+- Money stays through the store/currency formatters; tables (`SharpTable`) take already formatted strings.
+
+## REVISION 26 Oct 2026 (owner) - superseded where it conflicts with the 27 Oct new look above; design/STYLE_IVORY_LEDGER.md likewise
 
 ### 1. Visual identity
 - Ivory Ledger: dark page, flat sections, hairline dividers, restrained champagne accents, serif titles and hero figures, small champagne section labels, tabular numerals.

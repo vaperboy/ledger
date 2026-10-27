@@ -10,8 +10,14 @@ struct FinanceView: View {
     typealias Section = MoneySection
     @EnvironmentObject var store: GameStore
     var companyID: Int? = nil
-    @State private var section: Section = .overview
+    @State private var section: Section
     @State private var yearly = false
+
+    /// `section` opens it on that tab (the Bank app opens on Bank); `companyID` limits it to one company.
+    init(companyID: Int? = nil, section: Section = .overview) {
+        self.companyID = companyID
+        _section = State(initialValue: section)
+    }
 
     var body: some View {
         if let e = store.engine {

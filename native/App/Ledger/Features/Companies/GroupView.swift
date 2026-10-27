@@ -27,7 +27,6 @@ struct GroupView: View {
             .companyRouteDestinations()
             .routeRequests(for: .group, path: $path)
             .returnBar(for: .group)
-            .phoneToolbar()
             .onAppear { takeMoneyRequest() }
             .onChange(of: store.moneySection) { _, _ in takeMoneyRequest() }
         }

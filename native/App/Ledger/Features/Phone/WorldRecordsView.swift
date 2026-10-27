@@ -137,7 +137,7 @@ struct WorldRecordsView: View {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { i, m in
                     if i > 0 { Hairline() }
-                    Button { store.showPhone = false; store.go(.openMessage(m.id)) } label: {
+                    Button { store.go(.openMessage(m.id)) } label: {
                         ListRow(symbol: m.tone == "bad" ? "exclamationmark.triangle.fill" : "briefcase.fill", tint: m.tone == "bad" ? Theme.loss : Theme.gold,
                                 title: e.displayText(m.title, companyID: m.companyID),
                                 subtitle: m.expiresWeek.map { w in let left = w - e.state.week; return left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week" } ?? "No deadline",

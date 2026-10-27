@@ -119,7 +119,7 @@ struct WeatherPage: View {
         let storm = e.state.inbox.first { $0.status == "open" && $0.actionID == WeatherEvents.prepareAction }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if let m = storm {
-                Button { store.showPhone = false; store.go(.openMessage(m.id)) } label: {
+                Button { store.go(.openMessage(m.id)) } label: {
                     HStack(alignment: .firstTextBaseline) {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.loss)
                         VStack(alignment: .leading, spacing: 2) {
@@ -151,7 +151,7 @@ struct WeatherPage: View {
                     ForEach(Array(moved.enumerated()), id: \.element.0.id) { i, pair in
                         let (co, l) = pair
                         if i > 0 { Hairline() }
-                        Button { store.showPhone = false; store.openCompany(co.id, section: .operations) } label: {
+                        Button { store.openCompany(co.id, section: .operations) } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 Image(systemName: symbol(l.kind)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(width: 20)
                                 VStack(alignment: .leading, spacing: 2) {

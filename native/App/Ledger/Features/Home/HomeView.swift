@@ -3,9 +3,9 @@ import Simulation
 import Finance
 import Businesses
 
-/// Today's summary, the top of the Company tab, in the order a business owner reads it: what I am worth and where it is heading,
+/// Today's summary, the top of the Home tab (route name `.company`), in the order a business owner reads it: what I am worth and where it is heading,
 /// whether the money holds this month (profit, cash, what falls due), what needs me, then a quiet line for a finished report.
-/// The companies list follows below it, then the Next day bar. First steps and goals live in More > Goals.
+/// The companies list follows below it, then the Next day bar. First steps and goals live in Phone > Goals.
 struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     var engine: GameEngine
