@@ -53,11 +53,8 @@ struct StartView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.Space.xl) {
-                VStack(spacing: 6) {
-                    Text("LEDGER").font(.serifTitle(42)).tracking(9).foregroundStyle(Theme.ivory)
-                    Text("Business tycoon simulator").font(.label).tracking(1.5).foregroundStyle(Theme.ivoryFaint)
-                }.padding(.top, 48)
+            VStack(alignment: .leading, spacing: 14) {
+                AppHeader(title: "Ledger", subtitle: "Business tycoon simulator").padding(.top, 40)
 
                 if let problem = store.loadProblem {
                     problemCard(problem)
@@ -68,7 +65,7 @@ struct StartView: View {
                 newGameCard
                 importCard
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
@@ -95,7 +92,7 @@ struct StartView: View {
                     // The warning sits on the button itself here, so no second dialog has to appear over a closing sheet.
                     if store.hasSavedGame { Text(replacedLine).font(.caption).foregroundStyle(Theme.caution).frame(maxWidth: .infinity, alignment: .leading) }
                     Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
-                        .buttonStyle(GoldButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding().ledgerBackground()
                 .navigationTitle("Paste save text").navigationBarTitleDisplayMode(.inline)
@@ -107,95 +104,87 @@ struct StartView: View {
     // MARK: States
 
     private var continueCard: some View {
-        LedgerSection("Your game") {
+        Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
+                Text("Your game").capsLabel()
                 if let s = summary {
                     let country = countries.first { $0.code == s.countryCode }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.playerName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                        Text("\(country.map { "\($0.flag) \($0.name)" } ?? s.countryCode) · \(GameCalendar.dateString(week: s.week)) · week \(s.week + 1)")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                        Text(s.companies == 0 ? "No companies yet" : "\(s.companies) \(s.companies == 1 ? "company" : "companies")")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                        HStack(spacing: 4) {
-                            Text("Saved")
-                            Text(s.savedAt, format: .relative(presentation: .named))
+                    HStack(spacing: 12) {
+                        IconCircle(glyph: Glyph.person, size: 44)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.playerName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                            Text("\(country.map { "\($0.flag) \($0.name)" } ?? s.countryCode) · \(GameCalendar.dateString(week: s.week))")
+                                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                         }
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
+                    FigureCard(items: [
+                        .init(label: "Week", value: "\(s.week + 1)"),
+                        .init(label: "Companies", value: "\(s.companies)"),
+                        .init(label: "Saved", value: s.savedAt.formatted(.relative(presentation: .named))),
+                    ]).environment(\.insideCard, true)
                 } else {
                     // The save opens (from the copy kept before the last one) but its summary could not be read.
-                    Text("A saved game is waiting.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("A saved game is waiting.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
                 }
-                Button { store.loadCurrent() } label: { Text("Continue") }.buttonStyle(GoldButtonStyle())
+                QuietButton(title: "Continue", fullWidth: true) { store.loadCurrent() }
             }
         }
     }
 
     private func problemCard(_ problem: String) -> some View {
-        Card {
+        Card(padding: 16) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.caution)
-                    SectionLabel("Your save could not be opened")
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.caution)
+                    Text("Your save could not be opened").font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
                 }
-                Text(problem).font(.bodyText).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                Text(problem).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 Text("The file stays on this device untouched until you start or import another game, which replaces it.")
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                Button("Try again") { store.loadCurrent(); summary = store.currentSaveSummary() }.buttonStyle(QuietButtonStyle())
+                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                QuietButton(title: "Try again") { store.loadCurrent(); summary = store.currentSaveSummary() }
             }
         }
     }
 
-    private var newGameCard: some View {
-        LedgerSection("New game") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                TextField("Your name", text: $name)
-                    .textInputAutocapitalization(.words)
-                    .padding(.vertical, 12)
-                    .overlay(alignment: .bottom) { Rectangle().fill(Theme.ivory.opacity(0.25)).frame(height: 0.5) }
+    @ViewBuilder private var newGameCard: some View {
+        CardSection("New game") {
+            TextField("Your name", text: $name)
+                .textInputAutocapitalization(.words)
+                .font(.system(size: 15))
+                .padding(.vertical, 8)
+            CardLine()
+            HStack {
+                Text("Home country").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+                Spacer()
                 Picker("Home country", selection: $countryCode) {
                     ForEach(countries) { c in Text("\(c.flag) \(c.name)").tag(c.code) }
                 }
                 .pickerStyle(.menu)
-                if let c = countries.first(where: { $0.code == countryCode }) {
-                    Text("Currency: \(c.currencyCode)").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                }
-                if !countryCode.isEmpty { storyPicker }
-                if countries.isEmpty {
-                    Text("The country list could not be loaded, so a new game cannot start. Reinstalling the app restores it.")
-                        .font(.caption).foregroundStyle(Theme.loss)
-                }
-                if store.hasSavedGame {
-                    Button("Begin") { begin() }.buttonStyle(QuietButtonStyle()).disabled(countryCode.isEmpty)
-                    Text("Replaces your saved game; you will be asked first.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                } else {
-                    Button("Begin") { begin() }.buttonStyle(GoldButtonStyle()).disabled(countryCode.isEmpty)
-                }
             }
+            if let c = countries.first(where: { $0.code == countryCode }) {
+                Text("Currency: \(c.currencyCode)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            }
+            if countries.isEmpty {
+                Text("The country list could not be loaded, so a new game cannot start. Reinstalling the app restores it.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.loss)
+            }
+        }
+        if !countryCode.isEmpty { storyPicker }
+        QuietButton(title: "Begin", fullWidth: true) { begin() }
+            .disabled(countryCode.isEmpty).opacity(countryCode.isEmpty ? 0.4 : 1)
+        if store.hasSavedGame {
+            Text("Replaces your saved game; you will be asked first.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }
     }
 
     /// Each story with the numbers the engine produces for the chosen country (a game is built and read, nothing is typed in).
     private var storyPicker: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionLabel("Your story")
-            let country = countries.first { $0.code == countryCode }
-            let cur = country.map { Currency(country: $0, rates: ExchangeRates()) }
+        let country = countries.first { $0.code == countryCode }
+        let cur = country.map { Currency(country: $0, rates: ExchangeRates()) }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Your story").capsLabel().padding(.horizontal, 2)
             ForEach(LifeStory.allCases, id: \.self) { s in
-                Button { story = s } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: story == s ? "largecircle.fill.circle" : "circle").foregroundStyle(story == s ? Theme.gold : Theme.ivoryFaint)
-                            Text(s.title.tidyMoney).font(.bodyText.weight(story == s ? .semibold : .regular)).foregroundStyle(story == s ? Theme.gold : Theme.ivory)
-                        }
-                        Text(s.tagline).font(.caption).foregroundStyle(Theme.ivoryMuted)
-                        if let p = previews[s], let cur {
-                            Text(storyFacts(p, cur)).font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                ChoiceCard(title: s.title.tidyMoney, subtitle: storyLine(s, cur), selected: story == s) { story = s }
             }
             if story.needsCity, let country {
                 Picker("Where is the family café?", selection: Binding(get: { familyCityID.isEmpty ? (country.cities.first?.id ?? "") : familyCityID }, set: { familyCityID = $0 })) {
@@ -204,6 +193,11 @@ struct StartView: View {
             }
         }
         .task(id: countryCode + "|" + familyCityID) { loadPreviews() }
+    }
+
+    private func storyLine(_ s: LifeStory, _ cur: Currency?) -> String {
+        guard let p = previews[s], let cur else { return s.tagline }
+        return s.tagline + "\n" + storyFacts(p, cur)
     }
 
     private func storyFacts(_ p: StoryPreview, _ cur: Currency) -> String {
@@ -222,15 +216,12 @@ struct StartView: View {
     }
 
     private var importCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionLabel("Bring a save from the web game")
-                Text("Your original file is kept untouched. The game is converted into a new native save" + (store.hasSavedGame ? ", which replaces the current one." : "."))
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted)
-                HStack {
-                    Button("Choose file") { showImporter = true }.buttonStyle(QuietButtonStyle())
-                    Button("Paste text") { showPaste = true }.buttonStyle(QuietButtonStyle())
-                }
+        CardSection("Bring a save from the web game") {
+            Text("Your original file is kept untouched. The game is converted into a new native save" + (store.hasSavedGame ? ", which replaces the current one." : "."))
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                QuietButton(title: "Choose file", fullWidth: true) { showImporter = true }
+                QuietButton(title: "Paste text", fullWidth: true) { showPaste = true }
             }
         }
     }
