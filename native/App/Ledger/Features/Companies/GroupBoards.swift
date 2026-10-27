@@ -10,44 +10,41 @@ struct BoardsGroupSection: View {
     var openInvest: () -> Void
 
     var body: some View {
-        let keys = engine.boardKeys.filter { engine.boardIsActive(key: $0) }
-        let waiting = Dictionary(uniqueKeysWithValues: keys.map { ($0, engine.boardMeetings(key: $0).filter { $0.status.isEmpty }.count) })
-        let ordered = keys.sorted { (waiting[$0] ?? 0, $0.hasPrefix("ch:") ? 1 : 0) > (waiting[$1] ?? 0, $1.hasPrefix("ch:") ? 1 : 0) }
-        LedgerSection(title: "Boards", trailing: { Text("\(keys.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                if keys.isEmpty {
-                    Text("A board forms once you register a chain or somebody else owns part of a company.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
-                }
-                ForEach(Array(ordered.enumerated()), id: \.element) { n, key in
-                    if n > 0 { Hairline() }
-                    NavigationLink { BoardView(key: key) } label: { BoardLinkRow(engine: engine, key: key) }.buttonStyle(.plain)
-                }
-                Hairline()
-                Button(action: openInvest) {
-                    GroupLinkRow(title: "Stakes in other groups and the big meeting offer", sub: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
-                }.buttonStyle(.plain)
+        let keys: [String] = engine.boardKeys.filter { engine.boardIsActive(key: $0) }
+        let waiting: [String: Int] = Dictionary(uniqueKeysWithValues: keys.map { ($0, engine.boardMeetings(key: $0).filter { $0.status.isEmpty }.count) })
+        let ordered: [String] = keys.sorted { (waiting[$0] ?? 0, $0.hasPrefix("ch:") ? 1 : 0) > (waiting[$1] ?? 0, $1.hasPrefix("ch:") ? 1 : 0) }
+        let total: Int = waiting.values.reduce(0, +)
+        MoreBlock(title: "Boards", card: false, trailing: { RedBubble(count: total, size: .small) }) {
+            if keys.isEmpty {
+                NoteCard(text: "A board forms once you register a chain or somebody else owns part of a company.")
             }
+            ForEach(ordered, id: \.self) { key in
+                NavigationLink { BoardView(key: key) } label: { BoardLinkRow(engine: engine, key: key) }.buttonStyle(.plain)
+            }
+            Button(action: openInvest) {
+                CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
+            }.buttonStyle(.plain)
         }
     }
 }
 
-/// One board as a row: whose board, seats, and what waits for a decision.
+/// One board as a row: whose board, seats, and what waits for a decision (a red count).
 struct BoardLinkRow: View {
     var engine: GameEngine
     var key: String
 
     var body: some View {
-        let seats = engine.boardSeats(key: key).count
-        let waiting = engine.boardMeetings(key: key).filter { $0.status.isEmpty }.count
-        let kind = key.hasPrefix("ch:") ? "Chain board" : "Company board"
-        GroupLinkRow(title: engine.boardName(key: key),
-                     sub: "\(kind) · \(seats) \(seats == 1 ? "seat" : "seats") filled" + (waiting > 0 ? " · \(waiting) to decide" : ""),
-                     subTint: waiting > 0 ? Theme.caution : Theme.ivoryFaint)
+        let seats: Int = engine.boardSeats(key: key).count
+        let waiting: Int = engine.boardMeetings(key: key).filter { $0.status.isEmpty }.count
+        let kind: String = key.hasPrefix("ch:") ? "Chain board" : "Company board"
+        let sub: String = "\(kind) · \(seats) \(seats == 1 ? "seat" : "seats") filled" + (waiting > 0 ? " · \(waiting) to decide" : "")
+        CardRow(glyph: key.hasPrefix("ch:") ? Glyph.group : Glyph.achievements, title: engine.boardName(key: key), subtitle: sub, badge: waiting)
     }
 }
 
 /// One board: what waits for a decision, how often it meets, who sits at the table, adding advisers, and what it says to a big move.
-/// Opened from Group > Boards, from the chain page and from a company's owners.
+/// Opened from Group > Boards, from the chain page and from a company's owners. Laid out as a board room: the agenda first as
+/// decision cards, the table as seat cards, the meeting rhythm as a switch, and the vote odds as bars.
 struct BoardView: View {
     @EnvironmentObject var store: GameStore
     var key: String
@@ -57,21 +54,17 @@ struct BoardView: View {
 
     var body: some View {
         if let engine = store.engine, engine.boardIsActive(key: key) {
-            let companies = ManagerModel.boardCompanies(engine.state, key: key)
+            let companies: [Company] = ManagerModel.boardCompanies(engine.state, key: key)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    if !message.isEmpty { Text(message).font(.caption).foregroundStyle(Theme.ivoryMuted) }
+                VStack(alignment: .leading, spacing: 16) {
+                    if !message.isEmpty { NoteCard(text: message) }
                     agenda(engine)
                     table(engine)
                     meets(engine)
                     bigMoves(engine, companies: companies)
-                    if key.hasPrefix("co:"), let co = companies.first {
-                        NavigationLink(value: CompanyRoute.companyAt(co.id, .finances)) {
-                            GroupLinkRow(title: "Owners and shares of \(co.name)", sub: "Who owns what, dividends and buy-backs, in the company's Finances.")
-                        }.buttonStyle(.plain)
-                    }
+                    ownersLink(companies)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -85,106 +78,151 @@ struct BoardView: View {
         }
     }
 
+    @ViewBuilder private func ownersLink(_ companies: [Company]) -> some View {
+        if key.hasPrefix("co:"), let co = companies.first {
+            NavigationLink(value: CompanyRoute.companyAt(co.id, .finances)) {
+                CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)", subtitle: "Who owns what, dividends and buy-backs, in the company's Finances.")
+            }.buttonStyle(.plain)
+        }
+    }
+
     // MARK: To decide
 
     @ViewBuilder private func agenda(_ engine: GameEngine) -> some View {
-        let open = engine.boardMeetings(key: key).filter { $0.status.isEmpty }
-        LedgerSection(title: "To decide", trailing: { Text("\(open.count)").font(.system(size: 11)).foregroundStyle(open.isEmpty ? Theme.ivoryFaint : Theme.caution) }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                if open.isEmpty { Text("Nothing waits for the board.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
-                ForEach(open) { m in meeting(m) }
-                Button("Hold a board meeting") {
-                    let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
-                    if id == nil { message = "Nothing to meet about yet." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
-                }.buttonStyle(SmallGoldButtonStyle())
+        let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key).filter { $0.status.isEmpty }
+        MoreBlock(title: "To decide", card: false, trailing: { RedBubble(count: open.count, size: .small) }) {
+            if open.isEmpty { NoteCard(text: "Nothing waits for the board.", glyph: Glyph.check) }
+            ForEach(open) { m in meeting(m) }
+            QuietButton(title: "Hold a board meeting") {
+                let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
+                if id == nil { message = "Nothing to meet about yet." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
+            }
+        }
+    }
+
+    private func emergencyButtons(_ m: ManagerModel.BoardMeeting) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: String) in
+                Button(o) {
+                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide") {
+                        let r: String? = store.act { $0.pickEmergency(key: key, meetingID: m.id, option: i) } ?? nil
+                        message = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
+                        Haptics.success()
+                    }
+                }.buttonStyle(GreyOutlineButtonStyle())
+            }
+        }
+    }
+
+    private func approve(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
+        let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
+        switch r {
+        case .followUp(let what)?: message = "Approved. Follow up on it (\(what)) in the company."
+        case .done(let what)?: message = what.isEmpty ? "Approved." : what
+        case .gone?: message = "That item is no longer on the agenda."
+        default: message = "Approved."
+        }
+    }
+
+    private func decline(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
+        let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
+        if case .gone? = r { message = "That item is no longer on the agenda." } else { message = "Declined." }
+    }
+
+    private func itemRow(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(it.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button("Approve") { approve(m, it) }.buttonStyle(QuietButtonStyle())
+                Button("Decline") { decline(m, it) }.buttonStyle(GreyOutlineButtonStyle())
             }
         }
     }
 
     @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(m.title.tidyMoney).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
-            if !m.why.isEmpty { Text(m.why.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted) }
-            if m.isEmergency {
-                ForEach(Array(m.options.enumerated()), id: \.offset) { i, o in
-                    Button(o) {
-                        pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide") {
-                            let r: String? = store.act { $0.pickEmergency(key: key, meetingID: m.id, option: i) } ?? nil
-                            message = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
-                            Haptics.success()
-                        }
-                    }.buttonStyle(SmallOutlineButtonStyle())
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    IconCircle(glyph: m.isEmergency ? Glyph.warning : Glyph.calendar, size: 36, tint: m.isEmergency ? Theme.caution : Theme.gold)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(m.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        if !m.why.isEmpty { Text(m.why.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                    }
                 }
-            } else {
-                ForEach(m.items.filter { $0.status.isEmpty }) { it in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(it.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivory)
-                        HStack {
-                            Button("Approve") {
-                                let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
-                                switch r {
-                                case .followUp(let what)?: message = "Approved. Follow up on it (\(what)) in the company."
-                                case .done(let what)?: message = what.isEmpty ? "Approved." : what
-                                case .gone?: message = "That item is no longer on the agenda."
-                                default: message = "Approved."
-                                }
-                            }.buttonStyle(SmallGoldButtonStyle())
-                            Button("Decline") {
-                                let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
-                                if case .gone? = r { message = "That item is no longer on the agenda." } else { message = "Declined." }
-                            }.buttonStyle(SmallOutlineButtonStyle())
-                        }
+                if m.isEmergency {
+                    emergencyButtons(m)
+                } else {
+                    ForEach(m.items.filter { $0.status.isEmpty }) { it in
+                        CardLine()
+                        itemRow(m, it)
                     }
                 }
             }
-        }.padding(.vertical, 4)
+        }
     }
 
     // MARK: Who sits at the table
 
-    @ViewBuilder private func table(_ engine: GameEngine) -> some View {
-        let seats = engine.boardSeats(key: key)
-        LedgerSection("At the table") {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ForEach(engine.boardVoters(key: key)) { v in
-                    HStack {
-                        Text("\(v.name) · \(v.title)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                        Spacer()
-                        Text(v.votes ? "votes" : "advises").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                        if let pid = v.personID, seats.contains(where: { $0.id == pid && $0.isAdviser }) {
-                            Button("Let go") {
-                                pending = PendingAction(title: "Let \(v.name) go from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Let go", destructive: true) {
-                                    store.act { $0.removeFromBoard(key: key, personID: pid) }
-                                    message = "\(v.name) left the board."
-                                }
-                            }.buttonStyle(SmallOutlineButtonStyle()).frame(width: 90)
-                        }
+    private func voterCard(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat]) -> some View {
+        HStack(spacing: 12) {
+            IconCircle(glyph: v.votes ? Glyph.person : Glyph.people, size: 34, tint: v.votes ? Theme.gold : Theme.ivoryMuted)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(v.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text("\(v.title) · \(v.votes ? "votes" : "advises")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            if let pid = v.personID, seats.contains(where: { $0.id == pid && $0.isAdviser }) {
+                Button("Let go") {
+                    pending = PendingAction(title: "Let \(v.name) go from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Let go", destructive: true) {
+                        store.act { $0.removeFromBoard(key: key, personID: pid) }
+                        message = "\(v.name) left the board."
                     }
+                }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+            }
+        }
+    }
+
+    private func seatFinder(_ engine: GameEngine) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Add to the board (a search costs a fee)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            WrapRow {
+                Group {
+                    ForEach(engine.seatRoles) { r in
+                        Button(r.title) {
+                            let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
+                            if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
+                        }.buttonStyle(TinyButtonStyle()).fixedSize()
+                    }
+                }
+            }
+        }
+    }
+
+    private func candidateRow(_ p: Person) -> some View {
+        let fee: Double = p.num("fee13")
+        return HStack(spacing: 10) {
+            Text("\(p.name) · \(p.str("advBg"))").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+            Spacer(minLength: 8)
+            Button("Seat · \(store.short(fee)) a month") {
+                pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them") { seat(p, fee: fee) }
+            }.buttonStyle(TinyButtonStyle()).fixedSize()
+        }
+    }
+
+    @ViewBuilder private func table(_ engine: GameEngine) -> some View {
+        let seats: [ManagerModel.Seat] = engine.boardSeats(key: key)
+        MoreBlock("At the table") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(engine.boardVoters(key: key).enumerated()), id: \.element.id) { (n: Int, v: ManagerModel.Voter) in
+                    if n > 0 { CardLine() }
+                    voterCard(v, seats: seats)
                 }
                 ForEach(seats.filter { $0.isAdviser }) { s in
-                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 }
-                Text("Add to the board (a search costs a fee)").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.top, 4)
-                WrapRow {
-                    Group {
-                        ForEach(engine.seatRoles) { r in
-                            Button(r.title) {
-                                let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
-                                if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
-                            }.buttonStyle(SmallOutlineButtonStyle()).fixedSize()
-                        }
-                    }
-                }
-                ForEach(candidates) { p in
-                    let fee = p.num("fee13")
-                    HStack {
-                        Text("\(p.name) · \(p.str("advBg"))").font(.caption).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Spacer()
-                        Button("Seat · \(store.short(fee)) a month") {
-                            pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them") { seat(p, fee: fee) }
-                        }.buttonStyle(SmallGoldButtonStyle()).fixedSize()
-                    }
-                }
+                CardLine()
+                seatFinder(engine)
+                ForEach(candidates) { p in candidateRow(p) }
             }
         }
     }
@@ -204,41 +242,49 @@ struct BoardView: View {
 
     @ViewBuilder private func meets(_ engine: GameEngine) -> some View {
         let board = ManagerModel.board(engine.state, key: key)
-        let regular = board["mode"].string == "regular"
-        let quarterly = board["freq"].int >= 13
-        LedgerSection("Meets") {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack {
-                    Button("When needed") { store.settle(store.act { $0.setBoardMode(key: key, regular: false) }, "The board meets when needed.", same: "It already meets when needed.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 0.5 : 1)
-                    Button("Regularly") { store.settle(store.act { $0.setBoardMode(key: key, regular: true) }, "The board meets regularly.", same: "It already meets regularly.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(regular ? 1 : 0.5)
-                }
+        let regular: Bool = board["mode"].string == "regular"
+        let quarterly: Bool = board["freq"].int >= 13
+        let modeBinding = Binding<Bool>(get: { regular }, set: { v in
+            if v { store.settle(store.act { $0.setBoardMode(key: key, regular: true) }, "The board meets regularly.", same: "It already meets regularly.") }
+            else { store.settle(store.act { $0.setBoardMode(key: key, regular: false) }, "The board meets when needed.", same: "It already meets when needed.") }
+        })
+        let freqBinding = Binding<Bool>(get: { quarterly }, set: { v in
+            if v { store.settle(store.act { $0.setBoardMode(key: key, quarterly: true) }, "The board meets quarterly.", same: "It already meets quarterly.") }
+            else { store.settle(store.act { $0.setBoardMode(key: key, quarterly: false) }, "The board meets every 4 weeks.", same: "It already meets every 4 weeks.") }
+        })
+        MoreBlock("Meets") {
+            VStack(alignment: .leading, spacing: 10) {
+                SegmentedPill(items: [false, true], title: { $0 ? "Regularly" : "When needed" }, selection: modeBinding)
                 if regular {
-                    HStack {
-                        Button("Every 4 weeks") { store.settle(store.act { $0.setBoardMode(key: key, quarterly: false) }, "The board meets every 4 weeks.", same: "It already meets every 4 weeks.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 0.5 : 1)
-                        Button("Quarterly") { store.settle(store.act { $0.setBoardMode(key: key, quarterly: true) }, "The board meets quarterly.", same: "It already meets quarterly.") }.buttonStyle(SmallOutlineButtonStyle()).opacity(quarterly ? 1 : 0.5)
-                    }
+                    SegmentedPill(items: [false, true], title: { $0 ? "Quarterly" : "Every 4 weeks" }, selection: freqBinding)
                 }
                 Text(regular ? "The board meets on a schedule and puts its own items on the agenda." : "The board meets only when you call it or something needs it.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
 
     // MARK: Big moves
 
+    private func voteRow(label: String, vote: ManagerModel.BoardVote) -> some View {
+        let pct: Double = vote.percentYes
+        let tail: String = (vote.passes ? "would pass" : "would not pass") + (vote.decidingOwner.map { " · \($0) decides" } ?? "")
+        return VStack(alignment: .leading, spacing: 4) {
+            RateBar(label: label, fraction: pct / 100, tint: vote.passes ? Theme.gain : Theme.caution)
+            Text("\(Int(pct.rounded()))% yes · \(tail)").font(.system(size: 11.5)).foregroundStyle(vote.passes ? Theme.gain : Theme.caution)
+        }
+    }
+
     @ViewBuilder private func bigMoves(_ engine: GameEngine, companies: [Company]) -> some View {
         if let co = companies.first {
             let votes = [("sell", "Selling"), ("close", "Closing")].map { (label: $0.1, vote: engine.boardVote(kind: $0.0, companyID: co.id)) }.filter { $0.vote.active }
             let power = engine.ownersPower(companyID: co.id)
             if !votes.isEmpty || !(power?.text.isEmpty ?? true) {
-                LedgerSection("What the board says to a big move") {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(votes.enumerated()), id: \.offset) { _, v in
-                            Text("\(v.label): \(Int(v.vote.percentYes.rounded()))% yes · " + (v.vote.passes ? "would pass" : "would not pass") + (v.vote.decidingOwner.map { " · \($0) decides" } ?? ""))
-                                .font(.caption).foregroundStyle(v.vote.passes ? Theme.gain : Theme.caution)
-                        }
+                MoreBlock("What the board says to a big move") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(votes.enumerated()), id: \.offset) { _, v in voteRow(label: v.label, vote: v.vote) }
                         if let p = power, !p.text.isEmpty {
-                            Text("Other owners: " + p.text).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("Other owners: " + p.text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                         }
                     }
                 }

@@ -134,41 +134,39 @@ struct ChainAttention: View {
         let broke = summary.stores.compactMap { engine.state.company($0.id) }.filter { $0.status == .open && $0.cash < 0 }
         let boardItems = engine.boardMeetings(key: "ch:\(summary.id)").filter { $0.status.isEmpty }.count
         let applicants = summary.franchisingCompanyID.map { engine.franchiseApplicants(companyID: $0).count } ?? 0
-        if !losing.isEmpty || !unmanaged.isEmpty || !broke.isEmpty || boardItems > 0 || applicants > 0 {
-            MoreBlock("Needs you") {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(broke.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { Hairline() }
-                        lendRow(c)
-                    }
-                    if !losing.isEmpty {
-                        if !broke.isEmpty { Hairline() }
-                        line("\(losing.count) of \(summary.stores.count) stores lost money last month", losing.prefix(4).map { $0.name }.joined(separator: ", ") + (losing.count > 4 ? "…" : "") + ". Compare them below.", tint: Theme.loss)
-                    }
-                    if !unmanaged.isEmpty {
-                        if !broke.isEmpty || !losing.isEmpty { Hairline() }
-                        line("\(unmanaged.count) \(unmanaged.count == 1 ? "store has" : "stores have") no store manager", "You run \(unmanaged.count == 1 ? "it" : "them") yourself. Hire one in the store's Team, or let a chain manager fill them.", tint: Theme.caution)
-                    }
-                    if boardItems > 0 {
-                        Hairline()
-                        NavigationLink { BoardView(key: "ch:\(summary.id)") } label: {
-                            GroupLinkRow(title: "The board has \(boardItems) \(boardItems == 1 ? "item" : "items") to decide", sub: "Approve or decline at the board.", subTint: Theme.caution)
-                        }.buttonStyle(.plain)
-                    }
-                    if applicants > 0 {
-                        Hairline()
-                        line("\(applicants) franchise \(applicants == 1 ? "applicant is" : "applicants are") waiting", "Talk to them under Franchise your concept below.", tint: Theme.gain)
-                    }
+        let total: Int = broke.count + (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
+        if total > 0 {
+            MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: total, size: .small) }) {
+                ForEach(broke) { c in lendRow(c) }
+                if !losing.isEmpty {
+                    line("\(losing.count) of \(summary.stores.count) stores lost money last month", losing.prefix(4).map { $0.name }.joined(separator: ", ") + (losing.count > 4 ? "…" : "") + ". Compare them below.", glyph: Glyph.warning, tint: Theme.loss)
+                }
+                if !unmanaged.isEmpty {
+                    line("\(unmanaged.count) \(unmanaged.count == 1 ? "store has" : "stores have") no store manager", "You run \(unmanaged.count == 1 ? "it" : "them") yourself. Hire one in the store's Team, or let a chain manager fill them.", glyph: Glyph.person, tint: Theme.caution)
+                }
+                if boardItems > 0 {
+                    NavigationLink { BoardView(key: "ch:\(summary.id)") } label: {
+                        CardRow(glyph: Glyph.achievements, title: "The board has \(boardItems) \(boardItems == 1 ? "item" : "items") to decide", subtitle: "Approve or decline at the board.", badge: boardItems)
+                    }.buttonStyle(.plain)
+                }
+                if applicants > 0 {
+                    line("\(applicants) franchise \(applicants == 1 ? "applicant is" : "applicants are") waiting", "Talk to them under Franchise your concept below.", glyph: Glyph.hire, tint: Theme.gain)
                 }
             }
         }
     }
 
-    private func line(_ title: String, _ sub: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(title).font(.system(size: 13.5)).foregroundStyle(tint)
-            Text(sub).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-        }.padding(.vertical, 9)
+    private func line(_ title: String, _ sub: String, glyph: String, tint: Color) -> some View {
+        EntityCard {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: glyph, size: 34, tint: tint)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(tint)
+                    Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+        }
     }
 
     /// A store out of cash can borrow from the sister store with the most to spare, repaid once it has a cushion again.
@@ -176,25 +174,32 @@ struct ChainAttention: View {
         let weekly = engine.companyHealth(c).weeklyCost
         let need = currency.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
         let owed = engine.groupLoanBalance(companyID: c.id)
-        return HStack(alignment: .firstTextBaseline) {
-            NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("\(c.name) is out of cash").font(.system(size: 13.5)).foregroundStyle(Theme.loss)
-                    Text("Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                }
-                .contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            Spacer(minLength: 8)
-            Button("Group loan \(currency.tidyShort(need))") {
-                pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
-                                        message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
-                                        button: "Lend") {
-                    let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
-                    if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
-                    else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
-                }
-            }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-        }.padding(.vertical, 9)
+        let sub: String = "Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")
+        return EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
+                    HStack(alignment: .top, spacing: 12) {
+                        IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.loss)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("\(c.name) is out of cash").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.loss)
+                            Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        }
+                        Spacer(minLength: 8)
+                        MoreChevron()
+                    }
+                    .contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                Button("Group loan \(currency.tidyShort(need))") {
+                    pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
+                                            message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
+                                            button: "Lend") {
+                        let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
+                        if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
+                        else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
+                    }
+                }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+            }
+        }
     }
 }
 
@@ -217,13 +222,17 @@ struct ChainStoreComparison: View {
         MoreBlock(title: "Stores", card: false, trailing: { Text("\(summary.stores.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 10) {
                 if summary.stores.count > 1 {
-                    SectionTabs(items: Sort.allCases, title: { $0.rawValue }, selection: $sort).padding(.horizontal, -Theme.Space.margin)
+                    SegmentedPill(items: Sort.allCases, title: { $0.rawValue }, selection: $sort)
                 }
                 if summary.stores.count > pageSize {
-                    TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14)).padding(.vertical, 8)
-                        .overlay(alignment: .bottom) { Hairline() }
+                    Card(padding: 10, radius: Theme.Radius.table) {
+                        HStack(spacing: 8) {
+                            GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
+                            TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
+                        }
+                    }
                 }
-                if all.isEmpty { Text("No store matches.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.vertical, 8) }
+                if all.isEmpty { NoteCard(text: "No store matches.", glyph: Glyph.search) }
                 if sort == .city {
                     let cities = Array(Set(shown.map { $0.cityName })).sorted()
                     ForEach(cities, id: \.self) { city in
@@ -239,10 +248,16 @@ struct ChainStoreComparison: View {
                     ForEach(shown) { (s: Chains.StoreLine) in row(s) }
                 }
                 if all.count > shown.count {
-                    Button("Show all \(all.count) stores") { showAll = true }.buttonStyle(TinyButtonStyle())
+                    QuietButton(title: "Show all \(all.count) stores") { showAll = true }
                 }
             }
         }
+    }
+
+    /// How far a store's monthly result is from the chain's best or worst, for the bar on its card.
+    private func profitShare(_ s: Chains.StoreLine) -> Double {
+        let peak: Double = summary.stores.map { abs($0.profit) }.max() ?? 0
+        return peak > 0 ? min(1, abs(s.profit) / peak) : 0
     }
 
     private func sorted(_ l: [Chains.StoreLine]) -> [Chains.StoreLine] {
@@ -278,6 +293,7 @@ struct ChainStoreComparison: View {
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
+                RateBar(label: s.profit < 0 ? "Loss vs best" : "Profit vs best", fraction: profitShare(s), tint: s.profit < 0 ? Theme.loss : Theme.gold)
                 HStack {
                     Button(rulesTitle) { openRulesFor = openRulesFor == s.id ? nil : s.id }.buttonStyle(TinyButtonStyle())
                     Spacer()
@@ -335,7 +351,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }
             store.settle(r, "Chain ordering rule: \(names[min(2, max(0, v))].lowercased()).")
         })
-        return SegmentedChoice(items: [0, 1, 2], title: { names[$0] }, selection: binding)
+        return SegmentedPill(items: [0, 1, 2], title: { names[$0] }, selection: binding)
     }
 
     private var payRule: some View {
@@ -347,7 +363,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
             store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.")
         })
-        return SegmentedChoice(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
+        return SegmentedPill(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
     }
 
     private var marketingRule: some View {
@@ -357,7 +373,7 @@ struct ChainRulesSection: View {
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }
             store.settle(r, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).")
         })
-        return SegmentedChoice(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
+        return SegmentedPill(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
     }
 
     @ViewBuilder private var knobRules: some View {
@@ -393,9 +409,12 @@ struct ChainRulesSection: View {
             }
             let exceptions = engine.chainKnobExceptions(chainID: chainID, knob: knob.id)
             if !exceptions.isEmpty {
-                Label("\(exceptions.count) store\(exceptions.count == 1 ? "" : "s") could not follow yet and keep what they have: " + exceptions.map { ex in
-                    ex.storeName + " (" + optionNames(knob, ex.value) + ")" }.joined(separator: "; ") + ".", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption2).foregroundStyle(Theme.caution)
+                let names: String = exceptions.map { ex in ex.storeName + " (" + optionNames(knob, ex.value) + ")" }.joined(separator: "; ")
+                HStack(alignment: .top, spacing: 8) {
+                    GlyphView(glyph: Glyph.warning, size: 14, weight: 1.5, tint: Theme.caution)
+                    Text("\(exceptions.count) store\(exceptions.count == 1 ? "" : "s") could not follow yet and keep what they have: " + names + ".")
+                        .font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -460,12 +479,15 @@ struct ChainNewStore: View {
                 }.pickerStyle(.menu)
                 Picker("Size", selection: $newSize) { Text("Small").tag(0.7); Text("Standard").tag(1.0); Text("Large").tag(1.4) }.pickerStyle(.segmented)
                 if let cost {
-                    FlatRow(label: "Cost", value: currency.tidyShort(cost), sub: "You have \(store.money(Payments.liquid(engine.state))) available.", rule: false)
-                    Button("Open \(summary.name) \(cityName)") {
+                    FigureStrip(items: [
+                        .init(label: "Cost", value: currency.tidyShort(cost)),
+                        .init(label: "You have available", value: store.money(Payments.liquid(engine.state))),
+                    ], columns: 2)
+                    QuietButton(title: "Open \(summary.name) \(cityName)", fullWidth: true) {
                         pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
                                                 message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
                                                 button: "Open the store") { open(cityID: cityID) }
-                    }.buttonStyle(TinyButtonStyle())
+                    }
                 } else {
                     Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
                 }
