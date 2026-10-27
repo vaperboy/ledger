@@ -26,7 +26,7 @@ struct ReportsContent: View {
     var companyID: Int? = nil
     @State private var kind: ReportKind = .week
     @State private var chosen: [String: Int] = [:]
-    @State private var opened: ReportPage?
+    @State private var opened: ReportDest?
 
     private var format: ReportFormat {
         if let id = companyID, let co = engine.state.company(id) {
@@ -59,12 +59,8 @@ struct ReportsContent: View {
             if let r = current {
                 picker(r, all)
                 summaryPage(r, all)
-                SettingsTable(heading: "Details") {
-                    SettingsTableRow(title: ReportPage.movements.rawValue, note: "Every movement of money in this period", value: "") { opened = .movements }
-                    SettingsTableRow(title: ReportPage.bills.rawValue, note: "What was due and paid", value: "") { opened = .bills }
-                }
-                Color.clear.frame(height: 0).navigationDestination(item: $opened) { (p: ReportPage) in
-                    SettingsPage(title: p.rawValue, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(p, r) }
+                Color.clear.frame(height: 0).navigationDestination(item: $opened) { (d: ReportDest) in
+                    SettingsPage(title: d.title, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(d, r, all) }
                 }
             } else {
                 CardSection("No report yet") {
@@ -77,32 +73,27 @@ struct ReportsContent: View {
         .onChange(of: store.reportRequest) { _, _ in takeRequest() }
     }
 
-    @ViewBuilder private func detail(_ p: ReportPage, _ r: PeriodReport) -> some View {
-        switch p {
-        case .summary: EmptyView()
+    @ViewBuilder private func detail(_ d: ReportDest, _ r: PeriodReport, _ all: [PeriodReport]) -> some View {
+        switch d {
         case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)
         case .bills: ReportBills(engine: engine, report: r, companyID: companyID)
+        case .worth: worth(r)
+        case .cash: cash(r)
+        case .people: people(r)
+        case .tax: yearly(r)
+        case .companies: companies(r)
+        case .happened: happened(r)
+        case .line(let key): ReportLineDetail(report: r, history: all, key: key, showCompanies: companyID == nil, format: format)
         }
     }
 
-    @ViewBuilder private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
-        Group {
-                hero(r)
-                summary(r)
-                keyFigures(r)
-                trend(r, all)
-        }
-        Group {
-                CardSection("Profit and loss") {
-                    PnLTable(now: r.group.pnl, before: r.previous?.pnl, nowTitle: kind.title == "Week" ? "This week" : "This " + kind.noun,
-                             beforeTitle: "Before", format: format)
-                }
-                if companyID == nil { companies(r) }
-                worth(r)
-                cash(r)
-                people(r)
-                if kind == .year { yearly(r) }
-                happened(r)
+    private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            hero(r)
+            ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format)
+            story(r)
+            linesTable(r)
+            moreTable(r)
         }
     }
 
@@ -133,60 +124,33 @@ struct ReportsContent: View {
         .buttonStyle(.plain).disabled(!enabled).accessibilityLabel(label)
     }
 
-    // MARK: Hero and key figures
+    // MARK: Hero, story and tables
 
     private func hero(_ r: PeriodReport) -> some View {
         let f = format
         let net = r.group.pnl.netProfit
-        let prevNet = r.previous?.pnl.netProfit
-        let nwLabel = companyID == nil ? "Net worth" : "Your share's value"
-        return Card(padding: 14, radius: Theme.Radius.hero) { VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Profit after tax").capsLabel()
-                    Text(f.short(net)).font(.hero(34)).foregroundStyle(net < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.5).lineLimit(1)
-                }
-                Spacer(minLength: 12)
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(nwLabel).capsLabel()
-                    Text(f.signed(r.netWorthChange)).font(.hero(34)).foregroundStyle(Theme.change(r.netWorthChange)).minimumScaleFactor(0.5).lineLimit(1)
-                }
+        let profitChange = ReportChangeText(now: net, before: r.previous?.pnl.netProfit, isCost: false, format: f)
+        let worthChange = r.netWorthChange
+        let worthPrev = r.previous?.netWorthChange
+        let worthNote = "Change " + f.signed(worthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? "")
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                OverviewFigureCard(label: "Profit after tax", value: f.short(net),
+                                   note: r.previous.map { "\(profitChange.text) vs \($0.title)" } ?? "Nothing earlier to compare with.",
+                                   noteTint: profitChange.tint)
+                OverviewFigureCard(label: companyID == nil ? "Net worth" : "Your share's value", value: f.short(r.netWorthEnd.total),
+                                   note: worthNote, noteTint: Theme.change(worthChange))
             }
-            HStack(alignment: .firstTextBaseline) {
-                if let p = prevNet {
-                    DeltaPill(title: "vs " + (r.previous?.title ?? "before"), amount: net - p, share: ReportMath.share(net, p), format: f.short)
-                } else {
-                    Text("Nothing earlier to compare with.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                }
-                Spacer(minLength: 8)
-                if let s = r.netWorthShare, abs(s) >= 0.0005, abs(s) < 10 {
-                    Text(f.percent(s)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.change(r.netWorthChange))
-                }
+            if let p = worthPrev, r.previous != nil {
+                Text("Net worth change before: " + f.signed(p)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             if r.partial {
                 Text("This period began part-way through: the game was saved before reports existed.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
-        } }
+        }
     }
 
-    private func keyFigures(_ r: PeriodReport) -> some View {
-        let f = format
-        let g = r.group
-        let p = r.previous
-        func sub(_ now: Double, _ before: Double?) -> String { before.map { f.percent(ReportMath.share(now, $0)) + " vs before" } ?? "" }
-        let items: [KeyFigures.Item] = [
-            .init(label: "Revenue", value: f.short(g.pnl.revenue), sub: sub(g.pnl.revenue, p?.pnl.revenue)),
-            .init(label: "Costs", value: f.short(g.pnl.costs), sub: sub(g.pnl.costs, p?.pnl.costs)),
-            .init(label: "Before tax", value: f.short(g.pnl.profitBeforeTax), tint: g.pnl.profitBeforeTax < 0 ? Theme.loss : Theme.ivory,
-                  sub: sub(g.pnl.profitBeforeTax, p?.pnl.profitBeforeTax)),
-            .init(label: "Customers", value: f.count(g.customers), sub: p.map { f.percent(ReportMath.share(g.customers, $0.customers)) + " vs before" } ?? ""),
-            .init(label: "Capacity used", value: f.share(g.capacityUse)),
-            .init(label: "Cash at end", value: f.short(g.cashEnd), tint: g.cashEnd < 0 ? Theme.loss : Theme.ivory),
-        ]
-        return FigureCard(items: items, columns: 3)
-    }
-
-    private func summary(_ r: PeriodReport) -> some View {
+    private func story(_ r: PeriodReport) -> some View {
         // A company's own report is written on the spot from its figures, in its currency.
         let lines: [String]
         if let id = companyID, let co = engine.state.company(id) {
@@ -194,24 +158,57 @@ struct ReportsContent: View {
         } else {
             lines = r.summary
         }
-        return CardSection("In short") {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(lines.enumerated()), id: \.offset) { _, s in
-                    Text(s.tidyMoney).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
+        return ReportStoryRows(lines: lines)
     }
 
-    private func trend(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
-        let upto = all.filter { $0.id <= r.id }.suffix(12)
-        return CardSection(title: "Against earlier \(kind.noun)s", trailing: { ChartKey(items: [("Revenue", Theme.gold), ("Profit", Theme.gain)]) }) {
-            if upto.count >= 2 {
-                RevenueProfitChart(revenue: upto.map { $0.group.pnl.revenue }, profit: upto.map { $0.group.pnl.netProfit }, format: format.short)
-            } else {
-                Text("The chart appears once two reports exist.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-            }
+    private func lineRow(_ key: ReportLineKey, _ r: PeriodReport) -> OverviewRowData {
+        let now = key.value(r.group.pnl)
+        let before = r.previous.map { key.value($0.pnl) }
+        let c = ReportChangeText(now: now, before: before, isCost: key.isCost, format: format)
+        return OverviewRowData(id: key.id, glyph: key.glyph, title: key.title, value: format.short(now),
+                               valueTint: key.id == "net" && now < 0 ? Theme.loss : Theme.ivory,
+                               note: c.text, noteTint: c.tint, action: { opened = .line(key) })
+    }
+
+    private func linesTable(_ r: PeriodReport) -> some View {
+        let before = r.previous?.pnl.costLines ?? []
+        let used = r.group.pnl.costLines.filter { line in
+            line.amount != 0 || (before.first(where: { $0.id == line.id })?.amount ?? 0) != 0
         }
+        var keys: [ReportLineKey] = [.revenue]
+        keys += used.map { ReportLineKey.cost($0) }
+        keys += [.costs, .beforeTax]
+        if r.group.pnl.tax != 0 || (r.previous?.pnl.tax ?? 0) != 0 { keys.append(.tax) }
+        keys.append(.net)
+        return OverviewTable(title: "Profit and loss", rows: keys.map { lineRow($0, r) }, emptyText: "Nothing earned or spent in this period.")
+    }
+
+    private func moreTable(_ r: PeriodReport) -> some View {
+        let f = format
+        var rows: [OverviewRowData] = []
+        rows.append(OverviewRowData(id: "worth", glyph: Glyph.richList, title: companyID == nil ? "Net worth" : "Value of your share",
+                                    subtitle: "Start, end and what moved it", value: f.signed(r.netWorthChange),
+                                    valueTint: Theme.change(r.netWorthChange), action: { opened = .worth }))
+        rows.append(OverviewRowData(id: "cash", glyph: Glyph.bank, title: "Cash", subtitle: "Where the money went",
+                                    value: f.short(r.group.companyCashEnd), action: { opened = .cash }))
+        rows.append(OverviewRowData(id: "people", glyph: Glyph.team, title: "Customers and people",
+                                    value: f.count(r.group.customers), action: { opened = .people }))
+        if companyID == nil && !r.companies.isEmpty {
+            rows.append(OverviewRowData(id: "companies", glyph: Glyph.group, title: kind == .year ? "Ranking" : "Companies",
+                                        subtitle: "Net profit and change", action: { opened = .companies }))
+        }
+        if kind == .year {
+            rows.append(OverviewRowData(id: "tax", glyph: Glyph.ovCoin, title: "Tax and dividends", value: f.short(r.group.taxPaid), action: { opened = .tax }))
+        }
+        if !r.group.events.isEmpty {
+            rows.append(OverviewRowData(id: "happened", glyph: Glyph.news, title: "What happened", value: "\(min(r.group.events.count, 8))",
+                                        action: { opened = .happened }))
+        }
+        rows.append(OverviewRowData(id: "movements", glyph: Glyph.stats, title: ReportPage.movements.rawValue,
+                                    subtitle: "Every movement of money", action: { opened = .movements }))
+        rows.append(OverviewRowData(id: "bills", glyph: Glyph.reports, title: ReportPage.bills.rawValue,
+                                    subtitle: "What was due and paid", action: { opened = .bills }))
+        return OverviewTable(title: "Behind the figures", rows: rows)
     }
 
     // MARK: Companies
@@ -385,6 +382,26 @@ struct ReportsContent: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Where a row of the Reports overview opens.
+enum ReportDest: Hashable {
+    case movements, bills, worth, cash, people, tax, companies, happened
+    case line(ReportLineKey)
+
+    var title: String {
+        switch self {
+        case .movements: return ReportPage.movements.rawValue
+        case .bills: return ReportPage.bills.rawValue
+        case .worth: return "Net worth"
+        case .cash: return "Cash"
+        case .people: return "Customers and people"
+        case .tax: return "Tax and dividends"
+        case .companies: return "Companies"
+        case .happened: return "What happened"
+        case .line(let k): return k.title
         }
     }
 }
