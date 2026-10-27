@@ -12,17 +12,39 @@ struct BankLoansTab: View {
     var account: BankAccountID
     var loans: [BankLoan]
 
+    @State private var applying = false
+
     var body: some View {
         if let e = store.engine {
-            switch account {
-            case .company(let cid):
-                if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
-            case .personal:
-                BankPersonalLoans(engine: e)
-            case .investments:
-                Text("Loans are taken for your personal account or a company's, not for investments.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            VStack(alignment: .leading, spacing: 12) {
+                if account != .investments { applyCard(e) }
+                loansFor(e)
             }
+            .fullScreenCover(isPresented: $applying) { BankLoanApplyFlow(account: account) }
         }
+    }
+
+    @ViewBuilder private func loansFor(_ e: GameEngine) -> some View {
+        switch account {
+        case .company(let cid):
+            if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
+        case .personal:
+            BankPersonalLoans(engine: e)
+        case .investments:
+            Text("Loans are taken for your personal account or a company's, not for investments.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+        }
+    }
+
+    private func applyCard(_ e: GameEngine) -> some View {
+        let kind: String = account.companyID == nil ? "cons" : "biz"
+        let q = e.loanApplicationQuote(kind: kind, amount: 0, termMonths: 36, companyID: account.companyID)
+        let cur: Currency = account.companyID.flatMap { e.state.company($0) }.map { e.currency(for: $0) } ?? e.homeCurrency
+        let sub: String = q.maximum > 0 ? "The bank would lend up to \(cur.tidyShort(q.maximum)) today" : "The bank would not lend at the moment"
+        return Button { Haptics.tap(); applying = true } label: {
+            CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub, value: Currency.percent(q.yearlyRate, decimals: 2))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("bank-apply-loan")
     }
 }
 
@@ -30,10 +52,7 @@ struct BankLoansTab: View {
 struct BankPersonalLoans: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
-    @State private var borrow = 0.0
-    @State private var term = 60
     @State private var repaying: Loan?
-    @State private var pending: PendingAction?
 
     var body: some View {
         let e = engine
@@ -57,10 +76,8 @@ struct BankPersonalLoans: View {
                 }
             }
             loansCard(e, cur, personal)
-            borrowing(e, cur)
         }
         .sheet(item: $repaying) { l in RepayPersonalLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
-        .confirmAction($pending)
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
@@ -99,42 +116,6 @@ struct BankPersonalLoans: View {
             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
         }
         .padding(.vertical, 9).contentShape(Rectangle())
-    }
-
-    // MARK: Borrowing
-
-    private func borrowing(_ e: GameEngine, _ cur: Currency) -> some View {
-        let q = e.loanQuote(kind: "cons", amount: borrow, termMonths: term, companyID: nil)
-        let problem: String? = borrow <= 0 ? nil : q.tooSmall ? "Below the bank's smallest loan." : !q.withinLimit ? "More than the bank would lend you (\(cur.tidyShort(q.maximum)))." : nil
-        return LedgerSection(title: "Borrow", trailing: { Text("up to \(cur.tidyShort(q.maximum))").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("A personal consumer loan, paid into your current account. What the bank lends depends on your credit (\(q.creditBand)), your income and what you already owe.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                AmountField(title: "Amount", currency: cur, amount: $borrow)
-                SegmentedChoice(items: GameEngine.loanTermChoices, title: { $0 % 12 == 0 ? "\($0 / 12) yr" : "\($0) mo" }, selection: $term)
-                KeyFigures(items: [
-                    .init(label: "Interest", value: Currency.percent(q.yearlyRate, decimals: 2), sub: "a year, moves with the bank rate"),
-                    .init(label: "Each month", value: borrow > 0 ? cur.tidyShort(q.monthlyPayment) : "–", sub: "\(term) payments"),
-                    .init(label: "Interest in total", value: borrow > 0 ? cur.tidyShort(q.totalInterest) : "–", tint: Theme.loss),
-                    .init(label: "You pay back", value: borrow > 0 ? cur.tidyShort(q.totalRepaid) : "–"),
-                ], columns: 2)
-                if let problem { Text(problem).font(.caption).foregroundStyle(Theme.caution) }
-                Button(borrow > 0 ? "Borrow \(cur.tidyShort(borrow)) over \(term / 12 > 0 && term % 12 == 0 ? "\(term / 12) year\(term == 12 ? "" : "s")" : "\(term) months")" : "Enter an amount above") {
-                    let a = borrow, t = term
-                    pending = PendingAction(title: "Borrow \(cur.tidyShort(a))?",
-                                            message: "\(t) monthly payments of \(cur.tidyDisplay(q.monthlyPayment)) at \(Currency.percent(q.yearlyRate, decimals: 2)): \(cur.tidyDisplay(q.totalRepaid)) in all, \(cur.tidyDisplay(q.totalInterest)) of it interest. The rate follows the bank rate, so the cost can change. A missed payment adds a penalty and hurts your credit.",
-                                            button: "Borrow") { take(a, t, cur) }
-                }.buttonStyle(QuietButtonStyle()).disabled(borrow <= 0 || problem != nil)
-            }
-        }
-    }
-
-    private func take(_ a: Double, _ t: Int, _ cur: Currency) {
-        switch store.act({ $0.takeLoan(kind: "cons", amount: a, termMonths: t, companyID: nil) }) {
-        case .ok?: Haptics.success(); store.show("\(cur.tidyShort(a)) is on your current account.", tone: "good"); borrow = 0
-        case .tooSmall?: Haptics.warning(); store.show("Too small for the bank.", tone: "warn")
-        default: Haptics.warning(); store.show("The bank declined: it would not lend that much.", tone: "bad")
-        }
     }
 }
 

@@ -11,8 +11,8 @@ public enum Brokerage {
 
     /// The broker's fee: 0.1 % with a minimum, and the smallest purchase. Both minimums are in the reference economy's prices; a currency
     /// scales them to the country's price level (`Currency.scaledPrice`). Without one (`nil`) they stay 29 and 100.
-    static func brokerFee(_ v: Double, currency: Currency? = nil) -> Double { max(currency?.scaledPrice(29) ?? 29, v * 0.001) }
-    static func minimumPurchase(_ currency: Currency?) -> Double { currency?.scaledPrice(100) ?? 100 }
+    public static func brokerFee(_ v: Double, currency: Currency? = nil) -> Double { max(currency?.scaledPrice(29) ?? 29, v * 0.001) }
+    public static func minimumPurchase(_ currency: Currency?) -> Double { currency?.scaledPrice(100) ?? 100 }
 
     static func bagKey(_ k: Kind) -> String { k == .stock ? "stocks" : k == .crypto ? "crypto" : "funds" }
 
