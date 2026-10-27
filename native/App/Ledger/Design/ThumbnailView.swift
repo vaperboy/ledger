@@ -10,6 +10,12 @@ enum ThumbKind: String, CaseIterable {
     case person
     case trade
     case luxury
+    /// A 16:9 photo of premises from the premises sheet; the key is a cell id from `ArtLibrary.premisesKey`.
+    case premisesPhoto
+    /// A firm's logo from the logos sheet; the key is a firm key such as `group|g12` (see `ArtLibrary.logoKey`).
+    case logo
+    /// A trophy, badge or award from the trophies sheet; the key is a cell id from `ArtLibrary.trophyKey` or `awardKey`.
+    case trophy
 
     /// The icon shown while no picture has been supplied.
     var fallbackGlyph: String {
@@ -18,6 +24,9 @@ enum ThumbKind: String, CaseIterable {
         case .person: return Glyph.person
         case .trade: return Glyph.group
         case .luxury: return Glyph.luxury
+        case .premisesPhoto: return Glyph.home
+        case .logo: return Glyph.group
+        case .trophy: return Glyph.achievements
         }
     }
 }
@@ -25,6 +34,8 @@ enum ThumbKind: String, CaseIterable {
 enum ThumbShape {
     case round
     case square
+    /// 16:9: `size` is the height, the width is size x 16/9 (premises photos).
+    case wide
 }
 
 /// What a row needs to say to get a thumbnail, so shared rows (CardRow) can take one as a single value.
@@ -71,13 +82,16 @@ struct ThumbnailView: View {
 
     private var corner: CGFloat { max(6, size * 0.22) }
 
+    /// The slot is always this size, with or without art, so rows never reflow.
+    private var slotWidth: CGFloat { shape == .wide ? (size * 16 / 9).rounded() : size }
+
     var body: some View {
-        slot.frame(width: size, height: size).accessibilityHidden(true)
+        slot.frame(width: slotWidth, height: size).accessibilityHidden(true)
     }
 
     @ViewBuilder private var slot: some View {
         #if canImport(UIKit)
-        if let ui = UIImage(named: Self.assetName(kind, key)) {
+        if let ui = picture {
             pictureView(ui)
         } else {
             placeholder
@@ -88,8 +102,26 @@ struct ThumbnailView: View {
     }
 
     #if canImport(UIKit)
+    /// The owner's catalogue asset wins; otherwise the sliced sheet cell for the kind.
+    private var picture: UIImage? {
+        switch kind {
+        case .premises, .person, .trade:
+            return UIImage(named: Self.assetName(kind, key))
+        case .luxury:
+            return UIImage(named: Self.assetName(kind, key)) ?? ArtLibrary.luxuryImage(itemID: key)
+        case .premisesPhoto:
+            return ArtLibrary.image(.premises, key)
+        case .logo:
+            return ArtLibrary.logoKey(for: key).flatMap { ArtLibrary.image(.logos, $0) }
+        case .trophy:
+            return ArtLibrary.image(.trophies, key)
+        }
+    }
+    #endif
+
+    #if canImport(UIKit)
     @ViewBuilder private func pictureView(_ ui: UIImage) -> some View {
-        let image = Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size)
+        let image = Image(uiImage: ui).resizable().scaledToFill().frame(width: slotWidth, height: size)
         if shape == .round {
             image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
         } else {
@@ -101,16 +133,25 @@ struct ThumbnailView: View {
 
     @ViewBuilder private var placeholder: some View {
         if shape == .round {
-            if kind == .person, let initials, !initials.isEmpty {
+            if kind == .person || kind == .logo, let initials, !initials.isEmpty {
                 TeamInitials(name: initials, size: size)
             } else {
                 IconCircle(glyph: glyph ?? kind.fallbackGlyph, size: size, tint: tint)
             }
         } else {
             let box = RoundedRectangle(cornerRadius: corner, style: .continuous)
-            GlyphView(glyph: glyph ?? kind.fallbackGlyph, size: size * 0.5, weight: 1.5, tint: tint)
-                .frame(width: size, height: size)
+            squareFallback
+                .frame(width: slotWidth, height: size)
                 .overlay(box.strokeBorder(Theme.borderStrong, lineWidth: 1))
+        }
+    }
+
+    /// Inside a square or wide frame: the logo's initials when it has no picture, else the house icon.
+    @ViewBuilder private var squareFallback: some View {
+        if kind == .logo, let initials, !initials.isEmpty {
+            Text(ArtLibrary.initials(initials)).font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(tint)
+        } else {
+            GlyphView(glyph: glyph ?? kind.fallbackGlyph, size: size * 0.5, weight: 1.5, tint: tint)
         }
     }
 }

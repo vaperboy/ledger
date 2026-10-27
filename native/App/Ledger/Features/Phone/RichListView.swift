@@ -160,6 +160,9 @@ struct RichListView: View {
                             Text("\(y.year)").capsLabel(Theme.ivoryFaint).padding(.bottom, 4)
                             ForEach(Array(y.results.enumerated()), id: \.offset) { i, r in
                                 if i > 0 { CardLine() }
+                                HStack(alignment: .top, spacing: 10) {
+                                    ThumbnailView(kind: .trophy, key: ArtLibrary.awardKey(r.kind), size: 36, shape: .square, glyph: Glyph.achievements)
+                                        .opacity(r.won ? 1 : 0.4)
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack {
                                         Text(Awards.name(r.kind)).font(.system(size: 14.5)).foregroundStyle(r.won ? Theme.gold : Theme.ivory)
@@ -167,6 +170,7 @@ struct RichListView: View {
                                         Text(r.won ? "Won" : "Not this time").font(.caption).foregroundStyle(r.won ? Theme.gain : Theme.ivoryFaint)
                                     }
                                     Text(r.won ? "\(r.company): \(r.why)" : "Won by \(r.other). You were in the running.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                }
                                 }.padding(.vertical, 8)
                             }
                         }

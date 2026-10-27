@@ -19,7 +19,13 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Ledger
+      - path: Ledger
+        excludes:
+          - "Resources/art/cells/**"
+      # The sliced art cells keep their folders (cells/<sheet>/<cell>.jpg and manifest.json), read by Design/ArtLibrary.swift.
+      - path: Ledger/Resources/art/cells
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: LedgerEngine
         product: LedgerEngine

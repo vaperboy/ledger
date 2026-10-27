@@ -635,10 +635,13 @@ struct TableRow: View {
     var values: [String]
     var valueTints: [Color] = []
     var selected = false
+    /// A picture slot before the name (a rival's logo and the like); nil keeps the plain row.
+    var thumb: ThumbSpec? = nil
     var action: (() -> Void)? = nil
 
     var body: some View {
         let row = HStack(spacing: 6) {
+            if let thumb { ThumbnailView(thumb, size: 30).padding(.trailing, 4) }
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
                 if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }

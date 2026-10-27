@@ -445,7 +445,8 @@ struct CompanyEquipmentScreen: View {
                     Button { pendingListing = l } label: {
                         VStack(spacing: 0) {
                             if n > 0 { CardLine() }
-                            HStack(alignment: .firstTextBaseline) {
+                            HStack(alignment: .center) {
+                                ThumbnailView(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: e.tradeInfo(companyID: companyID)?.premisesKind, squareMetres: l.squareMetres), size: 36, shape: .wide, glyph: Glyph.home)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(l.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                                     Text("\(Int(l.squareMetres)) m² · \(l.landlord) · " + (l.location > 1.03 ? "more passing trade" : l.location < 0.97 ? "less passing trade" : "normal location"))
