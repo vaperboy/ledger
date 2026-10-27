@@ -162,6 +162,10 @@ struct PhoneAppScreen: View {
     var app: PhoneApp
 
     var body: some View {
+        AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint) { appContent }
+    }
+
+    @ViewBuilder private var appContent: some View {
         switch app {
         case .bank:
             // The Bank app draws its own header (the round back goes from an account to the list first).
