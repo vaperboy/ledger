@@ -1,5 +1,8 @@
 # Design rules for screen work (binding for every design agent)
 
+**Owner rule, 27 Oct 2026 (amends the two apps rule above): Bank and Inbox are outside apps too.** Inbox is a messages app like SMS (its own look: message threads, bubbles, its own palette). Bank is a bank's app made by someone else (its own muted palette and look) UNLESS the player owns a bank and uses it as their main bank: then the Bank app follows the game's own colours and style. Only the apps that are truly the player's own (Stats, Goals, Achievements, Activity, Reports, Settings, and Bank when the player's own bank is the main bank) follow the game's style.
+
+
 **Owner rule, 27 Oct 2026: outside apps are "fake apps by other creators".** Only the player's own (insider) apps follow the game's colours and style. Outside apps (Weather, News, Luxury, Ventures, World, Rich list) use their own muted palette that fits what they are (Weather blue, News newsprint and ink, Luxury black and brass, and so on): never loud, but not the champagne-on-charcoal of the game. Their launch screens use the same palette. The back button stays the same so the player can always leave.
 
 
