@@ -88,7 +88,7 @@ struct PhoneHome: View {
             if alert.messageID != 0 { store.openMessage(alert.messageID) } else { path.append(alert.app) }
         } label: {
             HStack(spacing: 12) {
-                GlyphView(glyph: alert.app.glyph, size: 18, weight: 1.6)
+                GlyphView(glyph: alert.app.glyph, size: 18, weight: 1.6, tint: alert.app.tint)
                     .frame(width: 34, height: 34)
                     .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color(hex: 0x1C1D1F)))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
@@ -130,7 +130,7 @@ struct AppIcon: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                AppIconTile(glyph: app.glyph)
+                AppIconTile(glyph: app.glyph, tint: app.tint)
                 Text(app.title).font(.system(size: 11.5)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)

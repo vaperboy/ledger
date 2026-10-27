@@ -3,10 +3,10 @@ import GameCore
 import Businesses
 import Simulation
 
-/// What is happening around you: the headlines, the local business paper, and the weather and visitors that move your customers.
-/// Original: the news list, `V.paper40` (business paper) and `V.wx56` (weather and tourism).
+/// What is happening around you: the headlines, the local business paper.
+/// Original: the news list, `V.paper40` (business paper).
 struct NewsView: View {
-    enum Page: String, CaseIterable, Hashable { case headlines = "Headlines", paper = "The paper", weather = "Weather and visitors" }
+    enum Page: String, CaseIterable, Hashable { case headlines = "Headlines", paper = "The paper" }
     @EnvironmentObject var store: GameStore
     @State private var page: Page = .headlines
 
@@ -18,7 +18,6 @@ struct NewsView: View {
                     switch page {
                     case .headlines: headlines(e)
                     case .paper: paper(e)
-                    case .weather: WeatherPage(engine: e)
                     }
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
@@ -85,133 +84,6 @@ struct NewsView: View {
                     if !p.deck.isEmpty { Text(e.displayText(p.deck)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
                     ForEach(Array(p.side.enumerated()), id: \.offset) { _, s in
                         Text("· " + e.displayText(s)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// The weather this week and the next three, visitors' events, and how they move each of your companies this week.
-struct WeatherPage: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-
-    private var countries: [String] {
-        let live = engine.state.companies.filter { $0.status == .open }.map { $0.countryCode }
-        let codes = live.isEmpty ? [engine.state.homeCountryCode] : live
-        return codes.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
-    }
-
-    private func word(_ kind: String) -> String { WeatherEvents.kindWords[kind] ?? kind.capitalized }
-    private func pct(_ f: Double) -> String { (f >= 1 ? "+" : "−") + "\(Int((abs(f - 1) * 100).rounded()))%" }
-
-    var body: some View {
-        let e = engine
-        let storm = e.state.inbox.first { $0.status == "open" && $0.actionID == WeatherEvents.prepareAction }
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if let m = storm {
-                Button { store.go(.openMessage(m.id)) } label: {
-                    Card(padding: 14) {
-                        HStack(alignment: .center, spacing: 12) {
-                            IconCircle(glyph: Glyph.storm, size: 36, tint: Theme.loss)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(e.displayText(m.title, companyID: m.companyID)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                                Text("Decide whether to secure your places in the Inbox").font(.system(size: 12)).foregroundStyle(Theme.gold)
-                            }
-                            Spacer(minLength: 0)
-                            GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }.buttonStyle(.plain)
-            }
-            companies(e)
-            ForEach(countries, id: \.self) { cc in country(e, cc) }
-        }
-    }
-
-    @ViewBuilder private func companies(_ e: GameEngine) -> some View {
-        let open = e.state.companies.filter { $0.status == .open }
-        let moved: [(Company, (weather: Double, tourists: Double, workingTime: Double, kind: String))] = open.compactMap { co in
-            guard let l = e.weatherLine(companyID: co.id) else { return nil }
-            return abs(l.weather - 1) >= 0.03 || abs(l.tourists - 1) >= 0.03 || l.workingTime < 0.97 ? (co, l) : nil
-        }
-        CardSection(title: "Your companies this week", trailing: { EmptyView() }) {
-            if open.isEmpty {
-                Text("Once a company is open, this shows how the weather and visitors move its customers.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-            } else if moved.isEmpty {
-                Text("The weather and visitors move none of your companies by much this week.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(moved.enumerated()), id: \.element.0.id) { i, pair in
-                        let (co, l) = pair
-                        if i > 0 { CardLine() }
-                        Button { store.openCompany(co.id, section: .operations) } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                IconCircle(glyph: Glyph.weather(l.kind), size: 32, tint: Theme.ivoryMuted)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(co.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                                    Text(effects(l)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                                }
-                                Spacer(minLength: 8)
-                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
-                            }.padding(.vertical, 8).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
-    private func effects(_ l: (weather: Double, tourists: Double, workingTime: Double, kind: String)) -> String {
-        var parts: [String] = []
-        if abs(l.weather - 1) >= 0.03 { parts.append("customers \(pct(l.weather)) from the weather") }
-        if abs(l.tourists - 1) >= 0.03 { parts.append("visitors \(pct(l.tourists))") }
-        if l.workingTime < 0.97 { parts.append("working time \(pct(l.workingTime))") }
-        return parts.joined(separator: " · ").prefix(1).uppercased() + parts.joined(separator: " · ").dropFirst()
-    }
-
-    @ViewBuilder private func country(_ e: GameEngine, _ cc: String) -> some View {
-        let c = e.data.countries[cc]
-        let f = e.weatherForecast(countryCode: cc)
-        let events = e.touristEvents(countryCode: cc)
-        CardSection(title: (c.map { $0.flag + " " + $0.name } ?? cc), trailing: { EmptyView() }) {
-            VStack(spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    IconCircle(glyph: Glyph.weather(f.now.kind), size: 36)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("This week: " + word(f.now.kind)).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                        Text("\(f.now.rainyDays) rainy day\(f.now.rainyDays == 1 ? "" : "s")" + (f.now.againstNormal > 0.1 ? " · nicer than usual" : f.now.againstNormal < -0.1 ? " · worse than usual" : ""))
-                            .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Text("\(Int(f.now.temperature.rounded()))°").font(.system(size: 15).monospacedDigit()).foregroundStyle(Theme.ivory)
-                }.padding(.vertical, 8)
-                ForEach(f.ahead, id: \.week) { d in
-                    CardLine()
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        IconCircle(glyph: Glyph.weather(d.kind), size: 30, tint: d.kind == "storm" ? Theme.loss : Theme.ivoryMuted)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Week of " + GameCalendar.dateString(week: d.week)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text(word(d.kind) + (d.uncertain ? " · uncertain" : "")).font(.system(size: 11.5)).foregroundStyle(d.kind == "storm" ? Theme.loss : Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        Text("\(Int(d.temperatureLow.rounded()))–\(Int(d.temperatureHigh.rounded()))°").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                    }.padding(.vertical, 8)
-                }
-                if !events.isEmpty {
-                    CardLine()
-                    ForEach(Array(events.enumerated()), id: \.offset) { _, ev in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            IconCircle(glyph: Glyph.people, size: 30, tint: ev.factor >= 1 ? Theme.gain : Theme.loss)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(e.displayText(ev.text.tidyMoney)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                                Text("Visitors \(pct(ev.factor)) until " + GameCalendar.dateString(week: ev.until) + (ev.city.map { " · \($0)" } ?? ""))
-                                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer(minLength: 0)
-                        }.padding(.vertical, 8)
                     }
                 }
             }

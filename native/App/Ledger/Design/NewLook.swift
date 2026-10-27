@@ -252,14 +252,17 @@ struct IconCircle: View {
 struct AppIconTile: View {
     var glyph: String
     var size: CGFloat = 62
+    /// A muted colour for inside the icon (Phone apps). Nil keeps the plain champagne icon.
+    var tint: Color? = nil
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon, style: .continuous)
         let top = Color(hex: 0x232427)
         let bottom = Color(hex: 0x181A1C)
-        GlyphView(glyph: glyph, size: size * 0.45, weight: 1.4)
+        GlyphView(glyph: glyph, size: size * 0.45, weight: 1.4, tint: tint ?? Theme.gold)
             .frame(width: size, height: size)
             .background(shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)))
+            .background(shape.fill((tint ?? Color.clear).opacity(0.16)))
             .overlay(shape.strokeBorder(Color(hex: 0x333437), lineWidth: 1))
     }
 }
