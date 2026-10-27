@@ -126,11 +126,11 @@ const trow=r=>`<a class="tr"><span class="ic">${ic(r.i)}</span><span class="n">$
 const act=r=>`<a class="act"><span class="ic">${ic(r.i)}</span><span>${r.t}<small>${r.s}</small></span>${ic('chev','#75706A',12)}</a>`;
 const tile=r=>`<div class="tile">${ic(r.i,'#D6B889',20)}<b>${r.n}</b>${r.l}</div>`;
 const sec=(l,o)=>`<div class="sec"><span class="lab">${l}</span><span class="opt">${o||''}</span></div>`;
-const top=(t,s,ic2)=>`<div class="top"><span class="rb">${ic2}</span><div class="ttl"><b>${t}</b><span>${s}</span></div></div>`;
+const hdr=(t,s,ic2)=>`<div class="top"><span class="rb">${ic2}</span><div class="ttl"><b>${t}</b><span>${s}</span></div></div>`;
 
 /* 1: Company operations */
 const ops=`<div class="phone"><p class="cap">COMPANY OPERATIONS</p><div class="screen">
- ${top('Evans Services','Café · London · Ltd<i class="dot"></i>Healthy',ic('back'))}
+ ${hdr('Evans Services','Café · London · Ltd<i class="dot"></i>Healthy',ic('back'))}
  ${tabs(['Overview','Team','Finances','Operations','More'],3)}
  <div class="heroes"><div class="card"><span class="k">Capacity used</span><span class="big">66%</span><span class="chg w">Demand is the limit</span></div>
   <div class="card"><span class="k">Profit a week</span><span class="big">£312</span><span class="chg">▲ +£48 vs last month</span></div></div>
@@ -151,7 +151,7 @@ const ops=`<div class="phone"><p class="cap">COMPANY OPERATIONS</p><div class="s
 
 /* 2: Group overview */
 const grp=`<div class="phone"><p class="cap">GROUP OVERVIEW</p><div class="screen">
- ${top('Group','Holdings · Chains · Franchises · Board',ic('group','#D6B889',22))}
+ ${hdr('Group','Holdings · Chains · Franchises · Board',ic('group','#D6B889',22))}
  ${tabs(['Overview','Structure','Board','Deals','More'],0)}
  <div class="heroes"><div class="card"><span class="k">Value of holdings</span><span class="big">£12.6M</span><span class="chg">▲ +12% this month</span></div>
   <div class="card"><span class="k">Group cash</span><span class="big">£8.4M</span><span class="chg">covers 14 months</span></div></div>
@@ -169,7 +169,7 @@ const grp=`<div class="phone"><p class="cap">GROUP OVERVIEW</p><div class="scree
 
 /* 3: Team overview */
 const tm=`<div class="phone"><p class="cap">TEAM</p><div class="screen">
- ${top('Team','4 people in 2 companies · £13k a month in wages',ic('team','#D6B889',22))}
+ ${hdr('Team','4 people in 2 companies · £13k a month in wages',ic('team','#D6B889',22))}
  ${tabs(['Overview','People','Delegation','Vacancies'],0)}
  <div class="note">${ic('warn','#E0B064',16)}<span style="flex:1">Nobody approves payroll at Evans Services, so it comes to you every month.</span><a>Appoint ›</a></div>
  <div class="card" style="padding:6px 14px">${sec('WHO DECIDES WHAT','Evans Services')}
