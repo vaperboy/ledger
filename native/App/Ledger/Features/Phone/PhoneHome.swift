@@ -173,11 +173,11 @@ struct PhoneAppScreen: View {
         case .weather:
             WeatherApp()
         case .stats:
-            PhonePagedApp(app: app, pages: [.stats, .activity], first: .stats)
+            StatsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .goals:
-            PhonePagedApp(app: app, pages: [.goals, .achievements], first: .goals)
+            GoalsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .achievements:
-            PhonePagedApp(app: app, pages: [.goals, .achievements], first: .achievements)
+            AchievementsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .world:
             WorldMapApp()
         case .luxury:
