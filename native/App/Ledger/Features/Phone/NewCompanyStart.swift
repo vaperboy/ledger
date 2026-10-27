@@ -36,8 +36,7 @@ struct TradeDetailView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     summary(t, plan, ban, cur)
                     if !brands.isEmpty {
-                        SectionTabs(items: Way.allCases, title: { $0 == .brand ? "Under a brand (\(brands.count))" : $0.rawValue }, selection: $way)
-                            .padding(.horizontal, -Theme.Space.margin)
+                        SegmentedPill(items: Way.allCases, title: { $0 == .brand ? "Under a brand (\(brands.count))" : $0.rawValue }, selection: $way)
                     }
                     if way == .brand && !brands.isEmpty {
                         brandList(e, brands, cur)
@@ -48,26 +47,22 @@ struct TradeDetailView: View {
                             costLines(plan, cur)
                             risks(plan)
                             if plan.registrationShortfall > 0 {
-                                Text("Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.")
-                                    .font(.caption).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                                NoteCard(text: "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.", glyph: Glyph.warning, tint: Theme.caution)
                             }
-                            Button("Review and start · \(cur.tidyShort(plan.total))") { pending = confirmation(e, t, plan, form, city, cityName, cur) }
-                                .buttonStyle(GoldButtonStyle()).disabled(plan.registrationShortfall > 0)
+                            QuietButton(title: "Review and start · \(cur.tidyShort(plan.total))", fullWidth: true) { pending = confirmation(e, t, plan, form, city, cityName, cur) }
+                                .disabled(plan.registrationShortfall > 0).opacity(plan.registrationShortfall > 0 ? 0.4 : 1)
                         } else if ban == nil {
-                            Text("This trade cannot be priced here.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            NoteCard(text: "This trade cannot be priced here.")
                         }
                         if brands.isEmpty {
-                            Text("No franchise brand is looking for operators in this trade right now. Another way in: buying a rival that is already trading, from the rival's page under Market.")
-                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            NoteCard(text: "No franchise brand is looking for operators in this trade right now. Another way in: buying a rival that is already trading, from the rival's page under Market.")
                         }
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .ledgerBackground()
-            .navigationTitle(t.name)
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: t.name, subtitle: t.category, tab: .company)
             .confirmAction($pending)
             .onAppear { if !sizeSet { size = CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); sizeSet = true } }
         }
@@ -76,46 +71,51 @@ struct TradeDetailView: View {
     // MARK: Summary first
 
     private func summary(_ t: Trade, _ plan: NewCompanyPlan?, _ ban: String?, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(spacing: Theme.Space.m) {
-                IconBadge(symbol: TradeSymbol.of(family: t.family), tint: Theme.gold, size: 48)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(t.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                    Text(t.category).font(.caption).foregroundStyle(Theme.ivoryFaint)
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    IconCircle(glyph: Glyph.market, size: 44)
+                    Text(t.blurb.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
-            }
-            Text(t.blurb.tidyMoney).font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-            if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
-            if let plan {
-                KeyFigures(items: [
-                    .init(label: "Start-up cost", value: cur.tidyShort(plan.total), sub: "everything included"),
-                    .init(label: "You have", value: cur.tidyShort(plan.available), sub: "account and savings"),
-                    plan.shortfall > 0 ? .init(label: "Short by", value: cur.tidyShort(plan.shortfall), tint: Theme.loss, sub: "opening waits for money")
-                                       : .init(label: "Left for you", value: cur.tidyShort(plan.personalLeft), tint: Theme.gain, sub: "after it is funded")
-                ])
+                if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
+                if let plan { FigureCard(items: summaryItems(plan, cur)).environment(\.insideCard, true) }
             }
         }
+    }
+
+    private func summaryItems(_ plan: NewCompanyPlan, _ cur: Currency) -> [FigureCard.Item] {
+        let last: FigureCard.Item = plan.shortfall > 0
+            ? .init(label: "Short by", value: cur.tidyShort(plan.shortfall), tint: Theme.loss, sub: "opening waits for money")
+            : .init(label: "Left for you", value: cur.tidyShort(plan.personalLeft), tint: Theme.gain, sub: "after it is funded")
+        return [
+            .init(label: "Start-up cost", value: cur.tidyShort(plan.total), sub: "everything included"),
+            .init(label: "You have", value: cur.tidyShort(plan.available), sub: "account and savings"),
+            last
+        ]
     }
 
     // MARK: Where and how
 
     @ViewBuilder private func whereAndHow(_ t: Trade, _ country: Country, _ city: String, _ form: LegalForm) -> some View {
-        LedgerSection("Where and how") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
-                if t.needsLimitedCompany { Text("This trade needs a limited company.").font(.caption).foregroundStyle(Theme.ivoryMuted) }
-                else {
-                    Picker("Legal form", selection: $limited) { Text("Sole trader").tag(false); Text("Limited company").tag(true) }.pickerStyle(.segmented)
-                    Text(limited ? "Your personal assets are protected; profits are taxed in the company and again when paid out. Needs share capital and a registration fee."
-                                 : "Simple and cheap. You are personally liable for debts; profit is taxed as your income.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
-                if t.maxSize > t.minSize {
-                    Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.bodyText) }
-                    Text("A bigger company needs more equipment, people and space, and costs more to start.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
-                TextField("Company name (optional)", text: $name).textFieldStyle(.plain).font(.system(size: 15)).padding(.vertical, 6).overlay(alignment: .bottom) { Hairline() }
+        let formText: String = limited
+            ? "Your personal assets are protected; profits are taxed in the company and again when paid out. Needs share capital and a registration fee."
+            : "Simple and cheap. You are personally liable for debts; profit is taxed as your income."
+        CardSection("Where and how") {
+            Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
+            CardLine()
+            if t.needsLimitedCompany {
+                Text("This trade needs a limited company.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            } else {
+                SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited)
+                Text(formText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
+            if t.maxSize > t.minSize {
+                CardLine()
+                Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.system(size: 14)).foregroundStyle(Theme.ivory) }
+                Text("A bigger company needs more equipment, people and space, and costs more to start.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            }
+            CardLine()
+            TextField("Company name (optional)", text: $name).textFieldStyle(.plain).font(.system(size: 14.5)).padding(.vertical, 6)
         }
     }
 
@@ -129,7 +129,7 @@ struct TradeDetailView: View {
 
     @ViewBuilder private func costLines(_ plan: NewCompanyPlan, _ cur: Currency) -> some View {
         let est = plan.estimate
-        LedgerSection(title: "Start-up cost", trailing: { Text(cur.tidyShort(plan.total)).font(.figure(15)).foregroundStyle(Theme.ivory) }) {
+        CardSection(title: "Start-up cost", trailing: { Text(cur.tidyShort(plan.total)).font(.figure(15)).foregroundStyle(Theme.ivory) }) {
             VStack(spacing: 0) {
                 line("Permits and documents", est.documents, cur, first: true)
                 line("Equipment", est.equipment, cur)
@@ -154,9 +154,10 @@ struct TradeDetailView: View {
     }
 
     @ViewBuilder private func risks(_ plan: NewCompanyPlan) -> some View {
-        LedgerSection("Risks") {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(plan.risks.enumerated()), id: \.offset) { _, r in
+        CardSection("Risks") {
+            ForEach(Array(plan.risks.enumerated()), id: \.offset) { _, r in
+                HStack(alignment: .top, spacing: 10) {
+                    GlyphView(glyph: Glyph.warning, size: 16, weight: 1.4, tint: Theme.caution)
                     Text(r.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -166,14 +167,12 @@ struct TradeDetailView: View {
     // MARK: Brands
 
     @ViewBuilder private func brandList(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ cur: Currency) -> some View {
-        LedgerSection("Franchise brands for this trade") {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("A known brand brings customers and support, and takes an entry fee and a royalty. You apply, they answer in a week or three, you agree the terms, then you start under the brand.")
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted)
-                ForEach(Array(brands.enumerated()), id: \.element.id) { n, b in
-                    if n > 0 { Hairline() }
-                    FranchiseBrandRow(brand: b)
-                }
+        CardSection("Franchise brands for this trade") {
+            Text("A known brand brings customers and support, and takes an entry fee and a royalty. You apply, they answer in a week or three, you agree the terms, then you start under the brand.")
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(brands.enumerated()), id: \.element.id) { n, b in
+                if n > 0 { CardLine() }
+                FranchiseBrandRow(brand: b)
             }
         }
     }
@@ -225,39 +224,40 @@ struct PremisesPicker: View {
     @Binding var buying: Bool
 
     var body: some View {
-        LedgerSection("Premises") {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                switch plan.premisesKind {
-                case .none:
-                    Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                case .home:
-                    Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                case .place:
-                    let chosen = rentIndex ?? plan.standardIndex
-                    ForEach(plan.options) { o in
-                        Button { rentIndex = o.index; if !o.canBuy { buying = false } } label: {
-                            ListRow(symbol: o.index == chosen ? "checkmark.circle.fill" : "circle", tint: o.index == chosen ? Theme.gold : Theme.ivoryMuted,
-                                    title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
-                                    trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront), trailingSub: "up front")
-                        }.buttonStyle(.plain)
-                    }
-                    if let o = plan.options.first(where: { $0.index == chosen }) {
-                        Picker("Rent or buy", selection: Binding(get: { buying }, set: { buying = $0; if rentIndex == nil { rentIndex = chosen } })) {
-                            Text("Rent").tag(false)
-                            if o.canBuy { Text("Buy").tag(true) }
-                        }.pickerStyle(.segmented)
-                        if buying {
-                            Text("Buying: \(cur.tidyShort(o.purchasePrice)). You pay \(cur.tidyShort(o.downPayment)) down and \(cur.tidyShort(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up.")
-                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        } else {
-                            Text("Renting: a deposit of \(cur.tidyShort(o.deposit)) (three months, returned when you leave) and \(cur.tidyShort(o.fitOut)) to fit it out. Then \(cur.tidyShort(o.monthlyRent)) a month. Moving later is possible.")
-                                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        if !(rentIndex != nil) { Text("Nothing picked: the standard middle place is rented.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                    }
-                }
+        CardSection("Premises") {
+            switch plan.premisesKind {
+            case .none:
+                Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            case .home:
+                Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            case .place:
+                placeChoices
             }
         }
+    }
+
+    @ViewBuilder private var placeChoices: some View {
+        let chosen = rentIndex ?? plan.standardIndex
+        ForEach(plan.options) { o in
+            ChoiceCard(title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
+                       trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront) + " up front", selected: o.index == chosen) {
+                rentIndex = o.index
+                if !o.canBuy { buying = false }
+            }
+        }
+        if let o = plan.options.first(where: { $0.index == chosen }) {
+            let modes: [Bool] = o.canBuy ? [false, true] : [false]
+            SegmentedPill(items: modes, title: { $0 ? "Buy" : "Rent" }, selection: Binding(get: { buying }, set: { buying = $0; if rentIndex == nil { rentIndex = chosen } }))
+            Text(modeNote(o)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            if rentIndex == nil { Text("Nothing picked: the standard middle place is rented.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+        }
+    }
+
+    private func modeNote(_ o: NewCompanyPlan.Option) -> String {
+        if buying {
+            return "Buying: \(cur.tidyShort(o.purchasePrice)). You pay \(cur.tidyShort(o.downPayment)) down and \(cur.tidyShort(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up."
+        }
+        return "Renting: a deposit of \(cur.tidyShort(o.deposit)) (three months, returned when you leave) and \(cur.tidyShort(o.fitOut)) to fit it out. Then \(cur.tidyShort(o.monthlyRent)) a month. Moving later is possible."
     }
 }
