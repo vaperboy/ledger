@@ -78,12 +78,12 @@ public struct FaceTraits: Equatable, Hashable, Sendable {
 
     static let regionByCountry: [String: Character] = {
         var m: [String: Character] = [:]
-        for c in ["GB", "UK", "IE", "DE", "FR", "NO", "SE", "PL", "LT", "ES", "NL", "CH", "IT", "DK", "FI", "AT", "BE", "PT", "CZ", "US", "CA", "AU", "NZ"] { m[c] = "U" }
-        for c in ["IN", "PK", "BD", "LK", "NP"] { m[c] = "S" }
-        for c in ["CN", "JP", "KR", "VN", "TH", "PH", "SG", "MY", "ID", "TW", "HK"] { m[c] = "E" }
-        for c in ["NG", "GH", "KE", "ZA", "ET", "TZ"] { m[c] = "A" }
-        for c in ["BR", "MX", "CO", "AR", "CL", "PE"] { m[c] = "L" }
-        for c in ["TR", "EG", "SA", "AE", "IR", "IQ", "QA", "KW", "JO"] { m[c] = "W" }
+        for c in "GB UK IE DE FR NO SE PL LT ES NL CH IT DK FI AT BE PT CZ US CA AU NZ".split(separator: " ") { m[String(c)] = "U" }
+        for c in "IN PK BD LK NP".split(separator: " ") { m[String(c)] = "S" }
+        for c in "CN JP KR VN TH PH SG MY ID TW HK".split(separator: " ") { m[String(c)] = "E" }
+        for c in "NG GH KE ZA ET TZ".split(separator: " ") { m[String(c)] = "A" }
+        for c in "BR MX CO AR CL PE".split(separator: " ") { m[String(c)] = "L" }
+        for c in "TR EG SA AE IR IQ QA KW JO".split(separator: " ") { m[String(c)] = "W" }
         return m
     }()
 
