@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Group B, structure tree</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 54px 18px 0 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 28px; line-height: 1.1">Group</span><span style="font-size: 12.5px; color: #A19B8F">Who owns what</span></div>
+      <a href="#" style="font-size: 12px; font-weight: 500; border: 1px solid #3A3B3D; border-radius: 12px; padding: 4px 10px">Set up holding</a>
+    </div>
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #2B2C2E; font-size: 13.5px; color: #8A857C">
+      <span style="padding-bottom: 9px">Overview</span><span style="padding-bottom: 9px; border-bottom: 2px solid #D6B889; color: #F1EBDD">Structure</span><span style="padding-bottom: 9px">Board</span><span style="padding-bottom: 9px">Deals</span><span style="padding-bottom: 9px">More ⌄</span>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 20px; background: rgba(214,184,137,0.14); display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20 C5 14 19 14 19 20"></path></svg></span>
+      <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 500">Alex (you)</span><span style="font-size: 12px; color: #A19B8F">Owner · directly owns 2 companies</span></span>
+      <span style="font-size: 15px; font-weight: 500">£974k</span>
+    </div>
+
+    <div style="padding-left: 18px; display: flex; flex-direction: column; gap: 8px; border-left: 1px solid #2B2C2E; margin-left: 20px">
+      <sc-for list="{{nodes}}" as="n" hint-placeholder-count="3">
+        <a href="#" style="display: flex; flex-direction: column; gap: 8px; background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 11px 14px; color: inherit">
+          <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px; font-weight: 500">{{n.name}}</span><span style="font-size: 11.5px; color: #8A857C">{{n.kind}}</span></span><span style="text-align: right; display: flex; flex-direction: column"><span style="font-size: 13.5px; font-weight: 500">{{n.value}}</span><span style="font-size: 11.5px; color: {{n.color}}">{{n.profit}}</span></span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg></div>
+        </a>
+      </sc-for>
+      <div style="display: flex; align-items: center; gap: 10px; border: 1px dashed #3A3B3D; border-radius: 14px; padding: 11px 14px; font-size: 13px; color: #A19B8F"><span style="flex: 1">No holding company yet</span><a href="#" style="font-size: 12.5px">Set one up ›</a></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <a href="#" style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 11px 12px; color: inherit; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8A857C">Chains</span><span style="font-size: 17px; font-weight: 500">0</span><span style="font-size: 11px; color: #D6B889">Start one ›</span></a>
+      <a href="#" style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 11px 12px; color: inherit; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8A857C">Franchised out</span><span style="font-size: 17px; font-weight: 500">0</span><span style="font-size: 11px; color: #D6B889">Offer ›</span></a>
+      <a href="#" style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 11px 12px; color: inherit; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8A857C">Franchise you hold</span><span style="font-size: 17px; font-weight: 500">0</span><span style="font-size: 11px; color: #D6B889">Join ›</span></a>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      nodes: [
+        { name: 'Thamesford Partners', kind: 'Gym · London · 100% owned', value: '£678k', profit: '£10k / yr', color: '#7FC79B' },
+        { name: 'Evans Services', kind: 'Café · London · 100% owned', value: '£296k', profit: '£904 / yr', color: '#A19B8F' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
