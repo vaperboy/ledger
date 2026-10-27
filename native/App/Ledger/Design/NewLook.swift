@@ -711,10 +711,12 @@ struct PillTabItem: Identifiable, Equatable {
 }
 
 /// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
-/// Place it in a bottom `safeAreaInset` so screens scroll clear of it. Each item is a button with the identifier `tab-<title>`.
+/// Overlay it at the bottom of the shell and set `tabBarClearance` so every `ledgerBackground()` screen keeps its content clear of it. Each item is a button with the identifier `tab-<title>`.
 struct PillTabBar: View {
     var items: [PillTabItem]
     @Binding var selection: String
+    /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
+    static let height: CGFloat = 66 + 8
 
     var body: some View {
         HStack(spacing: 0) {
@@ -742,7 +744,7 @@ struct PillTabBar: View {
             }
         }
         .padding(.horizontal, 6)
-        .frame(height: 66)
+        .frame(height: PillTabBar.height - 8)
         .background(Capsule().fill(Theme.surfaceTable))
         .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
         .shadow(color: Color.black.opacity(0.35), radius: 10, y: 4)

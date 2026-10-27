@@ -248,13 +248,26 @@ struct LedgerBackground: ViewModifier {
     }
 }
 
+private struct TabBarClearanceKey: EnvironmentKey { static let defaultValue: CGFloat = 0 }
+extension EnvironmentValues {
+    var tabBarClearance: CGFloat {
+        get { self[TabBarClearanceKey.self] }
+        set { self[TabBarClearanceKey.self] = newValue }
+    }
+}
+
 /// Keeps scrolled content from ever drawing over the status bar, the Back button or the title. It does not depend on the global
 /// `UINavigationBar` appearance: the navigation bar gets the page colour as an always-visible background (the bar then clips the
 /// scroll content under it), and a page-coloured strip the height of the top safe area is pinned above the scroll container as a
 /// second guard for screens without a navigation bar. Applied by `ledgerBackground()`, so every screen gets it.
 struct LedgerScreen: ViewModifier {
+    /// Height of the floating tab bar plus margin (0 where there is none); set by `PhoneShell`.
+    @Environment(\.tabBarClearance) private var tabBarClearance
+
     func body(content: Content) -> some View {
         content
+            .environment(\.tabBarClearance, 0)
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: tabBarClearance) }
             .toolbarBackground(Theme.page, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -333,7 +346,7 @@ struct WrapRow: Layout {
     }
 }
 
-/// Section switcher, never scrolls sideways (owner rule). Up to 5 items: one equal-width row. More than 5: a fixed
+/// Section switcher. Up to 5 items: one equal-width row; when the labels do not fit the row scrolls sideways with full, uncut labels. More than 5: a fixed
 /// row of `primary` (default the first 4) plus a "More" menu listing the rest. The chosen fixed item has a champagne
 /// underline; the menu marks the chosen item with a checkmark and "More" turns accent when the choice is inside it.
 /// A small red count may sit beside a title (counts of hidden items roll up onto "More"). Tap targets are 44 pt tall.
@@ -358,43 +371,60 @@ struct SectionTabs<T: Hashable>: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(fixed, id: \.self) { item in
-                let on = selection == item
-                Button { selection = item; Haptics.choose() } label: {
-                    cell(title(item), count: badge(item), on: on, more: false)
-                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
-            }
-            if !rest.isEmpty {
-                let inRest = rest.contains(selection)
-                Menu {
-                    ForEach(rest, id: \.self) { item in
-                        Button { selection = item; Haptics.choose() } label: {
-                            let n = badge(item)
-                            let t = n > 0 ? "\(title(item)) (\(n))" : title(item)
-                            if selection == item { Label(t, systemImage: "checkmark") } else { Text(t) }
-                        }
-                    }
-                } label: {
-                    cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true)
-                }
+        ViewThatFits(in: .horizontal) {
+            tabRow(spread: true)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) { tabRow(spread: false) }
+                    .onAppear { proxy.scrollTo(selection, anchor: .center) }
+                    .onChange(of: selection) { _, new in withAnimation { proxy.scrollTo(new, anchor: .center) } }
             }
         }
         .padding(.horizontal, Theme.Space.margin)
         .background(alignment: .bottom) { if !sub { Hairline() } }
     }
 
-    private func cell(_ text: String, count: Int, on: Bool, more: Bool) -> some View {
+    /// The row of tabs. `spread` shares the width equally (when everything fits); otherwise each label keeps its full width
+    /// and the row scrolls sideways, so a label is never cut off.
+    private func tabRow(spread: Bool) -> some View {
+        HStack(spacing: 6) {
+            ForEach(fixed, id: \.self) { item in
+                let on = selection == item
+                Button { selection = item; Haptics.choose() } label: {
+                    cell(title(item), count: badge(item), on: on, more: false, spread: spread)
+                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : []).id(item)
+            }
+            if !rest.isEmpty { moreMenu(spread: spread) }
+        }
+    }
+
+    private func moreMenu(spread: Bool) -> some View {
+        let inRest = rest.contains(selection)
+        return Menu {
+            ForEach(rest, id: \.self) { item in
+                Button { selection = item; Haptics.choose() } label: {
+                    let n = badge(item)
+                    let t = n > 0 ? "\(title(item)) (\(n))" : title(item)
+                    if selection == item { Label(t, systemImage: "checkmark") } else { Text(t) }
+                }
+            }
+        } label: {
+            cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, spread: spread)
+        }
+    }
+
+    private func cell(_ text: String, count: Int, on: Bool, more: Bool, spread: Bool) -> some View {
         HStack(spacing: 3) {
             Text(sub ? text.uppercased() : text)
                 .font(.system(size: sub ? 11 : 14, weight: on ? .semibold : .regular))
                 .tracking(sub ? 0.6 : 0)
                 .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             if count > 0 { countView(count) }
         }
         .foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
-        .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
+        .padding(.horizontal, spread ? 0 : 12)
+        .frame(maxWidth: spread ? .infinity : nil, minHeight: sub ? 34 : 44)
         .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? Theme.hairline : Color.clear))
         .contentShape(Rectangle())
         .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(Theme.gold).frame(height: 1.5) } }
