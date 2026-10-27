@@ -5,17 +5,13 @@ import Finance
 import Businesses
 import Simulation
 
-/// The company's loans: what it owes and on what terms, early repayment, and a new loan with a chosen term.
+/// The company's loans: what it owes and on what terms, and early repayment. New loans are applied for with the Bank's apply flow.
 /// Original: money.js `loansheet/loanterm/loango/repaysheet/repaygo`. Uses the engine's `takeLoan` and `repayLoan`.
 struct CompanyLoans: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var loanAmount = 0.0
-    @State private var term = 60
     @State private var repaying: Loan?
-    @State private var pending: PendingAction?
-    static let terms = [12, 24, 36, 60, 120]
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -35,7 +31,7 @@ struct CompanyLoans: View {
                 Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
                     .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
             }) {
-                if loans.isEmpty { Text("This company has no loans. Borrowing is below.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                if loans.isEmpty { Text("This company has no loans. Use Apply for a loan above to borrow.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
                 VStack(spacing: 0) {
                     ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                         if n > 0 { Hairline() }
@@ -55,55 +51,9 @@ struct CompanyLoans: View {
                     }
                 }
             }
-            borrow(cur, shift)
         }
-        .confirmAction($pending)
         .sheet(item: $repaying) { l in
             RepayLoanSheet(engine: engine, company: company, loan: l).environmentObject(store)
-        }
-    }
-
-    @ViewBuilder private func borrow(_ cur: Currency, _ shift: Double) -> some View {
-        let offer = engine.loanOffer(kind: "biz", amount: loanAmount, companyID: company.id)
-        let rate = engine.state.economy.policyRate + shift + offer.margin
-        CardSection(title: "Borrow for this company", trailing: {
-            Text("credit " + offer.creditBand.lowercased()).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-        }) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                if company.flag("loanFrozen") {
-                    Text("Credit restricted: the bank lends nothing new until the missed instalments are paid.").font(.caption).foregroundStyle(Theme.caution)
-                }
-                Text("The bank would lend up to \(cur.tidyDisplay(offer.maximum)) at about \(Currency.percent(rate, decimals: 1)) a year.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                AmountField(title: "Loan amount", currency: cur, amount: $loanAmount)
-                Text("Term").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                SectionTabs(items: Self.terms, title: { $0 < 12 || $0 % 12 != 0 ? "\($0) mo" : "\($0 / 12) yr" }, selection: $term).padding(.horizontal, -Theme.Space.margin)
-                if loanAmount > 0 {
-                    let pay = engine.companyLoanPayment(amount: loanAmount, termMonths: term, companyID: company.id)
-                    KeyFigures(items: [
-                        .init(label: "A month", value: cur.tidyShort(pay)),
-                        .init(label: "Paid in total", value: cur.tidyShort(pay * Double(term))),
-                        .init(label: "Interest", value: cur.tidyShort(max(0, pay * Double(term) - loanAmount)), tint: Theme.caution),
-                    ])
-                    if loanAmount > offer.maximum { Text("More than the bank will lend.").font(.caption).foregroundStyle(Theme.loss) }
-                }
-                Text(company.form == .soleTrader ? "As a sole trader you are personally liable: if the company cannot pay, the bank comes to you." : "A limited company borrows on its own account; the instalments come out of company cash at month end.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                Button("Take the loan…") { confirmBorrow(cur) }.buttonStyle(QuietButtonStyle()).disabled(company.flag("loanFrozen") || (loanAmount > 0 && loanAmount > offer.maximum))
-            }
-        }
-    }
-
-    private func confirmBorrow(_ cur: Currency) {
-        guard loanAmount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let amount = loanAmount, months = term
-        let pay = engine.companyLoanPayment(amount: amount, termMonths: months, companyID: company.id)
-        pending = PendingAction(title: "Borrow \(cur.tidyDisplay(amount))?", message: "\(cur.tidyDisplay(pay)) a month for \(months) months, \(cur.tidyDisplay(pay * Double(months))) in total. Missed instalments add penalties and can get the loan called.", button: "Take the loan") {
-            switch store.act({ $0.takeLoan(kind: "biz", amount: amount, termMonths: months, companyID: company.id) }) {
-            case .ok?: Haptics.success(); loanAmount = 0; store.show("Loan granted: \(cur.tidyDisplay(amount)) paid into \(company.name).", tone: "good")
-            case .tooSmall?: Haptics.warning(); store.show("The bank won't lend that little.", tone: "warn")
-            case nil: break
-            default: Haptics.warning(); store.show("The bank declined \(cur.tidyDisplay(amount)). Try a smaller amount or a longer term.", tone: "bad")
-            }
         }
     }
 }
