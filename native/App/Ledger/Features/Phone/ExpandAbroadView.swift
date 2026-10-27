@@ -48,7 +48,7 @@ struct ExpandAbroadView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Expand abroad").navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Expand abroad", subtitle: "A subsidiary of one of your companies", tab: .company)
         }
     }
 }
@@ -88,7 +88,7 @@ struct AbroadOptionsView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Where to?").navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Where to?", subtitle: "Pick the country for \(co.name)", tab: .company)
             .confirmAction($pending)
         }
     }
