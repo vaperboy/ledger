@@ -92,7 +92,7 @@ struct PersonCard: View {
     }
 
     /// The picture of the role while the post is filled; the initials circle until art exists; the plus icon for a vacant post.
-    @ViewBuilder private var face: some View {
+    @ViewBuilder private var portrait: some View {
         if name == nil {
             TeamInitials(name: nil)
         } else {
@@ -102,7 +102,7 @@ struct PersonCard: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            face
+            portrait
             VStack(alignment: .leading, spacing: 4) {
                 Text(name ?? "Vacant").font(.system(size: 15, weight: .medium))
                     .foregroundStyle(name == nil ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)

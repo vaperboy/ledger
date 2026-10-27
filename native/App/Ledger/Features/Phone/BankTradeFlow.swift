@@ -207,11 +207,11 @@ struct BankTradeFlow: View {
         return buying ? "The price can fall as well as rise.\(crypto) A gain is taxed at the year end." : "A gain is taxed at the year end.\(crypto)"
     }
 
-    private func line(_ label: String, _ value: String, tint: Color = P.ink, strong: Bool = false) -> some View {
+    private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label).font(.system(size: 13.5)).foregroundStyle(strong ? P.ink : P.inkSoft)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint)
+            Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
         }
         .padding(.vertical, 5)
     }
