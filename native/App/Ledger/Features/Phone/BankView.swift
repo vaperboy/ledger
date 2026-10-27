@@ -2,116 +2,69 @@ import SwiftUI
 import GameCore
 import Countries
 import Finance
-import Investments
 import Simulation
 
-/// The bank (Group > Money > Bank): your accounts, savings and fixed deposits, your personal loans with repayment, borrowing with a
-/// choice of term and the whole cost shown first, and an overview of what your companies owe. Company loans are taken and repaid in each
-/// company's own Finances section; the rows here open it.
-struct BankContent: View {
+/// The Loans tab of an account: only the loans taken for this account, their terms, early repayment, and a new loan with a chosen term
+/// and the whole cost shown first. A company's loans use the company loan screen (`CompanyLoans`, the same engine calls); the personal
+/// account's are below. Loans are never an account of their own.
+struct BankLoansTab: View {
     @EnvironmentObject var store: GameStore
-    @State private var amount = 0.0
-    @State private var depositWeeks = 26
+    var account: BankAccountID
+    var loans: [BankLoan]
+
+    var body: some View {
+        if let e = store.engine {
+            switch account {
+            case .company(let cid):
+                if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
+            case .personal:
+                BankPersonalLoans(engine: e)
+            case .investments:
+                Text("Loans are taken for your personal account or a company's, not for investments.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            }
+        }
+    }
+}
+
+/// Your personal loans and borrowing.
+struct BankPersonalLoans: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
     @State private var borrow = 0.0
     @State private var term = 60
     @State private var repaying: Loan?
     @State private var pending: PendingAction?
 
     var body: some View {
-        if let e = store.engine {
-            let cur = e.homeCurrency
-            let s = e.state
-            let personal = s.loans.filter { $0.companyID == 0 }
-            let owed = personal.reduce(0) { $0 + $1.balance }
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Cash and savings").capsLabel()
-                    Text(cur.tidyDisplay(s.cash + s.savings)).font(.hero(36)).foregroundStyle(s.cash + s.savings < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+        let e = engine
+        let cur = e.homeCurrency
+        let s = e.state
+        let personal = s.loans.filter { $0.companyID == 0 && $0.balance > 0 }
+        let owed = personal.reduce(0) { $0 + $1.balance }
+        let monthly = personal.reduce(0) { $0 + $1.monthlyPayment }
+        let missed = personal.reduce(0) { $0 + $1.int("miss") }
+        VStack(alignment: .leading, spacing: 12) {
+            BankCard(title: "You owe") {
+                VStack(alignment: .leading, spacing: 8) {
                     KeyFigures(items: [
-                        .init(label: "Current account", value: store.short(s.cash), tint: s.cash < 0 ? Theme.loss : Theme.ivory),
-                        .init(label: "You owe", value: owed > 0 ? store.short(owed) : "Nothing", tint: owed > 0 ? Theme.caution : Theme.ivory, sub: personal.isEmpty ? "" : "\(store.short(personal.reduce(0) { $0 + $1.monthlyPayment })) a month"),
+                        .init(label: "You owe", value: owed > 0 ? store.short(owed) : "Nothing", tint: owed > 0 ? Theme.caution : Theme.ivory, sub: personal.isEmpty ? "" : "\(store.short(monthly)) a month"),
                         .init(label: "Credit", value: Banking.creditWord(s.credit), sub: "bank rate \(Currency.percent(s.economy.policyRate, decimals: 2))"),
-                    ]).padding(.top, 8)
-                    if missedTotal(e) > 0 {
-                        Label("\(missedTotal(e)) loan instalment\(missedTotal(e) == 1 ? "" : "s") missed. Pay it before the next week: a missed payment adds a penalty and hurts your credit.", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
-                    } else if s.cash < 0 {
-                        Label("Your current account is overdrawn. Move money from savings or borrow before bills fall due.", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                    ], columns: 2)
+                    if missed > 0 {
+                        Label("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Pay it before the next week: a missed payment adds a penalty and hurts your credit.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                savings(e, cur)
-                deposits(e, cur)
-                loans(e, cur, personal)
-                borrowing(e, cur)
-                companyLoans(e)
             }
-            .sheet(item: $repaying) { l in RepayPersonalLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
-            .confirmAction($pending)
+            loansCard(e, cur, personal)
+            borrowing(e, cur)
         }
+        .sheet(item: $repaying) { l in RepayPersonalLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
+        .confirmAction($pending)
     }
 
-    /// Missed instalments over every loan, yours and your companies', for the warning at the top.
-    private func missedTotal(_ e: GameEngine) -> Int { e.state.loans.reduce(0) { $0 + $1.int("miss") } }
-
-    // MARK: Savings and deposits
-
-    private func savings(_ e: GameEngine, _ cur: Currency) -> some View {
-        LedgerSection(title: "Savings", trailing: { Text(cur.tidyDisplay(e.state.savings)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Earns interest and can be moved back any day. Loan repayments draw on it when the current account is short.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                AmountField(title: "Amount", currency: cur, amount: $amount)
-                HStack {
-                    Button(amount > 0 ? "Save \(cur.tidyShort(amount))" : "Save") { move(amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.cash)
-                    Button(amount > 0 ? "Withdraw \(cur.tidyShort(amount))" : "Withdraw") { move(-amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.savings)
-                }
-                if amount > e.state.cash && amount > e.state.savings && amount > 0 {
-                    Text("More than either account holds: \(cur.tidyShort(max(0, e.state.cash))) current, \(cur.tidyShort(e.state.savings)) savings.").font(.caption2).foregroundStyle(Theme.caution)
-                }
-            }
-        }
-    }
-
-    private func deposits(_ e: GameEngine, _ cur: Currency) -> some View {
-        let q = e.depositQuote(amount: amount, weeks: depositWeeks)
-        return LedgerSection(title: "Fixed deposits", trailing: {
-            if !e.deposits.isEmpty { Text(cur.tidyShort(e.deposits.reduce(0) { $0 + $1.balance })).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
-        }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ForEach(e.deposits) { d in
-                    ListRow(symbol: "lock.fill", tint: Theme.gold, title: "Fixed deposit at \(Currency.percent(d.rate, decimals: 2))",
-                            subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")", trailing: cur.tidyDisplay(d.balance))
-                }
-                SegmentedChoice(items: GameEngine.depositTermChoices, title: { "\($0) weeks" }, selection: $depositWeeks)
-                KeyFigures(items: [
-                    .init(label: "Rate", value: Currency.percent(q.yearlyRate, decimals: 2), sub: "a year, fixed"),
-                    .init(label: "Interest at the end", value: amount > 0 ? cur.tidyShort(q.interest) : "–", tint: Theme.gain),
-                    .init(label: "Back to you", value: amount > 0 ? cur.tidyShort(amount + q.interest) : "–", sub: "in \(depositWeeks) weeks"),
-                ])
-                Button(amount > 0 ? "Lock \(cur.tidyShort(amount)) for \(depositWeeks) weeks" : "Enter an amount above") {
-                    let a = amount, w = depositWeeks
-                    pending = PendingAction(title: "Lock \(cur.tidyShort(a)) for \(w) weeks?",
-                                            message: "It earns \(Currency.percent(q.yearlyRate, decimals: 2)) a year: \(cur.tidyDisplay(q.interest)) interest, paid with the money in \(w) weeks. Until then it is out of reach, also for bills. The interest is taxed as income.",
-                                            button: "Lock it") {
-                        if store.act({ $0.openDeposit(amount: a, weeks: w) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) locked until week \((store.engine?.state.week ?? 0) + w).", tone: "good"); amount = 0 }
-                        else { Haptics.warning(); store.show("Not enough on the current account for that deposit.", tone: "warn") }
-                    }
-                }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
-                Text("Only the current account can fund a deposit; move savings back first if needed.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-            }
-        }
-    }
-
-    private func move(_ a: Double, _ cur: Currency) {
-        guard a != 0 else { return }
-        if store.act({ $0.moveToSavings(a) }) == true { Haptics.success(); store.show(a > 0 ? "\(cur.tidyShort(a)) moved to savings." : "\(cur.tidyShort(-a)) moved to the current account.", tone: "good"); amount = 0 }
-        else { Haptics.warning(); store.show(a > 0 ? "Not that much on the current account." : "Not that much in savings.", tone: "warn") }
-    }
-
-    // MARK: Personal loans
-
-    private func loans(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
-        LedgerSection("Your loans") {
+    private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
+        BankCard(title: "Your loans") {
             VStack(alignment: .leading, spacing: 0) {
                 if loans.isEmpty { Text("You owe nothing personally.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
                 ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
@@ -181,45 +134,6 @@ struct BankContent: View {
         case .ok?: Haptics.success(); store.show("\(cur.tidyShort(a)) is on your current account.", tone: "good"); borrow = 0
         case .tooSmall?: Haptics.warning(); store.show("Too small for the bank.", tone: "warn")
         default: Haptics.warning(); store.show("The bank declined: it would not lend that much.", tone: "bad")
-        }
-    }
-
-    // MARK: Company loans
-
-    @ViewBuilder private func companyLoans(_ e: GameEngine) -> some View {
-        let byCompany = Dictionary(grouping: e.state.loans.filter { $0.companyID != 0 }, by: { $0.companyID })
-        let rows: [(co: Company, loans: [Loan])] = byCompany.compactMap { id, ls in e.state.company(id).map { (co: $0, loans: ls) } }
-            .sorted { $0.loans.reduce(0) { $0 + $1.balance } > $1.loans.reduce(0) { $0 + $1.balance } }
-        LedgerSection(title: "Your companies' loans", trailing: {
-            if !rows.isEmpty { Text("\(rows.count) compan\(rows.count == 1 ? "y" : "ies")").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
-        }) {
-            VStack(alignment: .leading, spacing: 0) {
-                if rows.isEmpty {
-                    Text("None of your companies has a loan. A company borrows in its own Finances section.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-                }
-                ForEach(Array(rows.enumerated()), id: \.element.co.id) { n, r in
-                    if n > 0 { Hairline() }
-                    let balance = r.loans.reduce(0) { $0 + $1.balance }
-                    let monthly = r.loans.reduce(0) { $0 + $1.monthlyPayment }
-                    let missed = r.loans.reduce(0) { $0 + $1.int("miss") }
-                    Button { store.openCompany(r.co.id, section: .finances) } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(r.co.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                Text("\(r.loans.count) loan\(r.loans.count == 1 ? "" : "s") · \(store.short(monthly, in: r.co)) a month" + (r.co.flag("loanFrozen") ? " · credit restricted" : ""))
-                                    .font(.system(size: 11)).foregroundStyle(r.co.flag("loanFrozen") ? Theme.caution : Theme.ivoryFaint)
-                                if missed > 0 { Text("\(missed) instalment\(missed == 1 ? "" : "s") missed").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.loss) }
-                            }
-                            Spacer(minLength: 8)
-                            Text(store.short(balance, in: r.co)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 9).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                }
-                if !rows.isEmpty {
-                    Text("Each row opens that company's Finances, where its loans are taken and repaid. A sole trader's loans are guaranteed by you personally.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
-                }
-            }
         }
     }
 }

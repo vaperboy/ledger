@@ -151,8 +151,8 @@ struct PhoneAppScreen: View {
     var body: some View {
         switch app {
         case .bank:
-            // Placeholder route: the existing Money screen on its Bank tab. The Bank app is rebuilt on top of this entry.
-            FinanceView(section: .bank).appScreen(title: app.title, subtitle: app.subtitle)
+            // The Bank app draws its own header (the round back goes from an account to the list first).
+            BankApp()
         case .inbox:
             InboxView()
         case .news:
