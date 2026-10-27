@@ -45,6 +45,14 @@ struct RankingView: View {
         switch sc { case .industries: return "Your trades"; case .country: return e.homeCountry.name; case .world: return "World" }
     }
 
+    /// The firm key a logo is drawn for: the rival group, the named rival you face, or the entry itself; you get none (initials).
+    private func logoKey(_ en: CompanyRanking.Entry) -> String {
+        if en.isYou { return "" }
+        if let g = en.groupID { return "group|\(g)" }
+        if let c = en.rivalCompanyID, let r = en.rivalID { return "rival|co\(c)|\(r)" }
+        return "firm|\(en.id)"
+    }
+
     private func figure(_ en: CompanyRanking.Entry) -> String {
         metric == .growth ? String(format: "%+d%%", Int((en.growth * 100).rounded())) : store.short(en.figure(metric))
     }
@@ -52,6 +60,7 @@ struct RankingView: View {
     private func row(_ en: CompanyRanking.Entry, _ e: GameEngine) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
             Text("\(en.rank)").font(.caption.monospacedDigit()).foregroundStyle(en.isYou ? Theme.gold : Theme.ivoryFaint).frame(width: 38, alignment: .leading)
+            ThumbnailView(kind: .logo, key: logoKey(en), size: 32, shape: .square, glyph: Glyph.group, initials: en.name)
             VStack(alignment: .leading, spacing: 2) {
                 Text(en.name + (en.isYou ? " (you)" : "")).font(.system(size: 14.5)).foregroundStyle(en.isYou ? Theme.gold : Theme.ivory)
                 Text(en.isYou ? "\(en.companyCount) \(en.companyCount == 1 ? "company" : "companies")"

@@ -54,9 +54,10 @@ struct AchievementsView: View {
     }
 
     private func row(_ t: Trophies.Entry) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            GlyphView(glyph: t.reachedWeek != nil ? Glyph.achievements : Glyph.ring, size: 18, weight: 1.5, tint: t.reachedWeek != nil ? Theme.gold : Theme.ivoryDim)
-                .frame(width: 22)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 40, shape: .square,
+                          glyph: t.reachedWeek != nil ? Glyph.achievements : Glyph.ring, tint: t.reachedWeek != nil ? Theme.gold : Theme.ivoryDim)
+                .opacity(t.reachedWeek != nil ? 1 : 0.35)
             VStack(alignment: .leading, spacing: 2) {
                 Text(t.name).font(.system(size: 14.5)).foregroundStyle(t.reachedWeek != nil ? Theme.ivory : Theme.ivoryMuted)
                 if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }

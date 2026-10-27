@@ -48,7 +48,7 @@ struct RivalGroupProfileView: View {
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
-                    IconCircle(glyph: Glyph.group, size: 44)
+                    ThumbnailView(kind: .logo, key: "group|\(g.id)", size: 44, shape: .square, glyph: Glyph.group, initials: g.name)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(g.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
                         Text("Owner \(g.owner) · \(g.strategyName)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)

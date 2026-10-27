@@ -170,8 +170,16 @@ struct CompanyOperations: View {
             SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")", glyph: Glyph.opsPin) { part = .premises }
         } else {
             let place: String = engine.isWorkingFromHome(companyID: company.id) ? "At home" : company.value("prem")["owned"].bool ? "Owned" : "Rented"
-            SettingsTableRow(title: "Premises", note: "Rent, buy or work from home", value: place, glyph: Glyph.opsPin) { part = .premises }
+            SettingsTableRow(title: "Premises", note: "Rent, buy or work from home", value: place, glyph: Glyph.opsPin, thumb: premisesThumb) { part = .premises }
         }
+    }
+
+    /// The picture of the company's current place (kind of premises and floor area); a company at home or without a place shows the icon.
+    private var premisesThumb: ThumbSpec {
+        let m2: Double = company.value("prem")["m2"].double
+        let kind: String? = engine.tradeInfo(companyID: company.id)?.premisesKind
+        let key: String = ArtLibrary.premisesKey(kind: kind, squareMetres: m2 > 0 ? m2 : nil)
+        return ThumbSpec(kind: .premisesPhoto, key: m2 > 0 ? key : "none", glyph: Glyph.opsPin, shape: .wide)
     }
 
     @ViewBuilder private var coverageRow: some View {

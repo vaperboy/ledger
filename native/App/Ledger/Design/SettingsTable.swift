@@ -18,6 +18,8 @@ struct SettingsTableRow: View {
     /// With a glyph the row takes the overview-table look: an icon circle in front, an optional coloured change line under the value,
     /// and a chevron at the end for both popups and pages.
     var glyph: String? = nil
+    /// A picture slot in place of the icon circle (same 34 pt height, so the row does not change height).
+    var thumb: ThumbSpec? = nil
     var change: String = ""
     var changeTint: Color = Theme.gain
     var action: () -> Void
@@ -36,7 +38,7 @@ struct SettingsTableRow: View {
 
     private var overviewRow: some View {
         HStack(spacing: 10) {
-            IconCircle(glyph: glyph ?? Glyph.settings, size: 34)
+            if let thumb { ThumbnailView(thumb, size: 34) } else { IconCircle(glyph: glyph ?? Glyph.settings, size: 34) }
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.tidyText).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(2)
                 if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }

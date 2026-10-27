@@ -223,7 +223,11 @@ struct TrophyShelfRow: View {
                     }
                     HStack(spacing: 8) {
                         ForEach(0..<slots, id: \.self) { i in
-                            Medallion(won: i < got.count)
+                            if i < got.count {
+                                ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: got[i].id, group: got[i].group), size: 40, shape: .round, glyph: Glyph.achievements)
+                            } else {
+                                Medallion(won: false)
+                            }
                         }
                     }
                     if let latest = got.first {

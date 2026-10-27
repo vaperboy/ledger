@@ -391,7 +391,8 @@ struct CompanyMarket: View {
         let gapPct: Int = Int((abs(r.priceGap) * 100).rounded())
         let gapText: String = same ? "Same" : (r.priceGap > 0 ? "+" : "-") + "\(gapPct)%"
         let gapTint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
-        return TableRow(columns: cols, title: name, note: note, values: [shareText, gapText], valueTints: [Theme.ivory, gapTint]) { rival = r.id }
+        let logo = ThumbSpec(kind: .logo, key: "rival|co\(company.id)|\(r.rival.id)", glyph: Glyph.person, initials: r.rival.name, shape: .square)
+        return TableRow(columns: cols, title: name, note: note, values: [shareText, gapText], valueTints: [Theme.ivory, gapTint], thumb: logo) { rival = r.id }
     }
 }
 
@@ -454,6 +455,7 @@ struct RivalSheet: View {
 
     @ViewBuilder private func header(_ d: RivalDetail) -> some View {
             MoreHeader(glyph: Glyph.person, title: d.rival.name,
+                       thumb: ThumbSpec(kind: .logo, key: "rival|co\(companyID)|\(rivalID)", glyph: Glyph.person, initials: d.rival.name, shape: .square),
                        blurb: "Owner \(d.rival.owner) · \(Rivals.relationshipWord(d.rival.relationship))" + (d.rival.forSale ? " · open to offers" : ""))
     }
 
@@ -803,6 +805,7 @@ struct MarketView: View {
             ForEach(gs.prefix(12)) { g in
                 MoreBlock(title: g.name, card: true, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                     VStack(alignment: .leading, spacing: 6) {
+                        ThumbnailView(kind: .logo, key: "group|\(g.id)", size: 40, shape: .square, glyph: Glyph.group, initials: g.name)
                         Text("\(g.owner) · \(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : ""))
                             .font(.system(size: 12)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryMuted)
                         Text("Ambition: \(g.ambition)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

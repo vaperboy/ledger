@@ -8,12 +8,14 @@ import SwiftUI
 struct MoreHeader: View {
     var glyph: String
     var title: String
+    /// A picture in place of the icon circle (a rival's logo); same 38 pt.
+    var thumb: ThumbSpec? = nil
     var blurb: String
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
         HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 38)
+            if let thumb { ThumbnailView(thumb, size: 38) } else { IconCircle(glyph: glyph, size: 38) }
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.serifTitle(18)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
                 Text(blurb.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)

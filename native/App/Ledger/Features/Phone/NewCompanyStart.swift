@@ -264,7 +264,7 @@ struct PremisesPicker: View {
         let chosen = rentIndex ?? plan.standardIndex
         ForEach(plan.options) { o in
             ChoiceCard(title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
-                       trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront) + " up front", selected: o.index == chosen, thumb: premisesThumb) {
+                       trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront) + " up front", selected: o.index == chosen, thumb: premisesThumb(o)) {
                 rentIndex = o.index
                 if !o.canBuy { buying = false }
             }
@@ -278,9 +278,9 @@ struct PremisesPicker: View {
     }
 
     /// The picture slot of a place: the kind of premises this trade works in (office, shop, kitchen and so on).
-    private var premisesThumb: ThumbSpec {
+    private func premisesThumb(_ o: NewCompanyPlan.PremisesOption) -> ThumbSpec {
         let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
-        return ThumbSpec(kind: .premises, key: kind, shape: .square)
+        return ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: kind, squareMetres: o.squareMetres), glyph: Glyph.home, shape: .wide)
     }
 
     private func modeNote(_ o: NewCompanyPlan.PremisesOption) -> String {
