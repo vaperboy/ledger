@@ -34,18 +34,16 @@ struct CompanyManagement: View {
         let slots = engine.teamSlots(companyID: company.id)
         let hasAssistant = company.value("asst")["npc"].int != 0
         let filled = (company.managerID != nil ? 1 : 0) + (hasAssistant ? 1 : 0) + slots.filter { $0.personID != nil }.count
-        TeamGroup(title: "Management", trailing: {
-            Text("\(filled) of \(2 + slots.count) filled").font(.system(size: 11.5)).foregroundStyle(filled < 2 + slots.count ? Theme.caution : Theme.ivoryFaint)
+        let list: [OrgNode] = orgNodes(cur)
+        TeamGroup(title: "Chain of command", trailing: {
+            Text("\(filled) of \(2 + slots.count) posts filled").font(.system(size: 11.5)).foregroundStyle(filled < 2 + slots.count ? Theme.caution : Theme.ivoryFaint)
         }) {
-            let mgr: ManagementRow = managerRow(cur)
-            let asst: ManagementRow = assistantRow(cur)
-            Button { Haptics.tap(); sheet = .manager } label: { PersonCard(row: mgr) }.buttonStyle(.plain)
-            Button { Haptics.tap(); sheet = .assistant } label: { PersonCard(row: asst) }.buttonStyle(.plain)
-            ForEach(slots) { slot in
-                let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
-                Button { Haptics.tap(); sheet = .slot(slot.id) } label: { PersonCard(row: row) }.buttonStyle(.plain)
+            VStack(spacing: 0) {
+                ForEach(Array(list.enumerated()), id: \.element.id) { n, node in
+                    OrgStripRow(node: node, last: n == list.count - 1, open: opener(node))
+                }
             }
-            above
+            aboveNote
         }
         .sheet(item: $sheet) { s in
             Group {
@@ -56,6 +54,63 @@ struct CompanyManagement: View {
                 }
             }
             .environmentObject(store)
+        }
+    }
+
+    // MARK: The strip, top (the owner) to bottom (the posts under the manager)
+
+    /// One step of the strip: who stands there, what they may decide, and the sheet it opens (none for the owner and for posts above the company).
+    fileprivate struct OrgNode: Identifiable {
+        var id: String
+        var glyph: String
+        var row: ManagementRow
+        var level: Int?
+        var sheet: Sheet?
+        var isOwner = false
+    }
+
+    private func opener(_ node: OrgNode) -> (() -> Void)? {
+        guard let target = node.sheet else { return nil }
+        return { sheet = target }
+    }
+
+    /// Who stands above this company's own management (chain, region, group), nearest the manager first.
+    private var chainAbove: [ManagerModel.Boss] {
+        engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
+    }
+
+    private static func scope(_ kind: String) -> String {
+        switch kind {
+        case "region": return "region"
+        case "chainmgr", "ceo56": return "chain"
+        default: return "group"
+        }
+    }
+
+    private func orgNodes(_ cur: Currency) -> [OrgNode] {
+        var out: [OrgNode] = []
+        let youLine: String = company.ownerHours > 0 ? "Runs it day to day." : "Final say on anything above the limits you set."
+        out.append(OrgNode(id: "you", glyph: Glyph.person, row: ManagementRow(name: "You", role: "Owner", scope: "company", line: youLine), level: nil, sheet: nil, isOwner: true))
+        for b in chainAbove.reversed() {
+            let title: String = GameEngine.bossTitle(b.kind, trade: nil)
+            let said: String = GameEngine.authorityText(level: b.level)
+            let row = ManagementRow(name: b.name, role: title, scope: Self.scope(b.kind), line: String(said.prefix(1)).uppercased() + String(said.dropFirst()) + ".", wage: nil)
+            out.append(OrgNode(id: "b:" + b.kind + ":\(b.personID)", glyph: Glyph.group, row: row, level: b.level, sheet: nil))
+        }
+        let mgrLevel: Int? = company.managerID != nil ? Int(company.value("auth")["lvl"].double) : nil
+        out.append(OrgNode(id: "m", glyph: Glyph.company, row: managerRow(cur), level: mgrLevel, sheet: .manager))
+        out.append(OrgNode(id: "a", glyph: Glyph.people, row: assistantRow(cur), level: nil, sheet: .assistant))
+        for slot in engine.teamSlots(companyID: company.id) {
+            let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
+            out.append(OrgNode(id: "s:" + slot.id, glyph: Glyph.team, row: row, level: slot.personID != nil ? slot.level : nil, sheet: .slot(slot.id)))
+        }
+        return out
+    }
+
+    @ViewBuilder private var aboveNote: some View {
+        if !chainAbove.isEmpty {
+            Text(engine.chainOf(companyID: company.id) != nil ? "Posts above the company are hired and set in the Chain section and in Group." : "Posts above the company are hired and set in Group (and the holding).")
+                .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -71,10 +126,9 @@ struct CompanyManagement: View {
             return ManagementRow(name: m.name, role: title, scope: "store", line: "Leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Find a successor.",
                                  lineTint: Theme.loss, wage: cur.tidyShort(company.managerMonthlyWage))
         }
-        let lvl = Int(company.value("auth")["lvl"].double)
-        var line = AuthorityWords.label(lvl)
-        if let card = engine.managerScorecard(companyID: company.id) { line += " · scorecard \(card.score), \(Self.scoreWord(card.score))" }
-        if company.managerProfitBonus > 0 { line += " · \(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
+        var line = ""
+        if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard \(card.score), \(Self.scoreWord(card.score))" }
+        if company.managerProfitBonus > 0 { line += (line.isEmpty ? "" : " · ") + "\(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
         return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage))
     }
@@ -90,23 +144,83 @@ struct CompanyManagement: View {
                              line: jobs.isEmpty ? "No jobs picked yet: pick up to two." : "Looks after " + jobs.joined(separator: " and "),
                              lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double))
     }
+}
 
-    /// Who stands above this company's own management (chain, region, group), managed where those posts live.
-    @ViewBuilder private var above: some View {
-        let chain = engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
-        if !chain.isEmpty {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Above this company").capsLabel(Theme.ivoryFaint)
-                    ForEach(Array(chain.enumerated()), id: \.offset) { _, b in
-                        Text("\(b.name), \(GameEngine.bossTitle(b.kind, trade: nil).lowercased()), \(GameEngine.authorityText(level: b.level))")
-                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                    Text(engine.chainOf(companyID: company.id) != nil ? "Hired and set in the Chain section and in Group." : "Hired and set in Group (and the holding).")
-                        .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+/// How much a post may decide alone, as three bars and the word: filled up to the level (asks you, within limits, full control).
+private struct AuthorityMark: View {
+    var level: Int
+
+    var body: some View {
+        let lvl: Int = min(2, max(0, level))
+        HStack(spacing: 6) {
+            HStack(spacing: 3) {
+                ForEach(0..<3, id: \.self) { i in
+                    Capsule().fill(i <= lvl ? Theme.gold : Theme.hairline).frame(width: 16, height: 4)
                 }
             }
+            Text(AuthorityWords.label(lvl)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Authority: \(AuthorityWords.label(lvl))")
+    }
+}
+
+/// One step of the vertical strip: a round icon on the rail, a line down to the next step, and the post as a card. A step with a sheet
+/// is a button with a chevron; the owner and the posts above the company are plain (they are managed elsewhere).
+private struct OrgStripRow: View {
+    var node: CompanyManagement.OrgNode
+    var last: Bool
+    var open: (() -> Void)?
+
+    var body: some View {
+        let vacant: Bool = node.row.name == nil
+        HStack(alignment: .top, spacing: 10) {
+            VStack(spacing: 0) {
+                IconCircle(glyph: node.glyph, size: 34, tint: vacant ? Theme.ivoryFaint : Theme.gold)
+                if !last { Rectangle().fill(Theme.borderStrong).frame(width: 1).frame(maxHeight: .infinity) }
+            }
+            .frame(width: 34)
+            cardOrButton(vacant)
+                .padding(.bottom, last ? 0 : 8)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private func cardOrButton(_ vacant: Bool) -> some View {
+        if let open {
+            Button { Haptics.tap(); open() } label: { card(vacant, tappable: true) }.buttonStyle(.plain)
+        } else {
+            card(vacant, tappable: false)
+        }
+    }
+
+    private func card(_ vacant: Bool, tappable: Bool) -> some View {
+        let r: ManagementRow = node.row
+        return Card(padding: 12, radius: Theme.Radius.card, stroke: node.isOwner ? Theme.gold.opacity(0.5) : Theme.border) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(r.role + " · " + r.scope).capsLabel(Theme.ivoryFaint)
+                    Text(r.name ?? "Vacant").font(.system(size: 15, weight: .medium)).foregroundStyle(vacant ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)
+                    if !r.line.isEmpty { Text(r.line).font(.system(size: 11.5)).foregroundStyle(r.lineTint).fixedSize(horizontal: false, vertical: true) }
+                    if let level = node.level { AuthorityMark(level: level).padding(.top, 2) }
+                }
+                Spacer(minLength: 8)
+                trailing(vacant, tappable: tappable)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func trailing(_ vacant: Bool, tappable: Bool) -> some View {
+        if let wage = node.row.wage {
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(wage).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text("a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            }
+        } else if vacant && tappable {
+            Text("Hire").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+        }
+        if tappable { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
     }
 }
 
@@ -120,6 +234,10 @@ struct ManagerSheet: View {
     var companyID: Int
     @Binding var candidates: [Int]
     @State private var pending: PendingAction?
+    @State private var tab: ManagerTab = .results
+
+    /// The three pages of the manager's sheet: how they are doing, what they may decide, and what they are paid and how you talk.
+    enum ManagerTab: String, CaseIterable, Hashable { case results = "Results", powers = "Powers", pay = "Pay and talks" }
 
     private func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
 
@@ -157,11 +275,18 @@ struct ManagerSheet: View {
                 }
             }
         }
-        performance(e, co, m, months)
-        authority(e, co, m, cur)
-        duties(e, co)
-        profitShare(e, co, m, cur)
-        talks(e, co, m, cur)
+        SegmentedPill(items: ManagerTab.allCases, title: { $0.rawValue }, selection: $tab)
+        switch tab {
+        case .results:
+            performance(e, co, m, months)
+        case .powers:
+            authority(e, co, m, cur)
+            duties(e, co)
+        case .pay:
+            profitShare(e, co, m, cur)
+            talks(e, co, m, cur)
+            lettingGo(co, m, cur)
+        }
     }
 
     @ViewBuilder private func performance(_ e: GameEngine, _ co: Company, _ m: Person, _ months: Int) -> some View {
@@ -247,13 +372,31 @@ struct ManagerSheet: View {
                                     Text(d.manager ? d.managerText : d.ownerText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer(minLength: 8)
-                                Text((d.manager ? "Manager" : "You") + "  ⇅").font(.system(size: 12, weight: .medium)).foregroundStyle(d.manager ? Theme.gold : Theme.ivoryMuted)
+                                handoverSwitch(managerHas: d.manager)
                             }.padding(.vertical, 8).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                     }
                 }
             }
         }
+    }
+
+    /// Who looks after a duty, as a two-part switch: the lit side is the one that does it. Tapping the row flips it.
+    private func handoverSwitch(managerHas: Bool) -> some View {
+        HStack(spacing: 0) {
+            handoverSide("Manager", on: managerHas)
+            handoverSide("You", on: !managerHas)
+        }
+        .padding(2)
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+    }
+
+    private func handoverSide(_ text: String, on: Bool) -> some View {
+        Text(text).font(.system(size: 11.5, weight: on ? .medium : .regular))
+            .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? Theme.goldSelected : Color.clear))
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
     }
 
     @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
@@ -292,16 +435,27 @@ struct ManagerSheet: View {
                     } label: { Text("Ask for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1)) }
                     Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(QuietButtonStyle())
                 }
-                HStack(spacing: 16) {
-                    Button("Replace…") {
-                        pending = PendingAction(title: "Dismiss \(m.name)?",
-                                                message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
-                                                button: "Dismiss", destructive: true) {
-                            let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
-                            store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
-                        }
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
-                    Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// Replacing the manager: its own card apart from the talks, with the consequence stated before the button.
+    private func lettingGo(_ co: Company, _ m: Person, _ cur: Currency) -> some View {
+        Card(padding: 14, radius: Theme.Radius.card, stroke: Theme.loss.opacity(0.4)) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
+                    Text("Replace the manager").font(.serifTitle(16)).foregroundStyle(Theme.ivory)
+                }
+                Text("Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                QuietButton(title: "Replace…", tint: Theme.loss) {
+                    pending = PendingAction(title: "Dismiss \(m.name)?",
+                                            message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
+                                            button: "Dismiss", destructive: true) {
+                        let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
+                        store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
+                    }
                 }
             }
         }
@@ -413,37 +567,67 @@ struct AssistantSheet: View {
     @ViewBuilder private func manage(_ co: Company, _ a: JSONValue, _ n: Person, _ cur: Currency) -> some View {
         let asstNote: String = "\(co.name) · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide."
         PersonCard(name: n.name, role: "Assistant manager", scope: "store", note: asstNote, wage: cur.tidyShort(a["wage"].double), chevron: false)
-        CardSection(title: "Jobs", trailing: { Text("\(a["duties"].array.count) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(ManagerModel.assistantDuties.enumerated()), id: \.offset) { i, d in
-                    if i > 0 { CardLine() }
-                    let on = a["duties"].array.contains { $0.string == d.key }
-                    Button {
-                        let ok = store.act { $0.toggleAssistantDuty(companyID: co.id, duty: d.key) } ?? false
-                        store.show(ok ? (on ? "\(n.name) no longer looks after \(d.title.lowercased())." : "\(n.name) now looks after \(d.title.lowercased()).") : "Two jobs at most. Untick one first.", tone: ok ? "n" : "warn")
-                        Haptics.choose()
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(d.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(d.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            }
-                            Spacer()
-                            GlyphView(glyph: on ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: on ? Theme.gold : Theme.ivoryFaint)
-                        }.padding(.vertical, 8).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+        let picked: Int = a["duties"].array.count
+        TeamGroup(title: "Jobs", trailing: {
+            HStack(spacing: 4) {
+                ForEach(0..<2, id: \.self) { i in
+                    Capsule().fill(i < picked ? Theme.gold : Theme.hairline).frame(width: 18, height: 4)
+                }
+                Text("\(picked) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.leading, 4)
+            }
+        }) {
+            ForEach(Array(ManagerModel.assistantDuties.enumerated()), id: \.offset) { _, d in
+                let on: Bool = a["duties"].array.contains { $0.string == d.key }
+                jobCard(co, n, d, on: on)
+            }
+            Text("Two jobs at most. Pick one, or swap by unticking another first.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+        letGo(co, a, n, cur)
+    }
+
+    /// One of the assistant's possible jobs as a tappable card: the lit ring means they look after it.
+    private func jobCard(_ co: Company, _ n: Person, _ d: (key: String, title: String, text: String), on: Bool) -> some View {
+        Button {
+            let ok = store.act { $0.toggleAssistantDuty(companyID: co.id, duty: d.key) } ?? false
+            store.show(ok ? (on ? "\(n.name) no longer looks after \(d.title.lowercased())." : "\(n.name) now looks after \(d.title.lowercased()).") : "Two jobs at most. Untick one first.", tone: ok ? "n" : "warn")
+            Haptics.choose()
+        } label: {
+            Card(padding: 12, radius: Theme.Radius.card, fill: on ? Theme.goldSelected : Theme.surface, stroke: on ? Theme.gold : Theme.border) {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: on ? Glyph.check : Glyph.ring, size: 36, tint: on ? Theme.gold : Theme.ivoryFaint)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(d.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(d.text.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private func letGo(_ co: Company, _ a: JSONValue, _ n: Person, _ cur: Currency) -> some View {
+        let first: String = n.name.split(separator: " ").first.map(String.init) ?? "them"
+        return Card(padding: 14, radius: Theme.Radius.card, stroke: Theme.loss.opacity(0.4)) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
+                    Text("Let \(first) go").font(.serifTitle(16)).foregroundStyle(Theme.ivory)
+                }
+                Text("About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                QuietButton(title: "Let \(first) go…", tint: Theme.loss) {
+                    pending = PendingAction(title: "Let \(n.name) go?", message: "About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").",
+                                            button: "Let go", destructive: true) {
+                        store.act { $0.dismissAssistant(companyID: co.id) }
+                        let gone = store.engine?.state.company(co.id)?.value("asst")["npc"].int ?? 0 == 0
+                        store.show(gone ? "\(n.name) has left." : "They are still here.", tone: gone ? "n" : "warn"); Haptics.warning()
+                    }
                 }
             }
         }
-        Button("Let \(n.name.split(separator: " ").first.map(String.init) ?? "them") go…") {
-            pending = PendingAction(title: "Let \(n.name) go?", message: "About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").",
-                                    button: "Let go", destructive: true) {
-                store.act { $0.dismissAssistant(companyID: co.id) }
-                let gone = store.engine?.state.company(co.id)?.value("asst")["npc"].int ?? 0 == 0
-                store.show(gone ? "\(n.name) has left." : "They are still here.", tone: gone ? "n" : "warn"); Haptics.warning()
-            }
-        }
-        .buttonStyle(QuietButtonStyle(tint: Theme.loss))
     }
 
     @ViewBuilder private func hire(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
