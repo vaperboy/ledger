@@ -3,7 +3,7 @@ import SwiftUI
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
-    case bank, inbox, news, stats, goals, world, luxury, ventures, richList, reports, achievements, settings
+    case bank, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, achievements, settings
     var id: String { rawValue }
 
     var title: String {
@@ -11,6 +11,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .bank: return "Bank"
         case .inbox: return "Inbox"
         case .news: return "News"
+        case .weather: return "Weather"
         case .stats: return "Stats"
         case .goals: return "Goals"
         case .world: return "World"
@@ -29,6 +30,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .bank: return Glyph.bank
         case .inbox: return Glyph.inbox
         case .news: return Glyph.news
+        case .weather: return Glyph.cloud
         case .stats: return Glyph.stats
         case .goals: return Glyph.goals
         case .world: return Glyph.world
@@ -46,7 +48,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .bank: return "Accounts, savings and loans"
         case .inbox: return "Decisions, offers and warnings"
-        case .news: return "What is happening around you"
+        case .news: return "Headlines and the business paper"
+        case .weather: return "Conditions, forecast and warnings"
         case .stats: return "Your record and the account log"
         case .goals: return "What to aim for next"
         case .world: return "Public image, rivals and rankings"
@@ -56,6 +59,27 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .reports: return "Weekly, monthly and yearly"
         case .achievements: return "Trophies and awards"
         case .settings: return "How much you decide, saving, haptics"
+        }
+    }
+}
+
+extension PhoneApp {
+    /// The muted colour inside the app's icon (Ivory Ledger tints, never loud). The glyph and the label always stay, so colour is never alone.
+    var tint: Color {
+        switch self {
+        case .bank: return Color(hex: 0x8DB89B)
+        case .inbox: return Color(hex: 0xD6B889)
+        case .news: return Color(hex: 0xB8A58C)
+        case .weather: return Color(hex: 0x8FB0C4)
+        case .stats: return Color(hex: 0x9AA7C4)
+        case .goals: return Color(hex: 0xC9A38C)
+        case .world: return Color(hex: 0x7FB3B0)
+        case .luxury: return Color(hex: 0xC4A3B4)
+        case .ventures: return Color(hex: 0xB5B07E)
+        case .richList: return Color(hex: 0xD0A86F)
+        case .reports: return Color(hex: 0xA39BC2)
+        case .achievements: return Color(hex: 0xC9B07A)
+        case .settings: return Color(hex: 0xA19B8F)
         }
     }
 }

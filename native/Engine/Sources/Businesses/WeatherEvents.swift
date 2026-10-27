@@ -33,6 +33,40 @@ public enum WeatherEvents {
         return (now, out)
     }
 
+
+    // MARK: Big event warning
+
+    public struct BigWarning: Equatable, Sendable {
+        public var countryCode: String
+        public var week: Int
+        /// "storm", "heat" or "flood"
+        public var kind: String
+        public var companyIDs: [Int]
+        public var title: String
+    }
+
+    /// Storms, heatwaves and floods (a week of near-constant heavy rain) due this week or in the next two, per country where an open
+    /// company stands, with the companies that can be hit. Reads the same draws as `forecast`; changes nothing.
+    public static func bigWarnings(_ s: GameState, _ data: GameData) -> [BigWarning] {
+        let t = data.balance.weather
+        let open = s.companies.filter { $0.status == .open }
+        var out: [BigWarning] = []
+        for cc in Array(Set(open.map { $0.countryCode })).sorted() {
+            for i in 0...2 {
+                let w = Weather.draw(country: cc, week: s.week + i, seed: s.seed, tables: t)
+                let kind = w.kind == "storm" ? "storm" : w.kind == "heat" ? "heat" : (w.kind == "rain" && w.rainyDays >= 6) ? "flood" : ""
+                guard !kind.isEmpty else { continue }
+                let hit = open.filter { $0.countryCode == cc && (kind == "heat" || physical($0, data)) }
+                guard !hit.isEmpty else { continue }
+                let name = kind == "storm" ? cap(stormName(cc)) : kind == "heat" ? "A heatwave" : "Flooding"
+                let when = i == 0 ? "this week" : i == 1 ? "next week" : "in two weeks"
+                out.append(BigWarning(countryCode: cc, week: s.week + i, kind: kind, companyIDs: hit.map { $0.id }, title: "\(name) \(when) in \(data.countries[cc]?.name ?? cc)"))
+                break
+            }
+        }
+        return out
+    }
+
     /// Tourist events running in a country. Original: `S.wx56.ev`.
     public static func touristEvents(_ s: GameState, country cc: String) -> [(text: String, factor: Double, from: Int, until: Int, city: String?)] {
         state(s)["ev"].array.filter { $0["cc"].string == cc && $0["end"].int > s.week }.map { ($0["t"].string, $0["f"].double, $0["w0"].int, $0["end"].int, $0["city"].isNull ? nil : $0["city"].string) }

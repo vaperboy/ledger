@@ -65,7 +65,7 @@ final class ScreenshotTests: XCTestCase {
 
         // The Phone: its home, then every app on the grid, each with a round back button to the home.
         open("Phone"); sleep(1); shot("09-phone-home")
-        let apps = ["Bank", "Inbox", "News", "Stats", "Goals", "World", "Luxury", "Ventures", "Rich list", "Reports", "Achievements", "Settings"]
+        let apps = ["Bank", "Inbox", "News", "Weather", "Stats", "Goals", "World", "Luxury", "Ventures", "Rich list", "Reports", "Achievements", "Settings"]
         for (i, name) in apps.enumerated() {
             let icon = app.buttons["phone-app-\(name)"]
             guard icon.waitForExistence(timeout: 3) else { continue }

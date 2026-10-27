@@ -46,6 +46,7 @@ public extension GameEngine {
 
     // MARK: Weather and tourists
     func weatherForecast(countryCode: String) -> (now: WeekWeather, ahead: [WeatherEvents.Forecast]) { WeatherEvents.forecast(state, data, country: countryCode) }
+    func bigWeatherWarnings() -> [WeatherEvents.BigWarning] { WeatherEvents.bigWarnings(state, data) }
     func touristEvents(countryCode: String) -> [(text: String, factor: Double, from: Int, until: Int, city: String?)] { WeatherEvents.touristEvents(state, country: countryCode) }
     func weatherLine(companyID: Int) -> (weather: Double, tourists: Double, workingTime: Double, kind: String)? { WeatherEvents.companyLine(state, data, companyID: companyID) }
 
