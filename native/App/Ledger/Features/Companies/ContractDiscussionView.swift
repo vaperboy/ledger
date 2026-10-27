@@ -41,9 +41,7 @@ struct ContractDiscussionView: View {
                 topics(e)
                 editor(e, co, cur)
                 preview(e, co, cur)
-                if !reply.isEmpty {
-                    Label(reply, systemImage: "bubble.left.fill").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
-                }
+                if !reply.isEmpty { SpeechBubble(text: reply, mine: false) }
                 send(e, co, n, cur)
             } else {
                 Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted)
@@ -82,7 +80,7 @@ struct ContractDiscussionView: View {
             LedgerSection("\(first(n)) asks") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(talk.reason.isEmpty ? "A request about \(talk.proposal.topic.title.lowercased())." : talk.reason).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    Text(requestFigure(talk, cur)).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
+                    AskOfferCard(label: "\(first(n).uppercased()) ASKS", figure: requestFigure(talk, cur), note: talk.proposal.topic.title, outlined: true)
                     if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     consequenceLines(pv, cur)
                     partWay(talk, cur)
