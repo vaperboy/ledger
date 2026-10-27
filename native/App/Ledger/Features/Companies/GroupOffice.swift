@@ -465,7 +465,7 @@ struct SuppliersGroupSection: View {
         let known = engine.knownSuppliers
         if !known.isEmpty {
             MoreBlock(title: "People you buy from", card: false, trailing: { Text("\(known.count)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
-                ForEach(known) { v in supplierCard(v) }
+                ForEach(known, id: \.id) { v in supplierCard(v) }
             }
         }
     }
