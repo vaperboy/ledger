@@ -169,7 +169,7 @@ struct PhoneAppScreen: View {
         case .inbox:
             InboxView()
         case .news:
-            NewsView().appScreen(title: app.title, subtitle: app.subtitle)
+            NewsView()
         case .weather:
             WeatherApp()
         case .stats:
@@ -179,18 +179,13 @@ struct PhoneAppScreen: View {
         case .achievements:
             PhonePagedApp(app: app, pages: [.goals, .achievements], first: .achievements)
         case .world:
-            PhonePagedApp(app: app, pages: [.around, .biggest, .records], first: .around)
+            WorldMapApp()
         case .luxury:
-            LuxuryView().appScreen(title: app.title, subtitle: app.subtitle)
+            LuxuryView()
         case .ventures:
-            ScrollView {
-                VenturesContent()
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .appScreen(title: app.title, subtitle: app.subtitle)
+            VenturesFeedApp()
         case .richList:
-            RichListView().appScreen(title: app.title, subtitle: app.subtitle)
+            RichListView()
         case .reports:
             ReportsScreen()
         case .settings:

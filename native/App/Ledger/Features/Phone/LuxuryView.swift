@@ -3,83 +3,259 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Aurum private sales: cars, watches, art, yachts, private jets, homes and estates; and your collection with its uses and estates.
+/// The Luxury phone app (Aurum private sales), drawn as a store: category chips, a grid of product tiles (picture, name, price, an
+/// "Owned" badge) and a collection view. Tapping a tile opens the item sheet, where a piece is bought, managed, used or sold.
 /// Original: the Aurum shop (features/screens/hiring_place_swipe_luxury.js) and the manage sheets of lifestyle.js and estates.js.
-/// Category and collection lists in cards; a piece opens in place to buy, manage or sell it.
 struct LuxuryView: View {
+    /// Which item sheet is open: a shop item to buy, or an owned piece to manage.
+    enum LuxurySheet: Identifiable, Hashable {
+        case item(String)
+        case piece(Int)
+        var id: String {
+            switch self {
+            case .item(let s): return "item-" + s
+            case .piece(let n): return "piece-\(n)"
+            }
+        }
+    }
+
     @EnvironmentObject var store: GameStore
     @State private var tab = "collection"
-    @State private var openItem: String? = nil
-    @State private var openPiece: Int? = nil
+    @State private var sheet: LuxurySheet? = nil
     @State private var pendingSell: Luxury.Piece? = nil
     @State private var companyChoice: Luxury.Item? = nil
     @State private var pending: PendingAction? = nil
+
+    private let columns: [GridItem] = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    NoteCard(text: "Aurum private sales. Paid from your personal cash, delivered, insured and stored for you.", glyph: Glyph.luxury, tint: Theme.ivoryMuted)
-                    SectionTabs(items: ["collection"] + Luxury.categories.map { $0.id }, title: { id in id == "collection" ? "Your collection" : Luxury.categories.first(where: { $0.id == id })?.name ?? id },
-                                selection: Binding(get: { tab }, set: { tab = $0; openItem = nil })).padding(.horizontal, -18)
+                    storeHeader(e)
+                    chips
                     if tab == "collection" { collection(e) } else if let c = Luxury.categories.first(where: { $0.id == tab }) { shop(e, c) }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .confirmAction($pending)
-            .ledgerBackground()
-            .confirmationDialog(pendingSell.map { "Sell \($0.item.name)?" } ?? "", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), titleVisibility: .visible) {
-                if let p = pendingSell {
-                    Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))", role: .destructive) {
-                        let v = store.act { $0.sellLuxury(pieceID: p.id) } ?? 0
-                        store.show(v > 0 ? "Sold for \(store.short(v))." : "It cannot be sold right now.", tone: v > 0 ? "good" : "warn")
-                        pendingSell = nil
-                    }
-                }
-            } message: { Text("You receive the value after \(Int((Luxury.sellFee * 100).rounded()))% selling costs. A gain on a collectible is taxed with your other gains.") }
-            .confirmationDialog("Buy through a company", isPresented: Binding(get: { companyChoice != nil }, set: { if !$0 { companyChoice = nil } }), titleVisibility: .visible) {
-                if let it = companyChoice {
-                    ForEach(e.luxuryCompanies(itemID: it.id), id: \.id) { c in
-                        Button("\(c.name) · cash \(store.short(c.cash, in: c))") {
-                            switch store.act({ $0.buyLuxury(itemID: it.id, throughCompany: c.id) }) {
-                            case .ok?: Haptics.success(); store.show("\(c.name) bought \(it.name).", tone: "good"); tab = "collection"
-                            case .notEnoughCash?: store.show("\(c.name) does not have the cash.", tone: "warn")
-                            default: store.show("Not possible.", tone: "warn")
-                            }
-                            companyChoice = nil
-                        }
-                    }
-                }
-            } message: { Text("The company pays, writes it down in its books and pays the upkeep, all before company tax. You pay tax on the private use as salary. A company too small for it draws the tax office.") }
+            .outsideScreen()
+            .accessibilityIdentifier("luxury-app")
+            .sheet(item: $sheet) { (s: LuxurySheet) in sheetContent(e, s) }
         }
     }
 
-    // MARK: Shop
+    // MARK: Store front
+
+    private func storeHeader(_ e: GameEngine) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            OutsideBack()
+            VStack(alignment: .leading, spacing: 1) {
+                Text("AURUM").font(.system(size: 10.5, weight: .semibold)).tracking(3).foregroundStyle(Theme.gold)
+                Text("Private sales").font(.serifTitle(26)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text("Your cash").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(store.short(max(0, e.state.cash))).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+            }
+        }
+    }
+
+    private var chips: some View {
+        let ids: [String] = ["collection"] + Luxury.categories.map { $0.id }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ids, id: \.self) { id in chip(id) }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func chip(_ id: String) -> some View {
+        let on: Bool = tab == id
+        let name: String = id == "collection" ? "Your collection" : (Luxury.categories.first(where: { $0.id == id })?.name ?? id)
+        return Button { tab = id } label: {
+            Text(name).font(.system(size: 13, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Theme.gold : Theme.ivoryMuted)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Capsule().fill(on ? Theme.goldSelected : Color.clear))
+                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.borderStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    // MARK: Tiles
+
+    private func ownedCount(_ e: GameEngine, _ id: String) -> Int { e.luxuryPieces.filter { $0.item.id == id }.count }
 
     @ViewBuilder private func shop(_ e: GameEngine, _ c: Luxury.Category) -> some View {
-        CardSection(title: c.name, trailing: { Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(spacing: 0) {
-                ForEach(Array(c.items.enumerated()), id: \.element.id) { n, it in
-                    VStack(alignment: .leading, spacing: 0) {
-                        if n > 0 { CardLine() }
-                        Button { openItem = openItem == it.id ? nil : it.id } label: {
-                            HStack(alignment: .center, spacing: 10) {
-                                ThumbnailView(kind: .luxury, key: it.id, size: 38, shape: .square)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(it.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                                    Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
-                                }
-                                Spacer(minLength: 8)
-                                Text(store.short(it.price)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(e.state.cash >= it.price ? Theme.ivory : Theme.ivoryFaint)
-                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openItem == it.id ? 90 : 0))
-                            }.padding(.vertical, 9).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                        if openItem == it.id { detail(e, it) }
+        HStack {
+            Text(c.name.uppercased()).capsLabel()
+            Spacer()
+            Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(c.items, id: \.id) { (it: Luxury.Item) in tile(e, it) }
+        }
+    }
+
+    private func tile(_ e: GameEngine, _ it: Luxury.Item) -> some View {
+        let owned: Int = ownedCount(e, it.id)
+        let afford: Bool = e.state.cash >= it.price
+        return Button { sheet = .item(it.id) } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                ZStack(alignment: .topTrailing) {
+                    ThumbnailView(kind: .luxury, key: it.id, size: 96, shape: .square)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
+                    if owned > 0 { ownedBadge(owned) }
+                }
+                Text(it.name).font(.serifTitle(15)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 38, alignment: .topLeading)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(store.short(it.price)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(afford ? Theme.gold : Theme.ivoryFaint)
+                    Spacer(minLength: 4)
+                    if !afford { Text("Out of reach").font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint) }
+                }
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(it.name + ", " + store.short(it.price) + (owned > 0 ? ", owned" : ""))
+    }
+
+    private func ownedBadge(_ n: Int) -> some View {
+        Text(n > 1 ? "OWNED ×\(n)" : "OWNED").font(.system(size: 9, weight: .bold)).tracking(0.8)
+            .foregroundStyle(Theme.page)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Capsule().fill(Theme.gold))
+            .padding(6)
+    }
+
+    // MARK: Collection
+
+    @ViewBuilder private func collection(_ e: GameEngine) -> some View {
+        let pieces = e.luxuryPieces
+        let income = pieces.reduce(0) { $0 + $1.weeklyIncome }
+        FigureCard(items: [
+            .init(label: "Worth today", value: store.short(e.luxuryValue), sub: "in your name"),
+            .init(label: "Upkeep", value: store.short(Luxury.upkeepPerMonth(e.state)), sub: "a month"),
+            .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? Theme.gain : Theme.ivory, sub: income > 0 ? "a month, before tax" : ""),
+        ])
+        if pieces.isEmpty {
+            NoteCard(text: "Nothing yet. What you buy is kept here, with its upkeep and what it earns. Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.", glyph: Glyph.luxury)
+        } else {
+            HStack {
+                Text("PIECES").capsLabel()
+                Spacer()
+                Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(pieces, id: \.id) { (p: Luxury.Piece) in pieceTile(p) }
+            }
+        }
+        let perks = perkLines(pieces)
+        if !perks.isEmpty {
+            CardSection("What it does for you") {
+                VStack(spacing: 0) { ForEach(Array(perks.enumerated()), id: \.offset) { n, l in FlatRow(label: l.0, value: l.1, rule: n > 0) } }
+            }
+        }
+    }
+
+    private func pieceTile(_ p: Luxury.Piece) -> some View {
+        let pct: Int = Int((p.gain * 100).rounded())
+        let change: String = pct == 0 ? "unchanged" : (p.gain > 0 ? "up " : "down ") + "\(abs(pct))%"
+        return Button { sheet = .piece(p.id) } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                ThumbnailView(kind: .luxury, key: p.item.id, size: 96, shape: .square)
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
+                Text(p.item.name).font(.serifTitle(15)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 38, alignment: .topLeading)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(store.short(p.value)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Spacer(minLength: 4)
+                    Text(change).font(.system(size: 10.5)).foregroundStyle(Theme.change(p.gain))
+                }
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Item sheet
+
+    @ViewBuilder private func sheetContent(_ e: GameEngine, _ s: LuxurySheet) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                sheetBody(e, s)
+            }
+            .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 30)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .background(Theme.page.ignoresSafeArea())
+        .presentationDetents([.large])
+        .confirmAction($pending)
+        .confirmationDialog(pendingSell.map { "Sell \($0.item.name)?" } ?? "", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), titleVisibility: .visible) {
+            if let p = pendingSell {
+                Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))", role: .destructive) {
+                    let v = store.act { $0.sellLuxury(pieceID: p.id) } ?? 0
+                    store.show(v > 0 ? "Sold for \(store.short(v))." : "It cannot be sold right now.", tone: v > 0 ? "good" : "warn")
+                    pendingSell = nil
+                    if v > 0 { sheet = nil }
+                }
+            }
+        } message: { Text("You receive the value after \(Int((Luxury.sellFee * 100).rounded()))% selling costs. A gain on a collectible is taxed with your other gains.") }
+        .confirmationDialog("Buy through a company", isPresented: Binding(get: { companyChoice != nil }, set: { if !$0 { companyChoice = nil } }), titleVisibility: .visible) {
+            if let it = companyChoice {
+                ForEach(e.luxuryCompanies(itemID: it.id), id: \.id) { c in
+                    Button("\(c.name) · cash \(store.short(c.cash, in: c))") {
+                        switch store.act({ $0.buyLuxury(itemID: it.id, throughCompany: c.id) }) {
+                        case .ok?: Haptics.success(); store.show("\(c.name) bought \(it.name).", tone: "good"); tab = "collection"; sheet = nil
+                        case .notEnoughCash?: store.show("\(c.name) does not have the cash.", tone: "warn")
+                        default: store.show("Not possible.", tone: "warn")
+                        }
+                        companyChoice = nil
                     }
                 }
             }
+        } message: { Text("The company pays, writes it down in its books and pays the upkeep, all before company tax. You pay tax on the private use as salary. A company too small for it draws the tax office.") }
+    }
+
+    @ViewBuilder private func sheetBody(_ e: GameEngine, _ s: LuxurySheet) -> some View {
+        switch s {
+        case .item(let id):
+            if let it = Luxury.categories.flatMap({ $0.items }).first(where: { $0.id == id }) {
+                sheetTitle(it.name, it.detail.tidyMoney, store.short(it.price))
+                detail(e, it)
+            }
+        case .piece(let pid):
+            if let p = e.luxuryPieces.first(where: { $0.id == pid }) {
+                sheetTitle(p.item.name, useLine(e, p), store.short(p.value))
+                manage(e, p)
+            }
+        }
+    }
+
+    private func sheetTitle(_ name: String, _ note: String, _ price: String) -> some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+                Text(note).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Text(price).font(.serifTitle(22)).foregroundStyle(Theme.gold).monospacedDigit()
         }
     }
 
@@ -110,7 +286,7 @@ struct LuxuryView: View {
                                             message: "\(store.money(it.price)) from your own cash, then about \(store.short(it.monthlyUpkeep)) a month for upkeep, insurance and storage. Selling later costs \(Int((Luxury.sellFee * 100).rounded()))%.",
                                             button: "Purchase for \(store.short(it.price))", amount: it.price, currency: e.homeCurrency) {
                         switch store.act({ $0.buyLuxury(itemID: it.id) }) {
-                        case .ok?: Haptics.success(); store.show("Bought: \(it.name).", tone: "good"); tab = "collection"
+                        case .ok?: Haptics.success(); store.show("Bought: \(it.name).", tone: "good"); tab = "collection"; sheet = nil
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
                         default: Haptics.warning(); store.show("Not possible.", tone: "warn")
                         }
@@ -123,52 +299,6 @@ struct LuxuryView: View {
         }
     }
 
-    // MARK: Collection
-
-    @ViewBuilder private func collection(_ e: GameEngine) -> some View {
-        let pieces = e.luxuryPieces
-        let income = pieces.reduce(0) { $0 + $1.weeklyIncome }
-        FigureCard(items: [
-            .init(label: "Worth today", value: store.short(e.luxuryValue), sub: "in your name"),
-            .init(label: "Upkeep", value: store.short(Luxury.upkeepPerMonth(e.state)), sub: "a month"),
-            .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? Theme.gain : Theme.ivory, sub: income > 0 ? "a month, before tax" : ""),
-        ])
-        if pieces.isEmpty {
-            NoteCard(text: "Nothing yet. What you buy is kept here, with its upkeep and what it earns. Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.", glyph: Glyph.luxury)
-        }
-        if !pieces.isEmpty { CardSection(title: "Pieces", trailing: { Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(spacing: 0) {
-                ForEach(Array(pieces.enumerated()), id: \.element.id) { n, p in
-                    VStack(alignment: .leading, spacing: 0) {
-                        if n > 0 { CardLine() }
-                        Button { openPiece = openPiece == p.id ? nil : p.id } label: {
-                            HStack(alignment: .center, spacing: 10) {
-                                ThumbnailView(kind: .luxury, key: p.item.id, size: 38, shape: .square)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(p.item.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                                    Text(useLine(e, p)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
-                                }
-                                Spacer(minLength: 8)
-                                VStack(alignment: .trailing, spacing: 1) {
-                                    Text(store.short(p.value)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                    Text(Int((p.gain * 100).rounded()) == 0 ? "unchanged" : (p.gain > 0 ? "up " : "down ") + "\(abs(Int((p.gain * 100).rounded())))%")
-                                        .font(.system(size: 10.5)).foregroundStyle(Theme.change(p.gain))
-                                }
-                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openPiece == p.id ? 90 : 0))
-                            }.padding(.vertical, 9).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                        if openPiece == p.id { manage(e, p) }
-                    }
-                }
-            }
-        } }
-        let perks = perkLines(pieces)
-        if !perks.isEmpty {
-            CardSection("What it does for you") {
-                VStack(spacing: 0) { ForEach(Array(perks.enumerated()), id: \.offset) { n, l in FlatRow(label: l.0, value: l.1, rule: n > 0) } }
-            }
-        }
-    }
 
     private func useLine(_ e: GameEngine, _ p: Luxury.Piece) -> String {
         var parts = ["Bought for " + store.short(p.paid)]

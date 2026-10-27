@@ -100,7 +100,7 @@ struct WorldAroundView: View {
                             recordLink(.hall, e.retirementHall.isEmpty ? "Nobody has retired yet" : "\(e.retirementHall.count) retired")
                             CardLine()
                             NavigationLink {
-                                NewsView().appScreen(title: "Business paper", subtitle: PhoneApp.news.subtitle)
+                                NewsView()
                             } label: {
                                 RowLine(glyph: Glyph.news, tint: Theme.gold, title: "Business paper", subtitle: "Front pages and headlines", chevron: true)
                             }.buttonStyle(.plain)

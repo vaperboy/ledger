@@ -15,13 +15,15 @@ struct VenturesContent: View {
         var id: String { rawValue }
         case founded = "Your startups", backing = "Backing startups", funds = "Private equity", groups = "Stakes in groups", software = "Software" }
     @EnvironmentObject var store: GameStore
+    /// The phone app lists pitches and stakes itself (`VenturesFeedApp`); it hides the "Backing startups" row and the summary here.
+    var hidesBacking = false
     @State private var opened: Part?
     @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                summary(e)
+                if !hidesBacking { summary(e) }
                 if let o = e.bigMeetingOffer { BigMeetingCard(engine: e, offer: o) }
                 venturesTable(e)
             }
@@ -45,7 +47,7 @@ struct VenturesContent: View {
     private func venturesTable(_ e: GameEngine) -> some View {
         let offers: Int = badge(e, .founded)
         return SettingsTable(heading: "Ventures") {
-            ForEach(Part.allCases) { (p: Part) in
+            ForEach(Part.allCases.filter { !(hidesBacking && $0 == .backing) }) { (p: Part) in
                 SettingsTableRow(title: p.rawValue, note: note(p), value: value(e, p), valueTint: p == .founded && offers > 0 ? Theme.caution : Theme.ivory) { opened = p }
             }
         }
