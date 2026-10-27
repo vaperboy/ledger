@@ -8,6 +8,7 @@ import Simulation
 struct BankAccountsScreen: View {
     @EnvironmentObject var store: GameStore
     var onPick: (BankAccountID) -> Void
+    @State private var move: BankMoveKind?
 
     var body: some View {
         if let e = store.engine {
@@ -17,6 +18,9 @@ struct BankAccountsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     totalCard(all)
+                    BankHomeRing(all: all, engine: e)
+                    roundButtons(all)
+                    billsLink(all, e)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOU").capsLabel()
                         ForEach(you) { r in row(r, e) }
@@ -35,7 +39,29 @@ struct BankAccountsScreen: View {
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            .sheet(item: $move) { kind in BankMoveSheet(account: .personal, kind: kind).presentationDetents([.medium, .large]) }
         }
+    }
+
+    private func roundButtons(_ all: BankAccounts) -> some View {
+        HStack(spacing: 0) {
+            BankRoundButton(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
+            BankRoundButton(glyph: BankGlyph.withdraw, title: "Send") { move = .withdraw }
+            BankRoundButton(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
+        }
+        .accessibilityIdentifier("bank-round-actions")
+    }
+
+    private func billsLink(_ all: BankAccounts, _ e: GameEngine) -> some View {
+        let count: Int = e.financeOverview().upcoming.count
+        let sub: String = count == 0 ? "Nothing is due" : "\(count) coming · \(store.short(all.dueWithin30Days)) due in 30 days"
+        return NavigationLink {
+            BankAllBillsScreen()
+        } label: {
+            CardRow(glyph: BankGlyph.bill, title: "Bills", subtitle: sub, badge: all.alertCount)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("bank-all-bills")
     }
 
     private func totalCard(_ all: BankAccounts) -> some View {
@@ -87,5 +113,38 @@ struct BankAccountsScreen: View {
         }
         if r.loanCount > 0 { parts.append("\(r.loanCount) loan\(r.loanCount == 1 ? "" : "s")") }
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// Where the money is: a ring over the accounts that hold some (personal current account, savings, investments, each company), the five
+/// biggest named and the rest together. Only drawn when at least two places hold money; one place is not an allocation.
+struct BankHomeRing: View {
+    @EnvironmentObject var store: GameStore
+    var all: BankAccounts
+    var engine: GameEngine
+
+    private static let palette: [Color] = [Theme.gold, Theme.roseGold, Theme.slateBlue, Theme.gain, Theme.ivoryMuted, Theme.ivoryDim]
+
+    var body: some View {
+        let parts: [PortfolioRingCard.Slice] = slices()
+        if parts.count >= 2 {
+            PortfolioRingCard(slices: parts, cur: engine.homeCurrency, title: "WHERE YOUR MONEY IS", centerLabel: "Total")
+        }
+    }
+
+    private func slices() -> [PortfolioRingCard.Slice] {
+        var raw: [(String, Double)] = []
+        for r in all.rows {
+            if r.balance > 0 { raw.append((r.kind == .personal ? "Current account" : r.name, r.balance)) }
+            if let s = r.savings, s > 0 { raw.append(("Savings", s)) }
+        }
+        raw.sort { $0.1 > $1.1 }
+        var out: [PortfolioRingCard.Slice] = []
+        for (i, p) in raw.prefix(5).enumerated() {
+            out.append(PortfolioRingCard.Slice(id: "\(i)-\(p.0)", name: p.0, value: p.1, tint: Self.palette[i % Self.palette.count]))
+        }
+        let rest: Double = raw.dropFirst(5).reduce(0) { $0 + $1.1 }
+        if rest > 0 { out.append(PortfolioRingCard.Slice(id: "other", name: "Other", value: rest, tint: Self.palette[5])) }
+        return out
     }
 }
