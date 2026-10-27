@@ -161,13 +161,10 @@ struct InboxView: View {
                                     ForEach(b.messages) { m in MessageCard(message: m, week: e.state.week, ask: ask).id(m.id) }
                                 }
                                 if cut.hidden > 0 {
-                                    Button { limit += Self.page } label: {
-                                        Text("Show \(min(Self.page, cut.hidden)) more of \(cut.hidden)").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
-                                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                    }.buttonStyle(.plain)
+                                    QuietButton(title: "Show \(min(Self.page, cut.hidden)) more of \(cut.hidden)", fullWidth: true) { limit += Self.page }
                                 }
                             }
-                            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                         }
                         // A deep link (from Team, a suggestion or a toast) can arrive before this tab was ever shown: take it on appear too,
@@ -194,10 +191,10 @@ struct InboxView: View {
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+            GlyphView(glyph: Glyph.search, size: 16, weight: 1.8, tint: Theme.ivoryFaint)
             TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).autocorrectionDisabled()
             if !query.isEmpty {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain).accessibilityLabel("Clear search")
+                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: Theme.ivoryFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 12).frame(minHeight: 36)
@@ -226,7 +223,11 @@ struct InboxView: View {
                 store.show("Marked \(n) message\(n == 1 ? "" : "s") as read. Open decisions stay open.", tone: "n")
             }.disabled(store.unreadCount == 0)
         } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle").accessibilityLabel("Inbox options")
+            GlyphView(glyph: Glyph.list, size: 18, weight: 1.8, tint: Theme.ivory)
+                .frame(width: 40, height: 40)
+                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                .contentShape(Circle())
+                .accessibilityLabel("Inbox options")
         }
     }
 
@@ -237,8 +238,7 @@ struct InboxView: View {
             Spacer(minLength: 8)
             if let id = b.companyID {
                 Button { store.openCompany(id) } label: {
-                    HStack(spacing: 3) { Text("Open"); Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)) }
-                        .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                    LinkLabel(text: "Open")
                 }.buttonStyle(.plain)
             }
         }
@@ -250,7 +250,7 @@ struct InboxView: View {
         return HStack {
             Text("Only " + name).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             Spacer()
-            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).frame(minHeight: 36)
         }
     }
 
@@ -260,7 +260,7 @@ struct InboxView: View {
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
             : tab == .decisions ? "No decision is waiting for you." : "Nothing under \(tab.rawValue.lowercased())."
         return VStack(spacing: 8) {
-            Image(systemName: tab == .decisions && !searching ? "checkmark.circle" : "tray").font(.largeTitle).foregroundStyle(Theme.ivoryFaint)
+            IconCircle(glyph: tab == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: Theme.ivoryFaint)
             Text(text).font(.bodyText).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.top, 80)
@@ -297,11 +297,11 @@ struct MessageCard: View {
         return key.flatMap { CompanySection(key: $0) }
     }
 
-    private var symbol: String {
-        if message.actionID.hasPrefix("pay29") { return "banknote" }
-        if message.actionID == "staffx" || message.actionID == "mgrraise" || message.actionID == "mgrpoach" { return "person.fill" }
-        if message.status == "open" { return message.tone == "bad" ? "exclamationmark.triangle.fill" : "briefcase.fill" }
-        switch message.tone { case "bad": return "exclamationmark.triangle.fill"; case "good": return "checkmark.circle.fill"; default: return "newspaper.fill" }
+    private var glyph: String {
+        if message.actionID.hasPrefix("pay29") { return Glyph.bank }
+        if message.actionID == "staffx" || message.actionID == "mgrraise" || message.actionID == "mgrpoach" { return Glyph.person }
+        if message.status == "open" { return message.tone == "bad" ? Glyph.warning : Glyph.inbox }
+        switch message.tone { case "bad": return Glyph.warning; case "good": return Glyph.check; default: return Glyph.news }
     }
     private var tint: Color {
         if message.status == "open" { return message.tone == "bad" ? Theme.loss : Theme.gold }
@@ -316,7 +316,7 @@ struct MessageCard: View {
         let open = message.status == "open"
         if !open && message.tone != "bad" && message.isRead {
             HStack(alignment: .center, spacing: 10) {
-                IconBadge(symbol: symbol, tint: tint, size: 28)
+                IconCircle(glyph: glyph, size: 30, tint: tint)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(text(message.title)).font(.subheadline).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
                     if let o = store.engine?.answeredOutcome(message) { Text(o).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
@@ -324,12 +324,15 @@ struct MessageCard: View {
                 Spacer()
                 Text(message.from).font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
             }
-            .padding(.horizontal, Theme.Space.s).padding(.vertical, 2)
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface.opacity(0.6)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border.opacity(0.7), lineWidth: 1))
         } else {
-            Card {
+            Card(padding: 14) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack(alignment: .top, spacing: Theme.Space.m) {
-                        IconBadge(symbol: symbol, tint: tint, size: 44)
+                        IconCircle(glyph: glyph, size: 40, tint: tint)
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(message.from).font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
@@ -350,10 +353,7 @@ struct MessageCard: View {
                             if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
                                 let sec = Self.section(for: message)
                                 Button { store.openCompany(co.id, section: sec) } label: {
-                                    HStack(spacing: 4) {
-                                        Text("Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "")).font(.caption.weight(.medium))
-                                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
-                                    }.foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                                    LinkLabel(text: "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
                                 }.buttonStyle(.plain).accessibilityIdentifier("open-company-link")
                             }
                         }
@@ -368,7 +368,11 @@ struct MessageCard: View {
     @ViewBuilder private var decision: some View {
         if let exp = message.expiresWeek {
             let left = exp - week
-            Chip(text: left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week", tint: left <= 1 ? Theme.loss : Theme.caution, symbol: "clock")
+            HStack(spacing: 6) {
+                GlyphView(glyph: Glyph.clock, size: 14, weight: 1.8, tint: left <= 1 ? Theme.loss : Theme.caution)
+                Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").font(.system(size: 12, weight: .medium)).foregroundStyle(left <= 1 ? Theme.loss : Theme.caution)
+            }
+            .accessibilityElement(children: .combine)
             if let leave = store.engine?.expiryOutcome(message) {
                 Text(leave).font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
@@ -379,12 +383,12 @@ struct MessageCard: View {
         }
         let detailed = message.options.contains { !$0["d"].string.isEmpty || !preview($0).isEmpty }
         if !detailed && opts.count <= 3 {
-            HStack(spacing: 8) {
+            WrapRow {
                 ForEach(opts, id: \.offset) { idx, opt in
                     if idx == 0 {
-                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(SmallGoldButtonStyle())
+                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(QuietButtonStyle())
                     } else {
-                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(SmallOutlineButtonStyle())
+                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(GreyOutlineButtonStyle())
                     }
                 }
             }
@@ -393,16 +397,17 @@ struct MessageCard: View {
                 ForEach(opts, id: \.offset) { idx, opt in
                     Button { ask(message, idx) } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(text(opt["l"].string)).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ivory)
+                            Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ivory)
                             if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }
                             ForEach(preview(opt), id: \.self) { line in
                                 Text("• " + line).font(.caption2).foregroundStyle(Theme.gold.opacity(0.9))
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8).padding(.leading, Theme.Space.m).padding(.trailing, 20)
-                        .overlay(alignment: .leading) { Rectangle().fill(idx == 0 ? Theme.gold : Theme.hairline).frame(width: 1.5) }
-                        .overlay(alignment: .trailing) { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
+                        .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? Theme.goldSelected : Theme.surfaceTable))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? Theme.gold : Theme.border, lineWidth: 1))
+                        .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim).padding(.trailing, 12) }
                         .contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }

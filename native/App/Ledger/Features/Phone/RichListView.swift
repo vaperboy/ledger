@@ -12,34 +12,29 @@ struct RichListView: View {
             let st = RichList.standing(e.state, data: e.data, context: e.context)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Your place in \(e.homeCountry.name)").capsLabel()
-                        Text(st.rank.map { "#\($0.formatted())" } ?? "Not placed").font(.hero(36)).foregroundStyle(st.rank == nil ? Theme.ivoryMuted : Theme.gold)
-                        if !movement(st).isEmpty { Text(movement(st)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
-                    }
-                    KeyFigures(items: [
+                    HeroFigure(label: "Your place in \(e.homeCountry.name)", value: st.rank.map { "#\($0.formatted())" } ?? "Not placed",
+                               tint: st.rank == nil ? Theme.ivoryMuted : Theme.gold, note: movement(st))
+                    FigureCard(items: [
                         .init(label: "Net worth", value: store.short(max(0, st.netWorth))),
                         .init(label: "Best place", value: st.best.map { "#\($0)" } ?? "–"),
                         .init(label: "Awards won", value: "\(Awards.wonCount(e.state))")
                     ], columns: 3)
                     if let r = st.rank, r > 100 {
-                        Text("Number 100 has \(store.short(st.hundredth)). \(store.short(max(0, st.hundredth - st.netWorth))) to go.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        NoteCard(text: "Number 100 has \(store.short(st.hundredth)). \(store.short(max(0, st.hundredth - st.netWorth))) to go.", glyph: Glyph.richList)
                     } else if st.rank == nil {
-                        Text("You need a positive net worth to be placed on the list.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        NoteCard(text: "You need a positive net worth to be placed on the list.", glyph: Glyph.richList)
                     }
-                    LedgerSection("The top ten") { people(st.top) }
+                    CardSection("The top ten") { people(st.top) }
                     if !st.around.isEmpty {
-                        LedgerSection(st.rank.map { $0 <= 100 } ?? false ? "Around you" : "The way in") { people(st.around) }
+                        CardSection(st.rank.map { $0 <= 100 } ?? false ? "Around you" : "The way in") { people(st.around) }
                     }
                     awards(e.state)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Rich list")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -51,7 +46,7 @@ struct RichListView: View {
     private func people(_ list: [RichList.Person]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(list.enumerated()), id: \.offset) { i, p in
-                if i > 0 { Hairline() }
+                if i > 0 { CardLine() }
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
                     Text(p.isYou && p.rank == 0 ? "·" : "\(p.rank)").font(.caption.monospacedDigit()).foregroundStyle(p.isYou ? Theme.gold : Theme.ivoryFaint).frame(width: 30, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
@@ -69,16 +64,16 @@ struct RichListView: View {
 
     @ViewBuilder private func awards(_ s: GameState) -> some View {
         let years = Awards.years(s).reversed()
-        LedgerSection(title: "Business awards", trailing: { Text("\(Awards.wonCount(s)) won").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: "Business awards", trailing: { Text("\(Awards.wonCount(s)) won").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
             if years.isEmpty {
-                Text("The first business awards are held at the end of the year, once you have been in business for half a year.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                Text("The first business awards are held at the end of the year, once you have been in business for half a year.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ForEach(Array(years.prefix(4)), id: \.year) { y in
                         VStack(alignment: .leading, spacing: 0) {
                             Text("\(y.year)").capsLabel(Theme.ivoryFaint).padding(.bottom, 4)
                             ForEach(Array(y.results.enumerated()), id: \.offset) { i, r in
-                                if i > 0 { Hairline() }
+                                if i > 0 { CardLine() }
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack {
                                         Text(Awards.name(r.kind)).font(.system(size: 14.5)).foregroundStyle(r.won ? Theme.gold : Theme.ivory)

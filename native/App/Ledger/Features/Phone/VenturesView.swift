@@ -21,7 +21,7 @@ struct VenturesContent: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 summary(e)
                 if let o = e.bigMeetingOffer { BigMeetingCard(engine: e, offer: o) }
-                SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, badge: { badge(e, $0) }).padding(.horizontal, -Theme.Space.margin)
+                SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, badge: { badge(e, $0) }).padding(.horizontal, -18)
                 switch part {
                 case .founded: FoundedStartups(engine: e)
                 case .backing: BackedStartups(engine: e)
@@ -46,7 +46,7 @@ struct VenturesContent: View {
         let stakes = e.startupStakes.filter { $0.live }
         let funds = e.privateEquityFunds.filter { $0.live }
         let groups = e.bigMeetingStakes.reduce(0) { $0 + $1.value } + e.groupStakes.reduce(0) { $0 + $1.value }
-        return KeyFigures(items: [
+        return FigureCard(items: [
             .init(label: "Your startups", value: founded.isEmpty ? "None" : cur.tidyShort(founded.reduce(0) { $0 + $1.valuation * $1.ownership / 100 }), sub: founded.isEmpty ? "" : "\(founded.count) running"),
             .init(label: "Startup stakes", value: stakes.isEmpty ? "None" : cur.tidyShort(stakes.reduce(0) { $0 + $1.value }), sub: stakes.isEmpty ? "" : "\(stakes.count) held"),
             .init(label: "Funds and groups", value: funds.isEmpty && groups == 0 ? "None" : cur.tidyShort(funds.reduce(0) { $0 + $1.nav } + groups)),
@@ -69,17 +69,17 @@ private struct BigMeetingCard: View {
         let cur = engine.homeCurrency
         let f = engine.bigMeetingFinancing(price: o.price)
         let warn = engine.bigMeetingRatesWarning()
-        LedgerSection(title: "Decision · big meeting", trailing: { Text("until \(GameCalendar.dateString(week: o.expiresWeek))").font(.system(size: 11)).foregroundStyle(Theme.caution) }) {
+        CardSection(title: "Decision · big meeting", trailing: { Text("until \(GameCalendar.dateString(week: o.expiresWeek))").font(.system(size: 11)).foregroundStyle(Theme.caution) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("\(o.seller) of \(o.sellerCompany) offers \(o.pct)% of \(o.target).").font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                KeyFigures(items: [
+                FigureCard(items: [
                     .init(label: "Price", value: cur.tidyShort(o.price)),
                     .init(label: "Profit share", value: cur.tidyShort(o.yearlyProfitShare), sub: "a year"),
                     .init(label: "Your own money", value: cur.tidyShort(f.own), tint: Payments.liquid(engine.state) < f.own ? Theme.loss : Theme.ivory),
                     .init(label: "Loan", value: f.borrow > 0 ? cur.tidyShort(f.borrow) : "None", sub: f.borrow > 0 ? "10 years at bank rate + 2%" : ""),
                 ], columns: 2)
                 if warn { Text("If rates rise two points, the interest on the loan would cost more than the profit share brings.").font(.caption).foregroundStyle(Theme.caution) }
-                HStack {
+                WrapRow {
                     Button("Accept") {
                         pending = PendingAction(title: "Buy \(o.pct)% of \(o.target) for \(cur.tidyShort(o.price))?",
                                                 message: "\(cur.tidyDisplay(f.own)) from your cash and savings" + (f.borrow > 0 ? ", \(cur.tidyDisplay(f.borrow)) as a 10-year acquisition loan in your name" : "") + ". You receive about \(cur.tidyDisplay(o.yearlyProfitShare)) a year as your share of the profit; the value can fall.",
@@ -90,16 +90,16 @@ private struct BigMeetingCard: View {
                             default: store.show("The offer has gone.", tone: "warn")
                             }
                         }
-                    }.buttonStyle(SmallGoldButtonStyle())
+                    }.buttonStyle(QuietButtonStyle())
                     if !o.countered {
                         Button("Counter −10%") {
                             pending = PendingAction(title: "Ask for 10% off?", message: "They may accept the lower price, or withdraw the offer for good.", button: "Counter") {
                                 let r = store.act { $0.counterBigMeetingOffer() } ?? nil
                                 store.show(r == true ? "They accepted the lower price." : r == false ? "They refused and withdrew the offer." : "The offer has gone.", tone: r == true ? "good" : "warn")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                     }
-                    Button("Walk away") { store.settle(store.act { $0.walkAwayFromBigMeeting() }, "You walked away from the offer.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
+                    Button("Walk away") { store.settle(store.act { $0.walkAwayFromBigMeeting() }, "You walked away from the offer.", same: "That offer had already gone.") }.buttonStyle(GreyOutlineButtonStyle())
                 }
             }
         }
@@ -124,7 +124,7 @@ private struct FoundedStartups: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Your record: \(r.exits) exit\(r.exits == 1 ? "" : "s") · \(r.fails) failure\(r.fails == 1 ? "" : "s")").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                 Spacer()
-                Button("Found a startup") { founding = true }.buttonStyle(SmallGoldButtonStyle())
+                Button("Found a startup") { founding = true }.buttonStyle(QuietButtonStyle())
             }
             if live.isEmpty {
                 Text("You run no startup. Found one: you put in the seed money, hire builders, and raise rounds from investors as the product takes shape. Most fail; a few sell for many times what went in.")
@@ -132,7 +132,7 @@ private struct FoundedStartups: View {
             }
             ForEach(live) { f in FoundedCard(engine: engine, startup: f) }
             if !past.isEmpty {
-                Button(showPast ? "Hide past startups" : "Past startups (\(past.count))") { showPast.toggle() }.buttonStyle(SmallOutlineButtonStyle())
+                Button(showPast ? "Hide past startups" : "Past startups (\(past.count))") { showPast.toggle() }.buttonStyle(GreyOutlineButtonStyle())
                 if showPast {
                     ForEach(past) { f in
                         FlatRow(label: f.name, value: f.exited ? engine.homeCurrency.tidyShort(f.exitValue) : "Closed", sub: "\(f.sectorName) · \(f.stageName)", tint: f.exited ? Theme.gain : Theme.ivoryFaint)
@@ -157,9 +157,9 @@ private struct FoundedCard: View {
         let monthlyBurn = f.burn * 52 / 12
         let interest = engine.startupInterest(startupID: f.id)
         let topUp = cur.scaledPrice(100000)
-        LedgerSection(title: f.name, trailing: { Text("\(f.productName) · \(f.stageName)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: f.name, trailing: { Text("\(f.productName) · \(f.stageName)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                KeyFigures(items: [
+                FigureCard(items: [
                     .init(label: "You own", value: "\(Int(f.ownership.rounded()))%", sub: "worth \(cur.tidyShort(f.valuation * f.ownership / 100))"),
                     .init(label: "Cash", value: cur.tidyShort(f.cash), tint: f.runwayWeeks < 8 ? Theme.loss : Theme.ivory, sub: "\(f.runwayWeeks) weeks of runway"),
                     .init(label: "Burn", value: cur.tidyShort(monthlyBurn), sub: "a month"),
@@ -182,8 +182,8 @@ private struct FoundedCard: View {
                                     let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
                                     store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
                                 }
-                            }.buttonStyle(SmallGoldButtonStyle())
-                            Button("Decline") { store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.") }.buttonStyle(SmallOutlineButtonStyle())
+                            }.buttonStyle(QuietButtonStyle())
+                            Button("Decline") { store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.") }.buttonStyle(GreyOutlineButtonStyle())
                         }
                     }.padding(.vertical, 4)
                 }
@@ -196,31 +196,31 @@ private struct FoundedCard: View {
                             case .tooSoon(let w)?: store.show("Too soon to pitch again: \(w) week\(w == 1 ? "" : "s") to go.", tone: "n")
                             default: store.show("This startup is no longer running.", tone: "warn")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                         Button("Put in \(cur.tidyShort(topUp))") {
                             pending = PendingAction(title: "Put \(cur.tidyShort(topUp)) into \(f.name)?", message: "From your own cash. It buys about \(Int((topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.", button: "Put it in") {
                                 let ok = store.act { $0.putMoneyIntoStartup(startupID: f.id, amount: topUp) } ?? false
                                 store.show(ok ? "\(cur.tidyShort(topUp)) put in." : "Not enough cash.", tone: ok ? "good" : "warn")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                         if let p = f.product {
                             Button("− builder") {
                                 store.settle(store.act { $0.changeBuilders(startupID: f.id, by: -1) }, "One builder fewer: slower work, lower costs.")
-                            }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.builders == 0)
+                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.builders == 0)
                             Button("+ builder") {
                                 store.settle(store.act { $0.changeBuilders(startupID: f.id, by: 1) }, "One more builder: faster work, higher monthly cost.")
-                            }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.builders >= 10)
+                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.builders >= 10)
                             Button(p.selfHours > 0 ? "Stop working on it" : "Work on it yourself") {
                                 let ok = store.act { $0.toggleOwnerHoursOnProduct(startupID: f.id) } ?? false
                                 store.show(ok ? (p.selfHours > 0 ? "You stopped working on the product." : "You now put your free hours into the product.") : "You cannot build this product yourself.", tone: ok ? "good" : "warn")
-                            }.buttonStyle(SmallOutlineButtonStyle())
+                            }.buttonStyle(GreyOutlineButtonStyle())
                         }
                         Button("Shut down") {
                             pending = PendingAction(title: "Shut down \(f.name)?", message: "The team goes and the product stops. What cash is left comes back after costs; your stake is lost and it counts as a failure.", button: "Shut down", destructive: true) {
                                 let back = store.act { $0.shutDownStartup(startupID: f.id) } ?? nil
                                 store.show(back.map { "Shut down. \(cur.tidyShort($0)) comes back to you." } ?? "It was already closed.", tone: "n")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                     }
                 }
                 if let p = f.product, p.ready {
@@ -238,7 +238,7 @@ private struct FoundedCard: View {
                                 Button(using ? "Stop" : "Use") {
                                     let ok = store.act { $0.toggleProductUse(startupID: f.id, companyID: c.company.id) } ?? false
                                     store.show(ok ? (using ? "\(c.company.name) stopped using it." : "\(c.company.name) now uses it.") : "Not possible right now.", tone: ok ? "good" : "warn")
-                                }.buttonStyle(SmallOutlineButtonStyle())
+                                }.buttonStyle(GreyOutlineButtonStyle())
                             }
                         }
                     }
@@ -250,7 +250,7 @@ private struct FoundedCard: View {
                                 Button("\(pct)%") {
                                     store.act { $0.setProductInternalPrice(startupID: f.id, percent: Double(pct)) }
                                     store.show("Your own companies pay \(pct)% of the list price for \(f.productName.isEmpty ? "the product" : f.productName).", tone: "n")
-                                }.buttonStyle(SmallOutlineButtonStyle()).opacity(Int(p.internalPrice.rounded()) == pct ? 1 : 0.5)
+                                }.buttonStyle(GreyOutlineButtonStyle()).opacity(Int(p.internalPrice.rounded()) == pct ? 1 : 0.5)
                             }
                         }
                     }
@@ -272,7 +272,7 @@ private struct FoundedCard: View {
                                         case .some(.some(false)): store.show("\(r.name) said no this time. You can ask again in a few weeks.", tone: "warn")
                                         default: store.show("That pitch is not possible now.", tone: "warn")
                                         }
-                                    }.buttonStyle(SmallOutlineButtonStyle()).disabled(r.waitWeeks > 0)
+                                    }.buttonStyle(GreyOutlineButtonStyle()).disabled(r.waitWeeks > 0)
                                 }
                             }
                         }
@@ -302,9 +302,14 @@ private struct FoundStartupSheet: View {
     @State private var modelID = ""
     @State private var who = "c2"
     @State private var seed = 1.0
+    @State private var pending: PendingAction?
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            AppHeader(title: "Found a startup", subtitle: "Sector, product, builders and seed money") {
+                QuietButton(title: "Close") { dismiss() }
+            }
+            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 10)
             ScrollView {
                 if let e = store.engine, let sec = StartupProducts.sector(sectorID) {
                     let cur = e.homeCurrency
@@ -313,24 +318,21 @@ private struct FoundStartupSheet: View {
                     let whoNow = who == "self" && !sec.canBuildYourself ? "c2" : who
                     let plan = e.startupPlan(sector: sec.id, who: whoNow, seedMultiple: seed)
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        LedgerSection("Sector") {
+                        CardSection("Sector") {
                             Picker("Sector", selection: $sectorID) { ForEach(StartupProducts.sectors) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                             Text("Capital need \(sec.capitalNeed) of 4 · built by \(sec.builders)" + (sec.canBuildYourself ? " · you can build it yourself" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                         }
-                        LedgerSection("Product and how customers pay") {
+                        CardSection("Product and how customers pay") {
                             Picker("Product", selection: Binding(get: { product.id }, set: { productID = $0 })) { ForEach(sec.products, id: \.id) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                             Picker("Model", selection: Binding(get: { model.id }, set: { modelID = $0 })) { ForEach(sec.models, id: \.id) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                         }
-                        LedgerSection("Who builds it") {
-                            Picker("Builders", selection: $who) {
-                                if sec.canBuildYourself { Text("You").tag("self") }
-                                Text("2 builders").tag("c2")
-                                Text("4 builders").tag("c4")
-                            }.pickerStyle(.segmented)
-                            Picker("Seed money", selection: $seed) { Text("Lean").tag(1.0); Text("Double").tag(2.0); Text("Four times").tag(4.0) }.pickerStyle(.segmented)
+                        CardSection("Who builds it") {
+                            let builderChoices: [String] = sec.canBuildYourself ? ["self", "c2", "c4"] : ["c2", "c4"]
+                            SegmentedPill(items: builderChoices, title: { $0 == "self" ? "You" : $0 == "c2" ? "2 builders" : "4 builders" }, selection: Binding(get: { whoNow }, set: { who = $0 }))
+                            SegmentedPill(items: [1.0, 2.0, 4.0], title: { $0 == 1.0 ? "Lean" : $0 == 2.0 ? "Double" : "Four times" }, selection: $seed)
                         }
                         if let p = plan {
-                            KeyFigures(items: [
+                            FigureCard(items: [
                                 .init(label: "Seed money", value: cur.tidyShort(p.seed), tint: Payments.liquid(e.state) < p.seed ? Theme.loss : Theme.ivory, sub: "from your cash"),
                                 .init(label: "Builders", value: p.builders == 0 ? "You" : "\(p.builders)", sub: p.builders == 0 ? "your free hours" : "\(cur.tidyShort(p.buildersMonthly)) a month"),
                                 .init(label: "Runway", value: "\(p.runwayWeeks) wk"),
@@ -340,23 +342,27 @@ private struct FoundStartupSheet: View {
                             ])
                             Text("Risk: most startups fail and the seed money is lost. Each round brings money in but makes your share smaller. If the runway ends before the product sells, raise a round or put money in.")
                                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                            Button("Found it for \(cur.tidyShort(p.seed))") {
-                                switch store.act({ $0.foundStartup(name: nil, sector: sec.id, product: product.id, model: model.id, who: whoNow, seedMultiple: seed) }) {
-                                case .ok?: Haptics.success(); store.show("Founded. Build the product, then raise a round.", tone: "good"); dismiss()
-                                case .notEnoughMoney(let need)?: Haptics.warning(); store.show("You need \(cur.tidyShort(need)) in cash.", tone: "warn")
-                                default: store.show("That sector is not available.", tone: "warn")
+                            QuietButton(title: "Found it for \(cur.tidyShort(p.seed))", fullWidth: true) {
+                                pending = PendingAction(title: "Found a \(sec.name) startup?",
+                                                        message: "\(cur.tidyDisplay(p.seed)) of seed money leaves your cash now. Most startups fail and the seed money is lost.",
+                                                        button: "Found it for \(cur.tidyShort(p.seed))", amount: p.seed, currency: cur) {
+                                    switch store.act({ $0.foundStartup(name: nil, sector: sec.id, product: product.id, model: model.id, who: whoNow, seedMultiple: seed) }) {
+                                    case .ok?: Haptics.success(); store.show("Founded. Build the product, then raise a round.", tone: "good"); dismiss()
+                                    case .notEnoughMoney(let need)?: Haptics.warning(); store.show("You need \(cur.tidyShort(need)) in cash.", tone: "warn")
+                                    default: store.show("That sector is not available.", tone: "warn")
+                                    }
                                 }
-                            }.buttonStyle(GoldButtonStyle())
+                            }
                         }
                     }
-                    .padding(Theme.Space.margin)
+                    .padding(.horizontal, 18).padding(.bottom, 30)
                 }
             }
-            .ledgerBackground()
-            .navigationTitle("Found a startup").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
-            .onChange(of: sectorID) { _, _ in productID = ""; modelID = "" }
+            .scrollIndicators(.hidden)
         }
+        .ledgerBackground()
+        .confirmAction($pending)
+        .onChange(of: sectorID) { _, _ in productID = ""; modelID = "" }
     }
 }
 
@@ -373,20 +379,20 @@ private struct BackedStartups: View {
         let stakes = engine.startupStakes
         let minimum = cur.scaledPrice(Startups.minimumInvestment)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection(title: "Your stakes", trailing: { if !stakes.isEmpty { Text("\(stakes.filter { $0.live }.count) live").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) } }) {
+            CardSection(title: "Your stakes", trailing: { if !stakes.isEmpty { Text("\(stakes.filter { $0.live }.count) live").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) } }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if stakes.isEmpty { Text("You hold no stake in someone else's startup.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(stakes.enumerated()), id: \.element.id) { n, st in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         stakeRow(st, cur)
                     }
                 }
             }
-            LedgerSection(title: "Pitches", trailing: { Text("new ones every four weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Pitches", trailing: { Text("new ones every four weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if pitches.isEmpty { Text("No founder is pitching right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(pitches.enumerated()), id: \.element.id) { n, p in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(p.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
@@ -395,9 +401,9 @@ private struct BackedStartups: View {
                             }
                             Text(p.blurb.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                             Text("Raising \(cur.tidyShort(p.raise)) at \(cur.tidyShort(p.preMoney)) before the money · team \(p.team), market \(p.market), traction \(p.traction)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            HStack {
+                            WrapRow {
                                 ForEach(cheques(p, minimum), id: \.self) { amt in
-                                    Button(cur.tidyShort(amt)) { confirmInvest(p, amt, cur) }.buttonStyle(SmallOutlineButtonStyle())
+                                    Button(cur.tidyShort(amt)) { confirmInvest(p, amt, cur) }.buttonStyle(GreyOutlineButtonStyle())
                                 }
                             }
                         }.padding(.vertical, 8)
@@ -452,7 +458,7 @@ private struct BackedStartups: View {
                         Button("Help the team") {
                             let ok = store.act { $0.helpStartupOnBoard(stakeID: st.id) } ?? false
                             store.show(ok ? "You spent time with the team." : "You helped recently.", tone: ok ? "good" : "n")
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                     }
                     ForEach([0.5, 1.0], id: \.self) { f in
                         Button(f == 1 ? "Sell all" : "Sell half") {
@@ -461,7 +467,7 @@ private struct BackedStartups: View {
                                 let v = store.act { $0.sellStartupStake(stakeID: st.id, fraction: f) } ?? 0
                                 store.show(v > 0 ? "Sold for \(cur.tidyShort(v))." : "No buyer.", tone: v > 0 ? "good" : "warn")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle())
+                        }.buttonStyle(GreyOutlineButtonStyle())
                     }
                 }
             }
@@ -482,20 +488,20 @@ private struct PrivateEquityPart: View {
         let offers = engine.privateEquityOffersOnTable
         let worth = engine.netWorth.total
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("Your funds") {
+            CardSection("Your funds") {
                 VStack(alignment: .leading, spacing: 0) {
                     if funds.isEmpty { Text("You have not committed to a fund.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(funds.enumerated()), id: \.element.id) { n, f in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         fundRow(f, cur)
                     }
                 }
             }
-            LedgerSection(title: "Raising money this year", trailing: { Text("a new set each year").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Raising money this year", trailing: { Text("a new set each year").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if offers.isEmpty { Text("No fund is raising money right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(o.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
@@ -504,10 +510,10 @@ private struct PrivateEquityPart: View {
                             }
                             Text(o.description.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                             Text("Manager's record: \(o.trackRecord) · minimum \(cur.tidyShort(o.minimum))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                            HStack {
+                            WrapRow {
                                 ForEach([1.0, 2.0, 4.0], id: \.self) { m in
                                     let amt = o.minimum * m
-                                    Button("Commit \(cur.tidyShort(amt))") { confirmCommit(o, amt, cur) }.buttonStyle(SmallOutlineButtonStyle()).opacity(worth >= amt * 1.5 ? 1 : 0.45)
+                                    Button("Commit \(cur.tidyShort(amt))") { confirmCommit(o, amt, cur) }.buttonStyle(GreyOutlineButtonStyle()).opacity(worth >= amt * 1.5 ? 1 : 0.45)
                                 }
                             }
                         }.padding(.vertical, 8)
@@ -553,7 +559,7 @@ private struct PrivateEquityPart: View {
                 Text(String(format: "%.2f×", f.live ? f.multiple : f.finalMultiple)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.change((f.live ? f.multiple : f.finalMultiple) - 1))
             }
             if f.live {
-                KeyFigures(items: [
+                FigureCard(items: [
                     .init(label: "Committed", value: cur.tidyShort(f.committed), sub: f.toBeCalled > 0 ? "\(cur.tidyShort(f.toBeCalled)) still to call" : "all called"),
                     .init(label: "Value now", value: cur.tidyShort(f.nav)),
                     .init(label: "Paid back", value: cur.tidyShort(f.distributed)),
@@ -566,7 +572,7 @@ private struct PrivateEquityPart: View {
                         let v = store.act { $0.sellFundStake(fundID: f.id) } ?? nil
                         store.show(v.map { "Stake sold for \(cur.tidyShort($0))." } ?? "No buyer for the stake.", tone: v == nil ? "warn" : "good")
                     }
-                }.buttonStyle(SmallOutlineButtonStyle())
+                }.buttonStyle(GreyOutlineButtonStyle())
             }
         }.padding(.vertical, 8)
     }
@@ -582,7 +588,7 @@ private struct GroupStakesPart: View {
         let big = engine.bigMeetingStakes
         let groups = engine.groupStakes
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection("From the big meeting") {
+            CardSection("From the big meeting") {
                 VStack(alignment: .leading, spacing: 0) {
                     if big.isEmpty { Text("No stake yet. Owners of large groups offer stakes at the big meeting from time to time; the offer shows above when it comes.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                     ForEach(Array(big.enumerated()), id: \.element.id) { n, s in
@@ -590,7 +596,7 @@ private struct GroupStakesPart: View {
                     }
                 }
             }
-            LedgerSection("In rival groups") {
+            CardSection("In rival groups") {
                 VStack(alignment: .leading, spacing: 0) {
                     if groups.isEmpty { Text("You hold no shares in a rival group. Offers to buy in come to the Inbox.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
                     ForEach(Array(groups.enumerated()), id: \.element.id) { n, s in
@@ -617,11 +623,11 @@ private struct SoftwarePart: View {
         let builders = engine.state.companies.filter { SoftwareProducts.canBuild($0) || (engine.softwareProduct(companyID: $0.id) != nil && $0.status.isLive) }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if builders.isEmpty {
-                LedgerSection("Software of your own") {
+                CardSection("Software of your own") {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("A web-development company of yours can build software, sell it to customers and let your own companies use it instead of a bought licence. You have no open web-development company.")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        Button("Start a company") { store.showNewCompany = true; store.jump(to: .company) }.buttonStyle(SmallOutlineButtonStyle())
+                        Button("Start a company") { store.showNewCompany = true; store.jump(to: .company) }.buttonStyle(GreyOutlineButtonStyle())
                     }
                 }
             }
@@ -635,7 +641,7 @@ private struct SoftwarePart: View {
     private func start(_ co: Company) -> some View {
         let cur = engine.currency(for: co)
         let coder = cur.scaledPrice(65000) / 12
-        return LedgerSection(title: co.name, trailing: { Text("no product yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        return CardSection(title: co.name, trailing: { Text("no product yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Picker("Kind", selection: $type) { ForEach(SoftwareProducts.types, id: \.id) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                 Picker("Customers pay", selection: $model) { ForEach(SoftwareProducts.models, id: \.id) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
@@ -647,7 +653,7 @@ private struct SoftwarePart: View {
                         let ok = store.act { $0.startSoftware(companyID: co.id, type: type, model: model) } ?? false
                         store.show(ok ? "\(co.name) has started building it." : "\(co.name) cannot start a product now (it must be open).", tone: ok ? "good" : "warn")
                     }
-                }.buttonStyle(SmallGoldButtonStyle())
+                }.buttonStyle(QuietButtonStyle())
             }
         }
     }
@@ -656,9 +662,9 @@ private struct SoftwarePart: View {
         let cur = engine.currency(for: co)
         let coder = cur.scaledPrice(65000) / 12
         let phase = p.phase == .live ? "On sale" : p.phase == .beta ? "Test version" : "Being built"
-        return LedgerSection(title: p.name, trailing: { Text(co.name).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        return CardSection(title: p.name, trailing: { Text(co.name).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                KeyFigures(items: [
+                FigureCard(items: [
                     .init(label: "Stage", value: phase, sub: p.phase == .live ? "" : "\(Int((p.progress * 100).rounded()))% done"),
                     .init(label: "Customers", value: "\(p.customers)"),
                     .init(label: "Sales", value: cur.tidyShort(p.weeklyRevenue), sub: "last week"),
@@ -667,12 +673,12 @@ private struct SoftwarePart: View {
                     .init(label: "Your companies pay", value: "\(p.internalPercent)%", sub: "of list price"),
                 ])
                 HStack {
-                    Button("− coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders - 1) }, "Team: \(max(0, p.coders - 1)) coders.") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders == 0)
-                    Button("+ coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders + 1) }, "Team: \(min(10, p.coders + 1)) coders, about \(cur.tidyShort(coder)) a month more.") }.buttonStyle(SmallOutlineButtonStyle()).disabled(p.coders >= 10)
+                    Button("− coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders - 1) }, "Team: \(max(0, p.coders - 1)) coders.") }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.coders == 0)
+                    Button("+ coder") { store.settle(store.act { $0.setSoftwareCoders(companyID: co.id, coders: p.coders + 1) }, "Team: \(min(10, p.coders + 1)) coders, about \(cur.tidyShort(coder)) a month more.") }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.coders >= 10)
                     Button(p.selfHours > 0 ? "Stop coding" : "Code yourself") {
                         store.act { $0.setSoftwareSelfCoding(companyID: co.id, on: p.selfHours == 0) }
                         store.show(p.selfHours > 0 ? "You stopped coding on it." : "You code 20 hours a week on it.", tone: "n")
-                    }.buttonStyle(SmallOutlineButtonStyle())
+                    }.buttonStyle(GreyOutlineButtonStyle())
                 }
                 if engine.canRaiseFunding(companyID: co.id) {
                     let wait = engine.weeksUntilNextPitch(companyID: co.id)
@@ -691,7 +697,7 @@ private struct SoftwarePart: View {
                             case .tooSoon(let w)?: store.show("Too soon to pitch again: \(w.weeksText) to go.", tone: "n")
                             default: store.show("Only a limited company can raise money from investors.", tone: "warn")
                             }
-                        }.buttonStyle(SmallOutlineButtonStyle()).frame(width: 90).disabled(wait > 0)
+                        }.buttonStyle(GreyOutlineButtonStyle()).frame(width: 90).disabled(wait > 0)
                     }
                 }
                 HStack {
@@ -708,7 +714,7 @@ private struct SoftwarePart: View {
                     Spacer()
                     ForEach([0, 50, 100], id: \.self) { pct in
                         Button("\(pct)%") { store.act { $0.setSoftwareInternalPercent(companyID: co.id, percent: pct) }; store.saved("\(pct)% of the product's capacity goes to your own companies.") }
-                            .buttonStyle(SmallOutlineButtonStyle()).opacity(p.internalPercent == pct ? 1 : 0.5)
+                            .buttonStyle(GreyOutlineButtonStyle()).opacity(p.internalPercent == pct ? 1 : 0.5)
                     }
                 }
             }

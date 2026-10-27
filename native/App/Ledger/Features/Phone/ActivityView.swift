@@ -15,27 +15,25 @@ struct ActivityView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if lines.isEmpty {
-                        Text("Nothing has moved yet. Salary, dividends, loans and purchases from your own account are listed here as they happen.")
-                            .font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        NoteCard(text: "Nothing has moved yet. Salary, dividends, loans and purchases from your own account are listed here as they happen.", glyph: Glyph.list)
                     } else {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Balance after the latest line").capsLabel(Theme.ivoryFaint)
-                            Text(store.money(lines[0].balanceAfter)).font(.hero(34)).foregroundStyle(lines[0].balanceAfter < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                        }
-                        KeyFigures(items: [
+                        HeroFigure(label: "Balance after the latest line", value: store.money(lines[0].balanceAfter), tint: lines[0].balanceAfter < 0 ? Theme.loss : Theme.ivory)
+                        FigureCard(items: [
                             .init(label: "Came in", value: "+" + store.short(moneyIn), tint: Theme.gain),
                             .init(label: "Went out", value: "−" + store.short(moneyOut)),
                             .init(label: "Lines", value: e.state.statement.count > shown ? "\(shown) of \(e.state.statement.count)" : "\(lines.count)")
                         ])
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                                if i > 0 { Hairline() }
-                                ListRow(symbol: line.amount >= 0 ? "arrow.down.left" : "arrow.up.right", tint: line.amount >= 0 ? Theme.gain : Theme.ivoryMuted,
-                                        title: line.label,
-                                        subtitle: GameCalendar.dateString(week: line.week, dayOffset: line.day),
-                                        trailing: (line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount)),
-                                        trailingSub: "Balance " + store.short(line.balanceAfter),
-                                        trailingTint: line.amount >= 0 ? Theme.gain : Theme.ivory)
+                        Card(padding: 14) {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
+                                    if i > 0 { CardLine() }
+                                    RowLine(glyph: line.amount >= 0 ? Glyph.arrowIn : Glyph.arrowOut, tint: line.amount >= 0 ? Theme.gain : Theme.ivoryMuted,
+                                            title: line.label,
+                                            subtitle: GameCalendar.dateString(week: line.week, dayOffset: line.day),
+                                            trailing: (line.amount >= 0 ? "+" : "−") + store.short(abs(line.amount)),
+                                            trailingSub: "Balance " + store.short(line.balanceAfter),
+                                            trailingTint: line.amount >= 0 ? Theme.gain : Theme.ivory)
+                                }
                             }
                         }
                         if e.state.statement.count > shown {
@@ -43,12 +41,11 @@ struct ActivityView: View {
                         }
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Activity")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

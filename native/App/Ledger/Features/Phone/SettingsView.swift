@@ -16,49 +16,47 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 group("Feel") {
-                    row("hand.tap", "Haptic feedback") { Toggle("", isOn: $haptics).labelsHidden().tint(Theme.gold).onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) } }
+                    row(Glyph.phone, "Haptic feedback") { Toggle("", isOn: $haptics).labelsHidden().tint(Theme.gold).onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) } }
                 }
                 group("How much I decide", footer: "Routine payroll is approved when the company can pay it, gaps in a team are filled, and small complaints are handled. Campaigns pause when cash would drop below the reserve. Big choices (hiring a manager, loans, sales, legal trouble) always come to your inbox. Sales, closures, loans, dismissals and other irreversible steps always ask, whatever the size you set for spending.") {
-                    row("checkmark.seal", "Approve routine payroll for me") { Toggle("", isOn: $policy.autoPayroll).labelsHidden().tint(Theme.gold) }
-                    Hairline()
-                    row("person.badge.plus", "Replace people who leave", detail: "Recruits at the going rate when there is cash") { Toggle("", isOn: $policy.autoRehire).labelsHidden().tint(Theme.gold) }
-                    Hairline()
-                    row("bubble.left.and.bubble.right", "Staff answer routine complaints", detail: "Serious ones still come to you") { Toggle("", isOn: $policy.autoComplaints).labelsHidden().tint(Theme.gold) }
-                    Hairline()
-                    row("shield", "Cash reserve", detail: policy.reserveWeeks == 0 ? "None" : "\(policy.reserveWeeks.formatted()) weeks of costs") {
+                    row(Glyph.check, "Approve routine payroll for me") { Toggle("", isOn: $policy.autoPayroll).labelsHidden().tint(Theme.gold) }
+                    CardLine()
+                    row(Glyph.hire, "Replace people who leave", detail: "Recruits at the going rate when there is cash") { Toggle("", isOn: $policy.autoRehire).labelsHidden().tint(Theme.gold) }
+                    CardLine()
+                    row(Glyph.people, "Staff answer routine complaints", detail: "Serious ones still come to you") { Toggle("", isOn: $policy.autoComplaints).labelsHidden().tint(Theme.gold) }
+                    CardLine()
+                    row(Glyph.bank, "Cash reserve", detail: policy.reserveWeeks == 0 ? "None" : "\(policy.reserveWeeks.formatted()) weeks of costs") {
                         StepperPill(value: $policy.reserveWeeks, range: 0...8, step: 0.5)
                     }
-                    Hairline()
-                    row("questionmark.circle", "Ask before spending", detail: askDetail) {
+                    CardLine()
+                    row(Glyph.info, "Ask before spending", detail: askDetail) {
                         StepperPill(value: $askStep, range: 0...Double(ConfirmThreshold.sizes.count - 1), step: 1)
                     }
-                    Hairline()
-                    row("banknote", "Pay dividends automatically", detail: policy.autoDividendWeeks == 0 ? "Never" : "Above \(Int(policy.autoDividendWeeks)) weeks of spare cash") {
+                    CardLine()
+                    row(Glyph.invest, "Pay dividends automatically", detail: policy.autoDividendWeeks == 0 ? "Never" : "Above \(Int(policy.autoDividendWeeks)) weeks of spare cash") {
                         StepperPill(value: $policy.autoDividendWeeks, range: 0...26, step: 2)
                     }
                 }
                 group("Saving", footer: "The game saves itself every day, and keeps a backup every month. Imports keep your original file untouched.") {
-                    Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: { ListRow(symbol: "square.and.arrow.down", tint: Theme.ivoryMuted, title: "Save now", chevron: true).padding(.vertical, 4) }.buttonStyle(.plain)
+                    Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: { RowLine(glyph: Glyph.save, title: "Save now", chevron: true) }.buttonStyle(.plain)
                     if let text = store.exportText() {
-                        Hairline()
-                        ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) { ListRow(symbol: "square.and.arrow.up", tint: Theme.ivoryMuted, title: "Export this game", chevron: true) }.buttonStyle(.plain)
+                        CardLine()
+                        ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) { RowLine(glyph: Glyph.share, title: "Export this game", chevron: true) }.buttonStyle(.plain)
                     }
-                    Hairline()
-                    Button { showImporter = true } label: { ListRow(symbol: "tray.and.arrow.down", tint: Theme.ivoryMuted, title: "Import a save from the web game", chevron: true) }.buttonStyle(.plain)
+                    CardLine()
+                    Button { showImporter = true } label: { RowLine(glyph: Glyph.download, title: "Import a save from the web game", chevron: true) }.buttonStyle(.plain)
                 }
                 group("Game") {
-                    Button { confirmQuit = true } label: { ListRow(symbol: "rectangle.portrait.and.arrow.right", tint: Theme.loss, title: "Back to the start screen", subtitle: "Saved first", chevron: true) }.buttonStyle(.plain)
-                    Hairline()
-                    ListRow(symbol: "info.circle", tint: Theme.ivoryMuted, title: "Version", trailing: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                    Button { confirmQuit = true } label: { RowLine(glyph: Glyph.exit, tint: Theme.loss, title: "Back to the start screen", subtitle: "Saved first", chevron: true) }.buttonStyle(.plain)
+                    CardLine()
+                    RowLine(glyph: Glyph.info, title: "Version", trailing: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
                 }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
         .ledgerBackground()
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
         .onChange(of: askStep) { _, v in ConfirmThreshold.step = Int(v); store.saved("asking before spending: " + askDetail.lowercased()) }
         .onChange(of: policy) { old, v in
@@ -103,40 +101,41 @@ struct SettingsView: View {
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {
         let inner = content()
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            LedgerSection(title) { VStack(alignment: .leading, spacing: 0) { inner } }
-            if !footer.isEmpty { Text(footer).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+            CardSection(title) { VStack(alignment: .leading, spacing: 0) { inner } }
+            if !footer.isEmpty { Text(footer).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, 2).fixedSize(horizontal: false, vertical: true) }
         }
     }
 
-    private func row<Trailing: View>(_ symbol: String, _ title: String, detail: String = "", @ViewBuilder trailing: () -> Trailing) -> some View {
+    private func row<Trailing: View>(_ glyph: String, _ title: String, detail: String = "", @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: Theme.Space.m) {
+            IconCircle(glyph: glyph, size: 34)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
-                if !detail.isEmpty { Text(detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+                if !detail.isEmpty { Text(detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             trailing()
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 }
 
-/// Minus and plus in one hairline capsule.
+/// Minus and plus in one grey-outlined box.
 struct StepperPill: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
     var step: Double
     var body: some View {
         HStack(spacing: 0) {
-            Button { value = max(range.lowerBound, value - step); Haptics.choose() } label: { Image(systemName: "minus").frame(width: 38, height: 30) }
+            Button { value = max(range.lowerBound, value - step); Haptics.choose() } label: { GlyphView(glyph: Glyph.minus, size: 14, weight: 2, tint: Theme.gold).frame(width: 40, height: 32) }
                 .disabled(value <= range.lowerBound)
-            Rectangle().fill(Theme.hairline).frame(width: 0.5, height: 16)
-            Button { value = min(range.upperBound, value + step); Haptics.choose() } label: { Image(systemName: "plus").frame(width: 38, height: 30) }
+            Rectangle().fill(Theme.divider).frame(width: 1, height: 18)
+            Button { value = min(range.upperBound, value + step); Haptics.choose() } label: { GlyphView(glyph: Glyph.hire, size: 14, weight: 2, tint: Theme.gold).frame(width: 40, height: 32) }
                 .disabled(value >= range.upperBound)
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(Theme.gold)
         .buttonStyle(.plain)
-        .overlay(Capsule().strokeBorder(Theme.ivory.opacity(0.2), lineWidth: 0.75))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }
 }

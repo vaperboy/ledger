@@ -13,21 +13,18 @@ struct AchievementsView: View {
             let got = entries.filter { $0.reachedWeek != nil }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Trophies").capsLabel()
-                        Text("\(got.count) of \(entries.count)").font(.hero(34)).foregroundStyle(Theme.ivory)
-                    }
-                    KeyFigures(items: [
+                    HeroFigure(label: "Trophies", value: "\(got.count) of \(entries.count)")
+                    FigureCard(items: [
                         .init(label: "Awards won", value: "\(Awards.wonCount(e.state))"),
                         .init(label: "Latest", value: got.max { ($0.reachedWeek ?? 0) < ($1.reachedWeek ?? 0) }?.name ?? "None yet")
                     ], columns: 2)
                     ForEach(Trophies.groups, id: \.id) { g in
                         let list = entries.filter { $0.group == g.id }
                         if !list.isEmpty {
-                            LedgerSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
+                            CardSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
                                 VStack(spacing: 0) {
                                     ForEach(Array(list.enumerated()), id: \.element.id) { i, t in
-                                        if i > 0 { Hairline() }
+                                        if i > 0 { CardLine() }
                                         row(t)
                                     }
                                 }
@@ -35,19 +32,18 @@ struct AchievementsView: View {
                         }
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Achievements")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
     private func row(_ t: Trophies.Entry) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Image(systemName: t.reachedWeek != nil ? "checkmark.circle" : "circle")
-                .font(.system(size: 14)).foregroundStyle(t.reachedWeek != nil ? Theme.gold : Theme.ivoryFaint)
+            GlyphView(glyph: t.reachedWeek != nil ? Glyph.achievements : Glyph.ring, size: 18, weight: 1.5, tint: t.reachedWeek != nil ? Theme.gold : Theme.ivoryDim)
+                .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(t.name).font(.system(size: 14.5)).foregroundStyle(t.reachedWeek != nil ? Theme.ivory : Theme.ivoryMuted)
                 if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
@@ -68,20 +64,19 @@ struct TrophiesPreview: View {
         if let e = store.engine {
             let entries = Trophies.entries(e.state)
             let got = entries.filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
-            LedgerSection(title: "Trophies", trailing: {
-                NavigationLink { AchievementsView() } label: {
-                    HStack(spacing: 4) {
-                        Text("All \(entries.count)").font(.system(size: 12.5, weight: .medium))
-                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
-                    }.foregroundStyle(Theme.gold).frame(minHeight: 44).contentShape(Rectangle())
+            CardSection(title: "Trophies", trailing: {
+                NavigationLink {
+                    AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle)
+                } label: {
+                    LinkLabel(text: "All \(entries.count)")
                 }.buttonStyle(.plain)
             }) {
                 if got.isEmpty {
-                    Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(got.prefix(3).enumerated()), id: \.element.id) { i, t in
-                            if i > 0 { Hairline() }
+                            if i > 0 { CardLine() }
                             ValueRow(label: t.name, value: t.reachedWeek.map { GameCalendar.dateString(week: $0) } ?? "").padding(.vertical, 8)
                         }
                     }

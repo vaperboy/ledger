@@ -16,40 +16,28 @@ struct RankingView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let you = board.you {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Your place by \(metric.title.lowercased())").capsLabel()
-                            Text("#\(you.rank) of \(board.total)").font(.hero(34)).foregroundStyle(Theme.gold)
-                        }
+                        HeroFigure(label: "Your place by \(metric.title.lowercased())", value: "#\(you.rank) of \(board.total)", tint: Theme.gold)
                     }
-                    WrapRow {
-                        ForEach(CompanyRanking.Scope.allCases, id: \.self) { sc in
-                            Button(scopeName(sc, e)) { scope = sc; Haptics.choose() }.buttonStyle(QuietButtonStyle(tint: scope == sc ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
-                    WrapRow {
-                        ForEach(CompanyRanking.Metric.allCases, id: \.self) { m in
-                            Button(m.title) { metric = m; Haptics.choose() }.buttonStyle(QuietButtonStyle(tint: metric == m ? Theme.gold : Theme.ivoryFaint))
-                        }
-                    }
+                    SegmentedPill(items: CompanyRanking.Scope.allCases, title: { scopeName($0, e) }, selection: $scope)
+                    SegmentedPill(items: CompanyRanking.Metric.allCases, title: { $0.title }, selection: $metric)
                     if board.you != nil {
-                        LedgerSection("The biggest") {
+                        CardSection("The biggest") {
                             VStack(spacing: 0) {
                                 ForEach(Array(board.entries.prefix(20).enumerated()), id: \.offset) { i, en in
-                                    if i > 0 { Hairline() }
+                                    if i > 0 { CardLine() }
                                     row(en, e)
                                 }
                             }
                         }
                     } else {
-                        Text("The ranking is locked until you run a business. Open or buy a company and you appear here.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        NoteCard(text: "The ranking is locked until you run a business. Open or buy a company and you appear here.", glyph: Glyph.richList)
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("Biggest companies")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -99,42 +87,44 @@ struct WorldAroundView: View {
             let infl = e.mapInfluence()
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    LedgerSection("Records") {
+                    CardSection("Records") {
                         VStack(spacing: 0) {
                             recordLink(.rival, e.nemesis.map { "\($0.owner) of \($0.groupName): you \($0.wins), them \($0.losses)" } ?? "No rival has picked you yet")
-                            Hairline()
+                            CardLine()
                             recordLink(.topFifty, e.topFifty.map { t in t.yourRank.map { "Last January: you were number \($0) of \(t.of)" } ?? "Last January you were not on it" } ?? "Printed every January")
-                            Hairline()
+                            CardLine()
                             recordLink(.months, "Income, costs and profit by month, per company")
-                            Hairline()
+                            CardLine()
                             recordLink(.crisis, "\(e.crisisCentre.filter { $0.status == "open" }.count) waiting")
-                            Hairline()
+                            CardLine()
                             recordLink(.hall, e.retirementHall.isEmpty ? "Nobody has retired yet" : "\(e.retirementHall.count) retired")
-                            Hairline()
-                            NavigationLink { NewsView() } label: {
-                                ListRow(symbol: "newspaper", tint: Theme.ivoryMuted, title: "Business paper and weather", subtitle: "Front pages, forecasts and visitors", chevron: true).contentShape(Rectangle())
+                            CardLine()
+                            NavigationLink {
+                                NewsView().appScreen(title: "Business paper and weather", subtitle: PhoneApp.news.subtitle)
+                            } label: {
+                                RowLine(glyph: Glyph.news, tint: Theme.gold, title: "Business paper and weather", subtitle: "Front pages, forecasts and visitors", chevron: true)
                             }.buttonStyle(.plain)
                         }
                     }
-                    LedgerSection("Seen as") {
+                    CardSection("Seen as") {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(img.label).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.gold)
                             Text(img.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                             Text("Opens: " + img.opens).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                             Text("Risks: " + img.risks).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-                            Hairline()
+                            CardLine()
                             ForEach(img.groups) { g in
                                 HStack { Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer(); Text(g.word).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
                             }
                         }
                     }
-                    LedgerSection("People you know") {
+                    CardSection("People you know") {
                         if people.isEmpty {
-                            Text("You know nobody in business yet. Open a company and people will find you.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                            Text("You know nobody in business yet. Open a company and people will find you.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                         } else {
                             VStack(spacing: 0) {
                                 ForEach(Array(people.enumerated()), id: \.element.id) { i, c in
-                                    if i > 0 { Hairline() }
+                                    if i > 0 { CardLine() }
                                     HStack(alignment: .firstTextBaseline) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(c.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
@@ -153,10 +143,10 @@ struct WorldAroundView: View {
                         }
                     }
                     if !favours.isEmpty {
-                        LedgerSection("Favours and promises") {
+                        CardSection("Favours and promises") {
                             VStack(spacing: 0) {
                                 ForEach(Array(favours.enumerated()), id: \.element.id) { i, f in
-                                    if i > 0 { Hairline() }
+                                    if i > 0 { CardLine() }
                                     HStack(alignment: .firstTextBaseline) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(f.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
@@ -174,10 +164,10 @@ struct WorldAroundView: View {
                             }
                         }
                     }
-                    LedgerSection("What you own") {
+                    CardSection("What you own") {
                         VStack(spacing: 0) {
                             ForEach(Array(e.mapOwnership().enumerated()), id: \.element.id) { i, n in
-                                if i > 0 { Hairline() }
+                                if i > 0 { CardLine() }
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(n.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
@@ -189,7 +179,7 @@ struct WorldAroundView: View {
                             }
                         }
                     }
-                    LedgerSection("Where you are") {
+                    CardSection("Where you are") {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(e.mapPresence()) { p in
                                 Text(p.flag + " " + p.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ivory)
@@ -200,7 +190,7 @@ struct WorldAroundView: View {
                             }
                         }
                     }
-                    LedgerSection("Circles of influence") {
+                    CardSection("Circles of influence") {
                         VStack(alignment: .leading, spacing: 6) {
                             circle("Inside", infl.inner)
                             circle("Allies", infl.allies)
@@ -208,18 +198,19 @@ struct WorldAroundView: View {
                         }
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("World around you")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
     private func recordLink(_ page: WorldRecordsView.Page, _ preview: String) -> some View {
-        NavigationLink { WorldRecordsView(page: page) } label: {
-            ListRow(symbol: page.symbol, tint: Theme.ivoryMuted, title: page.rawValue, subtitle: preview, chevron: true).contentShape(Rectangle())
+        NavigationLink {
+            WorldRecordsView(page: page).appScreen(title: page.rawValue, subtitle: "Records of the world around you")
+        } label: {
+            RowLine(glyph: page.glyph, tint: Theme.gold, title: page.rawValue, subtitle: preview, chevron: true)
         }.buttonStyle(.plain)
     }
 
@@ -241,7 +232,7 @@ struct DataAnalystCard: View {
 
     var body: some View {
         if let e = store.engine {
-            LedgerSection("Data analyst") {
+            CardSection("Data analyst") {
                 VStack(alignment: .leading, spacing: 8) {
                     if e.hasDataAnalyst {
                         Text("Your data analyst puts ranges on market shares, rivals and price forecasts.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)

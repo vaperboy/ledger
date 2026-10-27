@@ -14,20 +14,18 @@ struct NewsView: View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    SectionTabs(items: Page.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -Theme.Space.margin)
+                    SectionTabs(items: Page.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -18)
                     switch page {
                     case .headlines: headlines(e)
                     case .paper: paper(e)
                     case .weather: WeatherPage(engine: e)
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .navigationTitle("News")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -36,16 +34,16 @@ struct NewsView: View {
     @ViewBuilder private func headlines(_ e: GameEngine) -> some View {
         let news = e.news
         if news.isEmpty {
-            Text("No news yet. Headlines about the economy, your rivals and your companies appear as the weeks go by.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+            NoteCard(text: "No news yet. Headlines about the economy, your rivals and your companies appear as the weeks go by.", glyph: Glyph.news)
         } else {
             // Two sections only: this week (bad news first), then everything older with its date under each line.
             let now = news.filter { $0.week == e.state.week }.sorted { ($0.tone == "bad" ? 0 : 1) < ($1.tone == "bad" ? 0 : 1) }
             let older = news.filter { $0.week != e.state.week }
             if !now.isEmpty {
-                LedgerSection("This week") { newsRows(now, dated: false) }
+                CardSection("This week") { newsRows(now, dated: false) }
             }
             if !older.isEmpty {
-                LedgerSection("Earlier") { newsRows(older, dated: true) }
+                CardSection("Earlier") { newsRows(older, dated: true) }
             }
         }
     }
@@ -53,8 +51,8 @@ struct NewsView: View {
     private func newsRows(_ items: [NewsItem], dated: Bool) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { i, n in
-                if i > 0 { Hairline() }
-                ListRow(symbol: n.tone == "bad" ? "exclamationmark.triangle.fill" : n.tone == "good" ? "arrow.up.right.circle.fill" : "newspaper.fill",
+                if i > 0 { CardLine() }
+                RowLine(glyph: n.tone == "bad" ? Glyph.warning : n.tone == "good" ? Glyph.market : Glyph.news,
                         tint: n.tone == "bad" ? Theme.loss : n.tone == "good" ? Theme.gain : Theme.ivoryMuted, title: n.text,
                         subtitle: dated ? GameCalendar.dateString(week: n.week) : "")
             }
@@ -70,7 +68,7 @@ struct NewsView: View {
             Text(e.paperName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
             Text("The local business paper. A front page every week; interviews arrive in your inbox.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
         }
-        LedgerSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(Theme.gold) }) {
+        CardSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(Theme.gold) }) {
             VStack(spacing: 0) {
                 FlatRow(label: "Trust", value: "\(Int(img.trust.rounded()))", rule: false)
                 FlatRow(label: "Boldness", value: "\(Int(img.bold.rounded()))")
@@ -78,10 +76,10 @@ struct NewsView: View {
             }
         }
         if pages.isEmpty {
-            Text("No front page yet. The first issue is printed at the end of a week with something to report.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+            NoteCard(text: "No front page yet. The first issue is printed at the end of a week with something to report.", glyph: Glyph.news)
         }
         ForEach(Array(pages.enumerated()), id: \.offset) { _, p in
-            LedgerSection(title: GameCalendar.dateString(week: p.week), trailing: { EmptyView() }) {
+            CardSection(title: GameCalendar.dateString(week: p.week), trailing: { EmptyView() }) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(e.displayText(p.headline.tidyMoney)).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                     if !p.deck.isEmpty { Text(e.displayText(p.deck)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
@@ -106,12 +104,6 @@ struct WeatherPage: View {
     }
 
     private func word(_ kind: String) -> String { WeatherEvents.kindWords[kind] ?? kind.capitalized }
-    private func symbol(_ kind: String) -> String {
-        switch kind {
-        case "sun": return "sun.max"; case "rain": return "cloud.rain"; case "snow": return "snowflake"; case "heat": return "thermometer.sun"
-        case "cold": return "thermometer.snowflake"; case "storm": return "cloud.bolt.rain"; default: return "cloud.sun"
-        }
-    }
     private func pct(_ f: Double) -> String { (f >= 1 ? "+" : "−") + "\(Int((abs(f - 1) * 100).rounded()))%" }
 
     var body: some View {
@@ -120,14 +112,18 @@ struct WeatherPage: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if let m = storm {
                 Button { store.go(.openMessage(m.id)) } label: {
-                    HStack(alignment: .firstTextBaseline) {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.loss)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(e.displayText(m.title, companyID: m.companyID)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                            Text("Decide whether to secure your places in the Inbox  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                    Card(padding: 14) {
+                        HStack(alignment: .center, spacing: 12) {
+                            IconCircle(glyph: Glyph.storm, size: 36, tint: Theme.loss)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.displayText(m.title, companyID: m.companyID)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
+                                Text("Decide whether to secure your places in the Inbox").font(.system(size: 12)).foregroundStyle(Theme.gold)
+                            }
+                            Spacer(minLength: 0)
+                            GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
                         }
-                        Spacer(minLength: 0)
-                    }.contentShape(Rectangle())
+                    }
+                    .contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
             companies(e)
@@ -141,25 +137,25 @@ struct WeatherPage: View {
             guard let l = e.weatherLine(companyID: co.id) else { return nil }
             return abs(l.weather - 1) >= 0.03 || abs(l.tourists - 1) >= 0.03 || l.workingTime < 0.97 ? (co, l) : nil
         }
-        LedgerSection(title: "Your companies this week", trailing: { EmptyView() }) {
+        CardSection(title: "Your companies this week", trailing: { EmptyView() }) {
             if open.isEmpty {
-                Text("Once a company is open, this shows how the weather and visitors move its customers.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                Text("Once a company is open, this shows how the weather and visitors move its customers.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
             } else if moved.isEmpty {
                 Text("The weather and visitors move none of your companies by much this week.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(moved.enumerated()), id: \.element.0.id) { i, pair in
                         let (co, l) = pair
-                        if i > 0 { Hairline() }
+                        if i > 0 { CardLine() }
                         Button { store.openCompany(co.id, section: .operations) } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Image(systemName: symbol(l.kind)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(width: 20)
+                                IconCircle(glyph: Glyph.weather(l.kind), size: 32, tint: Theme.ivoryMuted)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(co.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
                                     Text(effects(l)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer(minLength: 8)
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint)
+                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
                             }.padding(.vertical, 8).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                     }
@@ -180,10 +176,10 @@ struct WeatherPage: View {
         let c = e.data.countries[cc]
         let f = e.weatherForecast(countryCode: cc)
         let events = e.touristEvents(countryCode: cc)
-        LedgerSection(title: (c.map { $0.flag + " " + $0.name } ?? cc), trailing: { EmptyView() }) {
+        CardSection(title: (c.map { $0.flag + " " + $0.name } ?? cc), trailing: { EmptyView() }) {
             VStack(spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: symbol(f.now.kind)).font(.system(size: 15)).foregroundStyle(Theme.gold).frame(width: 20)
+                    IconCircle(glyph: Glyph.weather(f.now.kind), size: 36)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("This week: " + word(f.now.kind)).font(.system(size: 14)).foregroundStyle(Theme.ivory)
                         Text("\(f.now.rainyDays) rainy day\(f.now.rainyDays == 1 ? "" : "s")" + (f.now.againstNormal > 0.1 ? " · nicer than usual" : f.now.againstNormal < -0.1 ? " · worse than usual" : ""))
@@ -193,9 +189,9 @@ struct WeatherPage: View {
                     Text("\(Int(f.now.temperature.rounded()))°").font(.system(size: 15).monospacedDigit()).foregroundStyle(Theme.ivory)
                 }.padding(.vertical, 8)
                 ForEach(f.ahead, id: \.week) { d in
-                    Hairline()
+                    CardLine()
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Image(systemName: symbol(d.kind)).font(.system(size: 13)).foregroundStyle(d.kind == "storm" ? Theme.loss : Theme.ivoryMuted).frame(width: 20)
+                        IconCircle(glyph: Glyph.weather(d.kind), size: 30, tint: d.kind == "storm" ? Theme.loss : Theme.ivoryMuted)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Week of " + GameCalendar.dateString(week: d.week)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                             Text(word(d.kind) + (d.uncertain ? " · uncertain" : "")).font(.system(size: 11.5)).foregroundStyle(d.kind == "storm" ? Theme.loss : Theme.ivoryFaint)
@@ -205,10 +201,10 @@ struct WeatherPage: View {
                     }.padding(.vertical, 8)
                 }
                 if !events.isEmpty {
-                    Hairline()
+                    CardLine()
                     ForEach(Array(events.enumerated()), id: \.offset) { _, ev in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Image(systemName: ev.factor >= 1 ? "person.3.fill" : "person.crop.circle.badge.xmark").font(.system(size: 12)).foregroundStyle(ev.factor >= 1 ? Theme.gain : Theme.loss).frame(width: 20)
+                            IconCircle(glyph: Glyph.people, size: 30, tint: ev.factor >= 1 ? Theme.gain : Theme.loss)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(e.displayText(ev.text.tidyMoney)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                                 Text("Visitors \(pct(ev.factor)) until " + GameCalendar.dateString(week: ev.until) + (ev.city.map { " · \($0)" } ?? ""))

@@ -5,7 +5,7 @@ import Simulation
 
 /// Aurum private sales: cars, watches, art, yachts, private jets, homes and estates; and your collection with its uses and estates.
 /// Original: the Aurum shop (features/screens/hiring_place_swipe_luxury.js) and the manage sheets of lifestyle.js and estates.js.
-/// Flat rows between hairlines; nothing here is a card.
+/// Category and collection lists in cards; a piece opens in place to buy, manage or sell it.
 struct LuxuryView: View {
     @EnvironmentObject var store: GameStore
     @State private var tab = "collection"
@@ -19,22 +19,17 @@ struct LuxuryView: View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Aurum").font(.serifTitle(26)).foregroundStyle(Theme.ivory)
-                        Text("Private sales. Paid from your personal cash, delivered, insured and stored for you.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    }
+                    NoteCard(text: "Aurum private sales. Paid from your personal cash, delivered, insured and stored for you.", glyph: Glyph.luxury, tint: Theme.ivoryMuted)
                     SectionTabs(items: ["collection"] + Luxury.categories.map { $0.id }, title: { id in id == "collection" ? "Your collection" : Luxury.categories.first(where: { $0.id == id })?.name ?? id },
-                                selection: Binding(get: { tab }, set: { tab = $0; openItem = nil })).padding(.horizontal, -Theme.Space.margin)
+                                selection: Binding(get: { tab }, set: { tab = $0; openItem = nil })).padding(.horizontal, -18)
                     if tab == "collection" { collection(e) } else if let c = Luxury.categories.first(where: { $0.id == tab }) { shop(e, c) }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .confirmAction($pending)
             .ledgerBackground()
-            .navigationTitle("Luxury")
-            .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog(pendingSell.map { "Sell \($0.item.name)?" } ?? "", isPresented: Binding(get: { pendingSell != nil }, set: { if !$0 { pendingSell = nil } }), titleVisibility: .visible) {
                 if let p = pendingSell {
                     Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))", role: .destructive) {
@@ -64,11 +59,11 @@ struct LuxuryView: View {
     // MARK: Shop
 
     @ViewBuilder private func shop(_ e: GameEngine, _ c: Luxury.Category) -> some View {
-        LedgerSection(title: c.name, trailing: { Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+        CardSection(title: c.name, trailing: { Text("\(c.items.count) pieces").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(spacing: 0) {
                 ForEach(Array(c.items.enumerated()), id: \.element.id) { n, it in
                     VStack(alignment: .leading, spacing: 0) {
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         Button { openItem = openItem == it.id ? nil : it.id } label: {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
@@ -77,7 +72,7 @@ struct LuxuryView: View {
                                 }
                                 Spacer(minLength: 8)
                                 Text(store.short(it.price)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(e.state.cash >= it.price ? Theme.ivory : Theme.ivoryFaint)
-                                Image(systemName: openItem == it.id ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.gold)
+                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openItem == it.id ? 90 : 0))
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         if openItem == it.id { detail(e, it) }
@@ -108,9 +103,9 @@ struct LuxuryView: View {
                         default: Haptics.warning(); store.show("Not possible.", tone: "warn")
                         }
                     }
-                }.buttonStyle(GoldButtonStyle()).disabled(e.state.cash < it.price)
+                }.buttonStyle(QuietButtonStyle()).disabled(e.state.cash < it.price)
                 if !e.luxuryCompanies(itemID: it.id).isEmpty {
-                    Button("Through a company") { companyChoice = it }.buttonStyle(SmallOutlineButtonStyle())
+                    Button("Through a company") { companyChoice = it }.buttonStyle(GreyOutlineButtonStyle())
                 }
             }.padding(.vertical, 10)
         }
@@ -121,22 +116,19 @@ struct LuxuryView: View {
     @ViewBuilder private func collection(_ e: GameEngine) -> some View {
         let pieces = e.luxuryPieces
         let income = pieces.reduce(0) { $0 + $1.weeklyIncome }
-        KeyFigures(items: [
+        FigureCard(items: [
             .init(label: "Worth today", value: store.short(e.luxuryValue), sub: "in your name"),
             .init(label: "Upkeep", value: store.short(Luxury.upkeepPerMonth(e.state)), sub: "a month"),
             .init(label: "Earns", value: income > 0 ? store.short(income * 52 / 12) : "–", tint: income > 0 ? Theme.gain : Theme.ivory, sub: income > 0 ? "a month, before tax" : ""),
         ])
         if pieces.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Nothing yet. What you buy is kept here, with its upkeep and what it earns.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
-                Text("Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-            }
+            NoteCard(text: "Nothing yet. What you buy is kept here, with its upkeep and what it earns. Cash for a purchase: \(store.short(max(0, e.state.cash))). Pick a category above.", glyph: Glyph.luxury)
         }
-        if !pieces.isEmpty { LedgerSection(title: "Pieces", trailing: { Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        if !pieces.isEmpty { CardSection(title: "Pieces", trailing: { Text("tap to manage").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(spacing: 0) {
                 ForEach(Array(pieces.enumerated()), id: \.element.id) { n, p in
                     VStack(alignment: .leading, spacing: 0) {
-                        if n > 0 { Hairline() }
+                        if n > 0 { CardLine() }
                         Button { openPiece = openPiece == p.id ? nil : p.id } label: {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
@@ -149,7 +141,7 @@ struct LuxuryView: View {
                                     Text(Int((p.gain * 100).rounded()) == 0 ? "unchanged" : (p.gain > 0 ? "up " : "down ") + "\(abs(Int((p.gain * 100).rounded())))%")
                                         .font(.system(size: 10.5)).foregroundStyle(Theme.change(p.gain))
                                 }
-                                Image(systemName: openPiece == p.id ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.gold)
+                                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openPiece == p.id ? 90 : 0))
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         if openPiece == p.id { manage(e, p) }
@@ -159,7 +151,7 @@ struct LuxuryView: View {
         } }
         let perks = perkLines(pieces)
         if !perks.isEmpty {
-            LedgerSection("What it does for you") {
+            CardSection("What it does for you") {
                 VStack(spacing: 0) { ForEach(Array(perks.enumerated()), id: \.offset) { n, l in FlatRow(label: l.0, value: l.1, rule: n > 0) } }
             }
         }
@@ -204,14 +196,14 @@ struct LuxuryView: View {
             }
             if !uses.isEmpty && p.use != "museum" {
                 Text("Use").capsLabel(Theme.ivoryFaint).padding(.top, 8)
-                SegmentedChoice(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
+                SegmentedPill(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in
                                 if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } }))
                 if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"
-                SegmentedChoice(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
+                SegmentedPill(items: [true, false], title: { $0 ? "Open for events" : "Keep it private" },
                             selection: Binding(get: { open }, set: { v in
                                 if store.act({ $0.setCastleOpen(pieceID: p.id, open: v) }) != nil { store.saved(v ? "the castle is open for events." : "the castle is private.") } }))
             }
@@ -229,7 +221,7 @@ struct LuxuryView: View {
                             default: store.show("Not possible.", tone: "warn")
                             }
                         }
-                    }.buttonStyle(SmallOutlineButtonStyle()).disabled(q.waitWeeks > 0)
+                    }.buttonStyle(GreyOutlineButtonStyle()).disabled(q.waitWeeks > 0)
                 }
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
@@ -241,18 +233,18 @@ struct LuxuryView: View {
                         default: store.show("Not possible right now.", tone: "warn")
                         }
                         }
-                    }.buttonStyle(SmallOutlineButtonStyle())
+                    }.buttonStyle(GreyOutlineButtonStyle())
                     Button("A week off") {
                         switch store.act({ $0.takeWeekOffOnIsland() }) {
                         case .ok?: store.show("You are away next week.", tone: "good")
                         default: store.show("You are already taking next week off.", tone: "warn")
                         }
-                    }.buttonStyle(SmallOutlineButtonStyle())
+                    }.buttonStyle(GreyOutlineButtonStyle())
                 }
                 if p.use == "museum" && p.until > e.state.week {
-                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(Theme.ivoryMuted)
                 } else {
-                    Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))") { pendingSell = p }.buttonStyle(SmallOutlineButtonStyle())
+                    Button("Sell for \(store.short(p.value * (1 - Luxury.sellFee)))") { pendingSell = p }.buttonStyle(GreyOutlineButtonStyle())
                 }
             }.padding(.vertical, 10)
         }
