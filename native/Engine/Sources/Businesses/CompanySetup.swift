@@ -479,7 +479,7 @@ public enum CompanySetup {
                 // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
                 while n > 0 && attempts < allowed {
                     attempts += 1
-                    let found = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data)
+                    let found = Hiring.search(role: st.role, company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
                     guard !found.isEmpty else { break }
                     if faithfulHiring {
                         let cands = found.sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }

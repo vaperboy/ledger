@@ -15,6 +15,10 @@ Image set name: `thumb-<kind>-<key>` (lower case; keys below are the engine ids,
 
 The code that builds these names is `ThumbnailView.assetName` in `Design/ThumbnailView.swift`.
 
+## Employee faces (faces sheet)
+
+People who work in companies (managers, assistants, staff, candidates and applicants, Team lists, staff profile) show a face cut from one sheet, `Resources/faces-sheet.jpg` (a bundled resource, not an image set): 15 columns x 9 rows = 135 portraits. `Design/FaceSheet.swift` slices it at runtime (centred square of each cell, cached) and holds the tag table (gender, age band, region per cell). A face is picked deterministically from the person's gender (derived from the first name in the engine, `Employees/FaceTraits.swift`), age band and the country of their company; people of one company get different cell and variant pairs where possible. Variants of a cell: mirrored, closer offset crop, and mirrored + closer with a mild warm grade. The player, rivals, the rich list, companies, premises and luxury items do not get faces. If the sheet cannot be loaded the initials circle shows, and a `thumb-person-<role>` image set is used only where no face is requested. To replace the sheet keep the file name, the 15 x 9 grid and the cell order.
+
 ## Premises kinds (11)
 
 `thumb-premises-home`, `thumb-premises-office`, `thumb-premises-shop`, `thumb-premises-kitchen`, `thumb-premises-industrial`, `thumb-premises-warehouse`, `thumb-premises-hotel`, `thumb-premises-clinic`, `thumb-premises-yard`, `thumb-premises-gym`, `thumb-premises-slope`

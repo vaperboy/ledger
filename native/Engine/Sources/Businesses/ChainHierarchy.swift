@@ -62,8 +62,8 @@ extension ManagerModel {
         // The boss looks at what an executive search turns up (three of the trade's own kind, one general), bargains with each, and takes the best value
         // (AutoHire); if nobody comes to terms they look again, up to three times.
         for _ in 0..<3 {
-            var found = (0..<3).map { _ in generateCandidate(company: s.companies[ci], type: bd.managerType, state: &s, data: data) }
-            found.append(generateCandidate(company: s.companies[ci], type: "gen", state: &s, data: data))
+            var found = (0..<3).map { _ in generateCandidate(company: s.companies[ci], type: bd.managerType, faces: false, state: &s, data: data) }
+            found.append(generateCandidate(company: s.companies[ci], type: "gen", faces: false, state: &s, data: data))
             guard let deal = AutoHire.bestManagerDeal(candidates: found, companyID: companyID, hirer: boss.map { AutoHire.hirer(person: $0) }, state: &s, data: data),
                   hire(&s, personID: deal.person.id, companyID: companyID, monthlyWage: deal.price, data: data) == .ok, let n = s.people[deal.person.id] else { continue }
             s.note((by.isEmpty ? "\(n.name) was appointed" : "\(by) appointed \(n.name)") + " as manager of \(s.companies[ci].name)" + (why.isEmpty ? "" : " after \(why)") + ".", tone: "n", companyID: companyID)

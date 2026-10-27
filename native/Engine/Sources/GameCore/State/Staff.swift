@@ -42,7 +42,15 @@ public struct Person: JSONRecord, Identifiable {
     public var claimedSkill: Double { get { num("claimSkill") } set { set("claimSkill", newValue) } }
     public var askingMonthlyWage: Double { get { num("ask") } set { set("ask", newValue) } }
     /// Id of the company that employs the person, 0 if free.
-    public var employerID: Int { get { int("hired") } set { set("hired", newValue) } }
+    /// Setting a real employer (anything but 0 and the "took a job elsewhere" marker -9) also marks the person as hired for good: a hired person's
+    /// portrait stays theirs forever (see Businesses/FaceBook.swift).
+    public var employerID: Int {
+        get { int("hired") }
+        set { set("hired", newValue); if newValue != 0 && newValue != -9 { set("everHired", true) } }
+    }
+    public var everHired: Bool { flag("everHired") }
+    /// The portrait given to this person ("c12.0": sheet, cell, variant), or nil when none is held. Chosen by the engine, only read by screens.
+    public var faceKey: String? { let s = str("face"); return s.isEmpty ? nil : s }
     public var potential: Double? { get { value("pot").isNull ? nil : num("pot") } set { raw["pot"] = newValue.map { .number($0) } ?? .null } }
     public var trait: String? { value("trait").isNull ? nil : str("trait") }
 }

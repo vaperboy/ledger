@@ -364,6 +364,7 @@ public struct GameEngine {
         for id in FinanceModel.insolventCompanies(&state, data: data) {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
+        FaceBook.sweep(&state, data: data)   // portraits: hired people keep theirs for good, stale candidates give theirs back
         snapshot()
         let ctx = context
         Failure.checkOver(&state, data: data, context: ctx, liquidate: { s, need in Brokerage.liquidate(&s, need: need, currency: ctx.homeCurrency(s)); FinanceManager.cashIn(&s, need: need) })
