@@ -56,14 +56,9 @@ struct GroupAttention: View {
     var body: some View {
         let list = items
         if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("NEEDS YOU").font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-                    Spacer()
-                    Text("\(list.count)").font(.system(size: 11)).foregroundStyle(Theme.caution)
-                }
+            MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: list.count, size: .small) }) {
                 ForEach(list.prefix(8)) { it in row(it) }
-                if list.count > 8 { Text("And \(list.count - 8) more under Structure and Board.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                if list.count > 8 { Text("And \(list.count - 8) more under Structure and Board.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
             }
         }
     }
@@ -84,6 +79,7 @@ struct GroupAttention: View {
     }
 }
 
+
 /// Ownership and structure: holdings and the companies under them, chains and their stores, franchises you run and units you hold
 /// under someone's brand, and the companies that stand alone. Summaries scale with the group; each row opens the holding, chain or company.
 struct GroupStructureOverview: View {
@@ -97,120 +93,156 @@ struct GroupStructureOverview: View {
     @State private var aloneAll = false
 
     var body: some View {
-        let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
-        let holdings = engine.holdingCompanies
-        let chains = engine.chainSummaries
-        let franchisors = live.filter { engine.isFranchisor(companyID: $0.id) }
-        let franchised = live.filter { !$0.value("franchise").isNull }
-        let alone = live.filter { $0.value("chain").isNull && $0.value("franchise").isNull && $0.holdingID == 0 && !engine.isFranchisor(companyID: $0.id) }
-        let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
-        if parts.contains(.figures) { LedgerSection("Structure") {
-            VStack(alignment: .leading, spacing: 0) {
-                KeyFigures(items: [
-                    .init(label: "Companies", value: "\(live.count)", sub: "\(Set(live.map { $0.cityID }).count) \(Set(live.map { $0.cityID }).count == 1 ? "city" : "cities")"),
-                    .init(label: "Holdings", value: "\(holdings.count)", sub: "\(live.filter { $0.holdingID != 0 }.count) held"),
-                    .init(label: "Chains", value: "\(chains.count)", sub: "\(chains.reduce(0) { $0 + $1.stores.count }) \(chains.reduce(0) { $0 + $1.stores.count } == 1 ? "store" : "stores")"),
-                    .init(label: "Franchised out", value: "\(units)", sub: "run by others"),
-                    .init(label: "Franchise you hold", value: "\(franchised.count)", sub: "under a brand"),
-                    .init(label: "Stand alone", value: "\(alone.count)", sub: "no group link"),
-                ])
-                if live.isEmpty { Text("Start a company to build a group.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8) }
+        let live: [Company] = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
+        let holdings: [Company] = engine.holdingCompanies
+        let chains: [Chains.Summary] = engine.chainSummaries
+        let franchisors: [Company] = live.filter { engine.isFranchisor(companyID: $0.id) }
+        let franchised: [Company] = live.filter { !$0.value("franchise").isNull }
+        let alone: [Company] = live.filter { $0.value("chain").isNull && $0.value("franchise").isNull && $0.holdingID == 0 && !engine.isFranchisor(companyID: $0.id) }
+        VStack(alignment: .leading, spacing: 16) {
+            if parts.contains(.figures) { figuresSection(live, holdings: holdings, chains: chains, franchisors: franchisors, franchised: franchised, alone: alone) }
+            if parts.contains(.holdings) { holdingsSection(holdings, live: live) }
+            if parts.contains(.chains) { chainsSection(chains) }
+            if parts.contains(.franchises) { franchiseSection(franchisors, franchised, chains: chains) }
+            if parts.contains(.standAlone) { standAloneSection(alone) }
+            if parts.contains(.dividends) { dividendsAndTax(live) }
+        }
+    }
+
+    // MARK: Small pieces
+
+    private func countNote(_ n: Int) -> some View {
+        Text("\(n)").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    private func footnote(_ text: String) -> some View {
+        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+    }
+
+    private func groupLabel(_ text: String) -> some View {
+        Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, 2)
+    }
+
+    // MARK: Figures
+
+    private func figuresSection(_ live: [Company], holdings: [Company], chains: [Chains.Summary], franchisors: [Company], franchised: [Company], alone: [Company]) -> some View {
+        let units: Int = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
+        let cityCount: Int = Set(live.map { $0.cityID }).count
+        let storeCount: Int = chains.reduce(0) { $0 + $1.stores.count }
+        let items: [KeyFigures.Item] = [
+            .init(label: "Companies", value: "\(live.count)", sub: "\(cityCount) \(cityCount == 1 ? "city" : "cities")"),
+            .init(label: "Holdings", value: "\(holdings.count)", sub: "\(live.filter { $0.holdingID != 0 }.count) held"),
+            .init(label: "Chains", value: "\(chains.count)", sub: "\(storeCount) \(storeCount == 1 ? "store" : "stores")"),
+            .init(label: "Franchised out", value: "\(units)", sub: "run by others"),
+            .init(label: "Franchise you hold", value: "\(franchised.count)", sub: "under a brand"),
+            .init(label: "Stand alone", value: "\(alone.count)", sub: "no group link"),
+        ]
+        return MoreBlock("Structure") {
+            VStack(alignment: .leading, spacing: 8) {
+                FigureStrip(items: items, columns: 3)
+                if live.isEmpty { Text("Start a company to build a group.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
             }
-        } }
-        if parts.contains(.holdings) { holdingsSection(holdings, live: live) }
-        if parts.contains(.chains) { chainsSection(chains) }
-        if parts.contains(.franchises) { franchiseSection(franchisors, franchised, chains: chains) }
-        if parts.contains(.standAlone) { standAloneSection(alone) }
-        if parts.contains(.dividends) { dividendsAndTax(live) }
+        }
     }
 
     // MARK: Dividends and group tax
 
+    private func dividendSub(_ c: Company) -> String {
+        let cur: Currency = engine.currency(for: c)
+        let d = engine.lastDividendDecision(companyID: c.id)
+        let t = engine.groupTaxContribution(companyID: c.id)
+        let net: (_ v: (out: Double, in: Double)) -> Double = { $0.in - $0.out }
+        let first: String = d.map { ($0.paid > 0 ? "Last quarter paid \(cur.tidyShort($0.paid))" : "Last quarter skipped") + " on profit \(cur.tidyShort($0.profit))" } ?? "No dividend decided yet"
+        let second: String = t.map { " · group tax this year \(cur.tidyShort(net($0.thisYear))), last year \(cur.tidyShort(net($0.lastYear)))" } ?? ""
+        return first + second
+    }
+
     /// Last quarter's dividend decision and the group-tax position, per company, for the companies that have either. Read-only; each row opens the company's Finances.
     @ViewBuilder private func dividendsAndTax(_ live: [Company]) -> some View {
-        let rows = live.filter { engine.lastDividendDecision(companyID: $0.id) != nil || engine.groupTaxContribution(companyID: $0.id) != nil }
+        let rows: [Company] = live.filter { engine.lastDividendDecision(companyID: $0.id) != nil || engine.groupTaxContribution(companyID: $0.id) != nil }
         if !rows.isEmpty {
-            LedgerSection(title: "Dividends and group tax", trailing: { Text("\(rows.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(rows.prefix(8).enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { Hairline() }
-                        let cur = engine.currency(for: c)
-                        let d = engine.lastDividendDecision(companyID: c.id)
-                        let t = engine.groupTaxContribution(companyID: c.id)
-                        let net: (_ v: (out: Double, in: Double)) -> Double = { $0.in - $0.out }
-                        NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
-                            GroupLinkRow(title: c.name,
-                                         sub: (d.map { ($0.paid > 0 ? "Last quarter paid \(cur.tidyShort($0.paid))" : "Last quarter skipped") + " on profit \(cur.tidyShort($0.profit))" } ?? "No dividend decided yet")
-                                            + (t.map { " · group tax this year \(cur.tidyShort(net($0.thisYear))), last year \(cur.tidyShort(net($0.lastYear)))" } ?? ""),
-                                         subTint: (d?.paid ?? 1) > 0 ? Theme.ivoryFaint : Theme.caution)
-                        }.buttonStyle(.plain)
-                    }
-                    if rows.count > 8 { Text("The rest are in each company's Finances.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6) }
-                    Text("Group tax is what came in (+) or went out (−) between group companies. The policy is set in the company's owners.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+            MoreBlock(title: "Dividends and group tax", card: false, trailing: { countNote(rows.count) }) {
+                ForEach(rows.prefix(8)) { c in
+                    NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
+                        CardRow(glyph: Glyph.reports, title: c.name, subtitle: dividendSub(c))
+                    }.buttonStyle(.plain)
                 }
+                if rows.count > 8 { footnote("The rest are in each company's Finances.") }
+                footnote("Group tax is what came in (+) or went out (−) between group companies. The policy is set in the company's owners.")
             }
         }
     }
 
     // MARK: Stand alone
 
+    private func aloneRows(_ alone: [Company]) -> [(co: Company, h: CompanyHealth)] {
+        let q: String = aloneQuery.trimmingCharacters(in: .whitespaces)
+        return alone.map { (co: $0, h: engine.companyHealth($0)) }
+            .filter { q.isEmpty || $0.co.name.localizedCaseInsensitiveContains(q) || engine.cityName($0.co).localizedCaseInsensitiveContains(q) || engine.tradeName($0.co).localizedCaseInsensitiveContains(q) }
+            .sorted { $0.h.profitTTM < $1.h.profitTTM }
+    }
+
+    private var aloneSearch: some View {
+        Card(padding: 10, radius: Theme.Radius.table) {
+            HStack(spacing: 8) {
+                GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
+                TextField("Name, city or trade", text: $aloneQuery).textFieldStyle(.plain).font(.system(size: 13.5))
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+            }
+        }
+    }
+
+    private func aloneRow(_ co: Company, _ h: CompanyHealth) -> some View {
+        let sub: String = "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(h.label) · value \(store.short(h.value, in: co))"
+        return NavigationLink(value: CompanyRoute.company(co.id)) {
+            CardRow(glyph: Glyph.home, title: co.name, subtitle: sub, value: store.short(h.profitTTM, in: co) + " / yr", valueTint: h.profitTTM < 0 ? Theme.loss : Theme.ivory)
+        }.buttonStyle(.plain)
+    }
+
     /// Companies that belong to no chain, franchise or holding: key figures per company, opened in place (Back returns here).
     @ViewBuilder private func standAloneSection(_ alone: [Company]) -> some View {
         if !alone.isEmpty {
-            let q = aloneQuery.trimmingCharacters(in: .whitespaces)
-            let rows = alone.map { (co: $0, h: engine.companyHealth($0)) }
-                .filter { q.isEmpty || $0.co.name.localizedCaseInsensitiveContains(q) || engine.cityName($0.co).localizedCaseInsensitiveContains(q) || engine.tradeName($0.co).localizedCaseInsensitiveContains(q) }
-                .sorted { $0.h.profitTTM < $1.h.profitTTM }
-            let cap = aloneAll || !q.isEmpty ? rows.count : 8
-            LedgerSection(title: "Stand alone", trailing: { Text("\(alone.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if alone.count > 8 {
-                        TextField("Name, city or trade", text: $aloneQuery).textFieldStyle(.plain).font(.system(size: 13.5)).textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .padding(.vertical, 8).overlay(alignment: .bottom) { Hairline() }
-                    }
-                    if rows.isEmpty { Text("No company matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).padding(.vertical, 8) }
-                    ForEach(Array(rows.prefix(cap).enumerated()), id: \.element.co.id) { n, r in
-                        if n > 0 { Hairline() }
-                        NavigationLink(value: CompanyRoute.company(r.co.id)) {
-                            GroupLinkRow(title: r.co.name,
-                                         sub: "\(engine.tradeName(r.co)) · \(engine.cityName(r.co)) · \(r.h.label) · value \(store.short(r.h.value, in: r.co))",
-                                         trailing: store.short(r.h.profitTTM, in: r.co) + " / yr", tint: r.h.profitTTM < 0 ? Theme.loss : Theme.ivory,
-                                         subTint: r.h.label == "Struggling" || r.h.label == "Tight" ? Theme.caution : Theme.ivoryFaint)
-                        }.buttonStyle(.plain)
-                    }
-                    if rows.count > 8 && q.isEmpty {
-                        Button(aloneAll ? "Show fewer" : "Show all \(rows.count)") { aloneAll.toggle() }.buttonStyle(QuietButtonStyle()).padding(.top, 6)
-                    }
-                    Text("Profit is the last twelve months. Comparisons across all companies stay under Company.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+            let q: String = aloneQuery.trimmingCharacters(in: .whitespaces)
+            let rows = aloneRows(alone)
+            let cap: Int = aloneAll || !q.isEmpty ? rows.count : 8
+            MoreBlock(title: "Stand alone", card: false, trailing: { countNote(alone.count) }) {
+                if alone.count > 8 { aloneSearch }
+                if rows.isEmpty { Text("No company matches.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
+                ForEach(rows.prefix(cap), id: \.co.id) { r in aloneRow(r.co, r.h) }
+                if rows.count > 8 && q.isEmpty {
+                    QuietButton(title: aloneAll ? "Show fewer" : "Show all \(rows.count)") { aloneAll.toggle() }
                 }
+                footnote("Profit is the last twelve months. Comparisons across all companies stay under Company.")
             }
         }
     }
 
     // MARK: Holdings
 
+    private func holdingSub(_ subs: [Company]) -> String {
+        if subs.isEmpty { return "No companies under it yet" }
+        let names: String = subs.prefix(3).map { $0.name }.joined(separator: ", ")
+        return "\(subs.count) \(subs.count == 1 ? "company" : "companies"): " + names + (subs.count > 3 ? "…" : "")
+    }
+
     @ViewBuilder private func holdingsSection(_ holdings: [Company], live: [Company]) -> some View {
         let free = engine.companiesForHolding
         if !holdings.isEmpty || !free.isEmpty {
-            LedgerSection(title: "Holding companies", trailing: { Text("\(holdings.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(holdings.enumerated()), id: \.element.id) { n, h in
-                        if n > 0 { Hairline() }
-                        let subs = live.filter { $0.holdingID == h.id }
-                        NavigationLink(value: CompanyRoute.companyAt(h.id, .holding)) {
-                            GroupLinkRow(title: h.name,
-                                         sub: subs.isEmpty ? "No companies under it yet" : "\(subs.count) \(subs.count == 1 ? "company" : "companies"): " + subs.prefix(3).map { $0.name }.joined(separator: ", ") + (subs.count > 3 ? "…" : ""),
-                                         trailing: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h))
-                        }.buttonStyle(.plain)
-                    }
-                    if !holdings.isEmpty && !free.isEmpty {
-                        Text("\(free.count) limited \(free.count == 1 ? "company is" : "companies are") still owned by you directly. Put them under a holding on its page.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
-                    }
-                    if holdings.isEmpty {
-                        NavigationLink { NewHoldingView() } label: {
-                            GroupLinkRow(title: "Set up a holding company", sub: "Dividends into it are taxed far lower; companies it owns 90% of share profits and losses for tax.")
-                        }.buttonStyle(.plain)
-                    }
+            MoreBlock(title: "Holding companies", card: false, trailing: { countNote(holdings.count) }) {
+                ForEach(holdings) { h in
+                    let subs: [Company] = live.filter { $0.holdingID == h.id }
+                    NavigationLink(value: CompanyRoute.companyAt(h.id, .holding)) {
+                        CardRow(glyph: Glyph.bank, title: h.name, subtitle: holdingSub(subs),
+                                value: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h))
+                    }.buttonStyle(.plain)
+                }
+                if !holdings.isEmpty && !free.isEmpty {
+                    footnote("\(free.count) limited \(free.count == 1 ? "company is" : "companies are") still owned by you directly. Put them under a holding on its page.")
+                }
+                if holdings.isEmpty {
+                    NavigationLink { NewHoldingView() } label: {
+                        CardRow(glyph: Glyph.hire, title: "Set up a holding company", subtitle: "Dividends into it are taxed far lower; companies it owns 90% of share profits and losses for tax.")
+                    }.buttonStyle(.plain)
                 }
             }
         }
@@ -218,29 +250,29 @@ struct GroupStructureOverview: View {
 
     // MARK: Chains
 
+    private func chainSub(_ s: Chains.Summary) -> String {
+        let cities: Int = Set(s.stores.map { $0.cityName }).count
+        let losing: Int = s.stores.filter { $0.status == .open && $0.profit < 0 }.count
+        let base: String = "\(s.stores.count) \(s.stores.count == 1 ? "store" : "stores") in \(cities) \(cities == 1 ? "city" : "cities") · \(s.reach.label)"
+        let units: String = s.franchiseUnits > 0 ? " · \(s.franchiseUnits) franchise units" : ""
+        let bad: String = losing > 0 ? " · \(losing) losing money" : ""
+        return base + units + bad
+    }
+
     @ViewBuilder private func chainsSection(_ chains: [Chains.Summary]) -> some View {
         let loose = engine.looseStoreGroups
         if !chains.isEmpty || !loose.isEmpty {
-            LedgerSection(title: "Chains", trailing: { Text("\(chains.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(chains.enumerated()), id: \.element.id) { n, s in
-                        if n > 0 { Hairline() }
-                        let cities = Set(s.stores.map { $0.cityName }).count
-                        let losing = s.stores.filter { $0.status == .open && $0.profit < 0 }.count
-                        NavigationLink { ChainView(chainID: s.id) } label: {
-                            GroupLinkRow(title: s.name,
-                                         sub: "\(s.stores.count) \(s.stores.count == 1 ? "store" : "stores") in \(cities) \(cities == 1 ? "city" : "cities") · \(s.reach.label)" + (s.franchiseUnits > 0 ? " · \(s.franchiseUnits) franchise units" : "") + (losing > 0 ? " · \(losing) losing money" : ""),
-                                         trailing: engine.homeCurrency.tidyShort(s.profit) + " / mo", tint: s.profit < 0 ? Theme.loss : Theme.ivory,
-                                         subTint: losing > 0 ? Theme.caution : Theme.ivoryFaint)
+            MoreBlock(title: "Chains", card: false, trailing: { countNote(chains.count) }) {
+                ForEach(chains) { s in
+                    NavigationLink { ChainView(chainID: s.id) } label: {
+                        CardRow(glyph: Glyph.group, title: s.name, subtitle: chainSub(s), value: engine.homeCurrency.tidyShort(s.profit) + " / mo", valueTint: s.profit < 0 ? Theme.loss : Theme.ivory)
+                    }.buttonStyle(.plain)
+                }
+                ForEach(loose) { g in
+                    if let id = g.companyIDs.first {
+                        NavigationLink(value: CompanyRoute.companyAt(id, .chain)) {
+                            CardRow(glyph: Glyph.home, title: g.name, subtitle: "\(g.companyIDs.count) \(engine.data.catalog[g.tradeID]?.name.lowercased() ?? "stores") under one name · register them as a chain")
                         }.buttonStyle(.plain)
-                    }
-                    ForEach(Array(loose.enumerated()), id: \.element.id) { n, g in
-                        if n > 0 || !chains.isEmpty { Hairline() }
-                        if let id = g.companyIDs.first {
-                            NavigationLink(value: CompanyRoute.companyAt(id, .chain)) {
-                                GroupLinkRow(title: g.name, sub: "\(g.companyIDs.count) \(engine.data.catalog[g.tradeID]?.name.lowercased() ?? "stores") under one name · register them as a chain", subTint: Theme.gold)
-                            }.buttonStyle(.plain)
-                        }
                     }
                 }
             }
@@ -251,58 +283,45 @@ struct GroupStructureOverview: View {
 
     @ViewBuilder private func franchiseSection(_ franchisors: [Company], _ franchised: [Company], chains: [Chains.Summary]) -> some View {
         let brands = engine.franchiseBrands()
-        let byBrand = Dictionary(grouping: franchised) { $0.value("franchise")["brandName"].string }
-        let brandNames = byBrand.keys.sorted()
+        let byBrand: [String: [Company]] = Dictionary(grouping: franchised) { $0.value("franchise")["brandName"].string }
+        let brandNames: [String] = byBrand.keys.sorted()
         if !franchisors.isEmpty || !franchised.isEmpty || !brands.isEmpty {
-            LedgerSection("Franchises") {
-                VStack(alignment: .leading, spacing: 0) {
-                    if !franchisors.isEmpty { Text("Your concept, run by others").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6) }
-                    ForEach(Array(franchisors.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { Hairline() }
-                        franchisorRow(c, chain: chains.first { $0.stores.contains { $0.id == c.id } })
-                    }
-                    if !franchised.isEmpty {
-                        Text("You as franchisee").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.top, franchisors.isEmpty ? 0 : 12).padding(.bottom, 6)
-                    }
-                    ForEach(Array(brandNames.enumerated()), id: \.element) { n, b in
-                        if n > 0 { Hairline() }
-                        brandRow(b, byBrand[b] ?? [])
-                    }
-                    if !brands.isEmpty {
-                        if !franchisors.isEmpty || !franchised.isEmpty { Hairline() }
-                        NavigationLink { FranchisesView() } label: {
-                            GroupLinkRow(title: "Join a franchise", sub: "A known brand, their rules, a fee · \(brands.count) \(brands.count == 1 ? "brand takes" : "brands take") franchisees", subTint: Theme.gold)
-                        }.buttonStyle(.plain)
-                    }
+            MoreBlock("Franchises", card: false) {
+                if !franchisors.isEmpty { groupLabel("Your concept, run by others") }
+                ForEach(franchisors) { c in franchisorRow(c, chain: chains.first { $0.stores.contains { $0.id == c.id } }) }
+                if !franchised.isEmpty { groupLabel("You as franchisee") }
+                ForEach(brandNames, id: \.self) { b in brandRow(b, byBrand[b] ?? []) }
+                if !brands.isEmpty {
+                    NavigationLink { FranchisesView() } label: {
+                        CardRow(glyph: Glyph.hire, title: "Join a franchise", subtitle: "A known brand, their rules, a fee · \(brands.count) \(brands.count == 1 ? "brand takes" : "brands take") franchisees")
+                    }.buttonStyle(.plain)
                 }
             }
         }
     }
 
-    @ViewBuilder private func franchisorRow(_ c: Company, chain: Chains.Summary?) -> some View {
+    private func franchisorCard(_ c: Company, chain: Chains.Summary?) -> some View {
         let f = engine.franchiseSystem(companyID: c.id)
-        let apps = engine.franchiseApplicants(companyID: c.id).count
-        let row = GroupLinkRow(title: "\(chain?.name ?? c.name) franchise",
-                               sub: "\(f["units"].array.count) \(f["units"].array.count == 1 ? "unit" : "units") · \(apps) applying · fee \(engine.currency(for: c).tidyShort(f["fee"].double)) · royalty \(Currency.percent(f["roy"].double, decimals: 0))",
-                               trailing: engine.currency(for: c).tidyShort(f["income"].double) + " / wk", subTint: apps > 0 ? Theme.gain : Theme.ivoryFaint)
+        let apps: Int = engine.franchiseApplicants(companyID: c.id).count
+        let unitCount: Int = f["units"].array.count
+        let cur: Currency = engine.currency(for: c)
+        let sub: String = "\(unitCount) \(unitCount == 1 ? "unit" : "units") · \(apps) applying · fee \(cur.tidyShort(f["fee"].double)) · royalty \(Currency.percent(f["roy"].double, decimals: 0))"
+        return CardRow(glyph: Glyph.group, title: "\(chain?.name ?? c.name) franchise", subtitle: sub, value: cur.tidyShort(f["income"].double) + " / wk")
+    }
+
+    @ViewBuilder private func franchisorRow(_ c: Company, chain: Chains.Summary?) -> some View {
         if let chain {
-            NavigationLink { ChainView(chainID: chain.id) } label: { row }.buttonStyle(.plain)
+            NavigationLink { ChainView(chainID: chain.id) } label: { franchisorCard(c, chain: chain) }.buttonStyle(.plain)
         } else {
-            NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) { row }.buttonStyle(.plain)
+            NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) { franchisorCard(c, chain: nil) }.buttonStyle(.plain)
         }
         // Applicants open the same talk as under Company > Chain: one record, one set of actions (offer, accept, walk away).
-        let cur = engine.currency(for: c)
+        let cur: Currency = engine.currency(for: c)
         ForEach(engine.franchiseApplicants(companyID: c.id)) { a in
             NavigationLink { FranchiseTalkView(companyID: c.id, applicantID: a.id) } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(a.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        Text("Applicant · \(engine.data.countries.city(a.cityID, preferring: c.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
-                    }
-                    Spacer(minLength: 8)
-                    Text("Talk  ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
-                }.padding(.vertical, 8).padding(.leading, Theme.Space.m).contentShape(Rectangle())
+                CardRow(glyph: Glyph.person, title: a.name,
+                        subtitle: "Applicant · \(engine.data.countries.city(a.cityID, preferring: c.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))",
+                        value: "Talk")
             }.buttonStyle(.plain)
         }
     }
@@ -310,23 +329,16 @@ struct GroupStructureOverview: View {
     @ViewBuilder private func brandRow(_ brand: String, _ cos: [Company]) -> some View {
         if cos.count == 1, let c = cos.first {
             NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) {
-                GroupLinkRow(title: c.name, sub: "Franchisee of \(brand) · royalty \(Currency.percent(c.value("franchise")["roy"].double, decimals: 1)) · \(engine.cityName(c))")
+                CardRow(glyph: Glyph.home, title: c.name, subtitle: "Franchisee of \(brand) · royalty \(Currency.percent(c.value("franchise")["roy"].double, decimals: 1)) · \(engine.cityName(c))")
             }.buttonStyle(.plain)
         } else {
             Button { openBrand = openBrand == brand ? nil : brand } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(brand).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(cos.count) \(cos.count == 1 ? "unit" : "units") under this brand").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer()
-                    Image(systemName: openBrand == brand ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                }.padding(.vertical, 9).contentShape(Rectangle())
+                CardRow(glyph: Glyph.group, title: brand, subtitle: "\(cos.count) \(cos.count == 1 ? "unit" : "units") under this brand", value: openBrand == brand ? "Hide" : "Show", chevron: false)
             }.buttonStyle(.plain)
             if openBrand == brand {
                 ForEach(cos) { c in
                     NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) {
-                        GroupLinkRow(title: c.name, sub: engine.cityName(c))
+                        CardRow(glyph: Glyph.home, title: c.name, subtitle: engine.cityName(c))
                     }.buttonStyle(.plain).padding(.leading, Theme.Space.m)
                 }
             }

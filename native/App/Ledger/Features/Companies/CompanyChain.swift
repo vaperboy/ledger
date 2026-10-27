@@ -32,9 +32,7 @@ struct CompanyChain: View {
             }
             // Supply between your own companies lives in Operations > Suppliers (one record, one action).
             NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
-                Card(padding: 12, radius: Theme.Radius.row) {
-                    GroupLinkRow(title: "Suppliers and supply from your own companies", sub: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
-                }
+                CardRow(glyph: Glyph.market, title: "Suppliers and supply from your own companies", subtitle: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
             }.buttonStyle(.plain)
         }
     }
@@ -61,48 +59,64 @@ struct GrowIntoChain: View {
     var body: some View {
         let reqs = engine.chainRequirements(companyID: company.id)
         let doc = engine.documentState(companyID: company.id, document: "chain")
-        let cur = engine.currency(for: company)
-        MoreBlock(title: "Grow into a chain", trailing: { Text("\(reqs.filter { $0.ok }.count) of \(reqs.count) ready").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("A second store comes when the first one has proven itself. Register the chain, have a lawyer write the operations manual every store follows, then open more stores under the same name.")
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 8)
-                ForEach(Array(reqs.enumerated()), id: \.element.id) { n, r in
-                    if n > 0 { Hairline() }
-                    HStack(alignment: .firstTextBaseline) {
-                        Image(systemName: r.ok ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
-                        Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Spacer(minLength: 8)
-                        Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
-                    }.padding(.vertical, 8)
-                }
-                Hairline()
-                if doc.status == "applied" {
-                    Text("Chain registration is in progress: about \(doc.weeksLeft) \(doc.weeksLeft == 1 ? "week" : "weeks") left. The lawyer is writing the operations manual.")
-                        .font(.caption).foregroundStyle(Theme.caution).padding(.top, 10)
-                } else if doc.status == "ok" {
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Text("Chain approved. Name the chain: every store will carry this name.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                        TextField("Chain name", text: $name).textFieldStyle(.plain).font(.system(size: 15)).padding(.vertical, 8)
-                            .overlay(alignment: .bottom) { Hairline() }
-                        Button("Make \(name.isEmpty ? company.name : name) a chain") {
-                            let made: Int? = store.act({ $0.makeChain(companyID: company.id, name: name.isEmpty ? company.name : name) }) ?? nil
-                            if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
-                            else { Haptics.warning(); store.show("The chain registration is not approved yet.", tone: "warn") }
-                        }.buttonStyle(TinyButtonStyle())
-                    }.padding(.top, 10)
-                } else {
-                    Button("Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))") {
-                        switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
-                        case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                        case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                        default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
-                        }
-                    }.buttonStyle(TinyButtonStyle()).padding(.top, 10).disabled(reqs.contains { !$0.ok })
+        let ready: Int = reqs.filter { $0.ok }.count
+        VStack(alignment: .leading, spacing: 16) {
+            MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("A second store comes when the first one has proven itself. Register the chain, have a lawyer write the operations manual every store follows, then open more stores under the same name.")
+                        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    RateBar(label: "Ready", fraction: reqs.isEmpty ? 0 : Double(ready) / Double(reqs.count), tint: ready == reqs.count ? Theme.gain : Theme.gold)
+                    ForEach(reqs, id: \.id) { r in
+                        CardLine()
+                        requirementRow(r)
+                    }
                 }
             }
+            registration(doc.status, weeksLeft: doc.weeksLeft, blocked: reqs.contains { !$0.ok })
         }
         .onAppear { if name.isEmpty { name = company.name } }
+    }
+
+    private func requirementRow(_ r: Chains.Requirement) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            IconCircle(glyph: r.ok ? Glyph.check : Glyph.ring, size: 30, tint: r.ok ? Theme.gain : Theme.ivoryFaint)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(r.title.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                Text(r.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder private func registration(_ status: String, weeksLeft: Int, blocked: Bool) -> some View {
+        let cur: Currency = engine.currency(for: company)
+        if status == "applied" {
+            NoteCard(text: "Chain registration is in progress: about \(weeksLeft) \(weeksLeft == 1 ? "week" : "weeks") left. The lawyer is writing the operations manual.", glyph: Glyph.clock, tint: Theme.caution)
+        } else if status == "ok" {
+            MoreBlock("Name the chain") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Chain approved. Name the chain: every store will carry this name.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    Card(padding: 10, radius: Theme.Radius.table) {
+                        TextField("Chain name", text: $name).textFieldStyle(.plain).font(.system(size: 15))
+                    }
+                    QuietButton(title: "Make \(name.isEmpty ? company.name : name) a chain", fullWidth: true) {
+                        let made: Int? = store.act({ $0.makeChain(companyID: company.id, name: name.isEmpty ? company.name : name) }) ?? nil
+                        if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
+                        else { Haptics.warning(); store.show("The chain registration is not approved yet.", tone: "warn") }
+                    }
+                }
+            }
+        } else {
+            QuietButton(title: "Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))", fullWidth: true) {
+                switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
+                case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
+                case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
+                default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
+                }
+            }
+            .disabled(blocked).opacity(blocked ? 0.5 : 1)
+        }
     }
 }
 
@@ -118,20 +132,31 @@ struct StoreInChainCard: View {
         let ranked = summary.stores.sorted { $0.profit > $1.profit }
         let rank = (ranked.firstIndex { $0.id == company.id } ?? 0) + 1
         let owed = engine.groupLoanBalance(companyID: company.id)
-        MoreBlock(title: "Store of \(summary.name)", trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                NavigationLink { ChainView(chainID: summary.id) } label: {
-                    GroupLinkRow(title: "Open the chain", sub: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
-                                 trailing: cur.tidyShort(summary.profit) + " / mo", tint: summary.profit < 0 ? Theme.loss : Theme.ivory)
-                }.buttonStyle(.plain)
-                if summary.stores.count > 1 {
-                    FlatRow(label: "This store", value: "No. \(rank) of \(summary.stores.count) by profit", sub: "Profit last month \(cur.tidyShort(summary.stores.first { $0.id == company.id }?.profit ?? 0)).")
-                }
-                if owed > 0 {
-                    FlatRow(label: "Owes sister stores", value: cur.tidyShort(owed), sub: "A group loan, paid back by itself once the store has a cushion.", tint: Theme.caution)
-                }
-                Hairline()
-                StoreRules(engine: engine, storeID: company.id).padding(.top, 9)
+        let mine: Double = summary.stores.first { $0.id == company.id }?.profit ?? 0
+        MoreBlock(title: "Store of \(summary.name)", card: false, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+            NavigationLink { ChainView(chainID: summary.id) } label: {
+                CardRow(glyph: Glyph.group, title: "Open the chain", subtitle: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
+                        value: cur.tidyShort(summary.profit) + " / mo", valueTint: summary.profit < 0 ? Theme.loss : Theme.ivory)
+            }.buttonStyle(.plain)
+            if summary.stores.count > 1 || owed > 0 {
+                standing(rank: rank, mine: mine, owed: owed, cur: cur)
+            }
+            EntityCard { StoreRules(engine: engine, storeID: company.id) }
+        }
+    }
+
+    private func standing(rank: Int, mine: Double, owed: Double, cur: Currency) -> some View {
+        var items: [KeyFigures.Item] = []
+        if summary.stores.count > 1 {
+            items.append(.init(label: "Rank by profit", value: "No. \(rank) of \(summary.stores.count)"))
+            items.append(.init(label: "Profit last month", value: cur.tidyShort(mine), tint: mine < 0 ? Theme.loss : Theme.ivory))
+        }
+        if owed > 0 { items.append(.init(label: "Owes sister stores", value: cur.tidyShort(owed), tint: Theme.caution, sub: "group loan")) }
+        let columns: Int = max(1, min(3, items.count))
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                FigureStrip(items: items, columns: columns)
+                if owed > 0 { Text("A group loan, paid back by itself once the store has a cushion.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
             }
         }
     }

@@ -20,51 +20,91 @@ struct HeadOfficeSection: View {
 
     var body: some View {
         // A new game carries a free home-office record; it is not a group office until the owner sets it up.
-        let established = engine.groupOfficeEstablished
-        let tier = established ? engine.officeTier : nil
-        let staff = established ? engine.officeStaff : []
-        LedgerSection(title: "Group office", trailing: { Text(tier?.name ?? "optional").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                if let tier {
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(tier.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("\(staff.count) of \(tier.desks) desks · \(store.short(engine.officeRent(tier: tier))) a month · people here are employed by \(engine.groupOfficeEmployer)")
-                                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        }
-                        Spacer(minLength: 8)
-                        Menu {
-                            ForEach(engine.officeTiers) { t in
-                                Button("\(t.name) · \(store.short(engine.officeRent(tier: t))) a month · \(t.desks) desks") { confirmRent(t, moving: true) }
-                            }
-                        } label: { Text("Move  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold) }
-                    }.padding(.vertical, 8)
-                    ForEach(Array(staff.enumerated()), id: \.offset) { _, x in
-                        Hairline()
-                        staffRow(x)
-                    }
-                    let open = engine.officeRoles.filter { r in !staff.contains { $0["role"].string == r.id } }
-                    ForEach(open.filter { engine.officeRoom(role: $0.id) != .locked }) { r in
-                        Hairline()
-                        roleRow(r)
-                    }
-                    // Roles that are not open yet are one plain line, not a row each: nothing to tap, nothing to fill.
-                    let later = open.filter { engine.officeRoom(role: $0.id) == .locked }
-                    if !later.isEmpty {
-                        Text("Open later, as the group grows: " + later.map { "\($0.title) (\(Headquarters.unlockText($0.id)))" }.joined(separator: ", ") + ".")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
-                    }
-                } else {
-                    setUpRow
-                }
-                if let rh = engine.rightHand, established { Hairline(); rightHand(rh) }
-                if engine.state.hasHeadOffice("ana") { Hairline(); analyst }
-                if tier != nil { Hairline(); reviews }
-                if engine.state.companies.contains(where: { $0.status.isLive && $0.managerID != nil }) { Hairline(); dueMeetings; Hairline(); meeting }
+        let established: Bool = engine.groupOfficeEstablished
+        let tier: Headquarters.Tier? = established ? engine.officeTier : nil
+        let staff: [JSONValue] = established ? engine.officeStaff : []
+        let hasManagers: Bool = engine.state.companies.contains(where: { $0.status.isLive && $0.managerID != nil })
+        VStack(alignment: .leading, spacing: 16) {
+            officeBlock(tier, staff)
+            if let rh = engine.rightHand, established {
+                MoreBlock("Your right hand") { rightHand(rh) }
             }
+            if engine.state.hasHeadOffice("ana") {
+                MoreBlock(title: "Data analyst's report", trailing: { analystMenu }) { analyst }
+            }
+            if tier != nil {
+                MoreBlock(title: "Manager reviews", trailing: { reviewAllButton }) { reviews }
+            }
+            if hasManagers {
+                MoreBlock("Managers due a meeting") { dueMeetings }
+                MoreBlock("Meeting with all managers") { meeting }
+            }
+            SuppliersGroupSection(engine: engine)
         }
         .confirmAction($pending)
-        SuppliersGroupSection(engine: engine)
+    }
+
+    // MARK: The office as a floor plan
+
+    /// The office card (size, rent, desks as a row of squares), then every person at a desk and every post that could be filled.
+    @ViewBuilder private func officeBlock(_ tier: Headquarters.Tier?, _ staff: [JSONValue]) -> some View {
+        MoreBlock(title: "Group office", card: false, trailing: { Text(tier?.name ?? "optional").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+            if let tier {
+                officeCard(tier, staff)
+                ForEach(Array(staff.enumerated()), id: \.offset) { _, x in staffRow(x) }
+                let open: [Headquarters.Role] = engine.officeRoles.filter { r in !staff.contains { $0["role"].string == r.id } }
+                ForEach(open.filter { engine.officeRoom(role: $0.id) != .locked }) { r in roleRow(r) }
+                // Roles that are not open yet are one plain line, not a card each: nothing to tap, nothing to fill.
+                let later: [Headquarters.Role] = open.filter { engine.officeRoom(role: $0.id) == .locked }
+                if !later.isEmpty {
+                    Text("Open later, as the group grows: " + later.map { "\($0.title) (\(Headquarters.unlockText($0.id)))" }.joined(separator: ", ") + ".")
+                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+                }
+            } else {
+                setUpRow
+            }
+        }
+    }
+
+    private func deskStrip(used: Int, total: Int) -> some View {
+        HStack(spacing: 5) {
+            ForEach(0..<max(total, 0), id: \.self) { (i: Int) in
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(i < used ? Theme.gold : Color.clear)
+                    .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).strokeBorder(i < used ? Theme.gold : Theme.borderStrong, lineWidth: 1))
+                    .frame(width: 16, height: 12)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func officeCard(_ tier: Headquarters.Tier, _ staff: [JSONValue]) -> some View {
+        let items: [KeyFigures.Item] = [
+            .init(label: "Desks used", value: "\(staff.count) of \(tier.desks)"),
+            .init(label: "Rent", value: store.short(engine.officeRent(tier: tier)), sub: "a month"),
+            .init(label: "Staff pay", value: store.short(staff.reduce(0) { $0 + $1["wage"].double }), sub: "a month"),
+        ]
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: Glyph.home, size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tier.name).font(.serifTitle(20)).foregroundStyle(Theme.ivory)
+                        Text("People here are employed by \(engine.groupOfficeEmployer)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Menu {
+                        ForEach(engine.officeTiers) { t in
+                            Button("\(t.name) · \(store.short(engine.officeRent(tier: t))) a month · \(t.desks) desks") { confirmRent(t, moving: true) }
+                        }
+                    } label: { Text("Move").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).padding(.horizontal, 10).padding(.vertical, 4)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1)) }
+                }
+                deskStrip(used: staff.count, total: tier.desks)
+                CardLine()
+                FigureStrip(items: items, columns: 3)
+            }
+        }
     }
 
     // MARK: Setting the office up (optional)
@@ -77,16 +117,9 @@ struct HeadOfficeSection: View {
                 Button("\(t.name) · \(engine.officeRent(tier: t) > 0 ? store.short(engine.officeRent(tier: t)) + " a month" : "free") · \(t.desks) \(t.desks == 1 ? "desk" : "desks")") { confirmRent(t, moving: false) }
             }
         } label: {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Set up a group office (optional)").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(setUpText(cheapestPaid: paid))
-                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                Text("Set up  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-            }.padding(.vertical, 8).contentShape(Rectangle())
+            CardRow(glyph: Glyph.home, title: "Set up a group office (optional)", subtitle: setUpText(cheapestPaid: paid), value: "Set up")
         }
+        .buttonStyle(.plain)
     }
 
     private func setUpText(cheapestPaid: Double?) -> String {
@@ -127,18 +160,20 @@ struct HeadOfficeSection: View {
     @ViewBuilder private func staffRow(_ x: JSONValue) -> some View {
         let id = x["id"].int
         let open = engine.officePaperwork(personID: id).filter { !$0.done }
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
+        EntityCard {
+          VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: Glyph.person, size: 36)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(x["name"].string).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text((engine.officeRoles.first { $0.id == x["role"].string }?.title ?? x["role"].string) + " · group · employed by \(engine.groupOfficeEmployer)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(x["name"].string).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text((engine.officeRoles.first { $0.id == x["role"].string }?.title ?? x["role"].string) + " · group · employed by \(engine.groupOfficeEmployer)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     let does = engine.officeRoleResult(role: x["role"].string)
-                    if !does.isEmpty { Text(does).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                    if !does.isEmpty { Text(does).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: 8)
-                Text(store.short(x["wage"].double)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(store.short(x["wage"].double)).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
             }
-            HStack(spacing: 16) {
+            HStack(spacing: 10) {
                 if !open.isEmpty {
                     Button("Paperwork done (\(open.count))") {
                         let done = open.filter { p in store.act({ $0.tickOfficePaperwork(personID: id, item: p.key) }) == true }.count
@@ -152,18 +187,21 @@ struct HeadOfficeSection: View {
                         if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("\(name) has left the group office.", tone: "n") }
                         else { store.show("\(name) is no longer in the group office.", tone: "warn") }
                     }
-                }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
-            }.buttonStyle(QuietButtonStyle())
-        }.padding(.vertical, 8)
+                }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+            }.buttonStyle(TinyButtonStyle())
+          }
+        }
     }
 
     @ViewBuilder private func roleRow(_ r: Headquarters.Role) -> some View {
         let room = engine.officeRoom(role: r.id)
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+        EntityCard {
+          VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: Glyph.hire, size: 36, tint: Theme.ivoryMuted)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text(r.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(r.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(r.text.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 if room == .ok {
@@ -171,7 +209,8 @@ struct HeadOfficeSection: View {
                         Button("Ask around (free)") { search(r.id, .network) }
                         Button("Job ad") { search(r.id, .ad) }
                         Button("Agency (checked)") { search(r.id, .agency) }
-                    } label: { Text("Find  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold) }
+                    } label: { Text("Find").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).padding(.horizontal, 10).padding(.vertical, 4)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1)) }
                 } else if room == .desks {
                     Text("No free desk").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
                 } else if room == .homeoffice {
@@ -183,7 +222,8 @@ struct HeadOfficeSection: View {
                     if let p = engine.state.people[id] { candidate(p, role: r) }
                 }
             }
-        }.padding(.vertical, 8)
+          }
+        }
     }
 
     private func search(_ role: String, _ mode: Headquarters.SearchMode) {
@@ -227,45 +267,60 @@ struct HeadOfficeSection: View {
 
     // MARK: Manager reviews
 
-    @ViewBuilder private var reviews: some View {
-        let managed = engine.state.companies.filter { ($0.status == .open || $0.status == .closed) && $0.managerID != nil }
-        let analyst = engine.state.hasHeadOffice("perf")
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Manager reviews").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                Spacer()
-                if analyst && !managed.isEmpty { Button("Review all") {
-                        let cards = store.act { $0.runManagerScorecards() } ?? []
-                        if cards.isEmpty { Haptics.warning(); store.show("No manager could be reviewed right now.", tone: "warn") } else { Haptics.success(); store.show("Reviewed \(cards.count) \(cards.count == 1 ? "manager" : "managers"). The results are on each row.", tone: "good") }
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.gold)) }
+    private var managedCompanies: [Company] {
+        engine.state.companies.filter { ($0.status == .open || $0.status == .closed) && $0.managerID != nil }
+    }
+
+    /// "Review all" sits in the block header, only with a performance analyst on the staff.
+    @ViewBuilder private var reviewAllButton: some View {
+        if engine.state.hasHeadOffice("perf") && !managedCompanies.isEmpty {
+            Button("Review all") {
+                let cards = store.act { $0.runManagerScorecards() } ?? []
+                if cards.isEmpty { Haptics.warning(); store.show("No manager could be reviewed right now.", tone: "warn") } else { Haptics.success(); store.show("Reviewed \(cards.count) \(cards.count == 1 ? "manager" : "managers"). The results are on each row.", tone: "good") }
+            }.buttonStyle(TinyButtonStyle())
+        }
+    }
+
+    private func reviewRow(_ co: Company) -> some View {
+        let last = co.value("lastRev")
+        let sc: Int = last["score"].int
+        let line: String = last.isNull ? "Not reviewed yet" : "\(verdict(sc)) · week \(last["w"].int)"
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Spacer(minLength: 8)
+                Button("Review now") { review(co) }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
             }
-            if managed.isEmpty { Text("No company has a manager yet.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
-            else if !analyst { Text("Without a performance analyst each review is an external one and costs money.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+            if !last.isNull { Meter(label: "Score", value: Double(sc)) }
+        }
+    }
+
+    @ViewBuilder private var reviews: some View {
+        let managed: [Company] = managedCompanies
+        let analyst: Bool = engine.state.hasHeadOffice("perf")
+        VStack(alignment: .leading, spacing: 10) {
+            if managed.isEmpty { Text("No company has a manager yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+            else if !analyst { Text("Without a performance analyst each review is an external one and costs money.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
             else {
                 Toggle(isOn: Binding(get: { autoScorecards }, set: { v in store.act { $0.setPerformanceAnalystAuto(v) }; store.show(v ? "Scorecards arrive every month." : "Scorecards only when you ask.") })) {
                     Text("Scorecards every month").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                 }.tint(Theme.gold)
             }
             // Never-reviewed and weakest first; with many managers only the ones that need a look, the rest on request.
-            let ordered = managed.sorted { score($0) < score($1) }
+            let ordered: [Company] = managed.sorted { score($0) < score($1) }
             let shown: [Company] = allReviews ? ordered : Array(ordered.filter { score($0) < 50 }.prefix(6))
-            if !allReviews && shown.isEmpty && !managed.isEmpty { Text("Every reviewed manager scores acceptable or better.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
-            ForEach(shown) { co in
-                let last = co.value("lastRev")
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(co.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        Text(last.isNull ? "Not reviewed yet" : "\(verdict(last["score"].int)) · \(last["score"].int) of 100 · week \(last["w"].int)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer()
-                    Button("Review now") { review(co) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
-                }
+            if !allReviews && shown.isEmpty && !managed.isEmpty { Text("Every reviewed manager scores acceptable or better.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+            ForEach(Array(shown.enumerated()), id: \.element.id) { (n: Int, co: Company) in
+                if n > 0 { CardLine() }
+                reviewRow(co)
             }
             if managed.count > shown.count || allReviews {
-                Button(allReviews ? "Show only the weak ones" : "Show all \(managed.count) managers") { allReviews.toggle() }
-                    .buttonStyle(QuietButtonStyle())
+                QuietButton(title: allReviews ? "Show only the weak ones" : "Show all \(managed.count) managers") { allReviews.toggle() }
             }
-        }.padding(.vertical, 8)
+        }
     }
 
     private func score(_ co: Company) -> Int { co.value("lastRev").isNull ? -1 : co.value("lastRev")["score"].int }
@@ -275,10 +330,9 @@ struct HeadOfficeSection: View {
 
     @ViewBuilder private func rightHand(_ rh: Headquarters.RightHand) -> some View {
         let name = engine.state.people[rh.personID]?.name ?? "Your assistant"
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Right hand · \(name)").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-            Text(rh.decidesForYou ? "Decides small matters for you and sits on every board." : "Brings everything to you and sits on every board.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 10) {
+            RowLine(glyph: Glyph.person, title: name, subtitle: rh.decidesForYou ? "Decides small matters for you and sits on every board." : "Brings everything to you and sits on every board.")
+            HStack(spacing: 10) {
                 Button(rh.decidesForYou ? "Stop deciding for me" : "Let them decide") {
                     if rh.decidesForYou {
                         store.settle(store.act { $0.setRightHand(decidesForYou: false) }, "Everything comes to you again.", same: "Everything already comes to you.")
@@ -294,34 +348,36 @@ struct HeadOfficeSection: View {
                     }
                 }
                 Spacer(minLength: 0)
-            }.buttonStyle(QuietButtonStyle())
-        }.padding(.vertical, 8)
+            }.buttonStyle(TinyButtonStyle())
+        }
     }
 
     // MARK: The data analyst's report
 
+    /// "Ask" sits in the block header: one report for all companies or for one.
+    private var analystMenu: some View {
+        let open: [Company] = engine.state.companies.filter { $0.status == .open && $0.type != "hold" }
+        return Menu {
+            Button("All companies") { askReport(nil) }
+            ForEach(open) { c in Button(c.name) { askReport(c.id) } }
+        } label: {
+            Text("Ask").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).padding(.horizontal, 10).padding(.vertical, 4)
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+        }
+    }
+
     @ViewBuilder private var analyst: some View {
-        let open = engine.state.companies.filter { $0.status == .open && $0.type != "hold" }
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Data analyst's report").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                    Text("Sales trend, capacity, the weakest link and an outlook. A copy goes to the Inbox.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Sales trend, capacity, the weakest link and an outlook. A copy goes to the Inbox.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            ForEach(Array(report.prefix(8).enumerated()), id: \.offset) { (n: Int, l: ManagerModel.AnalystLine) in
+                CardLine()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(l.lines.isEmpty ? "Too early to say." : l.lines.joined(separator: " ")).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer()
-                Menu("Ask") {
-                    Button("All companies") { askReport(nil) }
-                    ForEach(open) { c in Button(c.name) { askReport(c.id) } }
-                }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
             }
-            ForEach(Array(report.prefix(8).enumerated()), id: \.offset) { _, l in
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(l.name).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(l.lines.isEmpty ? "Too early to say." : l.lines.joined(separator: " ")).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                }.padding(.top, 4)
-            }
-            if report.count > 8 { Text("The full report on \(report.count) companies is in the Inbox.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-        }.padding(.vertical, 8)
+            if report.count > 8 { Text("The full report on \(report.count) companies is in the Inbox.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+        }
     }
 
     private func askReport(_ companyID: Int?) {
@@ -332,26 +388,27 @@ struct HeadOfficeSection: View {
 
     // MARK: Managers nobody has met
 
+    private func dueRow(_ co: Company) -> some View {
+        let who: String = co.managerID.flatMap { engine.state.people[$0]?.name } ?? "Manager"
+        return HStack(spacing: 10) {
+            NavigationLink(value: CompanyRoute.companyAt(co.id, .staff)) {
+                RowLine(glyph: Glyph.calendar, tint: Theme.caution, title: co.name, subtitle: "\(who) · last met \(engine.weeksSinceMeeting(companyID: co.id)) weeks ago", chevron: true)
+            }.buttonStyle(.plain)
+            Button("Meet") { meetForProposals(co) }.buttonStyle(TinyButtonStyle())
+        }
+    }
+
     @ViewBuilder private var dueMeetings: some View {
-        let due = engine.managersDueMeeting.filter { $0.status == .open }
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Managers due a meeting").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+        let due: [Company] = engine.managersDueMeeting.filter { $0.status == .open }
+        VStack(alignment: .leading, spacing: 4) {
             Text(due.isEmpty ? "You have met every manager in the last eight weeks." : "A manager left alone slowly works worse. A meeting resets that, lifts their mood and brings their proposals to your Inbox.")
-                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            ForEach(due.prefix(8)) { co in
-                HStack {
-                    NavigationLink(value: CompanyRoute.companyAt(co.id, .staff)) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(co.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                            Text("\(co.managerID.flatMap { engine.state.people[$0]?.name } ?? "Manager") · last met \(engine.weeksSinceMeeting(companyID: co.id)) weeks ago").font(.system(size: 11)).foregroundStyle(Theme.caution)
-                        }
-                    }.buttonStyle(.plain)
-                    Spacer()
-                    Button("Meet for proposals") { meetForProposals(co) }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
-                }
+                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(due.prefix(8).enumerated()), id: \.element.id) { (n: Int, co: Company) in
+                CardLine()
+                dueRow(co)
             }
-            if due.count > 8 { Text("And \(due.count - 8) more. The meeting with all managers below reaches them all at once.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-        }.padding(.vertical, 8)
+            if due.count > 8 { Text("And \(due.count - 8) more. The meeting with all managers reaches them all at once.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+        }
     }
 
     private func meetForProposals(_ co: Company) {
@@ -378,8 +435,7 @@ struct HeadOfficeSection: View {
 
     @ViewBuilder private var meeting: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Call a meeting with all managers").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-            HStack {
+            HStack(spacing: 10) {
                 Menu(engine.meetingGoals.first { $0.key == goal }?.label ?? "Topic") {
                     ForEach(engine.meetingGoals, id: \.key) { g in Button(g.label) { goal = g.key } }
                 }
@@ -393,9 +449,9 @@ struct HeadOfficeSection: View {
                     case .wait?: store.show("You met them all recently. Give it a few weeks.", tone: "warn")
                     default: store.show("No manager to meet.", tone: "warn")
                     }
-                }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
+                }.buttonStyle(TinyButtonStyle())
             }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-        }.padding(.vertical, 8)
+        }
     }
 }
 
@@ -408,39 +464,43 @@ struct SuppliersGroupSection: View {
     var body: some View {
         let known = engine.knownSuppliers
         if !known.isEmpty {
-            LedgerSection(title: "People you buy from", trailing: { Text("\(known.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(known.enumerated()), id: \.element.id) { n, v in
-                        if n > 0 { Hairline() }
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text("\(v.owner) · \(v.relationshipWord)" + (v.discount > 0 ? " · \(Int((v.discount * 100).rounded()))% off every order" : " · same price as everyone"))
-                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                }
-                                Spacer(minLength: 8)
-                                Text(String(format: "%.1f ★", v.rating)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                            }
-                            HStack(spacing: 16) {
-                                Button("Take to lunch") {
-                                    switch store.act({ $0.lunchWithSupplier(vendorID: v.id) }) {
-                                    case .ok?: Haptics.success(); store.show("A good lunch.", tone: "good")
-                                    case .wait?: store.show("You met recently.", tone: "warn")
-                                    case .cash?: store.show("Not enough cash.", tone: "warn")
-                                    default: break
-                                    }
-                                }
-                                if engine.state.liveCompanies.count >= 2 {
-                                    let current = engine.boardAgreement(scope: "goods") == v.id
-                                    Button(current ? "End the goods deal" : "Buy goods through them for all") { agree(current ? nil : v.id) }
-                                }
-                                Spacer(minLength: 0)
-                            }.buttonStyle(QuietButtonStyle())
-                        }.padding(.vertical, 8)
-                    }
-                }
+            MoreBlock(title: "People you buy from", card: false, trailing: { Text("\(known.count)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+                ForEach(known) { v in supplierCard(v) }
             }
+        }
+    }
+
+    private func supplierCard(_ v: Suppliers.Vendor) -> some View {
+        let deal: String = v.discount > 0 ? " · \(Int((v.discount * 100).rounded()))% off every order" : " · same price as everyone"
+        return EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 12) {
+                    IconCircle(glyph: Glyph.market, size: 36)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(v.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text("\(v.owner) · \(v.relationshipWord)" + deal).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    }
+                    Spacer(minLength: 8)
+                    Text(String(format: "%.1f ★", v.rating)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                }
+                HStack(spacing: 10) {
+                    Button("Take to lunch") { lunch(v) }
+                    if engine.state.liveCompanies.count >= 2 {
+                        let current: Bool = engine.boardAgreement(scope: "goods") == v.id
+                        Button(current ? "End the goods deal" : "Buy goods through them for all") { agree(current ? nil : v.id) }
+                    }
+                    Spacer(minLength: 0)
+                }.buttonStyle(TinyButtonStyle())
+            }
+        }
+    }
+
+    private func lunch(_ v: Suppliers.Vendor) {
+        switch store.act({ $0.lunchWithSupplier(vendorID: v.id) }) {
+        case .ok?: Haptics.success(); store.show("A good lunch.", tone: "good")
+        case .wait?: store.show("You met recently.", tone: "warn")
+        case .cash?: store.show("Not enough cash.", tone: "warn")
+        default: break
         }
     }
 
