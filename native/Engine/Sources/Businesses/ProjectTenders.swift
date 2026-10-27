@@ -58,8 +58,8 @@ public enum ProjectTenders {
         public var openedWeek: Int { int("w0") }
         public var closesWeek: Int { int("due") }
         public var awardWeek: Int { int("award") }
-        /// Internal only: the number of rival bids is hidden from the player and not part of any UI read.
-        var rivals: Int { int("rivals") }
+        /// How many rivals will bid. The UI shows it only as a word scale (`rivalScale`).
+        public var rivals: Int { int("rivals") }
         public var worth: Double { num("val") }
         /// What writing the bid costs.
         public var bidCost: Double { num("cost") }
@@ -70,6 +70,18 @@ public enum ProjectTenders {
         public var bids: [Bid] { get { records("bids") } set { setRecords("bids", newValue) } }
         public func bid(of companyID: Int) -> Bid? { bids.first { $0.companyID == companyID } }
     }
+
+    /// What the job would cost this company to deliver if it bid at list price: the client's value times the trade's materials and
+    /// subcontractor share (the same share `startJob` uses, without the random overrun). Labour is in the wages. nil for volume tenders.
+    public static func costEstimate(_ t: Tender, _ co: Company, data: GameData) -> Double? {
+        guard !t.isVolume, let bd = data.catalog[co.type] else { return nil }
+        let share = (bd.traits["mat"] ?? 0.5) + (bd.traits["sub"] ?? 0)
+        return jsRound(t.worth * max(0.05, share))
+    }
+
+    /// The number of rival bidders as a word: None / A few / Several / Many.
+    public static func rivalScale(_ t: Tender) -> String { rivalWord(t.rivals) }
+    static func rivalWord(_ n: Int) -> String { n <= 0 ? "None" : n <= 2 ? "A few" : n <= 4 ? "Several" : "Many" }
 
     public struct Qualification: Equatable { public var ok: Bool; public var reason: String? }
 
