@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import GameCore
 import Countries
 import Businesses
@@ -7,10 +8,14 @@ import Simulation
 /// Volume contracts with business customers and the volume tenders on offer, inside Customers. Everything is read from the engine
 /// (`volumeContracts`, `contractLoad`, `contractDetail`, `ProjectTenders.openTenders`) and changed through `endContract` and
 /// `bidOnTender`; the engine works out the money. Contract offers from customers arrive in the inbox (`signContract` is used by tenders).
+///
+/// Layout: a promised-volume summary, then two sub-tabs. Running is a dated list ordered by expiry under a small term timeline;
+/// Tenders is the set of open volume tenders with their bid deadlines.
 struct CompanyContracts: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var part: Part = .running
     @State private var openContract: Int? = nil
     @State private var ending: Int? = nil
     @State private var openTender: Int? = nil
@@ -19,74 +24,179 @@ struct CompanyContracts: View {
     @State private var pending: PendingAction?
     private let prices: [Double] = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1]
 
+    private enum Part: String, CaseIterable { case running = "Running", tenders = "Tenders" }
+
+    /// One contract's term on the timeline.
+    private struct Span: Identifiable {
+        var id: String
+        var start: Int
+        var end: Int
+        var warned: Bool
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            contracts
-            tenders
+        let open: [ProjectTenders.Tender] = openVolumeTenders
+        let showTabs: Bool = !open.isEmpty
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            summary
+            if showTabs {
+                SegmentedPill(items: Part.allCases, title: { $0 == .tenders ? "Tenders (\(open.count))" : $0.rawValue }, selection: $part)
+            }
+            if part == .tenders && showTabs {
+                tenders(open)
+            } else {
+                running
+            }
         }
         .confirmAction($pending)
     }
 
-    // MARK: Contracts
+    private var openVolumeTenders: [ProjectTenders.Tender] {
+        guard engine.projectBoard(companyID: company.id) == nil, ProjectTenders.catalog[company.type] != nil else { return [] }
+        return ProjectTenders.openTenders(engine.state, for: company).filter { $0.isVolume }
+    }
 
-    @ViewBuilder private var contracts: some View {
+    // MARK: Summary
+
+    @ViewBuilder private var summary: some View {
         let list = engine.volumeContracts(companyID: company.id)
-        let orders = engine.bookedOrders(companyID: company.id)
-        if list.isEmpty && orders.isEmpty {
-            TeamCardGroup("Volume contracts") {
-                Text("No volume contracts yet. Offers from business customers arrive in the Inbox; volume tenders, when there are any, are listed below.")
-                    .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+        let load = engine.contractLoad(companyID: company.id)
+        let details: [VolumeContracts.Detail] = list.compactMap { engine.contractDetail(companyID: company.id, contractID: $0.id) }
+        let worth: Double = details.reduce(0) { $0 + $1.worthAYear }
+        let unpaid: Double = details.reduce(0) { $0 + $1.outstanding }
+        let share: Double = load.capacityShare
+        let cells: [StatStrip.Cell] = [
+            StatStrip.Cell(label: "Contracts", value: "\(list.count)"),
+            StatStrip.Cell(label: "Worth a year", value: store.short(worth, in: company)),
+            StatStrip.Cell(label: "Unpaid invoices", value: store.short(unpaid, in: company), tint: unpaid > 0 ? Theme.caution : Theme.ivory)
+        ]
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Promised each week").capsLabel()
+                    Spacer(minLength: 8)
+                    GlyphView(glyph: Glyph.reports, size: 16, weight: 1.6)
+                }
+                Text("\(String(format: "%.1f", load.units)) units").font(.hero(30)).foregroundStyle(Theme.ivory)
+                RateBar(label: "Of capacity", fraction: share, tint: share > 0.8 ? Theme.caution : Theme.gold)
+                StatStrip(cells: cells)
             }
         }
-        if !list.isEmpty || !orders.isEmpty {
-            let load = engine.contractLoad(companyID: company.id)
-            TeamCardGroup(title: "Volume contracts", trailing: {
-                Text("\(Int((load.capacityShare * 100).rounded()))% of capacity").font(.system(size: 11)).foregroundStyle(load.capacityShare > 0.8 ? Theme.caution : Theme.ivoryFaint)
-            }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if !list.isEmpty {
-                        Text("\(String(format: "%.1f", load.units)) units a week are promised. A shop that cannot serve them gets warnings, then a penalty, and in the end loses the contract.")
-                            .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
+    }
+
+    // MARK: Running
+
+    @ViewBuilder private var running: some View {
+        let list = engine.volumeContracts(companyID: company.id).sorted { $0.endWeek < $1.endWeek }
+        let orders = engine.bookedOrders(companyID: company.id)
+        if list.isEmpty && orders.isEmpty {
+            Card(padding: 14, radius: Theme.Radius.row) {
+                HStack(alignment: .top, spacing: 12) {
+                    IconCircle(glyph: Glyph.calendar)
+                    Text("No volume contracts yet. Offers from business customers arrive in the Inbox; volume tenders, when there are any, are listed under Tenders.")
+                        .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        if !list.isEmpty {
+            timelineCard(list)
+            Text("Promised units are a duty: a shop that cannot serve them gets warnings, then a penalty, and in the end loses the contract.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+            ForEach(list) { c in contractCard(c) }
+        }
+        if !orders.isEmpty { ordersCard(orders) }
+    }
+
+    private func timelineCard(_ list: [VolumeContracts.Contract]) -> some View {
+        let now: Int = engine.state.week
+        let spans: [Span] = list.map { Span(id: "\($0.id)", start: $0.startWeek, end: $0.endWeek, warned: $0.warnings > 0) }
+        let first: Int = min(now, spans.map { $0.start }.min() ?? now)
+        let last: Int = max(now + 1, spans.map { $0.end }.max() ?? now + 1)
+        let nextEnd: String = GameCalendar.dateString(week: list.first?.endWeek ?? now)
+        return Card(padding: 14, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Terms and expiry").capsLabel()
+                    Spacer(minLength: 8)
+                    Text("Next ends \(nextEnd)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+                Chart {
+                    ForEach(spans) { s in
+                        BarMark(xStart: .value("Start", s.start), xEnd: .value("End", s.end), y: .value("Contract", s.id), height: .fixed(7))
+                            .foregroundStyle(s.warned ? Theme.caution : Theme.gold)
+                            .cornerRadius(3)
                     }
-                    ForEach(Array(list.enumerated()), id: \.element.id) { n, c in
-                        if n > 0 { CardLine() }
-                        contractRow(c)
-                    }
-                    if !orders.isEmpty {
-                        if !list.isEmpty { CardLine() }
-                        Text("Booked orders").capsLabel(Theme.ivoryFaint).padding(.top, 8).padding(.bottom, 4)
-                        ForEach(Array(orders.enumerated()), id: \.offset) { _, o in
-                            row("\(o.customer) · \(String(format: "%.1f", o.units)) units", "week \(o.week)")
+                    RuleMark(x: .value("Now", now))
+                        .foregroundStyle(Theme.ivory.opacity(0.6))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+                .chartXScale(domain: first...last)
+                .chartYAxis(.hidden)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 3)) { v in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
+                        AxisValueLabel {
+                            if let w = v.as(Int.self) { Text(GameCalendar.dateString(week: w)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
+                }
+                .frame(height: CGFloat(spans.count) * 15 + 26)
+            }
+        }
+    }
+
+    private func ordersCard(_ orders: [(customer: String, units: Double, week: Int)]) -> some View {
+        Card(padding: 14, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    GlyphView(glyph: Glyph.clock, size: 15, weight: 1.6)
+                    Text("Booked orders").capsLabel()
+                }
+                ForEach(Array(orders.enumerated()), id: \.offset) { n, o in
+                    if n > 0 { CardLine() }
+                    row("\(o.customer) · \(String(format: "%.1f", o.units)) units", GameCalendar.dateString(week: o.week))
                 }
             }
         }
     }
 
-    private func contractRow(_ c: VolumeContracts.Contract) -> some View {
+    private func contractCard(_ c: VolumeContracts.Contract) -> some View {
         let d = engine.contractDetail(companyID: company.id, contractID: c.id)
-        return VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(.snappy(duration: 0.2)) { openContract = openContract == c.id ? nil : c.id; ending = nil }
-                Haptics.choose()
-            } label: {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(c.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                        Text("\(c.customer) · \(String(format: "%.1f", c.units)) a week · \(c.reliabilityWord.lowercased()) payer")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    if c.warnings > 0 { Chip(text: "\(Int(c.warnings)) warning\(Int(c.warnings) == 1 ? "" : "s")", tint: Theme.caution) }
-                    else if let d { Text("\(d.weeksLeft) wk left").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openContract == c.id ? -90 : 90))
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if openContract == c.id, let d {
-                contractSheet(c, d)
+        let isOpen: Bool = openContract == c.id
+        let worth: String = d.map { store.short($0.worthAYear, in: company) } ?? ""
+        let endsText: String = "Ends \(GameCalendar.dateString(week: c.endWeek))"
+        let warned: Bool = c.warnings > 0
+        let edge: Color = warned ? Theme.caution.opacity(0.6) : Theme.border
+        let iconTint: Color = warned ? Theme.caution : Theme.gold
+        let warnText: String = "\(Int(c.warnings)) warning\(Int(c.warnings) == 1 ? "" : "s")"
+        let sub: String = "\(c.customer) · \(String(format: "%.1f", c.units)) a week · \(c.reliabilityWord.lowercased()) payer"
+        return Card(padding: 12, radius: Theme.Radius.row, stroke: edge) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { openContract = isOpen ? nil : c.id; ending = nil }
+                    Haptics.choose()
+                } label: {
+                    HStack(spacing: 12) {
+                        IconCircle(glyph: warned ? Glyph.warning : Glyph.reports, size: 38, tint: iconTint)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.name.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(worth).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Text(endsText).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                            if warned { Chip(text: warnText, tint: Theme.caution) }
+                        }
+                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                if isOpen, let d {
+                    CardLine()
+                    contractSheet(c, d)
+                }
             }
-        }.padding(.vertical, 9)
+        }
     }
 
     private func contractSheet(_ c: VolumeContracts.Contract, _ d: VolumeContracts.Detail) -> some View {
@@ -105,66 +215,67 @@ struct CompanyContracts: View {
                 Text("Ending it now costs a penalty of about \(store.short(0.4 * d.price * c.units, in: company)) (10% of four weeks' business) and hurts your name.")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
                 HStack {
-                    Button("Keep it") { ending = nil }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    QuietButton(title: "Keep it", tint: Theme.ivoryMuted) { ending = nil }
                     Spacer()
-                    Button("End the contract") {
+                    QuietButton(title: "End the contract", tint: Theme.loss) {
                         let ok = store.act { $0.endContract(companyID: company.id, contractID: c.id) }
                         if ok == true { Haptics.warning(); openContract = nil; store.show("Contract with \(c.customer) ended. Penalty about \(store.short(0.4 * d.price * c.units, in: company)).", tone: "n") }
                         else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
                         ending = nil
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                    }
                 }
             } else {
-                HStack { Spacer(); Button("End early") { ending = c.id; Haptics.tap() }.buttonStyle(QuietButtonStyle(tint: Theme.loss)) }
+                HStack { Spacer(); QuietButton(title: "End early", tint: Theme.loss) { ending = c.id } }
             }
         }
     }
 
     // MARK: Tenders (project companies show theirs in Projects)
 
-    @ViewBuilder private var tenders: some View {
-        if engine.projectBoard(companyID: company.id) == nil, ProjectTenders.catalog[company.type] != nil {
-            let open = ProjectTenders.openTenders(engine.state, for: company).filter { $0.isVolume }
-            if !open.isEmpty {
-                TeamCardGroup(title: "Volume tenders", trailing: {
-                    Text("\(open.count) open").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                }) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("Buyers want a set volume every week. Bid a price against your list price; the best score on price and quality wins. Writing a bid costs money even when you lose.")
-                            .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
-                        ForEach(Array(open.enumerated()), id: \.element.id) { n, t in
-                            if n > 0 { CardLine() }
-                            tenderRow(t)
-                        }
-                    }
-                }
-            }
+    private func tenders(_ open: [ProjectTenders.Tender]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Buyers want a set volume every week. Bid a price against your list price; the best score on price and quality wins. Writing a bid costs money even when you lose.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+            ForEach(open, id: \.id) { t in tenderCard(t) }
         }
     }
 
-    private func tenderRow(_ t: ProjectTenders.Tender) -> some View {
+    private func tenderCard(_ t: ProjectTenders.Tender) -> some View {
         let q = ProjectTenders.qualification(t, company, week: engine.state.week)
         let mine = t.bid(of: company.id)
         let weeksToBid = max(0, t.closesWeek - engine.state.week)
-        return VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(.snappy(duration: 0.2)) { openTender = openTender == t.id ? nil : t.id }
-                Haptics.choose()
-            } label: {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                        Text("\(t.buyer) · \(String(format: "%.1f", t.unitsPerWeek)) a week for \(t.years) years").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                        if !q.ok, let r = q.reason { Text(r).font(.system(size: 11)).foregroundStyle(Theme.caution) }
-                    }
-                    Spacer(minLength: 8)
-                    if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
-                    else { Text("\(weeksToBid) wk to bid").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold) }
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(openTender == t.id ? -90 : 90))
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if openTender == t.id { tenderSheet(t, qualifies: q.ok, hasBid: mine != nil, weeksToBid: weeksToBid) }
-        }.padding(.vertical, 9)
+        let isOpen: Bool = openTender == t.id
+        let edge: Color = mine != nil ? Theme.gold.opacity(0.7) : Theme.border
+        let sub: String = "\(t.buyer) · \(String(format: "%.1f", t.unitsPerWeek)) a week for \(t.years) years"
+        let award: String = "Award \(GameCalendar.dateString(week: t.awardWeek))"
+        return Card(padding: 12, radius: Theme.Radius.row, stroke: edge) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { openTender = isOpen ? nil : t.id }
+                    Haptics.choose()
+                } label: {
+                    HStack(spacing: 12) {
+                        IconCircle(glyph: Glyph.clock, size: 38)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(t.title.tidyMoney).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
+                            if !q.ok, let r = q.reason { Text(r).font(.system(size: 11.5)).foregroundStyle(Theme.caution).multilineTextAlignment(.leading) }
+                        }
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 1) {
+                            if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
+                            else { Text("\(weeksToBid) wk to bid").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.gold) }
+                            Text(award).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                        }
+                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                if isOpen {
+                    CardLine()
+                    tenderSheet(t, qualifies: q.ok, hasBid: mine != nil, weeksToBid: weeksToBid)
+                }
+            }
+        }
     }
 
     private func tenderSheet(_ t: ProjectTenders.Tender, qualifies: Bool, hasBid: Bool, weeksToBid: Int) -> some View {
@@ -192,16 +303,16 @@ struct CompanyContracts: View {
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {
                 Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }.buttonStyle(QuietButtonStyle())
+                QuietButton(title: "Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
             } else if !qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
-                SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex).padding(.horizontal, -Theme.Space.margin)
+                SegmentedPill(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
                 }.tint(Theme.gold)
-                Button("Send the bid…") {
+                QuietButton(title: "Send the bid…") {
                     let hq = higherQuality
                     pending = PendingAction(title: "Bid \(Int((pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
                                             button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company)) {
@@ -214,9 +325,9 @@ struct CompanyContracts: View {
                         default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
                         }
                     }
-                }.buttonStyle(QuietButtonStyle())
+                }
             }
-        }.padding(.bottom, 4)
+        }
     }
 
     private func riskText(_ t: ProjectTenders.Tender, overCapacity: Bool) -> String {

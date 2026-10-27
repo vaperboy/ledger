@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import GameCore
 import Countries
 import Finance
@@ -9,106 +10,310 @@ import Simulation
 /// service one of your own companies could supply) it shows who provides it now, price and terms, reliability, and what a different provider
 /// would save or cost. Choosing is one engine action (`switchSupplier`) after a confirmation with the whole deal. Better deals come from
 /// the relationship with the supplier (lunch, buying over time); that is the engine's own discount, shown here, not a rule of this screen.
-/// Replaces the former "Supply from your own companies" card in the Chain section.
+///
+/// Layout: a sourcing summary, then two sub-tabs. Inputs: one card per input; opening it shows a price dot plot against the market
+/// price, a sharp table comparing the providers (price, saving a year), and a detail card for the provider picked in the table
+/// (quality, lead time, reliability, terms, risks, negotiation, switch). Supplying: the table of companies you sell to.
 struct CompanySourcing: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var part: Part = .inputs
     @State private var open: String?
+    /// The provider picked in each input's comparison table, by input id.
+    @State private var picked: [String: String] = [:]
     @State private var pending: PendingAction?
     /// The last answer of a supplier in a price talk, and the last extra discount asked, by option id (kept under the row like a hiring offer).
     @State private var talks: [String: HireFeedback] = [:]
     @State private var lastAsk: [String: Double] = [:]
     private let classNames = Suppliers.goodsClassNames
 
+    private enum Part: String, CaseIterable { case inputs = "Inputs", supplying = "Supplying" }
+
+    /// One provider on the price dot plot.
+    private struct Dot: Identifiable {
+        var id: String
+        var pct: Double
+        var current: Bool
+    }
+
     var body: some View {
         let inputs = engine.supplierInputs(companyID: company.id)
         let sells = engine.supplyLinks().filter { $0.supplierID == company.id }
         if company.status.isLive, !inputs.isEmpty || !sells.isEmpty {
             let cur = engine.currency(for: company)
-            CardSection(title: "Suppliers", trailing: {
-                if engine.isSuppliedFromInside(companyID: company.id) { Chip(text: "Own supplier", tint: Theme.gain) }
-            }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Who provides what this company uses. Tap an input to compare providers: outside suppliers, your own companies and your business customers. Knowing a supplier well, buying from them for a long time, brings better prices.")
-                        .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
-                    if let a = engine.boardAgreement(scope: "goods") {
-                        Text("Board agreement: goods for every company through \(engine.knownSuppliers.first { $0.id == a }?.name ?? "one supplier"), unless a company names its own.")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6)
-                    }
-                    ForEach(Array(inputs.enumerated()), id: \.element.id) { n, input in
-                        if n > 0 { CardLine() }
-                        inputBlock(input, cur: cur)
-                    }
-                    ForEach(Array(sells.enumerated()), id: \.element.id) { n, l in
-                        if let b = engine.state.company(l.buyerID), let k = IntercompanySupply.kind(l.kindID) {
-                            CardLine()
-                            NavigationLink(value: CompanyRoute.companyAt(b.id, .operations)) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text("Supplies \(b.name)").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                        Text("\(k.name) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered")
-                                            .font(.system(size: 11)).foregroundStyle(l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Text(cur.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr").font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                }.padding(.vertical, 9).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    if company.num("int27u") > 0 {
-                        Text("Holding back \(Int(company.num("int27u").rounded())) sales a week of its capacity for the group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
-                    }
+            let both: Bool = !inputs.isEmpty && !sells.isEmpty
+            let showSupplying: Bool = inputs.isEmpty || (both && part == .supplying)
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                summary(inputs, sells: sells, cur: cur)
+                if both {
+                    SegmentedPill(items: Part.allCases, title: { $0 == .supplying ? "Supplying (\(sells.count))" : "Inputs (\(inputs.count))" }, selection: $part)
                 }
+                if showSupplying { supplying(sells, cur: cur) } else { inputsList(inputs, cur: cur) }
             }
             .confirmAction($pending)
         }
     }
 
-    // MARK: One input
+    // MARK: Summary
 
-    @ViewBuilder private func inputBlock(_ input: SupplierInput, cur: Currency) -> some View {
-        let isOpen = open == input.id
-        VStack(alignment: .leading, spacing: 6) {
-            Button { withAnimation(.easeOut(duration: 0.18)) { open = isOpen ? nil : input.id }; Haptics.tap() } label: {
+    private func summary(_ inputs: [SupplierInput], sells: [IntercompanySupply.Link], cur: Currency) -> some View {
+        let saving: Double = inputs.reduce(0) { $0 + ($1.current?.yearlyVsMarket ?? 0) }
+        let own: Int = inputs.filter { $0.current?.kind == .ownCompany }.count
+        let savingTint: Color = saving > 0.5 ? Theme.gain : saving < -0.5 ? Theme.caution : Theme.ivory
+        let savingText: String = saving > 0.5 ? "+" + cur.tidyShort(saving) : saving < -0.5 ? "-" + cur.tidyShort(-saving) : cur.tidyShort(0)
+        let cells: [StatStrip.Cell] = [
+            StatStrip.Cell(label: "Inputs", value: "\(inputs.count)"),
+            StatStrip.Cell(label: "Own providers", value: "\(own)"),
+            StatStrip.Cell(label: "Vs market a year", value: savingText, tint: savingTint)
+        ]
+        let agreement: String? = engine.boardAgreement(scope: "goods").map { a in
+            "Board agreement: goods for every company through \(engine.knownSuppliers.first { $0.id == a }?.name ?? "one supplier"), unless a company names its own."
+        }
+        let inside: Bool = engine.isSuppliedFromInside(companyID: company.id)
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
+                    Text("Sourcing").capsLabel()
+                    Spacer(minLength: 8)
+                    if inside { Chip(text: "Own supplier", tint: Theme.gain) }
+                    GlyphView(glyph: Glyph.suppliers, size: 18, weight: 1.6)
+                }
+                Text("Who provides what this company uses. Open an input to compare providers: outside suppliers, your own companies and your business customers. Knowing a supplier well, buying from them for a long time, brings better prices.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                if let agreement { Text(agreement).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                StatStrip(cells: cells)
+            }
+        }
+    }
+
+    // MARK: Inputs
+
+    private func inputsList(_ inputs: [SupplierInput], cur: Currency) -> some View {
+        let openID: String? = open ?? inputs.first?.id
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            ForEach(inputs) { input in
+                inputBlock(input, isOpen: openID == input.id, cur: cur)
+            }
+            if company.num("int27u") > 0 {
+                Text("Holding back \(Int(company.num("int27u").rounded())) sales a week of its capacity for the group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private func inputGlyph(_ input: SupplierInput) -> String {
+        switch input.id {
+        case "goods": return Glyph.suppliers
+        case "repair": return Glyph.capacity
+        default: return Glyph.building
+        }
+    }
+
+    private func inputBlock(_ input: SupplierInput, isOpen: Bool, cur: Currency) -> some View {
+        let line: String = headerLine(input, cur: cur)
+        let name: String = input.current?.name ?? "Not set"
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { open = isOpen ? "" : input.id }
+                Haptics.tap()
+            } label: {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: inputGlyph(input), size: 38)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(input.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
-                        Text(input.current?.name ?? "Not set").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text(headerLine(input, cur: cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(input.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                        Text(name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 8)
                     if let c = input.current { Chip(text: chipText(c), tint: chipTint(c)) }
                     GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
-                }.contentShape(Rectangle())
+                }
+                .padding(.horizontal, 12).padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(isOpen ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
+                .contentShape(Rectangle())
             }.buttonStyle(.plain)
-            if isOpen {
-                Text(input.what).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                if input.id == "goods" {
-                    SectionTabs(items: [0, 1, 2], title: { classNames[$0] },
-                                selection: goodsClassBinding)
-                        .padding(.horizontal, -Theme.Space.margin)
-                    Text("The quality class changes the cost and the quality of everything you buy; the prices below are for the class chosen.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                }
-                if let why = input.governedBy {
-                    HStack(alignment: .top, spacing: 6) {
-                        GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: Theme.caution)
-                        Text(why + (why.contains("franchise agreement") ? " Only the franchisor can change it." : " Change it at the chain, or release the rule there so each store decides.")).font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+            if isOpen { comparison(input, cur: cur) }
+        }
+    }
+
+    private func comparison(_ input: SupplierInput, cur: Currency) -> some View {
+        let sel: SupplierOption? = selected(input)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(input.what).font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+            if input.id == "goods" {
+                SegmentedPill(items: [0, 1, 2], title: { classNames[$0] }, selection: goodsClassBinding)
+                Text("The quality class changes the cost and the quality of everything you buy; the prices below are for the class chosen.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+            }
+            if let why = input.governedBy { notice(why + (why.contains("franchise agreement") ? " Only the franchisor can change it." : " Change it at the chain, or release the rule there so each store decides."), tint: Theme.caution) }
+            if let none = input.noOwnProvider { notice(none, tint: Theme.ivoryMuted) }
+            priceChart(input)
+            optionTable(input, cur: cur)
+            if let sel { optionDetail(input, sel, cur: cur) }
+            if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
+        }
+    }
+
+    private func notice(_ text: String, tint: Color) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: tint)
+            Text(text).font(.system(size: 11.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+        }.padding(.horizontal, 2)
+    }
+
+    private func selected(_ input: SupplierInput) -> SupplierOption? {
+        if let id = picked[input.id], let o = input.options.first(where: { $0.id == id }) { return o }
+        return input.current ?? input.options.first
+    }
+
+    // MARK: Compare
+
+    @ViewBuilder private func priceChart(_ input: SupplierInput) -> some View {
+        let dots: [Dot] = input.options.compactMap { o in o.priceFactor.map { Dot(id: o.id, pct: $0 * 100, current: o.isCurrent) } }
+        if dots.count >= 2 {
+            let names: [String: String] = Dictionary(input.options.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+            let lo: Double = min(100, dots.map { $0.pct }.min() ?? 100) - 6
+            let hi: Double = max(100, dots.map { $0.pct }.max() ?? 100) + 6
+            Card(padding: 12, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Price against the market").capsLabel()
+                        Spacer(minLength: 8)
+                        Text("market = 100%").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
                     }
-                }
-                if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
-                if let none = input.noOwnProvider {
-                    HStack(alignment: .top, spacing: 6) {
-                        GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: Theme.ivoryFaint)
-                        Text(none).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Chart {
+                        RuleMark(x: .value("Market", 100.0)).foregroundStyle(Theme.ivoryFaint).lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        ForEach(dots) { d in
+                            PointMark(x: .value("Price", d.pct), y: .value("Provider", d.id))
+                                .foregroundStyle(d.current ? Theme.gold : Theme.ivoryMuted)
+                                .symbolSize(d.current ? 90 : 50)
+                        }
                     }
-                }
-                ForEach(Array(input.options.enumerated()), id: \.element.id) { n, o in
-                    if n > 0 { CardLine() }
-                    optionRow(input, o, cur: cur)
+                    .chartXScale(domain: lo...hi)
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 4)) { v in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
+                            AxisValueLabel { if let x = v.as(Double.self) { Text("\(Int(x.rounded()))%").font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) } }
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks { v in
+                            AxisValueLabel { if let id = v.as(String.self) { Text(names[id] ?? "").font(.system(size: 10)).foregroundStyle(Theme.ivoryMuted).lineLimit(1) } }
+                        }
+                    }
+                    .frame(height: CGFloat(dots.count) * 26 + 34)
                 }
             }
-        }.padding(.vertical, 9)
+        }
+    }
+
+    private func optionTable(_ input: SupplierInput, cur: Currency) -> some View {
+        let columns: [TableColumn] = [
+            TableColumn(title: "Provider"),
+            TableColumn(title: "Price", width: 58),
+            TableColumn(title: "A year", width: 82)
+        ]
+        let chosen: String? = selected(input)?.id
+        return SharpTable {
+            TableHeader(columns: columns)
+            ForEach(input.options) { o in
+                optionTableRow(input, o, columns: columns, chosen: chosen == o.id, cur: cur)
+            }
+        }
+    }
+
+    private func optionTableRow(_ input: SupplierInput, _ o: SupplierOption, columns: [TableColumn], chosen: Bool, cur: Currency) -> some View {
+        var price = "-"
+        if let pf = o.priceFactor { price = "\(Int((pf * 100).rounded()))%" }
+        else if let d = o.discount, d > 0 { price = "-\(Int((d * 100).rounded()))%" }
+        var year = "-"
+        var yearTint: Color = Theme.ivoryMuted
+        if o.isCurrent { year = "Current"; yearTint = Theme.gold }
+        else if let v = o.yearlyVsCurrent, abs(v) >= 1 {
+            year = (v > 0 ? "+" : "-") + cur.tidyShort(abs(v))
+            yearTint = v > 0 ? Theme.gain : Theme.caution
+        }
+        let note: String = o.blocked ?? o.subtitle
+        return TableRow(columns: columns, title: o.name, note: note, values: [price, year], valueTints: [Theme.ivory, yearTint], selected: chosen) {
+            picked[input.id] = o.id
+        }
+    }
+
+    // MARK: One provider
+
+    private func optionDetail(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) -> some View {
+        let canSwitch: Bool = o.blocked == nil && !o.isCurrent && input.governedBy == nil
+        return Card(padding: 14, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(o.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(o.isCurrent ? Theme.gold : Theme.ivory)
+                    Spacer(minLength: 8)
+                    Chip(text: chipText(o), tint: chipTint(o))
+                }
+                detailRow("Quality", o.quality ?? "Not rated")
+                detailRow("Lead time", o.delivery)
+                detailRow("Reliability", o.reliability)
+                detailRow("Terms", o.terms)
+                if let v = o.yearlyVsMarket, abs(v) >= 1 {
+                    detailRow("Against the market", v > 0 ? "saves about \(cur.tidyShort(v)) a year" : "costs about \(cur.tidyShort(-v)) a year more")
+                }
+                ForEach(o.risks, id: \.self) { r in
+                    Text("Risk: " + r).font(.system(size: 11)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                }
+                if let b = o.blocked { Text(b).font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                if let x = o.dealExtra { Text("Negotiated: \(pct(x)) extra off while the deal lasts.").font(.system(size: 11)).foregroundStyle(Theme.gain) }
+                if o.negotiable, o.blocked == nil { negotiationRow(input, o) }
+                if let next = o.nextLevel, o.kind != .ownCompany, o.kind != .outside {
+                    Text("Better terms ahead: \(next)").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                }
+                if let vid = o.vendorID, o.kind == .outsideVendor || o.kind == .repairVendor, o.isCurrent || (o.relationship ?? 0) > 0 {
+                    SmallOutlineButton(title: "Take \(o.name) to lunch · about \(engine.homeCurrency.tidyShort(engine.homeCurrency.scaledPrice(5000)))") { lunch(vid, name: o.name) }
+                }
+                if canSwitch { QuietButton(title: "Use \(o.name)…", fullWidth: true) { confirm(input, o, cur: cur) } }
+            }
+        }
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Spacer(minLength: 12)
+            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: Supplying
+
+    private func supplying(_ sells: [IntercompanySupply.Link], cur: Currency) -> some View {
+        let columns: [TableColumn] = [
+            TableColumn(title: "Buyer"),
+            TableColumn(title: "Delivered", width: 70),
+            TableColumn(title: "A year", width: 82)
+        ]
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(spacing: 8) {
+                GlyphView(glyph: Glyph.arrowOut, size: 15, weight: 1.6)
+                Text("You supply these companies").capsLabel()
+            }.padding(.horizontal, 2)
+            SharpTable {
+                TableHeader(columns: columns)
+                ForEach(sells, id: \.id) { l in
+                    supplyRow(l, columns: columns, cur: cur)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func supplyRow(_ l: IntercompanySupply.Link, columns: [TableColumn], cur: Currency) -> some View {
+        if let b = engine.state.company(l.buyerID), let k = IntercompanySupply.kind(l.kindID) {
+            let delivered: String = "\(Int((l.lastShare * 100).rounded()))%"
+            let year: String = cur.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52)
+            let tint: Color = l.lastShare < 0.9 ? Theme.loss : Theme.ivory
+            NavigationLink(value: CompanyRoute.companyAt(b.id, .operations)) {
+                TableRow(columns: columns, title: b.name, note: "\(k.name) · \(IntercompanySupply.modeName(l.mode))", values: [delivered, year], valueTints: [tint, Theme.ivory])
+            }.buttonStyle(.plain)
+        }
     }
 
     private var goodsClassBinding: Binding<Int> {
@@ -146,44 +351,7 @@ struct CompanySourcing: View {
         }
     }
 
-    // MARK: One option
-
-    @ViewBuilder private func optionRow(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                guard o.blocked == nil, !o.isCurrent, input.governedBy == nil else { return }
-                confirm(input, o, cur: cur)
-            } label: {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(o.name).font(.system(size: 13.5, weight: o.isCurrent ? .semibold : .regular)).foregroundStyle(o.blocked != nil ? Theme.ivoryFaint : o.isCurrent ? Theme.gold : Theme.ivory)
-                        Text(o.subtitle).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    VStack(alignment: .trailing, spacing: 1) {
-                        if let pf = o.priceFactor { Text("\(Int((pf * 100).rounded()))% of market").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
-                        else if let d = o.discount, d > 0 { Text("\(Int((d * 100).rounded()))% off").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
-                        if o.isCurrent { Text("Current").font(.system(size: 11)).foregroundStyle(Theme.gold) }
-                        else if o.blocked == nil, input.governedBy == nil, !(o.yearlyVsCurrent.map { abs($0) >= 1 } ?? false) { Text("Switch ›").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold) }
-                        else if let v = o.yearlyVsCurrent, abs(v) >= 1 {
-                            Text(v > 0 ? "saves \(cur.tidyShort(v)) / yr" : "costs \(cur.tidyShort(-v)) / yr more").font(.system(size: 11).monospacedDigit()).foregroundStyle(v > 0 ? Theme.gain : Theme.caution)
-                        }
-                    }
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            Text(o.terms + " · " + o.reliability).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            if let b = o.blocked { Text(b).font(.system(size: 11)).foregroundStyle(Theme.caution) }
-            if let x = o.dealExtra { Text("Negotiated: \(pct(x)) extra off while the deal lasts.").font(.system(size: 11)).foregroundStyle(Theme.gain) }
-            if o.negotiable, o.blocked == nil { negotiationRow(input, o) }
-            if let next = o.nextLevel, o.kind != .ownCompany, o.kind != .outside {
-                Text("Better terms ahead: \(next)").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
-            }
-            if let vid = o.vendorID, o.kind == .outsideVendor || o.kind == .repairVendor, o.isCurrent || (o.relationship ?? 0) > 0 {
-                Button("Take \(o.name) to lunch · about \(engine.homeCurrency.tidyShort(engine.homeCurrency.scaledPrice(5000)))") { lunch(vid, name: o.name) }
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
-            }
-        }.padding(.vertical, 6)
-    }
+    // MARK: Switching
 
     private func confirm(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) {
         var lines: [String] = []
