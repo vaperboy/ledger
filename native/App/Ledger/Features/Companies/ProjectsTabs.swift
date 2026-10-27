@@ -229,11 +229,10 @@ struct ProjectsBidsTab: View {
         .confirmAction($pending)
     }
 
-    // A tender card: budget (what it is worth), the fee to write the bid, how it is scored.
+    // A tender card: budget (what it is worth), our cost estimate, how many rivals bid. Fee and scoring are in the bid panel and Details.
     private func tenderCard(_ x: Tender) -> some View {
         let t = x.t
         let closes = t.weeksToBid <= 0 ? "closes this week" : t.weeksToBid == 1 ? "closes next week" : "closes in \(t.weeksToBid) wk"
-        let scored = t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))%"
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -243,7 +242,7 @@ struct ProjectsBidsTab: View {
                 Spacer(minLength: 8)
                 Text(closes).font(.system(size: 12)).foregroundStyle(t.weeksToBid <= 1 ? Theme.caution : Theme.ivoryFaint)
             }
-            ProjectFigures(items: [("Budget", store.short(t.worth, in: x.co), Theme.ivory), ("Fee to bid", store.short(t.bidCost, in: x.co), Theme.ivory), ("Scored on", scored, Theme.ivory)])
+            ProjectFigures(items: [("Budget", store.short(t.worth, in: x.co), Theme.ivory), ("Your cost est.", t.costEstimate.map { store.short($0, in: x.co) } ?? "n/a", Theme.ivory), ("Rivals bidding", t.rivals, Theme.ivory)])
             HStack(spacing: 8) {
                 NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: {
                     outlined("Details", strong: false)

@@ -31,6 +31,10 @@ public struct ProjectBoard: Equatable {
         public var buyer: String
         public var worth: Double
         public var bidCost: Double
+        /// What the job would cost this company at list price (materials and subcontractors); nil when it cannot be estimated.
+        public var costEstimate: Double?
+        /// Rival bidders as a word: None / A few / Several / Many.
+        public var rivals: String
         public var priceWeight: Double
         public var weeksToBid: Int
         public var awardWeek: Int
@@ -201,7 +205,8 @@ public extension GameEngine {
             if t.minimumYears > 0 { req.append("a year in business") }
             if t.minimumRating > 0 { req.append(String(format: "%.1f stars", t.minimumRating)) }
             let mine = t.bid(of: companyID)
-            return ProjectBoard.TenderRow(id: t.id, title: t.title, buyer: t.buyer, worth: t.worth, bidCost: t.bidCost, priceWeight: t.priceWeight,
+            return ProjectBoard.TenderRow(id: t.id, title: t.title, buyer: t.buyer, worth: t.worth, bidCost: t.bidCost,
+                                          costEstimate: ProjectTenders.costEstimate(t, co, data: data), rivals: ProjectTenders.rivalScale(t), priceWeight: t.priceWeight,
                                           weeksToBid: max(0, t.closesWeek - state.week), awardWeek: t.awardWeek, requirement: req.isEmpty ? nil : req.joined(separator: " and "),
                                           qualifies: q.ok, myBid: mine?.priceFactor, myBidHigherQuality: mine?.higherQuality ?? false, outcome: t.outcome)
         }
