@@ -31,3 +31,9 @@ Owner direction. Do not start before the CI screenshot review of run 40493349153
 1. Weather: no link inside News at all (the Weather app is reached from the Phone home only).
 2. Screenshots: a new run must not leave old pictures in the `ui-shots-*` branches. The workflow publishes with a fresh `git init` and force push, so old files should already be gone; verify. If any old file can remain, put the run's commit short sha and time in every file name (or a visible NEW marker) so new pictures are identifiable.
 3. Phone app icons get colours: each app on the Phone home has its own colour inside the icon (not all champagne), still inside the Ivory Ledger palette and the dark style (muted, harmonious tints, never loud). Colour never alone: keep the glyph and label.
+
+## F. Images and icons for things (owner, 27 Oct 2026) - wait for go
+Premises, managers, workers, companies and luxury items will get their own icons or pictures. Before art arrives:
+1. Check what exists: is there an image/icon slot on premises, people (PersonCard), company rows and luxury items? Add a small shared `ThumbnailView` (picture if the asset exists, otherwise the current icon circle) so art can be dropped in later without touching layouts again.
+2. Re-plan the menu layouts that must show them: Premises table rows, People cards, Company rows on Home and Group, Luxury grid and item sheet, Hiring/candidate cards. Leave room for a square or round thumbnail; keep text readable, no reflow when art is missing.
+3. Owner will supply the art and the order; names of asset files decided then (asset catalogue, one set per kind: premises, person role, trade/company, luxury item).
