@@ -15,6 +15,7 @@ struct BankRequest: Equatable {
 }
 
 /// Money in an account's own currency, through the store formatter (a company's in its own currency, the others in the home currency).
+@MainActor
 struct BankFmt {
     var store: GameStore
     var company: Company?
