@@ -1,5 +1,8 @@
 # Design rules for screen work (binding for every design agent)
 
+**Owner rule, 27 Oct 2026: outside apps are "fake apps by other creators".** Only the player's own (insider) apps follow the game's colours and style. Outside apps (Weather, News, Luxury, Ventures, World, Rich list) use their own muted palette that fits what they are (Weather blue, News newsprint and ink, Luxury black and brass, and so on): never loud, but not the champagne-on-charcoal of the game. Their launch screens use the same palette. The back button stays the same so the player can always leave.
+
+
 **Owner rule, 27 Oct 2026: two kinds of phone apps.** Apps about the outside world (News, Luxury, Ventures, World, Rich list, Weather) have their own interfaces and imitate real apps of that kind. Personal apps (Bank, Inbox, Stats, Goals, Achievements, Activity, Reports, Settings) follow the game's own design and layout (bordered cards, icon circles, tables) but each still has a distinct look that suits its job.
 
 
