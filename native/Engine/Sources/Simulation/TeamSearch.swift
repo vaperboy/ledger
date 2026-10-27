@@ -68,7 +68,7 @@ public extension GameEngine {
         // posts in the overview are the same people as the managers and department heads listed above, so only these scopes are added.
         for m in teamOverview().members where ["chain", "region", "group"].contains(m.scope) {
             all.append(.init(id: "o-\(m.id)", name: m.name, role: m.role, scope: m.scope, employer: m.employer, companyID: m.companyID, chainID: m.chainID,
-                             monthlyWage: m.monthlyWage, isManagement: true, note: "steady"))
+                             monthlyWage: m.monthlyWage, isManagement: true, note: "steady", personID: m.personID))
         }
         return all
     }

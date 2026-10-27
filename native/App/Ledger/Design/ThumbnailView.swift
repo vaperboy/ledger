@@ -1,5 +1,4 @@
 import SwiftUI
-import Employees
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -37,10 +36,8 @@ struct ThumbSpec {
     /// People only: the name whose initials fill the circle while no picture exists.
     var initials: String? = nil
     var shape: ThumbShape = .round
-    /// Employees only: the traits that pick a face from the faces sheet (see Design/FaceSheet.swift).
-    var face: FaceTraits? = nil
-    /// The group (a company id) whose people should not share a face.
-    var faceGroup: String = ""
+    /// Employees only: the portrait key the engine gave the person (`Person.faceKey`, see Design/FaceSheet.swift).
+    var face: String? = nil
 }
 
 /// One picture slot for a premises, a person (by role), a trade (company) or a luxury item. If the asset catalogue holds
@@ -55,18 +52,17 @@ struct ThumbnailView: View {
     var initials: String? = nil
     var tint: Color = Theme.gold
     /// Employees only: shows a portrait from the faces sheet; the initials or icon stay as the fallback when the sheet cannot be loaded.
-    var face: FaceTraits? = nil
-    var faceGroup: String = ""
+    var face: String? = nil
 
     init(kind: ThumbKind, key: String, size: CGFloat = 40, shape: ThumbShape = .round, glyph: String? = nil, initials: String? = nil, tint: Color = Theme.gold,
-         face: FaceTraits? = nil, faceGroup: String = "") {
+         face: String? = nil) {
         self.kind = kind; self.key = key; self.size = size; self.shape = shape
         self.glyph = glyph; self.initials = initials; self.tint = tint
-        self.face = face; self.faceGroup = faceGroup
+        self.face = face
     }
 
     init(_ spec: ThumbSpec, size: CGFloat = 40, tint: Color = Theme.gold) {
-        self.init(kind: spec.kind, key: spec.key, size: size, shape: spec.shape, glyph: spec.glyph, initials: spec.initials, tint: tint, face: spec.face, faceGroup: spec.faceGroup)
+        self.init(kind: spec.kind, key: spec.key, size: size, shape: spec.shape, glyph: spec.glyph, initials: spec.initials, tint: tint, face: spec.face)
     }
 
     /// The asset name for a kind and key: lower case, anything that is not a letter or digit becomes a hyphen.
@@ -85,11 +81,8 @@ struct ThumbnailView: View {
         slot.frame(width: size, height: size).accessibilityHidden(true)
     }
 
-    /// The portrait cut from the faces sheet for an employee; nil for anything else or when the sheet is missing.
-    private var facePicture: CGImage? {
-        guard kind == .person, let face else { return nil }
-        return FaceSheet.image(FaceSheet.choice(for: face, group: faceGroup))
-    }
+    /// The portrait cut from the faces sheet for an employee; nil for anything else, when the engine gave none, or when the sheet is missing.
+    private var facePicture: CGImage? { kind == .person ? FaceSheet.image(face) : nil }
 
     @ViewBuilder private var slot: some View {
         if let cg = facePicture {

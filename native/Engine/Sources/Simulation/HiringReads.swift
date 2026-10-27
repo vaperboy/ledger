@@ -41,6 +41,8 @@ public struct Applicant: Identifiable, Equatable, Sendable {
     public var referencesChecked: Bool
     /// What a paid trial week showed (about the true skill), once one has been done.
     public var trialSkill: Double?
+    /// The portrait the engine gave this person ("c12.0"), nil when none.
+    public var faceKey: String? = nil
     public var askYearly: Double { askMonthly * 12 }
     public var marketYearly: Double { marketMonthly * 12 }
 }
@@ -75,7 +77,7 @@ public extension GameEngine {
         let exp = claimedExperienceYears(personID: personID)
         return Applicant(personID: p.id, name: p.name, age: p.age, role: p.role, claimedSkill: p.claimedSkill, claimedExperienceYears: exp, resume: p.str("resume"),
                          askMonthly: p.askingMonthlyWage, marketMonthly: market, askVersusMarket: versus, seems: Self.firstImpression(askVersusMarket: versus, experience: exp),
-                         referencesChecked: p.flag("checked"), trialSkill: p.value("trialRes").isNull ? nil : p.num("trialRes"))
+                         referencesChecked: p.flag("checked"), trialSkill: p.value("trialRes").isNull ? nil : p.num("trialRes"), faceKey: p.faceKey)
     }
 
     /// The Hiring screen for a role at a company: the going pay, the ways to search and the people found (`personIDs`, as the search returned them).

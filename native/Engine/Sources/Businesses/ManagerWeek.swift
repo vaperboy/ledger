@@ -155,7 +155,7 @@ extension ManagerModel {
                 return
             }
             var f = fl; f["rep22"] = .number(Double(s.week)); s.companies[ci].set("flags", f)
-            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, state: &s, data: data)
+            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { return }
             if let pick = AutoHire.hireWorker(role: role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: mgr), state: &s, data: data) {
                 s.note("\(mgr.name) hired \(pick.name) (\(r.name.lowercased())) at \(co.name): the post was empty.", tone: "n", companyID: co.id)
@@ -267,7 +267,7 @@ extension ManagerModel {
         let co = s.companies[ci]
         switch dp.kind {
         case "hire":
-            let cands = Hiring.search(role: dp.role, company: co, mode: .ads, state: &s, data: data)
+            let cands = Hiring.search(role: dp.role, company: co, mode: .ads, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { return }
             if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
                 s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)

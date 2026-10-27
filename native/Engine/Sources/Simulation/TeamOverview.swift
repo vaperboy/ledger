@@ -64,6 +64,8 @@ public struct TeamOverview: Sendable {
         public var monthlyWage: Double
         public var companyID: Int?
         public var chainID: Int?
+        /// The person record, for the portrait.
+        public var personID: Int? = nil
     }
 
     /// The group office the owner may set up: until then there are no group-level posts (no group managing director, no shared-service staff).
@@ -223,7 +225,7 @@ public extension GameEngine {
                 let scope = slot.key == "reg" ? "region" : (slot.key == "ceo" && co.type == "hold") ? "group" : "company"
                 if let pid = slot.personID, let p = s.people[pid] {
                     members.append(.init(id: "slot-\(co.id)-\(slot.id)", name: p.name, role: slot.title, scope: scope, employer: co.name,
-                                         monthlyWage: slot.monthlyWage, companyID: co.id, chainID: chainID))
+                                         monthlyWage: slot.monthlyWage, companyID: co.id, chainID: chainID, personID: pid))
                 } else {
                     vacancies.append(.init(id: "slot-\(co.id)-\(slot.id)", title: slot.title, scope: scope, place: co.name, detail: slot.detail,
                                            companyID: co.id, chainID: chainID, needed: false, employer: co.name))
@@ -249,13 +251,13 @@ public extension GameEngine {
             }
             if hasCEO, let p = s.people[ch["ceo56"]["npc"].int] {
                 members.append(.init(id: "cc\(id)", name: p.name, role: "Chain CEO", scope: "chain", employer: name, monthlyWage: ch["ceo56"]["wage"].double,
-                                     companyID: stores.first?.id, chainID: id))
+                                     companyID: stores.first?.id, chainID: id, personID: p.id))
             }
             for r in regs where r["scope"].string == "chain:\(id)" || r["scope"].string.hasPrefix("chain:\(id):") {
                 guard let p = s.people[r["npc"].int] else { continue }
                 let isRegion = r["scope"].string.split(separator: ":").count >= 3
                 members.append(.init(id: "rm\(r["id"].int)", name: p.name, role: isRegion ? "Regional manager" : "Chain manager", scope: isRegion ? "region" : "chain",
-                                     employer: name, monthlyWage: r["wage"].double, companyID: stores.first?.id, chainID: id))
+                                     employer: name, monthlyWage: r["wage"].double, companyID: stores.first?.id, chainID: id, personID: p.id))
             }
             if !hasChainManager && stores.count >= 2 {
                 vacancies.append(.init(id: "chainmgr-\(id)", title: "Chain manager", scope: "chain", place: name,
@@ -275,23 +277,23 @@ public extension GameEngine {
         let groupEmployer = Headquarters.employerName(s, data)
         let md = s.rest["org56"]?["md"] ?? .null
         if !md.isNull, let p = s.people[md["npc"].int] {
-            members.append(.init(id: "md", name: p.name, role: "Group managing director", scope: "group", employer: groupEmployer, monthlyWage: md["wage"].double, companyID: nil, chainID: nil))
+            members.append(.init(id: "md", name: p.name, role: "Group managing director", scope: "group", employer: groupEmployer, monthlyWage: md["wage"].double, companyID: nil, chainID: nil, personID: p.id))
         } else if established && s.companies.filter({ $0.status.isLive }).count >= 2 {
             vacancies.append(.init(id: "md", title: "Group managing director", scope: "group", place: "Your group office",
                                    detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false, employer: groupEmployer))
         }
         if let c = s.rest["group"]?["ceo"], !c.isNull, let p = s.people[c["npc"].int] {
-            members.append(.init(id: "gceo", name: p.name, role: "Group CEO", scope: "group", employer: groupEmployer, monthlyWage: c["wage"].double, companyID: nil, chainID: nil))
+            members.append(.init(id: "gceo", name: p.name, role: "Group CEO", scope: "group", employer: groupEmployer, monthlyWage: c["wage"].double, companyID: nil, chainID: nil, personID: p.id))
         }
         for r in regs where r["payCo"].isNull {
             guard let p = s.people[r["npc"].int] else { continue }
-            members.append(.init(id: "rm\(r["id"].int)", name: p.name, role: "Regional manager", scope: "region", employer: groupEmployer, monthlyWage: r["wage"].double, companyID: nil, chainID: nil))
+            members.append(.init(id: "rm\(r["id"].int)", name: p.name, role: "Regional manager", scope: "region", employer: groupEmployer, monthlyWage: r["wage"].double, companyID: nil, chainID: nil, personID: p.id))
         }
         if established {
             let roles = Headquarters.roles(data)
             for x in Headquarters.staff(s) where s.people[x["id"].int] != nil {
                 members.append(.init(id: "hq-\(x["id"].int)", name: x["name"].string, role: roles.first { $0.id == x["role"].string }?.title ?? x["role"].string, scope: "group",
-                                     employer: groupEmployer, monthlyWage: x["wage"].double, companyID: nil, chainID: nil))
+                                     employer: groupEmployer, monthlyWage: x["wage"].double, companyID: nil, chainID: nil, personID: x["id"].int))
             }
             for r in roles where Headquarters.room(s, role: r.id, data: data) == .ok {
                 vacancies.append(.init(id: "hq-\(r.id)", title: r.title, scope: "group", place: "Your group office", detail: r.text, companyID: nil, chainID: nil, needed: false, employer: groupEmployer))

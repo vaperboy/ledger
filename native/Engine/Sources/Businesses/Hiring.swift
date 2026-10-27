@@ -36,7 +36,7 @@ public enum Hiring {
 
     /// Make a new candidate for a role and store them on the labour market. Original: `genCand`.
     @discardableResult
-    public static func generateCandidate(role: String, company co: Company?, tier requested: String? = nil, state s: inout GameState, data: GameData) -> Person {
+    public static func generateCandidate(role: String, company co: Company?, tier requested: String? = nil, faces: Bool = true, state s: inout GameState, data: GameData) -> Person {
         let w = World(state: s, data: data)
         let tier: String
         if let t = requested { tier = t } else {
@@ -81,6 +81,8 @@ public enum Hiring {
         p.set("checked", 0); p.set("trial", 0); p.employerID = 0
         p.set("pers", pers); p.set("sec", sec); p.set("golden", golden)
         s.people[p.id] = p
+        // Automatic hiring (managers, auto-staffing) looks at many people nobody sees: they get a portrait only if hired (FaceBook.sweep).
+        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, sheet: FaceBook.sheet(for: p, trade: co.flatMap { data.catalog[$0.type] }), state: &s) }
         return p
     }
 
@@ -108,13 +110,13 @@ public enum Hiring {
     }
 
     /// Advertise, ask around or use an agency. Ads are cheap but bring few; an agency finds more, better ones.
-    public static func search(role: String, company co: Company, mode: SearchMode, state s: inout GameState, data: GameData) -> [Person] {
+    public static func search(role: String, company co: Company, mode: SearchMode, faces: Bool = true, state s: inout GameState, data: GameData) -> [Person] {
         let range = applicantsFound(mode)
         let n = s.random.int(range.lowerBound, range.upperBound)
         var out: [Person] = []
         for _ in 0..<n {
             let tier: String? = mode == .agency ? s.random.weightedPick([("young", 2.0), ("mid", 6.0), ("senior", 4.0)], weight: { $0.1 })!.0 : nil
-            out.append(generateCandidate(role: role, company: co, tier: tier, state: &s, data: data))
+            out.append(generateCandidate(role: role, company: co, tier: tier, faces: faces, state: &s, data: data))
         }
         return out
     }

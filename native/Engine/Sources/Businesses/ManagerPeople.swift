@@ -60,7 +60,7 @@ extension ManagerModel {
 
     /// A manager on the labour market. Original: `genManager` with the round 22 pay step.
     @discardableResult
-    public static func generateCandidate(company co: Company?, type: String, state s: inout GameState, data: GameData) -> Person {
+    public static func generateCandidate(company co: Company?, type: String, faces: Bool = true, state s: inout GameState, data: GameData) -> Person {
         let w = World(state: s, data: data)
         let tier = s.random.weightedPick([("mid", 6.0), ("senior", 6.0), ("young", 3.0)], weight: { $0.1 })!.0
         let T = Hiring.tiers[tier]!
@@ -91,6 +91,7 @@ extension ManagerModel {
         p.set("pers", s.random.pick(Hiring.personalities)); p.set("resume", s.random.pick(resumes))
         p.set("golden", exp < 3 && s.random.chance(0.12))
         s.people[p.id] = p
+        if faces { FaceBook.assign(personID: p.id, countryCode: country.code, sheet: .suits, state: &s) }
         return p
     }
 
