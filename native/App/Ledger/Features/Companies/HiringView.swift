@@ -1,4 +1,5 @@
 import SwiftUI
+import Employees
 import GameCore
 import Countries
 import Businesses
@@ -218,8 +219,8 @@ struct HiringApplicantCard: View {
     private func summary(_ a: Applicant, _ versus: (text: String, tint: Color)) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Text(HiringFigures.initials(a.name)).font(.system(size: 14)).foregroundStyle(Theme.gold)
-                    .frame(width: 40, height: 40).background(Circle().fill(Theme.divider))
+                ThumbnailView(kind: .person, key: applicant.role, size: 40, initials: a.name,
+                              face: a.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(a.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text("\(a.age) · \(roleName) · \(experienceLine)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)

@@ -15,6 +15,12 @@ Image set name: `thumb-<kind>-<key>` (lower case; keys below are the engine ids,
 
 The code that builds these names is `ThumbnailView.assetName` in `Design/ThumbnailView.swift`.
 
+## Employee faces (four face sheets)
+
+People who work in companies (managers, assistants, staff, candidates, Team lists, staff profile, negotiation) show a face cut from one of four sheets, bundled as resources (not image sets): `Resources/faces-sheet.jpg` (casual, 15 x 9 = 135, tagged), `Resources/faces-suits.jpg` (business wear, 13 x 13 = 169, tagged), `Resources/art/workers-sheet.jpg` (casual, 90, gender and a few "older" tags only) and `Resources/art/managers-sheet.jpg` (business wear, 110, same). That is 504 portraits, each used as it is (no mirrored, zoomed or tinted copies).
+
+The engine chooses and saves them (`Engine/Sources/Businesses/FaceBook.swift`, `Employees/FaceCatalog.swift`); screens only read `Person.faceKey` (for example "c12": sheet and cell; an older "c12.2" reads as "c12") and `Design/FaceSheet.swift` cuts the picture out (cell rectangles of the two uneven sheets were found by pixel analysis). Managers, assistants and head-office people use the business sheets; workers use them in suit businesses (finance, property, holdings, consulting, law, accounting, agencies, estate, hotel front desk ...), otherwise the casual sheets. Faces are exclusive: a face given to a person is never given to anyone else; a candidate who is never hired gives theirs back after 8 weeks, a hired person keeps it for ever. When no matching portrait is free the nearest free one is used (any age, region, then gender); when all 504 are taken the initials circle shows. The player, rivals, the rich list, companies, premises and luxury items get no faces.
+
 ## Premises kinds (11)
 
 `thumb-premises-home`, `thumb-premises-office`, `thumb-premises-shop`, `thumb-premises-kitchen`, `thumb-premises-industrial`, `thumb-premises-warehouse`, `thumb-premises-hotel`, `thumb-premises-clinic`, `thumb-premises-yard`, `thumb-premises-gym`, `thumb-premises-slope`

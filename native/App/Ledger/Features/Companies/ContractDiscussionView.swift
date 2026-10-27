@@ -63,7 +63,10 @@ struct ContractDiscussionView: View {
         let pay = isManager ? co.managerMonthlyWage : (m?.monthlyWage ?? 0)
         let role = isManager ? "Manager" : (m.map { $0.role.prefix(1).uppercased() + $0.role.dropFirst() } ?? "")
         return VStack(alignment: .leading, spacing: 4) {
-            Text(n.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            HStack(spacing: 12) {
+                ThumbnailView(kind: .person, key: isManager ? "manager" : (m?.role ?? "helper"), size: 44, initials: n.name, face: n.faceKey)
+                Text(n.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            }
             Text("\(role) at \(co.name) · \(cur.tidyShort(pay)) a month" + (m?.weeklyHours.map { " · \(Int($0.rounded())) h a week" } ?? ""))
                 .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             if let h = e.contractHandler(companyID: companyID), !isManager {

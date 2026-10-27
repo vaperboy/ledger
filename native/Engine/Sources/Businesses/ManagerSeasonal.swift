@@ -69,7 +69,7 @@ extension ManagerModel {
         var got = 0
         for _ in 0..<max(1, count) {
             let co = s.companies[ci]
-            let cands = Hiring.search(role: role, company: co, mode: .network, state: &s, data: data)
+            let cands = Hiring.search(role: role, company: co, mode: .network, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { break }
             if AutoHire.hireWorker(role: role, companyID: companyID, candidates: cands, terms: Hiring.Terms(hours: hours, seasonMonths: months), state: &s, data: data) != nil { got += 1 }
         }

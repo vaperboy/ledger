@@ -21,7 +21,7 @@ public enum AutoStaff {
                 if idx == 0 && bd.ownerFTE >= 1 && co.managerID == nil && co.ownerHours >= 20 { target = max(0, target - 1) }
                 let have = co.staff.filter { $0.role == st.role && $0.noticeWeeks <= 0 }.count
                 guard have < target else { continue }
-                let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, state: &s, data: data)
+                let cands = Hiring.search(role: st.role, company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
                 guard !cands.isEmpty else { break }
                 // as cheaply as possible for the best talent: the company's manager (else the owner) weighs the candidates and bargains (AutoHire)
                 if let pick = AutoHire.hireWorker(role: st.role, companyID: co.id, candidates: cands, state: &s, data: data) {

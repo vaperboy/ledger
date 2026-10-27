@@ -346,8 +346,8 @@ extension ManagerModel {
             if d.contains("hire"), let need = L.first(where: { $0.managerID == nil && $0.staff.count >= 2 && !(Double(s.week) - $0.value("flags")["f11"].double < 8 && !$0.value("flags")["f11"].isNull) }), let bd = data.catalog[need.type] {
                 var f = need.value("flags"); f["f11"] = .number(Double(s.week)); if let i = s.companyIndex(need.id) { s.companies[i].set("flags", f) }
                 // the executive looks at a few people, bargains with each (AutoHire) and brings the owner the best deal, at the wage already agreed
-                var found = (0..<3).map { _ in generateCandidate(company: need, type: bd.managerType, state: &s, data: data) }
-                found.append(generateCandidate(company: need, type: "gen", state: &s, data: data))
+                var found = (0..<3).map { _ in generateCandidate(company: need, type: bd.managerType, faces: false, state: &s, data: data) }
+                found.append(generateCandidate(company: need, type: "gen", faces: false, state: &s, data: data))
                 if let deal = AutoHire.bestManagerDeal(candidates: found, companyID: need.id, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
                 let m = deal.person
                 let cur = World(state: s, data: data).currency(need)

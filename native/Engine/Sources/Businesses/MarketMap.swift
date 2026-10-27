@@ -285,7 +285,7 @@ public enum MarketMap {
     /// Candidates for the head office's data analyst. Original: the head-office hiring screen for `ana`.
     public static func dataAnalystCandidates(_ s: inout GameState, count: Int = 4, data: GameData) -> [Person] {
         (0..<count).map { _ in
-            var p = Hiring.generateCandidate(role: dataAnalystRole, company: nil, state: &s, data: data)
+            var p = Hiring.generateCandidate(role: dataAnalystRole, company: nil, faces: false, state: &s, data: data)
             p.askingMonthlyWage = analystPay(state: s, data: data, skillFactor: 0.55 + p.skill / 110)
             s.people[p.id] = p
             return p
