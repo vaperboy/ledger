@@ -279,7 +279,7 @@ struct ChainStoreComparison: View {
                 HStack(alignment: .top, spacing: 10) {
                     NavigationLink(value: CompanyRoute.company(s.id)) {
                         HStack(spacing: 10) {
-                            IconCircle(glyph: Glyph.home, size: 34)
+                            ThumbnailView(kind: .trade, key: summary.tradeID, size: 34, glyph: Glyph.home)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(s.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                                 Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
@@ -519,7 +519,7 @@ struct ChainJoin: View {
                     ForEach(join, id: \.id) { (c: Company) in
                         EntityCard {
                             HStack(spacing: 10) {
-                                IconCircle(glyph: Glyph.home, size: 34)
+                                ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                                     Text(engine.cityName(c)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)

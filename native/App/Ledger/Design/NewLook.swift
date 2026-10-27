@@ -449,10 +449,12 @@ struct CardRow: View {
     var valueTint: Color = Theme.ivory
     var badge: Int = 0
     var chevron = true
+    /// A picture slot in place of the icon circle (company rows and the like); same 40 pt, so the row does not change height.
+    var thumb: ThumbSpec? = nil
 
     var body: some View {
         HStack(spacing: 12) {
-            IconCircle(glyph: glyph)
+            leading
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.tidyText).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
                 if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2) }
@@ -468,6 +470,14 @@ struct CardRow: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var leading: some View {
+        if let thumb {
+            ThumbnailView(thumb, size: 40)
+        } else {
+            IconCircle(glyph: glyph)
+        }
     }
 }
 
@@ -506,6 +516,8 @@ struct ChoiceCard: View {
     var subtitle: String = ""
     var trailing: String = ""
     var selected: Bool
+    /// An optional picture slot after the radio (premises options); nil keeps the plain card.
+    var thumb: ThumbSpec? = nil
     var action: () -> Void
 
     var body: some View {
@@ -518,6 +530,7 @@ struct ChoiceCard: View {
                     Circle().strokeBorder(selected ? Theme.gold : Theme.borderStrong, lineWidth: 1.5).frame(width: 20, height: 20)
                     if selected { Circle().fill(Theme.gold).frame(width: 10, height: 10) }
                 }
+                if let thumb { ThumbnailView(thumb, size: 36) }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title.tidyText).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
                     if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading) }

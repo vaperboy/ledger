@@ -235,7 +235,7 @@ struct CompanyRow: View {
         let urgent = CompaniesView.urgency(co, h) == 0
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
         HStack(spacing: 10) {
-            GlyphView(glyph: Glyph.group, size: 16, weight: 1.5)
+            ThumbnailView(kind: .trade, key: co.type, size: 30)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 5) {
                     if urgent { GlyphView(glyph: Glyph.warning, size: 12, weight: 1.9, tint: Theme.loss).accessibilityLabel("Needs attention") }

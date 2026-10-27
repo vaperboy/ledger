@@ -97,7 +97,7 @@ struct CompanyStaffRoster: View {
         let note: String = issues.isEmpty ? "" : issues.joined(separator: " · ")
         let wage: String = cur.tidyShort(m.monthlyWage)
         return NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
-            PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage)
+            PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role)
         }.buttonStyle(.plain)
     }
 
@@ -200,7 +200,7 @@ struct StaffProfileView: View {
         ]
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                TeamInitials(name: p.name, size: 48)
+                ThumbnailView(kind: .person, key: p.role, size: 48, initials: p.name)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     HStack(spacing: 5) {

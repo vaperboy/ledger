@@ -72,6 +72,8 @@ struct PersonCard: View {
     var noteTint: Color = Theme.ivoryFaint
     var wage: String? = nil
     var chevron = true
+    /// The engine role id, for the picture; the displayed role is used when it is not given.
+    var roleKey: String? = nil
 
     /// The card of a management row, so the management lists keep their data and take the new look.
     init(row: ManagementRow, chevron: Bool = true) {
@@ -79,14 +81,23 @@ struct PersonCard: View {
         self.note = row.line; self.noteTint = row.lineTint; self.wage = row.wage; self.chevron = chevron
     }
 
-    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.ivoryFaint, wage: String? = nil, chevron: Bool = true) {
+    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.ivoryFaint, wage: String? = nil, chevron: Bool = true, roleKey: String? = nil) {
         self.name = name; self.role = role; self.scope = scope
-        self.note = note; self.noteTint = noteTint; self.wage = wage; self.chevron = chevron
+        self.note = note; self.noteTint = noteTint; self.wage = wage; self.chevron = chevron; self.roleKey = roleKey
+    }
+
+    /// The picture of the role while the post is filled; the initials circle until art exists; the plus icon for a vacant post.
+    @ViewBuilder private var face: some View {
+        if name == nil {
+            TeamInitials(name: nil)
+        } else {
+            ThumbnailView(kind: .person, key: roleKey ?? role, size: 42, initials: name)
+        }
     }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            TeamInitials(name: name)
+            face
             VStack(alignment: .leading, spacing: 4) {
                 Text(name ?? "Vacant").font(.system(size: 15, weight: .medium))
                     .foregroundStyle(name == nil ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)

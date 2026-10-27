@@ -240,6 +240,7 @@ struct TradeDetailView: View {
 /// Where the new company works: rent or buy one of the places the engine lists, with what it costs up front. Shared by starting on your own
 /// and starting a unit under a brand, so the choice looks and reads the same in both.
 struct PremisesPicker: View {
+    @EnvironmentObject var store: GameStore
     var plan: NewCompanyPlan
     var cur: Currency
     @Binding var rentIndex: Int?
@@ -263,7 +264,7 @@ struct PremisesPicker: View {
         let chosen = rentIndex ?? plan.standardIndex
         ForEach(plan.options) { o in
             ChoiceCard(title: o.name, subtitle: "\(Int(o.squareMetres)) m² · \(cur.tidyShort(o.monthlyRent)) a month · \(o.landlord)",
-                       trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront) + " up front", selected: o.index == chosen) {
+                       trailing: cur.tidyShort(buying && o.index == chosen ? o.buyUpfront : o.rentUpfront) + " up front", selected: o.index == chosen, thumb: premisesThumb) {
                 rentIndex = o.index
                 if !o.canBuy { buying = false }
             }
@@ -274,6 +275,12 @@ struct PremisesPicker: View {
             Text(modeNote(o)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if rentIndex == nil { Text("Nothing picked: the standard middle place is rented.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
         }
+    }
+
+    /// The picture slot of a place: the kind of premises this trade works in (office, shop, kitchen and so on).
+    private var premisesThumb: ThumbSpec {
+        let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
+        return ThumbSpec(kind: .premises, key: kind, shape: .square)
     }
 
     private func modeNote(_ o: NewCompanyPlan.PremisesOption) -> String {
