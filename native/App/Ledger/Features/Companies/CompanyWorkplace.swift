@@ -81,7 +81,6 @@ struct WorkplaceMoveView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Find a \(word)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                         Text("\(co.name) has \(cur.tidyShort(co.cash)) in the company account. Renting needs a deposit (three months, returned when you leave) and the fit-out; buying needs 35% down and the fit-out, with a 15-year mortgage on the rest.")
                             .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     }
@@ -109,8 +108,7 @@ struct WorkplaceMoveView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .navigationTitle("Move")
-            .navigationBarTitleDisplayMode(.inline)
+            .appScreen(title: "Find a \(word)", subtitle: "Rent or buy", tab: .company)
             .confirmAction($pending)
         } else {
             Text("This company is not available.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
