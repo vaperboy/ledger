@@ -45,3 +45,7 @@ Owner scope (G), 27 Oct 2026: NO full rework. Build the overview-table layout on
 
 ## H. Possible real bug found by the tour (27 Oct 2026)
 `testBackFromInboxCompanyLinkReturnsToInbox` fails on macos-15 (iPhone 16 Pro resolves to OS 26.2 under Xcode 16.4): tapping the company link on an Inbox item did not open a company, so the test waited out its timeouts. The `tour-fix` branch makes the tour skip with a note instead of failing, which hides it. Before shipping: reproduce by hand (Inbox item with a company link -> tap -> company opens, back returns to Inbox) and fix in the app if it is real; then make that test strict again.
+
+## I. Decisions taken by Claude (owner said: do not wait for me), 27 Oct 2026
+- Loan arrangement fee: keep the engine's current rule (credit margin x 0.25, free from your own bank) as a placeholder; revisit in the balancing pass with real-world loan fees per country.
+- Team 'Need you' tile: must open the same list (same engine source) as the Need-you section, with the same count (done on branch fixes-final).
