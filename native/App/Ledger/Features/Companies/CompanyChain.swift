@@ -16,6 +16,7 @@ struct CompanyChain: View {
         let chain = engine.chainSummary(containing: company.id)
         let franchisee = !company.value("franchise").isNull
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.group, title: "Chain", blurb: chainBlurb(chain: chain, franchisee: franchisee))
             if company.status == .open || company.status == .closed {
                 if let sum = chain {
                     StoreInChainCard(engine: engine, company: company, summary: sum)
@@ -31,9 +32,17 @@ struct CompanyChain: View {
             }
             // Supply between your own companies lives in Operations > Suppliers (one record, one action).
             NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
-                GroupLinkRow(title: "Suppliers and supply from your own companies", sub: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    GroupLinkRow(title: "Suppliers and supply from your own companies", sub: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
+                }
             }.buttonStyle(.plain)
         }
+    }
+
+    private func chainBlurb(chain: Chains.Summary?, franchisee: Bool) -> String {
+        if let chain { return "This store is one of \(chain.stores.count) in \(chain.name): its place, its own rules and the way to the chain page." }
+        if franchisee { return "This company runs under a franchisor's agreement: its fees, rules and what you owe." }
+        return "Grow this company into a chain, or franchise the concept out to other owners."
     }
 
     /// Whether the Chain section has anything to show for this company.
@@ -53,7 +62,7 @@ struct GrowIntoChain: View {
         let reqs = engine.chainRequirements(companyID: company.id)
         let doc = engine.documentState(companyID: company.id, document: "chain")
         let cur = engine.currency(for: company)
-        LedgerSection(title: "Grow into a chain", trailing: { Text("\(reqs.filter { $0.ok }.count) of \(reqs.count) ready").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        MoreBlock(title: "Grow into a chain", trailing: { Text("\(reqs.filter { $0.ok }.count) of \(reqs.count) ready").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("A second store comes when the first one has proven itself. Register the chain, have a lawyer write the operations manual every store follows, then open more stores under the same name.")
                     .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 8)
@@ -79,7 +88,7 @@ struct GrowIntoChain: View {
                             let made: Int? = store.act({ $0.makeChain(companyID: company.id, name: name.isEmpty ? company.name : name) }) ?? nil
                             if made != nil { Haptics.success(); store.show("It is now a chain. Add stores or open new ones.", tone: "good") }
                             else { Haptics.warning(); store.show("The chain registration is not approved yet.", tone: "warn") }
-                        }.buttonStyle(QuietButtonStyle())
+                        }.buttonStyle(TinyButtonStyle())
                     }.padding(.top, 10)
                 } else {
                     Button("Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))") {
@@ -89,7 +98,7 @@ struct GrowIntoChain: View {
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
                         default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
                         }
-                    }.buttonStyle(QuietButtonStyle()).padding(.top, 10).disabled(reqs.contains { !$0.ok })
+                    }.buttonStyle(TinyButtonStyle()).padding(.top, 10).disabled(reqs.contains { !$0.ok })
                 }
             }
         }
@@ -109,7 +118,7 @@ struct StoreInChainCard: View {
         let ranked = summary.stores.sorted { $0.profit > $1.profit }
         let rank = (ranked.firstIndex { $0.id == company.id } ?? 0) + 1
         let owed = engine.groupLoanBalance(companyID: company.id)
-        LedgerSection(title: "Store of \(summary.name)", trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        MoreBlock(title: "Store of \(summary.name)", trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 NavigationLink { ChainView(chainID: summary.id) } label: {
                     GroupLinkRow(title: "Open the chain", sub: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
@@ -122,7 +131,7 @@ struct StoreInChainCard: View {
                     FlatRow(label: "Owes sister stores", value: cur.tidyShort(owed), sub: "A group loan, paid back by itself once the store has a cushion.", tint: Theme.caution)
                 }
                 Hairline()
-                StoreRules(engine: engine, storeID: company.id).padding(.vertical, 9)
+                StoreRules(engine: engine, storeID: company.id).padding(.top, 9)
             }
         }
     }
@@ -143,7 +152,7 @@ struct StoreRules: View {
                 Spacer()
                 ForEach([-1.0, 0.0, 1.0], id: \.self) { v in
                     Button(v == 0 ? "Chain" : v < 0 ? "Lower" : "Higher") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .priceSteps(v)) }, "Store price rule saved.", same: "That price rule is already set.") }
-                        .buttonStyle(QuietButtonStyle(tint: off["price"].double == v ? Theme.gold : Theme.ivoryFaint))
+                        .buttonStyle(TinyButtonStyle(tint: off["price"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }
             HStack {
@@ -151,7 +160,7 @@ struct StoreRules: View {
                 Spacer()
                 ForEach([0.0, 0.01, 0.02], id: \.self) { v in
                     Button(v == 0 ? "None extra" : "+\(Int(v * 100))%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) }, "Store marketing rule saved.", same: "That marketing rule is already set.") }
-                        .buttonStyle(QuietButtonStyle(tint: off["mkt"].double == v ? Theme.gold : Theme.ivoryFaint))
+                        .buttonStyle(TinyButtonStyle(tint: off["mkt"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }
             HStack {
@@ -159,7 +168,7 @@ struct StoreRules: View {
                 Spacer()
                 ForEach([-0.1, 0.0, 0.1], id: \.self) { v in
                     Button(v == 0 ? "Chain pay" : v < 0 ? "−10%" : "+10%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .pay(v)) }, "Store pay rule saved.", same: "That pay rule is already set.") }
-                        .buttonStyle(QuietButtonStyle(tint: off["pay"].double == v ? Theme.gold : Theme.ivoryFaint))
+                        .buttonStyle(TinyButtonStyle(tint: off["pay"].double == v ? Theme.gold : Theme.ivoryFaint))
                 }
             }
         }

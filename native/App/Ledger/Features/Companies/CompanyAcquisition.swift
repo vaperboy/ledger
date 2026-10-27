@@ -50,27 +50,18 @@ struct AcquisitionSheet: View {
                     let ch = plan.choices.first { $0.kind == selected } ?? plan.choices[0]
                     let fx = effects(ch.kind, co, r)
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Buy \(r.name)").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                            Text("Agreed price \(cur.tidyDisplay(price)). Choose what it becomes.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                        }
-                        LedgerSection("What it becomes") {
-                            VStack(spacing: 0) {
-                                ForEach(Array(plan.choices.enumerated()), id: \.element.id) { n, c in
-                                    if n > 0 { Hairline() }
-                                    Button { selected = c.kind } label: {
-                                        HStack(spacing: Theme.Space.m) {
-                                            Image(systemName: selected == c.kind ? "checkmark.circle.fill" : "circle").foregroundStyle(selected == c.kind ? Theme.gold : Theme.ivoryFaint)
-                                            Text(title(c.kind)).font(.system(size: 13.5)).foregroundStyle(c.affordable ? Theme.ivory : Theme.ivoryFaint)
-                                            Spacer()
-                                            Text(c.affordable ? cur.tidyShort(c.cashNeeded) : "Short of cash").font(.system(size: 12).monospacedDigit()).foregroundStyle(c.affordable ? Theme.ivoryMuted : Theme.loss)
-                                        }.padding(.vertical, 9).contentShape(Rectangle())
-                                    }.buttonStyle(.plain)
+                        MoreHeader(glyph: Glyph.invest, title: "Buy \(r.name)", blurb: "Agreed price \(cur.tidyDisplay(price)). Choose what it becomes.")
+                        MoreBlock("What it becomes", card: false) {
+                            VStack(spacing: 8) {
+                                ForEach(plan.choices, id: \.id) { (c: AcquisitionPlan.Choice) in
+                                    let cashText: String = c.affordable ? cur.tidyShort(c.cashNeeded) : "Short of cash"
+                                    ChoiceCard(title: title(c.kind), trailing: cashText, selected: selected == c.kind) { selected = c.kind }
+                                        .opacity(c.affordable ? 1 : 0.7)
                                 }
                             }
                         }
                         costs(plan, ch, price: price, cur: cur)
-                        LedgerSection("What changes") {
+                        MoreBlock("What changes") {
                             VStack(alignment: .leading, spacing: 8) {
                                 labelled("You get", fx.gets)
                                 labelled("Control", fx.control)
@@ -78,11 +69,11 @@ struct AcquisitionSheet: View {
                                 if plan.hiddenBillRisk { labelled("In trouble", "\(r.name) is in money trouble. Unpaid supplier bills or a tax claim from before may surface after you buy, and they become yours.") }
                             }
                         }
-                        Button("Buy for \(cur.tidyShort(price))") {
+                        HStack { Button("Buy for \(cur.tidyShort(price))") {
                             pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
-                        }.buttonStyle(QuietButtonStyle()).disabled(!ch.affordable)
+                        }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable); Spacer() }
                         if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
                     }
                     .padding(Theme.Space.margin)
@@ -104,7 +95,7 @@ struct AcquisitionSheet: View {
         let needSub: String = owns ? "includes a \(cur.tidyShort(plan.reserve)) reserve the purchase insists on" : ""
         let have: Double = owns ? plan.liquid : plan.cash
         let haveSub: String = owns ? "cash and savings" : "current account"
-        LedgerSection("Cash and costs") {
+        MoreBlock("Cash and costs") {
             VStack(spacing: 0) {
                 FlatRow(label: "Price to the owner", value: cur.tidyShort(price), rule: false)
                 if ch.extraCost > 0 { FlatRow(label: extraLabel, value: cur.tidyShort(ch.extraCost)) }
