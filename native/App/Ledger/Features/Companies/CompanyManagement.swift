@@ -34,19 +34,18 @@ struct CompanyManagement: View {
         let slots = engine.teamSlots(companyID: company.id)
         let hasAssistant = company.value("asst")["npc"].int != 0
         let filled = (company.managerID != nil ? 1 : 0) + (hasAssistant ? 1 : 0) + slots.filter { $0.personID != nil }.count
-        LedgerSection(title: "Management", trailing: {
+        TeamGroup(title: "Management", trailing: {
             Text("\(filled) of \(2 + slots.count) filled").font(.system(size: 11.5)).foregroundStyle(filled < 2 + slots.count ? Theme.caution : Theme.ivoryFaint)
         }) {
-            VStack(alignment: .leading, spacing: 0) {
-                Button { Haptics.tap(); sheet = .manager } label: { managerRow(cur) }.buttonStyle(.plain)
-                Hairline()
-                Button { Haptics.tap(); sheet = .assistant } label: { assistantRow(cur) }.buttonStyle(.plain)
-                ForEach(slots) { slot in
-                    Hairline()
-                    Button { Haptics.tap(); sheet = .slot(slot.id) } label: { TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur) }.buttonStyle(.plain)
-                }
-                above
+            let mgr: ManagementRow = managerRow(cur)
+            let asst: ManagementRow = assistantRow(cur)
+            Button { Haptics.tap(); sheet = .manager } label: { PersonCard(row: mgr) }.buttonStyle(.plain)
+            Button { Haptics.tap(); sheet = .assistant } label: { PersonCard(row: asst) }.buttonStyle(.plain)
+            ForEach(slots) { slot in
+                let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
+                Button { Haptics.tap(); sheet = .slot(slot.id) } label: { PersonCard(row: row) }.buttonStyle(.plain)
             }
+            above
         }
         .sheet(item: $sheet) { s in
             Group {
@@ -96,16 +95,17 @@ struct CompanyManagement: View {
     @ViewBuilder private var above: some View {
         let chain = engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
         if !chain.isEmpty {
-            Hairline()
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Above this company").capsLabel(Theme.ivoryFaint)
-                ForEach(Array(chain.enumerated()), id: \.offset) { _, b in
-                    Text("\(b.name), \(GameEngine.bossTitle(b.kind, trade: nil).lowercased()), \(GameEngine.authorityText(level: b.level))")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Card(padding: 12, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Above this company").capsLabel(Theme.ivoryFaint)
+                    ForEach(Array(chain.enumerated()), id: \.offset) { _, b in
+                        Text("\(b.name), \(GameEngine.bossTitle(b.kind, trade: nil).lowercased()), \(GameEngine.authorityText(level: b.level))")
+                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text(engine.chainOf(companyID: company.id) != nil ? "Hired and set in the Chain section and in Group." : "Hired and set in Group (and the holding).")
+                        .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
                 }
-                Text(engine.chainOf(companyID: company.id) != nil ? "Hired and set in the Chain section and in Group." : "Hired and set in Group (and the holding).")
-                    .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-            }.padding(.top, 8)
+            }
         }
     }
 }
@@ -145,12 +145,9 @@ struct ManagerSheet: View {
         let started = co.value("mgrW0").isNull ? e.state.week : co.int("mgrW0")
         let months = max(0, e.state.week - started) / 4
         let notice = co.value("mgrNotice")
-        VStack(alignment: .leading, spacing: 4) {
-            Text(m.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            RoleScopeBadge(role: bd.map { ManagerModel.title($0) } ?? "Manager", scope: "store")
-            Text("\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job · \(cur.tidyShort(co.managerMonthlyWage)) a month")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-        }
+        let mgrRole: String = bd.map { ManagerModel.title($0) } ?? "Manager"
+        let mgrNote: String = "\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job"
+        PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false)
         if !notice.isNull {
             LedgerSection("Leaving") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -292,7 +289,7 @@ struct ManagerSheet: View {
                                 store.show(said.map { "\(m.name): \($0)" } ?? "\(m.name) has nothing to add on that now.", tone: "n")
                             }
                         }
-                    } label: { Text("Ask for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75)) }
+                    } label: { Text("Ask for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1)) }
                     Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(QuietButtonStyle())
                 }
                 HStack(spacing: 16) {
@@ -374,7 +371,7 @@ struct ManagerCandidateChecks: View {
                             if r == nil { store.show("No questions left for \(person.name).", tone: "warn") }
                         }.disabled(left <= 0 && q[k.key].isNull)
                     }
-                } label: { Text("Interview (\(left) left)  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75)) }
+                } label: { Text("Interview (\(left) left)  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1)) }
                 if !checked {
                     Button("References · \(currency.tidyShort(fee))") {
                         let ok = store.act { $0.checkManagerReferences(personID: person.id, companyID: companyID) } ?? false
@@ -413,12 +410,8 @@ struct AssistantSheet: View {
     }
 
     @ViewBuilder private func manage(_ co: Company, _ a: JSONValue, _ n: Person, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(n.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            RoleScopeBadge(role: "Assistant manager", scope: "store")
-            Text("\(co.name) · \(cur.tidyShort(a["wage"].double)) a month · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-        }
+        let asstNote: String = "\(co.name) · works a full week and takes jobs off \(co.managerID == nil ? "your" : "the manager's") plate. They advise; you decide."
+        PersonCard(name: n.name, role: "Assistant manager", scope: "store", note: asstNote, wage: cur.tidyShort(a["wage"].double), chevron: false)
         LedgerSection(title: "Jobs", trailing: { Text("\(a["duties"].array.count) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(ManagerModel.assistantDuties.enumerated()), id: \.offset) { i, d in

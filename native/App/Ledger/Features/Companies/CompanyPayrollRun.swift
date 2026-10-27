@@ -15,51 +15,89 @@ struct CompanyPayrollRun: View {
     var body: some View {
         if let o = engine.payrollOverview(companyID: company.id) {
             let cur = engine.currency(for: company)
-            LedgerSection(title: "Payroll run", trailing: { Text(modeName(o.mode)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    if !o.hasPayroll {
-                        Text("No one is on the payroll yet, so there is nothing to run. This appears once you hire someone.")
-                            .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        status(o, cur)
-                        if o.isLate {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Label("Wages are late", systemImage: "exclamationmark.triangle.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.loss)
-                                    Spacer(minLength: 8)
-                                    if o.wageShortfall > 0 {
-                                        Text("\(cur.tidyShort(o.wageShortfall)) unpaid").font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.loss)
-                                    }
-                                }
-                                Text(o.lateReason + " Staff are waiting; unpaid wages lead to resignations and a wage claim.").font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                                if o.companyCash < max(o.wageShortfall, o.wagesOwed) {
-                                    Text("Company cash is \(cur.tidyShort(o.companyCash)): put money in first or only part can be paid. See You and owners.").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
-                                }
-                                Button("Run payroll now…") { runNow(o, cur) }.buttonStyle(QuietButtonStyle())
+            let alert: PayrollAlertInfo? = engine.payrollAlertInfos().first { $0.companyID == company.id }
+            TeamGroup(title: "Payroll", trailing: { Text(modeName(o.mode)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+                if let alert { warning(alert, o, cur) }
+                Card(padding: 14, radius: Theme.Radius.hero) {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack(spacing: 12) {
+                            IconCircle(glyph: Glyph.bank)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Payroll run").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                                Text(o.hasPayroll ? "Next pay day \(o.nextPayText)" : "No one is on the payroll yet").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                             }
-                        } else if o.needsApproval {
-                            Button("Approve this month's payroll…") { approve(o, cur) }.buttonStyle(QuietButtonStyle())
+                            Spacer(minLength: 0)
+                        }
+                        if !o.hasPayroll {
+                            Text("There is nothing to run. This appears once you hire someone.")
+                                .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            status(o, cur)
+                            if o.isLate { late(o, cur) }
+                            else if o.needsApproval && alert == nil {
+                                TeamAction(title: "Approve this month's payroll") { approve(o, cur) }
+                            }
                         }
                     }
-                    Hairline().padding(.vertical, 4)
-                    Text("Who runs payroll").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    if o.modeIsFixed {
-                        Text("This kind of company runs its own payroll in-house. Nothing to choose.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-                    } else {
-                        ForEach(o.choices) { c in
-                            Button { choose(c, o, cur) } label: {
-                                ListRow(symbol: c.isCurrent ? "checkmark.circle.fill" : (c.unavailable != nil ? "lock" : "circle"),
-                                        tint: c.isCurrent ? Theme.gold : Theme.ivoryMuted, title: modeName(c.mode),
-                                        subtitle: c.unavailable ?? describe(c.mode, c.monthlyFee, cur),
-                                        trailing: c.monthlyFee > 0 ? cur.tidyShort(c.monthlyFee) : "No fee", trailingSub: c.monthlyFee > 0 ? "a month" : "", chevron: !c.isCurrent && c.unavailable == nil)
-                            }.buttonStyle(.plain).disabled(c.unavailable != nil)
+                }
+                Card(padding: 14, radius: Theme.Radius.card) {
+                    VStack(alignment: .leading, spacing: Theme.Space.s) {
+                        Text("Who runs payroll").capsLabel(Theme.ivoryFaint)
+                        if o.modeIsFixed {
+                            Text("This kind of company runs its own payroll in-house. Nothing to choose.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                        } else {
+                            ForEach(o.choices) { c in
+                                let fee: String = c.monthlyFee > 0 ? cur.tidyShort(c.monthlyFee) + " a month" : "No fee"
+                                let sub: String = c.unavailable ?? describe(c.mode, c.monthlyFee, cur)
+                                ChoiceCard(title: modeName(c.mode), subtitle: sub, trailing: fee, selected: c.isCurrent) { choose(c, o, cur) }
+                                    .opacity(c.unavailable != nil ? 0.5 : 1).disabled(c.unavailable != nil)
+                            }
+                            Text("A change applies from the next pay day. The accountant's fee is per payslip; the manager's payroll software has a monthly fee and now and then misses a step, paying a day or two late.")
+                                .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                         }
-                        Text("A change applies from the next pay day. The accountant's fee is per payslip; the manager's payroll software has a monthly fee and now and then misses a step, paying a day or two late.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
             .confirmAction($pending)
+        }
+    }
+
+    /// Nobody approves this payroll: the owner has to, or staff are not paid on pay day. Same engine step as the Inbox decision.
+    private func warning(_ alert: PayrollAlertInfo, _ o: PayrollOverview, _ cur: Currency) -> some View {
+        let amount: String = cur.tidyShort(alert.amount)
+        return Card(padding: 14, radius: Theme.Radius.hero, stroke: Theme.alert.opacity(0.7)) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    IconCircle(glyph: Glyph.warning, tint: Theme.alert)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("No one approves this payroll").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text("About \(amount) on \(alert.dateText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    }
+                    Spacer(minLength: 0)
+                }
+                Text("There is no manager or accountant to approve it. Unless you approve it, or hand payroll to one of them below, staff are not paid on pay day.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                if o.needsApproval && !o.isLate {
+                    TeamAction(title: "Approve this month's payroll", tint: Theme.gold) { approve(o, cur) }
+                }
+            }
+        }
+    }
+
+    private func late(_ o: PayrollOverview, _ cur: Currency) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label("Wages are late", systemImage: "exclamationmark.triangle.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.loss)
+                Spacer(minLength: 8)
+                if o.wageShortfall > 0 {
+                    Text("\(cur.tidyShort(o.wageShortfall)) unpaid").font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.loss)
+                }
+            }
+            Text(o.lateReason + " Staff are waiting; unpaid wages lead to resignations and a wage claim.").font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            if o.companyCash < max(o.wageShortfall, o.wagesOwed) {
+                Text("Company cash is \(cur.tidyShort(o.companyCash)): put money in first or only part can be paid. See You and owners.").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+            }
+            TeamAction(title: "Run payroll now", tint: Theme.loss) { runNow(o, cur) }
         }
     }
 
@@ -92,22 +130,16 @@ struct CompanyPayrollRun: View {
     private func choose(_ c: PayrollModeChoice, _ o: PayrollOverview, _ cur: Currency) {
         guard !c.isCurrent else { return }
         let id = company.id, mode = c.mode, name = modeName(c.mode)
-        pending = PendingAction(title: "Change who runs payroll?",
-                                message: "From the next pay day: \(name.lowercased()). " + (c.monthlyFee > 0 ? "Cost about \(cur.tidyShort(c.monthlyFee)) a month. " : "No fee, but you have to approve each month. ") + describe(mode, c.monthlyFee, cur),
-                                button: "Change") {
-            if store.settle(store.act { $0.setPayrollMode(companyID: id, mode: mode) }, "Payroll is now run by: \(name.lowercased()).", same: "Payroll is already run that way.", tone: "good") { Haptics.success() }
-        }
+        if store.settle(store.act { $0.setPayrollMode(companyID: id, mode: mode) }, "Payroll is now run by: \(name.lowercased()), from the next pay day." + (c.monthlyFee > 0 ? " About \(cur.tidyShort(c.monthlyFee)) a month." : ""), same: "Payroll is already run that way.", tone: "good") { Haptics.success() }
     }
 
     private func approve(_ o: PayrollOverview, _ cur: Currency) {
         let id = company.id
-        pending = PendingAction(title: "Approve payroll?", message: "About \(cur.tidyShort(o.estimate)) leaves the company on \(o.nextPayText) for \(o.payslips) \(o.payslips == 1 ? "payslip" : "payslips"). Company cash is \(cur.tidyShort(o.companyCash))" + (o.companyCash < o.estimate ? ", which does not cover it: wages would be late unless you put money in." : "."), button: "Approve") {
-            switch store.act({ $0.approvePayroll(companyID: id) }) {
-            case .approved?: Haptics.success(); store.show("Payroll approved. It goes out on pay day.", tone: "good")
-            case .alreadyApproved?: store.show("Already approved.", tone: "n")
-            case .notNeeded(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-            case nil: break
-            }
+        switch store.act({ $0.approvePayroll(companyID: id) }) {
+        case .approved?: Haptics.success(); store.show("Payroll approved: about \(cur.tidyShort(o.estimate)) goes out on \(o.nextPayText).", tone: "good")
+        case .alreadyApproved?: store.show("Already approved.", tone: "n")
+        case .notNeeded(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+        case nil: break
         }
     }
 
