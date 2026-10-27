@@ -106,6 +106,8 @@ struct CandidateHireRow<Extra: View>: View {
     var market: Double? = nil
     /// Multiples of the asking wage (or of the market rate when `market` is set) to offer; 1.0 is that amount.
     var factors: [Double] = [1.0, 1.1]
+    /// The role the candidate would fill (engine role id), for the picture; initials show until art exists.
+    var roleKey: String = "candidate"
     var offer: (Double) -> HireFeedback
     @ViewBuilder var extra: () -> Extra
     @State private var feedback: HireFeedback?
@@ -127,7 +129,8 @@ struct CandidateHireRow<Extra: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 10) {
+                ThumbnailView(kind: .person, key: roleKey, size: 36, initials: person.name)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(person.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text(subtitle ?? defaultSubtitle).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -205,8 +208,8 @@ struct CandidateHireRow<Extra: View>: View {
 }
 
 extension CandidateHireRow where Extra == EmptyView {
-    init(person: Person, currency: Currency, subtitle: String? = nil, market: Double? = nil, factors: [Double] = [1.0, 1.1], offer: @escaping (Double) -> HireFeedback) {
-        self.init(person: person, currency: currency, subtitle: subtitle, market: market, factors: factors, offer: offer, extra: { EmptyView() })
+    init(person: Person, currency: Currency, subtitle: String? = nil, market: Double? = nil, factors: [Double] = [1.0, 1.1], roleKey: String = "candidate", offer: @escaping (Double) -> HireFeedback) {
+        self.init(person: person, currency: currency, subtitle: subtitle, market: market, factors: factors, roleKey: roleKey, offer: offer, extra: { EmptyView() })
     }
 }
 

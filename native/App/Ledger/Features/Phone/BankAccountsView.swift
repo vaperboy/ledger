@@ -95,7 +95,7 @@ struct BankAccountsScreen: View {
         let value: String = fmt.short(r.balance)
         let tint: Color = r.balance < 0 ? Theme.loss : Theme.ivory
         return Button { Haptics.tap(); onPick(r.id) } label: {
-            CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0)
+            CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("bank-account-\(r.id.id)")

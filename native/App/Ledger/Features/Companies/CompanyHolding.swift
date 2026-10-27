@@ -58,7 +58,7 @@ struct CompanyHolding: View {
                             ForEach(free, id: \.id) { c in
                                 EntityCard {
                                     HStack(spacing: 10) {
-                                        IconCircle(glyph: Glyph.home, size: 34)
+                                        ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
                                         Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                                         Spacer()
                                         Button("Add…") { askAdd(c.id, c.name) }.buttonStyle(TinyButtonStyle())
@@ -105,7 +105,7 @@ struct CompanyHolding: View {
         return EntityCard {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 10) {
-                    IconCircle(glyph: Glyph.home, size: 34)
+                    ThumbnailView(kind: .trade, key: k.trade, size: 34, glyph: Glyph.home)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(k.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                         Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)

@@ -92,7 +92,10 @@ struct WorkplaceMoveView: View {
                             let rentUp = t.deposit + t.fitOut, buyUp = t.downPayment + t.fitOut
                             LedgerSection(l.name) {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("\(Int(l.squareMetres)) m² · \(l.landlord)").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                    HStack(spacing: 10) {
+                                        ThumbnailView(kind: .premises, key: e.data.catalog[co.type]?.premisesKind ?? "office", size: 36, shape: .square)
+                                        Text("\(Int(l.squareMetres)) m² · \(l.landlord)").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                    }
                                     FlatRow(label: "Rent", value: cur.tidyShort(t.monthlyRent) + " a month", sub: "Deposit \(cur.tidyShort(t.deposit)) and fit-out \(cur.tidyShort(t.fitOut)): \(cur.tidyShort(rentUp)) now", rule: false)
                                     FlatRow(label: "Buy", value: cur.tidyShort(t.purchasePrice), sub: "\(cur.tidyShort(buyUp)) now (down payment and fit-out), the rest a 15-year mortgage")
                                     HStack {

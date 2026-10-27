@@ -457,7 +457,7 @@ struct SuccessorSection: View {
                 QuietButton(title: "Find a successor · \(fee)…", fullWidth: true) { confirm = true }
             } else {
                 CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
-                    CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(engine, p), market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], offer: { wage in
+                    CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(engine, p), market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], roleKey: "manager", offer: { wage in
                         let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }, name: p.name, company: company.name)
                         if fb.isHired { store.show(fb.text, tone: "good") }
                         return fb

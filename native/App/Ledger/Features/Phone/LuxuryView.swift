@@ -65,7 +65,8 @@ struct LuxuryView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         if n > 0 { CardLine() }
                         Button { openItem = openItem == it.id ? nil : it.id } label: {
-                            HStack(alignment: .firstTextBaseline) {
+                            HStack(alignment: .center, spacing: 10) {
+                                ThumbnailView(kind: .luxury, key: it.id, size: 38, shape: .square)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(it.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
                                     Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
@@ -130,7 +131,8 @@ struct LuxuryView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         if n > 0 { CardLine() }
                         Button { openPiece = openPiece == p.id ? nil : p.id } label: {
-                            HStack(alignment: .firstTextBaseline) {
+                            HStack(alignment: .center, spacing: 10) {
+                                ThumbnailView(kind: .luxury, key: p.item.id, size: 38, shape: .square)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(p.item.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
                                     Text(useLine(e, p)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
