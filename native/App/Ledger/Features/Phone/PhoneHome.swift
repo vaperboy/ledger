@@ -171,7 +171,7 @@ struct PhoneAppScreen: View {
         case .news:
             NewsView()
         case .weather:
-            WeatherApp()
+            WeatherApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .stats:
             StatsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .goals:

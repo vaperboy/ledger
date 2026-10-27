@@ -1,5 +1,8 @@
 # Design rules for screen work (binding for every design agent)
 
+**Owner rule, 27 Oct 2026: two kinds of phone apps.** Apps about the outside world (News, Luxury, Ventures, World, Rich list, Weather) have their own interfaces and imitate real apps of that kind. Personal apps (Bank, Inbox, Stats, Goals, Achievements, Activity, Reports, Settings) follow the game's own design and layout (bordered cards, icon circles, tables) but each still has a distinct look that suits its job.
+
+
 **Owner rule, 27 Oct 2026: one screen at a time, never generic.** Every page is designed on its own: its own layout, its own menus or tabs where they make sense, its own graphs and icons, all strictly inside these rules and the approved new-look mockups. Do not build a page by swapping the same section helper into an old screen, and do not bundle screens into one look-alike template. A screen's structure follows its content (a chart or figure strip where numbers matter, a table where things are compared, a timeline where dates matter).
 
 
