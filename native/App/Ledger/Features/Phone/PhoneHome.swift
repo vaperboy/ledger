@@ -162,7 +162,7 @@ struct PhoneAppScreen: View {
     var app: PhoneApp
 
     var body: some View {
-        AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint) { appContent }
+        AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint, palette: app.outsidePalette) { appContent }
     }
 
     @ViewBuilder private var appContent: some View {
@@ -175,7 +175,7 @@ struct PhoneAppScreen: View {
         case .news:
             NewsView()
         case .weather:
-            WeatherApp().appScreen(title: app.title, subtitle: app.subtitle)
+            WeatherApp()
         case .stats:
             StatsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .goals:

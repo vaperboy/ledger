@@ -8,6 +8,7 @@ import Countries
 /// standfirst, a two-column grid of smaller stories under section labels, and the older items as a plain list. Every story is a real
 /// engine news item (`e.news`) or front page (`e.frontPages`); nothing is invented. Tap the masthead line to read how the paper sees you.
 struct NewsView: View {
+    private var P: OutsidePalette { .news }
     @EnvironmentObject var store: GameStore
     @State private var showPaper = false
 
@@ -22,7 +23,7 @@ struct NewsView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .outsideScreen()
+            .outsideScreen(P)
             .accessibilityIdentifier("news-app")
             .navigationDestination(isPresented: $showPaper) { paperPage(e) }
         }
@@ -36,24 +37,24 @@ struct NewsView: View {
         let weather: String = WeatherText.word(f.now.kind) + ", " + WeatherText.deg(f.now.temperature) + " in " + place
         return VStack(spacing: 8) {
             HStack { OutsideBack(); Spacer() }
-            Rectangle().fill(Theme.ivory).frame(height: 2)
-            Text(e.paperName).font(.serifTitle(38)).foregroundStyle(Theme.ivory)
+            Rectangle().fill(P.ink).frame(height: 2)
+            Text(e.paperName).font(.serifTitle(38)).foregroundStyle(P.ink)
                 .lineLimit(1).minimumScaleFactor(0.5).frame(maxWidth: .infinity)
                 .accessibilityAddTraits(.isHeader)
-            Rectangle().fill(Theme.ivory).frame(height: 0.8)
+            Rectangle().fill(P.accent).frame(height: 1.5)
             HStack(spacing: 8) {
                 Text(GameCalendar.dateString(week: e.state.week).uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.2)
                 Spacer(minLength: 6)
-                GlyphView(glyph: Glyph.weather(f.now.kind), size: 14, weight: 1.5, tint: Theme.ivoryMuted)
+                GlyphView(glyph: Glyph.weather(f.now.kind), size: 14, weight: 1.5, tint: P.inkSoft)
                 Text(weather).font(.system(size: 11.5))
             }
-            .foregroundStyle(Theme.ivoryMuted)
-            Rectangle().fill(Theme.hairline).frame(height: 1)
+            .foregroundStyle(P.inkSoft)
+            Rectangle().fill(P.hairline).frame(height: 1)
             Button { showPaper = true } label: {
                 HStack(spacing: 6) {
-                    Text("How the paper sees you:").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    Text(e.publicImageWord).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.gold)
-                    GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.gold)
+                    Text("How the paper sees you:").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+                    Text(e.publicImageWord).font(.system(size: 12, weight: .semibold)).foregroundStyle(P.accent)
+                    GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: P.accent)
                     Spacer(minLength: 0)
                 }
                 .padding(.vertical, 4).contentShape(Rectangle())
@@ -86,9 +87,9 @@ struct NewsView: View {
             if !earlier.isEmpty { earlierList(earlier) }
         } else {
             VStack(spacing: 8) {
-                Text("No news yet").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                Text("No news yet").font(.serifTitle(24)).foregroundStyle(P.ink)
                 Text("Headlines about the economy, your rivals and your companies appear as the weeks go by.")
-                    .font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
+                    .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 40)
         }
@@ -109,17 +110,17 @@ struct NewsView: View {
 
     private func leadStory(_ l: Lead) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(l.dateline).font(.system(size: 10.5, weight: .semibold)).tracking(1.4).foregroundStyle(Theme.gold)
-            Text(l.headline).font(.serifTitle(31)).foregroundStyle(Theme.ivory)
+            Text(l.dateline).font(.system(size: 10.5, weight: .semibold)).tracking(1.4).foregroundStyle(P.accent)
+            Text(l.headline).font(.serifTitle(31)).foregroundStyle(P.ink)
                 .fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader)
             if !l.standfirst.isEmpty {
-                Text(l.standfirst).font(.system(size: 15.5, design: .serif)).italic().foregroundStyle(Theme.ivoryMuted)
+                Text(l.standfirst).font(.system(size: 15.5, design: .serif)).italic().foregroundStyle(P.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !l.brief.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(Array(l.brief.enumerated()), id: \.offset) { _, s in
-                        Text("— " + s).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text("— " + s).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }.padding(.top, 2)
             }
@@ -131,8 +132,8 @@ struct NewsView: View {
 
     private func sectionLabel(_ title: String) -> some View {
         HStack(spacing: 10) {
-            Text(title.uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.6).foregroundStyle(Theme.ivory)
-            Rectangle().fill(Theme.borderStrong).frame(height: 1)
+            Text(title.uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.6).foregroundStyle(P.ink)
+            Rectangle().fill(P.lineStrong).frame(height: 1)
         }
         .padding(.top, 14).padding(.bottom, 10)
     }
@@ -143,7 +144,7 @@ struct NewsView: View {
         sectionLabel("This week")
         HStack(alignment: .top, spacing: 0) {
             column(left).padding(.trailing, 12)
-            Rectangle().fill(Theme.border).frame(width: 1)
+            Rectangle().fill(P.line).frame(width: 1)
             column(right).padding(.leading, 12)
         }
     }
@@ -151,7 +152,7 @@ struct NewsView: View {
     private func column(_ items: [NewsItem]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { i, n in
-                if i > 0 { Rectangle().fill(Theme.hairline).frame(height: 1).padding(.vertical, 12) }
+                if i > 0 { Rectangle().fill(P.hairline).frame(height: 1).padding(.vertical, 12) }
                 story(n)
             }
         }
@@ -160,9 +161,9 @@ struct NewsView: View {
 
     private func kicker(_ tone: String) -> (String, String, Color) {
         switch tone {
-        case "bad": return ("Warning", Glyph.warning, Theme.loss)
-        case "good": return ("Good news", Glyph.market, Theme.gain)
-        default: return ("Report", Glyph.news, Theme.ivoryMuted)
+        case "bad": return ("Warning", Glyph.warning, P.loss)
+        case "good": return ("Good news", Glyph.market, P.gain)
+        default: return ("Report", Glyph.news, P.inkSoft)
         }
     }
 
@@ -173,7 +174,7 @@ struct NewsView: View {
                 GlyphView(glyph: k.1, size: 11, weight: 1.8, tint: k.2)
                 Text(k.0.uppercased()).font(.system(size: 9.5, weight: .semibold)).tracking(1).foregroundStyle(k.2)
             }
-            Text(n.text).font(.serifTitle(16)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(n.text).font(.serifTitle(16)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -185,10 +186,10 @@ struct NewsView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionLabel("Earlier")
             ForEach(Array(items.enumerated()), id: \.offset) { i, n in
-                if i > 0 { Rectangle().fill(Theme.hairline).frame(height: 1) }
+                if i > 0 { Rectangle().fill(P.hairline).frame(height: 1) }
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(GameCalendar.dateString(week: n.week)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint).frame(width: 74, alignment: .leading)
-                    Text(n.text).font(.system(size: 13.5, design: .serif)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(GameCalendar.dateString(week: n.week)).font(.system(size: 11).monospacedDigit()).foregroundStyle(P.inkFaint).frame(width: 74, alignment: .leading)
+                    Text(n.text).font(.system(size: 13.5, design: .serif)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
                 .padding(.vertical, 9)
@@ -208,16 +209,18 @@ struct NewsView: View {
         .scrollIndicators(.hidden)
         .ledgerBackground()
         .appScreen(title: e.paperName, subtitle: "The local business paper")
+        .environment(\.outsidePalette, P)
+        .preferredColorScheme(.light)
     }
 
     @ViewBuilder private func paper(_ e: GameEngine) -> some View {
         let pages = e.frontPages
         let img = e.publicImage
         VStack(alignment: .leading, spacing: 4) {
-            Text(e.paperName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-            Text("The local business paper. A front page every week; interviews arrive in your inbox.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text(e.paperName).font(.serifTitle(24)).foregroundStyle(P.ink)
+            Text("The local business paper. A front page every week; interviews arrive in your inbox.").font(.system(size: 12)).foregroundStyle(P.inkSoft)
         }
-        CardSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(Theme.gold) }) {
+        CardSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(P.accent) }) {
             VStack(spacing: 0) {
                 FlatRow(label: "Trust", value: "\(Int(img.trust.rounded()))", rule: false)
                 FlatRow(label: "Boldness", value: "\(Int(img.bold.rounded()))")
@@ -230,10 +233,10 @@ struct NewsView: View {
         ForEach(Array(pages.enumerated()), id: \.offset) { _, p in
             CardSection(title: GameCalendar.dateString(week: p.week), trailing: { EmptyView() }) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(e.displayText(p.headline.tidyMoney)).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    if !p.deck.isEmpty { Text(e.displayText(p.deck)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                    Text(e.displayText(p.headline.tidyMoney)).font(.serifTitle(19)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                    if !p.deck.isEmpty { Text(e.displayText(p.deck)).font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true) }
                     ForEach(Array(p.side.enumerated()), id: \.offset) { _, s in
-                        Text("· " + e.displayText(s)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text("· " + e.displayText(s)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }

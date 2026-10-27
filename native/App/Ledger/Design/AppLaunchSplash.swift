@@ -9,6 +9,8 @@ struct AppLaunchSplash<Content: View>: View {
     var glyph: String
     var title: String
     var tint: Color
+    /// An outside app's own palette: the splash then uses its ground, text and accent instead of the icon's tint. Nil for insider apps.
+    var palette: OutsidePalette? = nil
     @ViewBuilder var content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,9 +24,9 @@ struct AppLaunchSplash<Content: View>: View {
 
     private var splash: some View {
         VStack(spacing: 22) {
-            AppIconTile(glyph: glyph, size: 128, tint: tint)
+            icon
                 .scaleEffect(reduceMotion || settled ? 1 : 0.86)
-            Text(title).font(.serifTitle(30)).foregroundStyle(Theme.ivory)
+            Text(title).font(.serifTitle(30)).foregroundStyle(palette?.ink ?? Theme.ivory)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(ground.ignoresSafeArea())
@@ -41,9 +43,23 @@ struct AppLaunchSplash<Content: View>: View {
         }
     }
 
+    @ViewBuilder private var icon: some View {
+        if let p = palette {
+            let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon * 128 / 62, style: .continuous)
+            GlyphView(glyph: glyph, size: 128 * 0.45, weight: 1.4, tint: p.accent)
+                .frame(width: 128, height: 128)
+                .background(shape.fill(p.card))
+                .overlay(shape.strokeBorder(p.lineStrong, lineWidth: 1))
+        } else {
+            AppIconTile(glyph: glyph, size: 128, tint: tint)
+        }
+    }
+
     private var ground: some View {
-        LinearGradient(colors: [tint.opacity(0.30), Color(hex: 0x0B0C0D)], startPoint: .top, endPoint: .bottom)
-            .background(Color(hex: 0x0B0C0D))
+        let top: Color = palette?.ground ?? tint.opacity(0.30)
+        let bottom: Color = palette?.ground2 ?? Color(hex: 0x0B0C0D)
+        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)
+            .background(bottom)
     }
 
     private func dismiss() {

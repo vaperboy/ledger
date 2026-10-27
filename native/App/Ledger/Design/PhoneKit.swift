@@ -82,7 +82,8 @@ extension CardSection where Trailing == EmptyView {
 
 /// The line between two rows inside a card.
 struct CardLine: View {
-    var body: some View { Rectangle().fill(Theme.divider).frame(height: 1) }
+    @Environment(\.outsidePalette) private var palette
+    var body: some View { Rectangle().fill(palette.divider).frame(height: 1) }
 }
 
 /// Key figures in a bordered card, cells separated by vertical lines; a second row follows the first when there are more than `columns`.
@@ -142,13 +143,14 @@ struct HeroFigure: View {
 struct NoteCard: View {
     var text: String
     var glyph: String = Glyph.info
-    var tint: Color = Theme.ivoryMuted
+    var tint: Color? = nil
+    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
         Card(padding: 14) {
             HStack(alignment: .top, spacing: 12) {
-                GlyphView(glyph: glyph, size: 18, weight: 1.5, tint: Theme.ivoryFaint)
-                Text(text.tidyText).font(.system(size: 13.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+                GlyphView(glyph: glyph, size: 18, weight: 1.5, tint: palette.inkFaint)
+                Text(text.tidyText).font(.system(size: 13.5)).foregroundStyle(tint ?? palette.inkSoft).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
         }
@@ -202,14 +204,15 @@ struct LinkLabel: View {
 
 /// The grey-outlined secondary button for the other answers next to a `QuietButtonStyle` one (8 pt corners, never filled).
 struct GreyOutlineButtonStyle: ButtonStyle {
+    @Environment(\.outsidePalette) private var palette
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .medium))
             .lineLimit(1)
-            .foregroundStyle(Theme.ivory)
+            .foregroundStyle(palette.ink)
             .padding(.horizontal, 14).padding(.vertical, 8)
             .frame(minHeight: 36)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(palette.lineStrong, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.7 : 1)
             .contentShape(Rectangle())
     }

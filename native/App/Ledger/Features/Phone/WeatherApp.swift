@@ -16,8 +16,10 @@ struct WeatherApp: View {
     var body: some View {
         if let e = store.engine {
             let cc: String = chosen ?? countries(e).first ?? e.state.homeCountryCode
+            let kind: String = e.weatherForecast(countryCode: cc).now.kind
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    WeatherHeader()
                     WeatherWarningCards(engine: e)
                     WeatherCityBar(engine: e, countries: countries(e), selection: Binding(get: { cc }, set: { chosen = $0 }))
                     WeatherNowCard(engine: e, country: cc)
@@ -29,7 +31,7 @@ struct WeatherApp: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .ledgerBackground()
+            .outsideScreen(OutsidePalette.weather(kind: kind))
             .accessibilityIdentifier("weather-app")
         }
     }
@@ -39,6 +41,21 @@ struct WeatherApp: View {
         var out: [String] = [e.state.homeCountryCode]
         for co in e.state.companies where co.status == .open && !out.contains(co.countryCode) { out.append(co.countryCode) }
         return out
+    }
+}
+
+/// The app's own masthead: the round back button, the title and the grey line, in the weather palette.
+struct WeatherHeader: View {
+    @Environment(\.outsidePalette) private var P
+    var body: some View {
+        HStack(spacing: 12) {
+            OutsideBack()
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Weather").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
+                Text("Conditions, forecast and warnings").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -55,6 +72,7 @@ enum WeatherText {
 
 /// The big-event warning(s): storm, heatwave, flood, with the companies that can be hit.
 struct WeatherWarningCards: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
 
@@ -71,20 +89,20 @@ struct WeatherWarningCards: View {
         return Card(padding: 14) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
-                    IconCircle(glyph: glyph, size: 36, tint: Theme.loss)
+                    IconCircle(glyph: glyph, size: 36, tint: P.loss)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("WARNING").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Theme.loss)
-                        Text(w.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
+                        Text("WARNING").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(P.loss)
+                        Text(w.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 0)
                 }
-                Text("Can hit: " + names.joined(separator: ", ")).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text("Can hit: " + names.joined(separator: ", ")).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                 ForEach(w.companyIDs, id: \.self) { id in
                     Button { store.openCompany(id, section: .operations) } label: {
                         HStack {
-                            Text(engine.state.company(id)?.name ?? "").font(.system(size: 13)).foregroundStyle(Theme.gold)
+                            Text(engine.state.company(id)?.name ?? "").font(.system(size: 13)).foregroundStyle(P.accent)
                             Spacer(minLength: 0)
-                            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+                            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.inkDim)
                         }.padding(.vertical, 4).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
@@ -97,6 +115,7 @@ struct WeatherWarningCards: View {
 
 /// The city switcher: one chip per country where the player has a company.
 struct WeatherCityBar: View {
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var countries: [String]
     @Binding var selection: String
@@ -110,14 +129,14 @@ struct WeatherCityBar: View {
             } label: {
                 HStack(spacing: 8) {
                     GlyphView(glyph: Glyph.world, size: 16, weight: 1.5)
-                    Text(label(selection)).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                    Text(label(selection)).font(.system(size: 14)).foregroundStyle(P.ink)
                     Spacer(minLength: 0)
-                    Text("Change city").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+                    Text("Change city").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.inkDim)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line, lineWidth: 1))
             }
             .accessibilityIdentifier("weather-city-switcher")
         }
@@ -139,6 +158,7 @@ enum WeatherCity {
 // MARK: Now, hourly, weeks
 
 struct WeatherNowCard: View {
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var country: String
 
@@ -147,11 +167,11 @@ struct WeatherNowCard: View {
         let note: String = f.now.againstNormal > 0.1 ? "Nicer than usual" : (f.now.againstNormal < -0.1 ? "Worse than usual" : "Usual for the month")
         return Card(padding: 18) {
             VStack(spacing: 6) {
-                Text(WeatherCity.name(engine, country)).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                Text(WeatherCity.name(engine, country)).font(.serifTitle(22)).foregroundStyle(P.ink)
                 GlyphView(glyph: Glyph.weather(f.now.kind), size: 34, weight: 1.4)
-                Text(WeatherText.deg(f.now.temperature)).font(.serifTitle(64)).foregroundStyle(Theme.ivory).monospacedDigit()
-                Text(WeatherText.word(f.now.kind)).font(.system(size: 15)).foregroundStyle(Theme.ivoryMuted)
-                Text("\(f.now.rainyDays) rainy day\(f.now.rainyDays == 1 ? "" : "s") this week · \(note)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text(WeatherText.deg(f.now.temperature)).font(.serifTitle(64)).foregroundStyle(P.ink).monospacedDigit()
+                Text(WeatherText.word(f.now.kind)).font(.system(size: 15)).foregroundStyle(P.inkSoft)
+                Text("\(f.now.rainyDays) rainy day\(f.now.rainyDays == 1 ? "" : "s") this week · \(note)").font(.system(size: 12)).foregroundStyle(P.inkFaint)
             }
             .frame(maxWidth: .infinity)
         }
@@ -160,6 +180,7 @@ struct WeatherNowCard: View {
 }
 
 struct WeatherHourlyCard: View {
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var country: String
 
@@ -170,9 +191,9 @@ struct WeatherHourlyCard: View {
             HStack(spacing: 0) {
                 ForEach(hours, id: \.self) { h in
                     VStack(spacing: 8) {
-                        Text(String(format: "%02d", h)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
-                        GlyphView(glyph: Glyph.weather(f.now.kind), size: 18, weight: 1.4, tint: Theme.ivoryMuted)
-                        Text(WeatherText.deg(WeatherText.hourly(mean: f.now.temperature, hour: h))).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                        Text(String(format: "%02d", h)).font(.system(size: 11).monospacedDigit()).foregroundStyle(P.inkFaint)
+                        GlyphView(glyph: Glyph.weather(f.now.kind), size: 18, weight: 1.4, tint: P.inkSoft)
+                        Text(WeatherText.deg(WeatherText.hourly(mean: f.now.temperature, hour: h))).font(.system(size: 13).monospacedDigit()).foregroundStyle(P.ink)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -183,6 +204,7 @@ struct WeatherHourlyCard: View {
 }
 
 struct WeatherWeeksCard: View {
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var country: String
 
@@ -201,13 +223,13 @@ struct WeatherWeeksCard: View {
     private func row(_ d: WeatherEvents.Forecast) -> some View {
         let storm: Bool = d.kind == "storm"
         return HStack(spacing: 10) {
-            IconCircle(glyph: Glyph.weather(d.kind), size: 30, tint: storm ? Theme.loss : Theme.ivoryMuted)
+            IconCircle(glyph: Glyph.weather(d.kind), size: 30, tint: storm ? P.loss : P.inkSoft)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Week of " + GameCalendar.dateString(week: d.week)).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                Text(WeatherText.word(d.kind) + (d.uncertain ? " · uncertain" : "")).font(.system(size: 11.5)).foregroundStyle(storm ? Theme.loss : Theme.ivoryFaint)
+                Text("Week of " + GameCalendar.dateString(week: d.week)).font(.system(size: 13.5)).foregroundStyle(P.ink)
+                Text(WeatherText.word(d.kind) + (d.uncertain ? " · uncertain" : "")).font(.system(size: 11.5)).foregroundStyle(storm ? P.loss : P.inkFaint)
             }
             Spacer(minLength: 8)
-            Text("\(Int(d.temperatureLow.rounded()))–\(Int(d.temperatureHigh.rounded()))°").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+            Text("\(Int(d.temperatureLow.rounded()))–\(Int(d.temperatureHigh.rounded()))°").font(.system(size: 13).monospacedDigit()).foregroundStyle(P.inkSoft)
         }
         .padding(.vertical, 8)
     }
@@ -217,6 +239,7 @@ struct WeatherWeeksCard: View {
 
 /// How the weather moves each open company in the chosen country this week.
 struct WeatherCompaniesCard: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var country: String
@@ -225,7 +248,7 @@ struct WeatherCompaniesCard: View {
         let open: [Company] = engine.state.companies.filter { $0.status == .open && $0.countryCode == country }
         return CardSection(title: "Your companies here", trailing: { EmptyView() }) {
             if open.isEmpty {
-                Text("You have no open company in this country. The forecast above is for the city itself.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text("You have no open company in this country. The forecast above is for the city itself.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
             } else {
                 VStack(spacing: 0) {
                     ForEach(open, id: \.id) { co in
@@ -241,13 +264,13 @@ struct WeatherCompaniesCard: View {
         let line = engine.weatherLine(companyID: co.id)
         return Button { store.openCompany(co.id, section: .operations) } label: {
             HStack(spacing: 10) {
-                IconCircle(glyph: Glyph.weather(line?.kind ?? "mixed"), size: 32, tint: Theme.ivoryMuted)
+                IconCircle(glyph: Glyph.weather(line?.kind ?? "mixed"), size: 32, tint: P.inkSoft)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(co.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                    Text(effects(line)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(co.name).font(.system(size: 14)).foregroundStyle(P.ink)
+                    Text(effects(line)).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
+                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim)
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }

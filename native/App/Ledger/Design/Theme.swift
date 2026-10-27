@@ -88,12 +88,22 @@ extension Font {
 
 extension View {
     /// A section label: small caps, wide tracking, champagne.
-    func capsLabel(_ tint: Color = Theme.gold) -> some View {
-        self.font(.caps).tracking(1.6).textCase(.uppercase).foregroundStyle(tint)
+    func capsLabel(_ tint: Color? = nil) -> some View {
+        modifier(CapsLabelStyle(tint: tint))
+    }
+}
+
+/// `capsLabel` as a modifier so the default colour follows the outside app's palette (champagne in the game's own screens).
+struct CapsLabelStyle: ViewModifier {
+    var tint: Color?
+    @Environment(\.outsidePalette) private var palette
+    func body(content: Content) -> some View {
+        content.font(.caps).tracking(1.6).textCase(.uppercase).foregroundStyle(tint ?? palette.accent)
     }
 }
 
 /// A 0.5 pt line.
 struct Hairline: View {
-    var body: some View { Rectangle().fill(Theme.hairline).frame(height: 0.5) }
+    @Environment(\.outsidePalette) private var palette
+    var body: some View { Rectangle().fill(palette.hairline).frame(height: 0.5) }
 }

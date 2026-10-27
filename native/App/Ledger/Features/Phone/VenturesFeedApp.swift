@@ -10,6 +10,7 @@ import Simulation
 /// venture (your own startups, funds, group stakes, software) sit below the feed in the existing `VenturesContent`.
 /// Engine calls: `startupPitchesOnOffer`, `startupStakes`, `investInStartup`, `helpStartupOnBoard`, `sellStartupStake`.
 struct VenturesFeedApp: View {
+    private var P: OutsidePalette { .ventures }
     @EnvironmentObject var store: GameStore
     @State private var pending: PendingAction?
 
@@ -29,7 +30,7 @@ struct VenturesFeedApp: View {
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .outsideScreen()
+            .outsideScreen(P)
             .confirmAction($pending)
             .accessibilityIdentifier("ventures-app")
         }
@@ -43,9 +44,9 @@ struct VenturesFeedApp: View {
         return HStack(alignment: .center, spacing: 12) {
             OutsideBack()
             VStack(alignment: .leading, spacing: 1) {
-                Text("Ventures").font(.serifTitle(26)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+                Text("Ventures").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
                 Text(held.isEmpty ? "Founders looking for money" : "\(held.count) backed · " + cur.tidyShort(value) + " at paper value")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
             }
             Spacer(minLength: 0)
         }
@@ -55,7 +56,7 @@ struct VenturesFeedApp: View {
         HStack {
             Text(title.uppercased()).capsLabel()
             Spacer()
-            if !note.isEmpty { Text(note).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+            if !note.isEmpty { Text(note).font(.system(size: 11)).foregroundStyle(P.inkFaint) }
         }
         .padding(.top, 4)
     }
@@ -71,7 +72,7 @@ struct VenturesFeedApp: View {
         ForEach(list) { (p: Startups.Pitch) in pitchPost(p, cur, minimum) }
         if !list.isEmpty {
             Text("The smallest cheque is \(cur.tidyShort(minimum)). Twenty percent or more brings a board seat, where you can help the team. Most young companies fail.")
-                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                .font(.system(size: 11)).foregroundStyle(P.inkFaint)
         }
     }
 
@@ -84,15 +85,15 @@ struct VenturesFeedApp: View {
             HStack(spacing: 10) {
                 logo(p.name, p.sector)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(p.name).font(.system(size: 15.5, weight: .semibold)).foregroundStyle(Theme.ivory)
-                    Text(p.sector).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(p.name).font(.system(size: 15.5, weight: .semibold)).foregroundStyle(P.ink)
+                    Text(p.sector).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
                 }
                 Spacer(minLength: 8)
-                Text("PITCHING").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(Theme.gold)
+                Text("PITCHING").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(P.accent2)
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
+                    .overlay(Capsule().strokeBorder(P.accent2.opacity(0.6), lineWidth: 1))
             }
-            Text("“" + p.blurb.tidyMoney + "”").font(.system(size: 15, design: .serif)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text("“" + p.blurb.tidyMoney + "”").font(.system(size: 15, design: .serif)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
             askLine(p, cur)
             tractionRow(p)
             HStack {
@@ -101,28 +102,28 @@ struct VenturesFeedApp: View {
             }
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         .accessibilityElement(children: .contain)
     }
 
     private func askLine(_ p: Startups.Pitch, _ cur: Currency) -> some View {
         HStack(spacing: 0) {
             fact("The ask", cur.tidyShort(p.raise))
-            Rectangle().fill(Theme.border).frame(width: 1, height: 30)
+            Rectangle().fill(P.line).frame(width: 1, height: 30)
             fact("Valuation before", cur.tidyShort(p.preMoney))
-            Rectangle().fill(Theme.border).frame(width: 1, height: 30)
+            Rectangle().fill(P.line).frame(width: 1, height: 30)
             fact("After the round", cur.tidyShort(p.postMoney))
         }
         .padding(.vertical, 8)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.divider).frame(height: 1) }
+        .overlay(alignment: .top) { Rectangle().fill(P.divider).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(P.divider).frame(height: 1) }
     }
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(spacing: 2) {
-            Text(value).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
-            Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text(value).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+            Text(label).font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -140,14 +141,14 @@ struct VenturesFeedApp: View {
         let frac: CGFloat = CGFloat(min(1, max(0, Double(value) / 100)))
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(label).font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
                 Spacer(minLength: 2)
-                Text("\(value)").font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text("\(value)").font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(P.inkSoft)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.divider)
-                    Capsule().fill(Theme.gold).frame(width: geo.size.width * frac)
+                    Capsule().fill(P.divider)
+                    Capsule().fill(P.accent).frame(width: geo.size.width * frac)
                 }
             }
             .frame(height: 4)
@@ -173,11 +174,11 @@ struct VenturesFeedApp: View {
             }
         } label: {
             HStack(spacing: 6) {
-                GlyphView(glyph: Glyph.ventures, size: 14, weight: 1.6, tint: Theme.gold)
-                Text("Back it").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.gold)
+                GlyphView(glyph: Glyph.ventures, size: 14, weight: 1.6, tint: P.accent)
+                Text("Back it").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
             }
             .padding(.horizontal, 18).padding(.vertical, 9)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
         }
         .disabled(sizes.isEmpty)
         .accessibilityLabel("Back \(p.name)")
@@ -214,21 +215,21 @@ struct VenturesFeedApp: View {
             HStack(spacing: 10) {
                 logo(st.name, st.sector)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(st.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                    Text(st.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
                     Text("\(st.sector) · \(status) · \(String(format: "%.1f", st.ownership))%" + (st.boardSeat ? " · board seat" : ""))
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(cur.tidyShort(st.value)).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text((gain >= 0 ? "▲ +" : "▼ −") + cur.tidyShort(abs(gain))).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.change(gain))
+                    Text(cur.tidyShort(st.value)).font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+                    Text((gain >= 0 ? "▲ +" : "▼ −") + cur.tidyShort(abs(gain))).font(.system(size: 11).monospacedDigit()).foregroundStyle(P.change(gain))
                 }
             }
             if st.live { stakeActions(st, cur) }
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.line, lineWidth: 1))
     }
 
     private func stakeActions(_ st: Startups.Stake, _ cur: Currency) -> some View {
