@@ -58,7 +58,8 @@ public enum ProjectTenders {
         public var openedWeek: Int { int("w0") }
         public var closesWeek: Int { int("due") }
         public var awardWeek: Int { int("award") }
-        public var rivals: Int { int("rivals") }
+        /// Internal only: the number of rival bids is hidden from the player and not part of any UI read.
+        var rivals: Int { int("rivals") }
         public var worth: Double { num("val") }
         /// What writing the bid costs.
         public var bidCost: Double { num("cost") }

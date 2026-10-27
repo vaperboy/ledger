@@ -157,6 +157,16 @@ struct HiringView: View {
     }
 }
 
+/// Patience is never shown as a number: only a feeling, from how much of the engine's patience is left (no rules, only wording).
+enum PatienceWords {
+    static func feeling(left: Int, of total: Int) -> (text: String, tint: Color) {
+        let f: Double = total > 0 ? Double(left) / Double(total) : 0
+        if f > 0.66 { return ("Relaxed", Theme.ivory) }
+        if f > 0.34 { return ("Getting impatient", Theme.caution) }
+        return ("Close to walking away", Theme.loss)
+    }
+}
+
 /// How an ask or an offer compares with the market, in words and colour: "3% above market" amber, "8% below market" green, "14% above market" red.
 enum HiringFigures {
     static func versusMarket(_ v: Double, wording: String = "market") -> (text: String, tint: Color) {

@@ -346,12 +346,12 @@ struct ManagerCandidateChecks: View {
     var person: Person
     var companyID: Int
     var currency: Currency
+    @State private var trialSeen: Double?
 
     private func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
 
     var body: some View {
         let q = person.value("q")
-        let left = person.value("qLeft").isNull ? 3 : person.int("qLeft")
         let checked = person.flag("ref")
         let fee = currency.scaledPrice(2500)
         VStack(alignment: .leading, spacing: 4) {
@@ -364,14 +364,15 @@ struct ManagerCandidateChecks: View {
                 }
             }
             WrapRow {
-                Menu {
-                    ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
-                        Button(k.label) {
-                            let r = store.act { $0.interviewManager(personID: person.id, skill: k.key) } ?? nil
-                            if r == nil { store.show("No questions left for \(person.name).", tone: "warn") }
-                        }.disabled(left <= 0 && q[k.key].isNull)
-                    }
-                } label: { Text("Interview (\(left) left)  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1)) }
+                if let seen = trialSeen {
+                    Text("Trial week: their work looked like skill \(Int(seen.rounded())).").font(.system(size: 11.5)).foregroundStyle(Theme.ivory)
+                } else {
+                    Button("Trial week") {
+                        let r: Double? = store.act { $0.startTrialWeek(personID: person.id, companyID: companyID) } ?? nil
+                        if let r { trialSeen = r; Haptics.success(); store.show("After a paid trial week their work looks like \(Int(r.rounded())) skill.", tone: "n") }
+                        else { Haptics.warning(); store.show("Could not arrange a trial week: it was done already, or the company lacks the cash for a week's wage.", tone: "warn") }
+                    }.buttonStyle(QuietButtonStyle())
+                }
                 if !checked {
                     Button("References · \(currency.tidyShort(fee))") {
                         let ok = store.act { $0.checkManagerReferences(personID: person.id, companyID: companyID) } ?? false
@@ -382,7 +383,7 @@ struct ManagerCandidateChecks: View {
                     Text("References checked").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
                 }
             }
-            Text("Interviews show what they claim; references show what is true.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("A paid trial week shows about how good their work is; references show what is true.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
         }
     }
 }
