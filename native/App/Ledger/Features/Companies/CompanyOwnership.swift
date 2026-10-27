@@ -14,10 +14,10 @@ struct CompanyOwnershipSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var part: Part = .owners
+    @State private var page: Part?
     @State private var pending: PendingAction?
 
-    private enum Part: String, CaseIterable { case owners = "Owners", raise = "Raise money", sell = "Sell shares" }
+    private enum Part: String, CaseIterable, Identifiable { case owners = "Owners", raise = "Raise money", sell = "Sell shares"; var id: String { rawValue } }
 
     /// One slice of the ownership bar.
     private struct Piece: Identifiable {
@@ -39,20 +39,33 @@ struct CompanyOwnershipSection: View {
 
     var body: some View {
         let cur = engine.currency(for: company)
-        let shown: [Part] = parts
-        let current: Part = shown.contains(part) ? part : .owners
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             control
-            if shown.count > 1 {
-                SegmentedPill(items: shown, title: { $0.rawValue }, selection: $part)
-            }
-            switch current {
-            case .owners: owners(cur)
-            case .raise: raise(cur)
-            case .sell: sell(cur)
-            }
+            owners(cur)
+            if parts.count > 1 { moreTable }
+        }
+        .navigationDestination(item: $page) { (p: Part) in
+            SettingsPage(title: p.rawValue, subtitle: company.name) { pageContent(p, cur) }
         }
         .confirmAction($pending)
+    }
+
+    /// Raising money and selling shares are bigger decisions: rows that open pages of their own.
+    private var moreTable: some View {
+        SettingsTable(heading: "Money and shares") {
+            SettingsTableRow(title: Part.raise.rawValue, note: "New owners put money into the company", value: "Open") { page = .raise }
+            if parts.contains(.sell) {
+                SettingsTableRow(title: Part.sell.rawValue, note: "Sell some of your own shares", value: "\(Int(company.ownership.rounded()))% yours") { page = .sell }
+            }
+        }
+    }
+
+    @ViewBuilder private func pageContent(_ p: Part, _ cur: Currency) -> some View {
+        switch p {
+        case .owners: owners(cur)
+        case .raise: raise(cur)
+        case .sell: sell(cur)
+        }
     }
 
     // MARK: Control

@@ -26,7 +26,7 @@ struct ReportsContent: View {
     var companyID: Int? = nil
     @State private var kind: ReportKind = .week
     @State private var chosen: [String: Int] = [:]
-    @State private var page: ReportPage = .summary
+    @State private var opened: ReportPage?
 
     private var format: ReportFormat {
         if let id = companyID, let co = engine.state.company(id) {
@@ -58,11 +58,13 @@ struct ReportsContent: View {
                 .padding(.horizontal, -Theme.Space.margin)
             if let r = current {
                 picker(r, all)
-                SectionTabs(items: ReportPage.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -Theme.Space.margin)
-                switch page {
-                case .summary: summaryPage(r, all)
-                case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)
-                case .bills: ReportBills(engine: engine, report: r, companyID: companyID)
+                summaryPage(r, all)
+                SettingsTable(heading: "Details") {
+                    SettingsTableRow(title: ReportPage.movements.rawValue, note: "Every movement of money in this period", value: "") { opened = .movements }
+                    SettingsTableRow(title: ReportPage.bills.rawValue, note: "What was due and paid", value: "") { opened = .bills }
+                }
+                Color.clear.frame(height: 0).navigationDestination(item: $opened) { (p: ReportPage) in
+                    SettingsPage(title: p.rawValue, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(p, r) }
                 }
             } else {
                 CardSection("No report yet") {
@@ -73,6 +75,14 @@ struct ReportsContent: View {
         }
         .onAppear { takeRequest() }
         .onChange(of: store.reportRequest) { _, _ in takeRequest() }
+    }
+
+    @ViewBuilder private func detail(_ p: ReportPage, _ r: PeriodReport) -> some View {
+        switch p {
+        case .summary: EmptyView()
+        case .movements: ReportMovements(engine: engine, report: r, companyID: companyID)
+        case .bills: ReportBills(engine: engine, report: r, companyID: companyID)
+        }
     }
 
     @ViewBuilder private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {

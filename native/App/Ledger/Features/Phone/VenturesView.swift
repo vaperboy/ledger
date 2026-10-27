@@ -11,9 +11,11 @@ import Simulation
 /// stakes in groups from the big meeting, and software of your own built by a web-development company. A waiting big-meeting offer comes
 /// first because it expires. Logic: `Startups`, `PrivateEquity`, `BigMeeting`, `GroupDeals`, `SoftwareProducts`.
 struct VenturesContent: View {
-    enum Part: String, CaseIterable, Hashable { case founded = "Your startups", backing = "Backing startups", funds = "Private equity", groups = "Stakes in groups", software = "Software" }
+    enum Part: String, CaseIterable, Hashable, Identifiable {
+        var id: String { rawValue }
+        case founded = "Your startups", backing = "Backing startups", funds = "Private equity", groups = "Stakes in groups", software = "Software" }
     @EnvironmentObject var store: GameStore
-    @State private var part: Part = .founded
+    @State private var opened: Part?
     @State private var pending: PendingAction?
 
     var body: some View {
@@ -21,15 +23,54 @@ struct VenturesContent: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 summary(e)
                 if let o = e.bigMeetingOffer { BigMeetingCard(engine: e, offer: o) }
-                SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, badge: { badge(e, $0) }).padding(.horizontal, -18)
-                switch part {
-                case .founded: FoundedStartups(engine: e)
-                case .backing: BackedStartups(engine: e)
-                case .funds: PrivateEquityPart(engine: e)
-                case .groups: GroupStakesPart(engine: e)
-                case .software: SoftwarePart(engine: e)
-                }
+                venturesTable(e)
             }
+            .navigationDestination(item: $opened) { (p: Part) in
+                SettingsPage(title: p.rawValue, subtitle: "Ventures", tab: .phone) { partContent(p, e) }
+            }
+        }
+    }
+
+    @ViewBuilder private func partContent(_ p: Part, _ e: GameEngine) -> some View {
+        switch p {
+        case .founded: FoundedStartups(engine: e)
+        case .backing: BackedStartups(engine: e)
+        case .funds: PrivateEquityPart(engine: e)
+        case .groups: GroupStakesPart(engine: e)
+        case .software: SoftwarePart(engine: e)
+        }
+    }
+
+    /// One row per kind of venture; each opens its own workflow as a page. A red count shows offers waiting on your startups.
+    private func venturesTable(_ e: GameEngine) -> some View {
+        let offers: Int = badge(e, .founded)
+        return SettingsTable(heading: "Ventures") {
+            ForEach(Part.allCases) { (p: Part) in
+                SettingsTableRow(title: p.rawValue, note: note(p), value: value(e, p), valueTint: p == .founded && offers > 0 ? Theme.caution : Theme.ivory) { opened = p }
+            }
+        }
+    }
+
+    private func note(_ p: Part) -> String {
+        switch p {
+        case .founded: return "Build, raise money, run out of runway or exit"
+        case .backing: return "Pick a pitch, size the cheque, help on the board"
+        case .funds: return "Commit, capital calls, sell on the secondary market"
+        case .groups: return "Stakes from the big meeting"
+        case .software: return "Products built by a web-development company"
+        }
+    }
+
+    private func value(_ e: GameEngine, _ p: Part) -> String {
+        switch p {
+        case .founded:
+            let n: Int = e.foundedStartups.filter { $0.live }.count
+            let offers: Int = badge(e, .founded)
+            return offers > 0 ? "\(n) running, \(offers) offer\(offers == 1 ? "" : "s")" : n == 0 ? "None" : "\(n) running"
+        case .backing: let n: Int = e.startupStakes.filter { $0.live }.count; return n == 0 ? "None" : "\(n) held"
+        case .funds: let n: Int = e.privateEquityFunds.filter { $0.live }.count; return n == 0 ? "None" : "\(n) held"
+        case .groups: let n: Int = e.bigMeetingStakes.count + e.groupStakes.count; return n == 0 ? "None" : "\(n) held"
+        case .software: return ""
         }
     }
 

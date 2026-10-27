@@ -6,7 +6,8 @@ import Simulation
 /// Read-only records of the world around you: your rival, the Top 50, monthly results per company, the crisis centre and the
 /// retirement hall. Nothing is decided here; the crisis centre links to the Inbox, where each decision is answered.
 struct WorldRecordsView: View {
-    enum Page: String, CaseIterable, Hashable {
+    enum Page: String, CaseIterable, Hashable, Identifiable {
+        var id: String { rawValue }
         case rival = "Your rival", topFifty = "Top 50", months = "Monthly results", crisis = "Crisis centre", hall = "Retirement hall"
         var glyph: String {
             switch self {
@@ -19,10 +20,11 @@ struct WorldRecordsView: View {
         }
     }
     @EnvironmentObject var store: GameStore
-    @State private var page: Page
+    /// The record to show on its own; without one the screen is the table of all records, each row opening its page.
+    var page: Page?
+    @State private var opened: Page?
     @State private var companyID: Int?
 
-    init(page: Page) { _page = State(initialValue: page) }
 
     private func monthName(_ index: Int) -> String { GameCalendar.monthNames[index % 12] + " " + String(index / 12) }
 
@@ -30,13 +32,10 @@ struct WorldRecordsView: View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    SectionTabs(items: Page.allCases, primary: [.rival, .topFifty, .months], title: { $0.rawValue }, selection: $page).padding(.horizontal, -18)
-                    switch page {
-                    case .rival: rival(e)
-                    case .topFifty: topFifty(e)
-                    case .months: months(e)
-                    case .crisis: crisis(e)
-                    case .hall: hall(e)
+                    if let page {
+                        record(page, e)
+                    } else {
+                        recordsTable(e)
                     }
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
@@ -44,6 +43,45 @@ struct WorldRecordsView: View {
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
+        }
+    }
+
+    @ViewBuilder private func record(_ page: Page, _ e: GameEngine) -> some View {
+        switch page {
+        case .rival: rival(e)
+        case .topFifty: topFifty(e)
+        case .months: months(e)
+        case .crisis: crisis(e)
+        case .hall: hall(e)
+        }
+    }
+
+    /// Five records in one table: the rival, the Top 50, monthly results, the crisis centre and the retirement hall.
+    private func recordsTable(_ e: GameEngine) -> some View {
+        OverviewSettingsCard(heading: "Records") {
+            ForEach(Page.allCases) { (p: Page) in
+                SettingsTableRow(title: p.rawValue, note: note(p), value: value(p, e), glyph: p.glyph) { opened = p }
+            }
+        }
+        .navigationDestination(item: $opened) { (p: Page) in
+            WorldRecordsView(page: p).appScreen(title: p.rawValue, subtitle: "Records of the world around you")
+        }
+    }
+
+    private func note(_ p: Page) -> String {
+        switch p {
+        case .rival: return "The owner who keeps beating you, or loses to you"
+        case .topFifty: return "The fifty biggest groups"
+        case .months: return "Results per company, month by month"
+        case .crisis: return "Open crises and what answers them"
+        case .hall: return "Owners who retired"
+        }
+    }
+
+    private func value(_ p: Page, _ e: GameEngine) -> String {
+        switch p {
+        case .rival: return e.nemesis?.owner ?? "None yet"
+        default: return ""
         }
     }
 

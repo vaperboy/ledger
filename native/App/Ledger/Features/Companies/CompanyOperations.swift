@@ -32,7 +32,7 @@ enum OpsWords {
 
 /// A small setting changed in a sheet.
 enum OpsSheet: String, Identifiable {
-    case price, hours, maintenance, stock, hold
+    case price, hours, upkeep
     var id: String { rawValue }
 }
 
@@ -140,14 +140,11 @@ struct CompanyOperations: View {
     }
 
     @ViewBuilder private var smallRows: some View {
-        let hold: Bool = company.flag("inflHold")
-        let stockNote: String = company.inventory > 0 ? "Cash tied up " + store.short(company.inventory, in: company) : "How much you keep in hand"
-        SettingsTableRow(title: "Price", note: "Cheaper brings more customers", value: OpsWords.price(company.priceLevel), opens: .sheet,
+        let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
+        SettingsTableRow(title: "Price", note: company.flag("inflHold") ? "Cheaper brings more customers; prices held against inflation" : "Cheaper brings more customers; can be held against inflation", value: OpsWords.price(company.priceLevel), opens: .sheet,
                          glyph: Glyph.opsPrice, change: String(format: "%+.1f", company.priceLevel), changeTint: Theme.ivoryFaint) { sheet = .price }
         SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", opens: .sheet, glyph: Glyph.clock) { sheet = .hours }
-        SettingsTableRow(title: "Maintenance", note: "Equipment upkeep", value: OpsWords.name(OpsWords.maintenance, company.maintenance), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .maintenance }
-        SettingsTableRow(title: "Stock", note: stockNote, value: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)), opens: .sheet, glyph: Glyph.opsBox) { sheet = .stock }
-        SettingsTableRow(title: "Hold my prices", note: "Keep prices fixed while the market inflates", value: hold ? "On" : "Off", valueTint: hold ? Theme.gold : Theme.ivoryMuted, opens: .sheet, glyph: Glyph.lock) { sheet = .hold }
+        SettingsTableRow(title: "Upkeep", note: stockNote, value: OpsWords.name(OpsWords.maintenance, company.maintenance) + " / " + OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased(), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .upkeep }
     }
 
     @ViewBuilder private var bigRows: some View {

@@ -56,7 +56,7 @@ struct FranchisorCard: View {
     @State private var support = 0
     @State private var masterCountry = ""
     @State private var terminate: Int?
-    @State private var ftab: FranchiseTab = .network
+    @State private var ftab: FranchiseTab?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -87,15 +87,6 @@ struct FranchisorCard: View {
                 }
             }
         }
-        .confirmationDialog("End this contract?", isPresented: Binding(get: { terminate != nil }, set: { if !$0 { terminate = nil } }), titleVisibility: .visible) {
-            Button("End contract", role: .destructive) {
-                if let u = terminate {
-                    if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
-                    else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
-                }
-                terminate = nil
-            }
-        } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }
     }
 
     // MARK: Before launch
@@ -202,12 +193,29 @@ struct FranchisorCard: View {
         let apps = engine.franchiseApplicants(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             systemHero(f, units: units.count, applicants: apps.count, cur)
-            SegmentedPill(items: FranchiseTab.allCases, title: { (t: FranchiseTab) in t.title }, selection: $ftab)
-            switch ftab {
-            case .network: network(units, f, cur)
-            case .pipeline: pipeline(apps, cur)
-            case .countries: masterSection(f, cur)
+            SettingsTable(heading: "Franchise") {
+                SettingsTableRow(title: FranchiseTab.network.title, note: "Units, fees, royalties, contracts", value: "\(units.count) \(units.count == 1 ? "unit" : "units")") { ftab = .network }
+                SettingsTableRow(title: FranchiseTab.pipeline.title, note: "Applicants waiting for a talk", value: "\(apps.count) \(apps.count == 1 ? "applicant" : "applicants")") { ftab = .pipeline }
+                SettingsTableRow(title: FranchiseTab.countries.title, note: "Master franchise by country", value: "Open") { ftab = .countries }
             }
+        }
+        .navigationDestination(item: $ftab) { (t: FranchiseTab) in
+            SettingsPage(title: t.title, subtitle: company.name) {
+                switch t {
+                case .network: network(units, f, cur)
+                case .pipeline: pipeline(apps, cur)
+                case .countries: masterSection(f, cur)
+                }
+            }
+            .confirmationDialog("End this contract?", isPresented: Binding(get: { terminate != nil }, set: { if !$0 { terminate = nil } }), titleVisibility: .visible) {
+            Button("End contract", role: .destructive) {
+                if let u = terminate {
+                    if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
+                    else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
+                }
+                terminate = nil
+            }
+        } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }
         }
     }
 

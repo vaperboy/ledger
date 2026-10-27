@@ -15,7 +15,7 @@ struct CompanyContracts: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var part: Part = .running
+    @State private var showTenders = false
     @State private var openContract: Int? = nil
     @State private var ending: Int? = nil
     @State private var openTender: Int? = nil
@@ -23,8 +23,6 @@ struct CompanyContracts: View {
     @State private var higherQuality = false
     @State private var pending: PendingAction?
     private let prices: [Double] = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1]
-
-    private enum Part: String, CaseIterable { case running = "Running", tenders = "Tenders" }
 
     /// One contract's term on the timeline.
     private struct Span: Identifiable {
@@ -36,19 +34,19 @@ struct CompanyContracts: View {
 
     var body: some View {
         let open: [ProjectTenders.Tender] = openVolumeTenders
-        let showTabs: Bool = !open.isEmpty
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             summary
-            if showTabs {
-                SegmentedPill(items: Part.allCases, title: { $0 == .tenders ? "Tenders (\(open.count))" : $0.rawValue }, selection: $part)
+            if !open.isEmpty {
+                SettingsTable(heading: "Contracts") {
+                    SettingsTableRow(title: "Tenders", note: "Volume contracts you can bid for", value: "\(open.count) open") { showTenders = true }
+                }
             }
-            if part == .tenders && showTabs {
-                tenders(open)
-            } else {
-                running
-            }
+            running
         }
-        .confirmAction($pending)
+        .navigationDestination(isPresented: $showTenders) {
+            SettingsPage(title: "Tenders", subtitle: company.name) { tenders(openVolumeTenders) }
+                .confirmAction($pending)
+        }
     }
 
     private var openVolumeTenders: [ProjectTenders.Tender] {

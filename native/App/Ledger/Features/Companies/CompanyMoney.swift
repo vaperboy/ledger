@@ -243,8 +243,7 @@ struct CompanyMoneySummary: View {
         return SettingsTable(heading: "Money matters") {
             SettingsTableRow(title: "Statements", note: "Profit and loss, balance sheet, cash flow, tax", value: "Month " + cur.tidyShort(o.monthProfit), valueTint: o.monthProfit < 0 ? Theme.loss : Theme.ivory) { part = .accounts }
             SettingsTableRow(title: "Ownership", note: "Dividends, owners, shares, selling", value: share) { part = .owners }
-            SettingsTableRow(title: "Legal form and name", note: "Sole trader or limited, rename", value: form) { part = .settings }
-            SettingsTableRow(title: "Trading", note: "Close for a while or wind up", value: closed ? "Closed for now" : "Trading", valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
+            SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
         }
     }
 }

@@ -4,7 +4,7 @@ import Countries
 import Simulation
 
 /// What the Reports screen shows for the chosen period: the report itself, the company bank movements, or payroll and bills.
-enum ReportPage: String, CaseIterable, Hashable { case summary = "Summary", movements = "Transactions", bills = "Bills and payroll" }
+enum ReportPage: String, CaseIterable, Hashable, Identifiable { case summary = "Summary", movements = "Transactions", bills = "Bills and payroll"; var id: String { rawValue } }
 
 /// Amounts in the currency of the company they belong to (the home currency for the group's own lines).
 @MainActor private struct MoneyText {

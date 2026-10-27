@@ -6,25 +6,33 @@ import Simulation
 /// What is happening around you: the headlines, the local business paper.
 /// Original: the news list, `V.paper40` (business paper).
 struct NewsView: View {
-    enum Page: String, CaseIterable, Hashable { case headlines = "Headlines", paper = "The paper" }
     @EnvironmentObject var store: GameStore
-    @State private var page: Page = .headlines
+    @State private var showPaper = false
 
     var body: some View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    SectionTabs(items: Page.allCases, title: { $0.rawValue }, selection: $page).padding(.horizontal, -18)
-                    switch page {
-                    case .headlines: headlines(e)
-                    case .paper: paper(e)
+                    OverviewSettingsCard(heading: "News") {
+                        SettingsTableRow(title: e.paperName, note: "The local business paper and how it sees you", value: e.publicImageWord, glyph: Glyph.news) { showPaper = true }
                     }
+                    headlines(e)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
+            .navigationDestination(isPresented: $showPaper) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) { paper(e) }
+                        .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+                .ledgerBackground()
+                .appScreen(title: e.paperName, subtitle: "The local business paper")
+            }
         }
     }
 

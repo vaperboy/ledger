@@ -50,7 +50,7 @@ struct OpsPageDestination: View {
     }
 }
 
-/// The small sheet for one simple Operations setting (price, hours, maintenance, stock, hold prices). It reads the company live, so the
+/// The small sheet for one simple Operations setting (price with hold-my-prices, hours, upkeep). It reads the company live, so the
 /// controls always show what the engine holds; every change goes through the same engine call the old cards used.
 struct OpsSettingSheet: View {
     @EnvironmentObject var store: GameStore
@@ -76,9 +76,7 @@ struct OpsSettingSheet: View {
         switch kind {
         case .price: return "Price"
         case .hours: return "Your time"
-        case .maintenance: return "Maintenance"
-        case .stock: return "Stock"
-        case .hold: return "Hold my prices"
+        case .upkeep: return "Upkeep"
         }
     }
 
@@ -86,21 +84,36 @@ struct OpsSettingSheet: View {
         switch kind {
         case .price: priceBody(co)
         case .hours: hoursBody(co)
-        case .maintenance: levelBody(co, names: OpsWords.maintenance, current: co.maintenance, note: "Thorough upkeep costs more but equipment breaks less.") { level in
-            store.act { $0.setMaintenance(companyID: co.id, level: level) }
-            store.saved("Maintenance: \(OpsWords.name(OpsWords.maintenance, level).lowercased())")
+        case .upkeep: upkeepBody(co)
         }
-        case .stock: levelBody(co, names: OpsWords.stock, current: co.int("stockPol", 1), note: "Generous stock avoids running out but ties up cash.") { level in
-            store.act { $0.setStockPolicy(companyID: co.id, level: level) }
-            store.saved("Stock: \(OpsWords.name(OpsWords.stock, level).lowercased())")
-        }
-        case .hold: holdBody(co)
+    }
+
+    /// Maintenance and stock in one sheet: both are how the company keeps its operation running between weeks.
+    private func upkeepBody(_ co: Company) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("MAINTENANCE").capsLabel()
+            levelBody(co, names: OpsWords.maintenance, current: co.maintenance, note: "Thorough upkeep costs more but equipment breaks less.") { level in
+                store.act { $0.setMaintenance(companyID: co.id, level: level) }
+                store.saved("Maintenance: \(OpsWords.name(OpsWords.maintenance, level).lowercased())")
+            }
+            Text("STOCK").capsLabel()
+            levelBody(co, names: OpsWords.stock, current: co.int("stockPol", 1), note: "Generous stock avoids running out but ties up cash.") { level in
+                store.act { $0.setStockPolicy(companyID: co.id, level: level) }
+                store.saved("Stock: \(OpsWords.name(OpsWords.stock, level).lowercased())")
+            }
         }
     }
 
     // MARK: Price
 
     private func priceBody(_ co: Company) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            priceCard(co)
+            holdBody(co)
+        }
+    }
+
+    private func priceCard(_ co: Company) -> some View {
         let level: Double = co.priceLevel
         let priceBinding = Binding<Double>(get: { co.priceLevel }, set: { v in
             lastPrice = store.act { $0.setPriceLevel(companyID: co.id, level: (v * 2).rounded() / 2) }
