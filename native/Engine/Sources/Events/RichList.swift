@@ -54,7 +54,7 @@ public enum RichList {
         if let i = list.firstIndex(where: { wealth >= $0.wealth }) { return i + 1 }
         if wealth <= 0 { return nil }
         let est = pow(w1 / wealth, 1 / exponent).rounded()
-        return max(101, est.isFinite ? Int(min(est, 1e12)) : 1_000_000_000_000)   // a net worth of a few cents would overflow Int
+        return max(101, est.isFinite ? Int(min(est, Double(1 << 40))) : 1 << 40)   // a net worth of a few cents would overflow Int
     }
 
     public static func standing(_ s: GameState, data: GameData, context fc: FinanceContext) -> Standing {

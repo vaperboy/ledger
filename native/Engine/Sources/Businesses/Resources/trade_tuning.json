@@ -47,5 +47,12 @@
   "indoorski": 5.0,
   "furniture": 5.0,
   "courier": 3.8
- }
+ },
+ "priceRetuned": [
+  "bakery",
+  "restaurant",
+  "staffing",
+  "trucking",
+  "tutor"
+ ]
 }
