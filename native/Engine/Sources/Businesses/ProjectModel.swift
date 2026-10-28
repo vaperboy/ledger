@@ -48,19 +48,19 @@ public enum ProjectModel {
             what: [["Leaking tap", "Blocked drain", "New toilet", "Water heater swap", "Pipe repair", "Radiator fix"],
                    ["Kitchen plumbing", "Heat pump connection", "Underfloor heating", "New water pipes"], ["Bathroom renovation"]],
             mix: ["em": [0.9, 0.1, 0], "mix": [0.55, 0.3, 0.15], "bath": [0.1, 0.2, 0.7]], mixOrder: ["em", "mix", "bath"],
-            premium: ["em": 1.3], isEvent: false, priceFactor: 1.15, demandFactor: 1.0),
+            premium: ["em": 1.3], isEvent: false, priceFactor: 2.3, demandFactor: 1.0),
         "electrician": HoursSpec(
             hv: 1650, classes: [(3, 8), (8, 16), (28, 45)],
             what: [["Fuse box check", "New sockets", "Light fittings", "Fault finding", "EV charger install"],
                    ["Kitchen rewiring", "Solar panels", "Smart home setup"], ["Full house rewiring", "Commercial installation"]],
             mix: ["home": [0.85, 0.15, 0], "mix": [0.55, 0.3, 0.15], "ind": [0.1, 0.3, 0.6]], mixOrder: ["home", "mix", "ind"],
-            premium: [:], isEvent: false, priceFactor: 1.1, demandFactor: 1.0),
+            premium: [:], isEvent: false, priceFactor: 2.2, demandFactor: 1.0),
         "construction": HoursSpec(
             hv: 1500, classes: [(40, 120), (300, 700), (2000, 5000)],
             what: [["Terrace", "Garage", "Small extension", "Facade repair"], ["House extension", "Loft conversion", "Detached house"],
                    ["Apartment block", "Office building", "School building"]],
             mix: ["house": [0.55, 0.4, 0.05], "comm": [0.25, 0.5, 0.25], "pub": [0.05, 0.35, 0.6]], mixOrder: ["house", "comm", "pub"],
-            premium: [:], isEvent: false, priceFactor: 1.27, demandFactor: 3.2),
+            premium: [:], isEvent: false, priceFactor: 2.6, demandFactor: 3.2),
         "engcons": HoursSpec(
             hv: 1700, classes: [(12, 40), (60, 160), (400, 1000)],
             what: [["Structural check", "Survey report", "Permit drawings", "Energy assessment"], ["House design", "Renovation project", "Extension drawings"],
@@ -71,7 +71,7 @@ public enum ProjectModel {
             hv: 2000, classes: [(12, 30), (40, 90), (150, 300)],
             what: [["party"], ["conference"], ["festival"]],
             mix: ["corp": [0.5, 0.4, 0.1], "conc": [0.1, 0.4, 0.5], "wed": [0.75, 0.25, 0]], mixOrder: ["corp", "conc", "wed"],
-            premium: [:], isEvent: true, priceFactor: 0.82, demandFactor: 1.0),
+            premium: [:], isEvent: true, priceFactor: 1.15, demandFactor: 1.0),
     ]
 
     /// Trades that sell whole jobs in hours. Original: `R41.isHT`.

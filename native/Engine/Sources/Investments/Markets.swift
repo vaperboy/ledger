@@ -78,7 +78,10 @@ public enum Markets {
             if r == "crash" { s.news("MARKETS PANIC: stocks and crypto plunge.", tone: "bad") }
         }
         let regime = M["regime"].string
-        let drifts: [String: Double] = ["bull": 0.0035, "correction": -0.003, "bear": -0.005, "recovery": 0.004, "crash": -0.04]
+        // Weekly drift per mood. The moods used to average out at +0.3% a year, so an index fund lost money over ten years (balance pass:
+        // docs/BALANCE_PASS.md); every mood now carries +0.12% a week, which makes the median index about +6% a year and still swings widely.
+        let lift = 0.0012
+        let drifts: [String: Double] = ["bull": 0.0035 + lift, "correction": -0.003 + lift, "bear": -0.005 + lift, "recovery": 0.004 + lift, "crash": -0.04 + lift]
         let vols: [String: Double] = ["bull": 0.012, "correction": 0.02, "bear": 0.022, "recovery": 0.018, "crash": 0.04]
         let drift = drifts[regime] ?? 0
         let vol = vols[regime] ?? 0.012
