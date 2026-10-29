@@ -1,0 +1,49 @@
+name: Native iOS unsigned IPA (for sideloading)
+
+# Manual only. Builds the app without signing and uploads Ledger-unsigned.ipa as a downloadable artifact.
+# The IPA must be signed on your side (Sideloadly or AltStore with a free Apple ID); see native/docs/SIDELOAD.md.
+on:
+  # Runs when this branch is pushed (a workflow can only be started by name from the default branch).
+  push:
+    branches: [ ipa-build ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit to build
+        default: native-swiftui
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build unsigned for devices
+        working-directory: native/App
+        run: |
+          set -o pipefail
+          xcodebuild build -project Ledger.xcodeproj -scheme Ledger -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath $RUNNER_TEMP/dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 30
+      - name: Package the IPA
+        run: |
+          APP=$(find $RUNNER_TEMP/dd/Build/Products -name "Ledger.app" -maxdepth 3 | head -n 1)
+          test -n "$APP"
+          mkdir -p $RUNNER_TEMP/ipa/Payload
+          cp -R "$APP" $RUNNER_TEMP/ipa/Payload/
+          (cd $RUNNER_TEMP/ipa && zip -qry Ledger-unsigned.ipa Payload)
+          ls -l $RUNNER_TEMP/ipa/Ledger-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ledger-unsigned-ipa
+          path: ${{ runner.temp }}/ipa/Ledger-unsigned.ipa

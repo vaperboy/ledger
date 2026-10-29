@@ -1,0 +1,2129 @@
+{
+ "_doc": "Real-life place data merged into countries.json when the country book loads (Countries/CityMarket.swift, docs/CITY_DATA.md). gini = Gini coefficient of household disposable income. cities.<id> patches an existing city: metro = metropolitan population in thousands, tour = tourist intensity against the country's tourism share. add = extra cities in the same full form as countries.json (pop in thousands; rent, wage and price are relative to the reference economy, dem is the walk-in demand level) plus metro, tour and inc (median household income against the country's). Added cities' rent, wage and price are interpolated from the country's own cities by log10(population), dem from the original formula 0.42 + 0.55 log10(pop / 20), floor 0.22.",
+ "countries": {
+  "NO": {
+   "gini": 0.27,
+   "cities": {
+    "oslo": {
+     "metro": 1550,
+     "tour": 1.5
+    },
+    "bergen": {
+     "metro": 430,
+     "tour": 1.8
+    },
+    "trondheim": {
+     "metro": 290,
+     "tour": 1.0
+    },
+    "stavanger": {
+     "metro": 340,
+     "tour": 1.1
+    },
+    "kristiansand": {
+     "metro": 150,
+     "tour": 1.2
+    },
+    "tromso": {
+     "metro": 80,
+     "tour": 2.2
+    },
+    "small": {
+     "metro": 20.0,
+     "tour": 0.6
+    }
+   },
+   "add": [
+    {
+     "id": "drammen",
+     "name": "Drammen",
+     "pop": 105,
+     "rent": 0.62,
+     "wage": 0.95,
+     "dem": 0.82,
+     "price": 0.95,
+     "metro": 300,
+     "tour": 0.8
+    },
+    {
+     "id": "alesund",
+     "name": "Ålesund",
+     "pop": 67,
+     "rent": 0.59,
+     "wage": 1.01,
+     "dem": 0.71,
+     "price": 0.97,
+     "metro": 100,
+     "tour": 1.6
+    },
+    {
+     "id": "roros",
+     "name": "Røros",
+     "pop": 5.6,
+     "rent": 0.32,
+     "wage": 0.81,
+     "dem": 0.22,
+     "price": 0.84,
+     "metro": 6,
+     "tour": 3.0,
+     "inc": 0.9
+    }
+   ]
+  },
+  "SE": {
+   "gini": 0.28,
+   "cities": {
+    "sthlm": {
+     "metro": 2450,
+     "tour": 1.6
+    },
+    "gbg": {
+     "metro": 1100,
+     "tour": 1.1
+    },
+    "malmo": {
+     "metro": 800,
+     "tour": 0.9
+    },
+    "uppsala": {
+     "metro": 260,
+     "tour": 0.8
+    },
+    "sundsvall": {
+     "metro": 100,
+     "tour": 0.5
+    },
+    "smallse": {
+     "metro": 20.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "orebro",
+     "name": "Örebro",
+     "pop": 126,
+     "rent": 0.4,
+     "wage": 0.73,
+     "dem": 0.86,
+     "price": 0.82,
+     "metro": 160,
+     "tour": 0.7
+    },
+    {
+     "id": "vasteras",
+     "name": "Västerås",
+     "pop": 130,
+     "rent": 0.41,
+     "wage": 0.75,
+     "dem": 0.87,
+     "price": 0.82,
+     "metro": 170,
+     "tour": 0.7
+    },
+    {
+     "id": "umea",
+     "name": "Umeå",
+     "pop": 90,
+     "rent": 0.34,
+     "wage": 0.72,
+     "dem": 0.78,
+     "price": 0.81,
+     "metro": 130,
+     "tour": 0.8
+    },
+    {
+     "id": "visby",
+     "name": "Visby",
+     "pop": 25,
+     "rent": 0.35,
+     "wage": 0.69,
+     "dem": 0.47,
+     "price": 0.83,
+     "metro": 58,
+     "tour": 3.4,
+     "inc": 0.95
+    },
+    {
+     "id": "kiruna",
+     "name": "Kiruna",
+     "pop": 17,
+     "rent": 0.24,
+     "wage": 0.72,
+     "dem": 0.38,
+     "price": 0.83,
+     "metro": 23,
+     "tour": 2.0,
+     "inc": 1.05
+    }
+   ]
+  },
+  "PL": {
+   "gini": 0.28,
+   "cities": {
+    "waw": {
+     "metro": 3300,
+     "tour": 1.4
+    },
+    "krk": {
+     "metro": 1400,
+     "tour": 2.4
+    },
+    "wro": {
+     "metro": 1250,
+     "tour": 1.3
+    },
+    "gdn": {
+     "metro": 1100,
+     "tour": 1.9
+    },
+    "poz": {
+     "metro": 1100,
+     "tour": 1.0
+    },
+    "smallpl": {
+     "metro": 25.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "lodz",
+     "name": "Łódź",
+     "pop": 670,
+     "rent": 0.48,
+     "wage": 0.5,
+     "dem": 1.26,
+     "price": 0.55,
+     "metro": 1100,
+     "tour": 0.8
+    },
+    {
+     "id": "szczecin",
+     "name": "Szczecin",
+     "pop": 395,
+     "rent": 0.45,
+     "wage": 0.48,
+     "dem": 1.13,
+     "price": 0.55,
+     "metro": 520,
+     "tour": 1.1
+    },
+    {
+     "id": "lublin",
+     "name": "Lublin",
+     "pop": 335,
+     "rent": 0.44,
+     "wage": 0.48,
+     "dem": 1.09,
+     "price": 0.55,
+     "metro": 450,
+     "tour": 0.9
+    },
+    {
+     "id": "bialystok",
+     "name": "Białystok",
+     "pop": 295,
+     "rent": 0.43,
+     "wage": 0.47,
+     "dem": 1.06,
+     "price": 0.54,
+     "metro": 400,
+     "tour": 0.7
+    },
+    {
+     "id": "suwalki",
+     "name": "Suwałki",
+     "pop": 69,
+     "rent": 0.29,
+     "wage": 0.42,
+     "dem": 0.72,
+     "price": 0.52,
+     "metro": 90,
+     "tour": 0.8
+    },
+    {
+     "id": "zakopane",
+     "name": "Zakopane",
+     "pop": 27,
+     "rent": 0.31,
+     "wage": 0.39,
+     "dem": 0.49,
+     "price": 0.54,
+     "metro": 40,
+     "tour": 3.8,
+     "inc": 0.85
+    }
+   ]
+  },
+  "LT": {
+   "gini": 0.36,
+   "cities": {
+    "vln": {
+     "metro": 800,
+     "tour": 1.8
+    },
+    "kau": {
+     "metro": 400,
+     "tour": 0.9
+    },
+    "klp": {
+     "metro": 200,
+     "tour": 1.6
+    },
+    "siau": {
+     "metro": 110,
+     "tour": 0.5
+    },
+    "smalllt": {
+     "metro": 15.0,
+     "tour": 0.45
+    }
+   },
+   "add": [
+    {
+     "id": "panevezys",
+     "name": "Panevėžys",
+     "pop": 85,
+     "rent": 0.18,
+     "wage": 0.46,
+     "dem": 0.77,
+     "price": 0.57,
+     "metro": 115,
+     "tour": 0.5
+    },
+    {
+     "id": "alytus",
+     "name": "Alytus",
+     "pop": 50,
+     "rent": 0.16,
+     "wage": 0.45,
+     "dem": 0.64,
+     "price": 0.56,
+     "metro": 70,
+     "tour": 0.5
+    },
+    {
+     "id": "palanga",
+     "name": "Palanga",
+     "pop": 17,
+     "rent": 0.18,
+     "wage": 0.41,
+     "dem": 0.38,
+     "price": 0.58,
+     "metro": 25,
+     "tour": 3.5,
+     "inc": 0.9
+    },
+    {
+     "id": "druskininkai",
+     "name": "Druskininkai",
+     "pop": 13,
+     "rent": 0.14,
+     "wage": 0.41,
+     "dem": 0.32,
+     "price": 0.56,
+     "metro": 20,
+     "tour": 3.0,
+     "inc": 0.9
+    }
+   ]
+  },
+  "DE": {
+   "gini": 0.3,
+   "cities": {
+    "ber": {
+     "metro": 4700,
+     "tour": 2.2
+    },
+    "ham": {
+     "metro": 3300,
+     "tour": 1.5
+    },
+    "muc": {
+     "metro": 3000,
+     "tour": 2.0
+    },
+    "col": {
+     "metro": 2100,
+     "tour": 1.5
+    },
+    "fra": {
+     "metro": 2300,
+     "tour": 1.1
+    },
+    "smallde": {
+     "metro": 25.0,
+     "tour": 0.54
+    }
+   },
+   "add": [
+    {
+     "id": "stuttgart",
+     "name": "Stuttgart",
+     "pop": 630,
+     "rent": 0.82,
+     "wage": 1.03,
+     "dem": 1.24,
+     "price": 0.87,
+     "metro": 2800,
+     "tour": 1.3,
+     "inc": 1.2
+    },
+    {
+     "id": "leipzig",
+     "name": "Leipzig",
+     "pop": 600,
+     "rent": 0.81,
+     "wage": 1.02,
+     "dem": 1.23,
+     "price": 0.87,
+     "metro": 1100,
+     "tour": 1.3
+    },
+    {
+     "id": "dresden",
+     "name": "Dresden",
+     "pop": 560,
+     "rent": 0.8,
+     "wage": 1.02,
+     "dem": 1.22,
+     "price": 0.87,
+     "metro": 1000,
+     "tour": 1.8
+    },
+    {
+     "id": "heidelberg",
+     "name": "Heidelberg",
+     "pop": 160,
+     "rent": 0.61,
+     "wage": 0.92,
+     "dem": 0.92,
+     "price": 0.85,
+     "metro": 550,
+     "tour": 2.3,
+     "inc": 1.05
+    },
+    {
+     "id": "rothenburg",
+     "name": "Rothenburg ob der Tauber",
+     "pop": 11,
+     "rent": 0.28,
+     "wage": 0.71,
+     "dem": 0.28,
+     "price": 0.82,
+     "metro": 20,
+     "tour": 4.0,
+     "inc": 0.95
+    }
+   ]
+  },
+  "UK": {
+   "gini": 0.35,
+   "cities": {
+    "lon": {
+     "metro": 14800,
+     "tour": 2.4
+    },
+    "man": {
+     "metro": 2800,
+     "tour": 1.1
+    },
+    "bir": {
+     "metro": 2900,
+     "tour": 0.8
+    },
+    "edi": {
+     "metro": 900,
+     "tour": 2.6
+    },
+    "bri": {
+     "metro": 960,
+     "tour": 1.3
+    },
+    "smalluk": {
+     "metro": 25.0,
+     "tour": 0.54
+    }
+   },
+   "add": [
+    {
+     "id": "leeds",
+     "name": "Leeds",
+     "pop": 800,
+     "rent": 0.7,
+     "wage": 0.9,
+     "dem": 1.3,
+     "price": 0.84,
+     "metro": 1900,
+     "tour": 1.0
+    },
+    {
+     "id": "glasgow",
+     "name": "Glasgow",
+     "pop": 635,
+     "rent": 0.71,
+     "wage": 0.91,
+     "dem": 1.25,
+     "price": 0.84,
+     "metro": 1800,
+     "tour": 1.3
+    },
+    {
+     "id": "cardiff",
+     "name": "Cardiff",
+     "pop": 365,
+     "rent": 0.76,
+     "wage": 0.92,
+     "dem": 1.11,
+     "price": 0.85,
+     "metro": 1100,
+     "tour": 1.2
+    },
+    {
+     "id": "belfast",
+     "name": "Belfast",
+     "pop": 345,
+     "rent": 0.75,
+     "wage": 0.92,
+     "dem": 1.1,
+     "price": 0.85,
+     "metro": 690,
+     "tour": 1.0
+    },
+    {
+     "id": "york",
+     "name": "York",
+     "pop": 210,
+     "rent": 0.68,
+     "wage": 0.89,
+     "dem": 0.98,
+     "price": 0.84,
+     "metro": 400,
+     "tour": 2.6
+    },
+    {
+     "id": "keswick",
+     "name": "Keswick",
+     "pop": 5,
+     "rent": 0.34,
+     "wage": 0.63,
+     "dem": 0.22,
+     "price": 0.81,
+     "metro": 6,
+     "tour": 3.5,
+     "inc": 0.9
+    }
+   ]
+  },
+  "FR": {
+   "gini": 0.31,
+   "cities": {
+    "par": {
+     "metro": 12300,
+     "tour": 2.4
+    },
+    "lyo": {
+     "metro": 2300,
+     "tour": 1.3
+    },
+    "mrs": {
+     "metro": 1900,
+     "tour": 1.4
+    },
+    "tls": {
+     "metro": 1400,
+     "tour": 1.0
+    },
+    "nan": {
+     "metro": 1000,
+     "tour": 1.0
+    },
+    "smallfr": {
+     "metro": 20.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "nice",
+     "name": "Nice",
+     "pop": 345,
+     "rent": 0.58,
+     "wage": 0.81,
+     "dem": 1.1,
+     "price": 0.84,
+     "metro": 1000,
+     "tour": 2.8
+    },
+    {
+     "id": "bordeaux",
+     "name": "Bordeaux",
+     "pop": 260,
+     "rent": 0.56,
+     "wage": 0.8,
+     "dem": 1.03,
+     "price": 0.84,
+     "metro": 1300,
+     "tour": 1.6
+    },
+    {
+     "id": "strasbourg",
+     "name": "Strasbourg",
+     "pop": 290,
+     "rent": 0.57,
+     "wage": 0.81,
+     "dem": 1.06,
+     "price": 0.84,
+     "metro": 850,
+     "tour": 1.5
+    },
+    {
+     "id": "lille",
+     "name": "Lille",
+     "pop": 235,
+     "rent": 0.55,
+     "wage": 0.79,
+     "dem": 1.01,
+     "price": 0.84,
+     "metro": 1500,
+     "tour": 1.0
+    },
+    {
+     "id": "annecy",
+     "name": "Annecy",
+     "pop": 130,
+     "rent": 0.48,
+     "wage": 0.76,
+     "dem": 0.87,
+     "price": 0.83,
+     "metro": 220,
+     "tour": 2.6,
+     "inc": 1.1
+    },
+    {
+     "id": "sarlat",
+     "name": "Sarlat-la-Canéda",
+     "pop": 9,
+     "rent": 0.24,
+     "wage": 0.63,
+     "dem": 0.23,
+     "price": 0.8,
+     "metro": 15,
+     "tour": 3.6,
+     "inc": 0.9
+    }
+   ]
+  },
+  "ES": {
+   "gini": 0.33,
+   "cities": {
+    "mad": {
+     "metro": 6800,
+     "tour": 1.5
+    },
+    "bcn": {
+     "metro": 5600,
+     "tour": 2.6
+    },
+    "val": {
+     "metro": 1600,
+     "tour": 1.8
+    },
+    "sev": {
+     "metro": 1500,
+     "tour": 2.2
+    },
+    "bil": {
+     "metro": 1000,
+     "tour": 1.3
+    },
+    "smalles": {
+     "metro": 20.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "zaragoza",
+     "name": "Zaragoza",
+     "pop": 680,
+     "rent": 0.45,
+     "wage": 0.69,
+     "dem": 1.26,
+     "price": 0.71,
+     "metro": 780,
+     "tour": 1.0
+    },
+    {
+     "id": "malaga",
+     "name": "Málaga",
+     "pop": 580,
+     "rent": 0.47,
+     "wage": 0.71,
+     "dem": 1.22,
+     "price": 0.71,
+     "metro": 1000,
+     "tour": 2.8
+    },
+    {
+     "id": "palma",
+     "name": "Palma de Mallorca",
+     "pop": 420,
+     "rent": 0.49,
+     "wage": 0.74,
+     "dem": 1.15,
+     "price": 0.72,
+     "metro": 600,
+     "tour": 3.2
+    },
+    {
+     "id": "granada",
+     "name": "Granada",
+     "pop": 230,
+     "rent": 0.47,
+     "wage": 0.74,
+     "dem": 1.0,
+     "price": 0.72,
+     "metro": 520,
+     "tour": 2.5
+    },
+    {
+     "id": "ronda",
+     "name": "Ronda",
+     "pop": 35,
+     "rent": 0.29,
+     "wage": 0.63,
+     "dem": 0.55,
+     "price": 0.7,
+     "metro": 40,
+     "tour": 3.0,
+     "inc": 0.85
+    }
+   ]
+  },
+  "NL": {
+   "gini": 0.28,
+   "cities": {
+    "ams": {
+     "metro": 2500,
+     "tour": 2.8
+    },
+    "rtm": {
+     "metro": 1700,
+     "tour": 1.2
+    },
+    "hag": {
+     "metro": 1100,
+     "tour": 1.0
+    },
+    "utr": {
+     "metro": 1000,
+     "tour": 1.2
+    },
+    "ein": {
+     "metro": 800,
+     "tour": 0.7
+    },
+    "smallnl": {
+     "metro": 25.0,
+     "tour": 0.54
+    }
+   },
+   "add": [
+    {
+     "id": "groningen",
+     "name": "Groningen",
+     "pop": 235,
+     "rent": 0.71,
+     "wage": 1.11,
+     "dem": 1.01,
+     "price": 0.94,
+     "metro": 370,
+     "tour": 0.8
+    },
+    {
+     "id": "breda",
+     "name": "Breda",
+     "pop": 185,
+     "rent": 0.68,
+     "wage": 1.09,
+     "dem": 0.95,
+     "price": 0.94,
+     "metro": 330,
+     "tour": 0.8
+    },
+    {
+     "id": "maastricht",
+     "name": "Maastricht",
+     "pop": 120,
+     "rent": 0.62,
+     "wage": 1.06,
+     "dem": 0.85,
+     "price": 0.93,
+     "metro": 280,
+     "tour": 1.9
+    },
+    {
+     "id": "zandvoort",
+     "name": "Zandvoort",
+     "pop": 17,
+     "rent": 0.41,
+     "wage": 0.92,
+     "dem": 0.38,
+     "price": 0.9,
+     "metro": 25,
+     "tour": 2.8,
+     "inc": 1.0
+    },
+    {
+     "id": "giethoorn",
+     "name": "Giethoorn",
+     "pop": 3,
+     "rent": 0.36,
+     "wage": 0.81,
+     "dem": 0.22,
+     "price": 0.88,
+     "metro": 3,
+     "tour": 4.0,
+     "inc": 0.95
+    }
+   ]
+  },
+  "US": {
+   "gini": 0.41,
+   "cities": {
+    "nyc": {
+     "metro": 20100,
+     "tour": 2.4
+    },
+    "la": {
+     "metro": 13200,
+     "tour": 1.9
+    },
+    "chi": {
+     "metro": 9400,
+     "tour": 1.5
+    },
+    "hou": {
+     "metro": 7300,
+     "tour": 0.9
+    },
+    "den": {
+     "metro": 3000,
+     "tour": 1.3
+    },
+    "smallus": {
+     "metro": 30.0,
+     "tour": 0.57
+    }
+   },
+   "add": [
+    {
+     "id": "phx",
+     "name": "Phoenix",
+     "pop": 1650,
+     "rent": 0.87,
+     "wage": 1.04,
+     "dem": 1.47,
+     "price": 0.9,
+     "metro": 5000,
+     "tour": 1.5
+    },
+    {
+     "id": "phi",
+     "name": "Philadelphia",
+     "pop": 1600,
+     "rent": 0.87,
+     "wage": 1.05,
+     "dem": 1.47,
+     "price": 0.9,
+     "metro": 6200,
+     "tour": 1.3
+    },
+    {
+     "id": "sdg",
+     "name": "San Diego",
+     "pop": 1390,
+     "rent": 0.89,
+     "wage": 1.05,
+     "dem": 1.43,
+     "price": 0.9,
+     "metro": 3300,
+     "tour": 2.0
+    },
+    {
+     "id": "dal",
+     "name": "Dallas",
+     "pop": 1300,
+     "rent": 0.9,
+     "wage": 1.05,
+     "dem": 1.42,
+     "price": 0.9,
+     "metro": 7800,
+     "tour": 1.2
+    },
+    {
+     "id": "sfo",
+     "name": "San Francisco",
+     "pop": 810,
+     "rent": 0.96,
+     "wage": 1.07,
+     "dem": 1.3,
+     "price": 0.91,
+     "metro": 4700,
+     "tour": 2.2,
+     "inc": 1.45
+    },
+    {
+     "id": "sea",
+     "name": "Seattle",
+     "pop": 750,
+     "rent": 0.97,
+     "wage": 1.08,
+     "dem": 1.29,
+     "price": 0.91,
+     "metro": 4000,
+     "tour": 1.5,
+     "inc": 1.3
+    },
+    {
+     "id": "mia",
+     "name": "Miami",
+     "pop": 450,
+     "rent": 0.9,
+     "wage": 1.04,
+     "dem": 1.16,
+     "price": 0.9,
+     "metro": 6100,
+     "tour": 2.8
+    },
+    {
+     "id": "lvg",
+     "name": "Las Vegas",
+     "pop": 650,
+     "rent": 0.96,
+     "wage": 1.07,
+     "dem": 1.25,
+     "price": 0.91,
+     "metro": 2300,
+     "tour": 4.0
+    },
+    {
+     "id": "boi",
+     "name": "Boise",
+     "pop": 235,
+     "rent": 0.78,
+     "wage": 0.97,
+     "dem": 1.01,
+     "price": 0.89,
+     "metro": 800,
+     "tour": 0.8
+    },
+    {
+     "id": "sfe",
+     "name": "Santa Fe",
+     "pop": 90,
+     "rent": 0.61,
+     "wage": 0.88,
+     "dem": 0.78,
+     "price": 0.88,
+     "metro": 155,
+     "tour": 2.6
+    },
+    {
+     "id": "moab",
+     "name": "Moab",
+     "pop": 5.3,
+     "rent": 0.35,
+     "wage": 0.65,
+     "dem": 0.22,
+     "price": 0.83,
+     "metro": 10,
+     "tour": 4.0,
+     "inc": 0.8
+    }
+   ]
+  },
+  "CA": {
+   "gini": 0.31,
+   "cities": {
+    "tor": {
+     "metro": 6700,
+     "tour": 1.6
+    },
+    "van": {
+     "metro": 2900,
+     "tour": 2.0
+    },
+    "mtl": {
+     "metro": 4300,
+     "tour": 1.8
+    },
+    "cal": {
+     "metro": 1600,
+     "tour": 1.0
+    },
+    "ott": {
+     "metro": 1500,
+     "tour": 1.2
+    },
+    "smallca": {
+     "metro": 20.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "win",
+     "name": "Winnipeg",
+     "pop": 750,
+     "rent": 1.06,
+     "wage": 1.13,
+     "dem": 1.29,
+     "price": 1.08,
+     "metro": 850,
+     "tour": 0.8
+    },
+    {
+     "id": "qc",
+     "name": "Quebec City",
+     "pop": 550,
+     "rent": 1.12,
+     "wage": 1.13,
+     "dem": 1.21,
+     "price": 1.08,
+     "metro": 840,
+     "tour": 2.0
+    },
+    {
+     "id": "hfx",
+     "name": "Halifax",
+     "pop": 440,
+     "rent": 1.06,
+     "wage": 1.11,
+     "dem": 1.16,
+     "price": 1.08,
+     "metro": 480,
+     "tour": 1.3
+    },
+    {
+     "id": "sask",
+     "name": "Saskatoon",
+     "pop": 270,
+     "rent": 0.95,
+     "wage": 1.07,
+     "dem": 1.04,
+     "price": 1.06,
+     "metro": 340,
+     "tour": 0.6
+    },
+    {
+     "id": "whh",
+     "name": "Whitehorse",
+     "pop": 29,
+     "rent": 0.43,
+     "wage": 0.86,
+     "dem": 0.51,
+     "price": 1.05,
+     "metro": 30,
+     "tour": 1.5,
+     "inc": 1.05
+    },
+    {
+     "id": "ban",
+     "name": "Banff",
+     "pop": 9,
+     "rent": 0.42,
+     "wage": 0.74,
+     "dem": 0.23,
+     "price": 1.02,
+     "metro": 10,
+     "tour": 5.0,
+     "inc": 1.0
+    }
+   ]
+  },
+  "AU": {
+   "gini": 0.33,
+   "cities": {
+    "syd": {
+     "metro": 5300,
+     "tour": 2.2
+    },
+    "mel": {
+     "metro": 5100,
+     "tour": 1.6
+    },
+    "bne": {
+     "metro": 2600,
+     "tour": 1.2
+    },
+    "per": {
+     "metro": 2200,
+     "tour": 0.9
+    },
+    "ade": {
+     "metro": 1400,
+     "tour": 1.0
+    },
+    "smallau": {
+     "metro": 20.0,
+     "tour": 0.5
+    }
+   },
+   "add": [
+    {
+     "id": "gc",
+     "name": "Gold Coast",
+     "pop": 640,
+     "rent": 0.75,
+     "wage": 0.96,
+     "dem": 1.25,
+     "price": 1.12,
+     "metro": 720,
+     "tour": 2.8
+    },
+    {
+     "id": "cbr",
+     "name": "Canberra",
+     "pop": 460,
+     "rent": 0.71,
+     "wage": 0.95,
+     "dem": 1.17,
+     "price": 1.12,
+     "metro": 470,
+     "tour": 1.0,
+     "inc": 1.2
+    },
+    {
+     "id": "hob",
+     "name": "Hobart",
+     "pop": 250,
+     "rent": 0.65,
+     "wage": 0.92,
+     "dem": 1.02,
+     "price": 1.11,
+     "metro": 300,
+     "tour": 2.2
+    },
+    {
+     "id": "dar",
+     "name": "Darwin",
+     "pop": 150,
+     "rent": 0.6,
+     "wage": 0.89,
+     "dem": 0.9,
+     "price": 1.14,
+     "metro": 150,
+     "tour": 1.2,
+     "inc": 1.1
+    },
+    {
+     "id": "alice",
+     "name": "Alice Springs",
+     "pop": 26,
+     "rent": 0.42,
+     "wage": 0.81,
+     "dem": 0.48,
+     "price": 1.19,
+     "metro": 26,
+     "tour": 2.8,
+     "inc": 0.95
+    }
+   ]
+  },
+  "JP": {
+   "gini": 0.33,
+   "cities": {
+    "tyo": {
+     "metro": 37000,
+     "tour": 1.8
+    },
+    "osa": {
+     "metro": 19000,
+     "tour": 2.0
+    },
+    "nag": {
+     "metro": 9000,
+     "tour": 0.8
+    },
+    "fuk": {
+     "metro": 2600,
+     "tour": 1.2
+    },
+    "sap": {
+     "metro": 2700,
+     "tour": 1.6
+    },
+    "smalljp": {
+     "metro": 40.0,
+     "tour": 0.62
+    }
+   },
+   "add": [
+    {
+     "id": "yok",
+     "name": "Yokohama",
+     "pop": 3750,
+     "rent": 0.94,
+     "wage": 0.73,
+     "dem": 1.67,
+     "price": 0.78,
+     "metro": 37000,
+     "tour": 1.1,
+     "inc": 1.08
+    },
+    {
+     "id": "kyo",
+     "name": "Kyoto",
+     "pop": 1450,
+     "rent": 0.68,
+     "wage": 0.65,
+     "dem": 1.44,
+     "price": 0.76,
+     "metro": 2600,
+     "tour": 3.6
+    },
+    {
+     "id": "kob",
+     "name": "Kobe",
+     "pop": 1520,
+     "rent": 0.69,
+     "wage": 0.65,
+     "dem": 1.45,
+     "price": 0.76,
+     "metro": 19000,
+     "tour": 1.4
+    },
+    {
+     "id": "hir",
+     "name": "Hiroshima",
+     "pop": 1200,
+     "rent": 0.66,
+     "wage": 0.64,
+     "dem": 1.4,
+     "price": 0.76,
+     "metro": 2000,
+     "tour": 1.4
+    },
+    {
+     "id": "nah",
+     "name": "Naha",
+     "pop": 320,
+     "rent": 0.54,
+     "wage": 0.6,
+     "dem": 1.08,
+     "price": 0.75,
+     "metro": 1000,
+     "tour": 2.8,
+     "inc": 0.85
+    },
+    {
+     "id": "tak",
+     "name": "Takayama",
+     "pop": 85,
+     "rent": 0.41,
+     "wage": 0.55,
+     "dem": 0.77,
+     "price": 0.74,
+     "metro": 90,
+     "tour": 2.9
+    }
+   ]
+  },
+  "KR": {
+   "gini": 0.33,
+   "cities": {
+    "sel": {
+     "metro": 26000,
+     "tour": 1.8
+    },
+    "pus": {
+     "metro": 3400,
+     "tour": 1.5
+    },
+    "inc": {
+     "metro": 3000,
+     "tour": 1.0
+    },
+    "dae": {
+     "metro": 2500,
+     "tour": 0.7
+    },
+    "dej": {
+     "metro": 1500,
+     "tour": 0.6
+    },
+    "smallkr": {
+     "metro": 40.0,
+     "tour": 0.62
+    }
+   },
+   "add": [
+    {
+     "id": "suw",
+     "name": "Suwon",
+     "pop": 1190,
+     "rent": 0.51,
+     "wage": 0.6,
+     "dem": 1.4,
+     "price": 0.76,
+     "metro": 26000,
+     "tour": 0.6
+    },
+    {
+     "id": "gwj",
+     "name": "Gwangju",
+     "pop": 1430,
+     "rent": 0.52,
+     "wage": 0.61,
+     "dem": 1.44,
+     "price": 0.76,
+     "metro": 1600,
+     "tour": 0.8
+    },
+    {
+     "id": "uls",
+     "name": "Ulsan",
+     "pop": 1100,
+     "rent": 0.5,
+     "wage": 0.6,
+     "dem": 1.38,
+     "price": 0.76,
+     "metro": 1200,
+     "tour": 0.5,
+     "inc": 1.15
+    },
+    {
+     "id": "jej",
+     "name": "Jeju",
+     "pop": 690,
+     "rent": 0.47,
+     "wage": 0.59,
+     "dem": 1.27,
+     "price": 0.75,
+     "metro": 700,
+     "tour": 3.2
+    },
+    {
+     "id": "gyj",
+     "name": "Gyeongju",
+     "pop": 250,
+     "rent": 0.4,
+     "wage": 0.56,
+     "dem": 1.02,
+     "price": 0.74,
+     "metro": 260,
+     "tour": 2.6
+    },
+    {
+     "id": "anj",
+     "name": "Andong",
+     "pop": 165,
+     "rent": 0.37,
+     "wage": 0.54,
+     "dem": 0.92,
+     "price": 0.74,
+     "metro": 170,
+     "tour": 1.0
+    }
+   ]
+  },
+  "BR": {
+   "gini": 0.52,
+   "cities": {
+    "sp": {
+     "metro": 22000,
+     "tour": 1.0
+    },
+    "rio": {
+     "metro": 13500,
+     "tour": 2.8
+    },
+    "bsb": {
+     "metro": 4800,
+     "tour": 0.6
+    },
+    "ssa": {
+     "metro": 4000,
+     "tour": 1.8
+    },
+    "cur": {
+     "metro": 3700,
+     "tour": 0.9
+    },
+    "smallbr": {
+     "metro": 30.0,
+     "tour": 0.57
+    }
+   },
+   "add": [
+    {
+     "id": "fortaleza",
+     "name": "Fortaleza",
+     "pop": 2700,
+     "rent": 0.29,
+     "wage": 0.25,
+     "dem": 1.59,
+     "price": 0.5,
+     "metro": 4100,
+     "tour": 1.8
+    },
+    {
+     "id": "bh",
+     "name": "Belo Horizonte",
+     "pop": 2300,
+     "rent": 0.25,
+     "wage": 0.21,
+     "dem": 1.55,
+     "price": 0.49,
+     "metro": 6000,
+     "tour": 0.9
+    },
+    {
+     "id": "manaus",
+     "name": "Manaus",
+     "pop": 2200,
+     "rent": 0.26,
+     "wage": 0.22,
+     "dem": 1.54,
+     "price": 0.49,
+     "metro": 2700,
+     "tour": 0.8
+    },
+    {
+     "id": "rec",
+     "name": "Recife",
+     "pop": 1650,
+     "rent": 0.28,
+     "wage": 0.23,
+     "dem": 1.47,
+     "price": 0.49,
+     "metro": 4100,
+     "tour": 1.6
+    },
+    {
+     "id": "poa",
+     "name": "Porto Alegre",
+     "pop": 1330,
+     "rent": 0.28,
+     "wage": 0.22,
+     "dem": 1.42,
+     "price": 0.49,
+     "metro": 4300,
+     "tour": 0.9
+    },
+    {
+     "id": "flo",
+     "name": "Florianópolis",
+     "pop": 580,
+     "rent": 0.24,
+     "wage": 0.21,
+     "dem": 1.22,
+     "price": 0.48,
+     "metro": 1200,
+     "tour": 2.8,
+     "inc": 1.1
+    },
+    {
+     "id": "paraty",
+     "name": "Paraty",
+     "pop": 45,
+     "rent": 0.14,
+     "wage": 0.17,
+     "dem": 0.61,
+     "price": 0.46,
+     "metro": 45,
+     "tour": 3.8
+    },
+    {
+     "id": "gram",
+     "name": "Gramado",
+     "pop": 36,
+     "rent": 0.13,
+     "wage": 0.16,
+     "dem": 0.56,
+     "price": 0.46,
+     "metro": 36,
+     "tour": 3.6,
+     "inc": 1.05
+    }
+   ]
+  },
+  "CH": {
+   "gini": 0.33,
+   "cities": {
+    "zrh": {
+     "metro": 1500,
+     "tour": 1.5
+    },
+    "gva": {
+     "metro": 1000,
+     "tour": 1.6
+    },
+    "bsl": {
+     "metro": 850,
+     "tour": 1.0
+    },
+    "brn": {
+     "metro": 420,
+     "tour": 1.2
+    },
+    "lsn": {
+     "metro": 650,
+     "tour": 1.2
+    },
+    "zug": {
+     "metro": 31.0,
+     "tour": 0.7
+    },
+    "smallch": {
+     "metro": 4.0,
+     "tour": 3.0
+    }
+   },
+   "add": [
+    {
+     "id": "luz",
+     "name": "Lucerne",
+     "pop": 82,
+     "rent": 1.71,
+     "wage": 1.63,
+     "dem": 0.76,
+     "price": 1.29,
+     "metro": 250,
+     "tour": 3.2
+    },
+    {
+     "id": "stg",
+     "name": "St. Gallen",
+     "pop": 76,
+     "rent": 1.73,
+     "wage": 1.64,
+     "dem": 0.74,
+     "price": 1.29,
+     "metro": 170,
+     "tour": 0.9
+    },
+    {
+     "id": "lug",
+     "name": "Lugano",
+     "pop": 63,
+     "rent": 1.78,
+     "wage": 1.67,
+     "dem": 0.69,
+     "price": 1.3,
+     "metro": 150,
+     "tour": 2.0
+    },
+    {
+     "id": "dav",
+     "name": "Davos",
+     "pop": 11,
+     "rent": 1.49,
+     "wage": 1.59,
+     "dem": 0.28,
+     "price": 1.27,
+     "metro": 11,
+     "tour": 3.6,
+     "inc": 1.1
+    },
+    {
+     "id": "zer",
+     "name": "Zermatt",
+     "pop": 5.8,
+     "rent": 1.21,
+     "wage": 1.47,
+     "dem": 0.22,
+     "price": 1.28,
+     "metro": 6,
+     "tour": 4.5,
+     "inc": 1.05
+    },
+    {
+     "id": "stm",
+     "name": "St. Moritz",
+     "pop": 5.2,
+     "rent": 1.46,
+     "wage": 1.45,
+     "dem": 0.22,
+     "price": 1.3,
+     "metro": 5,
+     "tour": 4.2,
+     "inc": 1.6
+    }
+   ]
+  },
+  "MX": {
+   "gini": 0.45,
+   "cities": {
+    "cdmx": {
+     "metro": 22000,
+     "tour": 1.5
+    },
+    "gdl": {
+     "metro": 5300,
+     "tour": 1.2
+    },
+    "mty": {
+     "metro": 5300,
+     "tour": 0.8
+    },
+    "pue": {
+     "metro": 3300,
+     "tour": 1.2
+    },
+    "tij": {
+     "metro": 2200,
+     "tour": 0.9
+    },
+    "cun": {
+     "metro": 1000,
+     "tour": 4.0
+    },
+    "smallmx": {
+     "metro": 30.0,
+     "tour": 0.57
+    }
+   },
+   "add": [
+    {
+     "id": "leon",
+     "name": "León",
+     "pop": 1700,
+     "rent": 0.52,
+     "wage": 0.19,
+     "dem": 1.48,
+     "price": 0.46,
+     "metro": 2100,
+     "tour": 0.6
+    },
+    {
+     "id": "qro",
+     "name": "Querétaro",
+     "pop": 1050,
+     "rent": 0.78,
+     "wage": 0.24,
+     "dem": 1.37,
+     "price": 0.48,
+     "metro": 1400,
+     "tour": 0.9,
+     "inc": 1.15
+    },
+    {
+     "id": "mer",
+     "name": "Mérida",
+     "pop": 1000,
+     "rent": 0.77,
+     "wage": 0.23,
+     "dem": 1.35,
+     "price": 0.47,
+     "metro": 1300,
+     "tour": 1.5
+    },
+    {
+     "id": "oax",
+     "name": "Oaxaca de Juárez",
+     "pop": 270,
+     "rent": 0.6,
+     "wage": 0.19,
+     "dem": 1.04,
+     "price": 0.46,
+     "metro": 700,
+     "tour": 2.8
+    },
+    {
+     "id": "pdc",
+     "name": "Playa del Carmen",
+     "pop": 300,
+     "rent": 0.61,
+     "wage": 0.19,
+     "dem": 1.07,
+     "price": 0.46,
+     "metro": 300,
+     "tour": 3.8
+    },
+    {
+     "id": "sma",
+     "name": "San Miguel de Allende",
+     "pop": 175,
+     "rent": 0.54,
+     "wage": 0.18,
+     "dem": 0.94,
+     "price": 0.46,
+     "metro": 175,
+     "tour": 3.5,
+     "inc": 1.2
+    },
+    {
+     "id": "tul",
+     "name": "Tulum",
+     "pop": 47,
+     "rent": 0.37,
+     "wage": 0.16,
+     "dem": 0.62,
+     "price": 0.45,
+     "metro": 47,
+     "tour": 4.0
+    }
+   ]
+  },
+  "AE": {
+   "gini": 0.38,
+   "cities": {
+    "dxb": {
+     "metro": 5901.0,
+     "tour": 2.6
+    },
+    "auh": {
+     "metro": 2274.0,
+     "tour": 1.6
+    },
+    "shj": {
+     "metro": 2591.0,
+     "tour": 1.0
+    },
+    "aan": {
+     "metro": 1009.0,
+     "tour": 0.8
+    },
+    "rak": {
+     "metro": 484.0,
+     "tour": 1.8
+    },
+    "smallae": {
+     "metro": 30.0,
+     "tour": 0.6
+    }
+   },
+   "add": [
+    {
+     "id": "ajm",
+     "name": "Ajman",
+     "pop": 540,
+     "rent": 1.42,
+     "wage": 0.45,
+     "dem": 1.21,
+     "price": 0.75,
+     "metro": 540,
+     "tour": 0.8
+    },
+    {
+     "id": "fuj",
+     "name": "Fujairah",
+     "pop": 118,
+     "rent": 1.22,
+     "wage": 0.43,
+     "dem": 0.84,
+     "price": 0.75,
+     "metro": 118,
+     "tour": 1.4
+    },
+    {
+     "id": "uaq",
+     "name": "Umm Al Quwain",
+     "pop": 80,
+     "rent": 1.17,
+     "wage": 0.43,
+     "dem": 0.75,
+     "price": 0.74,
+     "metro": 80,
+     "tour": 0.6
+    }
+   ]
+  },
+  "IT": {
+   "gini": 0.33,
+   "cities": {
+    "rom": {
+     "metro": 4300,
+     "tour": 3.0
+    },
+    "mil": {
+     "metro": 4300,
+     "tour": 1.6
+    },
+    "nap": {
+     "metro": 3100,
+     "tour": 1.6
+    },
+    "tor": {
+     "metro": 1750,
+     "tour": 1.0
+    },
+    "pal": {
+     "metro": 1200,
+     "tour": 1.3
+    },
+    "bol": {
+     "metro": 1000,
+     "tour": 1.2
+    },
+    "flr": {
+     "metro": 1000,
+     "tour": 3.2
+    },
+    "smallit": {
+     "metro": 15.0,
+     "tour": 0.45
+    }
+   },
+   "add": [
+    {
+     "id": "gen",
+     "name": "Genoa",
+     "pop": 560,
+     "rent": 0.67,
+     "wage": 0.58,
+     "dem": 1.22,
+     "price": 0.72,
+     "metro": 800,
+     "tour": 1.5
+    },
+    {
+     "id": "bari",
+     "name": "Bari",
+     "pop": 315,
+     "rent": 0.97,
+     "wage": 0.66,
+     "dem": 1.08,
+     "price": 0.75,
+     "metro": 1200,
+     "tour": 1.1
+    },
+    {
+     "id": "ver",
+     "name": "Verona",
+     "pop": 260,
+     "rent": 0.93,
+     "wage": 0.65,
+     "dem": 1.03,
+     "price": 0.74,
+     "metro": 500,
+     "tour": 2.6
+    },
+    {
+     "id": "ven",
+     "name": "Venice",
+     "pop": 250,
+     "rent": 0.93,
+     "wage": 0.65,
+     "dem": 1.02,
+     "price": 0.74,
+     "metro": 850,
+     "tour": 4.6
+    },
+    {
+     "id": "sie",
+     "name": "Siena",
+     "pop": 54,
+     "rent": 0.66,
+     "wage": 0.6,
+     "dem": 0.66,
+     "price": 0.72,
+     "metro": 110,
+     "tour": 3.6
+    },
+    {
+     "id": "pos",
+     "name": "Positano",
+     "pop": 4,
+     "rent": 0.55,
+     "wage": 0.52,
+     "dem": 0.22,
+     "price": 0.71,
+     "metro": 4,
+     "tour": 5.0,
+     "inc": 1.2
+    }
+   ]
+  },
+  "DK": {
+   "gini": 0.28,
+   "cities": {
+    "cph": {
+     "metro": 1400,
+     "tour": 2.0
+    },
+    "aar": {
+     "metro": 360,
+     "tour": 1.0
+    },
+    "ode": {
+     "metro": 200,
+     "tour": 0.8
+    },
+    "aal": {
+     "metro": 220,
+     "tour": 0.8
+    },
+    "esb": {
+     "metro": 115,
+     "tour": 0.7
+    },
+    "smalldk": {
+     "metro": 12.0,
+     "tour": 0.41
+    }
+   },
+   "add": [
+    {
+     "id": "kol",
+     "name": "Kolding",
+     "pop": 62,
+     "rent": 0.58,
+     "wage": 1.0,
+     "dem": 0.69,
+     "price": 1.0,
+     "metro": 90,
+     "tour": 0.6
+    },
+    {
+     "id": "rsk",
+     "name": "Roskilde",
+     "pop": 53,
+     "rent": 0.57,
+     "wage": 1.0,
+     "dem": 0.65,
+     "price": 0.99,
+     "metro": 90,
+     "tour": 1.0
+    },
+    {
+     "id": "skg",
+     "name": "Skagen",
+     "pop": 8,
+     "rent": 0.37,
+     "wage": 0.92,
+     "dem": 0.22,
+     "price": 0.96,
+     "metro": 12,
+     "tour": 3.2,
+     "inc": 0.95
+    },
+    {
+     "id": "billund",
+     "name": "Billund",
+     "pop": 6.5,
+     "rent": 0.35,
+     "wage": 0.92,
+     "dem": 0.22,
+     "price": 0.96,
+     "metro": 26,
+     "tour": 3.0,
+     "inc": 1.0
+    }
+   ]
+  },
+  "FI": {
+   "gini": 0.27,
+   "cities": {
+    "hel": {
+     "metro": 1650,
+     "tour": 1.4
+    },
+    "esp": {
+     "metro": 315,
+     "tour": 0.8
+    },
+    "tam": {
+     "metro": 420,
+     "tour": 0.9
+    },
+    "oul": {
+     "metro": 280,
+     "tour": 0.6
+    },
+    "tku": {
+     "metro": 330,
+     "tour": 1.0
+    },
+    "rov": {
+     "metro": 65.0,
+     "tour": 2.2
+    },
+    "smallfi": {
+     "metro": 10.0,
+     "tour": 0.38
+    }
+   },
+   "add": [
+    {
+     "id": "vantaa",
+     "name": "Vantaa",
+     "pop": 250,
+     "rent": 1.0,
+     "wage": 0.83,
+     "dem": 1.02,
+     "price": 0.91,
+     "metro": 1650,
+     "tour": 0.8
+    },
+    {
+     "id": "jyv",
+     "name": "Jyväskylä",
+     "pop": 145,
+     "rent": 0.91,
+     "wage": 0.81,
+     "dem": 0.89,
+     "price": 0.9,
+     "metro": 200,
+     "tour": 0.8
+    },
+    {
+     "id": "kuo",
+     "name": "Kuopio",
+     "pop": 125,
+     "rent": 0.89,
+     "wage": 0.8,
+     "dem": 0.86,
+     "price": 0.9,
+     "metro": 170,
+     "tour": 0.8
+    },
+    {
+     "id": "por",
+     "name": "Porvoo",
+     "pop": 51,
+     "rent": 0.77,
+     "wage": 0.78,
+     "dem": 0.64,
+     "price": 0.89,
+     "metro": 70,
+     "tour": 1.8
+    },
+    {
+     "id": "levi",
+     "name": "Levi (Kittilä)",
+     "pop": 6.5,
+     "rent": 0.58,
+     "wage": 0.74,
+     "dem": 0.22,
+     "price": 0.9,
+     "metro": 7,
+     "tour": 4.2,
+     "inc": 1.0
+    }
+   ]
+  },
+  "IE": {
+   "gini": 0.3,
+   "cities": {
+    "dub": {
+     "metro": 1450,
+     "tour": 2.0
+    },
+    "cork": {
+     "metro": 400,
+     "tour": 1.4
+    },
+    "lim": {
+     "metro": 210,
+     "tour": 0.8
+    },
+    "gal": {
+     "metro": 120,
+     "tour": 1.8
+    },
+    "wat": {
+     "metro": 60,
+     "tour": 0.7
+    },
+    "smallie": {
+     "metro": 8.0,
+     "tour": 0.35
+    }
+   },
+   "add": [
+    {
+     "id": "drog",
+     "name": "Drogheda",
+     "pop": 44,
+     "rent": 1.07,
+     "wage": 0.9,
+     "dem": 0.61,
+     "price": 0.98,
+     "metro": 75,
+     "tour": 0.7
+    },
+    {
+     "id": "kilk",
+     "name": "Kilkenny",
+     "pop": 27,
+     "rent": 0.98,
+     "wage": 0.89,
+     "dem": 0.49,
+     "price": 0.97,
+     "metro": 50,
+     "tour": 2.6
+    },
+    {
+     "id": "slig",
+     "name": "Sligo",
+     "pop": 20,
+     "rent": 0.93,
+     "wage": 0.89,
+     "dem": 0.42,
+     "price": 0.96,
+     "metro": 30,
+     "tour": 1.4
+    },
+    {
+     "id": "kill",
+     "name": "Killarney",
+     "pop": 15,
+     "rent": 0.88,
+     "wage": 0.88,
+     "dem": 0.35,
+     "price": 0.98,
+     "metro": 20,
+     "tour": 4.2,
+     "inc": 0.95
+    },
+    {
+     "id": "ding",
+     "name": "Dingle",
+     "pop": 2.1,
+     "rent": 0.65,
+     "wage": 0.84,
+     "dem": 0.22,
+     "price": 0.96,
+     "metro": 3,
+     "tour": 4.2,
+     "inc": 0.9
+    }
+   ]
+  },
+  "SG": {
+   "gini": 0.37,
+   "cities": {
+    "sgc": {
+     "metro": 1260.0,
+     "tour": 2.8
+    },
+    "sgw": {
+     "metro": 484.0,
+     "tour": 0.8
+    },
+    "sge": {
+     "metro": 311.0,
+     "tour": 1.0
+    },
+    "sgn": {
+     "metro": 291.0,
+     "tour": 0.6
+    },
+    "sgne": {
+     "metro": 209.0,
+     "tour": 0.7
+    },
+    "sgs": {
+     "metro": 6.0,
+     "tour": 6.0
+    }
+   },
+   "add": []
+  }
+ }
+}
