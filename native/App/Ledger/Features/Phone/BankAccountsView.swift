@@ -21,6 +21,7 @@ struct BankAccountsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     totalCard(all)
+                    BankWealthCard(engine: e)
                     BankHomeRing(all: all, engine: e)
                     roundButtons(all)
                     billsLink(all, e)
@@ -67,27 +68,13 @@ struct BankAccountsScreen: View {
         .accessibilityIdentifier("bank-all-bills")
     }
 
+    /// The balance on warm ivory, as in the Banking mockup: the total of every account, what falls due in 30 days and whether it is covered.
     private func totalCard(_ all: BankAccounts) -> some View {
-        let totalTint: Color = all.total < 0 ? P.loss : P.ink
-        let coverTint: Color = all.isCovered ? P.gain : P.loss
-        let coverText: String = all.isCovered ? "✓ covered" : "Short: not covered"
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("ALL ACCOUNTS").capsLabel()
-                    Text(store.short(all.total)).font(.hero(30)).foregroundStyle(totalTint).minimumScaleFactor(0.6).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("Due in 30 days").foregroundStyle(P.inkSoft)
-                        Text(store.short(all.dueWithin30Days)).foregroundStyle(P.ink)
-                    }.font(.system(size: 12))
-                    Text(coverText).font(.system(size: 12)).foregroundStyle(coverTint)
-                }
-            }
+        let totalText: String = store.short(all.total)
+        let dueText: String = store.short(all.dueWithin30Days)
+        return IvoryPanel {
+            BankTotalPanel(totalText: totalText, negative: all.total < 0, dueText: dueText, covered: all.isCovered)
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {

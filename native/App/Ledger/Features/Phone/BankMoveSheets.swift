@@ -14,24 +14,7 @@ enum BankMoveKind: String, Identifiable {
 /// Every payment the Bank app can make, as engine calls with their result reported. Used by the alert banner, the Bills tab and Pay bill.
 @MainActor
 enum BankPay {
-    /// Approve the coming payroll, or run a late one now (`resolvePayrollAlert`).
-    static func resolve(_ store: GameStore, companyID: Int) {
-        let outcome = store.act { $0.resolvePayrollAlert(companyID: companyID) }
-        let cur: Currency? = store.engine.flatMap { e in e.state.company(companyID).map { e.currency(for: $0) } }
-        switch outcome {
-        case .approved?:
-            Haptics.success(); store.show("Payroll approved. It goes out on pay day.", tone: "good")
-        case .paidLate(let paid, let short)?:
-            let paidText: String = cur?.tidyShort(paid) ?? store.short(paid)
-            if short > 0.5 {
-                let shortText: String = cur?.tidyShort(short) ?? store.short(short)
-                Haptics.warning(); store.show("Paid \(paidText). Still short \(shortText): put money into the company and pay again.", tone: "warn")
-            } else { Haptics.success(); store.show("Late payroll paid: \(paidText).", tone: "good") }
-        case .notNeeded(let why)?:
-            Haptics.warning(); store.show(why, tone: "warn")
-        case nil: break
-        }
-    }
+    // Payroll is run in Accounting (Accounting > Payroll > Run payroll); the Bank only links there and holds the money.
 
     /// Pay a coming rent, supplier, invoice, tax or VAT bill now (`payObligationNow`): the engine settles it exactly as its date would and
     /// says what happened; the toast is the engine's real result.
@@ -48,14 +31,23 @@ enum BankPay {
         }
     }
 
-    /// Pay one loan instalment early (`repayLoan`). The balance falls by the instalment; there is no fee.
+    /// Pay this month's instalment now (`payLoanInstalmentNow`): it is taken once and the month-end collection skips the loan, so nothing is charged twice.
     static func instalment(_ store: GameStore, loanID: Int) {
         guard let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) else { store.show("That loan is already paid off.", tone: "n"); return }
         let cur: Currency = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
-        let pay: Double = min(l.balance, l.monthlyPayment)
-        if store.act({ $0.repayLoan(id: loanID, amount: pay) }) == true {
-            Haptics.success(); store.show("\(cur.tidyShort(pay)) paid on \(l.name).", tone: "good")
-        } else { Haptics.warning(); store.show("Not enough money to pay that instalment now.", tone: "warn") }
+        let result: Banking.EarlyInstalment? = store.act({ (g: inout GameEngine) -> Banking.EarlyInstalment in g.payLoanInstalmentNow(loanID: loanID) })
+        switch result {
+        case .paid(let amount)?:
+            Haptics.success(); store.show("\(cur.tidyShort(amount)) paid on \(l.name). It is not taken again at month end.", tone: "good")
+        case .alreadySettled?:
+            store.show("This month's instalment of \(l.name) is already paid.", tone: "n")
+        case .notEnoughMoney?:
+            Haptics.warning(); store.show("Not enough money to pay that instalment now.", tone: "warn")
+        case .noLoan?:
+            store.show("That loan is already paid off.", tone: "n")
+        case nil:
+            break
+        }
     }
 }
 

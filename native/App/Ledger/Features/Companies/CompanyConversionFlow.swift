@@ -1,0 +1,228 @@
+import SwiftUI
+import GameCore
+import Countries
+import Finance
+import Businesses
+import Simulation
+
+/// Turning a sole trader into a limited company (Master spec 2D), as a review and then ONE confirmed transaction. The preview is the engine's dry run
+/// (`conversionPlan`): requirements, costs, who pays the fee (personal or company account, with balances and any shortfall), what changes in the
+/// ownership and the books, and that the loan guarantees stay. The owner always pays the share capital personally. Cancelling changes nothing.
+struct ConversionSheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    var companyID: Int
+    @State private var payer: CompanyConversion.Payer = .personal
+    @State private var pending: PendingAction?
+    @State private var done: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    if let e = store.engine, let co = e.state.company(companyID) {
+                        if let done {
+                            resultCard(done)
+                        } else if let plan = e.conversionPlan(companyID: companyID, payer: payer) {
+                            if let why = plan.blocked { blockedCard(why) } else { review(e, co, plan) }
+                        } else {
+                            blockedCard(.unknownCountry)
+                        }
+                    } else {
+                        Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    }
+                }
+                .padding(Theme.Space.margin)
+                .frame(maxWidth: 560).frame(maxWidth: .infinity)
+            }
+            .ledgerBackground()
+            .navigationTitle("Limited company").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(done == nil ? "Cancel" : "Close") { dismiss() }.accessibilityIdentifier("conversion-cancel") } }
+        }
+        .confirmAction($pending)
+        .accessibilityIdentifier("conversion-sheet")
+    }
+
+    // MARK: Review
+
+    @ViewBuilder private func review(_ e: GameEngine, _ co: Company, _ plan: CompanyConversion.Plan) -> some View {
+        let cur: Currency = e.currency(for: co)
+        header(plan)
+        costs(plan, cur)
+        payerChoice(plan, cur)
+        changes(plan, cur)
+        loans(plan, cur)
+        figures(plan, cur)
+        consequences(plan)
+        decision(co, plan, cur)
+    }
+
+    private func header(_ plan: CompanyConversion.Plan) -> some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Convert").capsLabel()
+                Text(plan.companyName).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
+                Text("From \(plan.currentFormName) to \(plan.newFormName). Review what it costs and what changes. Nothing happens until you confirm.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func costs(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        let total: Double = plan.fee + plan.shareCapital
+        return CardSection("Costs") {
+            FlatRow(label: "Conversion fee", value: cur.tidyDisplay(plan.fee), sub: "paid from the account you choose below", rule: false)
+            FlatRow(label: "Share capital", value: cur.tidyDisplay(plan.shareCapital), sub: "paid by you personally; it becomes the company's capital")
+            if plan.accountantRequired {
+                FlatRow(label: "Accountant", value: cur.tidyShort(plan.accountantMonthlyFee) + " a month", sub: plan.accountantName + ": the legal form requires one")
+            }
+            FlatRow(label: "Total paid now", value: cur.tidyDisplay(total), tint: Theme.ivory)
+        }
+    }
+
+    private func payerChoice(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        CardSection("Who pays the fee") {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(plan.payerOptions) { (o: CompanyConversion.PayerOption) in
+                    let title: String = o.payer == .personal ? "Your own account" : "The company's account"
+                    let avail: String = o.accountName + ": " + cur.tidyDisplay(o.spendable) + " available"
+                    let short: String = o.affordable ? "" : ", short by " + cur.tidyDisplay(o.shortfall)
+                    let sub: String = avail + short
+                    ChoiceCard(title: title, subtitle: sub, trailing: "needs " + cur.tidyShort(o.needed), selected: payer == o.payer) { payer = o.payer }
+                        .accessibilityIdentifier("conversion-payer-" + o.payer.rawValue)
+                }
+                Text("The personal option also covers the share capital, so it needs both from your own account and savings.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+
+    private func changes(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        CardSection("What changes") {
+            FlatRow(label: "Legal form", value: plan.newFormName, sub: "was " + plan.currentFormName, rule: false)
+            if plan.nameAfter != plan.nameBefore { FlatRow(label: "Name", value: plan.nameAfter, sub: "was " + plan.nameBefore) }
+            FlatRow(label: "Ownership", value: Currency.percent(plan.ownerSharePercent / 100, decimals: 0), sub: "you hold \(Int(plan.shareCount)) shares of " + cur.tidyShort(plan.shareNominal) + " each")
+            if abs(plan.profitClosedIntoPersonalTax) > 0.5 {
+                FlatRow(label: "Profit so far this year", value: cur.tidyShort(plan.profitClosedIntoPersonalTax), sub: "closed into your personal tax return; company tax starts from zero")
+            }
+            if plan.contributedCapitalCarried > 0.5 {
+                FlatRow(label: "Capital you put in", value: cur.tidyShort(plan.contributedCapitalCarried), sub: "carried over, so dividends are taxed correctly")
+            }
+        }
+    }
+
+    @ViewBuilder private func loans(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        if !plan.loans.isEmpty {
+            CardSection("Loans") {
+                VStack(spacing: 0) {
+                    ForEach(Array(plan.loans.enumerated()), id: \.element.id) { n, l in
+                        FlatRow(label: l.name, value: cur.tidyShort(l.balance), sub: l.personallyGuaranteed ? "your personal guarantee stays" : "company loan", rule: n > 0)
+                    }
+                    Text("Banks keep the personal guarantee after a conversion. You can ask the bank to release it from the loan's details in the Bank app; it will want a higher margin.")
+                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                }
+            }
+        }
+    }
+
+    private func figures(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        CardSection("After the conversion") {
+            KeyFigures(items: [
+                .init(label: "Your account", value: cur.tidyShort(plan.personalBalanceAfter), tint: plan.personalBalanceAfter < 0 ? Theme.loss : Theme.ivory),
+                .init(label: "Company account", value: cur.tidyShort(plan.companyBalanceAfter), tint: plan.companyBalanceAfter < 0 ? Theme.loss : Theme.ivory),
+                .init(label: "Company value", value: cur.tidyShort(plan.valueAfter), sub: "was " + cur.tidyShort(plan.valueBefore)),
+            ])
+            Text("The value does not change by converting, and it is an estimate, not cash.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+        }
+    }
+
+    @ViewBuilder private func consequences(_ plan: CompanyConversion.Plan) -> some View {
+        if !plan.consequences.isEmpty {
+            CardSection("Consequences") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(plan.consequences.enumerated()), id: \.offset) { _, c in
+                        Text(c.tidyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func decision(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !plan.affordable {
+                Text("The chosen account cannot cover this. Pick the other account or put money in first: nothing is charged and nothing changes.")
+                    .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("conversion-unaffordable")
+            }
+            QuietButton(title: "Convert to a limited company\u{2026}", fullWidth: true) { confirm(co, plan, cur) }
+                .disabled(!plan.affordable).opacity(plan.affordable ? 1 : 0.4)
+                .accessibilityIdentifier("conversion-confirm")
+            QuietButton(title: "Keep it as it is", tint: Theme.ivoryFaint, fullWidth: true) { dismiss() }
+                .accessibilityIdentifier("conversion-keep")
+        }
+    }
+
+    // MARK: Confirm and result
+
+    private func confirm(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) {
+        let id: Int = co.id
+        let chosen: CompanyConversion.Payer = payer
+        let total: Double = plan.fee + plan.shareCapital
+        var message: String = "Cost: \(cur.tidyDisplay(plan.fee)) fee from \(plan.accountToCharge) and \(cur.tidyDisplay(plan.shareCapital)) share capital from you, \(cur.tidyDisplay(total)) in all. "
+        message += "Effect: \(plan.nameAfter) becomes a limited company; you hold \(Currency.percent(plan.ownerSharePercent / 100, decimals: 0)) of its shares; "
+        message += plan.accountantRequired ? "\(plan.accountantName) is appointed at \(cur.tidyShort(plan.accountantMonthlyFee)) a month. " : "its accountant stays. "
+        message += "Risk: it cannot be undone, and your personal guarantee on its loans stays."
+        pending = PendingAction(title: "Convert \(plan.companyName) to a limited company?", message: message, button: "Convert", destructive: true) {
+            run(id, chosen, plan, cur)
+        }
+    }
+
+    private func run(_ id: Int, _ chosen: CompanyConversion.Payer, _ plan: CompanyConversion.Plan, _ cur: Currency) {
+        let result: GameEngine.ConvertResult? = store.act({ (e: inout GameEngine) -> GameEngine.ConvertResult in e.convertToLimited(companyID: id, payer: chosen) })
+        switch result {
+        case .ok?:
+            Haptics.success()
+            let from: String = plan.accountToCharge
+            done = "\(plan.companyName) is now \(plan.nameAfter), a limited company. The \(cur.tidyDisplay(plan.fee)) fee was paid from \(from) and you paid \(cur.tidyDisplay(plan.shareCapital)) share capital."
+            store.show("\(plan.nameAfter) is now a limited company.", tone: "good")
+        case .notEnoughCash?:
+            Haptics.warning()
+            store.show("The chosen account cannot cover the conversion. Nothing was charged.", tone: "warn")
+        case .alreadyLimited?:
+            store.show("It is already a limited company.", tone: "n")
+        case .notAllowed(let why)?:
+            Haptics.warning()
+            store.show(why.text, tone: "warn")
+        case .unknown?:
+            Haptics.warning()
+            store.show("It cannot be converted now.", tone: "warn")
+        case nil:
+            break
+        }
+    }
+
+    private func resultCard(_ text: String) -> some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: Glyph.check, tint: Theme.gain)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Converted").font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(text.tidyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text("The legal form, name, ownership and records are updated everywhere. See Accounting > Documents for the registration and the accountant agreement.")
+                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityIdentifier("conversion-result")
+    }
+
+    private func blockedCard(_ block: CompanyConversion.Block) -> some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: Glyph.info)
+                Text(block.text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityIdentifier("conversion-blocked")
+    }
+}

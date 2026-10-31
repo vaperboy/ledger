@@ -45,7 +45,8 @@ struct CompanyLoans: View {
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(cur.tidyShort(l.balance)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Button("Repay…") { repaying = l }.buttonStyle(QuietButtonStyle())
+                                Button("Details…") { repaying = l }.buttonStyle(QuietButtonStyle())
+                                    .accessibilityIdentifier("company-loan-details")
                             }
                         }.padding(.vertical, 9)
                     }
@@ -53,7 +54,7 @@ struct CompanyLoans: View {
             }
         }
         .sheet(item: $repaying) { l in
-            RepayLoanSheet(engine: engine, company: company, loan: l).environmentObject(store)
+            LoanDetailSheet(loanID: l.id).environmentObject(store).presentationDetents([.large])
         }
     }
 }
