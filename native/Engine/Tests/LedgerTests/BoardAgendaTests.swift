@@ -203,4 +203,14 @@ final class BoardAgendaTests: XCTestCase {
             print("board probe seed \(seed): peak open \(peak), year two peak \(peakYearTwo), regular meetings kept \(meetingsHeld), waiting now \(e.boardDecisionsWaiting)")
         }
     }
+
+    /// The `-showcase-board` game used for the Board screenshots has a board with a real point to decide.
+    func testShowcaseBoardHasAnAgenda() throws {
+        let e = try GameEngine.showcase(board: true)
+        XCTAssertGreaterThanOrEqual(e.boardDecisionsWaiting, 1)
+        let key = try XCTUnwrap(e.boardKeys.first { e.boardIsActive(key: $0) })
+        let m = try XCTUnwrap(e.boardMeetings(key: key).first { $0.isOpen })
+        XCTAssertFalse(m.items.isEmpty)
+        XCTAssertFalse(m.items[0].effect.isEmpty)
+    }
 }
