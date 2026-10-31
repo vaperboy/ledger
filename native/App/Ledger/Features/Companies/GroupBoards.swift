@@ -277,7 +277,7 @@ struct BoardView: View {
         let closedJobs: [ManagerModel.FollowUp] = engine.boardFollowUps(key: key).filter { !$0.status.isEmpty }
         let jobs: [ManagerModel.FollowUp] = Array(closedJobs.suffix(4).reversed())
         let empty: Bool = done.isEmpty && jobs.isEmpty
-        MoreBlock(title: "Minutes and outcomes", card: false) {
+        MoreBlock("Minutes and outcomes", card: false) {
             if empty { NoteCard(text: "The minutes of each meeting are kept here once its points are decided.") }
             ForEach(done) { m in minutesCard(m) }
             ForEach(jobs) { f in closedJobLine(f) }
