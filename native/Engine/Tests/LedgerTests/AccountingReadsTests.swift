@@ -88,7 +88,7 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(review.account, co.name + " account")
         let sheets = try XCTUnwrap(e.timesheets(companyID: id))
         XCTAssertEqual(sheets.count, co.staff.count)
-        XCTAssertTrue(sheets.allSatisfy { $0.actualHoursRecorded == nil }, "hours actually worked are not made up")
+        XCTAssertTrue(sheets.contains { ($0.actualHoursRecorded ?? 0) > 0 }, "hours actually worked come from the weekly simulation")
         XCTAssertTrue(sheets.allSatisfy { $0.contractedHoursPerWeek > 0 })
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
