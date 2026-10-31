@@ -347,6 +347,28 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.E7 | Start a franchised unit and pick a place (engine API `franchiseStartPlan`; the picker UI is a separate task) | Plan shows places to rent or buy plus the entry fee; the unit opens in the chosen place, bought or rented | | NOT TESTED | | |
 
 
+## S1. Navigation and the Company hub (stage 1; written with the change, never run by a person)
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| S1.1 | Home > open a company | A hub: company name, cash large, profit and margin, then six rows in this order: Overview, People, Operations, Sales & Market, Stats & Information, Projects. No tab row, nothing scrolls sideways | | NOT TESTED | | |
+| S1.2 | Tap each of the six rows, then Back each time | Each opens its own screen with the round Back button; one Back returns to the hub; one more to Home | | NOT TESTED | | |
+| S1.3 | Operations | Premises and Where you work are two separate rows; Equipment and fleet, Upkeep, Suppliers, Insurance and advisers, Your time are rows here. Price, How you sell and Marketing are NOT here | | NOT TESTED | | |
+| S1.4 | Sales & Market | Price, How you sell, Marketing, Customers, Market rows; the price sheet still changes the price; Customers and Market open and Back returns to Sales & Market | | NOT TESTED | | |
+| S1.5 | Stats & Information | Finance summary with Statements, Ownership, Settings pages as before; Open in Bank still opens that company's account | | NOT TESTED | | |
+| S1.6 | Projects, on a café and on a builder (project business) | Café: an honest "No projects" card. Builder: running jobs with stage and progress, then the order book | | NOT TESTED | | |
+| S1.7 | Overview (phone) | Three parts: Overview / Performance / Insights. Overview shows Cash large first, then profit, margin and the other figures, what needs you, who runs it; it fits one screen on a normal phone | | NOT TESTED | | |
+| S1.8 | Tap the tab you are on (Home with a company open; Phone with an app open; Team, Group, Projects on a sub-tab) | The tab returns to its first page, scrolled to the top, sub-tab reset | | NOT TESTED | | |
+| S1.9 | Home > Bank shortcut, then the round Back in the Bank app | Back returns to Home; then open Phone: its app grid shows, not the Bank | | NOT TESTED | | |
+| S1.10 | Home > Hire shortcut (a company with an open post), then Back | The company's People screen opens on the Team tab; Back returns to Home; Team tab shows its own first page, no company left on it | | NOT TESTED | | |
+| S1.11 | Inbox > a message with a company link, then Back | Opens the company screen; one Back returns to the Inbox list | | NOT TESTED | | |
+| S1.12 | Overview > Who runs it (People opens), Back, Back | One Back per step: People, then Overview, then the hub. No screen opens twice | | NOT TESTED | | |
+| S1.13 | In a company, use any link that points at the company you are already in | No second copy: one Back always reverses one step | | NOT TESTED | | |
+| S1.14 | A company still being set up | Hub shows Overview, Stats & Information, Projects; Overview starts with the "Before opening" checklist | | NOT TESTED | | |
+| S1.15 | A holding company; a football club | Holding: People row opens its management page. Club: Operations row opens the club page. No staff list or price rows | | NOT TESTED | | |
+| S1.16 | A company with a Chain, Plant, Fish or Book page | Reachable from a "More for this business" card on Operations (Chain, Plant, Fish, Club) or Stats & Information (Book) | | NOT TESTED | | |
+| S1.17 | Any row of tabs (Inbox, Reports, hiring roles, company filter) | Never scrolls sideways: a fixed row, or the first three plus a More menu when the titles do not fit | | NOT TESTED | | |
+| S1.18 | Swipe back from the left edge on a screen you reached by a link from another tab | Same as the Back button: returns to where the link came from | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

@@ -1,8 +1,9 @@
 import XCTest
 
-/// Back-navigation (roadmap D1): a company opened from Home, Projects or Inbox must return to that screen on Back, not to the
-/// Company list. Run by CI with the screenshot tests. An entry point that the prepared game does not have (the showcase game has no
-/// project company) is reported as skipped, never as a pass.
+/// Navigation (spec stage 1): a company opened from Home, Projects or Inbox returns to that screen on Back; choosing the open tab again
+/// returns it to its root; a link that crosses tabs returns to its origin and leaves nothing behind; a link to a company screen that is
+/// already open never stacks a copy. Run by CI with the screenshot tests. An entry point that the prepared game does not have (the
+/// showcase game has no project company) is reported as skipped, never as a pass.
 final class NavigationBackTests: TourCase {
 
     override func setUp() {
@@ -31,18 +32,35 @@ final class NavigationBackTests: TourCase {
             let b = bars.element(boundBy: i).buttons.element(boundBy: 0)
             if b.exists && b.isHittable { b.tap(); return true }
         }
-        // Screens with the new header (Phone apps) have the round back button instead of a navigation bar.
+        // Screens with the new header (Phone apps, Company screens) have the round back button instead of a navigation bar.
         let round = app.buttons["back-button"]
         if round.exists && round.isHittable { round.tap(); return true }
         return false
     }
 
-    /// A pushed company shows the section tabs of a company. When the link did not open one on this device the test is skipped
+    /// The round back button of the screen on top.
+    private func tapRoundBack() -> Bool {
+        let round = app.buttons["back-button"]
+        guard round.waitForExistence(timeout: 3), round.isHittable else { return false }
+        round.tap()
+        return true
+    }
+
+    /// A pushed company shows the Company hub (its six section rows). When the link did not open one on this device the test is skipped
     /// with a note (the picture is kept), instead of waiting out long timeouts and failing.
     private func assertCompanyOpen(_ from: String) throws {
-        if app.buttons["Operations"].waitForExistence(timeout: 3) || app.buttons["Finances"].waitForExistence(timeout: 1) { return }
+        if app.buttons["company-hub-overview"].waitForExistence(timeout: 3) || app.buttons["company-hub-operations"].waitForExistence(timeout: 1) { return }
         shot("90-nav-\(from.lowercased())-link-no-company")
         throw XCTSkip("the link from \(from) did not open a company on this device")
+    }
+
+    /// Opens the first company from the Home list (the showcase game has a café). Returns false when there is none.
+    private func openFirstCompany() -> Bool {
+        open("Home")
+        let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
+        guard first.waitForExistence(timeout: 3) else { return false }
+        first.tap()
+        return app.buttons["company-hub-overview"].waitForExistence(timeout: 5)
     }
 
     func testBackFromHomeSuggestionReturnsToHome() throws {
@@ -61,12 +79,14 @@ final class NavigationBackTests: TourCase {
         let inboxIcon = app.buttons["phone-app-Inbox"]
         XCTAssertTrue(inboxIcon.waitForExistence(timeout: 3), "the Inbox is an app on the Phone")
         inboxIcon.tap()
-        XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 3), "the Inbox app should be open")
+        let search = app.textFields["Search messages"]
+        XCTAssertTrue(search.waitForExistence(timeout: 3), "the Inbox app should be open")
         let link = app.buttons["open-company-link"].firstMatch
         guard link.waitForExistence(timeout: 2) else { throw XCTSkip("no Inbox message with a company link in the showcase game") }
         link.tap()
-        // Strict: the Inbox link must open the company (no skip).
-        XCTAssertTrue(app.buttons["Operations"].waitForExistence(timeout: 5) || app.buttons["Finances"].waitForExistence(timeout: 2), "the Inbox company link should open the company")
+        // Strict: the Inbox link must open a company screen (no skip): the Inbox list is covered and a Back button is on screen.
+        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 5), "the Inbox company link should open the company")
+        XCTAssertFalse(search.isHittable, "the company screen should cover the Inbox list")
         XCTAssertTrue(tapBack(to: "Inbox"))
         // Asserted: Back lands on the Inbox app, not on Home.
         XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 5), "Back should return to the Inbox")
@@ -78,10 +98,84 @@ final class NavigationBackTests: TourCase {
         let link = app.buttons["open-project-company"].firstMatch
         guard link.waitForExistence(timeout: 2) else { throw XCTSkip("no company with project work in the showcase game") }
         link.tap()
-        try assertCompanyOpen("Projects")
+        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 5), "the project link should open the company")
         XCTAssertTrue(tapBack(to: "Projects"))
         // Asserted: Back lands on Projects (Work / Ventures tabs), not on the Company list.
         XCTAssertTrue(app.buttons["Ventures"].waitForExistence(timeout: 5), "Back should return to Projects")
         XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists)
+    }
+
+    // MARK: Stage 1 navigation
+
+    /// Choosing the tab that is already open returns it to its root: here a company's Operations screen on Home.
+    func testReselectingHomeReturnsToItsRoot() throws {
+        guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
+        app.buttons["company-hub-operations"].tap()
+        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 3), "Operations should be pushed on the company hub")
+        let pill = app.buttons["tab-Home"]
+        guard pill.exists else { throw XCTSkip("no floating tab bar on this device (the iPad sidebar does not report a re-selected row)") }
+        pill.tap()
+        XCTAssertTrue(waitForHome(5), "choosing Home again should show the Home root")
+        XCTAssertFalse(app.buttons["company-hub-overview"].exists, "no company screen may stay on the Home stack")
+        XCTAssertFalse(app.buttons["company-hub-operations"].exists)
+    }
+
+    /// The same on the Phone tab: an app is open, choosing Phone again shows the grid of apps.
+    func testReselectingPhoneReturnsToTheAppGrid() throws {
+        open("Phone")
+        let inboxIcon = app.buttons["phone-app-Inbox"]
+        XCTAssertTrue(inboxIcon.waitForExistence(timeout: 3))
+        inboxIcon.tap()
+        XCTAssertTrue(app.textFields["Search messages"].waitForExistence(timeout: 3))
+        let pill = app.buttons["tab-Phone"]
+        guard pill.exists else { throw XCTSkip("no floating tab bar on this device") }
+        pill.tap()
+        XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "choosing Phone again should show the app grid")
+        XCTAssertFalse(app.textFields["Search messages"].isHittable, "the Inbox must not stay open")
+    }
+
+    /// A link that crosses tabs (Home to the Bank app on the Phone tab): Back returns to Home, and the Phone tab keeps no Bank screen.
+    func testBackFromACrossTabLinkReturnsToTheOriginAndLeavesNothingBehind() throws {
+        open("Home")
+        let bank = app.buttons["home-bank"]
+        guard bank.waitForExistence(timeout: 3) else { throw XCTSkip("no Bank shortcut on Home") }
+        bank.tap()
+        XCTAssertTrue(app.buttons["tab-Phone"].waitForExistence(timeout: 3))
+        XCTAssertTrue(tapRoundBack(), "the Bank app should have a Back button")
+        XCTAssertTrue(waitForHome(5), "Back from a link opened on another tab should return to Home, where the link was")
+        // Nothing of the link stays on the Phone tab: its first page is the app grid.
+        open("Phone")
+        XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "the Phone tab should show its app grid, not the Bank app")
+    }
+
+    /// A section of a company is a pushed step: one Back from it returns to the company hub, one more to Home.
+    func testASectionIsOneStepFromTheHub() throws {
+        guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
+        app.buttons["company-hub-operations"].tap()
+        XCTAssertTrue(tapRoundBack())
+        XCTAssertTrue(app.buttons["company-hub-operations"].waitForExistence(timeout: 3), "Back from a section returns to the company hub")
+        XCTAssertTrue(tapRoundBack())
+        XCTAssertTrue(waitForHome(5), "Back from the hub returns to Home")
+    }
+
+    /// A link to the company that is already open (from inside one of its screens) never stacks a second copy:
+    /// a link to the company goes back to its hub, a link to the screen already shown changes nothing. One Back is always one step.
+    func testALinkToTheSameCompanyFromInsideItDoesNotStackACopy() throws {
+        guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
+        app.buttons["company-hub-operations"].tap()
+        let toCompany = app.buttons["probe-link-company"]
+        let toSameScreen = app.buttons["probe-link-same-screen"]
+        guard toCompany.waitForExistence(timeout: 3) else { throw XCTSkip("the navigation probes exist only in a debug build of the showcase game") }
+        // The same screen again: still one screen deep. One Back leaves the company's Operations, not a second Operations.
+        toSameScreen.tap()
+        XCTAssertTrue(tapRoundBack())
+        XCTAssertTrue(app.buttons["company-hub-operations"].waitForExistence(timeout: 3), "one Back from Operations must reach the hub (no second copy of Operations)")
+        // Now from Operations to the company itself: it is already on the stack, so the stack goes back to the hub: one Back reaches Home.
+        app.buttons["company-hub-operations"].tap()
+        XCTAssertTrue(toCompany.waitForExistence(timeout: 3))
+        toCompany.tap()
+        XCTAssertTrue(app.buttons["company-hub-operations"].waitForExistence(timeout: 3), "the link goes to the company hub")
+        XCTAssertTrue(tapRoundBack())
+        XCTAssertTrue(waitForHome(5), "one Back from the hub must reach Home: the company was not stacked twice")
     }
 }

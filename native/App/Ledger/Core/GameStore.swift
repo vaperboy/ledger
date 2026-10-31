@@ -8,8 +8,8 @@ import Events
 import SaveSystem
 import Simulation
 
-/// Five destinations: daily company operations (with today's summary), everyone who works for you, the group (ownership, structure, money),
-/// time-bound projects and investments, and decisions. The old Phone pages sit behind a toolbar button on Company and Group.
+/// The five destinations: Home (portfolio and companies), Team (everyone who works for you), Group (ownership and structure), Projects
+/// (time-bound work and investments) and Phone (the apps: Inbox, Bank, Reports, News ...).
 /// The five tabs. The raw values are the route and deep-link names and never change: `.company` is displayed as "Home", and `.phone`
 /// (the Phone tab, home of the apps; Inbox is an app inside it) replaced the old Inbox tab.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
@@ -26,14 +26,20 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
-/// The sections of the Money tab.
-enum MoneySection: String, CaseIterable, Hashable { case overview = "Overview", bank = "Bank", invest = "Invest", taxes = "Taxes", costs = "Costs", reports = "Reports" }
+/// Where a link is going to land and how it gets back: the tab it came from, the tab it opened on, and how many screens that tab's
+/// stack held before the link pushed its screen. Back from the screen the link pushed (the stack shrinking to `destDepth`) returns to `from`.
+struct ReturnInfo: Equatable {
+    var from: AppTab
+    var dest: AppTab
+    var destDepth: Int
+}
 
-/// "Push this onto the stack of this tab": the one shape of a deep link to a company.
-struct RouteRequest: Equatable {
-    let id = UUID()
-    var tab: AppTab
-    var route: CompanyRoute
+/// What a link asks the app it opened to show, once the app is on screen. The one slot for it: taken (and so cleared) by the app that
+/// reads it, dropped when the player moves on by hand.
+enum AppRequest: Equatable {
+    case message(Int)
+    case bank(BankRequest)
+    case report(ReportRef)
 }
 
 struct Toast: Identifiable, Equatable {
@@ -49,23 +55,21 @@ final class GameStore: ObservableObject {
     @Published var toast: Toast?
     @Published var errorText: String?
 
-    // Navigation requests from anywhere (e.g. a suggestion card)
-    @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnTab = nil } } }
-    /// Set while the player is on a tab they were sent to by a link; that tab shows "Back to <returnTab>".
-    @Published private(set) var returnTab: AppTab?
-    /// A company or record to push onto the navigation stack of `tab` (the tab it was requested from). Taken by `routeRequests`.
-    @Published var routeRequest: RouteRequest?
+    // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
+
+    /// The selected tab. Selecting one by hand (`selectTab`) forgets where a link came from.
+    @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnInfo = nil } } }
     private var jumping = false
-    /// An app of the Phone tab to open (set by `openApp`, taken by `PhoneHome`).
-    @Published var phoneAppRequest: PhoneApp?
-    /// Kept only so an old link to a money section still compiles (`GroupView` forwards it to the Bank app).
-    @Published var moneySection: MoneySection?
-    /// An account (and tab) of the Bank app to open (set by `openBank`, taken by `BankApp`).
-    @Published var bankRequest: BankRequest?
-    /// Open the Reports section on this report (set by the Home prompt).
-    @Published var reportRequest: ReportRef?
-    @Published var showNewCompany = false
-    @Published var openMessageID: Int?
+    /// The navigation stack of Home, Team, Group and Projects. The tab roots bind to these; nothing else holds a stack.
+    @Published private(set) var routePaths: [AppTab: [CompanyRoute]] = [:]
+    /// The Phone tab's stack: apps, and the companies a link opened from inside an app.
+    @Published private(set) var phonePath: [PhoneHome.Page] = []
+    /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
+    @Published private(set) var rootTokens: [AppTab: Int] = [:]
+    /// Set while the player is on a tab they were sent to by a link; see `ReturnInfo`.
+    @Published private(set) var returnInfo: ReturnInfo?
+    /// The one pending request for the app a link opened (an Inbox message, a Bank account, a report).
+    @Published private(set) var appRequest: AppRequest?
     /// Set when the save on disk exists but could not be opened; the start screen explains it instead of a passing alert.
     @Published private(set) var loadProblem: String?
 
@@ -214,55 +218,179 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation
 
-    /// The one way to open a company (or one of its sections) from anywhere: it is pushed onto the navigation stack of the tab the
-    /// player is on (Home, Team, Group, Projects or Phone), so Back returns to the screen they came from. The request is consumed by
-    /// that tab (`routeRequests`), so it cannot leak.
-    func openCompany(_ id: Int, section: CompanySection? = nil) {
-        let route: CompanyRoute
-        if let section { route = .companyAt(id, section) } else { route = .company(id) }
-        routeRequest = RouteRequest(tab: tab, route: route)
+    /// The tab the player came from while a link has them on another tab (the gold "Back to <tab>" line at a tab root).
+    var returnTab: AppTab? { returnInfo?.from }
+
+    func path(for tab: AppTab) -> [CompanyRoute] { routePaths[tab] ?? [] }
+    /// How many screens are pushed on a tab (0 = its root).
+    func depth(_ tab: AppTab) -> Int { tab == .phone ? phonePath.count : path(for: tab).count }
+    func rootToken(_ tab: AppTab) -> Int { rootTokens[tab] ?? 0 }
+
+    /// The tab roots set their stack through here (a push, a pop by Back or by swipe). A record that is already on the stack is not
+    /// stacked twice: a link to it goes back to it. When a link's screen is popped the player returns to where the link came from.
+    func setPath(_ new: [CompanyRoute], for tab: AppTab) {
+        let old = path(for: tab)
+        var next = new
+        if new.count == old.count + 1, let last = new.last {
+            next = Self.collapse(old, pushing: last)
+        }
+        guard next != old else { return }
+        routePaths[tab] = next
+        afterPathChange(tab, depth: next.count, grew: next.count > old.count)
     }
 
-    /// Switches to another tab for a link that cannot be pushed (a message in the Inbox, a Money section, New company) and remembers
-    /// where the player came from; the destination shows "Back to <tab>". Switching tabs by hand clears it.
+    func setPhonePath(_ new: [PhoneHome.Page]) {
+        let old = phonePath
+        var next = new
+        if new.count == old.count + 1, let last = new.last {
+            if let i = old.lastIndex(where: { $0.key == last.key }) { next = Array(old.prefix(i)) + [last] }
+        }
+        guard next != old else { return }
+        phonePath = next
+        afterPathChange(.phone, depth: next.count, grew: next.count > old.count)
+    }
+
+    /// `old` with `route` pushed, unless the same record is already on it: then the stack is cut back to that record, which takes the
+    /// new route (so a link to another section of it shows that section). A finished "new company" form is not kept behind a push.
+    static func collapse(_ old: [CompanyRoute], pushing route: CompanyRoute) -> [CompanyRoute] {
+        var base = old
+        if route != .newCompany, base.last == .newCompany { base.removeLast() }
+        if let i = base.lastIndex(where: { $0.key == route.key }) { return Array(base.prefix(i)) + [route] }
+        return base + [route]
+    }
+
+    /// The stack of `tab` shrank back to where a link found it: the player goes back to the tab the link came from.
+    private func afterPathChange(_ tab: AppTab, depth: Int, grew: Bool) {
+        guard let r = returnInfo, r.dest == tab, !grew, depth <= r.destDepth else { return }
+        returnToOrigin()
+    }
+
+    /// Pushes `route` on the stack of a tab: the one the player is on by default (a company opened from Team stays on Team, so Back
+    /// returns to Team).
+    func push(_ route: CompanyRoute, on target: AppTab? = nil) {
+        let t = target ?? tab
+        if t == .phone { setPhonePath(phonePath + [.company(route)]) } else { setPath(path(for: t) + [route], for: t) }
+    }
+
+    /// The one way to open a company (or one of its screens) from anywhere: pushed onto the stack of the tab the player is on, so Back
+    /// returns to the screen they came from. A link to a company screen that is already on the stack goes back to it.
+    func openCompany(_ id: Int, section: CompanySection? = nil, part: String? = nil) {
+        let route = CompanyRoute.make(id, section, part)
+        let target = tab
+        // One turn later: a screen that opens a company and then closes itself (a finished form) must pop before the push lands.
+        Task { @MainActor [weak self] in self?.push(route, on: target) }
+    }
+
+    /// A link that lands on another tab: the screen is pushed on that tab's stack and the player is taken there. Back from it returns
+    /// to the tab they came from, and the other tab keeps no screen from the link.
+    func open(_ route: CompanyRoute, on dest: AppTab) {
+        guard dest != tab else { push(route, on: dest); return }
+        let before = depth(dest)
+        let from = tab
+        push(route, on: dest)
+        arrive(on: dest, from: from, depth: before)
+    }
+
+    /// A link that lands on the root of another tab (the stack there is cleared, so the root is what shows).
     func jump(to destination: AppTab) {
         guard destination != tab else { return }
         let from = tab
-        jumping = true; tab = destination; jumping = false
-        returnTab = from
+        clearStack(destination)
+        arrive(on: destination, from: from, depth: 0)
     }
 
-    /// Back to the tab a link came from.
+    private func arrive(on dest: AppTab, from: AppTab, depth: Int) {
+        jumping = true; tab = dest; jumping = false
+        returnInfo = ReturnInfo(from: from, dest: dest, destDepth: depth)
+    }
+
+    /// Back to the tab a link came from; the tab the link opened is cut back to where it was before the link.
     func returnToOrigin() {
-        guard let back = returnTab else { return }
-        jumping = true; tab = back; jumping = false
-        returnTab = nil
+        guard let r = returnInfo else { return }
+        returnInfo = nil
+        cutStack(r.dest, to: r.destDepth)
+        appRequest = nil
+        jumping = true; tab = r.from; jumping = false
     }
 
-    /// Opens an app of the Phone tab (Inbox, Bank, News ...), switching to the Phone tab first when needed.
-    func openApp(_ app: PhoneApp) {
-        phoneAppRequest = app
-        jump(to: .phone)
+    /// Pops a tab's stack back to `depth` screens (what it held before a link pushed onto it).
+    private func cutStack(_ tab: AppTab, to depth: Int) {
+        if tab == .phone {
+            if phonePath.count > depth { phonePath = Array(phonePath.prefix(depth)) }
+        } else if path(for: tab).count > depth {
+            routePaths[tab] = Array(path(for: tab).prefix(depth))
+        }
+    }
+
+    private func clearStack(_ tab: AppTab) {
+        if tab == .phone { phonePath = [] } else { routePaths[tab] = [] }
+    }
+
+    /// A tab chosen by hand (the tab bar or the sidebar). Choosing the tab that is already open returns it to its root.
+    func selectTab(_ t: AppTab) {
+        if t == tab {
+            popToRoot(t)
+        } else {
+            // Leaving a tab a link opened, by hand: the screens the link pushed there go with it, as with "Back".
+            if let r = returnInfo, r.dest == tab { cutStack(r.dest, to: r.destDepth) }
+            tab = t
+        }
+        appRequest = nil
+    }
+
+    /// Pops a tab to its root: no pushed screens, and the root shows its first page scrolled to the top.
+    func popToRoot(_ t: AppTab) {
+        clearStack(t)
+        rootTokens[t] = rootToken(t) + 1
+        if returnInfo?.dest == t { returnInfo = nil }
+        appRequest = nil
+    }
+
+    /// Opens an app of the Phone tab (Inbox, Bank, News ...). From another tab the Phone stack is replaced by the app and Back returns
+    /// to where the link was; on the Phone it is pushed (or, when already on the stack, gone back to).
+    func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
+        appRequest = request
+        if tab == .phone {
+            setPhonePath(phonePath + [.app(app)])
+        } else {
+            let from = tab
+            phonePath = [.app(app)]
+            arrive(on: .phone, from: from, depth: 0)
+        }
     }
 
     /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
     func openBank(_ account: BankAccountID, tab: BankTab = .account) {
-        bankRequest = BankRequest(account: account, tab: tab)
-        openApp(.bank)
+        openApp(.bank, request: .bank(BankRequest(account: account, tab: tab)))
     }
 
-    /// Opens one message in the Inbox app. `InboxView` takes the request on appear and on change, so it works whether or not
-    /// the Inbox was built before.
-    func openMessage(_ id: Int) {
-        openMessageID = id
-        openApp(.inbox)
+    /// Opens one message in the Inbox app.
+    func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
+
+    /// Opens the Reports app on one report.
+    func openReport(_ ref: ReportRef) { openApp(.reports, request: .report(ref)) }
+
+    /// The apps take their request when they appear and when it changes. A request whose target is gone (a message that was removed) is dropped.
+    func takeMessageRequest() -> Int? {
+        guard case .message(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return engine?.state.inbox.contains(where: { $0.id == id }) == true ? id : nil
+    }
+    func takeBankRequest() -> BankRequest? {
+        guard case .bank(let r)? = appRequest else { return nil }
+        appRequest = nil
+        return r
+    }
+    func takeReportRequest() -> ReportRef? {
+        guard case .report(let r)? = appRequest else { return nil }
+        appRequest = nil
+        return r
     }
 
-    /// Drops every pending navigation request, so nothing from one game (or one visit) opens in the next.
+    /// Drops every stack and pending request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
-        jumping = true; tab = .company; jumping = false; returnTab = nil
-        routeRequest = nil; moneySection = nil; bankRequest = nil; reportRequest = nil
-        openMessageID = nil; phoneAppRequest = nil; showNewCompany = false
+        jumping = true; tab = .company; jumping = false
+        routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
     }
 
     func go(_ action: Suggestion.Action) {
@@ -273,7 +401,7 @@ final class GameStore: ObservableObject {
         case .openLoans: openBank(.personal, tab: .loans)
         case .openInvest: openBank(.investments, tab: .deposits)
         case .openTax: openBank(.personal, tab: .bills)
-        case .newCompany: showNewCompany = true; jump(to: .company)
+        case .newCompany: open(.newCompany, on: .company)
         }
     }
 

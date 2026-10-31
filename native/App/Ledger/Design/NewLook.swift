@@ -348,7 +348,7 @@ struct HomeHeader: View {
 }
 
 /// Gives a pushed screen the new header: hides the system navigation bar (and its back button), pins an `AppHeader` with the round
-/// back button above the content, and shows "Back to <tab>" when the player was sent here by a link from another tab.
+/// back button above the content. Back from the first screen a link from another tab pushed returns to that tab (see `GameStore.setPath`).
 /// `trailing` is for a screen's own menu (the Inbox options). Apply it to the content of a `navigationDestination`, not to a tab root.
 struct AppScreen<Trailing: View>: ViewModifier {
     @Environment(\.dismiss) private var dismiss
@@ -365,30 +365,28 @@ struct AppScreen<Trailing: View>: ViewModifier {
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: 0) {
-                    ReturnLine(tab: tab)
-                    AppHeader(title: title, subtitle: subtitle, onBack: showsBack ? { dismiss() } : nil, trailing: trailing)
-                        .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
-                }
-                .background(palette.ground)
+                AppHeader(title: title, subtitle: subtitle, onBack: showsBack ? { dismiss() } : nil, trailing: trailing)
+                    .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
+                    .background(palette.ground)
             }
     }
 }
 
-/// "Back to <tab>" for a screen reached by a link from another tab (the same bar the tab roots show).
+/// "Back to <tab>" at the root of a tab that a link from another tab landed on. It shows only while nothing is pushed on that tab: a
+/// pushed screen has its round back button, which returns to the origin by itself, so a screen never has two Back controls.
 struct ReturnLine: View {
     @EnvironmentObject var store: GameStore
     var tab: AppTab
 
     var body: some View {
-        if store.tab == tab, let back = store.returnTab {
+        if store.tab == tab, let r = store.returnInfo, r.dest == tab, store.depth(tab) == 0 {
             Button {
                 Haptics.tap()
                 store.returnToOrigin()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
-                    Text("Back to \(back.title)").font(.system(size: 13, weight: .medium))
+                    Text("Back to \(r.from.title)").font(.system(size: 13, weight: .medium))
                     Spacer()
                 }
                 .foregroundStyle(Theme.gold)
@@ -741,6 +739,8 @@ struct PillTabItem: Identifiable, Equatable {
 struct PillTabBar: View {
     var items: [PillTabItem]
     @Binding var selection: String
+    /// Called with the item's id when the tab that is already selected is tapped again (the tab goes back to its root).
+    var onReselect: (String) -> Void = { _ in }
     /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
@@ -750,7 +750,7 @@ struct PillTabBar: View {
                 let on = item.id == selection
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
-                    if !on { selection = item.id }
+                    if on { onReselect(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
                         GlyphView(glyph: item.glyph, size: 22, weight: 1.5, tint: on ? Theme.gold : Theme.ivoryMuted)

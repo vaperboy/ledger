@@ -352,10 +352,11 @@ struct WrapRow: Layout {
     }
 }
 
-/// Section switcher. Up to 5 items: one equal-width row; when the labels do not fit the row scrolls sideways with full, uncut labels. More than 5: a fixed
-/// row of `primary` (default the first 4) plus a "More" menu listing the rest. The chosen fixed item has a champagne
-/// underline; the menu marks the chosen item with a checkmark and "More" turns accent when the choice is inside it.
-/// A small red count may sit beside a title (counts of hidden items roll up onto "More"). Tap targets are 44 pt tall.
+/// Section switcher. It never scrolls sideways. Up to 5 items in one equal-width row when every title fits; more than 5 items: a fixed
+/// row of `primary` (default the first 4) plus a "More" menu listing the rest. When the titles of that row do not fit the width, the
+/// row keeps its first three plus "More". The chosen fixed item has a champagne underline; the menu marks the chosen item with a checkmark and "More"
+/// turns accent when the choice is inside it. A small red count may sit beside a title (counts of hidden items roll up onto "More").
+/// Tap targets are 44 pt tall.
 struct SectionTabs<T: Hashable>: View {
     var items: [T]
     var primary: [T]? = nil
@@ -366,11 +367,16 @@ struct SectionTabs<T: Hashable>: View {
     var sub: Bool = false
     @Environment(\.outsidePalette) private var palette
 
-    private var fixed: [T] {
-        if let primary { let p = primary.filter { items.contains($0) }; return p.count < items.count ? p : items }
+    /// The items kept in the fixed row. `condensed` is the narrow variant used when the full row does not fit.
+    private func fixed(condensed: Bool) -> [T] {
+        if let primary {
+            let p = primary.filter { items.contains($0) }
+            let all = p.count < items.count ? p : items
+            return condensed && all.count > 3 ? Array(all.prefix(3)) : all
+        }
+        if condensed { return items.count <= 3 ? items : Array(items.prefix(3)) }
         return items.count <= 5 ? items : Array(items.prefix(4))
     }
-    private var rest: [T] { items.filter { !fixed.contains($0) } }
 
     private func countView(_ n: Int) -> some View {
         Text("\(n)").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.page)
@@ -379,32 +385,28 @@ struct SectionTabs<T: Hashable>: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            tabRow(spread: true)
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) { tabRow(spread: false) }
-                    .onAppear { proxy.scrollTo(selection, anchor: .center) }
-                    .onChange(of: selection) { _, new in withAnimation { proxy.scrollTo(new, anchor: .center) } }
-            }
+            tabRow(fixed(condensed: false))
+            tabRow(fixed(condensed: true))
         }
         .padding(.horizontal, Theme.Space.margin)
         .background(alignment: .bottom) { if !sub { Hairline() } }
     }
 
-    /// The row of tabs. `spread` shares the width equally (when everything fits); otherwise each label keeps its full width
-    /// and the row scrolls sideways, so a label is never cut off.
-    private func tabRow(spread: Bool) -> some View {
-        HStack(spacing: 6) {
+    /// The row of tabs: the fixed items, then a "More" menu for the rest. The width is shared equally, so a row never needs to scroll.
+    private func tabRow(_ fixed: [T]) -> some View {
+        let rest: [T] = items.filter { !fixed.contains($0) }
+        return HStack(spacing: 6) {
             ForEach(fixed, id: \.self) { item in
                 let on = selection == item
                 Button { selection = item; Haptics.choose() } label: {
-                    cell(title(item), count: badge(item), on: on, more: false, spread: spread)
-                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : []).id(item)
+                    cell(title(item), count: badge(item), on: on, more: false, spread: true)
+                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
             }
-            if !rest.isEmpty { moreMenu(spread: spread) }
+            if !rest.isEmpty { moreMenu(rest) }
         }
     }
 
-    private func moreMenu(spread: Bool) -> some View {
+    private func moreMenu(_ rest: [T]) -> some View {
         let inRest = rest.contains(selection)
         return Menu {
             ForEach(rest, id: \.self) { item in
@@ -415,7 +417,7 @@ struct SectionTabs<T: Hashable>: View {
                 }
             }
         } label: {
-            cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, spread: spread)
+            cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, spread: true)
         }
     }
 

@@ -8,14 +8,13 @@ import Simulation
 /// managed in the Bank app, and Overview carries a "Manage in Bank" link to it. The tabs live in `GroupTabs.swift`.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
-    @State private var path: [CompanyRoute] = []
     @State private var tab: GroupTab = .overview
     @State private var more: GroupMorePage = .holdings
     @State private var showGiving = false
     @State private var showNewHolding = false
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: Binding(get: { store.path(for: .group) }, set: { store.setPath($0, for: .group) })) {
             VStack(spacing: 0) {
                 ReturnLine(tab: .group)
                 header
@@ -28,6 +27,7 @@ struct GroupView: View {
                             .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 40)
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     }
+                    .id(store.rootToken(.group))
                     .scrollIndicators(.hidden)
                 }
             }
@@ -36,15 +36,9 @@ struct GroupView: View {
             .companyRouteDestinations()
             .navigationDestination(isPresented: $showGiving) { GivingView() }
             .navigationDestination(isPresented: $showNewHolding) { NewHoldingView() }
-            .routeRequests(for: .group, path: $path)
-            .onAppear { sendMoneyToBank() }
-            .onChange(of: store.moneySection) { _, _ in sendMoneyToBank() }
+            // Choosing Group again: back to the Overview.
+            .onChange(of: store.rootToken(.group)) { _, _ in tab = .overview; showGiving = false; showNewHolding = false }
         }
-    }
-
-    /// Group > Money is gone. An old deep link to a money section (loans, invest, taxes) opens the Bank app instead.
-    private func sendMoneyToBank() {
-        if store.moneySection != nil { store.moneySection = nil; store.openApp(.bank) }
     }
 
     /// Board decisions waiting, as a red count on the Board tab.

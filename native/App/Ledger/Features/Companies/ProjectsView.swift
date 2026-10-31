@@ -10,10 +10,9 @@ struct ProjectsView: View {
     enum Part: String, CaseIterable, Hashable { case running = "Running", timeline = "Timeline", bids = "Bids and offers", finished = "Finished", ventures = "Ventures" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .running
-    @State private var path: [CompanyRoute] = []
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: Binding(get: { store.path(for: .projects) }, set: { store.setPath($0, for: .projects) })) {
             if let e = store.engine {
                 let rows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
                 let lines = e.projectTimelines()
@@ -29,7 +28,7 @@ struct ProjectsView: View {
                         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
                         case .ventures:
                             VenturesContent()
-                            Button { Haptics.tap(); store.openApp(.ventures); store.jump(to: .phone) } label: {
+                            Button { Haptics.tap(); store.openApp(.ventures) } label: {
                                 ProjectCardRow(title: "Open Ventures in Phone", sub: "The same startups, funds and stakes, as an app.")
                             }.buttonStyle(.plain)
                         }
@@ -37,13 +36,15 @@ struct ProjectsView: View {
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 40)
                     .frame(maxWidth: 900).frame(maxWidth: .infinity)
                 }
+                .id(store.rootToken(.projects))
                 .scrollIndicators(.hidden)
                 .scrollDismissesKeyboard(.interactively)
                 .ledgerBackground()
                 .toolbar(.hidden, for: .navigationBar)
                 .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
                 .companyRouteDestinations()
-                .routeRequests(for: .projects, path: $path)
+                // Choosing Projects again: back to Running.
+                .onChange(of: store.rootToken(.projects)) { _, _ in part = .running }
             }
         }
     }

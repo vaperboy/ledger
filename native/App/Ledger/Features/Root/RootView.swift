@@ -45,7 +45,7 @@ struct PhoneShell: View {
     }
 
     private var selection: Binding<String> {
-        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.tab = t } })
+        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.selectTab(t) } })
     }
 
     var body: some View {
@@ -57,7 +57,11 @@ struct PhoneShell: View {
             }
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
-        .overlay(alignment: .bottom) { PillTabBar(items: items, selection: selection) }
+        .overlay(alignment: .bottom) {
+            PillTabBar(items: items, selection: selection, onReselect: { raw in
+                if let t = AppTab(rawValue: raw) { Haptics.tap(); store.selectTab(t) }
+            })
+        }
         .onChange(of: store.tab) { _, _ in Haptics.tap() }
     }
 }
@@ -65,13 +69,13 @@ struct PhoneShell: View {
 /// iPad: a sidebar with the same five destinations as the iPhone tab bar and a wide detail area. The Phone destination holds the apps.
 /// Only the chosen tab is in the detail column: keeping hidden tabs alive made every visited tab's toolbar items, title and search
 /// field pile up in the split view's one navigation bar (two More buttons, a stray "+" and the Team search on Group and Inbox).
-/// Each tab owns its navigation stack, so a company opened in Team never appears in Company.
+/// Each tab's navigation stack lives in the store, so a company opened in Team never appears in Home and survives a switch of tab.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
 
     var body: some View {
         NavigationSplitView {
-            List(selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0, t != store.tab { store.tab = t; Haptics.tap() } })) {
+            List(selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0, t != store.tab { store.selectTab(t); Haptics.tap() } })) {
                 if let e = store.engine {
                     Section {
                         VStack(alignment: .leading, spacing: 2) {

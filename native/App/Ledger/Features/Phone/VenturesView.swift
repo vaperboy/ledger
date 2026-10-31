@@ -670,7 +670,7 @@ private struct SoftwarePart: View {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("A web-development company of yours can build software, sell it to customers and let your own companies use it instead of a bought licence. You have no open web-development company.")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                        Button("Start a company") { store.showNewCompany = true; store.jump(to: .company) }.buttonStyle(GreyOutlineButtonStyle())
+                        Button("Start a company") { store.open(.newCompany, on: .company) }.buttonStyle(GreyOutlineButtonStyle())
                     }
                 }
             }

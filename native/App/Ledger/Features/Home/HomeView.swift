@@ -167,17 +167,17 @@ extension GameStore {
     func openHiring() {
         let posts = (engine?.teamOverview().vacancies ?? []).filter { $0.companyID != nil && $0.scope != "chain" }
         if let id = (posts.first(where: { $0.needed }) ?? posts.first)?.companyID {
-            routeRequest = RouteRequest(tab: .team, route: .companyAt(id, .staff))
+            open(.companyAt(id, .staff), on: .team)
+        } else {
+            jump(to: .team)
         }
-        jump(to: .team)
     }
 
     /// Market: Group > Market, reviews and rivals when a company is open (that page exists then), else the World app.
     func openMarket() {
         let hasOpen = engine?.state.companies.contains { $0.type != "hold" && $0.status == .open } ?? false
         if hasOpen {
-            routeRequest = RouteRequest(tab: .group, route: .market)
-            jump(to: .group)
+            open(.market, on: .group)
         } else {
             openApp(.world)
         }

@@ -12,9 +12,8 @@ struct ReportPromptSection: View {
             HStack(spacing: 8) {
                 Button {
                     Haptics.tap()
-                    store.reportRequest = ReportRef(kind: r.kind, id: r.id)
                     _ = store.act { $0.dismissReportPrompt(r) }
-                    store.openApp(.reports)
+                    store.openReport(ReportRef(kind: r.kind, id: r.id))
                 } label: {
                     HStack(spacing: 8) {
                         GlyphView(glyph: Glyph.reports, size: 14, weight: 1.7)

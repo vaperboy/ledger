@@ -138,10 +138,9 @@ struct InboxView: View {
     }
 
     private func takeRequest(_ proxy: ScrollViewProxy) {
-        guard let id = store.openMessageID else { return }
+        guard let id = store.takeMessageRequest() else { return }
         tab = .all; query = ""; companyFilter = nil
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
-        store.openMessageID = nil
         detailID = id
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
     }
@@ -161,7 +160,7 @@ struct InboxView: View {
                         // A deep link (from Team, a suggestion or a toast) can arrive before this tab was ever shown: take it on appear too,
                         // and clear every filter so the requested one is not hidden.
                         .onAppear { takeRequest(proxy) }
-                        .onChange(of: store.openMessageID) { _, _ in takeRequest(proxy) }
+                        .onChange(of: store.appRequest) { _, _ in takeRequest(proxy) }
                 }
             }
         }
@@ -175,7 +174,7 @@ struct InboxView: View {
         .onChange(of: tab) { _, _ in limit = Self.page }
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
-        .onChange(of: store.routeRequest) { _, _ in detailID = nil }
+        .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
         .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
         .confirmAction($pending)
         .ledgerBackground()

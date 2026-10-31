@@ -8,6 +8,9 @@ import Simulation
 
 // MARK: Overview
 
+/// The three parts of a company's Overview on a phone.
+enum OverviewPart: String, CaseIterable, Hashable { case overview = "Overview", performance = "Performance", insights = "Insights" }
+
 /// One company at a glance, the same template for every trade, in the new look. Scan order: the profit hero with the key figures,
 /// what needs the owner (warning cards), what is going on (each finding links to the tab that changes it), last week, the trend, and
 /// who runs it. Families with a model of their own (energy, fish, property, finance, club, holding) keep this summary and do their
@@ -19,6 +22,7 @@ struct CompanyOverview: View {
     @Binding var section: CompanySection
     @Binding var moneyPart: CompanyMoneyPart
     @State private var months = 12
+    @State private var part: OverviewPart = .overview
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Energy, fish, holding and club have their own section instead of the customers-and-capacity picture.
     private var isSpecial: Bool { engine.tradeInfo(companyID: company.id).map { SpecialFamilies.handles($0) } ?? false }
@@ -32,13 +36,20 @@ struct CompanyOverview: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open && !isSpecial { operations(co, h) }; performance(co, h); whoRunsIt(co) }
             }
         } else {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                hero(co, h)
-                needsYou(co)
-                diagnosis(co)
-                if co.status == .open && !isSpecial { operations(co, h) }
-                performance(co, h)
-                whoRunsIt(co)
+            // Three parts as in the mockup, so the first screen holds what matters (cash, what needs you, who runs it) and nothing scrolls sideways.
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                SegmentedPill(items: OverviewPart.allCases, title: { $0.rawValue }, selection: $part)
+                switch part {
+                case .overview:
+                    hero(co, h)
+                    needsYou(co)
+                    whoRunsIt(co)
+                case .performance:
+                    if co.status == .open && !isSpecial { operations(co, h) }
+                    performance(co, h)
+                case .insights:
+                    diagnosis(co)
+                }
             }
         }
     }
@@ -55,16 +66,15 @@ struct CompanyOverview: View {
         engine.teamOverview().issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
     }
 
-    // 1. Hero: profit over twelve months, the verdict in words, then the figures that decide what happens next
+    // 1. Hero: cash first, the verdict in words, then profit, margin and the figures that decide what happens next
     private func hero(_ co: Company, _ h: CompanyHealth) -> some View {
         let loss: Bool = h.profitTTM < 0
-        let profitText: String = (loss ? "−" : "") + store.money(abs(h.profitTTM), in: co)
         let cashSub: String = h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : String(format: "%.0f weeks of costs", h.weeksOfCash)
         let margin: String = h.marginTTM.map { String(format: "%.1f%%", $0 * 100) } ?? "–"
         let first: [StatStrip.Cell] = [
-            .init(label: "Cash", value: store.short(co.cash, in: co), tint: co.cash < 0 ? Theme.loss : Theme.ivory),
-            .init(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co)),
+            .init(label: "Profit 12 mo", value: (loss ? "−" : "") + store.short(abs(h.profitTTM), in: co), tint: loss ? Theme.loss : Theme.ivory),
             .init(label: "Margin", value: margin),
+            .init(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co)),
         ]
         let second: [StatStrip.Cell] = [
             .init(label: "Costs a week", value: store.short(h.weeklyCost, in: co)),
@@ -73,16 +83,16 @@ struct CompanyOverview: View {
         ]
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Profit · 12 months").capsLabel()
+                Text("Cash").capsLabel()
                 HStack(alignment: .firstTextBaseline) {
-                    Text(profitText).font(.hero(36)).foregroundStyle(loss ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.money(co.cash, in: co)).font(.hero(36)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
                     Spacer(minLength: 8)
                     if let g = h.revenueGrowth {
                         Text(String(format: "Revenue %+.0f%% vs 3 mo", g * 100)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.change(g))
                     }
                 }.padding(.top, 2)
-                Text(verdict(co, h)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                 Text("Cash \(cashSub)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).padding(.top, 2)
+                Text(verdict(co, h)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                 StatStrip(cells: first).padding(.top, 12)
                 StatStrip(cells: second).padding(.top, 10)
             }
@@ -172,7 +182,7 @@ struct CompanyOverview: View {
                 Text("Who runs it").capsLabel()
                 Button { go(.staff) } label: {
                     CardRow(glyph: Glyph.person, title: title, subtitle: sub + wages, value: co.staff.count.peopleText, chevron: hasTeam)
-                }.buttonStyle(.plain).disabled(!hasTeam)
+                }.buttonStyle(.plain).disabled(!hasTeam).accessibilityIdentifier("overview-who-runs-it")
             }
         }
     }
@@ -216,13 +226,13 @@ struct CompanyOverview: View {
             Text(text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             if let target {
-                Text(target.rawValue).font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize()
+                Text(target.shortTitle).font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize()
                 GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         if let target {
-            Button { go(target) } label: { content }.buttonStyle(.plain).accessibilityHint("Opens \(target.rawValue)")
+            Button { go(target) } label: { content }.buttonStyle(.plain).accessibilityHint("Opens \(target.shortTitle)")
         } else {
             content
         }

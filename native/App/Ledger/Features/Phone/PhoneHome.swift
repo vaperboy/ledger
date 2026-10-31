@@ -12,38 +12,32 @@ struct PhoneHome: View {
     enum Page: Hashable {
         case app(PhoneApp)
         case company(CompanyRoute)
+
+        /// The record a page shows: two pages with the same key are the same screen, so a link to it goes back to it.
+        var key: String {
+            switch self {
+            case .app(let app): return "app.\(app.rawValue)"
+            case .company(let route): return route.key
+            }
+        }
     }
 
     @EnvironmentObject var store: GameStore
-    @State private var path: [Page] = []
+    /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
+    private var path: PhonePath { PhonePath(store: store) }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: Binding(get: { store.phonePath }, set: { store.setPhonePath($0) })) {
             home
                 .navigationDestination(for: Page.self) { (page: Page) in destination(page) }
                 .companyRouteDestinations()
         }
-        .onAppear { take() }
-        .onChange(of: store.routeRequest) { _, _ in take() }
-        .onChange(of: store.phoneAppRequest) { _, _ in take() }
     }
 
     @ViewBuilder private func destination(_ page: Page) -> some View {
         switch page {
         case .app(let app): PhoneAppScreen(app: app)
         case .company(let route): CompanyRouteDestination(route: route)
-        }
-    }
-
-    /// Opens the app a link asked for, and pushes a company a link asked for on this tab.
-    private func take() {
-        if let r = store.routeRequest, r.tab == .phone {
-            store.routeRequest = nil
-            path.append(.company(r.route))
-        }
-        if let app = store.phoneAppRequest {
-            store.phoneAppRequest = nil
-            path = [.app(app)]
         }
     }
 
@@ -70,6 +64,7 @@ struct PhoneHome: View {
             .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24)
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
         }
+        .id(store.rootToken(.phone))
         .scrollIndicators(.hidden)
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
@@ -123,6 +118,12 @@ struct PhoneHome: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("phone-banner")
     }
+}
+
+/// What the Phone home's `path.append(.app(app))` calls become: a push through the store.
+struct PhonePath {
+    var store: GameStore
+    func append(_ page: PhoneHome.Page) { store.setPhonePath(store.phonePath + [page]) }
 }
 
 /// The soft radial backdrop of the Phone home.

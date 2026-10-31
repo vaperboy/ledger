@@ -2,6 +2,12 @@
 
 ## Unreleased — native migration (branch `native-swiftui`)
 
+### Stage 1: navigation and the Company hub (31 Oct 2026)
+* One navigation owner: `GameStore` holds the route stack of every tab and one pending request for the app a link opened (replaces seven loose request slots). Choosing the open tab again returns it to its root; a link to a record already on the stack goes back to it instead of stacking a copy; Back from a screen a cross-tab link pushed returns to the tab the link came from and leaves nothing behind; a pushed screen has exactly one Back control.
+* Company is a hub of six rows (Overview, People, Operations, Sales & Market, Stats & Information, Projects); each is a pushed screen. Price, How you sell and Marketing moved from Operations to Sales & Market; Plant, Fish, Club, Chain, Book and Holding are reachable from the section they belong to. Company Projects exists for every company. Overview is cash-first with three parts (Overview, Performance, Insights).
+* `SectionTabs` no longer scrolls sideways: a fixed row, or the first three plus a More menu when titles do not fit.
+* Nothing was removed; save files are not touched.
+
 ### New look foundation (27 Oct 2026)
 * Shared pieces for the approved new look in `Design/NewLook.swift` (icons from the mockups' SVG paths, `AppHeader` with a round back button, `StatStrip`, `ActionTile`, `ChoiceCard`, `SegmentedPill`, sharp table, `QuietButton`, `SmallOutlineButton`, `RedBubble`, floating `PillTabBar`) and a bordered `Card`; Theme colours and radii set to the mockups.
 * Tabs are Home / Team / Group / Projects / Phone. The Phone tab is an app grid (`PhoneHome`) with red bubbles and a banner for the top alert; Inbox, Bank, News, Stats, Goals, World, Luxury, Ventures, Rich list, Reports, Achievements and Settings open from it. The More sheet is removed.

@@ -21,7 +21,8 @@ struct TeamView: View {
     enum PeopleFilter: String, CaseIterable, Identifiable { case all = "All", managers = "Managers", staff = "Staff", attention = "Needs attention"; var id: String { rawValue } }
 
     @EnvironmentObject var store: GameStore
-    @State private var path: [CompanyRoute] = []
+    /// Pushes go through the store, which owns this tab's stack (a record already on it is gone back to, not stacked twice).
+    private var path: TabPath { TabPath(store: store, tab: .team) }
     @State private var tab: Tab = .overview
     @State private var query = ""
     @State private var filter: PeopleFilter = .all
@@ -30,7 +31,7 @@ struct TeamView: View {
     @State private var needYouOnly = false
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: Binding(get: { store.path(for: .team) }, set: { store.setPath($0, for: .team) })) {
             Group {
                 if let e = store.engine {
                     let o = e.teamOverview()
@@ -49,6 +50,7 @@ struct TeamView: View {
                         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                         .frame(maxWidth: 900).frame(maxWidth: .infinity)
                     }
+                    .id(store.rootToken(.team))
                     .scrollIndicators(.hidden)
                     .scrollDismissesKeyboard(.interactively)
                 }
@@ -56,8 +58,9 @@ struct TeamView: View {
             .ledgerBackground()
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
-            .routeRequests(for: .team, path: $path)
             .returnBar(for: .team)
+            // Choosing Team again: back to the Overview, search and filter cleared.
+            .onChange(of: store.rootToken(.team)) { _, _ in tab = .overview; query = ""; filter = .all; needYouOnly = false; showAllScores = false }
         }
     }
 

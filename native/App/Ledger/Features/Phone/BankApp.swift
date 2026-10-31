@@ -37,7 +37,7 @@ enum BankGlyph {
 }
 
 /// The Bank app: pick an account, then manage it. It shows both screens itself so the header's round back button can go from an account
-/// to the list before it leaves the app; links from elsewhere (a company's "Open in Bank", an Inbox warning) arrive as `store.bankRequest`.
+/// to the list before it leaves the app; links from elsewhere (a company's "Open in Bank", an Inbox warning) arrive as `store.appRequest`.
 struct BankApp: View {
     private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
@@ -69,7 +69,7 @@ struct BankApp: View {
             .background(P.ground)
         }
         .onAppear { take() }
-        .onChange(of: store.bankRequest) { _, _ in take() }
+        .onChange(of: store.appRequest) { _, _ in take() }
         // Someone else's bank app, in its own navy and teal, unless the player's own bank is the main bank: then the game's colours.
         .environment(\.outsidePalette, P)
     }
@@ -106,8 +106,7 @@ struct BankApp: View {
     }
 
     private func take() {
-        guard let r = store.bankRequest else { return }
-        store.bankRequest = nil
+        guard let r = store.takeBankRequest() else { return }
         tab = r.tab
         account = r.account
         session = r.account

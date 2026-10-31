@@ -30,6 +30,9 @@ enum OpsWords {
     }
 }
 
+/// Which of the two Company screens this table is: Operations (how the place runs) or Sales & Market (what is sold, at what price, to whom).
+enum OpsMode { case operations, sales }
+
 /// A small setting changed in a sheet.
 enum OpsSheet: String, Identifiable {
     case price, hours, upkeep
@@ -43,15 +46,20 @@ struct CompanyOperations: View {
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
+    var mode: OpsMode = .operations
     @State private var sheet: OpsSheet?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            topCards
-            demandChart
-            settingsTable
-            notes
-            CompanyOtherSections(engine: engine, company: company)
+            if mode == .operations {
+                topCards
+                demandChart
+                settingsTable
+                notes
+                CompanyOtherSections(engine: engine, company: company)
+            } else {
+                salesTable
+            }
         }
         .sheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
@@ -139,20 +147,32 @@ struct CompanyOperations: View {
         }
     }
 
-    @ViewBuilder private var smallRows: some View {
-        let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
+    /// Sales & Market: the price, how the company sells, its marketing, its customers and its market position.
+    private var salesTable: some View {
+        OverviewSettingsCard(heading: "Sales and market") {
+            salesRows
+        }
+    }
+
+    @ViewBuilder private var salesRows: some View {
+        let cur: Currency = engine.currency(for: company)
         SettingsTableRow(title: "Price", note: company.flag("inflHold") ? "Cheaper brings more customers; prices held against inflation" : "Cheaper brings more customers; can be held against inflation", value: OpsWords.price(company.priceLevel), opens: .sheet,
                          glyph: Glyph.opsPrice, change: String(format: "%+.1f", company.priceLevel), changeTint: Theme.ivoryFaint) { sheet = .price }
+        if let trade = engine.tradeInfo(companyID: company.id), !trade.knobs.isEmpty {
+            SettingsTableRow(title: "How you sell", note: "Concept and add-ons", value: sellSummary(trade), glyph: Glyph.opsRoute) { part = .sell }
+        }
+        SettingsTableRow(title: "Marketing", note: "Campaigns, ways to sell", value: marketingSpend > 0 ? cur.tidyShort(marketingSpend) + " a week" : "No campaigns", glyph: Glyph.opsMega) { part = .marketing }
+        SettingsTableRow(title: "Customers", note: "Who buys, satisfaction, contracts", value: "", glyph: Glyph.team) { store.openCompany(company.id, section: .customers) }
+        SettingsTableRow(title: "Market", note: "Position, pricing against rivals", value: "", glyph: Glyph.market) { store.openCompany(company.id, section: .market) }
+    }
+
+    @ViewBuilder private var smallRows: some View {
+        let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
         SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", opens: .sheet, glyph: Glyph.clock) { sheet = .hours }
         SettingsTableRow(title: "Upkeep", note: stockNote, value: OpsWords.name(OpsWords.maintenance, company.maintenance) + " / " + OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased(), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .upkeep }
     }
 
     @ViewBuilder private var bigRows: some View {
-        let cur: Currency = engine.currency(for: company)
-        if let trade = engine.tradeInfo(companyID: company.id), !trade.knobs.isEmpty {
-            SettingsTableRow(title: "How you sell", note: "Concept and add-ons", value: sellSummary(trade), glyph: Glyph.opsRoute) { part = .sell }
-        }
-        SettingsTableRow(title: "Marketing", note: "Campaigns, ways to sell", value: marketingSpend > 0 ? cur.tidyShort(marketingSpend) + " a week" : "No campaigns", glyph: Glyph.opsMega) { part = .marketing }
         premisesRow
         if engine.isHomeTrade(companyID: company.id), company.status.isLive {
             SettingsTableRow(title: "Where you work", note: "Home, workshop or office", value: engine.isWorkingFromHome(companyID: company.id) ? "At home" : "Own place", glyph: Glyph.building) { part = .workplace }

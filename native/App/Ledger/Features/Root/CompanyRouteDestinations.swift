@@ -9,13 +9,13 @@ struct CompanyRouteDestination: View {
         Group {
             switch route {
             case .company(let id): CompanyDetailView(companyID: id)
-            case .companyAt(let id, let sec): CompanyDetailView(companyID: id, initialSection: sec)
+            case .companyAt(let id, let sec): CompanySectionScreen(companyID: id, section: sec)
+            case .companyPart(let id, let sec, let part): CompanySectionScreen(companyID: id, section: sec, part: part)
             case .newCompany: NewCompanyView()
             case .market: MarketView()
             }
         }
-        // A fresh view per route: replacing the path with another company (or the same company on another section) must not
-        // keep the previous screen's state, such as its selected section.
+        // A fresh view per route: a link that changes the part of a screen already on the stack must not keep that screen's old state.
         .id(route)
     }
 }

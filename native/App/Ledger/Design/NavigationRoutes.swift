@@ -2,60 +2,34 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// Navigation correctness (stage 3). One mechanism for every deep link:
-//  - A company or record is PUSHED onto the navigation stack of the tab the player is on (`GameStore.openCompany`), so Back
-//    returns to that screen. Each tab with its own stack takes the request with `routeRequests(for:path:)`.
-//  - A link that has to land on another tab (an Inbox message, a Money section, New company) goes through `GameStore.jump(to:)`,
-//    which remembers where the player came from; the destination tab shows a "Back to <tab>" bar (`returnBar(for:)`).
+// Navigation (stage 1). GameStore owns every navigation stack (`routePaths`, `phonePath`) and every pending request; the tab roots only
+// bind their NavigationStack to it. One rule for every deep link:
+//  - A company or record is PUSHED onto the stack of the tab the player is on (`GameStore.openCompany`), so Back returns to that
+//    screen. A record already on the stack is gone back to, never stacked twice.
+//  - A link that has to land on another tab (`open(_:on:)`, `jump(to:)`, `openApp`) switches to it and remembers where it came from.
+//    Back from the screen it pushed (the round back button or a swipe) returns to that origin and leaves nothing behind on the other
+//    tab. At a tab root, where there is no round back button, a "Back to <tab>" line is the one way back (`returnBar(for:)`).
+//  - Choosing the tab that is already open returns it to its root (`GameStore.selectTab`).
 
-struct RouteRequests: ViewModifier {
-    @EnvironmentObject var store: GameStore
+/// What a tab root's `path.append(route)` calls become: a push through the store, so the same record is never stacked twice.
+struct TabPath {
+    var store: GameStore
     var tab: AppTab
-    @Binding var path: [CompanyRoute]
-
-    func body(content: Content) -> some View {
-        content
-            .onAppear { take() }
-            .onChange(of: store.routeRequest) { _, _ in take() }
-    }
-
-    private func take() {
-        guard let r = store.routeRequest, r.tab == tab else { return }
-        store.routeRequest = nil
-        // A finished "new company" form is not somewhere Back should return to.
-        if path.last == .newCompany { path.removeLast() }
-        if path.last != r.route { path.append(r.route) }
-    }
+    func append(_ route: CompanyRoute) { store.push(route, on: tab) }
 }
 
+/// "Back to <tab>" at the root of a tab that a link from another tab landed on (no screen is pushed there, so no round back button).
 struct ReturnBar: ViewModifier {
     @EnvironmentObject var store: GameStore
     var tab: AppTab
 
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .top, spacing: 0) {
-            if store.tab == tab, let back = store.returnTab {
-                Button { Haptics.tap(); store.returnToOrigin() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
-                        Text("Back to \(back.title)").font(.system(size: 13, weight: .medium))
-                        Spacer()
-                    }
-                    .foregroundStyle(Theme.gold)
-                    .padding(.horizontal, Theme.Space.margin).padding(.vertical, 8)
-                    .background(Theme.walnut.opacity(0.9))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("return-bar")
-            }
-        }
+        content.safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: tab) }
     }
 }
 
 extension View {
-    /// Takes pushes requested by `GameStore.openCompany` for this tab onto `path`.
-    func routeRequests(for tab: AppTab, path: Binding<[CompanyRoute]>) -> some View { modifier(RouteRequests(tab: tab, path: path)) }
-    /// Shows "Back to <tab>" while this tab was reached by a link from another tab.
+    /// Shows "Back to <tab>" while this tab's root was reached by a link from another tab.
     func returnBar(for tab: AppTab) -> some View { modifier(ReturnBar(tab: tab)) }
 }
 

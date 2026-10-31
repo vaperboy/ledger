@@ -60,32 +60,26 @@ final class MainScreensTests: TourCase {
         open("Home"); sleep(1)
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
-            first.tap(); sleep(1); shot("23-company-overview")
-            scrollDown(); shot("24-company-overview-lower")
-            scrollUp()
+            first.tap(); sleep(1); shot("23-company-hub")
             var n = 25
-            for section in ["Team", "Finances", "Operations", "Marketing", "Customers", "Market", "Setup"] {
-                let b = app.buttons[section]
-                if b.exists && b.isHittable {
-                    b.tap(); sleep(1); shot("\(n)-company-\(section.lowercased())"); n += 1
-                    scrollDown(); shot("\(n)-company-\(section.lowercased())-lower"); n += 1
-                    scrollUp()
-                    if section == "Operations" {
-                        for sub in ["Suppliers", "Insurance", "Working from home"] where tap(sub) {
-                            shot("\(n)-operations-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
-                            if !app.buttons["Operations"].isHittable { goBack(); sleep(1) }
-                        }
-                    }
-                    if section == "Finances" {
-                        for sub in ["Payroll", "Accounts", "Loans"] where tap(sub) {
-                            shot("\(n)-finances-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
-                            // These are tabs inside the Finances page, not pushed screens: there is nothing to go back from.
-                        }
-                    }
-                    if section == "Team" {
-                        if tap("Find workers") { shot("\(n)-team-find-workers"); n += 1; if !app.buttons["Team"].isHittable { goBack(); sleep(1) } }
-                    }
+            // The six sections of the Company hub, each a pushed screen. Pages inside a section are pushed too: Back once returns to the section.
+            let subpages: [String: [String]] = [
+                "people": ["Find workers"],
+                "operations": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
+                "sales": ["Marketing", "Customers", "Market"],
+                "stats": ["Statements", "Ownership"],
+            ]
+            for section in ["overview", "people", "operations", "sales", "stats", "projects"] {
+                let b = app.buttons["company-hub-" + section]
+                guard b.waitForExistence(timeout: 2), b.isHittable else { note("no company hub row \(section)"); continue }
+                b.tap(); sleep(1); shot("\(n)-company-\(section)"); n += 1
+                scrollDown(); shot("\(n)-company-\(section)-lower"); n += 1
+                scrollUp()
+                for sub in subpages[section] ?? [] where tap(sub) {
+                    shot("\(n)-\(section)-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
+                    goBack(); sleep(1)
                 }
+                goBack(); sleep(1)
             }
         }
         ensureTabBar()

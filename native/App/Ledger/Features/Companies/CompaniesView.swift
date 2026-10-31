@@ -4,9 +4,31 @@ import Businesses
 import Simulation
 
 enum CompanyRoute: Hashable {
-    case company(Int), newCompany, market
-    /// A company opened on one of its sections (from Team, Projects, Inbox or a deep link).
+    /// The Company hub: the company header and its six sections (Overview, People, Operations, Sales & Market, Stats & Information, Projects).
+    case company(Int)
+    case newCompany, market
+    /// One screen of a company (a section of the hub, or a trade's own page), opened from the hub, Team, Projects, the Inbox or a deep link.
     case companyAt(Int, CompanySection)
+    /// The same screen opened on one of its parts (the Finances page on Ownership, Operations on Premises): `part` is the part's title.
+    case companyPart(Int, CompanySection, String)
+
+    /// What makes two routes "the same record" for the navigation stack: the company and the screen, not the part shown on it.
+    var key: String {
+        switch self {
+        case .company(let id): return "company.\(id)"
+        case .companyAt(let id, let s), .companyPart(let id, let s, _): return "company.\(id).\(s.rawValue)"
+        case .newCompany: return "newCompany"
+        case .market: return "market"
+        }
+    }
+
+    /// The route for `openCompany(id, section:, part:)`. A link without a section opens the hub. Premises are a part of Operations.
+    static func make(_ id: Int, _ section: CompanySection?, _ part: String?) -> CompanyRoute {
+        guard let section else { return .company(id) }
+        if section == .properties { return .companyPart(id, .operations, OpsPart.premises.rawValue) }
+        if let part, !part.isEmpty { return .companyPart(id, section, part) }
+        return .companyAt(id, section)
+    }
 }
 
 /// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
@@ -15,14 +37,13 @@ struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var path: [CompanyRoute] = []
     @State private var sort: Sort = .attention
     /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
     @State private var query = ""
     @State private var chainFilter = "all"
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
             Group {
                 if let e = store.engine {
                     let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
@@ -30,13 +51,13 @@ struct CompaniesView: View {
                     let chains = e.chainSummaries
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
-                            HomeSummary(engine: e) { path.append(.newCompany) }
+                            HomeSummary(engine: e) { store.push(.newCompany, on: .company) }
                             if cos.isEmpty {
                                 Card(padding: 12, radius: Theme.Radius.card) {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("No companies yet").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
                                         Text("Pick a trade, see the full start-up cost, then decide.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                                        QuietButton(title: "Choose a trade") { path.append(.newCompany) }
+                                        QuietButton(title: "Choose a trade") { store.push(.newCompany, on: .company) }
                                     }
                                 }
                             } else {
@@ -58,7 +79,7 @@ struct CompaniesView: View {
                                     }.padding(.vertical, 8)
                                 }
                                 if sizeClass == .regular {
-                                    CompanyTable(engine: e, rows: rows) { path.append(.company($0)) }
+                                    CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
                                 } else {
                                     VStack(spacing: 5) {
                                         ForEach(rows, id: \.co.id) { r in
@@ -71,6 +92,7 @@ struct CompaniesView: View {
                         .padding(.horizontal, 18).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
+                    .id(store.rootToken(.company))
                     .scrollIndicators(.hidden)
                     .scrollBounceBehavior(.basedOnSize)
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
@@ -81,10 +103,7 @@ struct CompaniesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
-            .routeRequests(for: .company, path: $path)
             .returnBar(for: .company)
-            .onAppear { openRequested() }
-            .onChange(of: store.showNewCompany) { _, _ in openRequested() }
         }
     }
 
@@ -138,9 +157,6 @@ struct CompaniesView: View {
         return 4
     }
 
-    private func openRequested() {
-        if store.showNewCompany { path = [.newCompany]; store.showNewCompany = false }
-    }
 }
 
 /// iPad: every company side by side, one row each.

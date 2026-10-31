@@ -42,10 +42,9 @@ struct ReportsContent: View {
     }
 
     private func takeRequest() {
-        if let req = store.reportRequest {
+        if let req = store.takeReportRequest() {
             kind = req.kind
             chosen[req.kind.rawValue] = req.id
-            store.reportRequest = nil
         }
     }
 
@@ -70,7 +69,7 @@ struct ReportsContent: View {
             }
         }
         .onAppear { takeRequest() }
-        .onChange(of: store.reportRequest) { _, _ in takeRequest() }
+        .onChange(of: store.appRequest) { _, _ in takeRequest() }
     }
 
     @ViewBuilder private func detail(_ d: ReportDest, _ r: PeriodReport, _ all: [PeriodReport]) -> some View {
