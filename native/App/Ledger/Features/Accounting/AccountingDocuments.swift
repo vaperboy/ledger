@@ -10,6 +10,7 @@ struct AcctDocuments: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     @ObservedObject var m: AcctModel
+    @State private var showFranchises: Bool = false
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
@@ -32,6 +33,7 @@ struct AcctDocuments: View {
                 }
                 .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             }
+            .navigationDestination(isPresented: $showFranchises) { FranchisesView().environment(\.outsidePalette, OutsidePalette.game) }
         }
     }
 
@@ -55,14 +57,16 @@ struct AcctDocuments: View {
         case .company: return "Registration, legal form, ownership and licences appear as the company holds them."
         case .tax: return "Tax and VAT records appear once the company has settled or accrued any."
         case .contracts: return "Employment, supplier, customer and financing contracts appear as they are signed."
+        case .insurance: return "Policies appear here once the company holds them. They are chosen under Manage, Insurance and advisers."
+        case .applications: return "Chain and franchise applications appear here with their status once you have sent one."
         }
     }
 
     private func tone(_ status: String) -> AcctPill.Tone {
         switch status {
-        case "Held", "In force", "Paid", "Paid in", "Done", "Active", "Current": return .good
-        case "Open", "Pending", "Balance outstanding": return .warn
-        case "Not held": return .bad
+        case "Held", "In force", "Paid", "Paid in", "Done", "Active", "Current", "Approved": return .good
+        case "Open", "Pending", "Balance outstanding", "Under review", "Invited to talk", "Terms signed": return .warn
+        case "Not held", "Declined", "Lapsed": return .bad
         default: return .neutral
         }
     }
@@ -77,7 +81,8 @@ struct AcctDocuments: View {
         case "supplier": return Glyph.projects
         case "customer": return Glyph.person
         case "financing": return BankGlyph.transfer
-        case "chain": return Glyph.group
+        case "chain", "franchise": return Glyph.group
+        case "insurance": return Glyph.lock
         default: return Glyph.list
         }
     }
@@ -87,9 +92,25 @@ struct AcctDocuments: View {
         if let date = d.dateText { sub = sub.isEmpty ? date : sub + " \u{00B7} " + date }
         let value: String = d.amount.map { fmt.short($0) } ?? ""
         let identifier: String = "acct-document-row"
+        // Records that are managed somewhere else link there (read-only here).
         if d.kind == "financing" {
             return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
                 store.openBank(.company(co.id), tab: .loans)
+            })
+        }
+        if d.kind == "insurance" {
+            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+                store.openCompany(co.id, section: .operations, part: OpsPart.insurance.rawValue)
+            })
+        }
+        if d.kind == "chain" {
+            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+                store.openCompany(co.id, section: .chain)
+            })
+        }
+        if d.kind == "franchise" {
+            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+                showFranchises = true
             })
         }
         return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier))

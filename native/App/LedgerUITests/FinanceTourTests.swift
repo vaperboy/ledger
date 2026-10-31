@@ -115,6 +115,8 @@ final class AccountingRecordsTourTests: FinanceTourCase {
             shot("76-accounting-documents-company")
             tapLabel("Tax"); shot("76-accounting-documents-tax")
             tapLabel("Contracts"); shot("76-accounting-documents-contracts")
+            tapLabel("Insurance"); shot("76-accounting-documents-insurance")
+            tapLabel("Applications"); shot("76-accounting-documents-applications")
             goBack()
         }
         if tapID("acct-row-settings") {

@@ -180,7 +180,7 @@ struct BankAccountScreen: View {
                 BankOwnerSalary(company: co)
             }
             if id == .personal {
-                NavigationLink { ActivityView() } label: {
+                NavigationLink { ActivityView().environment(\.outsidePalette, OutsidePalette.game) } label: {
                     HStack {
                         Text("Every movement on your account").font(.system(size: 13.5)).foregroundStyle(P.accent)
                         Spacer()

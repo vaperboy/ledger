@@ -188,7 +188,8 @@ public struct SupplierRecord: Equatable, Sendable, Identifiable {
 
 // MARK: Documents
 
-public enum DocumentGroup: String, Sendable { case company, tax, contracts }
+/// `insurance` and `applications` are records of their own: the policies the company holds, and the chain, franchise and brand applications with their status.
+public enum DocumentGroup: String, Sendable { case company, tax, contracts, insurance, applications }
 
 public struct AccountingDocument: Equatable, Sendable, Identifiable {
     public var id: String
@@ -495,7 +496,7 @@ public extension GameEngine {
         let acc = co.value("acc")
         if !acc["id"].isNull { add(.company, "registration", "accagr", "Accountant agreement", acc["name"].string, co.value("docs")["accountant_agreement"]["st"].string == "ok" ? "In force" : "Pending", week: acc["w0"].int) }
         let w = World(state: state, data: data)
-        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where id != "accountant_agreement" {
+        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where id != "accountant_agreement" && id != "chain" && id != "fran" {
             guard let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }
             let st = d["st"].string
             let isTax = id.hasPrefix("vat") || id == "tax"
@@ -527,6 +528,45 @@ public extension GameEngine {
         }
         if !co.value("chain").isNull { add(.contracts, "chain", "chain", "Chain membership", "Store of a chain", "Active") }
         if co.value("fr")["on"].bool { add(.contracts, "chain", "franchise", "Franchise", "Franchise agreements held by this company", "Active") }
+        // Insurance: the policies the company holds now, from the coverage read model (the same data as Manage > Insurance and advisers).
+        if let cover = coverageOverview(companyID: companyID) {
+            let cur = currency(for: co)
+            for p in cover.policies where p.isOn {
+                let who: String = cover.insurer.map { $0.name + " \u{00B7} " } ?? ""
+                add(.insurance, "insurance", "ins-" + p.id, p.name, who + cur.short(p.weeklyPremium) + " a week", "In force", amount: p.weeklyPremium)
+            }
+        }
+        // Applications: the company's own chain and franchise paperwork (waiting, approved), and your applications to join a franchise brand.
+        for id in ["chain", "fran"] {
+            let d = co.value("docs")[id]
+            guard !d.isNull, let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }
+            let st = d["st"].string
+            let status: String = st == "ok" ? "Approved" : (st == "applied" ? "Under review" : (st.isEmpty ? "Not applied" : st.capitalized))
+            var detail: String = def.issuer
+            if st == "applied" { detail += " \u{00B7} decision due " + GameCalendar.dateString(week: d["done"].int) }
+            add(.applications, "chain", "app-" + id, id == "chain" ? "Chain registration" : "Franchise documents", detail, status, week: d["w0"].isNull ? nil : d["w0"].int)
+        }
+        if let apps = state.rest["fbApps"]?.object, !apps.isEmpty {
+            let world = World(state: state, data: data)
+            for key in apps.keys.sorted() {
+                guard let a = apps[key] else { continue }
+                let name: String = FranchiseBrands.brand(key, world)?.name ?? "Franchise brand"
+                let st = a["st"].string
+                let status: String
+                switch st {
+                case "pending": status = "Under review"
+                case "invited": status = "Invited to talk"
+                case "agreed": status = "Terms signed"
+                case "refused": status = "Declined"
+                default: status = st.capitalized
+                }
+                let city: String = data.countries.city(a["city"].string, preferring: a["country"].string)?.city.name ?? a["city"].string
+                var detail: String = "Your application to join as a franchisee" + (city.isEmpty ? "" : " \u{00B7} " + city)
+                if st == "pending" { detail += " \u{00B7} answer due " + GameCalendar.dateString(week: a["due"].int) }
+                if st == "invited" || st == "agreed" { detail += " \u{00B7} stands until " + GameCalendar.dateString(week: a["exp"].int) }
+                add(.applications, "franchise", "fb-" + key, "Franchise: " + name, detail, status, week: a["w0"].isNull ? nil : a["w0"].int)
+            }
+        }
         return out.filter { group == nil || $0.group == group }
     }
 }

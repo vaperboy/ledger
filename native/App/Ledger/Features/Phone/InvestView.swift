@@ -93,6 +93,7 @@ struct AssetRow: View {
 
 /// The portfolio ring: a donut of what you hold by kind with the total in the middle, and the shares beside it.
 struct PortfolioRingCard: View {
+    @Environment(\.outsidePalette) private var P
     struct Slice: Identifiable { var id: String; var name: String; var value: Double; var tint: Color }
     var slices: [Slice]
     var cur: Currency
@@ -110,9 +111,9 @@ struct PortfolioRingCard: View {
                     ForEach(slices) { s in
                         HStack(spacing: 8) {
                             Circle().fill(s.tint).frame(width: 8, height: 8)
-                            Text(s.name).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                            Text(s.name).font(.system(size: 13)).foregroundStyle(P.inkSoft)
                             Spacer(minLength: 4)
-                            Text(total > 0 ? String(format: "%.0f%%", s.value / total * 100) : "-").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Text(total > 0 ? String(format: "%.0f%%", s.value / total * 100) : "-").font(.system(size: 13).monospacedDigit()).foregroundStyle(P.ink)
                         }
                     }
                 }
@@ -124,7 +125,7 @@ struct PortfolioRingCard: View {
     private func ring(_ total: Double, _ live: [Slice]) -> some View {
         ZStack {
             if live.isEmpty {
-                Circle().strokeBorder(Theme.border, lineWidth: 14)
+                Circle().strokeBorder(P.line, lineWidth: 14)
             } else {
                 Chart(live) { s in
                     SectorMark(angle: .value("Value", s.value), innerRadius: .ratio(0.78), angularInset: 1.5).foregroundStyle(s.tint)
@@ -132,8 +133,8 @@ struct PortfolioRingCard: View {
                 .chartLegend(.hidden)
             }
             VStack(spacing: 0) {
-                Text(centerLabel).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint)
-                Text(cur.tidyShort(total)).font(.system(size: 17, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                Text(centerLabel).font(.system(size: 10)).foregroundStyle(P.inkFaint)
+                Text(cur.tidyShort(total)).font(.system(size: 17, design: .serif).monospacedDigit()).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
             }
             .padding(.horizontal, 18)
         }

@@ -79,9 +79,8 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0xC4CAD6), accent2: Color(hex: 0xC9A862), onAccent: Color(hex: 0x0D1526),
         gain: Color(hex: 0x86C4A0), loss: Color(hex: 0xDE9484), caution: Color(hex: 0xC9A862))
 
-    /// Banking (Master spec Stage 2A): dark forest green over charcoal, ivory text, restrained champagne. Used by the Bank app (unless the player's own
-    /// bank is the main bank) and as the launch-splash ground of the Accounting app. Warm ivory surfaces are drawn by `IvoryPanel` where the mockup has them.
-    static let bank = OutsidePalette(
+    /// Dark forest green over charcoal, ivory text, restrained champagne: the header band of the Bank and Accounting apps and their launch splash.
+    static let forest = OutsidePalette(
         ground: Color(hex: 0x0D1F1A), ground2: Color(hex: 0x08140F), card: Color(hex: 0x132A22), cardDeep: Color(hex: 0x0F221B),
         line: Color(hex: 0x24433A), lineStrong: Color(hex: 0x3E5F52), divider: Color(hex: 0x1F3B31), hairline: Color(hex: 0x1A332A),
         ink: Color(hex: 0xF0EADA), inkSoft: Color(hex: 0xBAC2B4), inkFaint: Color(hex: 0x96A397), inkDim: Color(hex: 0x7C8A7F),
@@ -96,6 +95,10 @@ struct OutsidePalette: Equatable {
         ink: Color(hex: 0x16241F), inkSoft: Color(hex: 0x44524B), inkFaint: Color(hex: 0x65706A), inkDim: Color(hex: 0x8A9189),
         accent: Color(hex: 0x1F4A3A), accent2: Color(hex: 0xA9812F), onAccent: Color(hex: 0xF7F2E4),
         gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xAE3F2B), caution: Color(hex: 0x8F6410), isLight: true)
+
+    /// The Bank app (Master spec 2A, owner decision 1 Nov 2026): the same warm ivory pages as Accounting under a forest-green header. The player's own
+    /// bank, when it is the main bank, uses the game's own colours instead.
+    static let bank = accounting
 
     /// Inbox (a messages app): muted green and blue on a dark blue-grey, like a chat app.
     static let inbox = OutsidePalette(
@@ -150,8 +153,8 @@ extension PhoneApp {
         case .ventures: return .ventures
         case .world: return .world
         case .richList: return .richList
-        case .bank: return ownBankIsMain ? nil : .bank
-        case .accounting: return .bank
+        case .bank: return ownBankIsMain ? nil : .forest
+        case .accounting: return .forest
         case .inbox: return .inbox
         case .stats, .goals, .reports, .achievements, .settings: return nil
         }

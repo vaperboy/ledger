@@ -65,6 +65,21 @@ enum Theme {
 }
 
 extension Color {
+    /// The same colour in an outside app's palette: the game's own text, accent, line and meaning colours become the palette's, anything else stays.
+    /// Under `.game` every mapping is the identity, so Company screens look exactly as before; inside the ivory Bank and Accounting it keeps shared
+    /// pieces (`Stat`, `Chip`, `ListRow`, `TableRow`...) readable when a caller passes `Theme.ivory` or `Theme.loss`.
+    func inPalette(_ p: OutsidePalette) -> Color {
+        if self == Theme.ivory { return p.ink }
+        if self == Theme.ivoryMuted { return p.inkSoft }
+        if self == Theme.ivoryFaint { return p.inkFaint }
+        if self == Theme.ivoryDim { return p.inkDim }
+        if self == Theme.gold { return p.accent }
+        if self == Theme.gain { return p.gain }
+        if self == Theme.loss { return p.loss }
+        if self == Theme.caution { return p.caution }
+        return self
+    }
+
     /// `Color(hex: 0xD6B889)`: the mockups' hex values, used by the Theme tokens.
     init(hex: UInt32, opacity: Double = 1) {
         let r = Double((hex >> 16) & 0xFF) / 255

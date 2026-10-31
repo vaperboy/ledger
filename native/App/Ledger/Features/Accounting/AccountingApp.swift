@@ -37,12 +37,14 @@ enum AcctPayrollTab: String, CaseIterable, Hashable { case overview = "Overview"
 enum AcctInvoiceTab: String, CaseIterable, Hashable { case invoices = "Invoices", payments = "Payments" }
 enum AcctInvoiceFilter: String, CaseIterable, Hashable { case all = "All", draft = "Draft", sent = "Sent", paid = "Paid", overdue = "Overdue" }
 enum AcctDocTab: String, CaseIterable, Hashable {
-    case company = "Company", tax = "Tax", contracts = "Contracts"
+    case company = "Company", tax = "Tax", contracts = "Contracts", insurance = "Insurance", applications = "Applications"
     var group: DocumentGroup {
         switch self {
         case .company: return .company
         case .tax: return .tax
         case .contracts: return .contracts
+        case .insurance: return .insurance
+        case .applications: return .applications
         }
     }
 }
@@ -105,6 +107,7 @@ struct AccountingApp: View {
             screen.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .environment(\.outsidePalette, OutsidePalette.accounting)
+        .environment(\.colorScheme, .light)
         .environment(\.tabBarClearance, 0)
         .foregroundStyle(OutsidePalette.accounting.ink)
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
@@ -270,7 +273,7 @@ struct AcctHome: View {
             HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: "Manage salaries and timesheets", route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral),
             HomeItem(key: "invoices", glyph: Glyph.reports, title: "Invoices & Payments", note: invoiceNote, route: .invoices),
             HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Supplier agreements and purchases", route: .suppliers),
-            HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Company records, tax and contracts", route: .documents),
+            HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance, applications", route: .documents),
             HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and user management", route: .settings),
         ]
         return AcctPanel {
