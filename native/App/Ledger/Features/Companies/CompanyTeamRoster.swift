@@ -41,10 +41,16 @@ struct TeamInitials: View {
         if name == nil {
             IconCircle(glyph: Glyph.hire, size: size, tint: Theme.ivoryMuted)
         } else {
-            Text(letters)
-                .font(.serifTitle(size * 0.38)).foregroundStyle(Theme.gold)
-                .frame(width: size, height: size)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            // Centred in the circle at a fixed size (the slot never changes with Dynamic Type, so rows do not reflow); long initials shrink to fit.
+            ZStack {
+                Circle().fill(Theme.gold.opacity(0.06))
+                Text(letters)
+                    .font(.serifTitle(size * 0.38)).foregroundStyle(Theme.gold)
+                    .lineLimit(1).minimumScaleFactor(0.6).multilineTextAlignment(.center)
+                    .padding(.horizontal, size * 0.08)
+            }
+            .frame(width: size, height: size)
+            .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
                 .accessibilityHidden(true)
         }
     }

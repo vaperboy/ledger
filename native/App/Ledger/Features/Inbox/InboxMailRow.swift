@@ -136,7 +136,7 @@ struct InboxAvatar: View {
             if initial.isEmpty {
                 GlyphView(glyph: glyph, size: size * 0.45, weight: 1.6, tint: tint)
             } else {
-                Text(initial).font(.system(size: size * 0.42, weight: .semibold, design: .rounded)).foregroundStyle(tint)
+                Text(initial).font(.system(size: size * 0.42, weight: .semibold, design: .rounded)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
             }
         }
         .frame(width: size, height: size)

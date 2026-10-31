@@ -100,8 +100,9 @@ struct ThumbnailView: View {
 
     @ViewBuilder private var slot: some View {
         if let cg = facePicture {
-            let image = Image(decorative: cg, scale: 1).resizable().scaledToFill().frame(width: size, height: size)
-            image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.ivory.opacity(0.45), lineWidth: 1))
+            // The cut is already a square: fill the slot exactly, clip to the circle, and use the same border as every other avatar.
+            let image = Image(decorative: cg, scale: 1).resizable().interpolation(.high).aspectRatio(1, contentMode: .fill).frame(width: size, height: size).clipped()
+            image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
         } else {
             artSlot
         }
@@ -139,7 +140,7 @@ struct ThumbnailView: View {
 
     #if canImport(UIKit)
     @ViewBuilder private func pictureView(_ ui: UIImage) -> some View {
-        let image = Image(uiImage: ui).resizable().scaledToFill().frame(width: slotWidth, height: size)
+        let image = Image(uiImage: ui).resizable().interpolation(.high).scaledToFill().frame(width: slotWidth, height: size).clipped()
         if shape == .round {
             image.clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
         } else {
