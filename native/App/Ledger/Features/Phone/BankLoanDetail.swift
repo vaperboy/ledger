@@ -36,7 +36,6 @@ struct LoanDetailSheet: View {
         }
         .confirmAction($pending)
         .sheet(isPresented: $partial) { partialSheet }
-        .accessibilityIdentifier("loan-detail")
     }
 
     private func record(_ e: GameEngine, _ l: Loan) -> LoanRecord? {
@@ -163,7 +162,6 @@ struct LoanDetailSheet: View {
                 Text("At today's rate. The bank re-works the instalment each month at that month's rate.").font(.system(size: 11)).foregroundStyle(P.inkFaint)
             }
         }
-        .accessibilityIdentifier("loan-schedule-table")
     }
 
     // MARK: Guarantee renegotiation
@@ -186,7 +184,6 @@ struct LoanDetailSheet: View {
                     }
                 }
             }
-            .accessibilityIdentifier("loan-guarantee")
         }
     }
 

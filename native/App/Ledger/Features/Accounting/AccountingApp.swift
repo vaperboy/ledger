@@ -113,7 +113,6 @@ struct AccountingApp: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { setUp() }
         .onChange(of: store.appRequest) { _, _ in take() }
-        .accessibilityIdentifier("accounting-app")
     }
 
     // MARK: Pages

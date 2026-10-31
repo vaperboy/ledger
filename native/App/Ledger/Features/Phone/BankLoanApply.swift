@@ -221,7 +221,6 @@ private struct LoanStepOffer: View {
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.caution.opacity(0.10)))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.caution.opacity(0.45), lineWidth: 1))
-        .accessibilityIdentifier("bank-loan-refused")
     }
 
     private var conditions: some View {

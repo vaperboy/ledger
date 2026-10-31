@@ -40,7 +40,6 @@ struct ConversionSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(done == nil ? "Cancel" : "Close") { dismiss() }.accessibilityIdentifier("conversion-cancel") } }
         }
         .confirmAction($pending)
-        .accessibilityIdentifier("conversion-sheet")
     }
 
     // MARK: Review
@@ -213,7 +212,6 @@ struct ConversionSheet: View {
                 }
             }
         }
-        .accessibilityIdentifier("conversion-result")
     }
 
     private func blockedCard(_ block: CompanyConversion.Block) -> some View {
@@ -223,6 +221,5 @@ struct ConversionSheet: View {
                 Text(block.text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .accessibilityIdentifier("conversion-blocked")
     }
 }

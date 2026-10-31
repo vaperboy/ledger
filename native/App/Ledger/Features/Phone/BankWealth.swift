@@ -61,7 +61,6 @@ struct BankWealthCard: View {
                 Text(b.note).font(.system(size: 11)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
         }
-        .accessibilityIdentifier("bank-wealth")
     }
 
     private var toggle: some View {
@@ -105,6 +104,5 @@ struct BankReservesCard: View {
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
         }
-        .accessibilityIdentifier("bank-reserves")
     }
 }

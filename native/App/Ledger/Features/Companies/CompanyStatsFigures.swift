@@ -55,7 +55,6 @@ struct CompanyStatsFigures: View {
                 StatStrip(cells: cells)
             }
         }
-        .accessibilityIdentifier("stats-cash")
     }
 
     // MARK: Result of the period
