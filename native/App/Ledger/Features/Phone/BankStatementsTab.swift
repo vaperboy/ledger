@@ -34,7 +34,7 @@ struct BankStatementsTab: View {
                     }
                 }
                 costs(e, fmt)
-                NavigationLink { ReportsScreen(companyID: account.companyID) } label: {
+                NavigationLink { ReportsScreen(companyID: account.companyID).environment(\.outsidePalette, OutsidePalette.game) } label: {
                     HStack {
                         Text("Full reports: profit, costs, people").font(.system(size: 13.5)).foregroundStyle(P.accent)
                         Spacer()

@@ -197,7 +197,7 @@ struct TeamView: View {
             let cid = a.companyID
             items.append(ActivityItem(id: "pay\(cid)", glyph: Glyph.ovCoin, title: "Payroll \(money) needs your approval",
                                       subtitle: "\(a.companyName) · \(a.dateText) · no manager or accountant",
-                                      action: { path.append(.companyAt(cid, .finances)) }))
+                                      action: { store.openAccounting(companyID: cid, payroll: true) }))
         }
         for i in peopleIssues(o, e).filter({ $0.needsOwner }) {
             items.append(ActivityItem(id: "own\(i.id)", glyph: Glyph.person, title: i.title,

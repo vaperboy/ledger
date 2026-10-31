@@ -77,56 +77,30 @@ struct CompanyMoneySummary: View {
     var company: Company
     @Binding var part: CompanyMoneyPart
 
-    private static let palette: [Color] = [Theme.slateBlue, Theme.caution, Theme.gain, Theme.gold, Theme.loss, Color(red: 0.36, green: 0.70, blue: 0.74), Color(red: 0.62, green: 0.50, blue: 0.80), Theme.goldDeep, Theme.ivoryFaint, Theme.ivoryMuted]
-
     var body: some View {
         let cur = engine.currency(for: company)
         let o = engine.financeOverview(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             CompanyPaymentStress(engine: engine, company: company)
-            cashCard(cur, o)
+            CompanyStatsFigures(engine: engine, company: company)
             settingsTable(cur, o)
             owedCard(cur, o)
             comingUp(cur, o)
-            costs(cur, o)
-            margins(cur, o)
             lastWeekReport(cur)
         }
     }
 
     // MARK: Cards
 
-    private func cashCard(_ cur: Currency, _ o: FinanceOverview) -> some View {
-        let h = engine.companyHealth(company)
-        let runwayText: String = h.runwayWeeks != nil ? "At the current rate of loss the cash lasts \(RunwayText.of(h))." : String(format: "About %.0f weeks of costs in the bank.", h.weeksOfCash)
-        let runwayTint: Color = h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryFaint
-        let cashTint: Color = company.cash < 0 ? Theme.loss : Theme.ivory
-        let monthTint: Color = o.monthProfit < 0 ? Theme.loss : Theme.ivory
-        let yearTint: Color = o.yearProfit < 0 ? Theme.loss : Theme.ivory
-        let dueTint: Color = o.dueWithin30Days > max(0, company.cash) ? Theme.loss : Theme.ivory
-        let cells: [StatStrip.Cell] = [
-            .init(label: "Profit this month", value: cur.tidyShort(o.monthProfit), tint: monthTint),
-            .init(label: "Profit this year", value: cur.tidyShort(o.yearProfit), tint: yearTint),
-            .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: dueTint),
-        ]
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Company cash").capsLabel()
-                Text(cur.tidyDisplay(company.cash)).font(.hero(34)).foregroundStyle(cashTint).minimumScaleFactor(0.6).lineLimit(1)
-                Text(runwayText).font(.system(size: 12)).foregroundStyle(runwayTint).fixedSize(horizontal: false, vertical: true)
-                StatStrip(cells: cells)
-            }
-        }
-    }
-
     private func owedCard(_ cur: Currency, _ o: FinanceOverview) -> some View {
         let h = engine.companyHealth(company)
         let debtTint: Color = h.debt > 0 ? Theme.loss : Theme.ivory
         let taxTint: Color = o.taxesOwed > 0 ? Theme.caution : Theme.ivory
+        let dueTint: Color = o.dueWithin30Days > max(0, company.cash) ? Theme.loss : Theme.ivory
         let cells: [StatStrip.Cell] = [
             .init(label: "Tax and VAT owed", value: cur.tidyShort(o.taxesOwed), tint: taxTint),
             .init(label: "Debt", value: cur.tidyShort(h.debt), tint: debtTint),
-            .init(label: "Your account", value: store.short(engine.state.cash)),
+            .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: dueTint),
         ]
         return CardSection("Owed") {
             VStack(alignment: .leading, spacing: 10) {
@@ -156,61 +130,6 @@ struct CompanyMoneySummary: View {
                 }
             }
         }
-    }
-
-    @ViewBuilder private func costs(_ cur: Currency, _ o: FinanceOverview) -> some View {
-        let lines: [FinanceLine] = o.costsThisMonth
-        CardSection(title: "Where the money goes", trailing: {
-            Text("This month " + cur.tidyShort(o.costTotalThisMonth)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-        }) {
-            if lines.isEmpty {
-                Text("No costs booked yet this month.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-            } else {
-                VStack(spacing: Theme.Space.m) {
-                    HStack(spacing: Theme.Space.l) {
-                        Chart(lines) { l in
-                            SectorMark(angle: .value("Amount", l.amount), innerRadius: .ratio(0.64), angularInset: 1.5)
-                                .foregroundStyle(by: .value("Cost", l.label))
-                                .cornerRadius(3)
-                        }
-                        .chartLegend(.hidden)
-                        .chartForegroundStyleScale(range: Self.palette)
-                        .frame(width: 112, height: 112)
-                        .accessibilityHidden(true)
-                        VStack(spacing: 7) {
-                            ForEach(Array(lines.prefix(5).enumerated()), id: \.offset) { i, l in
-                                HStack(spacing: 6) {
-                                    Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
-                                    Text(l.label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                                    Spacer(minLength: 4)
-                                    Text("\(Int((l.share * 100).rounded()))%").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
-                                }
-                            }
-                        }
-                    }
-                    VStack(spacing: 0) {
-                        ForEach(Array(lines.enumerated()), id: \.element.id) { n, l in
-                            FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func margins(_ cur: Currency, _ o: FinanceOverview) -> some View {
-        let monthMargin: Double = o.monthRevenue > 0 ? o.monthProfit / o.monthRevenue : 0
-        let yearMargin: Double = o.yearRevenue > 0 ? o.yearProfit / o.yearRevenue : 0
-        let monthTint: Color = o.monthRevenue > 0 && monthMargin < 0 ? Theme.loss : Theme.ivory
-        let yearTint: Color = o.yearRevenue > 0 && yearMargin < 0 ? Theme.loss : Theme.ivory
-        let monthText: String = o.monthRevenue > 0 ? Currency.percent(monthMargin, decimals: 0) : "–"
-        let yearText: String = o.yearRevenue > 0 ? Currency.percent(yearMargin, decimals: 0) : "–"
-        let cells: [StatStrip.Cell] = [
-            .init(label: "Sales this month", value: cur.tidyShort(o.monthRevenue)),
-            .init(label: "Margin this month", value: monthText, tint: monthTint),
-            .init(label: "Margin this year", value: yearText, tint: yearTint),
-        ]
-        return CardSection("Margins") { StatStrip(cells: cells, ruled: false) }
     }
 
     /// The company's last closed week in a few lines, with a link to all its weekly, monthly and yearly reports.

@@ -2,6 +2,12 @@
 
 ## Unreleased — native migration (branch `native-swiftui`)
 
+### Stage 2 screens: Accounting, Banking, loans, conversion (1 Nov 2026)
+* New Phone app **Accounting & Compliance** (forest-green header over ivory pages): business selector, Transactions (All / Income / Expenses, date range, search, detail with note, links to the loan, supplier or payroll run), Payroll (Overview, Employees, Timesheets, Run payroll with the review, payslips and run details), Invoices & Payments (send a draft, pay a supplier invoice through the Bank), Suppliers (records only: adding one here buys nothing), Documents (Company, Tax, Contracts) and Settings (named users only, per company, with a preview of what a user sees). A person without access sees a locked screen.
+* Bank: forest-green and charcoal look with ivory panels; wealth overview (spendable money, investments, estimated company value, debts); per-company Payroll / Tax / Free reserves (display only); loans in two stages (Apply, Offer with the maximum approved amount, rate, period and instalment, then Choose an amount up to the maximum, Agreement, Confirm with the account the money is paid into); loan details with the schedule, this month's instalment paid once, payoff quote, part repayment and the personal-guarantee talk; payroll alerts link to Accounting.
+* Company conversion: a review sheet (costs, who pays the fee with balances, ownership, accountant, loans and guarantees, before and after) and one confirmed transaction; cancelling changes nothing.
+* Team shows workers, average rate, hours and payroll cost, who runs payroll as derived, and one link to Accounting > Payroll; the payroll run and the "who runs payroll" picker are gone from Team. Company Stats is cash-first from `companyOverviewStats`; Home splits spendable money from the estimated value of companies.
+
 ### Stage 6: Group, Board and management authority (31 Oct 2026)
 * Board meetings are held only when a seat brings a real point (losses, thin margins, low awareness, missing paperwork, no manager, sell-outs, a bottleneck, owners waiting for a dividend, trouble among the people). No points: no meeting and no Inbox message ("0 points for you" is gone).
 * A meeting closes when its last point is decided, or lapses after 4 weeks. Badges and the Group "Needs you" list count only open points. Minutes (attendees, each point, the answer and what came of it) are kept; a declined point is not raised again for 12 weeks, an approved one for 8.

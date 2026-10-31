@@ -52,7 +52,7 @@ enum PhoneAlerts {
             if let co = engine.state.company(p.companyID) { amountText = store.money(p.amount, in: co) } else { amountText = store.money(p.amount) }
             let detail: String = amountText + " on " + p.dateText + ". No manager or accountant approves it."
             let title: String = "Payroll needs you · " + p.companyName
-            out.append(PhoneAlert(id: "payroll-\(p.companyID)", app: .bank, source: "Bank", title: title, detail: detail, companyID: p.companyID))
+            out.append(PhoneAlert(id: "payroll-\(p.companyID)", app: .accounting, source: "Accounting", title: title, detail: detail, companyID: p.companyID))
         }
         for w in engine.bigWeatherWarnings() {
             let names: String = w.companyIDs.compactMap { engine.state.company($0)?.name }.joined(separator: ", ")
@@ -70,13 +70,13 @@ enum PhoneAlerts {
         return out
     }
 
-    /// Red bubble per app: Inbox = open decisions, Bank = payroll alerts, Weather = big weather warnings.
+    /// Red bubble per app: Inbox = open decisions, Accounting = payroll alerts (payroll is run there), Weather = big weather warnings.
     static func badges(engine: GameEngine) -> [PhoneApp: Int] {
         var out: [PhoneApp: Int] = [:]
         let decisions: Int = engine.state.inbox.filter { $0.status == "open" }.count
         let payrolls: Int = payroll(engine: engine).count
         if decisions > 0 { out[.inbox] = decisions }
-        if payrolls > 0 { out[.bank] = payrolls }
+        if payrolls > 0 { out[.accounting] = payrolls }
         let storms: Int = engine.bigWeatherWarnings().count
         if storms > 0 { out[.weather] = storms }
         return out

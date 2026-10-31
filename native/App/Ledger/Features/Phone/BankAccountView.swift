@@ -51,16 +51,16 @@ struct BankAccountScreen: View {
 
     private func alertBanner(_ a: PayrollAlert, _ fmt: BankFmt) -> some View {
         let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)"
-                                    : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
+                                    : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason) It is run in Accounting."
         return HStack(alignment: .center, spacing: 10) {
             GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
             Text(text.tidyText).font(.system(size: 12.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             Button {
                 Haptics.tap()
-                BankPay.resolve(store, companyID: a.companyID)
+                store.openAccounting(companyID: a.companyID, payroll: true)
             } label: {
-                Text(a.isLate ? "Pay now" : "Approve").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.ink)
+                Text("Accounting").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.ink)
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
             }.buttonStyle(.plain)
@@ -169,6 +169,9 @@ struct BankAccountScreen: View {
 
     private func accountTab(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let cid = id.companyID, let reserves = e.companyReserves(companyID: cid) {
+                BankReservesCard(reserves: reserves, fmt: fmt)
+            }
             if id != .investments {
                 comingUp(d, fmt)
             }
@@ -177,7 +180,7 @@ struct BankAccountScreen: View {
                 BankOwnerSalary(company: co)
             }
             if id == .personal {
-                NavigationLink { ActivityView() } label: {
+                NavigationLink { ActivityView().environment(\.outsidePalette, OutsidePalette.game) } label: {
                     HStack {
                         Text("Every movement on your account").font(.system(size: 13.5)).foregroundStyle(P.accent)
                         Spacer()

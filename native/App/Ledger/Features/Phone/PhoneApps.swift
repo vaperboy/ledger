@@ -3,12 +3,13 @@ import SwiftUI
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
-    case bank, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, achievements, settings
+    case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, achievements, settings
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .bank: return "Bank"
+        case .accounting: return "Accounting"
         case .inbox: return "Inbox"
         case .news: return "News"
         case .weather: return "Weather"
@@ -28,6 +29,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
     var glyph: String {
         switch self {
         case .bank: return Glyph.bank
+        case .accounting: return Glyph.accounting
         case .inbox: return Glyph.inbox
         case .news: return Glyph.news
         case .weather: return Glyph.cloud
@@ -47,6 +49,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
     var subtitle: String {
         switch self {
         case .bank: return "Accounts, savings and loans"
+        case .accounting: return "Books, payroll, invoices and records"
         case .inbox: return "Decisions, offers and warnings"
         case .news: return "Headlines and the business paper"
         case .weather: return "Conditions, forecast and warnings"
@@ -68,6 +71,7 @@ extension PhoneApp {
     var tint: Color {
         switch self {
         case .bank: return Color(hex: 0x8DB89B)
+        case .accounting: return Color(hex: 0xB9C79A)
         case .inbox: return Color(hex: 0xD6B889)
         case .news: return Color(hex: 0xB8A58C)
         case .weather: return Color(hex: 0x8FB0C4)

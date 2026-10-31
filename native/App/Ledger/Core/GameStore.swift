@@ -40,6 +40,8 @@ enum AppRequest: Equatable {
     case message(Int)
     case bank(BankRequest)
     case report(ReportRef)
+    /// Accounting on one company (its Payroll page when `payroll` is true).
+    case accounting(companyID: Int, payroll: Bool)
 }
 
 struct Toast: Identifiable, Equatable {
@@ -364,6 +366,11 @@ final class GameStore: ObservableObject {
         openApp(.bank, request: .bank(BankRequest(account: account, tab: tab)))
     }
 
+    /// Opens the Accounting app on one company, on its Payroll page when `payroll` is true: the link Team and the Bank use instead of a payroll run of their own.
+    func openAccounting(companyID: Int, payroll: Bool = false) {
+        openApp(.accounting, request: .accounting(companyID: companyID, payroll: payroll))
+    }
+
     /// Opens one message in the Inbox app.
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
 
@@ -380,6 +387,11 @@ final class GameStore: ObservableObject {
         guard case .bank(let r)? = appRequest else { return nil }
         appRequest = nil
         return r
+    }
+    func takeAccountingRequest() -> (companyID: Int, payroll: Bool)? {
+        guard case .accounting(let id, let payroll)? = appRequest else { return nil }
+        appRequest = nil
+        return (id, payroll)
     }
     func takeReportRequest() -> ReportRef? {
         guard case .report(let r)? = appRequest else { return nil }

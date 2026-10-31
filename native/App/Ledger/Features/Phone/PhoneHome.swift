@@ -93,7 +93,9 @@ struct PhoneHome: View {
     private func banner(_ alert: PhoneAlert) -> some View {
         Button {
             Haptics.tap()
-            if alert.messageID != 0 { store.openMessage(alert.messageID) } else { path.append(.app(alert.app)) }
+            if alert.messageID != 0 { store.openMessage(alert.messageID) }
+            else if alert.app == .accounting && alert.companyID != 0 { store.openAccounting(companyID: alert.companyID, payroll: true) }
+            else { path.append(.app(alert.app)) }
         } label: {
             HStack(spacing: 12) {
                 GlyphView(glyph: alert.app.glyph, size: 18, weight: 1.6, tint: alert.app.tint)
@@ -173,6 +175,9 @@ struct PhoneAppScreen: View {
         case .bank:
             // The Bank app draws its own header (the round back goes from an account to the list first).
             BankApp()
+        case .accounting:
+            // Accounting & Compliance draws its own header (the round back goes up one screen inside the app before it leaves).
+            AccountingApp()
         case .inbox:
             InboxView()
         case .news:

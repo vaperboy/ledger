@@ -88,6 +88,7 @@ struct CardLine: View {
 
 /// Key figures in a bordered card, cells separated by vertical lines; a second row follows the first when there are more than `columns`.
 struct FigureCard: View {
+    @Environment(\.outsidePalette) private var P
     typealias Item = KeyFigures.Item
     var items: [Item]
     var columns = 3
@@ -111,7 +112,7 @@ struct FigureCard: View {
                         Stat(label: it.label, value: it.value, tint: it.tint, sub: it.sub)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.leading, i == 0 ? 0 : 12)
-                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(Theme.divider).frame(width: 1) } }
+                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(P.divider).frame(width: 1) } }
                     }
                     ForEach(0..<(columns - row.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
                 }
