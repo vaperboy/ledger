@@ -7,5 +7,40 @@
   "tintColor": "#CFB185",
   "website": "https://github.com/vaperboy/ledger",
   "news": [],
-  "apps": []
+  "apps": [
+    {
+      "name": "Ledger",
+      "bundleIdentifier": "com.example.ledger",
+      "developerName": "Ledger",
+      "subtitle": "Run real businesses",
+      "localizedDescription": "Ledger: a business-management simulation.",
+      "tintColor": "#CFB185",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "1.0.6",
+          "buildVersion": "6",
+          "date": "2026-10-31T20:37:48Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v6/Ledger-unsigned.ipa",
+          "size": 24065740,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v6 from 8e73e39"
+        },
+        {
+          "version": "1.0.5",
+          "buildVersion": "5",
+          "date": "2026-10-31T20:09:55Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v5/Ledger-unsigned.ipa",
+          "size": 24065686,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v5 from f16d01b"
+        }
+      ],
+      "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "version": "1.0.6",
+      "versionDate": "2026-10-31T20:37:48Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v6/Ledger-unsigned.ipa",
+      "size": 24065740
+    }
+  ]
 }

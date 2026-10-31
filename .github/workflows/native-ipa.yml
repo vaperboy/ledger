@@ -46,6 +46,7 @@ jobs:
           set -o pipefail
           xcodebuild build -project Ledger.xcodeproj -scheme Ledger -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath $RUNNER_TEMP/dd \
+            MARKETING_VERSION=1.0.${{ github.run_number }} CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 30
       - name: Package the IPA
         run: |
@@ -55,6 +56,16 @@ jobs:
           cp -R "$APP" $RUNNER_TEMP/ipa/Payload/
           (cd $RUNNER_TEMP/ipa && zip -qry Ledger-unsigned.ipa Payload)
           ls -l $RUNNER_TEMP/ipa/Ledger-unsigned.ipa
+      - name: Check the app's version and bundle id match the AltStore source entry
+        run: |
+          P="$RUNNER_TEMP/ipa/Payload/Ledger.app/Info.plist"
+          V=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$P")
+          B=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$P")
+          I=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$P")
+          echo "plist: version=$V build=$B id=$I"
+          test "$V" = "1.0.${{ github.run_number }}"
+          test "$B" = "${{ github.run_number }}"
+          test "$I" = "$BUNDLE_ID"
       - name: Publish a GitHub Release with the IPA
         env:
           GH_TOKEN: ${{ github.token }}
