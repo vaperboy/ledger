@@ -18,6 +18,13 @@ enum GroupMorePage: String, CaseIterable, Hashable, Identifiable {
     case office = "Group office", posts = "Executive posts", boards = "Boards", dividends = "Dividends and group tax"
     case rivals = "Rival groups and market", giving = "Giving back"
     var id: String { rawValue }
+    /// Holdings, chains, franchises and boards are reached from Structure and Board; the More menu keeps the group's own services.
+    var inMore: Bool {
+        switch self {
+        case .holdings, .chains, .franchises, .boards: return false
+        default: return true
+        }
+    }
     var sub: String {
         switch self {
         case .holdings: return "Holding companies and what they own"
@@ -62,7 +69,7 @@ struct GroupTabBar: View {
                     .accessibilityIdentifier("group-tab-\(t.rawValue)")
             }
             Menu {
-                ForEach(GroupMorePage.allCases) { p in
+                ForEach(GroupMorePage.allCases.filter { $0.inMore }) { p in
                     Button { more = p; tab = .more; Haptics.choose() } label: {
                         if tab == .more && more == p { Label(p.rawValue, systemImage: "checkmark") } else { Text(p.rawValue) }
                     }
@@ -276,12 +283,42 @@ struct GroupOverviewTab: View {
 
 // MARK: - Structure (GroupB)
 
+/// The four views of Structure: the ownership tree, chains with their franchises, holdings, and who manages whom.
+enum GroupStructurePart: String, CaseIterable, Hashable {
+    case ownership = "Ownership", chains = "Chains", holdings = "Holdings", authority = "Authority"
+    var sub: String {
+        switch self {
+        case .ownership: return "Who owns what"
+        case .chains: return "Chains, stores and franchises"
+        case .holdings: return "Holding companies and what they own"
+        case .authority: return "Who manages whom"
+        }
+    }
+}
+
 struct GroupStructureTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    @Binding var part: GroupStructurePart
     var openMore: (GroupMorePage) -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SegmentedPill(items: GroupStructurePart.allCases, title: { $0.rawValue }, selection: $part, identifier: { "group-structure-\($0.rawValue)" })
+            switch part {
+            case .ownership: ownership
+            case .chains: GroupStructureOverview(engine: engine, parts: [.chains, .franchises])
+            case .holdings:
+                GroupStructureOverview(engine: engine, parts: [.holdings])
+                if engine.holdingCompanies.isEmpty && engine.companiesForHolding.isEmpty {
+                    Text("Holding companies need a limited company to hold.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                }
+            case .authority: GroupAuthoritySection(engine: engine, openMore: openMore)
+            }
+        }
+    }
+
+    @ViewBuilder private var ownership: some View {
         let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
         let holdings = engine.holdingCompanies
         let direct = live.filter { $0.holdingID == 0 }
@@ -386,15 +423,21 @@ struct GroupBoardTab: View {
     var engine: GameEngine
     var openMore: (GroupMorePage) -> Void
 
+    /// A board with points waiting for a decision: how many, and the first one in words.
     private struct Waiting: Identifiable {
-        var id: String { key + "#\(meeting.id)" }
+        var id: String { key }
         var key: String
-        var meeting: ManagerModel.BoardMeeting
+        var count: Int
+        var headline: String
     }
 
     private var waiting: [Waiting] {
-        engine.boardKeys.filter { engine.boardIsActive(key: $0) }.flatMap { k in
-            engine.boardMeetings(key: k).filter { $0.status.isEmpty }.map { Waiting(key: k, meeting: $0) }
+        engine.boardKeys.filter { engine.boardIsActive(key: $0) }.compactMap { k in
+            let n = engine.boardOpenDecisions(key: k)
+            guard n > 0 else { return nil }
+            let open = engine.boardMeetings(key: k).filter { $0.isOpen }
+            let first: String = open.compactMap { m in m.isEmergency ? m.title : m.items.first(where: { $0.status.isEmpty && !$0.action.isEmpty })?.text }.first ?? ""
+            return Waiting(key: k, count: n, headline: first)
         }
     }
 
@@ -403,20 +446,23 @@ struct GroupBoardTab: View {
         let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
         let list = waiting
         VStack(alignment: .leading, spacing: 12) {
-            if let first = list.first {
-                decision(first, more: list.count - 1)
+            if !list.isEmpty {
+                ForEach(list.prefix(3)) { w in decision(w) }
+                if list.count > 3 {
+                    Text("\(list.count - 3) more \(list.count - 3 == 1 ? "board has" : "boards have") points waiting. Open them below.").font(.system(size: 12)).foregroundStyle(Theme.caution)
+                }
             } else {
                 GroupCard {
                     VStack(alignment: .leading, spacing: 4) {
                         GroupCaps(text: "Decisions")
                         Text(keys.isEmpty ? "A board forms once you register a chain or somebody else owns part of a company."
-                                          : "Nothing waits for a board.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                                          : "Nothing waits for a board. A board meets when a seat brings a proposal or a concern.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                     }
                 }
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Board seats", link: keys.count > 1 ? "All boards ›" : "", action: { openMore(.boards) })
+                GroupCaps(text: "Boards and seats")
                 ForEach(keys, id: \.self) { key in
                     let voters = engine.boardVoters(key: key)
                     let seats = engine.boardSeats(key: key)
@@ -433,7 +479,7 @@ struct GroupBoardTab: View {
                 }
                 if let key = keys.first {
                     NavigationLink { BoardView(key: key) } label: {
-                        Text("Seat someone ›").font(.system(size: 13)).foregroundStyle(Theme.gold)
+                        Text(keys.count > 1 ? "Open a board to seat someone ›" : "Seat someone ›").font(.system(size: 13)).foregroundStyle(Theme.gold)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                             .contentShape(Rectangle())
@@ -467,54 +513,25 @@ struct GroupBoardTab: View {
         .contentShape(Rectangle())
     }
 
-    /// The first decision that waits. Emergencies and anything with several parts open the board; a single item can be decided here.
-    private func decision(_ w: Waiting, more: Int) -> some View {
-        let m = w.meeting
-        let open = m.items.filter { $0.status.isEmpty }
-        return GroupCard(strong: true) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("DECISION NEEDED").font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-                    Spacer()
-                    if more > 0 { Text("+\(more) more").font(.system(size: 12)).foregroundStyle(Theme.caution) }
-                }
-                Text("\(m.title) · \(engine.boardName(key: w.key))".tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                if !m.why.isEmpty { Text(m.why.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                if !m.isEmergency, open.count == 1, let it = open.first {
-                    Text(it.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 8) {
-                        decideButton("Decline", filled: false) {
-                            let r = store.act { $0.decideMeetingItem(key: w.key, meetingID: m.id, item: it.id, approve: false) }
-                            if case .gone? = r { store.show("That item is no longer on the agenda.", tone: "warn") } else { store.show("Declined.") }
-                        }
-                        decideButton("Approve ›", filled: true) {
-                            let r = store.act { $0.decideMeetingItem(key: w.key, meetingID: m.id, item: it.id, approve: true) }
-                            switch r {
-                            case .followUp(let what)?: Haptics.success(); store.show("Approved. Follow up on it (\(what)) in the company.", tone: "good")
-                            case .done(let what)?: Haptics.success(); store.show(what.isEmpty ? "Approved." : what, tone: "good")
-                            case .gone?: store.show("That item is no longer on the agenda.", tone: "warn")
-                            default: store.show("Approved.", tone: "good")
-                            }
-                        }
-                    }.padding(.top, 2)
-                } else {
-                    NavigationLink { BoardView(key: w.key) } label: {
-                        Text("Open the board ›").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
-                            .frame(maxWidth: .infinity, minHeight: 40)
-                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-                            .contentShape(Rectangle())
-                    }.buttonStyle(.plain).padding(.top, 2)
+    /// A board with points waiting. Decisions are made on the board page, where each point shows its effect, cost and risk before it is confirmed.
+    private func decision(_ w: Waiting) -> some View {
+        NavigationLink { BoardView(key: w.key) } label: {
+            GroupCard(strong: true) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("DECISION NEEDED").font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
+                        Spacer()
+                        Text("\(w.count) to decide").font(.system(size: 12)).foregroundStyle(Theme.caution)
+                    }
+                    Text(engine.boardName(key: w.key)).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    if !w.headline.isEmpty { Text(w.headline.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading) }
+                    Text("Open the board ›").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
+                        .padding(.top, 2)
                 }
             }
-        }
-    }
-
-    private func decideButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
-        Button { Haptics.tap(); action() } label: {
-            Text(title).font(.system(size: 13, weight: filled ? .medium : .regular)).foregroundStyle(filled ? Theme.gold : Theme.ivory)
-                .frame(maxWidth: .infinity, minHeight: 40)
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(filled ? Theme.gold : Theme.borderStrong, lineWidth: 1))
-                .contentShape(Rectangle())
+            .contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
 
@@ -670,7 +687,7 @@ struct GroupMoreTab: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 GroupCaps(text: "Other pages")
-                ForEach(GroupMorePage.allCases.filter { $0 != page }) { p in
+                ForEach(GroupMorePage.allCases.filter { $0 != page && $0.inMore }) { p in
                     Button { Haptics.tap(); pick(p) } label: { CardRow(glyph: p.glyph, title: p.rawValue, subtitle: p.sub) }.buttonStyle(.plain)
                 }
             }

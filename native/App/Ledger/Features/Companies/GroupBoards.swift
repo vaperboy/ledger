@@ -1,5 +1,6 @@
 import SwiftUI
 import GameCore
+import Countries
 import Businesses
 import Simulation
 
@@ -11,7 +12,7 @@ struct BoardsGroupSection: View {
 
     var body: some View {
         let keys: [String] = engine.boardKeys.filter { engine.boardIsActive(key: $0) }
-        let waiting: [String: Int] = Dictionary(uniqueKeysWithValues: keys.map { ($0, engine.boardMeetings(key: $0).filter { $0.status.isEmpty }.count) })
+        let waiting: [String: Int] = Dictionary(uniqueKeysWithValues: keys.map { ($0, engine.boardOpenDecisions(key: $0)) })
         let ordered: [String] = keys.sorted { (waiting[$0] ?? 0, $0.hasPrefix("ch:") ? 1 : 0) > (waiting[$1] ?? 0, $1.hasPrefix("ch:") ? 1 : 0) }
         let total: Int = waiting.values.reduce(0, +)
         MoreBlock(title: "Boards", card: false, trailing: { RedBubble(count: total, size: .small) }) {
@@ -35,9 +36,10 @@ struct BoardLinkRow: View {
 
     var body: some View {
         let seats: Int = engine.boardSeats(key: key).count
-        let waiting: Int = engine.boardMeetings(key: key).filter { $0.status.isEmpty }.count
+        let waiting: Int = engine.boardOpenDecisions(key: key)
+        let jobs: Int = engine.boardFollowUps(key: key).filter { $0.status.isEmpty }.count
         let kind: String = key.hasPrefix("ch:") ? "Chain board" : "Company board"
-        let sub: String = "\(kind) · \(seats) \(seats == 1 ? "seat" : "seats") filled" + (waiting > 0 ? " · \(waiting) to decide" : "")
+        let sub: String = "\(kind) · \(seats) \(seats == 1 ? "seat" : "seats") filled" + (waiting > 0 ? " · \(waiting) to decide" : "") + (jobs > 0 ? " · \(jobs) follow-up \(jobs == 1 ? "job" : "jobs")" : "")
         CardRow(glyph: key.hasPrefix("ch:") ? Glyph.group : Glyph.achievements, title: engine.boardName(key: key), subtitle: sub, badge: waiting)
     }
 }
@@ -59,9 +61,11 @@ struct BoardView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if !message.isEmpty { NoteCard(text: message) }
                     agenda(engine)
+                    followUps(engine)
                     table(engine)
                     meets(engine)
                     bigMoves(engine, companies: companies)
+                    minutes(engine)
                     ownersLink(companies)
                 }
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
@@ -88,14 +92,24 @@ struct BoardView: View {
 
     // MARK: To decide
 
+    /// Concerns are answered with "Act on it" / "Leave it"; proposals with "Approve" / "Decline".
+    private func isConcern(_ it: ManagerModel.MeetingItem) -> Bool { ["morale", "overtime", "leaving"].contains(it.action) }
+    private func approveWord(_ it: ManagerModel.MeetingItem) -> String { isConcern(it) ? "Act on it" : "Approve" }
+    private func declineWord(_ it: ManagerModel.MeetingItem) -> String { isConcern(it) ? "Leave it" : "Decline" }
+
     @ViewBuilder private func agenda(_ engine: GameEngine) -> some View {
-        let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key).filter { $0.status.isEmpty }
-        MoreBlock(title: "To decide", card: false, trailing: { RedBubble(count: open.count, size: .small) }) {
+        let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key).filter { $0.isOpen }
+        let preview: [ManagerModel.MeetingItem] = engine.boardAgendaPreview(key: key)
+        MoreBlock(title: "To decide", card: false, trailing: { RedBubble(count: engine.boardOpenDecisions(key: key), size: .small) }) {
             if open.isEmpty { NoteCard(text: "Nothing waits for the board.", glyph: Glyph.check) }
-            ForEach(open) { m in meeting(m) }
-            QuietButton(title: "Hold a board meeting") {
-                let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
-                if id == nil { message = "Nothing to meet about yet." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
+            ForEach(open) { m in meeting(m, engine) }
+            if preview.isEmpty {
+                Text("No meeting is due: the board meets when a seat brings a proposal or a concern.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            } else {
+                QuietButton(title: "Hold a board meeting · \(preview.count) \(preview.count == 1 ? "point" : "points")") {
+                    let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
+                    if id == nil { message = "Nothing to meet about right now." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
+                }
             }
         }
     }
@@ -114,49 +128,141 @@ struct BoardView: View {
         }
     }
 
-    private func approve(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
-        let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
-        switch r {
-        case .followUp(let what)?: message = "Approved. Follow up on it (\(what)) in the company."
-        case .done(let what)?: message = what.isEmpty ? "Approved." : what
-        case .gone?: message = "That item is no longer on the agenda."
-        default: message = "Approved."
+    /// What approving does, in the words shown before the owner confirms: the effect, the cost now and the risk.
+    private func details(_ it: ManagerModel.MeetingItem, in co: Company?) -> String {
+        var lines: [String] = [it.text.tidyMoney]
+        if !it.effect.isEmpty {
+            lines.append("Effect: " + it.effect.tidyMoney)
+            if it.cost > 0, let co { lines.append("Cost now: " + store.short(it.cost, in: co)) } else { lines.append("Cost now: nothing") }
+        }
+        if !it.risk.isEmpty { lines.append("Risk: " + it.risk) }
+        return lines.joined(separator: "\n")
+    }
+
+    private func approve(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem, _ engine: GameEngine) {
+        let co: Company? = engine.state.company(it.companyID)
+        let cur: Currency? = co.map { engine.currency(for: $0) }
+        pending = PendingAction(title: "\(approveWord(it))?", message: details(it, in: co), button: approveWord(it),
+                                destructive: it.action == "sale" || it.action == "fireceo", amount: it.cost, currency: cur) {
+            let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: true) }
+            switch r {
+            case .followUp(let what)?: message = what + " A follow-up job is listed below."; Haptics.success()
+            case .done(let what)?: message = what.isEmpty ? "Done." : what; Haptics.success()
+            case .refused(let why)?: message = "Not done: " + why
+            case .gone?: message = "That point is no longer on the agenda."
+            default: message = "Done."
+            }
         }
     }
 
     private func decline(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
         let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
-        if case .gone? = r { message = "That item is no longer on the agenda." } else { message = "Declined." }
+        if case .gone? = r { message = "That point is no longer on the agenda." } else { message = isConcern(it) ? "Left as it is. It goes in the minutes." : "Declined. It goes in the minutes." }
     }
 
-    private func itemRow(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(it.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+    private func itemRow(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem, _ engine: GameEngine) -> some View {
+        let co: Company? = engine.state.company(it.companyID)
+        let costText: String = it.cost > 0 ? (co.map { store.short(it.cost, in: $0) } ?? "") : "Nothing"
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(it.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            if !it.raisedBy.isEmpty { Text("Raised by \(it.raisedBy)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+            if !it.effect.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    detailLine("If you approve", it.effect.tidyMoney)
+                    detailLine("Cost now", costText)
+                    detailLine("Risk", it.risk)
+                }
+            }
             HStack(spacing: 10) {
-                Button("Approve") { approve(m, it) }.buttonStyle(QuietButtonStyle())
-                Button("Decline") { decline(m, it) }.buttonStyle(GreyOutlineButtonStyle())
+                Button(approveWord(it)) { approve(m, it, engine) }.buttonStyle(QuietButtonStyle())
+                Button(declineWord(it)) { decline(m, it) }.buttonStyle(GreyOutlineButtonStyle())
             }
         }
     }
 
-    @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting) -> some View {
+    @ViewBuilder private func detailLine(_ label: String, _ value: String) -> some View {
+        if !value.isEmpty {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(label).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint).frame(width: 92, alignment: .leading)
+                Text(value).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting, _ engine: GameEngine) -> some View {
         Card(padding: 14, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
                     IconCircle(glyph: m.isEmergency ? Glyph.warning : Glyph.calendar, size: 36, tint: m.isEmergency ? Theme.caution : Theme.gold)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(m.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                        if !m.why.isEmpty { Text(m.why.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                        Text(GameCalendar.dateString(week: m.week)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        if !m.why.isEmpty && m.why != "Regular meeting" { Text(m.why.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                        if !m.attendees.isEmpty { Text("Present: " + m.attendees.joined(separator: " · ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                     }
                 }
                 if m.isEmergency {
                     emergencyButtons(m)
                 } else {
-                    ForEach(m.items.filter { $0.status.isEmpty }) { it in
+                    ForEach(m.items.filter { $0.status.isEmpty && !$0.action.isEmpty }) { it in
                         CardLine()
-                        itemRow(m, it)
+                        itemRow(m, it, engine)
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: Follow-up jobs
+
+    @ViewBuilder private func followUps(_ engine: GameEngine) -> some View {
+        let open: [ManagerModel.FollowUp] = engine.boardFollowUps(key: key).filter { $0.status.isEmpty }
+        if !open.isEmpty {
+            MoreBlock(title: "Follow-up jobs", card: false, trailing: { RedBubble(count: open.count, size: .small) }) {
+                ForEach(open) { f in
+                    Card(padding: 12, radius: Theme.Radius.card) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(f.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            Text("\(f.assignee) · lapses \(GameCalendar.dateString(week: f.due))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            HStack(spacing: 10) {
+                                NavigationLink(value: CompanyRoute.company(f.companyID)) { Text("Open company").font(.system(size: 13, weight: .medium)) }.buttonStyle(QuietButtonStyle())
+                                Button("Mark done") {
+                                    _ = store.act { $0.completeBoardFollowUp(key: key, id: f.id) }
+                                    message = "Marked done."
+                                }.buttonStyle(GreyOutlineButtonStyle())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Minutes
+
+    @ViewBuilder private func minutes(_ engine: GameEngine) -> some View {
+        let done: [ManagerModel.BoardMeeting] = Array(engine.boardMeetings(key: key).filter { !$0.isOpen }.prefix(6))
+        let jobs: [ManagerModel.FollowUp] = Array(engine.boardFollowUps(key: key).filter { !$0.status.isEmpty }.suffix(4).reversed())
+        MoreBlock(title: "Minutes and outcomes", card: false) {
+            if done.isEmpty && jobs.isEmpty { NoteCard(text: "The minutes of each meeting are kept here once its points are decided.") }
+            ForEach(done) { m in
+                Card(padding: 12, radius: Theme.Radius.card) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(m.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                            Spacer(minLength: 8)
+                            Text(GameCalendar.dateString(week: m.week)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        }
+                        ForEach(Array(m.minutes.enumerated()), id: \.offset) { (_: Int, line: String) in
+                            Text("· " + line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        }
+                        if m.minutes.isEmpty { Text("Nothing was decided.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                    }
+                }
+            }
+            ForEach(jobs) { f in
+                Text("Follow-up " + (f.status == "done" ? "done" : "lapsed") + ": " + f.text.tidyMoney + (f.note.isEmpty ? "" : " (" + f.note + ")"))
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

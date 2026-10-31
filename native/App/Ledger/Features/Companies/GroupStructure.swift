@@ -22,8 +22,10 @@ struct GroupAttention: View {
     var items: [Item] {
         var out: [Item] = []
         for key in engine.boardKeys where engine.boardIsActive(key: key) {
-            let n = engine.boardMeetings(key: key).filter { $0.status.isEmpty }.count
-            if n > 0 { out.append(Item(id: "b" + key, title: "Board of \(engine.boardName(key: key)): \(n) to decide", sub: "Approve or decline at the board.", tint: Theme.caution, target: .board(key))) }
+            let n = engine.boardOpenDecisions(key: key)
+            if n > 0 { out.append(Item(id: "b" + key, title: "Board of \(engine.boardName(key: key)): \(n) to decide", sub: "Proposals and concerns on the agenda.", tint: Theme.caution, target: .board(key))) }
+            let jobs = engine.boardFollowUps(key: key).filter { $0.status.isEmpty }.count
+            if jobs > 0 { out.append(Item(id: "j" + key, title: "Board of \(engine.boardName(key: key)): \(jobs) follow-up \(jobs == 1 ? "job" : "jobs")", sub: "Jobs handed to you after a decision.", tint: Theme.caution, target: .board(key))) }
         }
         let chains = engine.chainSummaries
         for c in engine.state.companies where c.status.isLive && engine.isFranchisor(companyID: c.id) {

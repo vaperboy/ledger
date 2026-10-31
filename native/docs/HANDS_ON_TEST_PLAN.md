@@ -370,6 +370,28 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | S1.18 | Swipe back from the left edge on a screen reached by a link from another tab | Same as the Back button: returns to where the link came from | | NOT TESTED | | |
 | S1.19 | Home, Team, Group, Projects, Phone, Inbox and Bank with little content | Nothing bounces or drifts up and down; nothing jumps in height on load or tab switch | | NOT TESTED | | |
 
+## S6. Group, Board and management authority (stage 6; written with the change, never run by a person)
+Setup for the board rows: a limited company with a co-owner (sell a small share to an investor) or a registered chain, then Group > Board. A board only meets when a seat brings a real proposal or concern.
+| ID | Steps | Expected | Actual | Result | Sev | Notes |
+|---|---|---|---|---|---|---|
+| S6.1 | Group tab, look at the tab row and the More menu | Overview, Structure, Board, Deals, More. More lists only Stand-alone companies, Group office, Executive posts, Dividends and group tax, Rival groups, Giving back (no Holdings, Chains, Franchises or Boards entries) | | NOT TESTED | | |
+| S6.2 | Group > Structure | A four-part switch: Ownership, Chains, Holdings, Authority. Chains shows chains and franchises together; Holdings the holding companies; nothing scrolls sideways | | NOT TESTED | | |
+| S6.3 | Group > Overview > the Structure tiles (Chains, Franchises, Holdings) | Each opens the matching part of Structure, not a More page | | NOT TESTED | | |
+| S6.4 | Group > Structure > Authority with no manager appointed | Summary says 0 managers; every company reads "You run it yourself"; no row says the owner manages staff one by one | | NOT TESTED | | |
+| S6.5 | Appoint a store manager (and, if you have a chain, a regional manager or CEO), then Authority | The company row shows the manager, their title and authority ("asks you first", "decides within your limits", "decides on their own") and "Reports to ..." up to you. Change the authority in the company's Team and the row follows | | NOT TESTED | | |
+| S6.6 | Authority > tap a company row; Authority > Group office | Row opens the company's Team. Group office opens the optional office page (it is not created for you) | | NOT TESTED | | |
+| S6.7 | Group > Board with a board that has nothing to decide | "Nothing waits for a board. A board meets when a seat brings a proposal or a concern." No red number on the Board tab; no Needs-you row | | NOT TESTED | | |
+| S6.8 | Board page of a board with no proposal or concern | No "Hold a board meeting" button; the line "No meeting is due" is shown. No Inbox message "0 points for you" ever appears | | NOT TESTED | | |
+| S6.9 | Make a company lose money three months in a row with a CFO or director seated, then wait for the monthly board (regular mode) or open the board page | A button "Hold a board meeting · 1 point" appears; holding it creates a meeting with a title, date, who was present, and the point with "If you approve", "Cost now" and "Risk". The Inbox gets one message that names the first point | | NOT TESTED | | |
+| S6.10 | Approve a point (for example "Put it up for sale") | A confirmation shows the effect, the cost and the risk; confirming does it (the company is listed with a broker), the result sentence is shown, the meeting closes, the red number drops and the minutes list shows "Approved: ... Result: ..." | | NOT TESTED | | |
+| S6.11 | Decline a point | The point goes to the minutes as Declined; the same point is not raised again for about 12 weeks | | NOT TESTED | | |
+| S6.12 | Approve a point the board cannot carry out (for example paperwork when the company lacks the cash for the fees) | "Not done: ..." with the reason; the point stays on the agenda | | NOT TESTED | | |
+| S6.13 | Approve "Hire a manager" for a company with staff and no manager | A candidate offer arrives in the Inbox with the pay already agreed; a follow-up job appears on the board page and closes by itself when the company has a manager | | NOT TESTED | | |
+| S6.14 | Leave a meeting undecided for more than 4 weeks | The meeting closes as lapsed, its points are listed as "No decision" in the minutes and the Board badge and Group Needs-you rows drop | | NOT TESTED | | |
+| S6.15 | Play two years with three boards | The Board badge never keeps growing; the Needs-you list does not fill with old board rows | | NOT TESTED | | |
+| S6.16 | Open a save made before this change that has old board meetings | Old empty meetings do not show as "to decide"; the badge starts at 0 | | NOT TESTED | | |
+| S6.17 | Group > Board with several boards | One card per board with points waiting (at most three, then a line for the rest); every card opens that board | | NOT TESTED | | |
+
 ## Results summary (update after each session)
 | Section | Tests | Pass | Fail | Blocked | Not tested |
 |---|---:|---:|---:|---:|---:|

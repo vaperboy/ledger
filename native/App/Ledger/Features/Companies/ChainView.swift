@@ -132,7 +132,7 @@ struct ChainAttention: View {
         let losing = summary.stores.filter { $0.status == .open && $0.profit < 0 }
         let unmanaged = summary.stores.filter { $0.status == .open && $0.managerName == nil }
         let broke = summary.stores.compactMap { engine.state.company($0.id) }.filter { $0.status == .open && $0.cash < 0 }
-        let boardItems = engine.boardMeetings(key: "ch:\(summary.id)").filter { $0.status.isEmpty }.count
+        let boardItems = engine.boardOpenDecisions(key: "ch:\(summary.id)")
         let applicants = summary.franchisingCompanyID.map { engine.franchiseApplicants(companyID: $0).count } ?? 0
         let total: Int = broke.count + (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
         if total > 0 {

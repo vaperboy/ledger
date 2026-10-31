@@ -9,7 +9,8 @@ import Simulation
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
     @State private var tab: GroupTab = .overview
-    @State private var more: GroupMorePage = .holdings
+    @State private var more: GroupMorePage = .office
+    @State private var part: GroupStructurePart = .ownership
     @State private var showGiving = false
     @State private var showNewHolding = false
 
@@ -37,21 +38,21 @@ struct GroupView: View {
             .navigationDestination(isPresented: $showGiving) { GivingView() }
             .navigationDestination(isPresented: $showNewHolding) { NewHoldingView() }
             // Choosing Group again: back to the Overview.
-            .onChange(of: store.rootToken(.group)) { _, _ in tab = .overview; showGiving = false; showNewHolding = false }
+            .onChange(of: store.rootToken(.group)) { _, _ in tab = .overview; part = .ownership; showGiving = false; showNewHolding = false }
         }
     }
 
     /// Board decisions waiting, as a red count on the Board tab.
     private var badges: [GroupTab: Int] {
         guard let e = store.engine else { return [:] }
-        let n = e.boardKeys.filter { e.boardIsActive(key: $0) }.reduce(0) { $0 + e.boardMeetings(key: $1).filter { $0.status.isEmpty }.count }
+        let n = e.boardDecisionsWaiting
         return n > 0 ? [.board: n] : [:]
     }
 
     private var subtitle: String {
         switch tab {
         case .overview: return "Holdings · Chains · Franchises · Board"
-        case .structure: return "Who owns what"
+        case .structure: return part.sub
         case .board: return "Board, owners and decisions"
         case .deals: return "Franchise offers, acquisitions and group deals"
         case .more: return more.sub
@@ -72,12 +73,23 @@ struct GroupView: View {
         }
     }
 
+    /// Where a Group link lands. Holdings, chains and franchises are parts of Structure and boards are the Board tab; only the group's
+    /// own services (office, posts, dividends and tax, rivals, giving) live under More.
+    private func open(_ page: GroupMorePage) {
+        switch page {
+        case .holdings: part = .holdings; tab = .structure
+        case .chains, .franchises: part = .chains; tab = .structure
+        case .boards: tab = .board
+        default: more = page; tab = .more
+        }
+    }
+
     @ViewBuilder private func content(_ e: GameEngine) -> some View {
         switch tab {
-        case .overview: GroupOverviewTab(engine: e, goStructure: { tab = .structure }, openMore: { more = $0; tab = .more })
-        case .structure: GroupStructureTab(engine: e) { more = $0; tab = .more }
-        case .board: GroupBoardTab(engine: e) { more = $0; tab = .more }
-        case .deals: GroupDealsTab(engine: e) { more = $0; tab = .more }
+        case .overview: GroupOverviewTab(engine: e, goStructure: { part = .ownership; tab = .structure }, openMore: open)
+        case .structure: GroupStructureTab(engine: e, part: $part, openMore: open)
+        case .board: GroupBoardTab(engine: e, openMore: open)
+        case .deals: GroupDealsTab(engine: e, openMore: open)
         case .more: GroupMoreTab(engine: e, page: more, pick: { more = $0 }, showGiving: { showGiving = true })
         }
     }
