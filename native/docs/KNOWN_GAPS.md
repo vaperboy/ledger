@@ -242,3 +242,15 @@ untouched next to the converted save.
 * The Team search now reads `GameEngine.teamPeopleSearch(query:)`, which also finds chain people, regional managers, the group managing director and group office staff (employer shown; a hit with no company is not tappable).
 
 - Overdraft interest follows the policy rate plus a per-country margin (`economy.overdraftMargin`, a game approximation of bank spreads; see TAX_SOURCES.md, consistency pass). A real overdraft rate also depends on the bank and the customer, which is not modelled.
+
+## Stage 2 engine (financial systems), open items
+* **Customer invoices cannot be drafted or marked paid by hand.** The simulation raises invoices already sent and the customer pays by itself; Draft exists in `InvoiceStatus` but is never produced. Inventing an invoice or a receipt would be a made-up record. Paid supplier invoices are not kept as records (only open ones are listed; the payment is in the ledger).
+* **The ledger is per week.** Movements of one week with the same category, label and reference are one row with a count; dates show the week and the last day of the movement. Only the last 104 weeks are kept; older movements exist only in the old capped list. Monthly supplier bills are paid together (suppliers, insurance, leasing, fees), so they are one "Supplier and monthly bills" row.
+* **Hours actually worked are not recorded** by the simulation: timesheets show contracted hours only (`actualHoursRecorded` is nil).
+* **Payroll deductions** from employees' pay are not part of the company's payroll books; payslips show the company's cost (gross, employer contributions, insurance, paid-leave cover).
+* **Payroll run cash vs lines.** The cash paid is what payroll accrued for the period (commission and bonus included); the payslip lines are built from contracts, so the two can differ a little.
+* **Loan arrangement fee** is still booked in the interest category (financial.md L5); no separate financing-cost category was added.
+* **Chain stores cannot convert** on their own (they follow the chain's form). Franchise units were not probed.
+* **Payroll fee modes are retired**: the old stored choice is kept in the save but ignored; the per-run payroll service fee is 0. An appointed accountant's monthly fee is unchanged. A limited company still gets an accountant at creation because its legal form requires the accountant agreement (`Documents.needed`); a sole trader gets none.
+* The commission and bonus employer charge (`CompanyCosts`) still uses the country's median-wage factor; wages, hiring previews, profiles, Team metrics, forecasts and payroll runs use `EmployerCost`. Assistant and regional-head pay (`ManagerPeople`, `ManagerTeam`) and notice pay (`Dismissal`) use the per-wage on-cost rate directly, which is the same rate, without leave cover.
+* The conversion fee is now the country's `conversionFee` (data), not the registration fee; the share capital is the country minimum.

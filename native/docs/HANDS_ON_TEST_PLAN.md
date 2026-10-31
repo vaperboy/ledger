@@ -347,28 +347,27 @@ Tip: write money amounts exactly (e.g. cash before £251,000 / after £230,500) 
 | T9.E7 | Start a franchised unit and pick a place (engine API `franchiseStartPlan`; the picker UI is a separate task) | Plan shows places to rent or buy plus the entry fee; the unit opens in the chosen place, bought or rented | | NOT TESTED | | |
 
 
-## S1. Navigation and the company screen (stage 1; written with the change, never run by a person)
+## S1. Navigation and the Company hub (stage 1; written with the change, never run by a person)
 | ID | Steps | Expected | Actual | Result | Sev | Notes |
 |---|---|---|---|---|---|---|
-| S1.1 | Home > open a company | Lands on its Overview (cash large first, then profit, margin, what needs you, who runs it). A fixed bar under the title: Overview, Team, Manage, Sales, Stats. Nothing scrolls sideways; Overview has no inner tabs | | NOT TESTED | | |
-| S1.2 | Tap each of the five sections, then Back once | Sections switch in place; ONE Back leaves the company (to Home) | | NOT TESTED | | |
-| S1.3 | Manage | Premises and Where you work are two separate rows; Equipment and fleet, Upkeep, Suppliers, Insurance and advisers, Your time are rows here. Price, How you sell and Marketing are NOT here. Chain/Plant/Fish/Club rows appear for companies that have them | | NOT TESTED | | |
-| S1.4 | Sales | Price, How you sell, Marketing, Customers, Market rows (price sheet still works; Customers and Market open as pushed pages, Back returns to Sales); the company's Projects block is last | | NOT TESTED | | |
-| S1.5 | Stats | Parts Finances / Performance / Insights. Finances: summary with Statements, Ownership, Settings pages as before. No Bank buttons or links anywhere in Stats | | NOT TESTED | | |
-| S1.6 | Sales > Projects block on a cafe and on a builder | Cafe: 'No projects' card. Builder: running jobs with stage and progress, then the order book | | NOT TESTED | | |
-| S1.7 | Overview on a normal phone | Fits one screen where it can; content that fits does not rubber-band or drift when dragged | | NOT TESTED | | |
+| S1.1 | Home > open a company | A hub: company name, cash large, profit and margin, then six rows in this order: Overview, People, Operations, Sales & Market, Stats & Information, Projects. No tab row, nothing scrolls sideways | | NOT TESTED | | |
+| S1.2 | Tap each of the six rows, then Back each time | Each opens its own screen with the round Back button; one Back returns to the hub; one more to Home | | NOT TESTED | | |
+| S1.3 | Operations | Premises and Where you work are two separate rows; Equipment and fleet, Upkeep, Suppliers, Insurance and advisers, Your time are rows here. Price, How you sell and Marketing are NOT here | | NOT TESTED | | |
+| S1.4 | Sales & Market | Price, How you sell, Marketing, Customers, Market rows; the price sheet still changes the price; Customers and Market open and Back returns to Sales & Market | | NOT TESTED | | |
+| S1.5 | Stats & Information | Finance summary with Statements, Ownership, Settings pages as before; Open in Bank still opens that company's account | | NOT TESTED | | |
+| S1.6 | Projects, on a café and on a builder (project business) | Café: an honest "No projects" card. Builder: running jobs with stage and progress, then the order book | | NOT TESTED | | |
+| S1.7 | Overview (phone) | Three parts: Overview / Performance / Insights. Overview shows Cash large first, then profit, margin and the other figures, what needs you, who runs it; it fits one screen on a normal phone | | NOT TESTED | | |
 | S1.8 | Tap the tab you are on (Home with a company open; Phone with an app open; Team, Group, Projects on a sub-tab) | The tab returns to its first page, scrolled to the top, sub-tab reset | | NOT TESTED | | |
 | S1.9 | Home > Bank shortcut, then the round Back in the Bank app | Back returns to Home; then open Phone: its app grid shows, not the Bank | | NOT TESTED | | |
-| S1.10 | Home > Hire shortcut (a company with an open post), then Back | The company opens on its Team section on the Team tab; Back returns to Home; the Team tab shows its own first page | | NOT TESTED | | |
-| S1.11 | Inbox > a message with a company link, then Back | Opens the company; one Back returns to the Inbox list | | NOT TESTED | | |
-| S1.12 | Overview > Who runs it | Switches to Team in place; nothing is stacked; one Back leaves the company | | NOT TESTED | | |
-| S1.13 | In a company, use any link that points at the company you are already in | No second copy: the screen switches section; one Back leaves it | | NOT TESTED | | |
-| S1.14 | A company still being set up | Bar shows Overview and Stats; Overview starts with the 'Before opening' checklist | | NOT TESTED | | |
-| S1.15 | A holding company; a football club | Holding: Team shows its management page. Club: Manage shows the club page. No staff list or price rows | | NOT TESTED | | |
-| S1.16 | A company with a Chain, Plant, Fish or Book page | Reachable from 'More for this business' on Manage (Chain, Plant, Fish, Club) or Stats > Finances (Book) | | NOT TESTED | | |
-| S1.17 | Any row of tabs or chips (Inbox, Reports, hiring roles, Team people filter, Luxury categories, World regions) | Never scrolls sideways: a fixed row, wrapped chips, or the first three plus a More menu | | NOT TESTED | | |
-| S1.18 | Swipe back from the left edge on a screen reached by a link from another tab | Same as the Back button: returns to where the link came from | | NOT TESTED | | |
-| S1.19 | Home, Team, Group, Projects, Phone, Inbox and Bank with little content | Nothing bounces or drifts up and down; nothing jumps in height on load or tab switch | | NOT TESTED | | |
+| S1.10 | Home > Hire shortcut (a company with an open post), then Back | The company's People screen opens on the Team tab; Back returns to Home; Team tab shows its own first page, no company left on it | | NOT TESTED | | |
+| S1.11 | Inbox > a message with a company link, then Back | Opens the company screen; one Back returns to the Inbox list | | NOT TESTED | | |
+| S1.12 | Overview > Who runs it (People opens), Back, Back | One Back per step: People, then Overview, then the hub. No screen opens twice | | NOT TESTED | | |
+| S1.13 | In a company, use any link that points at the company you are already in | No second copy: one Back always reverses one step | | NOT TESTED | | |
+| S1.14 | A company still being set up | Hub shows Overview, Stats & Information, Projects; Overview starts with the "Before opening" checklist | | NOT TESTED | | |
+| S1.15 | A holding company; a football club | Holding: People row opens its management page. Club: Operations row opens the club page. No staff list or price rows | | NOT TESTED | | |
+| S1.16 | A company with a Chain, Plant, Fish or Book page | Reachable from a "More for this business" card on Operations (Chain, Plant, Fish, Club) or Stats & Information (Book) | | NOT TESTED | | |
+| S1.17 | Any row of tabs (Inbox, Reports, hiring roles, company filter) | Never scrolls sideways: a fixed row, or the first three plus a More menu when the titles do not fit | | NOT TESTED | | |
+| S1.18 | Swipe back from the left edge on a screen you reached by a link from another tab | Same as the Back button: returns to where the link came from | | NOT TESTED | | |
 
 ## S6. Group, Board and management authority (stage 6; written with the change, never run by a person)
 Setup for the board rows: a limited company with a co-owner (sell a small share to an investor) or a registered chain, then Group > Board. A board only meets when a seat brings a real proposal or concern.
@@ -404,3 +403,25 @@ Setup for the board rows: a limited company with a co-owner (sell a small share 
 | 7 Save/load | 7 | 0 | 0 | 0 | 7 |
 | 8 Errors | 9 | 0 | 0 | 0 | 9 |
 | **Total** | **60** | **0** | **0** | **0** | **60** |
+
+## Stage 2 engine (financial systems): hands-on rows (all NOT TESTED; the screens that call these read models are built in a later stage)
+| ID | Area | Steps | Expected | Status |
+|---|---|---|---|---|
+| S2-01 | Conversion review | Sole trader with staff and a loan: open the conversion review (`conversionPlan`) | Shows fee, share capital, who pays (personal / company balances, shortfall), ownership, loans with guarantee, before/after balances; cancelling changes nothing | NOT TESTED |
+| S2-02 | Conversion, personal payer | Convert, pay the fee personally | Personal account falls by fee + capital, company rises by capital, accountant appointed, name takes the form ending, loans stay guaranteed | NOT TESTED |
+| S2-03 | Conversion, company payer | Convert, fee from the company account | Company pays only the fee (as a cost); the owner still pays the capital personally | NOT TESTED |
+| S2-04 | Conversion, insufficient funds | Empty personal account and savings, try to convert | Refused, nothing moves; savings count as available money when present | NOT TESTED |
+| S2-05 | Tax year split | Convert mid-year with profit so far; play to year end | Profit before the conversion is in the personal return, the company's own tax year starts at conversion | NOT TESTED |
+| S2-06 | Guarantee talk | After conversion and 3 months of accounts, offer the bank a higher margin to release a guarantee | Bank accepts, counters, refuses or ends the talk; accepted: guarantee gone, margin higher | NOT TESTED |
+| S2-07 | Loan two stages | Ask for a loan assessment, pick an amount below the maximum, a term, accept, choose savings as the account | Money lands in the chosen account less the fee; loan record shows number, rate, fee, account | NOT TESTED |
+| S2-08 | Early instalment | Pay this month's instalment now, play to month end | Nothing is taken again for that month; Bills lists the next month's | NOT TESTED |
+| S2-09 | Payoff | Close a loan mid-month | Balance plus interest accrued since the last month end is paid; ledger shows two rows | NOT TESTED |
+| S2-10 | Part repayment | Repay 80% early | The instalment shown is the one collected at month end | NOT TESTED |
+| S2-11 | Transactions | Open the company transaction ledger after 3 months | More than 40 rows; sales, supplier purchases, payroll, loans, tax; filters, search, range, detail, note | NOT TESTED |
+| S2-12 | Access | Add the accountant as a named user, remove again; check a second company | Nobody has access by default; adding grants only that company and level | NOT TESTED |
+| S2-13 | Payroll runs | Play two pay days | One run per period, payslip per person, a repeated period never creates a second run | NOT TESTED |
+| S2-14 | Payroll responsibility | Company with no accountant/manager, then with an accountant | The player approves; then the accountant runs it with no extra fee; no accountant appears by itself for a sole trader | NOT TESTED |
+| S2-15 | Employer cost | Hire part-time, seasonal and full-time; compare preview, profile and the payroll run | Same total monthly and annual employer cost everywhere, paid-leave cover included | NOT TESTED |
+| S2-16 | Documents | Open company documents | Only real records: legal form history, licences, tax settlements, employment, supplier, customer, loan contracts | NOT TESTED |
+| S2-17 | Net worth | Read the net worth breakdown with a company in a holding | Liquid money apart from the estimated company equity; held company counted once | NOT TESTED |
+| S2-18 | Overview figures | Read the company overview figures | Cash first, expense categories add up to the profit calculation, reserves are display only | NOT TESTED |
