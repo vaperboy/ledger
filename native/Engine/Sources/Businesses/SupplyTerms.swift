@@ -389,9 +389,11 @@ public enum SupplyTerms {
     static func payNow(_ s: inout GameState, _ j: JSONValue, buyerIndex bi: Int) {
         let amount = j["a"].double, bid = j["b"].int, pid = j["p"].int
         let supplierLive = pid != 0 && (s.company(pid)?.status.isLive ?? false)
+        AccountingLedger.note(category: "cogs", label: "Supplier invoice: \(j["n"].string)", ref: j["v"].string.isEmpty ? "" : "supplier:\(j["v"].string)")
         Ledger.moveRaw(&s, .company(bid), -amount)
         s.companies[bi].addTransaction(week: s.week, amount: -jsRound(amount), label: "Invoice: \(j["n"].string)")
         if pid != 0, supplierLive, let si = s.companyIndex(pid) {
+            AccountingLedger.note(category: "rev", label: "Invoice paid by \(s.companies[bi].name)")
             Ledger.moveRaw(&s, .company(pid), amount)
             s.companies[si].addTransaction(week: s.week, amount: jsRound(amount), label: "Paid by \(s.companies[bi].name)")
         }

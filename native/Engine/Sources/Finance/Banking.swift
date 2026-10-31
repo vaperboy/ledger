@@ -276,7 +276,7 @@ public enum Banking {
     /// Money for one instalment leaves the right account, the balance falls by the principal, the lender (own bank) is paid.
     private static func settle(_ s: inout GameState, loan l: Loan, inst: Instalment, context: FinanceContext) {
         if l.companyID != 0, s.companyIndex(l.companyID) != nil {
-            Payments.companyPaysLoanInstalment(&s, companyID: l.companyID, interest: inst.interest, principal: inst.principal, loanName: l.name, context: context)
+            Payments.companyPaysLoanInstalment(&s, companyID: l.companyID, interest: inst.interest, principal: inst.principal, loanName: l.name, loanID: l.id, context: context)
         } else {
             Payments.playerPaysLoanInstalment(&s, interest: inst.interest, principal: inst.principal, loanName: l.name)
         }

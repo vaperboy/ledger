@@ -89,6 +89,7 @@ public enum MonthEnd {
         let due = min(co.payables["tax"] ?? 0, co.taxPrevYear)
         if due <= 0 { return 0 }
         let paid = min(due, left)
+        AccountingLedger.note(category: "tax", label: "Corporate tax")
         Ledger.moveRaw(&s, .company(co.id), -paid)
         co = s.companies[i]
         co.payables["tax"] = max(0, (co.payables["tax"] ?? 0) - paid)
@@ -161,6 +162,7 @@ public enum MonthEnd {
             if v > 0 {
                 let pay = min(v, vatRoom)
                 if pay > 0 {
+                    AccountingLedger.note(category: "tax", label: "VAT settlement")
                     Ledger.moveRaw(&s, .company(co.id), -pay)
                     s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement")
                     s.stats.taxPaid += pay
@@ -193,6 +195,7 @@ public enum MonthEnd {
             s.companies[i].vatBalance += interest
             let pay = min(over, max(0, s.companies[i].vatBalance), vatRoom)
             if pay > 0 {
+                AccountingLedger.note(category: "tax", label: "VAT settlement (overdue)")
                 Ledger.moveRaw(&s, .company(co.id), -pay)
                 s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement (overdue)")
                 s.stats.taxPaid += pay

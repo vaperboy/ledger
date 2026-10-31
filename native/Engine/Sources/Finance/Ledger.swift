@@ -30,9 +30,9 @@ public enum Ledger {
     public static func moveRaw(_ s: inout GameState, _ holder: CashHolder, _ amount: Double) {
         if let o = observer { o(holder, amount); cause = nil }
         switch holder {
-        case .me: s.cash += amount
+        case .me: s.cash += amount; AccountingLedger.pending = nil
         case .company(let id):
-            if let i = s.companyIndex(id) { s.companies[i].cash += amount }
+            if let i = s.companyIndex(id) { s.companies[i].cash += amount; AccountingLedger.record(&s, companyIndex: i, amount: amount) }
         }
         s.cashFlow[holder.flowKey, default: 0] += amount
     }
@@ -66,7 +66,9 @@ public enum Ledger {
         case .company(let id):
             guard let i = s.companyIndex(id) else { return }
             let d = value - s.companies[i].cash
+            AccountingLedger.note(category: "adjust", label: "Balance adjustment")
             s.companies[i].cash = value
+            AccountingLedger.record(&s, companyIndex: i, amount: d)
             s.cashFlow[holder.flowKey, default: 0] += d
         }
     }

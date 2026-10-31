@@ -251,6 +251,7 @@ public enum Payday {
         let spare = max(0, co.cash + room)
         let p = min(due, spare)
         if p > 0 {
+            AccountingLedger.note(category: "wages", label: "Payroll", ref: "payroll:\(mi)")
             Ledger.moveRaw(&s, .company(co.id), -p)
             co = s.companies[i]
             co.payables["wages"] = due - p
@@ -282,6 +283,7 @@ public enum Payday {
         }
         co.set("pr29", cfg.json)
         s.companies[i] = co
+        PayrollRuns.record(&s, companyIndex: i, payMonth: payMonth, paid: jsRound(p), short: jsRound(short), how: how.rawValue, today: t, data: data)
         return PayrollResult(paid: jsRound(p), short: jsRound(short), slips: payslips(co), fee: jsRound(fee))
     }
 
@@ -298,6 +300,7 @@ public enum Payday {
         guard cfg.lateSince != nil, cfg.lateWhy == "cash" else { return }
         let p = min(cfg.lateOwed, co.payables["wages"] ?? 0, max(0, co.cash))
         if p < 1 { return }
+        AccountingLedger.note(category: "wages", label: "Back pay to staff")
         Ledger.moveRaw(&s, .company(co.id), -p)
         co = s.companies[i]
         co.payables["wages"] = (co.payables["wages"] ?? 0) - p
@@ -344,6 +347,7 @@ public enum Payday {
                 // Keep what the first bill already changed (rent paid): re-reading the company without writing it back first
                 // would forget it, the rent would stay "owed" and be paid again, in full and growing, every month.
                 s.companies[i] = co
+                AccountingLedger.note(category: k == "rent" ? "rent" : "cogs", label: k == "rent" ? "Rent" : "Supplier and monthly bills")
                 Ledger.moveRaw(&s, .company(co.id), -p)
                 co = s.companies[i]
                 let used = !co.value("f30").object.isEmpty
@@ -402,6 +406,7 @@ public enum Payday {
             let due = co.payables[k] ?? 0
             if due <= 0 { continue }
             s.companies[i] = co
+            AccountingLedger.note(category: k == "rent" ? "rent" : "cogs", label: k == "rent" ? "Rent" : "Supplier and monthly bills")
             Ledger.moveRaw(&s, .company(co.id), -due)
             co = s.companies[i]
             let used = !co.value("f30").object.isEmpty
