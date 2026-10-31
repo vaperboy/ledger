@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Investments
 
 // The Bank app's loan flow (Oct 2026): a quote with fee, disbursal and schedule, and an application with a documents form the bank checks.
 // The loan itself is the existing `Banking.take`; this file adds the arrangement fee, the paperwork check and the figures a screen shows.
@@ -82,7 +83,7 @@ public extension GameEngine {
     }
 
     /// The last day of the month in which game week `week` (or the next month-end week after it) falls.
-    private func monthEndDate(fromWeek week: Int) -> (week: Int, day: Int) {
+    static func monthEndDate(fromWeek week: Int) -> (week: Int, day: Int) {
         var w = week
         while !GameCalendar.isMonthEnd(week: w) { w += 1 }
         let m = GameCalendar.date(week: w).month
@@ -101,10 +102,10 @@ public extension GameEngine {
         let minimum = cur.scaledPrice(5000)
         var rows: [LoanScheduleRow] = []
         var balance = max(0, amount)
-        var cursor = monthEndDate(fromWeek: state.week)
+        var cursor = Self.monthEndDate(fromWeek: state.week)
         var firstText = ""
         for n in 1...term {
-            if n > 1 { cursor = monthEndDate(fromWeek: cursor.week + 1) }
+            if n > 1 { cursor = Self.monthEndDate(fromWeek: cursor.week + 1) }
             let text = GameCalendar.dateString(week: cursor.week, dayOffset: cursor.day)
             if n == 1 { firstText = text }
             let interest = balance * q.yearlyRate / 12
@@ -140,7 +141,8 @@ public extension GameEngine {
 
     /// Apply: the bank checks the documents, then the amount, and pays the loan out less the fee. Nothing moves when it refuses.
     @discardableResult
-    mutating func applyForLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?, documents: LoanDocuments, agreed: Bool) -> LoanApplicationOutcome {
+    mutating func applyForLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?, documents: LoanDocuments, agreed: Bool, payInto: LoanPayout = .current) -> LoanApplicationOutcome {
+        if payInto == .savings && companyID != nil { return .refused("A company loan is paid into the company's account.") }
         guard kind == "cons" || kind == "biz" else { return .refused("The bank does not offer that loan here.") }
         guard agreed else { return .refused("The agreement has to be accepted first.") }
         let squash = { (t: String) in t.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ") }
@@ -166,10 +168,18 @@ public extension GameEngine {
         let fee = quote.fee
         if fee > 0 {
             update { s, _, _ in
-                if let c = companyID { Payments.companyPays(&s, companyID: c, amount: fee, category: "int", label: "Loan arrangement fee") }
+                if let c = companyID { Payments.companyPays(&s, companyID: c, amount: fee, category: "fin", label: "Loan arrangement fee") }
                 else { Payments.playerPays(&s, fee, label: "Loan arrangement fee") }
             }
         }
-        return .approved(loanID: loan.id, fee: fee, disbursed: amount - fee)
+        let disbursed = amount - fee
+        update { s, _, _ in
+            if payInto == .savings, disbursed > 0 { _ = Brokerage.moveToSavings(&s, disbursed) }
+            if let li = s.loans.firstIndex(where: { $0.id == loan.id }) {
+                s.loans[li].set("app", .object(["w": .number(Double(s.week)), "fee": .number(fee), "net": .number(disbursed), "into": .string(payInto == .savings ? "savings" : (companyID == nil ? "current" : "company")),
+                                                "term": .number(Double(quote.termMonths)), "rate": .number(quote.yearlyRate), "name": .string(documents.fullName)]))
+            }
+        }
+        return .approved(loanID: loan.id, fee: fee, disbursed: disbursed)
     }
 }

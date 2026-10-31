@@ -47,9 +47,10 @@ public enum CompanyCosts {
         let w = World(state: s, data: data)
         let country = w.country(co)
         let commissionPay = co.status == .closed ? 0 : commission(&co, bd, w)
-        let cost = (Payroll.weeklyCost(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * country.employerCostFactor) * f
+        let factor = Payroll.averageFactor(co, country: country)   // the real people's on-cost, not the median-wage factor
+        let cost = (Payroll.weeklyCost(co, country: country, sickWeek: s.week, capScale: w.inflationIndex) + commissionPay * factor) * f
         // Bonuses judged at the month or year end (WorkerBonus) are paid through payroll: the same employer charges and the same payable as wages.
-        let bonus = co.num("bnPend") * country.employerCostFactor
+        let bonus = co.num("bnPend") * factor
         if bonus != 0 { co.raw.removeValue(forKey: "bnPend") }
         co.addPayable("wages", cost + bonus)
         var b = co.books; b.add("wages", cost + bonus); co.books = b

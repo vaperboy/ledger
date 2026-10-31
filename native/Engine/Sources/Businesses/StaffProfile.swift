@@ -223,7 +223,7 @@ public enum StaffProfile {
         let t = data.catalog.tables
         let k = World(state: s, data: data).country(co)
         let pick = co.staff.sorted { StaffModel.skill($0, person: s.people[$0.id], salesRoles: t.salesRoles) < StaffModel.skill($1, person: s.people[$1.id], salesRoles: t.salesRoles) }.prefix(max(0, n))
-        let saves = pick.reduce(0) { $0 + $1.monthlyWage * (1 + k.employerOnCost(monthlyWage: $1.monthlyWage)) }
+        let saves = pick.reduce(0) { $0 + EmployerCost.monthly($1, country: k).totalMonthly }
         let sev = Dismissal.quote(s, companyID: companyID, staffIDs: pick.map { $0.id }, reason: .redundancy, data: data)
         return (pick.map { $0.id }.compactMap { s.people[$0]?.name }, saves, sev)
     }

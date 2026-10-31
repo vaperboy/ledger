@@ -81,10 +81,11 @@ public extension GameEngine {
         return Array(out.suffix(max(1, months)))
     }
 
-    /// What `convertToLimited` takes from your own account: the registration fee and the minimum share capital (which goes into the company).
+    /// What `convertToLimited` costs: the country's conversion fee (paid from the account you choose) and the minimum share capital (paid by you, goes into the company).
+    /// See `conversionPlan` for the whole review.
     func convertToLimitedCost(companyID: Int) -> (registrationFee: Double, shareCapital: Double)? {
         guard let co = state.company(companyID), co.form != .limited, let country = data.countries[co.countryCode] else { return nil }
-        return (country.registrationFee, country.shareCapitalMinimum)
+        return (CompanyConversion.conversionFee(country: country), country.shareCapitalMinimum)
     }
 
     /// The monthly instalment `takeLoan` would set for a business loan of this amount and term (same rate and annuity as the bank uses).

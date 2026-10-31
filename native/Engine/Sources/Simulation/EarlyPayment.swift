@@ -56,6 +56,7 @@ public extension GameEngine {
                 guard v > 1 else { result = .refused("No VAT is owed."); return }
                 if short(v) { return }
                 // As the return books it: cash out, "VAT settlement", counted as tax paid, the balance and any arrears cleared.
+                AccountingLedger.note(category: "tax", label: "VAT settlement")
                 Ledger.moveRaw(&s, .company(co.id), -v)
                 s.companies[i].addTransaction(week: s.week, amount: -v, label: "VAT settlement")
                 s.stats.taxPaid += v

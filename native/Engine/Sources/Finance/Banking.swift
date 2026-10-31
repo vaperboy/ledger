@@ -196,22 +196,126 @@ public enum Banking {
         return .ok(loan)
     }
 
-    /// Repay part or all of a loan from the right account. Returns false if there is not enough money.
-    /// Original: `repayLoan`.
-    public static func repay(loanID: Int, amount: Double, state s: inout GameState) -> Bool {
+    // MARK: Instalments and payoff (one rule for what is shown and what is collected)
+
+    /// A loan's instalment as the bank collects it this month: the payment is re-worked over the months left at today's rate, never below the
+    /// interest; the interest is a month's on the balance; the principal is what is left of the payment (nothing during a grace period).
+    public struct Instalment: Equatable, Sendable {
+        public var payment: Double
+        public var interest: Double
+        public var principal: Double
+        public var yearlyRate: Double
+        public var monthsLeft: Int
+        public var total: Double { interest + principal }
+    }
+
+    public static func instalment(of l: Loan, state s: GameState, context: FinanceContext) -> Instalment {
+        let r = rate(of: l, state: s, modifiers: context.lending, countryShift: countryRateShift(companyID: l.companyID, state: s, context: context))
+        var payment = l.monthlyPayment
+        let elapsedMonths = ((Double(s.week - l.startWeek)) / 4.33).rounded(.down)
+        let remaining = max(1, Double(l.termMonths == 0 ? 120 : l.termMonths) - elapsedMonths)
+        if l.monthlyPayment > 0 && l.kind != "start" {
+            payment = max(Loans.annuity(principal: l.balance, yearlyRate: r, months: remaining), l.balance * r / 12 * 1.02)
+        }
+        let interest = l.balance * r / 12
+        let principal: Double = (l.graceUntilWeek > 0 && s.week < l.graceUntilWeek) ? 0 : min(l.balance, max(0, payment - interest))
+        return Instalment(payment: payment, interest: interest, principal: principal, yearlyRate: r, monthsLeft: Int(remaining))
+    }
+
+    /// The calendar month (a counter) the loan's instalment was last settled for, if it was: by the month-end collection or paid early.
+    public static func paidThroughMonth(_ l: Loan) -> Int? { l.raw["ptm"].map { $0.int } }
+
+    /// This month's instalment is settled (paid early or already collected): nothing more is taken for it.
+    public static func instalmentSettled(_ l: Loan, state s: GameState) -> Bool {
+        guard let p = paidThroughMonth(l) else { return false }
+        return p >= GameCalendar.monthIndex(week: s.week)
+    }
+
+    /// Interest from the last month end to today on the balance, which a full payoff pays on top of the balance (0 when this month's instalment
+    /// is already settled, which includes this month's interest).
+    public static func accruedInterest(of l: Loan, state s: GameState, context: FinanceContext) -> Double {
+        if instalmentSettled(l, state: s) { return 0 }
+        let d = GameCalendar.date(week: s.week, dayOffset: s.day)
+        let dim = GameCalendar.daysFromCivil(year: d.month == 11 ? d.year + 1 : d.year, month: d.month == 11 ? 1 : d.month + 2, day: 1)
+            - GameCalendar.daysFromCivil(year: d.year, month: d.month + 1, day: 1)
+        let fraction = min(1, max(0, Double(d.day) / Double(max(1, dim))))
+        let r = rate(of: l, state: s, modifiers: context.lending, countryShift: countryRateShift(companyID: l.companyID, state: s, context: context))
+        return jsRound(l.balance * r / 12 * fraction)
+    }
+
+    public struct Payoff: Equatable, Sendable {
+        public var balance: Double
+        public var accruedInterest: Double
+        public var total: Double { balance + accruedInterest }
+    }
+    public static func payoff(loanID: Int, state s: GameState, context: FinanceContext) -> Payoff? {
+        guard let l = s.loans.first(where: { $0.id == loanID }) else { return nil }
+        return Payoff(balance: l.balance, accruedInterest: accruedInterest(of: l, state: s, context: context))
+    }
+
+    public enum EarlyInstalment: Equatable, Sendable { case paid(Double), alreadySettled, notEnoughMoney, noLoan }
+
+    /// Pay this month's instalment now: the amount the month-end collection would take (interest and principal), once. The month is marked
+    /// settled, so nothing is taken again on the date. Extra repayment of principal is `repay`.
+    public static func payInstalmentNow(loanID: Int, state s: inout GameState, context: FinanceContext) -> EarlyInstalment {
+        guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return .noLoan }
+        let l = s.loans[li]
+        if instalmentSettled(l, state: s) { return .alreadySettled }
+        let inst = instalment(of: l, state: s, context: context)
+        let amount = jsRound(inst.total)
+        if l.companyID != 0, let ci = s.companyIndex(l.companyID) {
+            if s.companies[ci].cash < amount { return .notEnoughMoney }
+        } else if Payments.liquid(s) < amount { return .notEnoughMoney }
+        if l.companyID == 0 { Payments.transferFromSavings(&s, need: amount) }
+        settle(&s, loan: l, inst: inst, context: context)
+        guard let lj = s.loans.firstIndex(where: { $0.id == loanID }) else { return .paid(amount) }
+        s.loans[lj].set("ptm", .number(Double(GameCalendar.monthIndex(week: s.week))))
+        return .paid(amount)
+    }
+
+    /// Money for one instalment leaves the right account, the balance falls by the principal, the lender (own bank) is paid.
+    private static func settle(_ s: inout GameState, loan l: Loan, inst: Instalment, context: FinanceContext) {
+        if l.companyID != 0, s.companyIndex(l.companyID) != nil {
+            Payments.companyPaysLoanInstalment(&s, companyID: l.companyID, interest: inst.interest, principal: inst.principal, loanName: l.name, loanID: l.id, context: context)
+        } else {
+            Payments.playerPaysLoanInstalment(&s, interest: inst.interest, principal: inst.principal, loanName: l.name)
+        }
+        guard let lj = s.loans.firstIndex(where: { $0.id == l.id }) else { return }
+        s.loans[lj].balance -= inst.principal
+        s.loans[lj].monthlyPayment = inst.payment
+        if s.loans[lj].int("miss") > 0 { cureInstalment(&s, loanID: l.id) }
+        if l.bankCompanyID != 0, let bi = s.companyIndex(l.bankCompanyID), s.companies[bi].status == .open {
+            Payments.companyReceives(&s, companyID: l.bankCompanyID, amount: inst.interest, category: "rev", label: "Interest from group")
+            Ledger.moveRaw(&s, .company(l.bankCompanyID), inst.principal)
+            var fm = s.companies[bi].value("fm")
+            fm["gb"] = .number(max(0, fm["gb"].double - inst.principal))
+            s.companies[bi].set("fm", fm)
+        }
+        if let lk = s.loans.firstIndex(where: { $0.id == l.id }), s.loans[lk].balance < 1 { s.loans.remove(at: lk) }
+    }
+
+    /// Repay part or all of a loan (extra repayment of principal) from the right account. Returns false if there is not enough money.
+    /// A full payoff also pays the interest accrued since the last month end (`accruedInterest`); a part repayment re-works the instalment over the
+    /// months left (`instalment`), so the term holds and the payment shown is the payment collected. Original: `repayLoan`.
+    public static func repay(loanID: Int, amount: Double, state s: inout GameState, context: FinanceContext? = nil) -> Bool {
         guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return false }
         let amt = min(amount, s.loans[li].balance)
         let loan = s.loans[li]
+        let closing = amt >= loan.balance - 0.5
+        let accrued = (closing && context != nil) ? accruedInterest(of: loan, state: s, context: context!) : 0
         if loan.companyID != 0, let ci = s.companyIndex(loan.companyID) {
-            if s.companies[ci].cash < amt { return false }
+            if s.companies[ci].cash < amt + accrued { return false }
             Payments.companyPays(&s, companyID: loan.companyID, amount: amt, category: nil, label: "Loan repaid")
+            if accrued > 0 { Payments.companyPays(&s, companyID: loan.companyID, amount: accrued, category: "int", label: "Loan interest to payoff date") }
         } else {
-            if s.cash + s.savings < amt { return false }
-            Payments.transferFromSavings(&s, need: amt)
+            if s.cash + s.savings < amt + accrued { return false }
+            Payments.transferFromSavings(&s, need: amt + accrued)
             Payments.playerPays(&s, amt, label: "Loan repaid")
+            if accrued > 0 { Payments.playerPays(&s, accrued, label: "Loan interest to payoff date"); s.stats.interestPaid += accrued }
         }
         if loan.bankCompanyID != 0, let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open {
             Ledger.moveRaw(&s, .company(loan.bankCompanyID), amt)
+            if accrued > 0 { Payments.companyReceives(&s, companyID: loan.bankCompanyID, amount: accrued, category: "rev", label: "Interest from group") }
             var fm = s.companies[bi].value("fm")
             fm["gb"] = .number(max(0, fm["gb"].double - amt))
             s.companies[bi].set("fm", fm)
@@ -219,9 +323,8 @@ public enum Banking {
         s.loans[li].balance -= amt
         if s.loans[li].balance < 1 {
             s.loans.remove(at: li)
-        } else {
-            let l = s.loans[li]
-            s.loans[li].monthlyPayment = min(l.monthlyPayment, Loans.annuity(principal: l.balance, yearlyRate: s.economy.policyRate + l.margin, months: 12))
+        } else if let c = context {
+            s.loans[li].monthlyPayment = instalment(of: s.loans[li], state: s, context: c).payment
         }
         refreshCovenant(&s, companyID: loan.companyID)
         return true
@@ -259,20 +362,17 @@ public enum Banking {
 
     /// Collect this month's instalment on every loan. Original: `loansDueMonth`.
     /// Interest and principal come out of the right account on the day; the payment is re-worked each month so
-    /// a loan always finishes on time, and never pays less than the interest.
+    /// a loan always finishes on time, and never pays less than the interest. A loan whose instalment was paid early this month
+    /// is not charged again (`payInstalmentNow`).
     public static func collectMonthlyInstalments(state s: inout GameState, context: FinanceContext) {
+        let month = GameCalendar.monthIndex(week: s.week)
         for loanSnapshot in s.loans {
             guard let li = s.loans.firstIndex(where: { $0.id == loanSnapshot.id }) else { continue }
             var l = s.loans[li]
-            let r = rate(of: l, state: s, modifiers: context.lending, countryShift: countryRateShift(companyID: l.companyID, state: s, context: context))
-            if l.monthlyPayment > 0 && l.kind != "start" {
-                let elapsedMonths = ((Double(s.week - l.startWeek)) / 4.33).rounded(.down)
-                let remaining = max(1, Double(l.termMonths == 0 ? 120 : l.termMonths) - elapsedMonths)
-                l.monthlyPayment = max(Loans.annuity(principal: l.balance, yearlyRate: r, months: remaining), l.balance * r / 12 * 1.02)
-                s.loans[li] = l
-            }
-            let interest = l.balance * r / 12
-            let principal: Double = (l.graceUntilWeek > 0 && s.week < l.graceUntilWeek) ? 0 : min(l.balance, max(0, l.monthlyPayment - interest))
+            if instalmentSettled(l, state: s) { continue }
+            let inst = instalment(of: l, state: s, context: context)
+            if l.monthlyPayment > 0 && l.kind != "start" { l.monthlyPayment = inst.payment; s.loans[li] = l }
+            let interest = inst.interest, principal = inst.principal
             if l.companyID != 0, let ci = s.companyIndex(l.companyID), !s.companies[ci].status.isLive { continue }
             if l.companyID != 0, let ci = s.companyIndex(l.companyID) {
                 // A company that cannot cover the instalment (cash plus overdraft room) misses it: no cash moves, the unpaid interest
@@ -282,23 +382,9 @@ public enum Banking {
                     missInstalment(&s, loanID: l.id, interest: interest, companyIndex: ci, context: context)
                     continue
                 }
-                Payments.companyPaysLoanInstalment(&s, companyID: l.companyID, interest: interest, principal: principal, loanName: l.name, context: context)
-            } else {
-                Payments.playerPaysLoanInstalment(&s, interest: interest, principal: principal, loanName: l.name)
             }
-            guard let lj = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
-            s.loans[lj].balance -= principal
-            if s.loans[lj].int("miss") > 0 { cureInstalment(&s, loanID: l.id) }
-            if l.bankCompanyID != 0, let bi = s.companyIndex(l.bankCompanyID), s.companies[bi].status == .open {
-                Payments.companyReceives(&s, companyID: l.bankCompanyID, amount: interest, category: "rev", label: "Interest from group")
-                Ledger.moveRaw(&s, .company(l.bankCompanyID), principal)
-                var fm = s.companies[bi].value("fm")
-                fm["gb"] = .number(max(0, fm["gb"].double - principal))
-                s.companies[bi].set("fm", fm)
-            }
-            if s.loans[lj].balance < 1 {
-                s.loans.remove(at: lj)
-            }
+            settle(&s, loan: l, inst: inst, context: context)
+            if let lj = s.loans.firstIndex(where: { $0.id == l.id }) { s.loans[lj].set("ptm", .number(Double(month))) }
         }
     }
 

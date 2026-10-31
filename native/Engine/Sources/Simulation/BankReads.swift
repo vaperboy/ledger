@@ -238,7 +238,9 @@ public extension GameEngine {
         guard id == .personal || id.companyID != nil else { return [] }
         return state.loans.filter { $0.companyID == owner && $0.balance > 0 }.map { l in
             let p = loanPayoff(loanID: l.id)
-            return BankLoan(id: l.id, name: l.name, kind: l.kind, balance: l.balance, originalAmount: l.originalAmount, monthlyPayment: l.monthlyPayment,
+            // The instalment shown is the instalment collected (one rule: `Banking.instalment`).
+            let inst = Banking.instalment(of: l, state: state, context: context)
+            return BankLoan(id: l.id, name: l.name, kind: l.kind, balance: l.balance, originalAmount: l.originalAmount, monthlyPayment: l.kind == "start" ? l.monthlyPayment : inst.payment,
                             yearlyRate: p?.yearlyRate ?? Banking.rate(of: l, state: state), monthsLeft: p?.monthsLeft, isGuaranteed: l.isGuaranteed)
         }
     }

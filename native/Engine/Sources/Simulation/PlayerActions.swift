@@ -224,7 +224,7 @@ public extension GameEngine {
 
     mutating func repayLoan(id: Int, amount: Double) -> Bool {
         var ok = false
-        update { s, _, _ in ok = Banking.repay(loanID: id, amount: amount, state: &s) }
+        update { s, _, ctx in ok = Banking.repay(loanID: id, amount: amount, state: &s, context: ctx) }
         return ok
     }
 
@@ -295,7 +295,8 @@ public extension GameEngine {
         return r
     }
 
-    /// Who runs payroll at a company: the owner (approves each month), the accountant, or the manager.
+    /// LEGACY: the player no longer chooses who runs payroll (`Payday.responsibility` derives it: qualified accountant, else suitable manager, else the player).
+    /// The value is only remembered in the save (`PayrollOverview.legacyChosenMode`).
     @discardableResult
     mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) -> SettingResult {
         applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in

@@ -300,6 +300,7 @@ public enum CompanyWeek {
         }
         co.inventory += step
         s.companies[i] = co
+        AccountingLedger.note(category: "cogs", label: "Stock and supplier purchases", ref: Suppliers.goodsVendor(s, company: co, data: data).map { "supplier:\($0.id)" } ?? "")
         Ledger.moveRaw(&s, .company(co.id), -step)
         co = s.companies[i]
         let hold = co.inventory * [0.0004, 0.0008, 0.0016][pol]
@@ -346,6 +347,7 @@ public enum CompanyWeek {
         s.companies[i] = co
         // Business customers are invoiced one by one: their orders are not paid at the till. The part the trade would have taken in cash
         // and the part it would have invoiced both wait for the customer (trade terms, and late when the customer is slow).
+        InvoiceBook.sendDrafts(&co, week: s.week)
         var acctInvoices: [(id: Int, amount: Double, due: Int, late: Int, bad: Bool)] = []
         var acctCash = 0.0, acctCredit = 0.0
         if !ctx.acct.isEmpty && rev > 0 {
@@ -368,7 +370,7 @@ public enum CompanyWeek {
             heldCash += net * (1 + vr) * cashShare
             heldCredit += net * (country.usesSalesTax ? 1 : 1 + vr) * bd.businessShare
         }
-        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek - acctCash - heldCash, category: nil, label: nil)
+        Payments.companyReceives(&s, companyID: co.id, amount: gross * cashShare - ctx.paidDuringWeek - acctCash - heldCash, category: "rev", label: "Sales at the till", bookInPnL: false)
         co = s.companies[i]
         for (job, net) in ctx.retentionHeld.sorted(by: { $0.key < $1.key }) where net > 0 {
             let part = jsRound(net * (1 + vr) * cashShare + net * (country.usesSalesTax ? 1 : 1 + vr) * bd.businessShare)
@@ -388,6 +390,10 @@ public enum CompanyWeek {
         for inv in acctInvoices where inv.amount > 0 {
             var r = Receivable(amount: inv.amount, dueWeek: inv.due, willDefault: inv.bad)
             r.set("ac", inv.id); r.set("ld", inv.late)
+            let taxPart = country.usesSalesTax ? 0 : inv.amount - inv.amount / (1 + vr)
+            let who = co.value("accts").array.first { $0["id"].int == inv.id }?["name"].string ?? ""
+            r.set("iv", InvoiceBook.issue(&co, week: s.week, customer: who.isEmpty ? "Business customer" : who, gross: inv.amount, tax: taxPart, dueWeek: inv.due,
+                                          lines: [InvoiceBook.Line(description: "Goods and services supplied, week \(s.week + 1)", quantity: 1, net: inv.amount - taxPart)]))
             var recv = co.receivables; recv.append(r); co.receivables = recv
         }
         if bd.businessShare > 0 && rev > 0 {
@@ -395,7 +401,13 @@ public enum CompanyWeek {
             let t = bd.paymentTermsWeeks + extra
             let defaultOdds = 0.012 * (s.economy.demand < 0.97 ? 2 : 1) * (co.value("flags")["ccheck"].bool ? 0.3 : 1)
             var recv = co.receivables
-            recv.append(Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit - heldCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds)))
+            var trade = Receivable(amount: max(0, jsRound(grossB2B * bd.businessShare - acctCredit - heldCredit)), dueWeek: s.week + t, willDefault: s.random.chance(defaultOdds))
+            if trade.amount > 0 {
+                let taxPart = country.usesSalesTax ? 0 : trade.amount - trade.amount / (1 + vr)
+                trade.set("iv", InvoiceBook.issue(&co, week: s.week, customer: "Trade customers", gross: trade.amount, tax: taxPart, dueWeek: trade.dueWeek,
+                                                  lines: [InvoiceBook.Line(description: "Sales on account, week \(s.week + 1)", quantity: 1, net: trade.amount - taxPart)]))
+            }
+            recv.append(trade)
             co.receivables = recv
             if co.value("flags")["ccheck"].bool {
                 s.companies[i] = co
@@ -441,6 +453,7 @@ public enum CompanyWeek {
             if r.flag("held") { remaining.append(r); continue }   // retention on a job still in hand
             if r.int("ic") != 0 { remaining.append(r); continue }   // an invoice to one of your own companies: settled with `SupplyTerms`
             if s.week >= r.dueWeek {
+                InvoiceBook.close(&co, number: r.str("iv"), paid: !r.willDefault, week: s.week)
                 if r.int("ac") != 0 && !r.willDefault { customersPaid.append((r.int("ac"), r.int("ld"), r.amount)) }
                 if !r.willDefault { received += r.amount }
                 else {
@@ -453,7 +466,7 @@ public enum CompanyWeek {
         co.receivables = remaining
         if lostNet > 0 { var b = co.books; b.add("loss", lostNet); co.books = b; co.vatBalance -= lostVAT }
         s.companies[i] = co
-        if received != 0 { Payments.companyReceives(&s, companyID: id, amount: received, category: nil, label: nil) }
+        if received != 0 { Payments.companyReceives(&s, companyID: id, amount: received, category: "rev", label: "Customer invoices paid", bookInPnL: false) }
         SupplyTerms.customersPaid(&s, companyIndex: i, paid: customersPaid, country: w0.country(co))
 
         CompanyCosts.wages(&s, companyIndex: i, bd, data: data)

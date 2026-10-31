@@ -242,3 +242,15 @@ untouched next to the converted save.
 * The Team search now reads `GameEngine.teamPeopleSearch(query:)`, which also finds chain people, regional managers, the group managing director and group office staff (employer shown; a hit with no company is not tappable).
 
 - Overdraft interest follows the policy rate plus a per-country margin (`economy.overdraftMargin`, a game approximation of bank spreads; see TAX_SOURCES.md, consistency pass). A real overdraft rate also depends on the bank and the customer, which is not modelled.
+
+## Stage 2 engine (financial systems), design notes (no open engine items)
+* **The ledger is per week.** Movements of one week with the same category, label and reference are one row with a count; dates show the week and the last day of the movement. Only the last 104 weeks are kept; older movements exist only in the old capped list. Monthly supplier bills are paid together (suppliers, insurance, leasing, fees) and stay ONE "Supplier and monthly bills" row (owner decision).
+* **Customer invoices** are drafts from the week they are raised until the next weekly run sends them (or `sendDraftInvoice`); the customer pays by itself, so there is no "mark paid" for the player. Paid supplier invoices are kept (`sinvPaid`, last 200).
+* **Timesheets** show contracted hours and the hours actually worked from the weekly simulation (`hrsAct`, 14 months), with overtime and absences (sick weeks, season lay-off). Annual leave is not simulated as weeks away; paid leave is shown as the hours the employer covers.
+* **Payslips** show the company's cost and the employee's withholding (income tax on the wage scale, employee social rate; allowances and capped contributions are not modelled, so net pay is an estimate).
+* **Payroll run cash vs lines.** The cash paid is what payroll accrued for the period (commission and bonus included); the payslip lines are built from contracts, so the two can differ a little.
+* **Payroll responsibility is derived** (employed or appointed accountant, else a suitable manager, else the player). Only an EXTERNAL accountant firm charges a payroll service fee (game design values, see TAX_SOURCES.md); the old stored `pr29.mode` is kept in the save and ignored. A limited company still gets an accountant at creation because its legal form requires the accountant agreement (`Documents.needed`); a sole trader gets none.
+* **Loan arrangement fee** has its own cost category `fin` ("Loan arrangement fees"), counted in the profit. A company loan is always paid into the company's account (a company has no savings); a personal loan can be paid into savings.
+* **Conversion** is refused for sold/bust companies and for stores of a chain; setup, closed and franchisor companies convert (probed).
+* The conversion fee is the country's `conversionFee` (data, unverified, listed in TAX_SOURCES.md); the share capital is the country minimum.
+* Commission, bonus and overtime employer charges use the wage-weighted on-cost of the real people (`Payroll.averageFactor`, overtime per person).

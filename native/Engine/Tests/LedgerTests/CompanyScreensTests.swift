@@ -80,19 +80,23 @@ final class CompanyScreensTests: XCTestCase {
 
     func testPayrollModeAndApproval() throws {
         var e = try game()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { return XCTFail() }
+        // A sole trader has no accountant and no manager: under the derived rule the player runs the payroll.
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { return XCTFail() }
         var o = e.payrollOverview(companyID: id)!
         XCTAssertEqual(o.mode, .manual)
+        XCTAssertEqual(o.responsibility?.who, .owner)
         XCTAssertFalse(o.modeIsFixed)
         XCTAssertEqual(o.choices.first { $0.mode == .manager }?.unavailable, "Needs a manager first.")
-        XCTAssertGreaterThan(o.choices.first { $0.mode == .accountant }!.monthlyFee, 0)
-        e.setPayrollMode(companyID: id, mode: .accountant)
+        XCTAssertEqual(o.choices.first { $0.mode == .accountant }!.monthlyFee, 0, "no external firm appointed: no payroll service fee")
+        // An appointed (external) accountant runs it and charges a payroll service fee; the player does not choose.
+        e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
         o = e.payrollOverview(companyID: id)!
+        XCTAssertGreaterThan(o.choices.first { $0.mode == .accountant }!.monthlyFee, 0)
         XCTAssertEqual(o.mode, .accountant)
         XCTAssertTrue(o.choices.first { $0.mode == .accountant }!.isCurrent)
         // Not owner-run any more: nothing to approve.
         XCTAssertEqual(e.approvePayroll(companyID: id), .notNeeded("Payroll is not run by you at this company."))
-        e.setPayrollMode(companyID: id, mode: .manual)
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw.removeValue(forKey: "acc") } }
         // Approval needs wages on the books and an unpaid coming pay day.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].payables["wages"] = 1_000 } }
         o = e.payrollOverview(companyID: id)!
@@ -111,7 +115,7 @@ final class CompanyScreensTests: XCTestCase {
         e.update { s, _, _ in s.policy.autoPayroll = false }   // routine payroll is approved by policy otherwise
         var ids: [Int] = []
         for _ in 0..<2 {
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { throw XCTSkip("no company") }   // no accountant or manager: the player runs payroll
             ids.append(id)
         }
         var days = 0

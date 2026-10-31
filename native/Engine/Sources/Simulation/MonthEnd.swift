@@ -89,6 +89,7 @@ public enum MonthEnd {
         let due = min(co.payables["tax"] ?? 0, co.taxPrevYear)
         if due <= 0 { return 0 }
         let paid = min(due, left)
+        AccountingLedger.note(category: "tax", label: "Corporate tax")
         Ledger.moveRaw(&s, .company(co.id), -paid)
         co = s.companies[i]
         co.payables["tax"] = max(0, (co.payables["tax"] ?? 0) - paid)
@@ -111,7 +112,7 @@ public enum MonthEnd {
             let b = co0.books.month
             let p0 = (b["rev"] ?? 0) - Books.expenses(b)
             if p0 > 0 {
-                let x = p0 * co0.managerProfitBonus * country.employerCostFactor
+                let x = p0 * co0.managerProfitBonus * country.payrollFactor(monthlyWage: co0.managerMonthlyWage)
                 s.companies[i].addPayable("wages", x)
                 Payments.book(&s, companyID: co0.id, category: "wages", amount: x)
                 s.companies[i].set("mgrBonusLast", jsRound(x))
@@ -126,7 +127,10 @@ public enum MonthEnd {
                 co.yearProfitSoFar = 0
                 co.taxAccrued = 0
             }
-            co.yearProfitSoFar += profit
+            // The part of the conversion month before the conversion was closed into the owner's personal return (CompanyConversion).
+            var corporateProfit = profit
+            if !co.value("convMonthProfit").isNull { corporateProfit -= co.num("convMonthProfit"); co.raw.removeValue(forKey: "convMonthProfit") }
+            co.yearProfitSoFar += corporateProfit
             s.companies[i] = co
             accrueTax(&s, companyIndex: i, bd, data: data)
             co = s.companies[i]
@@ -158,6 +162,7 @@ public enum MonthEnd {
             if v > 0 {
                 let pay = min(v, vatRoom)
                 if pay > 0 {
+                    AccountingLedger.note(category: "tax", label: "VAT settlement")
                     Ledger.moveRaw(&s, .company(co.id), -pay)
                     s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement")
                     s.stats.taxPaid += pay
@@ -190,6 +195,7 @@ public enum MonthEnd {
             s.companies[i].vatBalance += interest
             let pay = min(over, max(0, s.companies[i].vatBalance), vatRoom)
             if pay > 0 {
+                AccountingLedger.note(category: "tax", label: "VAT settlement (overdue)")
                 Ledger.moveRaw(&s, .company(co.id), -pay)
                 s.companies[i].addTransaction(week: s.week, amount: -pay, label: "VAT settlement (overdue)")
                 s.stats.taxPaid += pay

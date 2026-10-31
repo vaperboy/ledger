@@ -162,25 +162,67 @@ public enum Payday {
 
     static let inHouseFamilies: Set<String> = ["fin", "club", "hold", "energy"]
 
-    public static func mode(of co: Company, trade: Trade, config: PayrollConfig) -> Mode {
+    /// Who is responsible for the payroll (owner decision, Oct 2026): a qualified accountant (an employed accountant, or the accountant the
+    /// company has appointed), else a suitable manager (one who decides at level 1 or 2 on their card) without any extra fee, else the player.
+    /// Nothing is chosen by the player and nobody is hired automatically; the old stored choice (`pr29.mode`) is kept in the save but no longer used.
+    public enum Responsible: String, Sendable { case accountant, manager, owner }
+
+    public struct Responsibility: Equatable, Sendable {
+        public var who: Responsible
+        public var name: String
+        public var reason: String
+        /// Extra fee for running payroll: none under the derived rule (an appointed accountant's monthly fee is the accounting cost already).
+        public var extraFee: Double
+    }
+
+    public static func responsibility(_ co: Company, state s: GameState?, data: GameData?) -> Responsibility {
+        if let emp = co.staff.first(where: { $0.role == "acct" }) {
+            let name = s?.people[emp.id]?.name ?? "The accountant"
+            return Responsibility(who: .accountant, name: name, reason: "\(name) is the company's employed accountant and runs the payroll.", extraFee: 0)
+        }
+        let acc = co.value("acc")
+        if !acc.isNull, !acc["id"].isNull {
+            let name = acc["name"].string.isEmpty ? "The accountant" : acc["name"].string
+            return Responsibility(who: .accountant, name: name, reason: "\(name) is the appointed accountant and runs the payroll.", extraFee: 0)
+        }
+        if co.managerID != nil {
+            if let s, let data {
+                if let boss = ManagerModel.decisionChain(s, co, data: data).first(where: { $0.kind == "mgr" }), boss.level >= 1 {
+                    return Responsibility(who: .manager, name: boss.name, reason: "\(boss.name) manages the company and runs the payroll at no extra fee.", extraFee: 0)
+                }
+            } else {
+                return Responsibility(who: .manager, name: "The manager", reason: "The manager runs the payroll at no extra fee.", extraFee: 0)
+            }
+        }
+        return Responsibility(who: .owner, name: "You", reason: "No accountant or suitable manager: you approve each payroll yourself.", extraFee: 0)
+    }
+
+    public static func mode(of co: Company, trade: Trade, config: PayrollConfig, state: GameState? = nil, data: GameData? = nil) -> Mode {
         if inHouseFamilies.contains(trade.family) { return .inHouse }
-        var m = config.mode ?? (co.managerID != nil ? .manager : .manual)
-        if m == .manager && co.managerID == nil { m = .manual }
-        return m
+        switch responsibility(co, state: state, data: data).who {
+        case .accountant: return .accountant
+        case .manager: return .manager
+        case .owner: return .manual
+        }
     }
 
     static func ownerOnPayroll(_ co: Company) -> Bool { co.form == .limited && co.ownerMonthlySalary > 0 && co.status == .open }
     static func payslips(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (ownerOnPayroll(co) ? 1 : 0) }
     static func hasPayroll(_ co: Company) -> Bool { payslips(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
-    /// Fee when the accountant or the manager's software runs payroll. Original: `feeOf`.
+    /// Payroll service of an EXTERNAL accountant / payroll firm (game design values, no statute): a fee per payslip with a minimum per run.
+    /// An employed accountant, a manager or the player running payroll charge nothing extra.
+    static let servicePerPayslip = 165.0, serviceMinimumRun = 900.0
+
+    static func usesExternalFirm(_ co: Company) -> Bool {
+        !co.staff.contains(where: { $0.role == "acct" }) && !co.value("acc")["id"].isNull
+    }
+
+    /// The fee when the external firm runs payroll (booked in Accounting as "Payroll service"); 0 in every other case.
     static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double {
+        guard mode == .accountant, usesExternalFirm(co) else { return 0 }
         let n = Double(max(1, payslips(co)))
-        switch mode {
-        case .accountant: return max(currency.scaledPrice(900), currency.scaledPrice(165) * n) * (hasAccountingHQ ? 0.5 : 1)
-        case .manager: return currency.scaledPrice(450) + currency.scaledPrice(40) * n
-        default: return 0
-        }
+        return max(currency.scaledPrice(serviceMinimumRun), currency.scaledPrice(servicePerPayslip) * n) * (hasAccountingHQ ? 0.5 : 1)
     }
 
     /// A manager with a weak head for numbers misses a payroll now and then. Original: `mgrSlip`.
@@ -214,13 +256,14 @@ public enum Payday {
         }
         co = s.companies[i]
         let fee = Payday.fee(for: how, co: co, currency: context.currency(co.countryCode, s), hasAccountingHQ: s.hasHeadOffice("acc"))
-        if fee > 0 { Payments.companyPays(&s, companyID: co.id, amount: fee, category: "acc", label: how == .accountant ? "Payroll service" : "Payroll software") }
+        if fee > 0 { Payments.companyPays(&s, companyID: co.id, amount: fee, category: "acc", label: "Payroll service") }
         co = s.companies[i]
         let due = co.payables["wages"] ?? 0
         let room = context.overdraftRoom(co, s)
         let spare = max(0, co.cash + room)
         let p = min(due, spare)
         if p > 0 {
+            AccountingLedger.note(category: "wages", label: "Payroll", ref: "payroll:\(mi)")
             Ledger.moveRaw(&s, .company(co.id), -p)
             co = s.companies[i]
             co.payables["wages"] = due - p
@@ -252,6 +295,7 @@ public enum Payday {
         }
         co.set("pr29", cfg.json)
         s.companies[i] = co
+        PayrollRuns.record(&s, companyIndex: i, payMonth: payMonth, paid: jsRound(p), short: jsRound(short), how: how.rawValue, today: t, data: data, serviceFee: jsRound(fee))
         return PayrollResult(paid: jsRound(p), short: jsRound(short), slips: payslips(co), fee: jsRound(fee))
     }
 
@@ -268,6 +312,7 @@ public enum Payday {
         guard cfg.lateSince != nil, cfg.lateWhy == "cash" else { return }
         let p = min(cfg.lateOwed, co.payables["wages"] ?? 0, max(0, co.cash))
         if p < 1 { return }
+        AccountingLedger.note(category: "wages", label: "Back pay to staff")
         Ledger.moveRaw(&s, .company(co.id), -p)
         co = s.companies[i]
         co.payables["wages"] = (co.payables["wages"] ?? 0) - p
@@ -314,6 +359,7 @@ public enum Payday {
                 // Keep what the first bill already changed (rent paid): re-reading the company without writing it back first
                 // would forget it, the rent would stay "owed" and be paid again, in full and growing, every month.
                 s.companies[i] = co
+                AccountingLedger.note(category: k == "rent" ? "rent" : "cogs", label: k == "rent" ? "Rent" : "Supplier and monthly bills")
                 Ledger.moveRaw(&s, .company(co.id), -p)
                 co = s.companies[i]
                 let used = !co.value("f30").object.isEmpty
@@ -372,6 +418,7 @@ public enum Payday {
             let due = co.payables[k] ?? 0
             if due <= 0 { continue }
             s.companies[i] = co
+            AccountingLedger.note(category: k == "rent" ? "rent" : "cogs", label: k == "rent" ? "Rent" : "Supplier and monthly bills")
             Ledger.moveRaw(&s, .company(co.id), -due)
             co = s.companies[i]
             let used = !co.value("f30").object.isEmpty
@@ -444,7 +491,7 @@ public enum Payday {
             guard let bd = data.catalog[s.companies[i].type] else { continue }
             var cfg = config(s.companies[i], today: t)
             let pd = payDate(config: cfg, year: c.year, month: c.month - 1)
-            let md = mode(of: s.companies[i], trade: bd, config: cfg)
+            let md = mode(of: s.companies[i], trade: bd, config: cfg, state: s, data: data)
             // Payday
             if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil {
                 if !hasPayroll(s.companies[i]) {

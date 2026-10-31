@@ -67,7 +67,7 @@ public struct FinanceOverview: Equatable, Sendable {
 public extension GameEngine {
     static let costLabels: [(key: String, label: String)] = [
         ("cogs", "Materials and goods"), ("wages", "Wages and employer contributions"), ("rent", "Rent and premises"), ("mkt", "Marketing"),
-        ("ins", "Insurance"), ("oth", "Running costs and fees"), ("dep", "Depreciation of equipment"), ("int", "Interest"), ("acc", "Accounting"),
+        ("ins", "Insurance"), ("oth", "Running costs and fees"), ("dep", "Depreciation of equipment"), ("int", "Interest"), ("fin", "Loan arrangement fees"), ("acc", "Accounting"),
         ("fine", "Fines"), ("loss", "Refunds and losses"), ("tax", "Corporate tax"),
     ]
 
@@ -144,7 +144,7 @@ public extension GameEngine {
             if Payday.hasPayroll(co) {
                 let np = Payday.nextPay(co, config: cfg, today: today)
                 let est = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: country) * Double(max(0, (np - today) / 7))
-                let mode = Payday.mode(of: co, trade: bd, config: cfg)
+                let mode = Payday.mode(of: co, trade: bd, config: cfg, state: s, data: data)
                 add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, kind: .payroll, essential: true, company: co.id)
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
@@ -174,12 +174,16 @@ public extension GameEngine {
                 add("vat\(co.id)", "VAT return · \(co.name)", "Filed every \(freq) months", co.vatBalance, Payday.billDate(year: y, month: mo), kind: .tax, essential: true, company: co.id)
             }
         }
-        for l in s.loans where l.kind != "start" && l.balance > 1 && (companyID == nil || l.companyID == companyID) {
-            add("loan\(l.id)", "Loan instalment · \(l.name)", "Interest and repayment, at month end", l.monthlyPayment, monthEnd, kind: .loan, essential: true, company: l.companyID)
+        // A loan instalment is listed once, for the month it is still to be collected: paid early (or already collected) this month, the next month's is shown.
+        func loanRow(_ l: Loan, id: String) {
+            let settled = Banking.instalmentSettled(l, state: s)
+            let inst = Banking.instalment(of: l, state: s, context: context)
+            let amount = l.kind == "start" ? l.monthlyPayment : inst.total
+            let when = settled ? Payday.billDate(year: c.month == 12 ? c.year + 1 : c.year, month: c.month % 12) : monthEnd
+            add(id, "Loan instalment · \(l.name)", settled ? "This month's is paid; the next is at month end" : "Interest and repayment, at month end", amount, when, kind: .loan, essential: true, company: l.companyID)
         }
-        if companyID == nil, let start = s.loans.first(where: { $0.kind == "start" && $0.balance > 1 }) {
-            add("loan\(start.id)", "Loan instalment · \(start.name)", "Interest and repayment, at month end", start.monthlyPayment, monthEnd, kind: .loan, essential: true, company: 0)
-        }
+        for l in s.loans where l.kind != "start" && l.balance > 1 && (companyID == nil || l.companyID == companyID) { loanRow(l, id: "loan\(l.id)") }
+        if companyID == nil, let start = s.loans.first(where: { $0.kind == "start" && $0.balance > 1 }) { loanRow(start, id: "loan\(start.id)") }
         o.upcoming.sort { $0.dayNumber < $1.dayNumber }
         o.dueWithin30Days = o.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }
 

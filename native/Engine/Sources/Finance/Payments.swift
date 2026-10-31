@@ -45,6 +45,7 @@ public enum Payments {
         amt = jsRound(amt)
         if amt <= 0 { return true }
         if Ledger.observer != nil { Ledger.cause = "pays:\(category ?? "-"):\(label ?? "")" }
+        AccountingLedger.note(category: category, label: label ?? defaultLabel(category, income: false))
         Ledger.moveRaw(&s, .company(companyID), -amt)
         if let cat = category {
             var b = s.companies[i].books
@@ -55,18 +56,23 @@ public enum Payments {
         return s.companies[i].cash >= 0
     }
 
+    static let categoryNames: [String: String] = ["rev": "Sales", "cogs": "Supplier purchases", "wages": "Payroll", "rent": "Rent", "mkt": "Marketing", "ins": "Insurance",
+                                                   "oth": "Running costs", "int": "Interest", "fine": "Fines", "acc": "Accounting fees", "tax": "Tax", "loss": "Losses"]
+    static func defaultLabel(_ category: String?, income: Bool) -> String { category.flatMap { categoryNames[$0] } ?? (income ? "Receipt" : "Payment") }
+
     /// A company receives money. Original: `coIn`.
-    public static func companyReceives(_ s: inout GameState, companyID: Int, amount: Double, category: String?, label: String?) {
+    public static func companyReceives(_ s: inout GameState, companyID: Int, amount: Double, category: String?, label: String?, bookInPnL: Bool = true) {
         guard let i = s.companyIndex(companyID) else { return }
         let amt = jsRound(amount)
         if Ledger.observer != nil { Ledger.cause = "gets:\(category ?? "-"):\(label ?? "")" }
+        AccountingLedger.note(category: category, label: label ?? defaultLabel(category, income: true))
         Ledger.moveRaw(&s, .company(companyID), amt)
-        if let cat = category {
+        if let cat = category, bookInPnL {
             var b = s.companies[i].books
             b.add(cat, amt)
             s.companies[i].books = b
         }
-        if let l = label { s.companies[i].addTransaction(week: s.week, amount: amt, label: l) }
+        if let l = label, bookInPnL { s.companies[i].addTransaction(week: s.week, amount: amt, label: l) }
     }
 
     /// Book an expense without moving cash. Original: `bk`.
@@ -123,6 +129,7 @@ public enum Payments {
         guard let i = s.companyIndex(companyID), liquid(s) >= amount else { return false }
         transferFromSavings(&s, need: amount)
         Ledger.move(&s, .me, -amount, why: "Invested in \(s.companies[i].name)", companyID: companyID)
+        AccountingLedger.note(category: "owner", label: "Owner investment")
         Ledger.moveRaw(&s, .company(companyID), amount)
         s.companies[i].ownerNetFlow += amount
         if s.companies[i].form == .limited { s.companies[i].injectedCapital += amount }
@@ -137,6 +144,7 @@ public enum Payments {
         guard let i = s.companyIndex(companyID) else { return .notEnoughCash }
         guard s.companies[i].form == .soleTrader else { return .dividendOnly }
         if s.companies[i].cash < amount { return .notEnoughCash }
+        AccountingLedger.note(category: "owner", label: "Owner drawing")
         Ledger.moveRaw(&s, .company(companyID), -amount)
         s.companies[i].ownerNetFlow -= amount
         playerReceives(&s, amount, label: "Drawing from \(s.companies[i].name)")
@@ -162,6 +170,7 @@ public enum Payments {
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans) - co.shareCapital
         if amount > equity { return .noRetainedProfit }
         if co.cash - amount < context.weeklyCost(co, s) * 2 { return .notEnoughCash }
+        AccountingLedger.note(category: "owner", label: "Dividend")
         Ledger.moveRaw(&s, .company(companyID), -amount)
         s.companies[i].ownerNetFlow -= amount
         s.companies[i].addTransaction(week: s.week, amount: -amount, label: "Dividend")
@@ -185,8 +194,9 @@ public enum Payments {
 
     /// Original: `payCoLoan`. Returns whether the account stays within its overdraft room.
     @discardableResult
-    static func companyPaysLoanInstalment(_ s: inout GameState, companyID: Int, interest: Double, principal: Double, loanName: String, context: FinanceContext) -> Bool {
+    static func companyPaysLoanInstalment(_ s: inout GameState, companyID: Int, interest: Double, principal: Double, loanName: String, loanID: Int = 0, context: FinanceContext) -> Bool {
         guard let i = s.companyIndex(companyID) else { return false }
+        AccountingLedger.note(category: "loan", label: "Loan payment: \(loanName)", ref: loanID == 0 ? "" : "loan:\(loanID)")
         Ledger.moveRaw(&s, .company(companyID), -jsRound(interest + principal))
         var b = s.companies[i].books
         b.add("int", interest)
