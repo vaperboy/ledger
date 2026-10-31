@@ -1,0 +1,1 @@
+Table layout mockups (27 Oct 2026): Company Operations, Group Overview and Team, all in one page. Looks only, made-up numbers. Published at https://claude.ai/artifact/16K6A9UzdKStnf3k6EHYPM. Scope: only menus with sub-menus get this layout; screens the owner likes stay as they are.

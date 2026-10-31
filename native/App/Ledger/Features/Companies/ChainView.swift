@@ -1,0 +1,544 @@
+import SwiftUI
+import GameCore
+import Countries
+import Finance
+import Businesses
+import Simulation
+
+/// One chain as a whole: what needs you, how the stores compare (each opens its company), who manages the chain and each city,
+/// the rules every store follows, its board, franchising, supply between your companies and growth. Opened from the Group tab and
+/// from a store's Chain section. Store-level work (staff, prices, stock) stays in each store; logic is in `Chains`, `ManagerModel`.
+struct ChainView: View {
+    @EnvironmentObject var store: GameStore
+    var chainID: Int
+    @State private var pending: PendingAction?
+    @State private var renaming = false
+    @State private var newName = ""
+
+    var body: some View {
+        if let e = store.engine, let sum = e.chainSummary(id: chainID), let first = sum.stores.first.flatMap({ e.state.company($0.id) }) {
+            let cur = e.currency(for: first)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    ChainFigures(summary: sum, currency: cur)
+                    ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
+                    ChainStoreComparison(engine: e, summary: sum, currency: cur)
+                    ChainStaffShortages(engine: e, chainID: sum.id)
+                    ExecutivePosts(engine: e, chainID: sum.id)
+                    ChainRulesSection(engine: e, chainID: sum.id)
+                    boardLink(e, sum)
+                    if let fid = sum.franchisingCompanyID, let fco = e.state.company(fid) { FranchisorCard(engine: e, company: fco) }
+                    ChainSupplyOverview(engine: e, summary: sum, currency: cur)
+                    ChainNewStore(engine: e, summary: sum, currency: cur)
+                    ChainJoin(engine: e, summary: sum)
+                }
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .ledgerBackground()
+            .appScreen(title: sum.name, subtitle: subtitle(e, sum), tab: .group) {
+                SmallOutlineButton(title: "Rename") { newName = sum.name; renaming = true }
+            }
+            .confirmAction($pending)
+            .alert("Rename the chain", isPresented: $renaming) {
+                TextField("New name", text: $newName)
+                Button("Rename") { rename(sum, cur) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
+            }
+        } else {
+            Text("This chain no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    private func subtitle(_ e: GameEngine, _ sum: Chains.Summary) -> String {
+        let cities: Int = Set(sum.stores.map { $0.cityName }).count
+        let trade: String = e.data.catalog[sum.tradeID]?.name ?? "Chain"
+        let storeWord: String = sum.stores.count == 1 ? "store" : "stores"
+        let cityWord: String = cities == 1 ? "city" : "cities"
+        return "\(trade) · \(sum.stores.count) \(storeWord) in \(cities) \(cityWord)"
+    }
+
+    @ViewBuilder private func boardLink(_ e: GameEngine, _ sum: Chains.Summary) -> some View {
+        let key = "ch:\(sum.id)"
+        if e.boardIsActive(key: key) {
+            MoreBlock("Board") {
+                NavigationLink { BoardView(key: key) } label: {
+                    HStack(spacing: 10) {
+                        IconCircle(glyph: Glyph.achievements, size: 34)
+                        BoardLinkRow(engine: e, key: key)
+                    }
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func rename(_ sum: Chains.Summary, _ cur: Currency) {
+        let name = newName
+        switch store.act({ $0.renameChain(chainID: sum.id, to: name) }) {
+        case .ok?: Haptics.success(); store.show("The chain is now called \(name.trimmingCharacters(in: .whitespaces)).", tone: "good")
+        case .tooShort?: store.show("Choose a different name of at least two letters.", tone: "warn")
+        case .nameTaken?: store.show("Another of your chains has that name.", tone: "warn")
+        case .notEnoughCash?: Haptics.warning(); store.show("A store does not have the cash for new signs.", tone: "warn")
+        default: store.show("The chain could not be renamed.", tone: "warn")
+        }
+    }
+}
+
+/// The chain's figures in one block.
+struct ChainFigures: View {
+    var summary: Chains.Summary
+    var currency: Currency
+
+    private var items: [KeyFigures.Item] {
+        let r = summary.reach
+        let profitTint: Color = summary.profit < 0 ? Theme.loss : Theme.ivory
+        let rebate: String = String(format: "%.1f%%", r.rebate * 100)
+        return [
+            .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
+            .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: profitTint),
+            .init(label: "Staff", value: "\(summary.staff)"),
+            .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
+            .init(label: "Buying discount", value: rebate, sub: "of cost of sales"),
+            .init(label: "Franchise units", value: "\(summary.franchiseUnits)"),
+        ]
+    }
+
+    var body: some View {
+        let r = summary.reach
+        let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets the name reaches further: more of the town can know you, demand is a little higher and goods are cheaper." : "A worldwide name."
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                FigureStrip(items: items)
+                RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
+                Text(reachNote).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+    }
+}
+
+/// What in the chain needs the owner: stores losing money or out of cash, stores nobody manages, board items, franchise applicants.
+struct ChainAttention: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var summary: Chains.Summary
+    var currency: Currency
+    @Binding var pending: PendingAction?
+
+    var body: some View {
+        let losing = summary.stores.filter { $0.status == .open && $0.profit < 0 }
+        let unmanaged = summary.stores.filter { $0.status == .open && $0.managerName == nil }
+        let broke = summary.stores.compactMap { engine.state.company($0.id) }.filter { $0.status == .open && $0.cash < 0 }
+        let boardItems = engine.boardOpenDecisions(key: "ch:\(summary.id)")
+        let applicants = summary.franchisingCompanyID.map { engine.franchiseApplicants(companyID: $0).count } ?? 0
+        let total: Int = broke.count + (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
+        if total > 0 {
+            MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: total, size: .small) }) {
+                ForEach(broke) { c in lendRow(c) }
+                if !losing.isEmpty {
+                    line("\(losing.count) of \(summary.stores.count) stores lost money last month", losing.prefix(4).map { $0.name }.joined(separator: ", ") + (losing.count > 4 ? "…" : "") + ". Compare them below.", glyph: Glyph.warning, tint: Theme.loss)
+                }
+                if !unmanaged.isEmpty {
+                    line("\(unmanaged.count) \(unmanaged.count == 1 ? "store has" : "stores have") no store manager", "You run \(unmanaged.count == 1 ? "it" : "them") yourself. Hire one in the store's Team, or let a chain manager fill them.", glyph: Glyph.person, tint: Theme.caution)
+                }
+                if boardItems > 0 {
+                    NavigationLink { BoardView(key: "ch:\(summary.id)") } label: {
+                        CardRow(glyph: Glyph.achievements, title: "The board has \(boardItems) \(boardItems == 1 ? "item" : "items") to decide", subtitle: "Approve or decline at the board.", badge: boardItems)
+                    }.buttonStyle(.plain)
+                }
+                if applicants > 0 {
+                    line("\(applicants) franchise \(applicants == 1 ? "applicant is" : "applicants are") waiting", "Talk to them under Franchise your concept below.", glyph: Glyph.hire, tint: Theme.gain)
+                }
+            }
+        }
+    }
+
+    private func line(_ title: String, _ sub: String, glyph: String, tint: Color) -> some View {
+        EntityCard {
+            HStack(alignment: .top, spacing: 12) {
+                IconCircle(glyph: glyph, size: 34, tint: tint)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(tint)
+                    Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// A store out of cash can borrow from the sister store with the most to spare, repaid once it has a cushion again.
+    private func lendRow(_ c: Company) -> some View {
+        let weekly = engine.companyHealth(c).weeklyCost
+        let need = currency.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
+        let owed = engine.groupLoanBalance(companyID: c.id)
+        let sub: String = "Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")
+        return EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
+                    HStack(alignment: .top, spacing: 12) {
+                        IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.loss)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("\(c.name) is out of cash").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.loss)
+                            Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        }
+                        Spacer(minLength: 8)
+                        MoreChevron()
+                    }
+                    .contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                Button("Group loan \(currency.tidyShort(need))") {
+                    pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
+                                            message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
+                                            button: "Lend") {
+                        let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
+                        if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
+                        else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
+                    }
+                }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+            }
+        }
+    }
+}
+
+/// Every store side by side: sort, search, group by city, and open any store's company. Each store can take its own rules.
+struct ChainStoreComparison: View {
+    enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", city = "City", name = "Name" }
+    var engine: GameEngine
+    var summary: Chains.Summary
+    var currency: Currency
+    @State private var sort: Sort = .profit
+    @State private var query = ""
+    @State private var showAll = false
+    @State private var openRulesFor: Int?
+
+    private let pageSize = 12
+
+    var body: some View {
+        let all = sorted(summary.stores.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.cityName.localizedCaseInsensitiveContains(query) })
+        let shown = showAll || query.count > 0 ? all : Array(all.prefix(pageSize))
+        MoreBlock(title: "Stores", card: false, trailing: { Text("\(summary.stores.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            VStack(alignment: .leading, spacing: 10) {
+                if summary.stores.count > 1 {
+                    SegmentedPill(items: Sort.allCases, title: { $0.rawValue }, selection: $sort)
+                }
+                if summary.stores.count > pageSize {
+                    Card(padding: 10, radius: Theme.Radius.table) {
+                        HStack(spacing: 8) {
+                            GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
+                            TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
+                        }
+                    }
+                }
+                if all.isEmpty { NoteCard(text: "No store matches.", glyph: Glyph.search) }
+                if sort == .city {
+                    let cities = Array(Set(shown.map { $0.cityName })).sorted()
+                    ForEach(cities, id: \.self) { city in
+                        let list = shown.filter { $0.cityName == city }
+                        HStack {
+                            Text(city).capsLabel(Theme.ivoryFaint)
+                            Spacer()
+                            Text("\(list.count) · \(currency.tidyShort(list.reduce(0) { $0 + $1.profit })) / mo").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                        }.padding(.top, 6)
+                        ForEach(list) { s in row(s) }
+                    }
+                } else {
+                    ForEach(shown) { (s: Chains.StoreLine) in row(s) }
+                }
+                if all.count > shown.count {
+                    QuietButton(title: "Show all \(all.count) stores") { showAll = true }
+                }
+            }
+        }
+    }
+
+    /// How far a store's monthly result is from the chain's best or worst, for the bar on its card.
+    private func profitShare(_ s: Chains.StoreLine) -> Double {
+        let peak: Double = summary.stores.map { abs($0.profit) }.max() ?? 0
+        return peak > 0 ? min(1, abs(s.profit) / peak) : 0
+    }
+
+    private func sorted(_ l: [Chains.StoreLine]) -> [Chains.StoreLine] {
+        switch sort {
+        case .profit: return l.sorted { $0.profit > $1.profit }
+        case .revenue: return l.sorted { $0.revenue > $1.revenue }
+        case .city: return l.sorted { ($0.cityName, $0.name) < ($1.cityName, $1.name) }
+        case .name: return l.sorted { $0.name < $1.name }
+        }
+    }
+
+    @ViewBuilder private func row(_ s: Chains.StoreLine) -> some View {
+        let status: String = s.status == .setup ? "setting up" : (s.managerName ?? "you run it")
+        let line: String = "\(s.cityName) · \(status) · \(s.staff.peopleText)" + (s.ownRules > 0 ? " · own rules" : "")
+        let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ivory
+        let rulesTitle: String = openRulesFor == s.id ? "Hide rules" : "Own rules"
+        EntityCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
+                    NavigationLink(value: CompanyRoute.company(s.id)) {
+                        HStack(spacing: 10) {
+                            ThumbnailView(kind: .trade, key: summary.tradeID, size: 34, glyph: Glyph.home)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(s.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                            }
+                            Spacer(minLength: 6)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(currency.tidyShort(s.profit)).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(profitTint)
+                                Text(currency.tidyShort(s.revenue) + " rev").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                            }
+                            MoreChevron()
+                        }.contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+                RateBar(label: s.profit < 0 ? "Loss vs best" : "Profit vs best", fraction: profitShare(s), tint: s.profit < 0 ? Theme.loss : Theme.gold)
+                HStack {
+                    Button(rulesTitle) { openRulesFor = openRulesFor == s.id ? nil : s.id }.buttonStyle(TinyButtonStyle())
+                    Spacer()
+                }
+                if openRulesFor == s.id { StoreRules(engine: engine, storeID: s.id) }
+            }
+        }
+    }
+}
+
+/// The rules every store of the chain follows.
+struct ChainRulesSection: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var chainID: Int
+    @State private var pending: PendingAction?
+
+    private var rules: JSONValue { engine.chainRules(chainID: chainID) }
+
+    var body: some View {
+        MoreBlock("Chain rules") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                priceRule
+                Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                orderingRule
+                Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                payRule
+                Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                marketingRule
+                Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
+                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                knobRules
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private var priceRule: some View {
+        let current: Double = rules["price"].double
+        let binding = Binding<Double>(get: { current }, set: { (v: Double) in
+            store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) }
+        })
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(current)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
+            Slider(value: binding, in: -3...3, step: 0.5) { editing in
+                if !editing { store.saved("chain price rule.") }
+            }
+        }
+    }
+
+    private var orderingRule: some View {
+        let names: [String] = ["Lean", "Balanced", "Generous"]
+        let binding = Binding<Int>(get: { rules["stockPol"].int }, set: { (v: Int) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .stockPolicy(v)) }
+            store.settle(r, "Chain ordering rule: \(names[min(2, max(0, v))].lowercased()).")
+        })
+        return SegmentedPill(items: [0, 1, 2], title: { names[$0] }, selection: binding)
+    }
+
+    private var payRule: some View {
+        let steps: [Double] = [0.0, 0.05, 0.1]
+        let labels: [String] = ["Market pay", "+5%", "+10%"]
+        let now: Double = rules["pay"].double
+        let nearest: Double = steps.min(by: { abs($0 - now) < abs($1 - now) }) ?? 0
+        let binding = Binding<Double>(get: { nearest }, set: { (v: Double) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
+            store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.")
+        })
+        return SegmentedPill(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
+    }
+
+    private var marketingRule: some View {
+        let labels: [String: String] = ["own": "Each store", "light": "Light", "normal": "Normal", "heavy": "Heavy"]
+        let raw: String = rules["mkt"].string
+        let binding = Binding<String>(get: { raw.isEmpty ? "own" : raw }, set: { (v: String) in
+            let r = store.act { $0.setChainRule(chainID: chainID, rule: .marketing(v)) }
+            store.settle(r, v == "own" ? "Each store runs its own marketing." : "Chain marketing rule: \(v).")
+        })
+        return SegmentedPill(items: ["own", "light", "normal", "heavy"], title: { labels[$0] ?? $0 }, selection: binding)
+    }
+
+    @ViewBuilder private var knobRules: some View {
+        if let trade = engine.chainTrade(chainID: chainID) {
+            ForEach(trade.knobs, id: \.id) { knob in knobStandard(knob, rules["knob"][knob.id]) }
+        }
+    }
+
+    /// A chain standard for one way of selling: mandatory for the stores while set (they see it locked), or left to each store.
+    private func knobStandard(_ knob: Knob, _ current: JSONValue) -> some View {
+        let cur = engine.homeCurrency
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
+            WrapRow {
+                Group {
+                    Button("Each store decides") {
+                        if current.isNull { return }
+                        pending = PendingAction(title: "Leave \(knob.name) to each store?", message: "Stores keep what they sell by now and can change it themselves, each paying its own changeover.", button: "Leave to stores") {
+                            store.settle(store.act { $0.releaseChainKnob(chainID: chainID, knob: knob.id) }, "\(knob.name) is now each store's choice.", same: "\(knob.name) was already each store's choice.", tone: "good")
+                        }
+                    }.buttonStyle(TinyButtonStyle(tint: current.isNull ? Theme.gold : Theme.ivoryMuted))
+                    ForEach(Array(knob.options.enumerated()), id: \.offset) { i, o in
+                        if knob.isMulti {
+                            // Add-ons: the standard is the whole set. Tapping one adds it to, or drops it from, the set the chain fixes.
+                            let on = !current.isNull && current.int & (1 << i) != 0
+                            Button((on ? "In: " : "") + o.name) { askStandard(knob, Knobs.mask(current.isNull ? 0 : current.int, option: i, on: !on), cur) }
+                                .buttonStyle(TinyButtonStyle(tint: on ? Theme.gold : Theme.ivoryMuted))
+                        } else {
+                            Button(o.name) { askStandard(knob, i, cur) }.buttonStyle(TinyButtonStyle(tint: !current.isNull && current.int == i ? Theme.gold : Theme.ivoryMuted))
+                        }
+                    }
+                }
+            }
+            let exceptions = engine.chainKnobExceptions(chainID: chainID, knob: knob.id)
+            if !exceptions.isEmpty {
+                let names: String = exceptions.map { ex in ex.storeName + " (" + optionNames(knob, ex.value) + ")" }.joined(separator: "; ")
+                HStack(alignment: .top, spacing: 8) {
+                    GlyphView(glyph: Glyph.warning, size: 14, weight: 1.5, tint: Theme.caution)
+                    Text("\(exceptions.count) store\(exceptions.count == 1 ? "" : "s") could not follow yet and keep what they have: " + names + ".")
+                        .font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// What a choice is called: the option, or the add-ons that are on.
+    private func optionNames(_ knob: Knob, _ value: Int) -> String {
+        if knob.isMulti {
+            let on = knob.options.enumerated().filter { value & (1 << $0.offset) != 0 }.map { $0.element.name }
+            return on.isEmpty ? "no add-ons" : on.joined(separator: ", ")
+        }
+        return knob.options.indices.contains(value) ? knob.options[value].name : "-"
+    }
+
+    private func askStandard(_ knob: Knob, _ option: Int, _ cur: Currency) {
+        guard let plan = engine.chainKnobPlan(chainID: chainID, knob: knob.id, value: option) else { return }
+        let name = optionNames(knob, option)
+        let head: String = knob.isMulti ? "Every store offers exactly these add-ons from now on and cannot choose otherwise: \(name)." : "Every store sells by \(name) from now on and cannot choose otherwise."
+        var lines: [String] = [head]
+        if plan.changing == 0 && plan.exceptions == 0 { lines.append("Every store already does.") }
+        else {
+            lines.append("\(plan.changing) store\(plan.changing == 1 ? "" : "s") change over: \(cur.tidyShort(plan.totalCost)) in all, paid by the stores, with a few weeks at reduced capacity each.")
+            if plan.exceptions > 0 { lines.append("\(plan.exceptions) cannot right now and keep what they have: " + plan.lines.filter { $0.changes && $0.reason != nil }.map { "\($0.storeName) (\($0.reason ?? ""))" }.joined(separator: "; ")) }
+        }
+        lines.append("No guarantee: it can win or lose customers and margin.")
+        pending = PendingAction(title: "Make \(name) the chain standard?", message: lines.joined(separator: "\n"), button: plan.totalCost > 0 ? "Change for \(cur.tidyShort(plan.totalCost))" : "Set standard") {
+            if let done = store.act({ $0.setChainKnob(chainID: chainID, knob: knob.id, value: option) }) {
+                store.show("\(name) is the standard. \(done.changing) changed over, \(done.exceptions) could not.", tone: done.exceptions > 0 ? "warn" : "good")
+            }
+        }
+    }
+
+    private func priceWord(_ l: Double) -> String {
+        switch l { case ..<(-1.9): return "Bargain"; case ..<(-0.4): return "Below market"; case ..<0.4: return "At market"; case ..<1.9: return "Premium"; default: return "Luxury" }
+    }
+}
+
+
+/// A new store under the chain's name and rules.
+struct ChainNewStore: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var summary: Chains.Summary
+    var currency: Currency
+    @State private var newCity = ""
+    @State private var newSize = 1.0
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        let cities = engine.state.company(summary.stores.first?.id ?? 0).flatMap { engine.data.countries[$0.countryCode] }?.cities ?? []
+        let cityID = newCity.isEmpty ? (cities.first?.id ?? "") : newCity
+        let cityName = cities.first { $0.id == cityID }?.name ?? ""
+        let cost = engine.chainCost(chainID: summary.id, cityID: cityID, size: newSize)
+        MoreBlock("New store") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                Text("Same name, same rules and the paperwork you already have. A new store needs premises, equipment and people; it is set up to the chain's standard and runs on the chain's rules from day one.")
+                    .font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Picker("City", selection: Binding(get: { cityID }, set: { newCity = $0 })) {
+                    ForEach(cities) { c in
+                        let n = summary.stores.filter { $0.cityName == c.name }.count
+                        Text(c.name + (n > 0 ? " · \(n) \(n == 1 ? "store" : "stores")" : "")).tag(c.id)
+                    }
+                }.pickerStyle(.menu)
+                Picker("Size", selection: $newSize) { Text("Small").tag(0.7); Text("Standard").tag(1.0); Text("Large").tag(1.4) }.pickerStyle(.segmented)
+                if let cost {
+                    FigureStrip(items: [
+                        .init(label: "Cost", value: currency.tidyShort(cost)),
+                        .init(label: "You have available", value: store.money(Payments.liquid(engine.state))),
+                    ], columns: 2)
+                    QuietButton(title: "Open \(summary.name) \(cityName)", fullWidth: true) {
+                        pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
+                                                message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
+                                                button: "Open the store") { open(cityID: cityID) }
+                    }
+                } else {
+                    Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func open(cityID: String) {
+        switch store.act({ $0.openChainStore(chainID: summary.id, cityID: cityID, size: newSize) }) {
+        case .success?: Haptics.success(); store.show("The new store is being set up.", tone: "good")
+        case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You don't have enough for a new store.", tone: "warn")
+        default: Haptics.warning(); store.show("A new store is not possible here.", tone: "warn")
+        }
+    }
+}
+
+/// Your other companies of the same trade that could join the chain.
+struct ChainJoin: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var summary: Chains.Summary
+
+    var body: some View {
+        let join = engine.companiesThatCanJoin(chainID: summary.id)
+        if !join.isEmpty {
+            MoreBlock("Add your other \((engine.data.catalog[summary.tradeID]?.name ?? "").lowercased()) companies", card: false) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(join, id: \.id) { (c: Company) in
+                        EntityCard {
+                            HStack(spacing: 10) {
+                                ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                                    Text(engine.cityName(c)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                }
+                                Spacer()
+                                Button("Add") { add(c, rename: false) }.buttonStyle(TinyButtonStyle())
+                                Button("Add, rename") { add(c, rename: true) }.buttonStyle(TinyButtonStyle())
+                            }
+                        }
+                    }
+                    Text("A store that joins follows the chain's rules from then on; renamed, it carries the chain's name and awareness.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
+                }
+            }
+        }
+    }
+
+    private func add(_ c: Company, rename: Bool) {
+        store.act { $0.joinChain(chainID: summary.id, companyID: c.id, rename: rename) }
+        if store.engine?.chainSummary(containing: c.id)?.id == summary.id { Haptics.success(); store.show("\(c.name) is now a store of \(summary.name).", tone: "good") }
+        else { Haptics.warning(); store.show("\(c.name) could not join the chain.", tone: "warn") }
+    }
+}

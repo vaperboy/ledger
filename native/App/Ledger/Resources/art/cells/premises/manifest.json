@@ -1,0 +1,269 @@
+{
+ "sheet": "premises",
+ "cells": {
+  "home-small": {
+   "file": "premises/home-small.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Home or Home Office / small"
+  },
+  "home-medium": {
+   "file": "premises/home-medium.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Home or Home Office / medium"
+  },
+  "home-large": {
+   "file": "premises/home-large.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Home or Home Office / large"
+  },
+  "home-xlarge": {
+   "file": "premises/home-xlarge.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Home or Home Office / xlarge"
+  },
+  "office-small": {
+   "file": "premises/office-small.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Office / small"
+  },
+  "office-medium": {
+   "file": "premises/office-medium.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Office / medium"
+  },
+  "office-large": {
+   "file": "premises/office-large.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Office / large"
+  },
+  "office-xlarge": {
+   "file": "premises/office-xlarge.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Office / xlarge"
+  },
+  "shop-small": {
+   "file": "premises/shop-small.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Shop / small"
+  },
+  "shop-medium": {
+   "file": "premises/shop-medium.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Shop / medium"
+  },
+  "shop-large": {
+   "file": "premises/shop-large.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Shop / large"
+  },
+  "shop-xlarge": {
+   "file": "premises/shop-xlarge.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Shop / xlarge"
+  },
+  "kitchen-small": {
+   "file": "premises/kitchen-small.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Kitchen, Restaurant or Cafe / small"
+  },
+  "kitchen-medium": {
+   "file": "premises/kitchen-medium.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Kitchen, Restaurant or Cafe / medium"
+  },
+  "kitchen-large": {
+   "file": "premises/kitchen-large.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Kitchen, Restaurant or Cafe / large"
+  },
+  "kitchen-xlarge": {
+   "file": "premises/kitchen-xlarge.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Kitchen, Restaurant or Cafe / xlarge"
+  },
+  "industrial-small": {
+   "file": "premises/industrial-small.jpg",
+   "row": 4,
+   "col": 0,
+   "caption": "Workshop or Factory / small"
+  },
+  "industrial-medium": {
+   "file": "premises/industrial-medium.jpg",
+   "row": 4,
+   "col": 1,
+   "caption": "Workshop or Factory / medium"
+  },
+  "industrial-large": {
+   "file": "premises/industrial-large.jpg",
+   "row": 4,
+   "col": 2,
+   "caption": "Workshop or Factory / large"
+  },
+  "industrial-xlarge": {
+   "file": "premises/industrial-xlarge.jpg",
+   "row": 4,
+   "col": 3,
+   "caption": "Workshop or Factory / xlarge"
+  },
+  "warehouse-small": {
+   "file": "premises/warehouse-small.jpg",
+   "row": 5,
+   "col": 0,
+   "caption": "Warehouse or Depot / small"
+  },
+  "warehouse-medium": {
+   "file": "premises/warehouse-medium.jpg",
+   "row": 5,
+   "col": 1,
+   "caption": "Warehouse or Depot / medium"
+  },
+  "warehouse-large": {
+   "file": "premises/warehouse-large.jpg",
+   "row": 5,
+   "col": 2,
+   "caption": "Warehouse or Depot / large"
+  },
+  "warehouse-xlarge": {
+   "file": "premises/warehouse-xlarge.jpg",
+   "row": 5,
+   "col": 3,
+   "caption": "Warehouse or Depot / xlarge"
+  },
+  "hotel-small": {
+   "file": "premises/hotel-small.jpg",
+   "row": 6,
+   "col": 0,
+   "caption": "Hotel / small"
+  },
+  "hotel-medium": {
+   "file": "premises/hotel-medium.jpg",
+   "row": 6,
+   "col": 1,
+   "caption": "Hotel / medium"
+  },
+  "hotel-large": {
+   "file": "premises/hotel-large.jpg",
+   "row": 6,
+   "col": 2,
+   "caption": "Hotel / large"
+  },
+  "hotel-xlarge": {
+   "file": "premises/hotel-xlarge.jpg",
+   "row": 6,
+   "col": 3,
+   "caption": "Hotel / xlarge"
+  },
+  "clinic-small": {
+   "file": "premises/clinic-small.jpg",
+   "row": 7,
+   "col": 0,
+   "caption": "Clinic / small"
+  },
+  "clinic-medium": {
+   "file": "premises/clinic-medium.jpg",
+   "row": 7,
+   "col": 1,
+   "caption": "Clinic / medium"
+  },
+  "clinic-large": {
+   "file": "premises/clinic-large.jpg",
+   "row": 7,
+   "col": 2,
+   "caption": "Clinic / large"
+  },
+  "clinic-xlarge": {
+   "file": "premises/clinic-xlarge.jpg",
+   "row": 7,
+   "col": 3,
+   "caption": "Clinic / xlarge"
+  },
+  "yard-small": {
+   "file": "premises/yard-small.jpg",
+   "row": 8,
+   "col": 0,
+   "caption": "Yard or Site / small"
+  },
+  "yard-medium": {
+   "file": "premises/yard-medium.jpg",
+   "row": 8,
+   "col": 1,
+   "caption": "Yard or Site / medium"
+  },
+  "yard-large": {
+   "file": "premises/yard-large.jpg",
+   "row": 8,
+   "col": 2,
+   "caption": "Yard or Site / large"
+  },
+  "yard-xlarge": {
+   "file": "premises/yard-xlarge.jpg",
+   "row": 8,
+   "col": 3,
+   "caption": "Yard or Site / xlarge"
+  },
+  "gym-small": {
+   "file": "premises/gym-small.jpg",
+   "row": 9,
+   "col": 0,
+   "caption": "Gym or Studio / small"
+  },
+  "gym-medium": {
+   "file": "premises/gym-medium.jpg",
+   "row": 9,
+   "col": 1,
+   "caption": "Gym or Studio / medium"
+  },
+  "gym-large": {
+   "file": "premises/gym-large.jpg",
+   "row": 9,
+   "col": 2,
+   "caption": "Gym or Studio / large"
+  },
+  "gym-xlarge": {
+   "file": "premises/gym-xlarge.jpg",
+   "row": 9,
+   "col": 3,
+   "caption": "Gym or Studio / xlarge"
+  },
+  "slope-small": {
+   "file": "premises/slope-small.jpg",
+   "row": 10,
+   "col": 0,
+   "caption": "Slope or Outdoor Venue / small"
+  },
+  "slope-medium": {
+   "file": "premises/slope-medium.jpg",
+   "row": 10,
+   "col": 1,
+   "caption": "Slope or Outdoor Venue / medium"
+  },
+  "slope-large": {
+   "file": "premises/slope-large.jpg",
+   "row": 10,
+   "col": 2,
+   "caption": "Slope or Outdoor Venue / large"
+  },
+  "slope-xlarge": {
+   "file": "premises/slope-xlarge.jpg",
+   "row": 10,
+   "col": 3,
+   "caption": "Slope or Outdoor Venue / xlarge"
+  }
+ }
+}

@@ -1,0 +1,2230 @@
+{
+ "abrgo": [
+  "COVERED_UI",
+  "expandAbroad->ExpandAbroadView.swift"
+ ],
+ "abrset": [
+  "COVERED_UI",
+  "expandAbroad->ExpandAbroadView.swift"
+ ],
+ "acad36": [
+  "PRESENTATION",
+  ""
+ ],
+ "acadc": [
+  "PRESENTATION",
+  ""
+ ],
+ "acadco": [
+  "PRESENTATION",
+  ""
+ ],
+ "acads": [
+  "PRESENTATION",
+  ""
+ ],
+ "acandback": [
+  "PRESENTATION",
+  ""
+ ],
+ "acandopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "acc39": [
+  "COVERED_UI",
+  "keyAccountProfile->CompanyCustomers.swift"
+ ],
+ "acc39d": [
+  "COVERED_UI",
+  "setAccountDiscount->CompanyCustomers.swift"
+ ],
+ "acct": [
+  "PRESENTATION",
+  ""
+ ],
+ "acctdrop": [
+  "COVERED_UI",
+  "dropAccount->CompanyCustomers.swift"
+ ],
+ "acctmeet": [
+  "COVERED_UI",
+  "meetAccount->CompanyCustomers.swift"
+ ],
+ "advance": [
+  "PRESENTATION",
+  ""
+ ],
+ "age56": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "al30go": [
+  "PRESENTATION",
+  ""
+ ],
+ "al30later": [
+  "PRESENTATION",
+  ""
+ ],
+ "amb27pick": [
+  "COVERED_UI",
+  "chooseAmbition->GoalsCard.swift"
+ ],
+ "applydoc": [
+  "ENGINE_ONLY",
+  "applyForChainDocument has App callers for chain and franchise documents only; no per-company permit-apply action"
+ ],
+ "applydoc2": [
+  "ENGINE_ONLY",
+  "applyForChainDocument has App callers for chain and franchise documents only; no per-company permit-apply action"
+ ],
+ "arep": [
+  "COVERED_UI",
+  "requestAnalystReport->GroupOffice.swift"
+ ],
+ "artview": [
+  "PRESENTATION",
+  ""
+ ],
+ "askmgr": [
+  "COVERED_UI",
+  "askManager->CompanyManagement.swift"
+ ],
+ "asstduty": [
+  "COVERED_UI",
+  "toggleAssistantDuty->CompanyManagement.swift"
+ ],
+ "asstfire": [
+  "COVERED_UI",
+  "dismissAssistant->CompanyManagement.swift"
+ ],
+ "asstgo": [
+  "COVERED_UI",
+  "hireAssistant->CompanyManagement.swift"
+ ],
+ "asstsearch": [
+  "COVERED_UI",
+  "searchAssistants->CompanyManagement.swift"
+ ],
+ "asstsearch56": [
+  "COVERED_UI",
+  "searchAssistants->CompanyManagement.swift"
+ ],
+ "authad": [
+  "COVERED_UI",
+  "setManagerAuthority->CompanyManagement.swift"
+ ],
+ "authbuy": [
+  "COVERED_UI",
+  "setManagerAuthority->CompanyManagement.swift"
+ ],
+ "authhire": [
+  "COVERED_UI",
+  "setManagerAuthority->CompanyManagement.swift"
+ ],
+ "authlvl": [
+  "COVERED_UI",
+  "setManagerAuthority->CompanyManagement.swift"
+ ],
+ "autoset": [
+  "COVERED_UI",
+  "quickSetup->CompanyOverview.swift"
+ ],
+ "autostock": [
+  "COVERED_UI",
+  "setSalmonAutomation->CompanyEnergy.swift (stocking is the salmon automation switch)"
+ ],
+ "away56": [
+  "PRESENTATION",
+  ""
+ ],
+ "b12go": [
+  "COVERED_UI",
+  "boardVote->CompanySaleSection.swift/CompanySettings.swift"
+ ],
+ "b13go": [
+  "COVERED_UI",
+  "recordPushedThrough->CompanySaleSection.swift/CompanySettings.swift"
+ ],
+ "b14go": [
+  "PRESENTATION",
+  ""
+ ],
+ "back": [
+  "PRESENTATION",
+  ""
+ ],
+ "backto": [
+  "PRESENTATION",
+  ""
+ ],
+ "bd12find": [
+  "COVERED_UI",
+  "searchForSeat->GroupBoards.swift"
+ ],
+ "bd12freq": [
+  "COVERED_UI",
+  "setBoardMode->GroupBoards.swift"
+ ],
+ "bd12inv": [
+  "COVERED_UI",
+  "fillSeat->GroupBoards.swift"
+ ],
+ "bd12meet": [
+  "COVERED_UI",
+  "holdBoardMeeting->GroupBoards.swift"
+ ],
+ "bd12mode": [
+  "COVERED_UI",
+  "setBoardMode->GroupBoards.swift"
+ ],
+ "bd12no": [
+  "COVERED_UI",
+  "decideMeetingItem->GroupBoards.swift"
+ ],
+ "bd12rm": [
+  "COVERED_UI",
+  "removeFromBoard->GroupBoards.swift"
+ ],
+ "bd12yes": [
+  "COVERED_UI",
+  "decideMeetingItem->GroupBoards.swift"
+ ],
+ "bd13find": [
+  "COVERED_UI",
+  "searchForSeat->GroupBoards.swift"
+ ],
+ "bd13hire": [
+  "COVERED_UI",
+  "fillSeat->GroupBoards.swift"
+ ],
+ "bigacc": [
+  "COVERED_UI",
+  "acceptBigMeetingOffer/counterBigMeetingOffer/walkAwayFromBigMeeting; App VenturesView.swift"
+ ],
+ "bigctr": [
+  "COVERED_UI",
+  "acceptBigMeetingOffer/counterBigMeetingOffer/walkAwayFromBigMeeting; App VenturesView.swift"
+ ],
+ "bigwalk": [
+  "COVERED_UI",
+  "acceptBigMeetingOffer/counterBigMeetingOffer/walkAwayFromBigMeeting; App VenturesView.swift"
+ ],
+ "bk13ok": [
+  "PRESENTATION",
+  ""
+ ],
+ "boarddeal": [
+  "COVERED_UI",
+  "agreeSupplierDeal->GroupOffice.swift"
+ ],
+ "books": [
+  "PRESENTATION",
+  ""
+ ],
+ "branchgo": [
+  "COVERED_UI",
+  "openBranchNextToRival->CompanyMarket.swift"
+ ],
+ "brandapply": [
+  "COVERED_UI",
+  "applyToFranchiseBrand->FranchiseBrandsView.swift"
+ ],
+ "brandfacts": [
+  "COVERED_UI",
+  "meeting->FranchiseBrandsView.swift/GroupBoards.swift"
+ ],
+ "brandopen": [
+  "COVERED_UI",
+  "meeting->FranchiseBrandsView.swift/GroupBoards.swift"
+ ],
+ "brandpick": [
+  "COVERED_UI",
+  "franchiseBrand->FranchiseBrandsView.swift"
+ ],
+ "brandstart": [
+  "COVERED_UI",
+  "startFranchisedCompany->FranchiseBrandsView.swift"
+ ],
+ "branduse": [
+  "COVERED_UI",
+  "startFranchisedCompany->FranchiseBrandsView.swift"
+ ],
+ "btab": [
+  "PRESENTATION",
+  ""
+ ],
+ "buyasset": [
+  "COVERED_UI",
+  "buyInvestment->InvestView.swift"
+ ],
+ "buyeq": [
+  "COVERED_UI",
+  "buyEquipmentItem->CompanyEquipment.swift"
+ ],
+ "buyprop": [
+  "COVERED_UI",
+  "buyProperty->CompanyProperties.swift"
+ ],
+ "buyveh": [
+  "COVERED_UI",
+  "buyVehicleItem->CompanyEquipment.swift"
+ ],
+ "candback": [
+  "PRESENTATION",
+  ""
+ ],
+ "candinfo": [
+  "PRESENTATION",
+  ""
+ ],
+ "candopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "candpass": [
+  "PRESENTATION",
+  ""
+ ],
+ "car7": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "carallow": [
+  "COVERED_UI",
+  "contractPropose->ContractDiscussionView.swift (benefits topic: own car, ContractTalk calls PersonalEquipment.toggleOwnCar)"
+ ],
+ "carc": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "cash41in": [
+  "COVERED_UI",
+  "putMoneyInto->CompanyHolding.swift/CompanyMoney.swift"
+ ],
+ "ccheck": [
+  "COVERED_UI",
+  "setCreditCheck->CompanyCustomers.swift"
+ ],
+ "ccsheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "cdiv": [
+  "COVERED_UI",
+  "payDividend->CompanyHolding.swift/CompanyMoney.swift"
+ ],
+ "cdraw": [
+  "COVERED_UI",
+  "takeMoneyOut->CompanyMoney.swift"
+ ],
+ "cel28ok": [
+  "PRESENTATION",
+  ""
+ ],
+ "cel28wall": [
+  "PRESENTATION",
+  ""
+ ],
+ "ceobuy": [
+  "COVERED_UI",
+  "setExecutiveAuthority->ExecutivePosts.swift"
+ ],
+ "ceolvl": [
+  "COVERED_UI",
+  "setExecutiveAuthority->ExecutivePosts.swift"
+ ],
+ "ch12fire": [
+  "COVERED_UI",
+  "releaseExecutive->ExecutivePosts.swift"
+ ],
+ "ch12join": [
+  "COVERED_UI",
+  "joinChain->ChainView.swift"
+ ],
+ "ch12lend": [
+  "COVERED_UI",
+  "lendWorker->CompanyOtherSections.swift"
+ ],
+ "ch12make": [
+  "COVERED_UI",
+  "makeChain->CompanyChain.swift"
+ ],
+ "ch12new": [
+  "COVERED_UI",
+  "openChainStore->ChainView.swift"
+ ],
+ "ch12off": [
+  "COVERED_UI",
+  "setStoreRule->CompanyChain.swift"
+ ],
+ "ch12rule": [
+  "COVERED_UI",
+  "setChainRule->ChainView.swift"
+ ],
+ "ch12store": [
+  "PRESENTATION",
+  ""
+ ],
+ "ch12tab": [
+  "PRESENTATION",
+  ""
+ ],
+ "ch16rp": [
+  "COVERED_UI",
+  "setChainRule->ChainView.swift"
+ ],
+ "ch27k": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "ch27off": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "ch27set": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "ch39off": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "ch39set": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "cinject": [
+  "COVERED_UI",
+  "putMoneyInto->CompanyHolding.swift/CompanyMoney.swift"
+ ],
+ "citysheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "clcset": [
+  "PRESENTATION",
+  ""
+ ],
+ "cldo": [
+  "PRESENTATION",
+  ""
+ ],
+ "clgo": [
+  "COVERED_UI",
+  "closeCompany->CompanySettings.swift"
+ ],
+ "closepop": [
+  "PRESENTATION",
+  ""
+ ],
+ "clset": [
+  "PRESENTATION",
+  ""
+ ],
+ "club24buy": [
+  "COVERED_UI",
+  "signPlayer->CompanyClub.swift"
+ ],
+ "clubbuy": [
+  "COVERED_UI",
+  "offerForClub->CompanyClub.swift"
+ ],
+ "clubclose": [
+  "COVERED_UI",
+  "buyClub->CompanyClub.swift"
+ ],
+ "clubfind": [
+  "COVERED_UI",
+  "clubCandidates->CompanyClub.swift"
+ ],
+ "clubfire": [
+  "COVERED_UI",
+  "dismissCoach->CompanyClub.swift"
+ ],
+ "clubfound": [
+  "COVERED_UI",
+  "foundClub->CompanyClub.swift"
+ ],
+ "clubhire": [
+  "COVERED_UI",
+  "hireCoach->CompanyClub.swift"
+ ],
+ "clubofferx": [
+  "COVERED_UI",
+  "offerForClub->CompanyClub.swift"
+ ],
+ "clubspon": [
+  "COVERED_UI",
+  "signSponsor->CompanyClub.swift"
+ ],
+ "clubtix": [
+  "COVERED_UI",
+  "setClubTicketLevel->CompanyClub.swift"
+ ],
+ "clubwage": [
+  "COVERED_UI",
+  "setClubWageShare->CompanyClub.swift"
+ ],
+ "codeal": [
+  "PRESENTATION",
+  ""
+ ],
+ "cofilter": [
+  "PRESENTATION",
+  ""
+ ],
+ "cofin": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "complres": [
+  "COVERED_UI",
+  "answerComplaint->CompanyOtherSections.swift"
+ ],
+ "confirmgo": [
+  "PRESENTATION",
+  ""
+ ],
+ "convgo": [
+  "COVERED_UI",
+  "convertToLimited->CompanySettings.swift"
+ ],
+ "cosal": [
+  "COVERED_UI",
+  "setOwnerSalary->CompanyMoney.swift"
+ ],
+ "cosold": [
+  "PRESENTATION",
+  ""
+ ],
+ "cosub": [
+  "COVERED_UI",
+  "subscribeSoftware->CompanyEquipment.swift"
+ ],
+ "cotab": [
+  "PRESENTATION",
+  ""
+ ],
+ "coursesheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "crumb": [
+  "PRESENTATION",
+  ""
+ ],
+ "crumbroot": [
+  "PRESENTATION",
+  ""
+ ],
+ "ct56": [
+  "COVERED_UI",
+  "signContract/endContract (ContractActions.swift); App CompanyContracts.swift"
+ ],
+ "cv56meet": [
+  "PRESENTATION",
+  ""
+ ],
+ "cy56bk": [
+  "COVERED_UI",
+  "toggleBackups->CompanyCustomers.swift"
+ ],
+ "cy56set": [
+  "COVERED_UI",
+  "setCyberLevel->CompanyCustomers.swift"
+ ],
+ "cy56tr": [
+  "COVERED_UI",
+  "trainStaff->CompanyCustomers.swift"
+ ],
+ "ddopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "ddset": [
+  "PRESENTATION",
+  ""
+ ],
+ "depgo": [
+  "COVERED_UI",
+  "openDeposit->BankView.swift"
+ ],
+ "depsheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "devgo": [
+  "COVERED_UI",
+  "startDevelopment->CompanyOtherSections.swift/CompanyProjects.swift"
+ ],
+ "devprice": [
+  "COVERED_UI",
+  "setDevelopmentPrice->CompanyProjects.swift"
+ ],
+ "devsheet": [
+  "COVERED_UI",
+  "developmentQuote->CompanyProjects.swift"
+ ],
+ "docourse": [
+  "COVERED_UI",
+  "sendOnCourse->CompanyStaffRoster.swift"
+ ],
+ "docsall": [
+  "COVERED_UI",
+  "quickSetup->CompanyOverview.swift"
+ ],
+ "doraise": [
+  "COVERED_UI",
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
+ ],
+ "dow56go": [
+  "NOT_PORTED",
+  "deal of the week (S.dow56, goals_and_awards.js) - no Swift counterpart"
+ ],
+ "dy59claim": [
+  "COVERED_UI",
+  "claimDailyGoal->GoalsCard.swift"
+ ],
+ "emg12pick": [
+  "COVERED_UI",
+  "pickEmergency->GroupBoards.swift"
+ ],
+ "eq39buy": [
+  "COVERED_UI",
+  "buyEquipmentItem->CompanyEquipment.swift"
+ ],
+ "eq39cls": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "eqbrand": [
+  "COVERED_UI",
+  "offers->CandidateSheet.swift/ChainView.swift"
+ ],
+ "eqmode": [
+  "COVERED_UI",
+  "EquipmentMarket.Payment->CompanySourcing.swift"
+ ],
+ "eqpick": [
+  "COVERED_UI",
+  "offers->CandidateSheet.swift/ChainView.swift"
+ ],
+ "eqsheet": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "eqtab": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "est56mode": [
+  "COVERED_UI",
+  "setCastleOpen->LuxuryView.swift"
+ ],
+ "est56off": [
+  "COVERED_UI",
+  "takeWeekOffOnIsland->LuxuryView.swift"
+ ],
+ "est56ret": [
+  "COVERED_UI",
+  "hostIslandRetreat->LuxuryView.swift"
+ ],
+ "f17go": [
+  "COVERED_UI",
+  "foundStartup->VenturesView.swift"
+ ],
+ "f17model": [
+  "COVERED_UI",
+  "foundStartup->VenturesView.swift"
+ ],
+ "f17prod": [
+  "COVERED_UI",
+  "verifySalesperson->CompanyFinanceBook.swift"
+ ],
+ "f17sec": [
+  "COVERED_UI",
+  "foundStartup->VenturesView.swift"
+ ],
+ "f17seed": [
+  "COVERED_UI",
+  "foundStartup->VenturesView.swift"
+ ],
+ "f17who": [
+  "COVERED_UI",
+  "foundStartup->VenturesView.swift"
+ ],
+ "facc": [
+  "COVERED_UI",
+  "acceptStartupRound->VenturesView.swift"
+ ],
+ "fav31ask": [
+  "COVERED_UI",
+  "askForFavour->WorldView.swift"
+ ],
+ "fav31call": [
+  "COVERED_UI",
+  "callInFavour->WorldView.swift"
+ ],
+ "fav31keep": [
+  "COVERED_UI",
+  "keepPromise->WorldView.swift"
+ ],
+ "fb24leave": [
+  "COVERED_UI",
+  "leaveFranchise->CompanyFranchise.swift"
+ ],
+ "fdec": [
+  "COVERED_UI",
+  "declineStartupRound->VenturesView.swift"
+ ],
+ "fin31": [
+  "PRESENTATION",
+  ""
+ ],
+ "fireceo": [
+  "ENGINE_ONLY",
+  "releaseGroupCEO: legacy-save repair only (the group CEO post was replaced in round 56); App has no caller, intentionally. See docs/audit/reachability.md"
+ ],
+ "firehq": [
+  "COVERED_UI",
+  "fireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "fireregional": [
+  "COVERED_UI",
+  "releaseExecutive->ExecutivePosts.swift"
+ ],
+ "firestaff": [
+  "COVERED_UI",
+  "dismissStaff->CompanyStaffRoster.swift"
+ ],
+ "fixv": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "fmadd": [
+  "COVERED_UI",
+  "hireFundManager/addToFundManager/withdrawFromFundManager/dismissFundManager (FinanceManagerActions.swift); App MoneyPeopleActions.swift"
+ ],
+ "fmfire": [
+  "COVERED_UI",
+  "hireFundManager/addToFundManager/withdrawFromFundManager/dismissFundManager (FinanceManagerActions.swift); App MoneyPeopleActions.swift"
+ ],
+ "fmgo": [
+  "COVERED_UI",
+  "hireFundManager/addToFundManager/withdrawFromFundManager/dismissFundManager (FinanceManagerActions.swift); App MoneyPeopleActions.swift"
+ ],
+ "fmhire": [
+  "COVERED_UI",
+  "hireFundManager/addToFundManager/withdrawFromFundManager/dismissFundManager (FinanceManagerActions.swift); App MoneyPeopleActions.swift"
+ ],
+ "fmmand": [
+  "COVERED_UI",
+  "hireFundManager/addToFundManager/withdrawFromFundManager/dismissFundManager (FinanceManagerActions.swift); App MoneyPeopleActions.swift"
+ ],
+ "fmwd": [
+  "COVERED_UI",
+  "withdrawFromFundManager->MoneyPeopleActions.swift"
+ ],
+ "found": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "found28": [
+  "COVERED_UI",
+  "give/startFoundation->GivingView.swift"
+ ],
+ "fpitch": [
+  "COVERED_UI",
+  "pitchStartupRound->VenturesView.swift"
+ ],
+ "fr24term": [
+  "COVERED_UI",
+  "terminateFranchiseUnit->CompanyFranchise.swift"
+ ],
+ "frlaunch": [
+  "COVERED_UI",
+  "launchFranchise->CompanyFranchise.swift"
+ ],
+ "frmast": [
+  "COVERED_UI",
+  "sellMasterFranchise->CompanyFranchise.swift"
+ ],
+ "frset": [
+  "PRESENTATION",
+  ""
+ ],
+ "frt56": [
+  "COVERED_UI",
+  "negotiateFranchise->FranchiseBrandsView.swift"
+ ],
+ "frt56ed": [
+  "PRESENTATION",
+  ""
+ ],
+ "frt56go": [
+  "COVERED_UI",
+  "offerToApplicant->CompanyFranchise.swift"
+ ],
+ "fs58claim": [
+  "COVERED_UI",
+  "claimFirstStep->GoalsCard.swift"
+ ],
+ "fs58off": [
+  "ENGINE_ONLY",
+  "setFirstStepsHidden (MiscActions.swift); the Goals card has no hide control"
+ ],
+ "fshut": [
+  "COVERED_UI",
+  "shutDownStartup->VenturesView.swift"
+ ],
+ "ftop": [
+  "COVERED_UI",
+  "putMoneyIntoStartup->VenturesView.swift"
+ ],
+ "ftopgo": [
+  "COVERED_UI",
+  "putMoneyIntoStartup->VenturesView.swift"
+ ],
+ "fundacc": [
+  "COVERED_UI",
+  "acceptFundingOffer->CompanyOwnership.swift"
+ ],
+ "fundctr": [
+  "COVERED_UI",
+  "counterFundingOffer->CompanyOwnership.swift"
+ ],
+ "funddec": [
+  "COVERED_UI",
+  "declineFundingOffer->CompanyOwnership.swift"
+ ],
+ "gaoff": [
+  "NOT_PORTED",
+  "web analytics switch co.ga (grep analytics: none)"
+ ],
+ "gaon": [
+  "NOT_PORTED",
+  "web analytics switch co.ga (grep analytics: none)"
+ ],
+ "gc28": [
+  "PRESENTATION",
+  ""
+ ],
+ "gcandopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "give28": [
+  "COVERED_UI",
+  "give/startFoundation->GivingView.swift"
+ ],
+ "go": [
+  "PRESENTATION",
+  ""
+ ],
+ "go30": [
+  "PRESENTATION",
+  ""
+ ],
+ "hdt": [
+  "PRESENTATION",
+  ""
+ ],
+ "hfin": [
+  "COVERED_UI",
+  "toggleHoldingFinanceManager->MoneyPeopleActions.swift"
+ ],
+ "hirego": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "hirehq": [
+  "COVERED_UI",
+  "hireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "hk54b": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "hk54h": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "hk54k": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "hk54s": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "hlist": [
+  "COVERED_UI",
+  "listHoldingOnExchange->CompanyOwnership.swift"
+ ],
+ "hmode": [
+  "PRESENTATION",
+  ""
+ ],
+ "hmode7": [
+  "PRESENTATION",
+  ""
+ ],
+ "holdin": [
+  "COVERED_UI",
+  "holdingInvest->CompanyHolding.swift"
+ ],
+ "holdout": [
+  "COVERED_UI",
+  "holdingDivest->CompanyHolding.swift"
+ ],
+ "home37": [
+  "COVERED_UI",
+  "giveUpPremises->CompanyWorkplace.swift"
+ ],
+ "hq56t": [
+  "PRESENTATION",
+  ""
+ ],
+ "hqas": [
+  "ENGINE_ONLY",
+  "toggleOfficeAssignment: writes staff[].cos, which no engine rule reads yet; not wired so the screen does not offer a setting with no effect. See docs/audit/reachability.md"
+ ],
+ "hqcandopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "hqmode": [
+  "PRESENTATION",
+  ""
+ ],
+ "hqoffer": [
+  "COVERED_UI",
+  "hireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "hqref": [
+  "COVERED_UI",
+  "referenceCheckCandidate->GroupOffice.swift"
+ ],
+ "hqsearch": [
+  "COVERED_UI",
+  "searchOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "hqstep56": [
+  "COVERED_UI",
+  "searchOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "hqtab": [
+  "PRESENTATION",
+  ""
+ ],
+ "hqtick": [
+  "COVERED_UI",
+  "tickOfficePaperwork->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "hraise": [
+  "COVERED_UI",
+  "raiseMoneyForHolding->CompanyOwnership.swift"
+ ],
+ "hrel": [
+  "COVERED_UI",
+  "releaseFromHolding->CompanyHolding.swift"
+ ],
+ "hrole": [
+  "PRESENTATION",
+  ""
+ ],
+ "hrole2": [
+  "PRESENTATION",
+  ""
+ ],
+ "hsearch": [
+  "COVERED_UI",
+  "searchWorkers->CompanyTeam.swift"
+ ],
+ "hstep56": [
+  "PRESENTATION",
+  ""
+ ],
+ "hysGo": [
+  "COVERED_UI",
+  "changeKnob/toggleKnobOption (changeover cost and capacity in KnobChange.swift)->CompanyHowYouSell.swift"
+ ],
+ "hysPick": [
+  "COVERED_UI",
+  "changeKnob/toggleKnobOption (changeover cost and capacity in KnobChange.swift)->CompanyHowYouSell.swift"
+ ],
+ "hysTog": [
+  "COVERED_UI",
+  "changeKnob/toggleKnobOption (changeover cost and capacity in KnobChange.swift)->CompanyHowYouSell.swift"
+ ],
+ "inflset": [
+  "COVERED_UI",
+  "setInflationHold->CompanyOperations.swift"
+ ],
+ "injhold": [
+  "COVERED_UI",
+  "putMoneyInto->CompanyHolding.swift/CompanyMoney.swift"
+ ],
+ "invsheet": [
+  "COVERED_UI",
+  "buyInvestment->InvestView.swift"
+ ],
+ "itab": [
+  "PRESENTATION",
+  ""
+ ],
+ "leaseprop": [
+  "COVERED_UI",
+  "leaseSpace->CompanyProperties.swift"
+ ],
+ "lh12fire": [
+  "COVERED_UI",
+  "fireOffice->GroupOffice.swift/MoneyPeopleActions.swift"
+ ],
+ "lh12set": [
+  "COVERED_UI",
+  "setRightHand->GroupOffice.swift"
+ ],
+ "loadfile": [
+  "COVERED_UI",
+  "GameStore.importLegacy->GameStore.swift/SettingsView.swift"
+ ],
+ "loadpaste": [
+  "COVERED_UI",
+  "GameStore.importLegacy->GameStore.swift/SettingsView.swift"
+ ],
+ "loango": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "loansheet": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "loanterm": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "logo": [
+  "COVERED_UI",
+  "layOffStaff->CompanyStaffRoster.swift"
+ ],
+ "loset": [
+  "PRESENTATION",
+  "form selector (ui.lo / ui.rf only)"
+ ],
+ "luxbuygo": [
+  "COVERED_UI",
+  "buyLuxury->LuxuryView.swift"
+ ],
+ "luxsell": [
+  "COVERED_UI",
+  "sellLuxury->LuxuryView.swift"
+ ],
+ "lx56": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "lx56co": [
+  "COVERED_UI",
+  "buyLuxury->LuxuryView.swift"
+ ],
+ "lx56cogo": [
+  "COVERED_UI",
+  "buyLuxury->LuxuryView.swift"
+ ],
+ "lx56din": [
+  "COVERED_UI",
+  "hostYachtDinner->LuxuryView.swift"
+ ],
+ "lx56use": [
+  "COVERED_UI",
+  "setLuxuryUse->LuxuryView.swift"
+ ],
+ "lxbuy": [
+  "COVERED_UI",
+  "buyLuxury->LuxuryView.swift"
+ ],
+ "lxgo": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "mailback": [
+  "PRESENTATION",
+  ""
+ ],
+ "mailf": [
+  "PRESENTATION",
+  ""
+ ],
+ "mailopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "maint": [
+  "COVERED_UI",
+  "setMaintenance->CompanyOperations.swift"
+ ],
+ "marketprop": [
+  "COVERED_UI",
+  "tenantOffers->CompanyProperties.swift"
+ ],
+ "mb56": [
+  "PRESENTATION",
+  ""
+ ],
+ "mcandback": [
+  "PRESENTATION",
+  ""
+ ],
+ "mcandopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "md56": [
+  "COVERED_UI",
+  "setManagerDuty->CompanyManagement.swift"
+ ],
+ "md56give": [
+  "COVERED_UI",
+  "setManagerDuty->CompanyManagement.swift"
+ ],
+ "menuback": [
+  "PRESENTATION",
+  ""
+ ],
+ "menucont": [
+  "PRESENTATION",
+  ""
+ ],
+ "menuload": [
+  "COVERED_UI",
+  "load->CompanyContracts.swift/GameStore.swift"
+ ],
+ "menunew": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "mgrask": [
+  "COVERED_UI",
+  "interviewManager->CompanyManagement.swift"
+ ],
+ "mgrfire": [
+  "COVERED_UI",
+  "dismissManager->CompanyManagement.swift"
+ ],
+ "mgrgo": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "mgrhirego": [
+  "COVERED_UI",
+  "hireManager->CompanyManagement.swift/CompanyPeopleActions.swift"
+ ],
+ "mgrmove": [
+  "COVERED_UI",
+  "contractPropose->ContractDiscussionView.swift (move topic: ContractTalk calls ManagerModel.move)"
+ ],
+ "mgrmovego": [
+  "COVERED_UI",
+  "contractPropose->ContractDiscussionView.swift (move topic: ContractTalk calls ManagerModel.move)"
+ ],
+ "mgrraise": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "mgrref": [
+  "COVERED_UI",
+  "checkManagerReferences->CompanyManagement.swift"
+ ],
+ "mgrsearch": [
+  "COVERED_UI",
+  "searchManagers->CompanyManagement.swift"
+ ],
+ "mgrsearch56": [
+  "COVERED_UI",
+  "searchManagers->CompanyManagement.swift"
+ ],
+ "mhire56": [
+  "COVERED_UI",
+  "hireManager->CompanyManagement.swift/CompanyPeopleActions.swift"
+ ],
+ "mkt26hire": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "mkt26rep": [
+  "COVERED_UI",
+  "orderMarketReport->CompanyMarket.swift"
+ ],
+ "moffer56": [
+  "PRESENTATION",
+  ""
+ ],
+ "moredocs": [
+  "PRESENTATION",
+  ""
+ ],
+ "msearch56": [
+  "COVERED_UI",
+  "searchManagers->CompanyManagement.swift"
+ ],
+ "msglater": [
+  "PRESENTATION",
+  ""
+ ],
+ "msgpick": [
+  "COVERED_UI",
+  "answer->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "mstep56": [
+  "PRESENTATION",
+  ""
+ ],
+ "mtab": [
+  "PRESENTATION",
+  ""
+ ],
+ "mtgo2": [
+  "COVERED_UI",
+  "meetForProposals->GroupOffice.swift"
+ ],
+ "mtwho": [
+  "COVERED_UI",
+  "callMeeting->GroupOffice.swift"
+ ],
+ "mtypeset": [
+  "COVERED_UI",
+  "callMeeting->GroupOffice.swift"
+ ],
+ "ncgo": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "ncset": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "negsend": [
+  "COVERED_UI",
+  "negotiateFranchise->FranchiseBrandsView.swift"
+ ],
+ "negsign": [
+  "COVERED_UI",
+  "signFranchiseTerms->FranchiseBrandsView.swift"
+ ],
+ "negstep": [
+  "COVERED_UI",
+  "negotiateFranchise->FranchiseBrandsView.swift"
+ ],
+ "net31p": [
+  "COVERED_UI",
+  "peopleYouKnow->WorldView.swift"
+ ],
+ "newgame": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "newgame2": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "newhold": [
+  "COVERED_UI",
+  "createHolding->CompanyHolding.swift"
+ ],
+ "nextday": [
+  "COVERED_UI",
+  "nextDay->GameStore.swift/HomeView.swift"
+ ],
+ "nhacc": [
+  "PRESENTATION",
+  ""
+ ],
+ "nhco": [
+  "PRESENTATION",
+  ""
+ ],
+ "nhgo": [
+  "COVERED_UI",
+  "createHolding->CompanyHolding.swift"
+ ],
+ "nhpub": [
+  "COVERED_UI",
+  "listHoldingOnExchange->CompanyOwnership.swift"
+ ],
+ "none": [
+  "PRESENTATION",
+  ""
+ ],
+ "noop": [
+  "PRESENTATION",
+  ""
+ ],
+ "ns13city": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "ns13go": [
+  "COVERED_UI",
+  "openChainStore->ChainView.swift"
+ ],
+ "ns13size": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "nx59all": [
+  "PRESENTATION",
+  ""
+ ],
+ "nx59do": [
+  "PRESENTATION",
+  ""
+ ],
+ "oa59meet": [
+  "COVERED_UI",
+  "meetManager->CompanyManagement.swift"
+ ],
+ "offer": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "offer7": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "officepop": [
+  "COVERED_UI",
+  "rentOffice->GroupOffice.swift"
+ ],
+ "oilacq": [
+  "COVERED_UI",
+  "buyOilStake->CompanyEnergy.swift"
+ ],
+ "oilbuy": [
+  "COVERED_UI",
+  "buyOilStake->CompanyEnergy.swift"
+ ],
+ "oilexp": [
+  "COVERED_UI",
+  "exploreForOil->CompanyEnergy.swift"
+ ],
+ "onbtick": [
+  "COVERED_UI",
+  "completePaperwork->CompanyStaffRoster.swift"
+ ],
+ "opendec": [
+  "COVERED_UI",
+  "answer->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "opendep": [
+  "COVERED_UI",
+  "openDeposit->BankView.swift"
+ ],
+ "openmsg": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "out40ok": [
+  "PRESENTATION",
+  ""
+ ],
+ "own27buy": [
+  "COVERED_UI",
+  "buyBackStake->CompanyOwnership.swift"
+ ],
+ "own27pol": [
+  "COVERED_UI",
+  "setDividendPolicy->CompanyOwnership.swift"
+ ],
+ "ownhrs": [
+  "COVERED_UI",
+  "setOwnerHours->CompanyOperations.swift"
+ ],
+ "ownpick": [
+  "COVERED_UI",
+  "chooseOwnAdviser->CompanyCoverage.swift"
+ ],
+ "ownsw": [
+  "COVERED_UI",
+  "useOwnSoftware->CompanyEquipment.swift"
+ ],
+ "p11back": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "p11duty": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "p11offer": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "p11set": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "p11talk": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "p17go": [
+  "COVERED_UI",
+  "pitchProductToRival->VenturesView.swift"
+ ],
+ "p17open": [
+  "COVERED_UI",
+  "rivalTargetsForProduct->VenturesView.swift"
+ ],
+ "pa56": [
+  "PRESENTATION",
+  ""
+ ],
+ "pay7": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "payrate": [
+  "PRESENTATION",
+  ""
+ ],
+ "paysel": [
+  "PRESENTATION",
+  ""
+ ],
+ "paysrc56": [
+  "PRESENTATION",
+  ""
+ ],
+ "paysrcgo": [
+  "PRESENTATION",
+  ""
+ ],
+ "pe56go": [
+  "COVERED_UI",
+  "commitToFund->VenturesView.swift"
+ ],
+ "pe56sell": [
+  "COVERED_UI",
+  "sellFundStake->VenturesView.swift"
+ ],
+ "perfauto": [
+  "COVERED_UI",
+  "setPerformanceAnalystAuto->GroupOffice.swift"
+ ],
+ "perloan": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "perloango": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "phapp": [
+  "PRESENTATION",
+  ""
+ ],
+ "phback": [
+  "PRESENTATION",
+  ""
+ ],
+ "phone": [
+  "PRESENTATION",
+  ""
+ ],
+ "pickacc": [
+  "COVERED_UI",
+  "chooseAdviser->CompanyCoverage.swift (accountant section)"
+ ],
+ "pickgo": [
+  "PRESENTATION",
+  ""
+ ],
+ "pitch": [
+  "COVERED_UI",
+  "pitchToInvestors->CompanyOwnership.swift"
+ ],
+ "pk58hgo": [
+  "COVERED_UI",
+  "toggleStaffPerk/hostDeal/lendPiece (PerkActions.swift); App MoneyPeopleActions/CompanyPeopleActions"
+ ],
+ "pk58host": [
+  "COVERED_UI",
+  "toggleStaffPerk/hostDeal/lendPiece (PerkActions.swift); App MoneyPeopleActions/CompanyPeopleActions"
+ ],
+ "pk58lend": [
+  "COVERED_UI",
+  "toggleStaffPerk/hostDeal/lendPiece (PerkActions.swift); App MoneyPeopleActions/CompanyPeopleActions"
+ ],
+ "pk58lgo": [
+  "COVERED_UI",
+  "toggleStaffPerk/hostDeal/lendPiece (PerkActions.swift); App MoneyPeopleActions/CompanyPeopleActions"
+ ],
+ "pk58t": [
+  "COVERED_UI",
+  "toggle->CompanyCoverage.swift/CompanyCustomers.swift"
+ ],
+ "plgo": [
+  "COVERED_PARTIAL",
+  "setCampaign = setMkt only; campaign end week (mktEnd), target age group (mktT) and the advise() planner are not settable"
+ ],
+ "ploanT": [
+  "COVERED_UI",
+  "takeLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "plopen": [
+  "COVERED_PARTIAL",
+  "setCampaign = setMkt only; campaign end week (mktEnd), target age group (mktT) and the advise() planner are not settable"
+ ],
+ "plset": [
+  "COVERED_PARTIAL",
+  "setCampaign = setMkt only; campaign end week (mktEnd), target age group (mktT) and the advise() planner are not settable"
+ ],
+ "pm16camp": [
+  "COVERED_UI",
+  "startDiscount->CompanyMarket.swift"
+ ],
+ "pm16end": [
+  "COVERED_UI",
+  "endDiscount->CompanyMarket.swift"
+ ],
+ "pm16go": [
+  "COVERED_UI",
+  "setPriceLevel->CompanyOperations.swift"
+ ],
+ "pm16set": [
+  "COVERED_UI",
+  "setPriceLevel->CompanyOperations.swift"
+ ],
+ "pr29day": [
+  "COVERED_UI",
+  "setPayday->CompanyPayroll.swift"
+ ],
+ "pr29mode": [
+  "COVERED_UI",
+  "setPayrollMode->CompanyPayrollRun.swift"
+ ],
+ "pr29ok": [
+  "COVERED_UI",
+  "answer->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "pr29run": [
+  "ENGINE_ONLY",
+  "Payday.runPayroll(.manual) is only reachable from the inbox answer; no player \"run payroll now\" wrapper"
+ ],
+ "premset": [
+  "COVERED_UI",
+  "takePremises->CompanyEquipment.swift/CompanyWorkplace.swift"
+ ],
+ "premsheet": [
+  "COVERED_UI",
+  "premisesListings->CompanyEquipment.swift/CompanyWorkplace.swift"
+ ],
+ "pricestep": [
+  "COVERED_UI",
+  "setPriceLevel->CompanyOperations.swift"
+ ],
+ "privacy": [
+  "PRESENTATION",
+  ""
+ ],
+ "pro56": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "pro57": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "proask": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "probuy": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "prodtog": [
+  "COVERED_UI",
+  "setInsuranceProduct->CompanyFinanceBook.swift"
+ ],
+ "prolink": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "promanage": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "promoboss": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "promogo": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "promoset": [
+  "PRESENTATION",
+  ""
+ ],
+ "promosheet": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "promoteact": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "proplan": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "propsheet": [
+  "COVERED_UI",
+  "propertyListings->CompanyProperties.swift"
+ ],
+ "prorestore": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "proskin": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "proskinc": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "prostore": [
+  "OUT_OF_SCOPE",
+  "Ledger Pro store/skins (App Store purchase layer)"
+ ],
+ "provpick": [
+  "COVERED_UI",
+  "chooseAdviser->CompanyCoverage.swift"
+ ],
+ "provsheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "pt48": [
+  "COVERED_UI",
+  "hire->CandidateSheet.swift/CompanyClub.swift"
+ ],
+ "pwend": [
+  "COVERED_UI",
+  "endPriceWar->CompanyMarket.swift"
+ ],
+ "pwgo": [
+  "COVERED_UI",
+  "startPriceWar->CompanyMarket.swift"
+ ],
+ "pwgo7": [
+  "COVERED_UI",
+  "startPriceWar->CompanyMarket.swift"
+ ],
+ "pwlen": [
+  "PRESENTATION",
+  ""
+ ],
+ "pwpick": [
+  "PRESENTATION",
+  ""
+ ],
+ "raisesheet": [
+  "COVERED_UI",
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
+ ],
+ "rb56": [
+  "PRESENTATION",
+  ""
+ ],
+ "rb56go": [
+  "COVERED_UI",
+  "renameChain->ChainView.swift"
+ ],
+ "rd56go": [
+  "COVERED_UI",
+  "startDevelopment->CompanyOtherSections.swift/CompanyProjects.swift"
+ ],
+ "refcheck": [
+  "COVERED_UI",
+  "checkManagerReferences->CompanyManagement.swift"
+ ],
+ "regbuy": [
+  "COVERED_UI",
+  "setExecutiveAuthority->ExecutivePosts.swift"
+ ],
+ "reglvl": [
+  "COVERED_UI",
+  "setExecutiveAuthority->ExecutivePosts.swift"
+ ],
+ "renprop": [
+  "COVERED_UI",
+  "renovateProperty->CompanyProperties.swift"
+ ],
+ "rentoffice": [
+  "COVERED_UI",
+  "rentOffice->GroupOffice.swift"
+ ],
+ "reopen": [
+  "COVERED_UI",
+  "reopenCompany->CompanySettings.swift"
+ ],
+ "repaireq": [
+  "COVERED_UI",
+  "serviceEquipment->CompanyEquipment.swift"
+ ],
+ "repaygo": [
+  "COVERED_UI",
+  "repayLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "repaysheet": [
+  "COVERED_UI",
+  "repayLoan->BankView.swift/CompanyLoans.swift"
+ ],
+ "repdone": [
+  "PRESENTATION",
+  ""
+ ],
+ "repmsgs": [
+  "PRESENTATION",
+  ""
+ ],
+ "repset": [
+  "ENGINE_ONLY",
+  "setReports: writes office.rep (freq/detail/only), which no engine rule reads yet; not wired for the same reason. See docs/audit/reachability.md"
+ ],
+ "res36t": [
+  "PRESENTATION",
+  ""
+ ],
+ "reviewall": [
+  "COVERED_UI",
+  "runManagerScorecards->GroupOffice.swift"
+ ],
+ "reviewnow": [
+  "COVERED_UI",
+  "reviewManagerNow->GroupOffice.swift"
+ ],
+ "rfset": [
+  "PRESENTATION",
+  "form selector (ui.lo / ui.rf only)"
+ ],
+ "riv31meet": [
+  "COVERED_UI",
+  "meetRival->CompanyMarket.swift"
+ ],
+ "rivbuy": [
+  "COVERED_UI",
+  "buyRival->CompanyMarket.swift"
+ ],
+ "rivclose": [
+  "COVERED_UI",
+  "buyRival->CompanyMarket.swift"
+ ],
+ "rivfin27": [
+  "COVERED_UI",
+  "buyRivalWithOwnBank->CompanyMarket.swift"
+ ],
+ "rivhow": [
+  "COVERED_UI",
+  "absorbRival->CompanyMarket.swift"
+ ],
+ "rivmeet": [
+  "COVERED_UI",
+  "meetRival->CompanyMarket.swift"
+ ],
+ "rivoffer": [
+  "COVERED_UI",
+  "offerForRival->CompanyMarket.swift"
+ ],
+ "rk27f": [
+  "COVERED_UI",
+  "rankingBoard->WorldView.swift"
+ ],
+ "rk27s": [
+  "COVERED_UI",
+  "rankingBoard->WorldView.swift"
+ ],
+ "rm27": [
+  "COVERED_UI",
+  "answerPriceCut->CompanyMarket.swift"
+ ],
+ "rn56": [
+  "PRESENTATION",
+  ""
+ ],
+ "rn56go": [
+  "COVERED_UI",
+  "renameCompany->CompanySettings.swift"
+ ],
+ "rv56": [
+  "PRESENTATION",
+  ""
+ ],
+ "rvf": [
+  "PRESENTATION",
+  ""
+ ],
+ "rvmore": [
+  "PRESENTATION",
+  ""
+ ],
+ "rvopen": [
+  "PRESENTATION",
+  ""
+ ],
+ "saleacc": [
+  "COVERED_UI",
+  "accept->CompanyClub.swift/CompanyMarket.swift"
+ ],
+ "salecounter": [
+  "COVERED_UI",
+  "counter->CompanyClub.swift/CompanyMarket.swift"
+ ],
+ "salectr": [
+  "COVERED_UI",
+  "counter->CompanyClub.swift/CompanyMarket.swift"
+ ],
+ "saledec": [
+  "COVERED_UI",
+  "decline->ChainView.swift/CompanySaleSection.swift"
+ ],
+ "saledec7": [
+  "COVERED_UI",
+  "decline->ChainView.swift/CompanySaleSection.swift"
+ ],
+ "salego": [
+  "COVERED_UI",
+  "startListing->CompanySaleSection.swift"
+ ],
+ "salemode": [
+  "COVERED_UI",
+  "listSharesForSale->CompanyOwnership.swift"
+ ],
+ "salepct": [
+  "COVERED_UI",
+  "listSharesForSale->CompanyOwnership.swift"
+ ],
+ "saleq": [
+  "COVERED_UI",
+  "askBuyer->CompanySaleSection.swift"
+ ],
+ "saletab": [
+  "COVERED_UI",
+  "listSharesForSale->CompanyOwnership.swift"
+ ],
+ "saletalk": [
+  "COVERED_UI",
+  "counterBuyer->CompanySaleSection.swift"
+ ],
+ "salewd": [
+  "COVERED_UI",
+  "withdraw->CompanySaleSection.swift/ProjectTimelineViews.swift"
+ ],
+ "savefile": [
+  "COVERED_UI",
+  "save->CompanyCoverage.swift/CompanySourcing.swift"
+ ],
+ "sc56": [
+  "PRESENTATION",
+  ""
+ ],
+ "sellasset": [
+  "COVERED_UI",
+  "sellInvestment->InvestView.swift"
+ ],
+ "sellco": [
+  "COVERED_UI",
+  "accept->CompanyClub.swift/CompanyMarket.swift"
+ ],
+ "selleq": [
+  "COVERED_UI",
+  "sellAllEquipment->CompanyEquipment.swift"
+ ],
+ "sellinv": [
+  "COVERED_UI",
+  "sellInvestment->InvestView.swift"
+ ],
+ "sellprop": [
+  "COVERED_UI",
+  "sellProperty->CompanyProperties.swift"
+ ],
+ "sellsh": [
+  "COVERED_UI",
+  "sellPrivateShares->CompanyOwnership.swift"
+ ],
+ "sellto": [
+  "COVERED_UI",
+  "sellBuilding->CompanyProperties.swift"
+ ],
+ "sellunit": [
+  "COVERED_UI",
+  "sellEquipmentUnit->CompanyEquipment.swift"
+ ],
+ "sellveh": [
+  "COVERED_UI",
+  "sellVehicle->CompanyEquipment.swift"
+ ],
+ "setbig": [
+  "COVERED_UI",
+  "setGroupLimit->ExecutivePosts.swift"
+ ],
+ "setcat": [
+  "PRESENTATION",
+  ""
+ ],
+ "setcity": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "setconf": [
+  "NOT_PORTED",
+  "S.settings.confirm (confirm-before-spend preference) - no counterpart"
+ ],
+ "setcountry": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "setfocus": [
+  "NOT_PORTED",
+  "manager focus plans co.focus/focusPlan/focusDraft (grep: none)"
+ ],
+ "setinp": [
+  "PRESENTATION",
+  ""
+ ],
+ "setknob": [
+  "COVERED_UI",
+  "changeKnob/toggleKnobOption->CompanyHowYouSell.swift"
+ ],
+ "setltv": [
+  "PRESENTATION",
+  ""
+ ],
+ "setmkt": [
+  "COVERED_UI",
+  "setCampaign->CompanyMarketing.swift"
+ ],
+ "setpay": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "setrate": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "setstory": [
+  "NOT_PORTED",
+  "life stories heir/laid/student/kid (STORY57) - newGame has no story parameter"
+ ],
+ "sheetclose": [
+  "PRESENTATION",
+  ""
+ ],
+ "shopbuy": [
+  "COVERED_UI",
+  "buyEquipmentItem->CompanyEquipment.swift"
+ ],
+ "shopcls": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "shoppay": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "shopq": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "shopsel": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "shopt": [
+  "PRESENTATION",
+  "sheet/tab/filter in original; native screens do their own"
+ ],
+ "shopvc": [
+  "COVERED_UI",
+  "make->ChainSuppliers.swift/CompanyOwnership.swift"
+ ],
+ "slotdel": [
+  "PRESENTATION",
+  ""
+ ],
+ "slotkeep": [
+  "PRESENTATION",
+  ""
+ ],
+ "slotload": [
+  "PRESENTATION",
+  ""
+ ],
+ "srcc": [
+  "COVERED_UI",
+  "choice->BankView.swift/ChainSuppliers.swift"
+ ],
+ "srcv": [
+  "COVERED_UI",
+  "switchSupplier->CompanySourcing.swift (one supplier screen; setSupplier/clearSupplier/buyFromAccount/chooseGoodsSupplier are engine internals now)"
+ ],
+ "st27": [
+  "COVERED_UI",
+  "rankingBoard->WorldView.swift"
+ ],
+ "stab": [
+  "COVERED_UI",
+  "foundedStartups->InvestView.swift/VenturesView.swift"
+ ],
+ "startgame": [
+  "COVERED_UI",
+  "newGame->GameStore.swift/StartView.swift"
+ ],
+ "stfix": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "stfull": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "sthrs": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "stockpol": [
+  "COVERED_UI",
+  "setStockPolicy->CompanyOperations.swift"
+ ],
+ "storysheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "stpart": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "stseas": [
+  "COVERED_UI",
+  "contractPropose/contractRespond->ContractDiscussionView.swift (superseded the old per-topic action; mapping inferred)"
+ ],
+ "stt56": [
+  "PRESENTATION",
+  ""
+ ],
+ "subcancel": [
+  "COVERED_UI",
+  "cancelSubscription->CompanyEquipment.swift"
+ ],
+ "subpick": [
+  "COVERED_UI",
+  "subscribeSoftware->CompanyEquipment.swift"
+ ],
+ "sudeal": [
+  "COVERED_UI",
+  "investInStartup->VenturesView.swift"
+ ],
+ "sugo": [
+  "COVERED_UI",
+  "investInStartup->VenturesView.swift"
+ ],
+ "suhelp": [
+  "COVERED_UI",
+  "helpStartupOnBoard->VenturesView.swift"
+ ],
+ "susell": [
+  "COVERED_UI",
+  "sellStartupStake->VenturesView.swift"
+ ],
+ "sw33t": [
+  "COVERED_UI",
+  "setWayToSell->CompanyWaysToSell.swift"
+ ],
+ "swdev": [
+  "COVERED_UI",
+  "setSoftwareCoders->VenturesView.swift"
+ ],
+ "swint": [
+  "COVERED_UI",
+  "setSoftwareInternalPercent->VenturesView.swift"
+ ],
+ "swmodel": [
+  "COVERED_UI",
+  "setSoftwareModel->VenturesView.swift"
+ ],
+ "swself": [
+  "COVERED_UI",
+  "setSoftwareSelfCoding->VenturesView.swift"
+ ],
+ "tab": [
+  "PRESENTATION",
+  ""
+ ],
+ "talkstaff": [
+  "COVERED_UI",
+  "raise->ChainView.swift/CompanyStaffRoster.swift"
+ ],
+ "tcAS": [
+  "COVERED_UI",
+  "startCompanyChoosingPremises->NewCompanyStart.swift"
+ ],
+ "tg58f": [
+  "COVERED_UI",
+  "setTargets/approveBudget (TargetActions.swift); App CompanyPeopleActions.swift"
+ ],
+ "tg58go": [
+  "COVERED_UI",
+  "setTargets/approveBudget (TargetActions.swift); App CompanyPeopleActions.swift"
+ ],
+ "tg58set": [
+  "COVERED_UI",
+  "setTargets/approveBudget (TargetActions.swift); App CompanyPeopleActions.swift"
+ ],
+ "thread": [
+  "PRESENTATION",
+  ""
+ ],
+ "threadback": [
+  "PRESENTATION",
+  ""
+ ],
+ "tm56auth": [
+  "COVERED_UI",
+  "setTeamAuthority->CompanyTeamRoster.swift"
+ ],
+ "tm56fire": [
+  "COVERED_UI",
+  "releaseTeam->CompanyTeamRoster.swift"
+ ],
+ "tmgo": [
+  "COVERED_UI",
+  "callMeeting->GroupOffice.swift"
+ ],
+ "tmset": [
+  "COVERED_UI",
+  "callMeeting->GroupOffice.swift"
+ ],
+ "tnd56auto": [
+  "COVERED_UI",
+  "setManagerBids->CompanyProjects.swift"
+ ],
+ "tnd56go": [
+  "COVERED_UI",
+  "bidOnTender->CompanyContracts.swift/CompanyProjects.swift"
+ ],
+ "tnd56re": [
+  "COVERED_UI",
+  "withdrawBid->CompanyContracts.swift/CompanyProjects.swift"
+ ],
+ "tnd56set": [
+  "COVERED_UI",
+  "bid->CompanyClub.swift/CompanyContracts.swift"
+ ],
+ "toggleins": [
+  "COVERED_UI",
+  "toggleInsurancePolicy->CompanyCoverage.swift"
+ ],
+ "tohold": [
+  "COVERED_UI",
+  "moveToHolding->CompanyHolding.swift"
+ ],
+ "trade": [
+  "COVERED_UI",
+  "buyInvestment->InvestView.swift"
+ ],
+ "trgo": [
+  "COVERED_UI",
+  "putMoneyInto->CompanyHolding.swift/CompanyMoney.swift"
+ ],
+ "trial": [
+  "COVERED_UI",
+  "startTrialWeek->CandidateSheet.swift"
+ ],
+ "trset": [
+  "PRESENTATION",
+  ""
+ ],
+ "trsheet": [
+  "PRESENTATION",
+  ""
+ ],
+ "tw28": [
+  "PRESENTATION",
+  ""
+ ],
+ "unl36go": [
+  "PRESENTATION",
+  ""
+ ],
+ "unl36no": [
+  "PRESENTATION",
+  ""
+ ],
+ "untilneeded": [
+  "COVERED_UI",
+  "App->LedgerApp.swift"
+ ],
+ "verifyag": [
+  "COVERED_UI",
+  "verifySalesperson->CompanyFinanceBook.swift"
+ ],
+ "vmeet": [
+  "COVERED_UI",
+  "lunchWithSupplier->CompanySourcing.swift/GroupOffice.swift"
+ ],
+ "w17dev": [
+  "COVERED_UI",
+  "changeBuilders->VenturesView.swift"
+ ],
+ "w17int": [
+  "COVERED_UI",
+  "setProductInternalPrice->VenturesView.swift"
+ ],
+ "w17self": [
+  "COVERED_UI",
+  "toggleOwnerHoursOnProduct->VenturesView.swift"
+ ],
+ "w17use": [
+  "COVERED_UI",
+  "toggleProductUse->VenturesView.swift"
+ ],
+ "warnstaff": [
+  "COVERED_UI",
+  "warnStaff->CompanyStaffRoster.swift"
+ ],
+ "weekrep": [
+  "PRESENTATION",
+  ""
+ ],
+ "wel59": [
+  "PRESENTATION",
+  ""
+ ],
+ "wel59end": [
+  "PRESENTATION",
+  ""
+ ],
+ "winduo": [
+  "COVERED_UI",
+  "windUpCompany->CompanySettings.swift"
+ ],
+ "wr35co": [
+  "PRESENTATION",
+  ""
+ ],
+ "wr35s": [
+  "PRESENTATION",
+  ""
+ ],
+ "wx56c": [
+  "PRESENTATION",
+  ""
+ ]
+}

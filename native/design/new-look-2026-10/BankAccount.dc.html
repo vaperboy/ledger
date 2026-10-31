@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bank, one account</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 56px 18px 0 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="#" aria-label="Back to accounts" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F1EBDD" stroke-width="2" aria-hidden="true"><path d="M15 5 L8 12 L15 19"></path></svg></a>
+      <div style="display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 26px; line-height: 1.1">Evans Services</span><span style="font-size: 12.5px; color: #A19B8F">Company account · Café · London</span></div>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center; background: rgba(224,176,100,0.10); border: 1px solid #6A5630; border-radius: 14px; padding: 10px 12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E0B064" stroke-width="1.9" aria-hidden="true" style="flex: none"><path d="M12 3 L22 20 H2 Z M12 10 V14 M12 16.5 V17"></path></svg>
+      <span style="flex: 1; font-size: 12.5px; line-height: 1.35">Payroll £3,109 on 25 Feb needs you. No manager or accountant is set to approve it.</span>
+      <a href="#" style="font-size: 12.5px; font-weight: 500; border: 1px solid #D6B889; border-radius: 10px; padding: 6px 10px">Approve</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(5, auto); justify-content: space-between; background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 4px; font-size: 12px; gap: 2px">
+      <span style="padding: 8px 9px; border-radius: 10px; background: rgba(214,184,137,0.16); border: 1px solid #D6B889">Account</span>
+      <span style="padding: 8px 9px; color: #A19B8F">Loans</span>
+      <span style="padding: 8px 9px; color: #A19B8F">Deposits</span>
+      <span style="padding: 8px 9px; color: #A19B8F; position: relative">Bills<span style="position: absolute; top: 2px; right: 0; width: 8px; height: 8px; border-radius: 4px; background: #E5584B"></span></span>
+      <span style="padding: 8px 9px; color: #A19B8F">Statements</span>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #D6B889">Current account</span><span style="font-family: Newsreader, Georgia, serif; font-size: 34px; line-height: 1.1">£257,273</span></div>
+        <span style="font-size: 12px; color: #E58B78; text-align: right">▼ £316<br><span style="color: #8A857C">this month</span></span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #242527; padding-top: 10px">
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8A857C">Available</span><span style="font-size: 14px; font-weight: 500">£257k</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 1px solid #242527"><span style="font-size: 11px; color: #8A857C">Overdraft</span><span style="font-size: 14px; font-weight: 500">£0</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 1px solid #242527"><span style="font-size: 11px; color: #8A857C">Rate</span><span style="font-size: 14px; font-weight: 500">3.75%</span></div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{actions}}" as="a" hint-placeholder-count="4">
+        <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 10px 0; color: #F1EBDD; font-size: 12px">
+          <span style="width: 32px; height: 32px; border-radius: 16px; background: #202123; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="2" aria-hidden="true"><path d="{{a.icon}}"></path></svg></span>{{a.label}}
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">COMING UP</span><a href="#" style="font-size: 12px">Bills ›</a></div>
+      <sc-for list="{{upcoming}}" as="u" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #242527">
+          <span style="width: 30px; height: 30px; border-radius: 15px; background: #202123; display: flex; align-items: center; justify-content: center; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.6" aria-hidden="true"><path d="{{u.icon}}"></path></svg></span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 13.5px">{{u.title}}</span><span style="font-size: 11.5px; color: #8A857C">{{u.when}}</span></span>
+          <span style="font-size: 14px">{{u.amount}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">RECENT</span><a href="#" style="font-size: 12px">View all ›</a></div>
+      <sc-for list="{{recent}}" as="r" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #242527">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 13.5px">{{r.title}}</span><span style="font-size: 11.5px; color: #8A857C">{{r.when}}</span></span>
+          <span style="font-size: 14px; color: {{r.color}}">{{r.amount}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">2</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      actions: [
+        { label: 'Transfer', icon: 'M5 12 H19 M14 7 L19 12 L14 17' },
+        { label: 'Deposit', icon: 'M12 5 V19 M5 12 H19' },
+        { label: 'Withdraw', icon: 'M5 12 H19' },
+        { label: 'Pay bill', icon: 'M6 4 H18 V20 L15 18 L12 20 L9 18 L6 20 Z M9 9 H15 M9 13 H13' }
+      ],
+      upcoming: [
+        { title: 'Payroll', when: '25 Feb · runs by itself', amount: '£3,109', icon: 'M4 8 H20 V18 H4 Z M9 8 V6 H15 V8' },
+        { title: 'Rent and supplier bills', when: '28 Feb · last day of the month', amount: '£1,095', icon: 'M4 11 L12 4 L20 11 V20 H4 Z' },
+        { title: 'Corporate tax', when: '27 Sep · for last year', amount: '£224', icon: 'M6 4 H18 V20 H6 Z M9 9 H15 M9 13 H15' }
+      ],
+      recent: [
+        { title: 'Takings, week 17', when: 'Today', amount: '+£2,642', color: '#7FC79B' },
+        { title: 'Supplier payment', when: 'Yesterday', amount: '−£861', color: '#E58B78' },
+        { title: 'Wages, week 17', when: '18 Feb', amount: '−£1,447', color: '#E58B78' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

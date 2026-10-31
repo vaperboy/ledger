@@ -1,0 +1,214 @@
+<title>Ledger Table Layout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Concept: three dark phone screens that share one overview-table layout but carry their own content, charts and icons. */
+:root{
+  --bg:#0B0C0D; --screen:#0F1011; --card:#151617; --line:#2B2C2E; --line2:#242527; --line3:#3A3B3D;
+  --ivory:#F1EBDD; --muted:#A19B8F; --faint:#75706A; --gold:#D6B889; --good:#7FC79B; --warn:#E0B064; --bad:#E5584B;
+  --serif:'Newsreader',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ivory);font-family:var(--sans);font-variant-numeric:tabular-nums;
+  padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--serif);font-weight:400;font-size:28px;margin:0 0 4px;text-wrap:balance}
+.lead{color:var(--muted);font-size:14px;margin:0 0 24px;max-width:62ch;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.cap{font-size:11px;letter-spacing:1.4px;color:var(--gold);font-weight:500;margin:0 0 10px}
+.phone{width:390px;max-width:100%;min-width:0}
+.screen{position:relative;background:var(--screen);border:1px solid var(--line);border-radius:34px;padding:26px 16px 96px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.top{display:flex;align-items:center;gap:12px}
+.rb{width:44px;height:44px;border-radius:22px;border:1px solid var(--line3);display:grid;place-items:center;flex:none}
+.ttl{flex:1;min-width:0;display:flex;flex-direction:column}
+.ttl b{font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.1}
+.ttl span{font-size:12.5px;color:var(--muted)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:4px;background:var(--good);margin:0 5px 1px 6px}
+.tabs{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);font-size:13.5px;color:#8A857C;gap:8px;overflow-x:auto}
+.tabs span{padding-bottom:9px;white-space:nowrap}
+.tabs .on{border-bottom:2px solid var(--gold);color:var(--ivory)}
+.pills{display:flex;gap:8px;overflow-x:auto}
+.pills span{padding:7px 14px;border:1px solid var(--line3);border-radius:18px;font-size:13px;color:var(--muted);white-space:nowrap}
+.pills .on{background:var(--gold);color:#1B1A17;border-color:var(--gold);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.heroes{display:grid;grid-template-columns:1.25fr 1fr;gap:10px}
+.heroes .card{padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.k{font-size:12.5px;color:var(--gold)}
+.big{font-family:var(--serif);font-size:32px;line-height:1.1}
+.chg{font-size:11.5px;color:var(--good)}
+.chg.n{color:var(--bad)}.chg.w{color:var(--warn)}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.lab{font-size:10.5px;letter-spacing:1.4px;color:var(--gold);font-weight:500}
+.opt{font-size:12px;color:var(--muted)}
+.tr{display:grid;grid-template-columns:34px 1fr auto 16px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line2);font-size:14px}
+.tr:first-of-type{border-top:0}
+.tr .n{display:flex;flex-direction:column;min-width:0}
+.tr .n small{font-size:11.5px;color:var(--faint)}
+.tr .v{text-align:right;display:flex;flex-direction:column}
+.tr .v small{font-size:11.5px}
+.ic{width:34px;height:34px;border-radius:17px;border:1px solid var(--line3);display:grid;place-items:center}
+svg{display:block}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tiles.t3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tile{border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center;font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px}
+.tile b{font-family:var(--serif);font-weight:400;font-size:24px;color:var(--ivory);line-height:1}
+.act{display:grid;grid-template-columns:34px 1fr 12px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line2);font-size:13.5px}
+.act:first-of-type{border-top:0}.act small{display:block;font-size:11.5px;color:var(--faint);margin-top:1px}
+.note{display:flex;gap:10px;align-items:center;background:rgba(224,176,100,.10);border:1px solid #6A5630;border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.35}
+.note a{font-weight:500;border:1px solid var(--gold);border-radius:10px;padding:6px 10px;color:var(--gold);white-space:nowrap}
+.bars{display:flex;align-items:flex-end;gap:6px;height:64px;margin-top:6px}
+.bars i{flex:1;background:var(--line3);border-radius:4px 4px 0 0;position:relative}
+.bars i.you{background:var(--gold)}
+.bars i.cap{background:transparent;border:1px dashed var(--line3);border-bottom:0}
+.axis{display:flex;gap:6px;font-size:10.5px;color:var(--faint);margin-top:4px}.axis span{flex:1;text-align:center}
+.meter{height:5px;background:#26272A;border-radius:3px;margin-top:6px}.meter i{display:block;height:5px;border-radius:3px;background:var(--gold)}
+.nav{position:absolute;left:12px;right:12px;bottom:14px;height:62px;background:#141516;border:1px solid var(--line);border-radius:31px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;padding:0 6px}
+.nav span{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:10px;padding:6px 0}
+.nav .on{background:rgba(214,184,137,.14);border-radius:26px;color:var(--gold)}
+.nav .bub{position:relative}.nav .bub em{position:absolute;top:-2px;right:12px;min-width:16px;height:16px;border-radius:8px;background:var(--bad);color:#fff;font-size:10px;font-weight:600;font-style:normal;display:grid;place-items:center}
+.list{margin-top:36px;max-width:760px}
+.list h2{font-family:var(--serif);font-weight:400;font-size:24px;margin:0 0 10px}
+.list table{border-collapse:collapse;width:100%;font-size:13.5px}
+.list th{font-size:10.5px;letter-spacing:1.2px;color:var(--gold);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:500}
+.list td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.4}
+.list td:first-child{white-space:nowrap}
+.wrap{overflow-x:auto}
+.y{color:var(--good)}.m{color:var(--warn)}.no{color:var(--faint)}
+a{color:inherit;text-decoration:none}
+</style>
+
+<h1>The table layout in use</h1>
+<p class="lead">Three screens built on the same pattern: key figures on top, one overview table where every row opens its own page or popup, count tiles, then recent activity. Each one has its own figures, chart and icons. All numbers here are made up.</p>
+
+<div class="row" id="shots"></div>
+
+<div class="list">
+  <h2>Where the layout fits</h2>
+  <div class="wrap"><table>
+    <thead><tr><th>SCREEN</th><th>FIT</th><th>WHAT THE TABLE HOLDS</th></tr></thead>
+    <tbody id="fit"></tbody>
+  </table></div>
+</div>
+
+<script>
+const P={
+ back:'M15 5 L8 12 L15 19',
+ home:'M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20',
+ team:'M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20 M9 5 A3 3 0 1 0 9 11 A3 3 0 1 0 9 5',
+ group:'M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16',
+ proj:'M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12',
+ phone:'M8 3 H16 V21 H8 Z M11 18 H13',
+ tag:'M3 12 L12 3 H20 V11 L11 20 Z M16 8 V8.5',
+ clock:'M12 4 A8 8 0 1 0 12 20 A8 8 0 1 0 12 4 M12 8 V12 L15 14',
+ wrench:'M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12',
+ box:'M4 8 L12 4 L20 8 V17 L12 21 L4 17 Z M4 8 L12 12 L20 8 M12 12 V21',
+ lock:'M7 11 H17 V20 H7 Z M9 11 V8 A3 3 0 0 1 15 8 V11',
+ route:'M3 7 H14 V17 H3 Z M14 10 H18 L21 13 V17 H14',
+ mega:'M4 10 V14 H8 L15 18 V6 L8 10 Z M18 9 C19.5 10.5 19.5 13.5 18 15',
+ pin:'M12 21 C7 15 5 12 5 9 A7 7 0 0 1 19 9 C19 12 17 15 12 21 M12 7 A2 2 0 1 0 12 11 A2 2 0 1 0 12 7',
+ coin:'M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M9 12 H15 M9 9 H15',
+ up:'M4 17 L10 11 L14 15 L20 7',
+ doc:'M6 3 H14 L18 7 V21 H6 Z M9 12 H15 M9 16 H15',
+ person:'M12 4.5 A3.5 3.5 0 1 0 12 11.5 A3.5 3.5 0 1 0 12 4.5 M5 20 C5 14 19 14 19 20',
+ shield:'M12 3 L19 6 V12 C19 16 16 19 12 21 C8 19 5 16 5 12 V6 Z',
+ key:'M8 14 A4 4 0 1 0 8 6 A4 4 0 1 0 8 14 M11 10 H21 M17 10 V14',
+ cal:'M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7',
+ chev:'M9 5 L16 12 L9 19',
+ warn:'M12 3 L22 20 H2 Z M12 10 V14 M12 16.5 V17',
+ store:'M4 20 V8 L12 4 L20 8 V20 M9 20 V13 H15 V20',
+ bld:'M5 21 V4 H15 V21 M15 9 H19 V21 M8 8 H12 M8 12 H12 M8 16 H12'
+};
+const ic=(k,c='#D6B889',s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[k]}"/></svg>`;
+const nav=on=>`<nav class="nav">${[['home','Home'],['team','Team'],['group','Group'],['proj','Projects'],['phone','Phone']].map(([k,l],i)=>`<span class="${i===on?'on':''} ${k==='phone'?'bub':''}">${ic(k,'currentColor',22)}${l}${k==='phone'?'<em>3</em>':''}</span>`).join('')}</nav>`;
+const tabs=(a,on)=>`<div class="tabs">${a.map((t,i)=>`<span class="${i===on?'on':''}">${t}</span>`).join('')}</div>`;
+const trow=r=>`<a class="tr"><span class="ic">${ic(r.i)}</span><span class="n">${r.n}${r.s?`<small>${r.s}</small>`:''}</span><span class="v">${r.v}${r.c?`<small class="chg ${r.cc||''}">${r.c}</small>`:''}</span>${ic('chev','#75706A',12)}</a>`;
+const act=r=>`<a class="act"><span class="ic">${ic(r.i)}</span><span>${r.t}<small>${r.s}</small></span>${ic('chev','#75706A',12)}</a>`;
+const tile=r=>`<div class="tile">${ic(r.i,'#D6B889',20)}<b>${r.n}</b>${r.l}</div>`;
+const sec=(l,o)=>`<div class="sec"><span class="lab">${l}</span><span class="opt">${o||''}</span></div>`;
+const hdr=(t,s,ic2)=>`<div class="top"><span class="rb">${ic2}</span><div class="ttl"><b>${t}</b><span>${s}</span></div></div>`;
+
+/* 1: Company operations */
+const ops=`<div class="phone"><p class="cap">COMPANY OPERATIONS</p><div class="screen">
+ ${hdr('Evans Services','Café · London · Ltd<i class="dot"></i>Healthy',ic('back'))}
+ ${tabs(['Overview','Team','Finances','Operations','More'],3)}
+ <div class="heroes"><div class="card"><span class="k">Capacity used</span><span class="big">66%</span><span class="chg w">Demand is the limit</span></div>
+  <div class="card"><span class="k">Profit a week</span><span class="big">£312</span><span class="chg">▲ +£48 vs last month</span></div></div>
+ <div class="card"><div class="sec"><span class="lab">DEMAND AGAINST CAPACITY</span><span class="opt">last 8 weeks</span></div>
+  <div class="bars">${[38,44,41,52,57,55,61,64].map(h=>`<i class="${h>60?'you':''}" style="height:${h}px"></i>`).join('')}</div>
+  <div class="axis">${['W10','W11','W12','W13','W14','W15','W16','W17'].map(w=>`<span>${w}</span>`).join('')}</div></div>
+ <div class="card" style="padding:6px 14px">${sec('SETTINGS','12-month view')}
+  ${[{i:'tag',n:'Price',s:'Cheaper brings more customers',v:'At market',c:'+0.0'},
+     {i:'clock',n:'Your time',s:'Max 80 h across companies',v:'40 h a week'},
+     {i:'wrench',n:'Maintenance',v:'Normal',c:'£86 a week',cc:'w'},
+     {i:'box',n:'Stock',s:'Cash tied up £2.1k',v:'2 weeks'},
+     {i:'lock',n:'Hold my prices',v:'Off'},
+     {i:'route',n:'How you sell',s:'Counter, delivery, online',v:'3 ways'},
+     {i:'mega',n:'Marketing',s:'Local posters, social ads',v:'£420 a week',c:'▲ +9% visits'},
+     {i:'pin',n:'Premises',s:'Rented, 62 m²',v:'£3,200 a month'}].map(trow).join('')}</div>
+ <div class="note">${ic('warn','#E0B064',16)}<span style="flex:1">6 paperwork items missing. An inspection can fine you.</span><a>Team ›</a></div>
+ ${nav(0)}</div></div>`;
+
+/* 2: Group overview */
+const grp=`<div class="phone"><p class="cap">GROUP OVERVIEW</p><div class="screen">
+ ${hdr('Group','Holdings · Chains · Franchises · Board',ic('group','#D6B889',22))}
+ ${tabs(['Overview','Structure','Board','Deals','More'],0)}
+ <div class="heroes"><div class="card"><span class="k">Value of holdings</span><span class="big">£12.6M</span><span class="chg">▲ +12% this month</span></div>
+  <div class="card"><span class="k">Group cash</span><span class="big">£8.4M</span><span class="chg">covers 14 months</span></div></div>
+ <div class="card" style="padding:6px 14px">${sec('COMPANIES','12 months ⌄')}
+  ${[{i:'store',n:'Evans Services',s:'Café · London',v:'£296k',c:'▲ +8%'},
+     {i:'bld',n:'Thamesford Partners',s:'Gym · London',v:'£676k',c:'▲ +5%'},
+     {i:'route',n:'Harbour Freight',s:'Haulage · Bristol',v:'£2.4M',c:'▼ −3%',cc:'n'},
+     {i:'coin',n:'Riverside Holdings',s:'Holding company',v:'£9.2M',c:'▲ +14%'},
+     {i:'up',n:'Dividends this year',s:'3 of 4 paid',v:'£1.3M',c:'▲ +4%'}].map(trow).join('')}
+  <div style="text-align:right;padding:8px 0 4px;font-size:12.5px;color:var(--gold)">View all companies ›</div></div>
+ <div class="card">${sec('STRUCTURE','View all ›')}<div class="tiles">${[{i:'group',n:4,l:'Companies'},{i:'route',n:2,l:'Chains'},{i:'store',n:1,l:'Franchise'},{i:'coin',n:3,l:'Holdings'}].map(tile).join('')}</div></div>
+ <div class="card" style="padding:6px 14px">${sec('LATEST ACTIVITY')}
+  ${[{i:'doc',t:'Franchise agreement approved',s:'Harbour Freight · 2 days ago'},{i:'coin',t:'Dividend received',s:'Riverside Holdings · 4 days ago'}].map(act).join('')}</div>
+ ${nav(2)}</div></div>`;
+
+/* 3: Team overview */
+const tm=`<div class="phone"><p class="cap">TEAM</p><div class="screen">
+ ${hdr('Team','4 people in 2 companies · £13k a month in wages',ic('team','#D6B889',22))}
+ ${tabs(['Overview','People','Delegation','Vacancies'],0)}
+ <div class="note">${ic('warn','#E0B064',16)}<span style="flex:1">Nobody approves payroll at Evans Services, so it comes to you every month.</span><a>Appoint ›</a></div>
+ <div class="card" style="padding:6px 14px">${sec('WHO DECIDES WHAT','Evans Services')}
+  ${[{i:'key',n:'Runs it',v:'You',c:'appoint a manager',cc:'w'},
+     {i:'coin',n:'Payroll',v:'You, monthly',c:'no accountant',cc:'w'},
+     {i:'person',n:'Hiring',v:'You',c:'delegate'},
+     {i:'shield',n:'Spending',v:'Ask me always',c:'set a limit'}].map(trow).join('')}</div>
+ <div class="card" style="padding:6px 14px">${sec('WHO DECIDES WHAT','Thamesford Partners')}
+  ${[{i:'key',n:'Runs it',v:'You',c:'appoint a manager',cc:'w'},
+     {i:'coin',n:'Payroll',v:'Approves itself',c:'rule set'},
+     {i:'person',n:'Hiring',v:'Maya Ellis',c:'within £45k'}].map(trow).join('')}</div>
+ <div class="card">${sec('PEOPLE','View all ›')}<div class="tiles t3">${[{i:'person',n:4,l:'People'},{i:'warn',n:2,l:'Need you'},{i:'cal',n:1,l:'Post to fill'}].map(tile).join('')}</div></div>
+ <div class="card" style="padding:6px 14px">${sec('LATEST ACTIVITY')}
+  ${[{i:'person',t:'Candidate wants an offer',s:'Barista · Evans Services · today'},{i:'cal',t:'Contract review due',s:'Maya Ellis · in 9 days'}].map(act).join('')}</div>
+ ${nav(1)}</div></div>`;
+
+document.getElementById('shots').innerHTML=ops+grp+tm;
+
+const fit=[
+ ['Company Operations','y','Settings table: price, hours, maintenance, stock, hold prices, how you sell, marketing, premises. Capacity chart above.'],
+ ['Company Finances','y','Figures with change: cash, revenue, costs, profit, tax, debt. Rows open statements, bills, ownership; Bank handles money.'],
+ ['Company Overview','y','Profit hero, then rows for the findings that matter, each opening the tab that changes it.'],
+ ['Company Team','y','Roster as rows (name, role, wage, mood). Count tiles for paperwork, vacancies, delegation.'],
+ ['Company More','y','The long tail as one table: customers, market, suppliers, contracts, franchise, sale. Each row opens its page.'],
+ ['Group Overview','y','Companies table with value and change, structure tiles, activity list.'],
+ ['Group Structure','y','Chains, franchises, holdings as table rows with counts and profit.'],
+ ['Group Board and Deals','m','Seats and agenda as rows; deals as a pipeline table. Voting stays a full page.'],
+ ['Team Overview and Delegation','y','Who decides what per company as rows; need-you notes above.'],
+ ['Team People and Vacancies','y','People directory and open posts as tables with filters.'],
+ ['Projects Running and Bids','y','Projects as rows with status, value and due date; tenders as rows. Timeline keeps its own chart.'],
+ ['Bank account page','y','Statement, bills, loans, deposits as rows. Bank home keeps the ring and round buttons.'],
+ ['Bank Bills','y','Upcoming bills per company as rows with Pay now.'],
+ ['Phone: Reports','m','Week, month and year as a table of lines with change, plus the story text. Keep a chart.'],
+ ['Phone: Stats and Goals','m','Rows for each stat or goal with progress; goal detail opens a page.'],
+ ['Phone: Rich list, World, Achievements','m','Rankings and records are already tables; add the change column and a period menu.'],
+ ['Phone: Settings','y','Plain rows opening popups; no hero needed.'],
+ ['Home','no','Keep the approved Home: net worth card, needs-you, company rows.'],
+ ['Phone home, Weather, New company, Hiring, Negotiation','no','Approved or flow screens. They keep their own design.']
+];
+const lab={y:['Good fit','y'],m:['Partly','m'],no:['Keep as is','no']};
+document.getElementById('fit').innerHTML=fit.map(([a,b,c])=>`<tr><td>${a}</td><td class="${lab[b][1]}">${lab[b][0]}</td><td>${c}</td></tr>`).join('');
+</script>

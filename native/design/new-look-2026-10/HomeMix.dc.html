@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home, the mix of B and C</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 52px 18px 0 18px; display: flex; flex-direction: column; gap: 8px">
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0">
+        <span style="font-family: Newsreader, Georgia, serif; font-size: 14px; color: #D6B889">Ledger</span>
+        <span style="font-family: Newsreader, Georgia, serif; font-size: 25px; line-height: 1.15">Hello, Alex</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+        <span style="font-size: 12px; color: #8A857C">Tuesday · week 18 · 2 Feb 2027</span>
+        <a href="#" style="font-size: 12px; font-weight: 500; border: 1px solid #3A3B3D; border-radius: 12px; padding: 4px 10px">New company</a>
+      </div>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 11px 14px 10px; display: flex; flex-direction: column; gap: 5px">
+      <div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889">NET WORTH</span><span style="display: flex; gap: 10px; font-size: 11px; color: #8A857C"><span>1M</span><span>3M</span><span style="color: #F1EBDD; border-bottom: 1px solid #D6B889">1Y</span><span>All</span></span></div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-family: Newsreader, Georgia, serif; font-size: 34px; line-height: 1.05">£4,441,863</span><span style="font-size: 11.5px; color: #A19B8F; text-align: right; line-height: 1.35"><span style="color: #E58B78">▼ £308</span> week<br><span style="color: #7FC79B">▲ £1,627</span> 30 days</span></div>
+      <svg viewBox="0 0 330 30" width="330" height="30" aria-hidden="true"><path d="M0 22 L40 21 L80 23 L120 21 L160 20 L200 20 L240 19 L260 14 L300 14 L330 13 L330 30 L0 30 Z" fill="#D6B889" fill-opacity="0.08"></path><path d="M0 22 L40 21 L80 23 L120 21 L160 20 L200 20 L240 19 L260 14 L300 14 L330 13" fill="none" stroke="#D6B889" stroke-width="1.4"></path></svg>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #242527; padding-top: 7px; text-align: center; font-size: 10.5px; color: #8A857C">
+        <span>Private<br><span style="font-size: 13.5px; font-weight: 500; color: #F1EBDD">£3.48M</span></span>
+        <span style="border-left: 1px solid #242527; border-right: 1px solid #242527">Companies<br><span style="font-size: 13.5px; font-weight: 500; color: #F1EBDD">£972k</span></span>
+        <span>Owed<br><span style="font-size: 13.5px; font-weight: 500; color: #E58B78">−£9k</span></span>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{quick}}" as="q" hint-placeholder-count="4">
+        <a href="#" style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; background: #151617; border: 1px solid #2B2C2E; border-radius: 12px; padding: 8px 0; color: #F1EBDD; font-size: 11px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.7" aria-hidden="true"><path d="{{q.icon}}"></path></svg>{{q.label}}
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+      <a href="#" style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 8px 12px; color: inherit; display: flex; flex-direction: column; gap: 1px">
+        <span style="font-size: 11px; color: #8A857C">Profit this month</span><span style="font-size: 19px; font-weight: 500; color: #E58B78">−£316</span><span style="font-size: 11px; color: #8A857C">year so far −£310</span>
+      </a>
+      <a href="#" style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 8px 12px; color: inherit; display: flex; flex-direction: column; gap: 1px">
+        <span style="font-size: 11px; color: #8A857C">Due in 30 days</span><span style="font-size: 19px; font-weight: 500">£17,452</span><span style="font-size: 11px; color: #7FC79B">✓ covered by £4.24M</span>
+      </a>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 8px 12px; display: flex; flex-direction: column">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 3px"><span style="font-size: 10.5px; letter-spacing: 1.2px; color: #D6B889">NEEDS YOU · 2</span><a href="#" style="font-size: 11.5px">Open Inbox ›</a></div>
+      <sc-for list="{{tasks}}" as="t" hint-placeholder-count="2">
+        <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #242527; color: inherit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E0B064" stroke-width="1.9" aria-hidden="true" style="flex: none"><path d="M12 3 L22 20 H2 Z M12 10 V14 M12 16.5 V17"></path></svg>
+          <span style="flex: 1; font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.title}}</span>
+          <span style="font-size: 11.5px; color: #D6B889">{{t.action}} ›</span>
+        </a>
+      </sc-for>
+    </div>
+
+    <a href="#" style="display: flex; align-items: center; gap: 8px; background: #151617; border: 1px solid #2B2C2E; border-radius: 12px; padding: 7px 12px; color: inherit">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.7" aria-hidden="true"><path d="M6 3 H15 L19 7 V21 H6 Z M9 12 H16 M9 16 H16"></path></svg>
+      <span style="flex: 1; font-size: 12px">2026 report ready · <span style="color: #7FC79B">+£7,745</span> profit</span><span style="font-size: 11.5px; color: #D6B889">Read ›</span>
+    </a>
+
+    <div style="display: flex; flex-direction: column; gap: 5px">
+      <span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889; padding-top: 2px">COMPANIES</span>
+      <sc-for list="{{companies}}" as="c" hint-placeholder-count="2">
+        <a href="#" style="display: flex; align-items: center; gap: 10px; background: #151617; border: 1px solid #2B2C2E; border-radius: 12px; padding: 7px 12px; color: inherit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true" style="flex: none"><path d="{{c.icon}}"></path></svg>
+          <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 13.5px; font-weight: 500">{{c.name}}</span><span style="font-size: 11px; color: #8A857C">{{c.sub}}</span></span>
+          <span style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 13px; font-weight: 500">{{c.value}}</span><span style="font-size: 11px; color: {{c.color}}">{{c.profit}} / yr</span></span>
+        </a>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      quick: [
+        { label: 'Bank', icon: 'M3 10 L12 4 L21 10 M5 10 V18 M9 10 V18 M15 10 V18 M19 10 V18 M3 20 H21' },
+        { label: 'Hire', icon: 'M12 5 V19 M5 12 H19' },
+        { label: 'Reports', icon: 'M6 3 H15 L19 7 V21 H6 Z M9 13 H16 M9 17 H16' },
+        { label: 'Market', icon: 'M4 18 L9 12 L13 15 L20 6' }
+      ],
+      tasks: [
+        { title: 'Equipment breaks down · Thamesford Partners', action: 'Decide' },
+        { title: '17 paperwork items missing · Thamesford', action: 'Team' }
+      ],
+      companies: [
+        { name: 'Thamesford Partners', sub: 'Gym · London · 3 people', value: '£678k', profit: '£10k', color: '#7FC79B', icon: 'M4 10 H20 M7 7 V13 M17 7 V13 M2 10 H4 M20 10 H22 M9 10 V17 M15 10 V17' },
+        { name: 'Evans Services', sub: 'Café · London · 1 person', value: '£296k', profit: '£904', color: '#A19B8F', icon: 'M5 9 H17 V15 C17 18 15 19 12 19 H10 C7 19 5 18 5 15 Z M17 10 H19 C21 10 21 14 18 14' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

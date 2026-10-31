@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Creating a company, form</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 900px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 54px 18px 0 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="#" aria-label="Back" style="width: 38px; height: 38px; border-radius: 8px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F1EBDD" stroke-width="2" aria-hidden="true"><path d="M15 5 L8 12 L15 19"></path></svg></a>
+      <div style="display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 25px; line-height: 1.1">Set up: Café</span><span style="font-size: 12.5px; color: #A19B8F">Step 2 of 3 · details of the company</span></div>
+    </div>
+    <div style="background: #141516; border: 1px solid #2B2C2E; border-radius: 8px; overflow: hidden">
+      <sc-for list="{{fields}}" as="f" hint-placeholder-count="4">
+        <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid #1E1F21; color: inherit">
+          <span style="width: 96px; font-size: 12px; color: #8A857C">{{f.label}}</span>
+          <span style="flex: 1; font-size: 14px; font-weight: 500">{{f.value}}</span>
+          <span style="font-size: 11.5px; color: #8A857C">{{f.hint}}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #141516; border: 1px solid #2B2C2E; border-radius: 8px; padding: 4px; font-size: 12.5px; text-align: center">
+      <span style="padding: 8px 0; border-radius: 6px; background: rgba(214,184,137,0.16); border: 1px solid #D6B889">Rent</span><span style="padding: 8px 0; color: #A19B8F">Buy</span><span style="padding: 8px 0; color: #A19B8F">Home</span>
+    </div>
+    <div style="background: #141516; border: 1px solid #2B2C2E; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889; font-weight: 500">COST TODAY</span>
+      <sc-for list="{{costs}}" as="c" hint-placeholder-count="4">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #A19B8F">{{c.label}}</span><span>{{c.value}}</span></div>
+      </sc-for>
+      <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 500; border-top: 1px solid #2B2C2E; padding-top: 8px"><span>Total</span><span>£22,240</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #7FC79B"><span>Paid from</span><span>Personal account · £3.48M</span></div>
+    </div>
+    <div style="background: #141516; border: 1px solid #2B2C2E; border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889; font-weight: 500">AFTER OPENING (monthly, estimate)</span>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #A19B8F">Rent, utilities, insurance</span><span>£2,950</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #A19B8F">Wages for 2 people</span><span>£4,200</span></div>
+    </div>
+    <a href="#" style="text-align: center; font-size: 14.5px; font-weight: 500; border: 1px solid #D6B889; border-radius: 8px; padding: 13px 0">Register Evans Café ›</a>
+  </div>
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #A19B8F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20 M9 5 A3 3 0 1 0 9 11 A3 3 0 1 0 9 5"></path></svg>Team</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #A19B8F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #A19B8F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #A19B8F"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9.5 2.5 H14.5 A2.5 2.5 0 0 1 17 5 V19 A2.5 2.5 0 0 1 14.5 21.5 H9.5 A2.5 2.5 0 0 1 7 19 V5 A2.5 2.5 0 0 1 9.5 2.5 M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { fields: [
+ { label: 'Name', value: 'Evans Café', hint: 'edit' },
+ { label: 'City', value: 'London', hint: 'UK' },
+ { label: 'Legal form', value: 'Limited company', hint: 'tax 25%' },
+ { label: 'Opening', value: 'Mon–Sat', hint: '8–18' } ],
+ costs: [
+ { label: 'Registration and licences', value: '£1,240' },
+ { label: 'Fit-out and equipment', value: '£14,800' },
+ { label: 'Deposit and first month', value: '£6,200' } ] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Negotiation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 56px 18px 0 18px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="#" aria-label="Back" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F1EBDD" stroke-width="2" aria-hidden="true"><path d="M15 5 L8 12 L15 19"></path></svg></a>
+      <div style="display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 26px; line-height: 1.1">Priya Shah</span><span style="font-size: 12.5px; color: #A19B8F">Barista · Evans Services · terms</span></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">SHE ASKS</span><span style="font-family: Newsreader, Georgia, serif; font-size: 26px">£24,500</span><span style="font-size: 11.5px; color: #E0B064">3% above market</span></div>
+      <div style="background: #151617; border: 1px solid #D6B889; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">YOUR OFFER</span><span style="font-family: Newsreader, Georgia, serif; font-size: 26px">£23,800</span><span style="font-size: 11.5px; color: #A19B8F">at market</span></div>
+    </div>
+
+    <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">HOW SHE FEELS</span><span style="font-size: 12px; color: #F1EBDD">Open to a deal</span></div>
+      <div style="display: flex; gap: 4px"><span style="flex: 1; height: 6px; border-radius: 3px; background: #D6B889"></span><span style="flex: 1; height: 6px; border-radius: 3px; background: #D6B889"></span><span style="flex: 1; height: 6px; border-radius: 3px; background: #D6B889"></span><span style="flex: 1; height: 6px; border-radius: 3px; background: #26272A"></span><span style="flex: 1; height: 6px; border-radius: 3px; background: #26272A"></span></div>
+      <span style="font-size: 12px; color: #8A857C">Each lowball makes her less patient. She may walk away after two.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="align-self: flex-start; max-width: 78%; background: #1B1C1E; border: 1px solid #2B2C2E; border-radius: 16px 16px 16px 4px; padding: 10px 12px; font-size: 13.5px; line-height: 1.4">“I like the café. £24,500 is what I earn now, so I would want that or something extra.”</div>
+      <div style="align-self: flex-end; max-width: 78%; background: rgba(214,184,137,0.12); border: 1px solid #D6B889; border-radius: 16px 16px 4px 16px; padding: 10px 12px; font-size: 13.5px; line-height: 1.4">I can offer market pay, £23,800, with a review after six months.</div>
+      <div style="align-self: flex-start; max-width: 78%; background: #1B1C1E; border: 1px solid #2B2C2E; border-radius: 16px 16px 16px 4px; padding: 10px 12px; font-size: 13.5px; line-height: 1.4">“Closer. Could you add paid training days?”</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 11px; letter-spacing: 1.2px; color: #D6B889">YOUR NEXT MOVE</span>
+      <sc-for list="{{moves}}" as="m" hint-placeholder-count="3">
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; color: inherit; margin-top: 6px">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 500">{{m.title}}</span><span style="font-size: 12px; color: #A19B8F">{{m.detail}}</span></span>
+          <span style="font-size: 13px; color: {{m.color}}; white-space: nowrap">{{m.cost}}</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#75706A" stroke-width="2" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">2</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      moves: [
+        { title: 'Add 3 paid training days', detail: 'Her last ask. Cost is one-off.', cost: '£410', color: '#F1EBDD' },
+        { title: 'Raise to £24,500', detail: 'Accepts at once, +£700 a year.', cost: '+£700/yr', color: '#E0B064' },
+        { title: 'Stand firm at £23,800', detail: 'She may decline; patience drops.', cost: 'risk', color: '#E58B78' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

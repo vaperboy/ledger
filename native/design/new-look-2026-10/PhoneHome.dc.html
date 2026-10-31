@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone home screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #1B1C1F, #0F1011 70%); color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 56px 20px 0 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <span style="font-family: Newsreader, Georgia, serif; font-size: 52px; line-height: 1">9:41</span>
+      <span style="font-size: 12.5px; color: #A19B8F; margin-top: 4px">Tuesday 2 February 2027</span>
+    </div>
+
+    <a href="#" style="display: flex; gap: 12px; align-items: center; background: rgba(30,31,33,0.9); border: 1px solid #2F3033; border-radius: 18px; padding: 11px 14px; color: inherit">
+      <span style="width: 34px; height: 34px; border-radius: 9px; background: #1C1D1F; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.6" aria-hidden="true"><path d="M3 10 L12 4 L21 10 M5 10 V18 M9 10 V18 M15 10 V18 M19 10 V18 M3 20 H21"></path></svg></span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 11px; color: #8A857C">BANK · now</span><span style="font-size: 13.5px; font-weight: 500">Payroll needs you · Evans Services</span><span style="font-size: 12px; color: #A19B8F">£3,109 on 25 Feb. No manager or accountant approves it.</span></span>
+    </a>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 8px; margin-top: 2px">
+      <sc-for list="{{apps}}" as="a" hint-placeholder-count="12">
+        <a href="#" style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #F1EBDD; font-size: 11.5px">
+          <span style="width: 62px; height: 62px; border-radius: 15px; background: linear-gradient(180deg, #232427, #181A1C); border: 1px solid #333437; display: flex; align-items: center; justify-content: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.4" aria-hidden="true"><path d="{{a.icon}}"></path></svg></span>
+          {{a.label}}
+          <sc-if value="{{a.badge}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; top: -5px; right: 5px; min-width: 20px; height: 20px; border-radius: 10px; background: #E5584B; color: #fff; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 2px solid #0F1011; box-sizing: border-box">{{a.badge}}</span></sc-if>
+        </a>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 20px; right: 20px; bottom: 100px; font-size: 11.5px; color: #75706A; text-align: center">Everything that used to sit in More is now an app</div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      apps: [
+        { label: 'Bank', badge: '1', icon: 'M3 10 L12 4 L21 10 M5 10 V18 M9 10 V18 M15 10 V18 M19 10 V18 M3 20 H21' },
+        { label: 'Inbox', badge: '2', icon: 'M3 13 L6 5 H18 L21 13 V19 H3 Z M3 13 H9 L10.5 15 H13.5 L15 13 H21' },
+        { label: 'News', badge: '', icon: 'M4 5 H17 V19 H6 C5 19 4 18 4 17 Z M17 8 H20 V17 C20 18 19 19 18 19 M7 9 H14 M7 12 H14 M7 15 H11' },
+        { label: 'Stats', badge: '', icon: 'M5 20 V12 M10 20 V6 M15 20 V10 M20 20 V4' },
+        { label: 'Goals', badge: '', icon: 'M12 3 V21 M12 4 H19 L16 8 L19 12 H12' },
+        { label: 'World', badge: '', icon: 'M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M3 12 H21 M12 3 C8 8 8 16 12 21 M12 3 C16 8 16 16 12 21' },
+        { label: 'Luxury', badge: '', icon: 'M12 4 L19 10 L12 20 L5 10 Z M5 10 H19' },
+        { label: 'Ventures', badge: '', icon: 'M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3 M9 17 L6 20 M15 17 L18 20' },
+        { label: 'Rich list', badge: '', icon: 'M4 18 L6 8 L10 12 L12 6 L14 12 L18 8 L20 18 Z' },
+        { label: 'Reports', badge: '', icon: 'M6 3 H15 L19 7 V21 H6 Z M9 13 H16 M9 17 H16' },
+        { label: 'Achievements', badge: '', icon: 'M8 4 H16 V10 C16 13 14 14 12 14 C10 14 8 13 8 10 Z M12 14 V18 M9 20 H15' },
+        { label: 'Settings', badge: '', icon: 'M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

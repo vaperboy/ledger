@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Projects C, bids and ventures</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 54px 18px 0 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 28px; line-height: 1.1">Projects</span><span style="font-size: 12.5px; color: #A19B8F">Work you can win or start</span></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #2B2C2E; font-size: 13.5px; color: #8A857C">
+      <span style="padding-bottom: 9px">Running 3</span><span style="padding-bottom: 9px; border-bottom: 2px solid #D6B889; color: #F1EBDD">Bids and offers</span><span style="padding-bottom: 9px">Finished</span><span style="padding-bottom: 9px">Ventures</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between"><span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889; font-weight: 500">OPEN TENDERS · 2</span><span style="font-size: 12px; color: #8A857C">close this week</span></div>
+      <sc-for list="{{tenders}}" as="t" hint-placeholder-count="2">
+        <div style="background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 14.5px; font-weight: 500">{{t.name}}</span><span style="font-size: 12px; color: #E0B064">{{t.closes}}</span></div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); font-size: 11px; color: #8A857C">
+            <span>Budget<br><span style="font-size: 13.5px; color: #F1EBDD">{{t.budget}}</span></span><span style="border-left: 1px solid #242527; padding-left: 10px">Your cost est.<br><span style="font-size: 13.5px; color: #F1EBDD">{{t.cost}}</span></span><span style="border-left: 1px solid #242527; padding-left: 10px">Rivals bidding<br><span style="font-size: 13.5px; color: #F1EBDD">{{t.rivals}}</span></span>
+          </div>
+          <div style="display: flex; gap: 8px"><a href="#" style="flex: 1; text-align: center; font-size: 13px; border: 1px solid #3A3B3D; border-radius: 10px; padding: 9px 0; color: #F1EBDD">Details</a><a href="#" style="flex: 1; text-align: center; font-size: 13px; font-weight: 500; border: 1px solid #D6B889; border-radius: 10px; padding: 9px 0">Place a bid ›</a></div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 10.5px; letter-spacing: 1.4px; color: #D6B889; font-weight: 500">START SOMETHING</span>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{starts}}" as="s" hint-placeholder-count="4">
+          <a href="#" style="display: flex; align-items: center; gap: 10px; background: #151617; border: 1px solid #2B2C2E; border-radius: 14px; padding: 11px 12px; color: inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true" style="flex: none"><path d="{{s.icon}}"></path></svg><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 500">{{s.name}}</span><span style="font-size: 11px; color: #8A857C">{{s.note}}</span></span></a>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      tenders: [
+        { name: 'Harbour Road flats, groundworks', closes: 'closes Fri', budget: '£120k', cost: '£98k', rivals: '3' },
+        { name: 'School kitchen refit', closes: 'closes next Tue', budget: '£54k', cost: '£47k', rivals: '2' }
+      ],
+      starts: [
+        { name: 'Refurbishment', note: 'improve a property', icon: 'M4 20 H20 M6 20 V10 L12 5 L18 10 V20' },
+        { name: 'Developer project', note: 'build and sell', icon: 'M5 21 V4 H15 V21 M15 9 H19 V21' },
+        { name: 'Event or contract', note: 'one-off work', icon: 'M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7' },
+        { name: 'Venture', note: 'back a startup', icon: 'M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

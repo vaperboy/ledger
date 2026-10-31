@@ -1,0 +1,221 @@
+{
+ "sheet": "trophies",
+ "cells": {
+  "t01": {
+   "file": "trophies/t01.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Golden Globe"
+  },
+  "t02": {
+   "file": "trophies/t02.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Rising Star"
+  },
+  "t03": {
+   "file": "trophies/t03.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Glass Obelisk"
+  },
+  "t04": {
+   "file": "trophies/t04.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Winged Triumph"
+  },
+  "t05": {
+   "file": "trophies/t05.jpg",
+   "row": 0,
+   "col": 4,
+   "caption": "Ornate Keys"
+  },
+  "t06": {
+   "file": "trophies/t06.jpg",
+   "row": 0,
+   "col": 5,
+   "caption": "Ceremonial Gavel"
+  },
+  "t07": {
+   "file": "trophies/t07.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "First Million"
+  },
+  "t08": {
+   "file": "trophies/t08.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Exchange Bell"
+  },
+  "t09": {
+   "file": "trophies/t09.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Key to the City"
+  },
+  "t10": {
+   "file": "trophies/t10.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Ten Year Shield"
+  },
+  "t11": {
+   "file": "trophies/t11.jpg",
+   "row": 1,
+   "col": 4,
+   "caption": "Top Ten Plaque"
+  },
+  "t12": {
+   "file": "trophies/t12.jpg",
+   "row": 1,
+   "col": 5,
+   "caption": "Global Scale"
+  },
+  "t13": {
+   "file": "trophies/t13.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Aviation/Builders"
+  },
+  "t14": {
+   "file": "trophies/t14.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Industrial Gear"
+  },
+  "t15": {
+   "file": "trophies/t15.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Maritime Anchor"
+  },
+  "t16": {
+   "file": "trophies/t16.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Culinary Prize"
+  },
+  "t17": {
+   "file": "trophies/t17.jpg",
+   "row": 2,
+   "col": 4,
+   "caption": "Tech Achievement"
+  },
+  "t18": {
+   "file": "trophies/t18.jpg",
+   "row": 2,
+   "col": 5,
+   "caption": "Health & Care"
+  },
+  "t19": {
+   "file": "trophies/t19.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Five-Star Plaque"
+  },
+  "t20": {
+   "file": "trophies/t20.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Standard Approval"
+  },
+  "t21": {
+   "file": "trophies/t21.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Safety Shield"
+  },
+  "t22": {
+   "file": "trophies/t22.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Official Certificate"
+  },
+  "t23": {
+   "file": "trophies/t23.jpg",
+   "row": 3,
+   "col": 4,
+   "caption": "Green Ecology"
+  },
+  "t24": {
+   "file": "trophies/t24.jpg",
+   "row": 3,
+   "col": 5,
+   "caption": "Excellence Medal"
+  },
+  "t25": {
+   "file": "trophies/t25.jpg",
+   "row": 4,
+   "col": 0,
+   "caption": "Asset Reserve"
+  },
+  "t26": {
+   "file": "trophies/t26.jpg",
+   "row": 4,
+   "col": 1,
+   "caption": "Market Bull"
+  },
+  "t27": {
+   "file": "trophies/t27.jpg",
+   "row": 4,
+   "col": 2,
+   "caption": "Heritage Cup"
+  },
+  "t28": {
+   "file": "trophies/t28.jpg",
+   "row": 4,
+   "col": 3,
+   "caption": "Crystal Diamond"
+  },
+  "t29": {
+   "file": "trophies/t29.jpg",
+   "row": 4,
+   "col": 4,
+   "caption": "Crest of Honor"
+  },
+  "t30": {
+   "file": "trophies/t30.jpg",
+   "row": 4,
+   "col": 5,
+   "caption": "Value Token"
+  },
+  "t31": {
+   "file": "trophies/t31.jpg",
+   "row": 5,
+   "col": 0,
+   "caption": "Honor Ribbon"
+  },
+  "t32": {
+   "file": "trophies/t32.jpg",
+   "row": 5,
+   "col": 1,
+   "caption": "Exemplar Silver"
+  },
+  "t33": {
+   "file": "trophies/t33.jpg",
+   "row": 5,
+   "col": 2,
+   "caption": "Civic Merit"
+  },
+  "t34": {
+   "file": "trophies/t34.jpg",
+   "row": 5,
+   "col": 3,
+   "caption": "Unique Crest"
+  },
+  "t35": {
+   "file": "trophies/t35.jpg",
+   "row": 5,
+   "col": 4,
+   "caption": "Victors Medal"
+  },
+  "t36": {
+   "file": "trophies/t36.jpg",
+   "row": 5,
+   "col": 5,
+   "caption": "Civic Collar"
+  }
+ }
+}
