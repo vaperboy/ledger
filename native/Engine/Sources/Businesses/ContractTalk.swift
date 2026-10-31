@@ -352,14 +352,7 @@ public enum ContractTalk {
     /// What the company pays a month for its people and perks: wages with the employer's charges, the manager and his profit share, perks, own-car mileage.
     static func employerCost(_ s: GameState, companyID: Int, data: GameData) -> Double {
         guard let co = s.company(companyID) else { return 0 }
-        let w = World(state: s, data: data), c = w.country(co), cur = w.currency(co)
-        var sum = co.staff.reduce(0.0) { $0 + $1.monthlyWage * (1 + c.employerOnCost(monthlyWage: $1.monthlyWage)) }
-        if co.managerID != nil { sum += co.managerMonthlyWage * (1 + c.employerOnCost(monthlyWage: co.managerMonthlyWage)) + ManagerModel.bonusWorth(co, co.managerProfitBonus) }
-        sum += co.staff.reduce(0.0) { acc, m in acc + (WorkerBonus.level(of: m).map { WorkerBonus.expectedMonthly($0, wage: m.monthlyWage) * (1 + c.employerOnCost(monthlyWage: m.monthlyWage)) } ?? 0) }
-        sum += StaffExpenses.monthlyCost(co, currency: cur)
-        sum += StaffPerks.totalMonthlyCost(co, currency: cur)
-        if let bd = data.catalog[co.type] { sum += PersonalEquipment.mileagePerMonth(cur, country: c, bd, tables: data.catalog.tables) * Double(co.staff.filter { $0.flag("ownCar") }.count) }
-        return sum
+        return EmployerCosts.company(co, state: s, data: data).totalMonthly   // the one employer-cost rule (EmployerCost)
     }
 
     /// The chance that this worker hands in notice within a year, from the weekly odds of `StaffWeek` (and the pay gap of `StaffRoutine`).

@@ -332,7 +332,7 @@ public extension GameEngine {
         guard let co = state.company(companyID), co.managerID != nil else { return nil }
         let h = co.monthlyHistory.suffix(3)
         let avg = max(0, h.reduce(0) { $0 + $1.profit } / Double(max(1, h.count)))
-        let factor = World(state: state, data: data).country(co).employerCostFactor
+        let factor = World(state: state, data: data).country(co).payrollFactor(monthlyWage: co.managerMonthlyWage)
         let x = min(0.3, max(0, share))
         return ProfitBonusPreview(current: co.managerProfitBonus, averageMonthlyProfit: avg, monthlyCost: avg * x * factor, lastPaid: co.num("mgrBonusLast"))
     }

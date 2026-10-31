@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Employees
 import Businesses
 
 // The Negotiation screen's two reads (new look, Oct 2026): what a hire at a wage costs a year with the employer's charges, and where a pay talk
@@ -34,8 +35,25 @@ public extension GameEngine {
         let world = World(state: state, data: data)
         let minimum = world.minimumWage(co)
         let wage = max(monthlyWage, minimum)
-        let charges = world.country(co).employerOnCost(monthlyWage: wage)
-        return HiringYearlyCost(monthlyWage: wage, yearlyWages: wage * 12, yearlyOnCosts: wage * 12 * charges, liftedToMinimum: wage > monthlyWage)
+        let b = EmployerCost.monthly(wage: wage, country: world.country(co))
+        return HiringYearlyCost(monthlyWage: wage, yearlyWages: wage * 12, yearlyOnCosts: b.totalAnnual - wage * 12, liftedToMinimum: wage > monthlyWage)
+    }
+
+    /// The employer cost of a hire under the given contract terms: the same breakdown payroll will book (hours, percentage, contributions, insurance,
+    /// paid-leave cover, benefits, monthly and annual). `monthlyWage` is the offer for a full week.
+    func hiringEmployerCost(companyID: Int, personID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms()) -> EmployerCost.Breakdown? {
+        EmployerCosts.hire(companyID: companyID, personID: personID, offered: monthlyWage, terms: terms, state: state, data: data)
+    }
+
+    /// One employee's employer cost as payroll books it.
+    func employerCost(companyID: Int, personID: Int) -> EmployerCost.Breakdown? {
+        guard let co = state.company(companyID), let m = co.staff.first(where: { $0.id == personID }) else { return nil }
+        return EmployerCosts.staff(m, company: co, state: state, data: data)
+    }
+
+    /// The whole company's monthly people cost (every job, manager, perks and expenses).
+    func companyEmployerCost(companyID: Int) -> EmployerCosts.CompanyCost? {
+        state.company(companyID).map { EmployerCosts.company($0, state: state, data: data) }
     }
 
     func hiringTalk(personID: Int, companyID: Int) -> HiringTalk {

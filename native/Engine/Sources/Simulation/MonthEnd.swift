@@ -111,7 +111,7 @@ public enum MonthEnd {
             let b = co0.books.month
             let p0 = (b["rev"] ?? 0) - Books.expenses(b)
             if p0 > 0 {
-                let x = p0 * co0.managerProfitBonus * country.employerCostFactor
+                let x = p0 * co0.managerProfitBonus * country.payrollFactor(monthlyWage: co0.managerMonthlyWage)
                 s.companies[i].addPayable("wages", x)
                 Payments.book(&s, companyID: co0.id, category: "wages", amount: x)
                 s.companies[i].set("mgrBonusLast", jsRound(x))

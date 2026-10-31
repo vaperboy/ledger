@@ -162,26 +162,56 @@ public enum Payday {
 
     static let inHouseFamilies: Set<String> = ["fin", "club", "hold", "energy"]
 
-    public static func mode(of co: Company, trade: Trade, config: PayrollConfig) -> Mode {
+    /// Who is responsible for the payroll (owner decision, Oct 2026): a qualified accountant (an employed accountant, or the accountant the
+    /// company has appointed), else a suitable manager (one who decides at level 1 or 2 on their card) without any extra fee, else the player.
+    /// Nothing is chosen by the player and nobody is hired automatically; the old stored choice (`pr29.mode`) is kept in the save but no longer used.
+    public enum Responsible: String, Sendable { case accountant, manager, owner }
+
+    public struct Responsibility: Equatable, Sendable {
+        public var who: Responsible
+        public var name: String
+        public var reason: String
+        /// Extra fee for running payroll: none under the derived rule (an appointed accountant's monthly fee is the accounting cost already).
+        public var extraFee: Double
+    }
+
+    public static func responsibility(_ co: Company, state s: GameState?, data: GameData?) -> Responsibility {
+        if let emp = co.staff.first(where: { $0.role == "acct" }) {
+            let name = s?.people[emp.id]?.name ?? "The accountant"
+            return Responsibility(who: .accountant, name: name, reason: "\(name) is the company's employed accountant and runs the payroll.", extraFee: 0)
+        }
+        let acc = co.value("acc")
+        if !acc.isNull, !acc["id"].isNull {
+            let name = acc["name"].string.isEmpty ? "The accountant" : acc["name"].string
+            return Responsibility(who: .accountant, name: name, reason: "\(name) is the appointed accountant and runs the payroll.", extraFee: 0)
+        }
+        if co.managerID != nil {
+            if let s, let data {
+                if let boss = ManagerModel.decisionChain(s, co, data: data).first(where: { $0.kind == "mgr" }), boss.level >= 1 {
+                    return Responsibility(who: .manager, name: boss.name, reason: "\(boss.name) manages the company and runs the payroll at no extra fee.", extraFee: 0)
+                }
+            } else {
+                return Responsibility(who: .manager, name: "The manager", reason: "The manager runs the payroll at no extra fee.", extraFee: 0)
+            }
+        }
+        return Responsibility(who: .owner, name: "You", reason: "No accountant or suitable manager: you approve each payroll yourself.", extraFee: 0)
+    }
+
+    public static func mode(of co: Company, trade: Trade, config: PayrollConfig, state: GameState? = nil, data: GameData? = nil) -> Mode {
         if inHouseFamilies.contains(trade.family) { return .inHouse }
-        var m = config.mode ?? (co.managerID != nil ? .manager : .manual)
-        if m == .manager && co.managerID == nil { m = .manual }
-        return m
+        switch responsibility(co, state: state, data: data).who {
+        case .accountant: return .accountant
+        case .manager: return .manager
+        case .owner: return .manual
+        }
     }
 
     static func ownerOnPayroll(_ co: Company) -> Bool { co.form == .limited && co.ownerMonthlySalary > 0 && co.status == .open }
     static func payslips(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (ownerOnPayroll(co) ? 1 : 0) }
     static func hasPayroll(_ co: Company) -> Bool { payslips(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
-    /// Fee when the accountant or the manager's software runs payroll. Original: `feeOf`.
-    static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double {
-        let n = Double(max(1, payslips(co)))
-        switch mode {
-        case .accountant: return max(currency.scaledPrice(900), currency.scaledPrice(165) * n) * (hasAccountingHQ ? 0.5 : 1)
-        case .manager: return currency.scaledPrice(450) + currency.scaledPrice(40) * n
-        default: return 0
-        }
-    }
+    /// Fee for running payroll: none under the derived rule (`responsibility`).
+    static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double { 0 }
 
     /// A manager with a weak head for numbers misses a payroll now and then. Original: `mgrSlip`.
     static func managerSlipChance(_ co: Company, people: [Int: Person]) -> Double {
@@ -444,7 +474,7 @@ public enum Payday {
             guard let bd = data.catalog[s.companies[i].type] else { continue }
             var cfg = config(s.companies[i], today: t)
             let pd = payDate(config: cfg, year: c.year, month: c.month - 1)
-            let md = mode(of: s.companies[i], trade: bd, config: cfg)
+            let md = mode(of: s.companies[i], trade: bd, config: cfg, state: s, data: data)
             // Payday
             if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil {
                 if !hasPayroll(s.companies[i]) {

@@ -39,10 +39,12 @@ public enum Payroll {
         let holiday = 1 + labour.leaveWeeks / 52 * 0.3   // cover for paid leave (sick pay is by law, below)
         var cost = 0.0
         for m in co.staff where !(skipOffSeason && m.isOffSeason) {
-            let weekly = m.monthlyWage * 12 / 52
-            let pay = (sickWeek != nil && m.sickUntilWeek == sickWeek)
-                ? labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: capScale) : weekly * holiday
-            cost += pay * country.payrollFactor(monthlyWage: m.monthlyWage)
+            if sickWeek != nil && m.sickUntilWeek == sickWeek {
+                let weekly = m.monthlyWage * 12 / 52
+                cost += labour.employerSickPay(weeklyWage: weekly, rate: country.fx, capScale: capScale) * country.payrollFactor(monthlyWage: m.monthlyWage)
+            } else {
+                cost += EmployerCost.weeklyAccrual(monthlyWage: m.monthlyWage, country: country, holiday: holiday)   // the one employer-cost rule
+            }
         }
         if co.managerID != nil { cost += co.managerMonthlyWage * 12 / 52 * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
         return cost
