@@ -29,6 +29,15 @@ public enum Wages {
 /// What the payroll costs. The one place that adds up a company's standing pay for a week: the weekly accrual (`CompanyCosts.wages`), the estimates
 /// of the cash due, the weekly cost behind runway and overdraft room and the event formulas all read it, so they cannot drift apart.
 public enum Payroll {
+    /// The on-cost multiplier for pay that is not tied to one contract (commission, bonuses, overtime): the wage-weighted average of the real people
+    /// on the payroll (and the manager), not the country's median-wage factor. Without anyone on the payroll, the median-wage factor.
+    public static func averageFactor(_ co: Company, country: Country) -> Double {
+        var wages = 0.0, cost = 0.0
+        for m in co.staff { wages += m.monthlyWage; cost += m.monthlyWage * country.payrollFactor(monthlyWage: m.monthlyWage) }
+        if co.managerID != nil { wages += co.managerMonthlyWage; cost += co.managerMonthlyWage * country.payrollFactor(monthlyWage: co.managerMonthlyWage) }
+        return wages > 0 ? cost / wages : country.payrollFactor(monthlyWage: country.medianMonthlyWage)
+    }
+
     /// One week of standing payroll with the employer's on-cost: staff pay with cover for paid leave and sick days (those laid off for the season
     /// left out unless asked), plus the manager. Each wage carries its own on-cost rate (`Country.payrollFactor`), which matters where
     /// contributions are capped. Commission and bonuses are not included.

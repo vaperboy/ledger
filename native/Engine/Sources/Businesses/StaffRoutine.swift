@@ -7,6 +7,23 @@ import Finance
 /// A company's people in a week: tiredness and sickness, quitting, problems, and learning on the job.
 /// Original: `staffWeek` and `handleStaffEvent` (engine/people/people.js, engine/company/model.js).
 public enum StaffRoutine {
+    /// Hours actually worked, by calendar month, from the weekly simulation (`StaffWeek.hoursWorked`; 0 for a week off sick or laid off for the season).
+    /// Kept on the staff record as `hrsAct` {month index: [hours worked, overtime hours, weeks recorded]}, the last 14 months.
+    static func recordHours(_ m: inout StaffMember, week: Int, hours: Double, contracted: Double) {
+        let key = String(GameCalendar.monthIndex(week: week))
+        var all = m.value("hrsAct")
+        if all.isNull { all = .object([:]) }
+        var cur = all[key].array
+        if cur.count < 3 { cur = [.number(0), .number(0), .number(0)] }
+        cur[0] = .number(cur[0].double + hours)
+        cur[1] = .number(cur[1].double + max(0, hours - contracted))
+        cur[2] = .number(cur[2].double + 1)
+        var o = all.object
+        o[key] = .array(cur)
+        if o.count > 14 { for k in o.keys.compactMap({ Int($0) }).sorted().prefix(o.count - 14) { o.removeValue(forKey: String(k)) } }
+        m.set("hrsAct", .object(o))
+    }
+
     /// Test hook: called with (pay gap, quit odds, tiredness, fit) for every person every week.
     nonisolated(unsafe) public static var probe: ((Double, Double, Double, Double, Double) -> Void)? = nil
 
@@ -50,6 +67,7 @@ public enum StaffRoutine {
             if extra.left { goneIDs.append(m.id); var p2 = person; p2.employerID = 0; changedPeople[m.id] = p2; staff[idx] = m; continue }
             let contracted = m.weeklyHours ?? m.num("wh", StaffModel.fullWeekHours)
             let worked = StaffWeek.hoursWorked(m, utilisation: util, limitedByPeople: bottleneckIsPeople)
+            Self.recordHours(&m, week: s.week, hours: (m.isOffSeason || StaffModel.isSick(m, week: s.week)) ? 0 : worked, contracted: contracted)
             if StaffWeek.tire(&m, hoursWorked: worked, from: labour.tirednessThreshold(contracted: contracted), week: s.week, random: &s.random) {
                 events.append(.sick(staffID: m.id))
             }
@@ -57,7 +75,7 @@ public enum StaffRoutine {
             let paidByWage = m.commissionMode == nil || m.commissionMode == "fix"
             // Hours over the standard week cost the country's overtime premium (people on fixed salaries or commission are not paid by the hour).
             if m.payBasis != "fix", paidByWage, !StaffModel.isSick(m, week: s.week) {
-                overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked)
+                overtimePay += labour.overtimePay(monthlyWage: m.monthlyWage, contracted: contracted, worked: worked) * (1 + country.employerOnCost(monthlyWage: m.monthlyWage))
             }
             // The minimum wage moves with inflation: base pay that has fallen under it is lifted (commission comes on top of the base of "mix").
             // Commission only has no base and is never lifted.
@@ -89,7 +107,7 @@ public enum StaffRoutine {
         for (id, p) in changedPeople { s.people[id] = p }
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
         if lifted > 0 { s.note("\(lifted) \(lifted == 1 ? "person's pay was" : "people's pay was") raised to the new minimum wage at \(co.name).", companyID: co.id) }
-        if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay * (1 + country.employerOnCost(monthlyWage: country.medianMonthlyWage)), category: "wages", label: "Overtime pay") }
+        if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay, category: "wages", label: "Overtime pay") }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }

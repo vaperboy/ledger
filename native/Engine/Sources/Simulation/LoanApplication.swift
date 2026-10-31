@@ -168,7 +168,7 @@ public extension GameEngine {
         let fee = quote.fee
         if fee > 0 {
             update { s, _, _ in
-                if let c = companyID { Payments.companyPays(&s, companyID: c, amount: fee, category: "int", label: "Loan arrangement fee") }
+                if let c = companyID { Payments.companyPays(&s, companyID: c, amount: fee, category: "fin", label: "Loan arrangement fee") }
                 else { Payments.playerPays(&s, fee, label: "Loan arrangement fee") }
             }
         }

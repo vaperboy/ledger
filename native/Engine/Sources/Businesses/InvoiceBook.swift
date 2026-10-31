@@ -35,10 +35,27 @@ public enum InvoiceBook {
         let number = "INV-" + String(format: "%04d", n)
         var book = co.value("invb").array
         book.append(.object(["no": .string(number), "w": .number(Double(week)), "due": .number(Double(dueWeek)), "cu": .string(customer), "g": .number(gross), "tax": .number(tax),
-                             "ln": .array(lines.map { .object(["d": .string($0.description), "q": .number($0.quantity), "a": .number($0.net)]) }), "st": "sent"]))
+                             "ln": .array(lines.map { .object(["d": .string($0.description), "q": .number($0.quantity), "a": .number($0.net)]) }), "st": "draft"]))
         if book.count > keep { book.removeFirst(book.count - keep) }
         co.set("invb", .array(book))
         return number
+    }
+
+    /// The invoices raised last week are sent to the customers at the start of the next weekly run (a draft until then).
+    static func sendDrafts(_ co: inout Company, week: Int) {
+        var book = co.value("invb").array
+        var changed = false
+        for k in book.indices where book[k]["st"].string == "draft" { book[k]["st"] = "sent"; book[k]["sw"] = .number(Double(week)); changed = true }
+        if changed { co.set("invb", .array(book)) }
+    }
+
+    /// Send one draft now. Returns false when it is not a draft.
+    public static func send(_ co: inout Company, number: String, week: Int) -> Bool {
+        var book = co.value("invb").array
+        guard let k = book.lastIndex(where: { $0["no"].string == number && $0["st"].string == "draft" }) else { return false }
+        book[k]["st"] = "sent"; book[k]["sw"] = .number(Double(week))
+        co.set("invb", .array(book))
+        return true
     }
 
     static func close(_ co: inout Company, number: String, paid: Bool, week: Int) {

@@ -67,7 +67,7 @@ public struct FinanceOverview: Equatable, Sendable {
 public extension GameEngine {
     static let costLabels: [(key: String, label: String)] = [
         ("cogs", "Materials and goods"), ("wages", "Wages and employer contributions"), ("rent", "Rent and premises"), ("mkt", "Marketing"),
-        ("ins", "Insurance"), ("oth", "Running costs and fees"), ("dep", "Depreciation of equipment"), ("int", "Interest"), ("acc", "Accounting"),
+        ("ins", "Insurance"), ("oth", "Running costs and fees"), ("dep", "Depreciation of equipment"), ("int", "Interest"), ("fin", "Loan arrangement fees"), ("acc", "Accounting"),
         ("fine", "Fines"), ("loss", "Refunds and losses"), ("tax", "Corporate tax"),
     ]
 

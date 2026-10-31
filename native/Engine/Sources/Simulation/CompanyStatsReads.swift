@@ -158,5 +158,5 @@ public enum ReportPeriodKind: Sendable { case week, month, year }
 
 public extension Books {
     /// The categories that make up costs (and so profit): the same list `Books.expenses` adds up.
-    static let expensesKeys: [String] = ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc"]
+    static let expensesKeys: [String] = ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc", "fin"]
 }

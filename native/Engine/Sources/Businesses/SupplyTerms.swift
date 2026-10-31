@@ -392,6 +392,11 @@ public enum SupplyTerms {
         AccountingLedger.note(category: "cogs", label: "Supplier invoice: \(j["n"].string)", ref: j["v"].string.isEmpty ? "" : "supplier:\(j["v"].string)")
         Ledger.moveRaw(&s, .company(bid), -amount)
         s.companies[bi].addTransaction(week: s.week, amount: -jsRound(amount), label: "Invoice: \(j["n"].string)")
+        // The paid invoice stays on record (Accounting > Invoices > Paid).
+        var paidList = s.companies[bi].value("sinvPaid").array
+        paidList.append(.object(["id": j["id"], "n": j["n"], "v": j["v"], "a": .number(amount), "f": j["f"].isNull ? .number(amount) : j["f"], "w0": j["w0"], "d": j["d"], "pw": .number(Double(s.week))]))
+        if paidList.count > 200 { paidList.removeFirst(paidList.count - 200) }
+        s.companies[bi].set("sinvPaid", .array(paidList))
         if pid != 0, supplierLive, let si = s.companyIndex(pid) {
             AccountingLedger.note(category: "rev", label: "Invoice paid by \(s.companies[bi].name)")
             Ledger.moveRaw(&s, .company(pid), amount)

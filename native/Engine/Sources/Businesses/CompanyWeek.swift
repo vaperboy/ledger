@@ -347,6 +347,7 @@ public enum CompanyWeek {
         s.companies[i] = co
         // Business customers are invoiced one by one: their orders are not paid at the till. The part the trade would have taken in cash
         // and the part it would have invoiced both wait for the customer (trade terms, and late when the customer is slow).
+        InvoiceBook.sendDrafts(&co, week: s.week)
         var acctInvoices: [(id: Int, amount: Double, due: Int, late: Int, bad: Bool)] = []
         var acctCash = 0.0, acctCredit = 0.0
         if !ctx.acct.isEmpty && rev > 0 {

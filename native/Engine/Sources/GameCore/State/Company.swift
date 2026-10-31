@@ -41,7 +41,7 @@ public struct Books: Equatable, Sendable {
 
     /// Total costs of a period. Original: `sumExp(b)`.
     public static func expenses(_ b: [String: Double]) -> Double {
-        ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc"].reduce(0) { $0 + (b[$1] ?? 0) }
+        ["cogs", "wages", "rent", "mkt", "ins", "oth", "dep", "int", "fine", "loss", "acc", "fin"].reduce(0) { $0 + (b[$1] ?? 0) }
     }
     public static func profit(_ b: [String: Double]) -> Double { (b["rev"] ?? 0) - expenses(b) }
 }

@@ -210,8 +210,20 @@ public enum Payday {
     static func payslips(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (ownerOnPayroll(co) ? 1 : 0) }
     static func hasPayroll(_ co: Company) -> Bool { payslips(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
-    /// Fee for running payroll: none under the derived rule (`responsibility`).
-    static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double { 0 }
+    /// Payroll service of an EXTERNAL accountant / payroll firm (game design values, no statute): a fee per payslip with a minimum per run.
+    /// An employed accountant, a manager or the player running payroll charge nothing extra.
+    static let servicePerPayslip = 165.0, serviceMinimumRun = 900.0
+
+    static func usesExternalFirm(_ co: Company) -> Bool {
+        !co.staff.contains(where: { $0.role == "acct" }) && !co.value("acc")["id"].isNull
+    }
+
+    /// The fee when the external firm runs payroll (booked in Accounting as "Payroll service"); 0 in every other case.
+    static func fee(for mode: Mode, co: Company, currency: Currency, hasAccountingHQ: Bool) -> Double {
+        guard mode == .accountant, usesExternalFirm(co) else { return 0 }
+        let n = Double(max(1, payslips(co)))
+        return max(currency.scaledPrice(serviceMinimumRun), currency.scaledPrice(servicePerPayslip) * n) * (hasAccountingHQ ? 0.5 : 1)
+    }
 
     /// A manager with a weak head for numbers misses a payroll now and then. Original: `mgrSlip`.
     static func managerSlipChance(_ co: Company, people: [Int: Person]) -> Double {
@@ -244,7 +256,7 @@ public enum Payday {
         }
         co = s.companies[i]
         let fee = Payday.fee(for: how, co: co, currency: context.currency(co.countryCode, s), hasAccountingHQ: s.hasHeadOffice("acc"))
-        if fee > 0 { Payments.companyPays(&s, companyID: co.id, amount: fee, category: "acc", label: how == .accountant ? "Payroll service" : "Payroll software") }
+        if fee > 0 { Payments.companyPays(&s, companyID: co.id, amount: fee, category: "acc", label: "Payroll service") }
         co = s.companies[i]
         let due = co.payables["wages"] ?? 0
         let room = context.overdraftRoom(co, s)
@@ -283,7 +295,7 @@ public enum Payday {
         }
         co.set("pr29", cfg.json)
         s.companies[i] = co
-        PayrollRuns.record(&s, companyIndex: i, payMonth: payMonth, paid: jsRound(p), short: jsRound(short), how: how.rawValue, today: t, data: data)
+        PayrollRuns.record(&s, companyIndex: i, payMonth: payMonth, paid: jsRound(p), short: jsRound(short), how: how.rawValue, today: t, data: data, serviceFee: jsRound(fee))
         return PayrollResult(paid: jsRound(p), short: jsRound(short), slips: payslips(co), fee: jsRound(fee))
     }
 

@@ -55,6 +55,21 @@ public enum EmployerCost {
                          benefits: benefitsMonthly, otherCosts: otherMonthly, totalMonthly: total, totalAnnual: total * 12)
     }
 
+    /// What is withheld from the employee's gross pay (country data): income tax on the wage and the employee's social contribution. The employer
+    /// pays these over to the state; they are not an extra cost to the company.
+    public struct Deductions: Equatable, Sendable {
+        public var incomeTax: Double
+        public var employeeSocial: Double
+        public var net: Double
+        public var total: Double { incomeTax + employeeSocial }
+    }
+
+    public static func deductions(wage: Double, country: Country) -> Deductions {
+        let tax = wage > 0 ? Taxes.personalIncomeTax(wage * 12, kind: .wage, in: country) / 12 : 0
+        let social = wage * country.employeeSocial
+        return Deductions(incomeTax: tax, employeeSocial: social, net: max(0, wage - tax - social))
+    }
+
     /// The monthly cost of a staff member's standing pay (wage, on-cost, leave cover), with benefits added by the caller.
     public static func monthly(_ m: StaffMember, country: Country, benefitsMonthly: Double = 0) -> Breakdown {
         monthly(wage: m.monthlyWage, country: country, hoursPerWeek: m.weeklyHours ?? (m.partTimeShare * StaffModel.fullWeekHours), benefitsMonthly: benefitsMonthly)
