@@ -12,7 +12,7 @@ import Simulation
 //  - Choosing the tab that is already open returns it to its root (`GameStore.selectTab`).
 
 /// What a tab root's `path.append(route)` calls become: a push through the store, so the same record is never stacked twice.
-struct TabPath {
+@MainActor struct TabPath {
     var store: GameStore
     var tab: AppTab
     func append(_ route: CompanyRoute) { store.push(route, on: tab) }

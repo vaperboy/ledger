@@ -121,7 +121,7 @@ struct PhoneHome: View {
 }
 
 /// What the Phone home's `path.append(.app(app))` calls become: a push through the store.
-struct PhonePath {
+@MainActor struct PhonePath {
     var store: GameStore
     func append(_ page: PhoneHome.Page) { store.setPhonePath(store.phonePath + [page]) }
 }
