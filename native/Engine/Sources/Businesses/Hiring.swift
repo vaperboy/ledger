@@ -150,6 +150,17 @@ public enum Hiring {
         public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
     }
 
+    /// The staff record a hire at this wage and these terms would have, for cost previews only (nothing is stored). The real record is made in `hire`.
+    static func previewRecord(person n: Person, offered: Double, terms: Terms, company co: Company, week: Int, data: GameData) -> StaffMember {
+        var m = StaffMember(raw: [:])
+        m.id = n.id; m.set("role", n.role)
+        m.monthlyWage = offered
+        m.payBasis = payBasis(n, terms: terms, fixedSalaryRoles: fixedSalaryNorm).basis
+        if terms.isPartTime { StaffTalks.applyPartTime(&m, terms: terms, week: week) } else if terms.ownCar { m.set("ownCar", 1) }
+        if terms.payPlan == "com", PayPlans.eligible(role: n.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles) { m.monthlyWage = 0 }
+        return m
+    }
+
     /// A paid trial week (a quarter of the market wage for the role) shows how good someone really is, give or take a few points.
     /// Returns the skill seen, or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
     public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> Double? {

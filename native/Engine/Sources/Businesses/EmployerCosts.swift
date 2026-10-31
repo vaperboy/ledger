@@ -62,12 +62,7 @@ public enum EmployerCosts {
         guard let co = s.company(companyID), let n = s.people[personID] else { return nil }
         let w = World(state: s, data: data)
         let country = w.country(co), cur = w.currency(co)
-        var m = StaffMember(raw: [:])
-        m.id = personID; m.set("role", n.role)
-        m.monthlyWage = max(offered, w.minimumWage(co))
-        m.payBasis = Hiring.payBasis(n, terms: terms, fixedSalaryRoles: Hiring.fixedSalaryNorm).basis
-        if terms.isPartTime { StaffTalks.applyPartTime(&m, terms: terms, week: s.week) } else if terms.ownCar { m.set("ownCar", 1) }
-        if terms.payPlan == "com", PayPlans.eligible(role: n.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles) { m.monthlyWage = 0 }
+        let m = Hiring.previewRecord(person: n, offered: max(offered, w.minimumWage(co)), terms: terms, company: co, week: s.week, data: data)
         return EmployerCost.monthly(m, country: country, benefitsMonthly: jobBenefits(m, company: co, country: country, currency: cur, data: data))
     }
 }

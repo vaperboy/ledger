@@ -269,3 +269,37 @@ NO 37.84% / 22%; SE 30 / 30; PL 19 / 19; LT 15 / 15; DE 26.375 / 26.375; UK 24 /
 **Sick pay** (`labour.sick`: `waitingDays`, `employerShare`, `employerDays` working days per illness after the waiting days, `weeklyCap` local currency, `stateShare` information only): replaces the sick part of the flat leave uplift (the paid-leave cover stays). A person who fell sick costs `LabourRules.employerSickPay` that week, through `CompanyCosts.standingWeeklyPayroll`. NO 100%, 12 days; SE 80% after one qualifying day; PL 80%, 33 days; LT 62.06% first 2 days; DE 100%, 6 weeks; UK SSP: since 6 April 2026 no waiting days, lower of 80% of pay and GBP 123.25 a week, 28 weeks (the brief said day 4, the pre-2026 rule); FR 3 waiting days then employer top-up 40% of pay (state 50%; statute starts the top-up on day 8, agreements usually day 4~); ES nothing for 3 days then employer 60% to day 15; NL 70%, 104 weeks; US none; CA 10 paid days (federal~); AU 10 days; JP and KR none from the employer; BR 100% first 15 calendar days; CH 100% about 3 weeks~; MX none (IMSS 60% from day 4); AE 100% first 15 days; IT 70%~; DK 100%; FI 100% first 10 days; IE 70% up to EUR 110 a day, 7 days; SG 100%, 14 days. Each illness spell is one week, paid independently (no yearly day counters).
 
 **Broker**: minimum fee (29) and minimum purchase (100) scale with `Currency.scaledPrice`.
+
+## Company conversion fee and payroll service (Stage 2, Oct 2026)
+
+**Conversion fee (`companies.conversionFee` in `countries.json`, used by `CompanyConversion`).** Every value below is UNVERIFIED until sourced: the figure is the game's approximation of the official/notary/registry cost of turning a sole trader into a limited company in that country, in the country's own currency. Source needed for each: the company registry's or tax authority's published fee schedule (plus notary or lawyer fees where the law requires them) for converting or incorporating an existing business. Registration fee and share capital are listed for comparison (their sources are in the sections above).
+
+| Country | conversionFee | registrationFee | share capital minimum | Status |
+|---|---:|---:|---:|---|
+| NO | 9800 | 6825 | 30000 | unverified, source needed |
+| SE | 4750 | 2200 | 25000 | unverified, source needed |
+| PL | 1500 | 350 | 5000 | unverified, source needed |
+| LT | 210 | 60 | 1000 | unverified, source needed |
+| DE | 2100 | 700 | 25000 | unverified, source needed |
+| UK | 110 | 50 | 1 | unverified, source needed |
+| FR | 700 | 210 | 1 | unverified, source needed |
+| ES | 1000 | 600 | 1 | unverified, source needed |
+| NL | 750 | 85 | 1 | unverified, source needed |
+| US | 375 | 300 | 0 | unverified, source needed |
+| CA | 550 | 300 | 0 | unverified, source needed |
+| AU | 850 | 650 | 1 | unverified, source needed |
+| JP | 275000 | 200000 | 1 | unverified, source needed |
+| KR | 750000 | 500000 | 1000000 | unverified, source needed |
+| BR | 1800 | 1000 | 1100 | unverified, source needed |
+| CH | 2500 | 1800 | 20000 | unverified, source needed |
+| MX | 20000 | 18000 | 1 | unverified, source needed |
+| AE | 12000 | 16000 | 1 | unverified, source needed |
+| IT | 2500 | 2000 | 10000 | unverified, source needed |
+| DK | 15000 | 670 | 40000 | unverified, source needed |
+| FI | 2000 | 275 | 0 | unverified, source needed |
+| IE | 1000 | 50 | 1 | unverified, source needed |
+| SG | 1000 | 315 | 1 | unverified, source needed |
+
+**Payroll service fee of an external accountant / payroll firm** (`Payday.servicePerPayslip`, `Payday.serviceMinimumRun`): 165 per payslip with a minimum of 900 per run, in reference-economy units scaled by the company's currency (halved with an accounting head office). GAME DESIGN values, not a statute and not a market survey; replace with sourced fee schedules of payroll providers if the owner wants realism. Charged only when an EXTERNAL accountant runs payroll; an employed accountant, a manager or the player charge nothing. Booked as an accounting expense ("Payroll service").
+
+**Employee deductions on payslips** use the country's income tax scale for wages (`Taxes.personalIncomeTax(..., .wage)`, one twelfth of the annual tax on twelve times the monthly gross) and the flat employee social rate `tax.social.employee` already in the country data. Allowances, credits and capped employee contributions are not modelled, so the net pay is an estimate.

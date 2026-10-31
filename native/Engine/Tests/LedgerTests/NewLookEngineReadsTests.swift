@@ -14,7 +14,7 @@ final class NewLookEngineReadsTests: XCTestCase {
     }
 
     private func cafe(_ e: inout GameEngine) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { throw XCTSkip("no company") }
         return id
     }
 
@@ -37,9 +37,9 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertNotNil(bank.rows.first { $0.companyID == id }?.alertNote)
         XCTAssertEqual(e.bankAccount(.company(id))?.alert, a)
         // Someone else approves: the alert goes.
-        e.setPayrollMode(companyID: id, mode: .accountant)
+        e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
-        e.setPayrollMode(companyID: id, mode: .manual)
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw.removeValue(forKey: "acc") } }
         XCTAssertNotNil(e.payrollAlerts().first { $0.companyID == id })
         // The owner approves through the existing payroll action.
         XCTAssertEqual(e.resolvePayrollAlert(companyID: id), .approved)

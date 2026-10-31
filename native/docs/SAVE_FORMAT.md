@@ -55,7 +55,7 @@ Fix/open-engine keys, all written only when set: a project job `due` (planned fi
 
 Stage 2 (financial systems), all keys written only when set, no resets, older saves load unchanged:
 * Company: `led` (transaction ledger: `"w<week>"` -> rows `[amount, count, category, label, ref, lastDay]`, last 104 weeks), `ledFrom` (week the ledger began), `lednotes` (notes by row id), `invb` and `invN` (customer invoice book and counter), `prun` and `prunN` (payroll run records), `acx` (named Accounting users -> level), `legal` (form, since, name, shares, conversion history), `convMonthProfit` (present only between a conversion and the next month close).
-* Receivable: `iv` (the invoice number it belongs to).
+* Receivable: `iv` (the invoice number it belongs to). Company: `sinvPaid` (paid supplier invoices). Staff record: `hrsAct` (hours worked by month: [hours, overtime, weeks]). Invoice book rows have `st` draft/sent/paid/bad and `sw` (week sent). Payroll run rows have `fee` and per-line `itx`/`esoc` (withholding). Cost category `fin` in `bk` (loan arrangement fees).
 * Loan: `ptm` (calendar month the instalment was last settled), `app` (application record: week, fee, net, account), `guarReleased`, `guarLock`, and the open bank talk under `neg`.
 * Personal tax: `enkFrozen` (already existed, now written at conversion; cleared with the tax year).
 * `pr29.mode` (old payroll choice) is kept but no longer used.
