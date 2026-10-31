@@ -162,7 +162,8 @@ struct BoardView: View {
 
     private func itemRow(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem, _ engine: GameEngine) -> some View {
         let co: Company? = engine.state.company(it.companyID)
-        let costText: String = it.cost > 0 ? (co.map { store.short(it.cost, in: $0) } ?? "") : "Nothing"
+        var costText: String = "Nothing"
+        if it.cost > 0, let co { costText = store.short(it.cost, in: co) }
         return VStack(alignment: .leading, spacing: 8) {
             Text(it.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
             if !it.raisedBy.isEmpty { Text("Raised by \(it.raisedBy)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
@@ -198,7 +199,10 @@ struct BoardView: View {
                         Text(m.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                         Text(GameCalendar.dateString(week: m.week)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                         if !m.why.isEmpty && m.why != "Regular meeting" { Text(m.why.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                        if !m.attendees.isEmpty { Text("Present: " + m.attendees.joined(separator: " · ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                        if !m.attendees.isEmpty {
+                            let present: String = "Present: " + m.attendees.joined(separator: " · ")
+                            Text(present).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 if m.isEmergency {
@@ -223,7 +227,8 @@ struct BoardView: View {
                     Card(padding: 12, radius: Theme.Radius.card) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(f.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                            Text("\(f.assignee) · lapses \(GameCalendar.dateString(week: f.due))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            let lapse: String = f.assignee + " · lapses " + GameCalendar.dateString(week: f.due)
+                            Text(lapse).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                             HStack(spacing: 10) {
                                 NavigationLink(value: CompanyRoute.company(f.companyID)) { Text("Open company").font(.system(size: 13, weight: .medium)) }.buttonStyle(QuietButtonStyle())
                                 Button("Mark done") {
@@ -240,30 +245,42 @@ struct BoardView: View {
 
     // MARK: Minutes
 
-    @ViewBuilder private func minutes(_ engine: GameEngine) -> some View {
-        let done: [ManagerModel.BoardMeeting] = Array(engine.boardMeetings(key: key).filter { !$0.isOpen }.prefix(6))
-        let jobs: [ManagerModel.FollowUp] = Array(engine.boardFollowUps(key: key).filter { !$0.status.isEmpty }.suffix(4).reversed())
-        MoreBlock(title: "Minutes and outcomes", card: false) {
-            if done.isEmpty && jobs.isEmpty { NoteCard(text: "The minutes of each meeting are kept here once its points are decided.") }
-            ForEach(done) { m in
-                Card(padding: 12, radius: Theme.Radius.card) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(m.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                            Spacer(minLength: 8)
-                            Text(GameCalendar.dateString(week: m.week)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        ForEach(Array(m.minutes.enumerated()), id: \.offset) { (_: Int, line: String) in
-                            Text("· " + line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                        }
-                        if m.minutes.isEmpty { Text("Nothing was decided.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
-                    }
+    private func minutesCard(_ m: ManagerModel.BoardMeeting) -> some View {
+        let lines: [String] = m.minutes.map { (line: String) -> String in "· " + line.tidyMoney }
+        let title: String = m.title.tidyMoney
+        let date: String = GameCalendar.dateString(week: m.week)
+        return Card(padding: 12, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Spacer(minLength: 8)
+                    Text(date).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 }
+                ForEach(Array(lines.enumerated()), id: \.offset) { (_: Int, line: String) in
+                    Text(line).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                if lines.isEmpty { Text("Nothing was decided.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
             }
-            ForEach(jobs) { f in
-                Text("Follow-up " + (f.status == "done" ? "done" : "lapsed") + ": " + f.text.tidyMoney + (f.note.isEmpty ? "" : " (" + f.note + ")"))
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            }
+        }
+    }
+
+    private func closedJobLine(_ f: ManagerModel.FollowUp) -> some View {
+        let state: String = f.status == "done" ? "done" : "lapsed"
+        let note: String = f.note.isEmpty ? "" : " (" + f.note + ")"
+        let text: String = "Follow-up " + state + ": " + f.text.tidyMoney + note
+        return Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private func minutes(_ engine: GameEngine) -> some View {
+        let all: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key)
+        let done: [ManagerModel.BoardMeeting] = Array(all.filter { !$0.isOpen }.prefix(6))
+        let closedJobs: [ManagerModel.FollowUp] = engine.boardFollowUps(key: key).filter { !$0.status.isEmpty }
+        let jobs: [ManagerModel.FollowUp] = Array(closedJobs.suffix(4).reversed())
+        let empty: Bool = done.isEmpty && jobs.isEmpty
+        MoreBlock(title: "Minutes and outcomes", card: false) {
+            if empty { NoteCard(text: "The minutes of each meeting are kept here once its points are decided.") }
+            ForEach(done) { m in minutesCard(m) }
+            ForEach(jobs) { f in closedJobLine(f) }
         }
     }
 
