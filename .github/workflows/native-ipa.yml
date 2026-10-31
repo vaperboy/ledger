@@ -1,9 +1,10 @@
-name: Native iOS unsigned IPA (for sideloading)
+name: Native iOS unsigned IPA (GitHub Release + AltStore source)
 
-# Manual only. Builds the app without signing and uploads Ledger-unsigned.ipa as a downloadable artifact.
-# The IPA must be signed on your side (Sideloadly or AltStore with a free Apple ID); see native/docs/SIDELOAD.md.
+# Builds the app without signing, publishes Ledger-unsigned.ipa as a GitHub Release tagged v<run number>, and updates
+# apps.json (an AltStore source) on native-swiftui with the link to that IPA. AltStore signs the IPA on your device
+# with your own Apple ID; see native/docs/SIDELOAD.md.
+# Runs when the ipa-build branch is pushed (a workflow can only be started by name from the default branch).
 on:
-  # Runs when this branch is pushed (a workflow can only be started by name from the default branch).
   push:
     branches: [ ipa-build ]
   workflow_dispatch:
@@ -11,6 +12,17 @@ on:
       ref:
         description: Branch or commit to build
         default: native-swiftui
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ipa-release
+  cancel-in-progress: false
+
+env:
+  BUNDLE_ID: com.example.ledger
+  SOURCE_BRANCH: native-swiftui
 
 jobs:
   ipa:
@@ -43,7 +55,73 @@ jobs:
           cp -R "$APP" $RUNNER_TEMP/ipa/Payload/
           (cd $RUNNER_TEMP/ipa && zip -qry Ledger-unsigned.ipa Payload)
           ls -l $RUNNER_TEMP/ipa/Ledger-unsigned.ipa
-      - uses: actions/upload-artifact@v4
+      - name: Publish a GitHub Release with the IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ github.run_number }}
+        run: |
+          gh release create "$TAG" "$RUNNER_TEMP/ipa/Ledger-unsigned.ipa" \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Ledger build $TAG" \
+            --notes "Unsigned IPA built from ${{ github.sha }}. Install through the AltStore source (apps.json) or Sideloadly; see native/docs/SIDELOAD.md." \
+            --latest
+      - name: Check out the AltStore source branch
+        uses: actions/checkout@v4
         with:
-          name: Ledger-unsigned-ipa
-          path: ${{ runner.temp }}/ipa/Ledger-unsigned.ipa
+          ref: ${{ env.SOURCE_BRANCH }}
+          path: source
+      - name: Update apps.json with the new IPA
+        env:
+          TAG: v${{ github.run_number }}
+          RUN: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          IPA: ${{ runner.temp }}/ipa/Ledger-unsigned.ipa
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          p = "source/apps.json"
+          repo, tag, run = os.environ["REPO"], os.environ["TAG"], os.environ["RUN"]
+          size = os.path.getsize(os.environ["IPA"])
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          raw = "https://raw.githubusercontent.com/%s/%s" % (repo, os.environ.get("SOURCE_BRANCH", "native-swiftui"))
+          icon = raw + "/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+          url = "https://github.com/%s/releases/download/%s/Ledger-unsigned.ipa" % (repo, tag)
+          try:
+              src = json.load(open(p))
+          except Exception:
+              src = {}
+          src.setdefault("name", "Ledger")
+          src.setdefault("identifier", "com.example.ledger.source")
+          src.setdefault("subtitle", "Ledger business simulation builds")
+          src.setdefault("description", "Unsigned builds of the Ledger business simulation. AltStore signs them with your own Apple ID.")
+          src["iconURL"] = icon
+          src.setdefault("tintColor", "#CFB185")
+          src.setdefault("website", "https://github.com/%s" % repo)
+          src.setdefault("news", [])
+          apps = src.setdefault("apps", [])
+          app = next((a for a in apps if a.get("bundleIdentifier") == os.environ["BUNDLE_ID"]), None)
+          if app is None:
+              app = {"name": "Ledger", "bundleIdentifier": os.environ["BUNDLE_ID"], "developerName": "Ledger",
+                     "subtitle": "Run real businesses", "localizedDescription": "Ledger: a business-management simulation.",
+                     "tintColor": "#CFB185", "screenshotURLs": [], "versions": []}
+              apps.append(app)
+          app["iconURL"] = icon
+          version = "1.0.%s" % run
+          entry = {"version": version, "buildVersion": run, "date": now, "downloadURL": url, "size": size,
+                   "minOSVersion": "17.0", "localizedDescription": "Build %s from %s" % (tag, os.environ["SHA"][:7])}
+          versions = [v for v in app.get("versions", []) if v.get("version") != version]
+          app["versions"] = ([entry] + versions)[:20]
+          # fields older AltStore versions read
+          app.update({"version": version, "versionDate": now, "downloadURL": url, "size": size})
+          json.dump(src, open(p, "w"), indent=2)
+          open(p, "a").write("\n")
+          PY
+      - name: Commit and push apps.json
+        working-directory: source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps.json
+          git commit -m "AltStore source: build v${{ github.run_number }}" || echo "nothing to commit"
+          for i in 1 2 3; do git pull --rebase origin "$SOURCE_BRANCH" && git push origin "HEAD:$SOURCE_BRANCH" && break; sleep 5; done

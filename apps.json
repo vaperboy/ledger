@@ -1,0 +1,11 @@
+{
+  "name": "Ledger",
+  "identifier": "com.example.ledger.source",
+  "subtitle": "Ledger business simulation builds",
+  "description": "Unsigned builds of the Ledger business simulation. AltStore signs them with your own Apple ID. The list is filled in by the IPA workflow after each successful build.",
+  "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "tintColor": "#CFB185",
+  "website": "https://github.com/vaperboy/ledger",
+  "news": [],
+  "apps": []
+}
