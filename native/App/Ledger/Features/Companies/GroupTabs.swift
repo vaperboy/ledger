@@ -432,12 +432,15 @@ struct GroupBoardTab: View {
     }
 
     private var waiting: [Waiting] {
-        engine.boardKeys.filter { engine.boardIsActive(key: $0) }.compactMap { k in
-            let n = engine.boardOpenDecisions(key: k)
+        engine.boardKeys.filter { engine.boardIsActive(key: $0) }.compactMap { (k: String) -> Waiting? in
+            let n: Int = engine.boardOpenDecisions(key: k)
             guard n > 0 else { return nil }
-            let open = engine.boardMeetings(key: k).filter { $0.isOpen }
-            let first: String = open.compactMap { m in m.isEmergency ? m.title : m.items.first(where: { $0.status.isEmpty && !$0.action.isEmpty })?.text }.first ?? ""
-            return Waiting(key: k, count: n, headline: first)
+            let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: k).filter { $0.isOpen }
+            let heads: [String] = open.compactMap { (m: ManagerModel.BoardMeeting) -> String? in
+                if m.isEmergency { return m.title }
+                return m.items.first(where: { $0.status.isEmpty && !$0.action.isEmpty })?.text
+            }
+            return Waiting(key: k, count: n, headline: heads.first ?? "")
         }
     }
 
@@ -488,6 +491,10 @@ struct GroupBoardTab: View {
             }
 
             owners(live)
+
+            Button { Haptics.tap(); store.openApp(.bank) } label: {
+                CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
+            }.buttonStyle(.plain)
         }
     }
 
