@@ -85,8 +85,17 @@ public extension GameEngine {
     mutating func holdBoardMeeting(key: String) -> Int? { var r: Int?; update { s, d, _ in r = ManagerModel.holdBoardMeeting(&s, key: key, data: d) }; return r }
     @discardableResult
     mutating func decideMeetingItem(key: String, meetingID: Int, item: Int, approve: Bool) -> ManagerModel.ItemResult {
-        var r = ManagerModel.ItemResult.gone; update { s, d, _ in r = ManagerModel.decideMeetingItem(&s, key: key, meetingID: meetingID, item: item, approve: approve, data: d) }; return r
+        var r = ManagerModel.ItemResult.gone; let m = marketing; update { s, d, _ in r = ManagerModel.decideMeetingItem(&s, key: key, meetingID: meetingID, item: item, approve: approve, data: d, marketing: m) }; return r
     }
+    /// Points waiting for you on one board (open regular points plus unanswered emergencies); the number on the badges.
+    func boardOpenDecisions(key: String) -> Int { ManagerModel.openDecisionCount(state, key: key) }
+    /// Points waiting for you across every board that meets.
+    var boardDecisionsWaiting: Int { boardKeys.filter { boardIsActive(key: $0) }.reduce(0) { $0 + boardOpenDecisions(key: $1) } }
+    /// What a meeting called now would decide; empty means there is nothing to meet about.
+    func boardAgendaPreview(key: String) -> [ManagerModel.MeetingItem] { ManagerModel.agendaPreview(state, key: key, data: data) }
+    func boardFollowUps(key: String) -> [ManagerModel.FollowUp] { ManagerModel.followUps(state, key: key) }
+    @discardableResult
+    mutating func completeBoardFollowUp(key: String, id: Int) -> Bool { var ok = false; update { s, _, _ in ok = ManagerModel.completeFollowUp(&s, key: key, id: id) }; return ok }
     /// Answer an emergency meeting from its page; "hire" comes back when you now need to pick a manager.
     @discardableResult
     mutating func pickEmergency(key: String, meetingID: Int, option: Int) -> String? { var r: String?; update { s, d, _ in r = ManagerModel.pickEmergency(&s, key: key, meetingID: meetingID, option: option, data: d) }; return r }

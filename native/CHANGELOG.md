@@ -2,6 +2,12 @@
 
 ## Unreleased — native migration (branch `native-swiftui`)
 
+### Stage 6: Group, Board and management authority (31 Oct 2026)
+* Board meetings are held only when a seat brings a real point (losses, thin margins, low awareness, missing paperwork, no manager, sell-outs, a bottleneck, owners waiting for a dividend, trouble among the people). No points: no meeting and no Inbox message ("0 points for you" is gone).
+* A meeting closes when its last point is decided, or lapses after 4 weeks. Badges and the Group "Needs you" list count only open points. Minutes (attendees, each point, the answer and what came of it) are kept; a declined point is not raised again for 12 weeks, an approved one for 8.
+* Approving a point acts through the existing systems (price step, stock rule, broker listing, marketing through the manager, document applications, equipment or space purchase, manager search offer, dividend policy, a talk with the manager). If it cannot be done it is refused with the reason and stays open. Some points hand on a follow-up job that closes by itself or lapses.
+* Group: Structure now has Ownership, Chains, Holdings and Authority (who manages whom, each manager's authority, reports-to line); Holdings, Chains, Franchises and Boards left the More menu. Saves: new keys are written only when set (`mts[].title/att/st/cw`, items `key/eff/risk/cost/by/out/dw`, board `memo`, `fu`); older meetings read as closed or lapsed.
+
 ### Stage 1: navigation and the Company hub (31 Oct 2026)
 * One navigation owner: `GameStore` holds the route stack of every tab and one pending request for the app a link opened (replaces seven loose request slots). Choosing the open tab again returns it to its root; a link to a record already on the stack goes back to it instead of stacking a copy; Back from a screen a cross-tab link pushed returns to the tab the link came from and leaves nothing behind; a pushed screen has exactly one Back control.
 * A company opens on its Overview under a fixed bar Overview | Team | Manage | Sales | Stats (in-place switch, one Back leaves the company). Price, How you sell and Marketing moved from Operations to Sales; Stats has Finances, Performance and Insights; no Bank shortcuts inside Stats; Plant, Fish, Club, Chain, Book and Holding are reachable from the section they belong to. Company Projects exists for every company. Overview is cash-first. Sideways-scrolling chips (Team, Luxury, World) now wrap; main screens use size-based bounce.
