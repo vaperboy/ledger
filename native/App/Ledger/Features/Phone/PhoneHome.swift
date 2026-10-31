@@ -65,7 +65,7 @@ struct PhoneHome: View {
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
         }
         .id(store.rootToken(.phone))
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("phone-home")
@@ -223,7 +223,7 @@ struct PhonePagedApp: View {
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .background(Theme.page)
         .navigationDestination(item: $opened) { (p: PhonePage) in
             content(p).appScreen(title: p.rawValue, subtitle: app.title)

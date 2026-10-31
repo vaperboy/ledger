@@ -28,7 +28,7 @@ struct GroupView: View {
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     }
                     .id(store.rootToken(.group))
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                 }
             }
             .ledgerBackground()

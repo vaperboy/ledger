@@ -6,16 +6,16 @@ import Finance
 import Businesses
 import Simulation
 
-/// Every screen a company has. The raw values are the titles shown on screen; the CASE NAMES are the keys the engine and deep links use
-/// ("operations", "staff", "finances" ...: see `init?(key:)`) and never change.
+/// Every page a company has. The CASE NAMES are the keys the engine and deep links use ("operations", "staff", "finances" ...: see
+/// `init?(key:)`) and never change; the raw values are the titles shown on screen.
 ///
-/// The Company hub (`CompanyDetailView`) lists six of them, in the order of the Company Management mockup: Overview, People (`staff`),
-/// Operations, Sales & Market, Stats & Information (`finances`) and Projects. Everything else is a screen reached from one of those:
-/// Marketing, Customers and Market from Sales & Market; Plant, Fish, Club, Chain and Properties from Operations; Book from Stats &
-/// Information; Holding from People; Setup from the Overview while the company is being set up.
+/// The company screen (`CompanyDetailView`) shows five of them as its fixed section bar: Overview, Team (`staff`), Manage (`operations`),
+/// Sales (`salesMarket`) and Stats (`finances`). `projects` is the last block of Sales, `holding` is the Team page of a holding company
+/// and `properties` is Premises inside Manage. The rest are pages pushed on top (Marketing, Customers, Market, Setup, Plant, Fish, Club,
+/// Chain, Book): see `isLeaf`.
 enum CompanySection: String, CaseIterable, Hashable {
-    case overview = "Overview", projects = "Projects", staff = "People", finances = "Stats & Information", operations = "Operations"
-    case salesMarket = "Sales & Market"
+    case overview = "Overview", projects = "Projects", staff = "Team", finances = "Stats", operations = "Manage"
+    case salesMarket = "Sales"
     case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
@@ -32,116 +32,128 @@ extension CompanySection {
         self = s
     }
 
-    /// The six rows of the Company hub, in the order of the mockup.
-    static let hubRows: [CompanySection] = [.overview, .staff, .operations, .salesMarket, .finances, .projects]
-
-    /// The line under a hub row's title (the mockup's wording).
-    var hubNote: String {
-        switch self {
-        case .overview: return "Key figures and alerts"
-        case .staff: return "Team and management"
-        case .operations: return "Premises, equipment, inventory"
-        case .salesMarket: return "Customers, pricing, marketing"
-        case .finances: return "Performance, finances, documents"
-        case .projects: return "Ongoing projects and milestones"
-        default: return ""
-        }
-    }
-
-    var hubGlyph: String {
-        switch self {
-        case .overview: return Glyph.stats
-        case .staff: return Glyph.team
-        case .operations: return Glyph.opsWrench
-        case .salesMarket: return Glyph.market
-        case .finances: return Glyph.reports
-        case .projects: return Glyph.projects
-        default: return Glyph.chevron
-        }
-    }
-
-    /// The accessibility id of the hub row (`company-hub-<id>`).
-    var hubID: String {
-        switch self {
-        case .staff: return "people"
-        case .finances: return "stats"
-        case .salesMarket: return "sales"
-        default: return "\(self)"
-        }
-    }
-
-    /// A short title for a link chip ("People ›") where the full title would not fit.
-    var shortTitle: String { self == .finances ? "Stats" : rawValue }
+    /// A short title for a link chip ("Team ›").
+    var shortTitle: String { rawValue }
 }
 
-/// The Company hub: the company at a glance (cash first, then profit and margin) and the six sections of the Company Management
-/// mockup, each a screen of its own that is pushed on the stack, so Back always returns to the hub (or to wherever a link came from).
+/// The five sections of the company screen, in the fixed bar.
+enum CompanyTab: String, CaseIterable, Hashable {
+    case overview = "Overview", team = "Team", manage = "Manage", sales = "Sales", stats = "Stats"
+    var id: String { rawValue.lowercased() }
+}
+
+/// The parts of Stats: the finance summary and its pages, then how the company performs and what stands out.
+enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", performance = "Performance", insights = "Insights" }
+
+/// One company: Overview first (cash, what needs you, who runs it) under a fixed bar of five sections: Overview | Team | Manage | Sales |
+/// Stats. Switching section is in place (the bar never scrolls and there is no "More"); one Back leaves the company. Pages inside a
+/// section (premises, suppliers, marketing, customers ...) are pushed screens with their own Back.
 struct CompanyDetailView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
+    /// The part of a section to open on (the title of a `CompanyMoneyPart` or `OpsPart`), when a link asked for one.
+    var part: String? = nil
+    @State private var segment: CompanyTab
+    @State private var statsPart: StatsPart = .finances
+    @State private var moneyPart: CompanyMoneyPart = .summary
+    @State private var opsPart: OpsPart = .setup
+    @State private var appliedPart = false
+
+    init(companyID: Int, initial: CompanyTab? = nil, part: String? = nil) {
+        self.companyID = companyID
+        self.part = part
+        _segment = State(initialValue: initial ?? .overview)
+    }
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let form: String = co.form == .limited ? "Ltd" : "Sole trader"
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
+            let tabs: [CompanyTab] = Self.tabs(co, e)
+            let current: CompanyTab = tabs.contains(segment) ? segment : .overview
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
                     if let context = contextLine(co, e) {
-                        Text(context).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(context).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                     }
-                    header(co, e)
-                    VStack(spacing: 8) {
-                        ForEach(Self.rows(co, e), id: \.row) { r in
-                            Button { Haptics.tap(); store.openCompany(co.id, section: r.target) } label: {
-                                CardRow(glyph: r.row.hubGlyph, title: r.row.rawValue, subtitle: r.row.hubNote, value: value(r.row, co, e))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("company-hub-\(r.row.hubID)")
-                        }
-                    }
+                    SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, 2).padding(.bottom, 8)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        content(current, co, e)
+                    }
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 40)
+                    .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollIndicators(.hidden)
-            .appScreen(title: co.name, subtitle: "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)".tidyText)
+            .appScreen(title: co.name, subtitle: "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)".tidyText) {
+                if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
+            }
+            .onAppear { applyPart(tabs) }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
-    /// Cash big, then profit and margin over twelve months. A company still being set up shows its cash and what is left to do.
-    private func header(_ co: Company, _ e: GameEngine) -> some View {
-        let h = e.companyHealth(co)
-        let live: Bool = co.status == .open
-        let margin: String = h.marginTTM.map { String(format: "%.1f%%", $0 * 100) } ?? "–"
-        let cells: [StatStrip.Cell] = [
-            .init(label: "Profit · 12 months", value: (h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co), tint: h.profitTTM < 0 ? Theme.loss : Theme.ivory),
-            .init(label: "Margin", value: margin),
-        ]
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Cash").capsLabel()
-                    Spacer(minLength: 8)
-                    if live { HealthChip(label: h.label) } else { StatusChip(company: co) }
-                }
-                Text(store.money(co.cash, in: co)).font(.hero(34)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                if live { StatStrip(cells: cells) }
+    @ViewBuilder private func content(_ tab: CompanyTab, _ co: Company, _ e: GameEngine) -> some View {
+        let a: [CompanySection] = Self.availableSections(co, e)
+        switch tab {
+        case .overview:
+            if co.status == .setup {
+                CompanySetupSection(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
+            }
+            CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
+        case .team:
+            if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
+        case .manage:
+            if a.contains(.operations) {
+                CompanyOperations(engine: e, company: co, part: $opsPart)
+                CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club, .chain])
+            } else {
+                CompanyClub(engine: e, company: co)
+            }
+        case .sales:
+            CompanyOperations(engine: e, company: co, part: $opsPart, mode: .sales)
+            CompanyProjectsPage(engine: e, company: co)
+        case .stats:
+            SegmentedPill(items: StatsPart.allCases, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
+            switch statsPart {
+            case .finances:
+                CompanyMoney(engine: e, company: co, part: $moneyPart)
+                CompanyMorePages(engine: e, company: co, pages: [.book])
+            case .performance:
+                CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, mode: .performance)
+            case .insights:
+                CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, mode: .insights)
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
-    /// A figure at the end of a row where there is an honest one: how many people work here, how many projects are running.
-    private func value(_ row: CompanySection, _ co: Company, _ e: GameEngine) -> String {
-        guard co.status.isLive else { return "" }
-        switch row {
-        case .staff: return co.staff.isEmpty ? "" : co.staff.count.peopleText
-        case .projects:
-            let n: Int = e.projectTimelines().filter { $0.companyID == co.id && ($0.kind == .job || $0.kind == .event || $0.kind == .development) }.count
-            return n == 0 ? "" : "\(n) running"
-        default: return ""
-        }
+    /// Opens on the part a link asked for, once (the screen appears again when a page pushed from it is closed).
+    private func applyPart(_ tabs: [CompanyTab]) {
+        guard !appliedPart else { return }
+        appliedPart = true
+        guard let part else { return }
+        if let m = CompanyMoneyPart(rawValue: part) { moneyPart = m }
+        if let o = OpsPart(rawValue: part) { opsPart = o }
+    }
+
+    /// The `section` the shared Overview and Setup views change to jump elsewhere: a section of this screen switches the bar in place; a
+    /// page of its own (Marketing, Customers ...) is pushed.
+    private func sectionBinding(_ co: Company, _ e: GameEngine) -> Binding<CompanySection> {
+        Binding<CompanySection>(
+            get: { .overview },
+            set: { new in
+                if let t = Self.tab(for: new, co, e) {
+                    if t == .stats { statsPart = .finances }
+                    withAnimation(.snappy(duration: 0.2)) { segment = t }
+                } else {
+                    store.openCompany(companyID, section: new)
+                }
+            })
     }
 
     /// Where the company sits in the group: its chain, its holding, and who runs it day to day.
@@ -157,29 +169,40 @@ struct CompanyDetailView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    // MARK: Which rows and screens a company has
+    // MARK: Which sections and pages a company has
 
-    /// The hub rows this company has, each with the screen it opens. A holding has its management under People (no staff list), a
-    /// football club has its own page under Operations, a company still being set up has no operations yet. Projects is for every company.
-    static func rows(_ co: Company, _ e: GameEngine) -> [(row: CompanySection, target: CompanySection)] {
+    /// The sections of the bar this company has. A holding has its management under Team (no staff list), a football club its own page
+    /// under Manage, a company still being set up has neither Manage nor Sales yet.
+    static func tabs(_ co: Company, _ e: GameEngine) -> [CompanyTab] {
         let a = availableSections(co, e)
-        var out: [(row: CompanySection, target: CompanySection)] = [(.overview, .overview)]
-        if a.contains(.staff) { out.append((.staff, .staff)) } else if a.contains(.holding) { out.append((.staff, .holding)) }
-        if a.contains(.operations) { out.append((.operations, .operations)) } else if a.contains(.club) { out.append((.operations, .club)) }
-        if a.contains(.operations) { out.append((.salesMarket, .salesMarket)) }
-        out.append((.finances, .finances))
-        out.append((.projects, .projects))
+        var out: [CompanyTab] = [.overview]
+        if a.contains(.staff) || a.contains(.holding) { out.append(.team) }
+        if a.contains(.operations) || a.contains(.club) { out.append(.manage) }
+        if a.contains(.operations) { out.append(.sales) }
+        out.append(.stats)
         return out
     }
 
-    /// The screen a link actually opens: one the company has, else its Overview. A holding has no staff list (its management is its own page).
-    static func resolve(_ want: CompanySection, _ co: Company, _ e: GameEngine) -> CompanySection {
+    /// A page that is its own pushed screen, not a section of the bar.
+    static func isLeaf(_ s: CompanySection) -> Bool {
+        switch s {
+        case .marketing, .customers, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
+        default: return false
+        }
+    }
+
+    /// The section of the bar an old section key opens, or nil for a page of its own (`isLeaf`) that is pushed instead.
+    /// Old keys still resolve: staff and holding to Team; operations and properties to Manage; salesMarket and projects to Sales; finances to Stats.
+    static func tab(for section: CompanySection, _ co: Company, _ e: GameEngine) -> CompanyTab? {
         let a = availableSections(co, e)
-        switch want {
-        case .overview, .projects: return want
-        case .salesMarket: return a.contains(.operations) ? want : .overview
-        case .staff where !a.contains(.staff) && a.contains(.holding): return .holding
-        default: return a.contains(want) ? want : .overview
+        switch section {
+        case .overview: return .overview
+        case .staff, .holding: return (a.contains(.staff) || a.contains(.holding)) ? .team : .overview
+        case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
+        case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
+        case .salesMarket, .projects: return a.contains(.operations) ? .sales : .overview
+        case .finances: return .stats
+        default: return nil
         }
     }
 

@@ -198,7 +198,7 @@ struct InboxView: View {
                     .mailRowStyle()
             }
         }
-        .listStyle(.plain)
+        .listStyle(.plain).scrollBounceBehavior(.basedOnSize)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)

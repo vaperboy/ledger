@@ -115,7 +115,7 @@ struct SettingsPage<Content: View>: View {
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .appScreen(title: title, subtitle: subtitle, tab: tab)
     }
 }

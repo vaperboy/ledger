@@ -557,6 +557,8 @@ struct SegmentedPill<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
+    /// Accessibility identifier of each segment (default `segment-<title>`).
+    var identifier: ((T) -> String)? = nil
     @Environment(\.outsidePalette) private var palette
 
     var body: some View {
@@ -578,6 +580,7 @@ struct SegmentedPill<T: Hashable>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier(identifier?(item) ?? "segment-\(title(item))")
             }
         }
         .padding(4)

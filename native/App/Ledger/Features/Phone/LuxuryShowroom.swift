@@ -42,9 +42,7 @@ struct LuxuryShowroom: View {
 
     private var pills: some View {
         let ids: [String] = ["all"] + Luxury.categories.map { $0.id }
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) { ForEach(ids, id: \.self) { pill($0) } }
-        }
+        return WrapRow(spacing: 8) { ForEach(ids, id: \.self) { pill($0) } }
     }
 
     private func pill(_ id: String) -> some View {

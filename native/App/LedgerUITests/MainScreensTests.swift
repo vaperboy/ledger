@@ -62,15 +62,15 @@ final class MainScreensTests: TourCase {
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("23-company-hub")
             var n = 25
-            // The six sections of the Company hub, each a pushed screen. Pages inside a section are pushed too: Back once returns to the section.
+            // The five sections of the fixed bar switch in place. Pages inside a section are pushed: Back once returns to the section.
             let subpages: [String: [String]] = [
-                "people": ["Find workers"],
-                "operations": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
+                "team": ["Find workers"],
+                "manage": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
                 "sales": ["Marketing", "Customers", "Market"],
                 "stats": ["Statements", "Ownership"],
             ]
-            for section in ["overview", "people", "operations", "sales", "stats", "projects"] {
-                let b = app.buttons["company-hub-" + section]
+            for section in ["overview", "team", "manage", "sales", "stats"] {
+                let b = app.buttons["company-tab-" + section]
                 guard b.waitForExistence(timeout: 2), b.isHittable else { note("no company hub row \(section)"); continue }
                 b.tap(); sleep(1); shot("\(n)-company-\(section)"); n += 1
                 scrollDown(); shot("\(n)-company-\(section)-lower"); n += 1
@@ -79,8 +79,8 @@ final class MainScreensTests: TourCase {
                     shot("\(n)-\(section)-\(sub.lowercased().replacingOccurrences(of: " ", with: "-"))"); n += 1
                     goBack(); sleep(1)
                 }
-                goBack(); sleep(1)
             }
+            goBack(); sleep(1)
         }
         ensureTabBar()
 

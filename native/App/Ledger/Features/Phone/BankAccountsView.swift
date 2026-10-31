@@ -41,7 +41,7 @@ struct BankAccountsScreen: View {
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             .sheet(item: $move) { kind in BankMoveSheet(account: .personal, kind: kind).presentationDetents([.medium, .large]) }
         }
     }

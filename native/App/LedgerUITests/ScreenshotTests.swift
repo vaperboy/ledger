@@ -38,11 +38,11 @@ final class ScreenshotTests: TourCase {
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-hub")
-            // The Company hub lists the six sections; each opens as a pushed screen with its own Back button.
-            for section in ["overview", "people", "operations", "sales", "stats", "projects"] {
-                let b = app.buttons["company-hub-" + section]
-                if b.waitForExistence(timeout: 2) { b.tap(); sleep(1); shot("05-company-" + section); goBack(); sleep(1) }
-                else { note("no company hub row \(section)") }
+            // A company opens on its Overview; the fixed bar switches Team, Manage, Sales and Stats in place.
+            for section in ["overview", "team", "manage", "sales", "stats"] {
+                let b = app.buttons["company-tab-" + section]
+                if b.waitForExistence(timeout: 2) { b.tap(); sleep(1); shot("05-company-" + section) }
+                else { note("no company section \(section)") }
             }
             goBack()
         }

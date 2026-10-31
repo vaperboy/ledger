@@ -37,7 +37,7 @@ struct ProjectsView: View {
                     .frame(maxWidth: 900).frame(maxWidth: .infinity)
                 }
                 .id(store.rootToken(.projects))
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                 .scrollDismissesKeyboard(.interactively)
                 .ledgerBackground()
                 .toolbar(.hidden, for: .navigationBar)

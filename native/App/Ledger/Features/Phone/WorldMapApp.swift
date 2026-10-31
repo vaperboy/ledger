@@ -146,10 +146,8 @@ struct WorldMapApp: View {
 
     private func chips(_ e: GameEngine) -> some View {
         let names: [String] = ["All"] + regionOrder
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(names, id: \.self) { (n: String) in chip(n) }
-            }
+        return WrapRow(spacing: 8) {
+            ForEach(names, id: \.self) { (n: String) in chip(n) }
         }
     }
 

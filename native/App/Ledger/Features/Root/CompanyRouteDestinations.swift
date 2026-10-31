@@ -9,8 +9,8 @@ struct CompanyRouteDestination: View {
         Group {
             switch route {
             case .company(let id): CompanyDetailView(companyID: id)
-            case .companyAt(let id, let sec): CompanySectionScreen(companyID: id, section: sec)
-            case .companyPart(let id, let sec, let part): CompanySectionScreen(companyID: id, section: sec, part: part)
+            case .companyAt(let id, let sec): CompanyPage(companyID: id, section: sec, part: nil)
+            case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part)
             case .newCompany: NewCompanyView()
             case .market: MarketView()
             }
@@ -24,5 +24,28 @@ extension View {
     /// Adds the shared company destinations to the navigation stack this view is in.
     func companyRouteDestinations() -> some View {
         navigationDestination(for: CompanyRoute.self) { route in CompanyRouteDestination(route: route) }
+    }
+}
+
+/// A link to one page of a company: a section of the company screen opens it on that section; a page of its own (Marketing, Customers,
+/// Setup, Plant ...) is pushed; a page this company does not have opens its Overview.
+struct CompanyPage: View {
+    @EnvironmentObject var store: GameStore
+    var companyID: Int
+    var section: CompanySection
+    var part: String?
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            if let tab = CompanyDetailView.tab(for: section, co, e) {
+                CompanyDetailView(companyID: companyID, initial: tab, part: part)
+            } else if CompanyDetailView.availableSections(co, e).contains(section) {
+                CompanySectionScreen(companyID: companyID, section: section)
+            } else {
+                CompanyDetailView(companyID: companyID)
+            }
+        } else {
+            CompanyDetailView(companyID: companyID)
+        }
     }
 }

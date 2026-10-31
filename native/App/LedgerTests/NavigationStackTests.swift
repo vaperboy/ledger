@@ -6,24 +6,26 @@ import XCTest
 @MainActor
 final class NavigationStackTests: XCTestCase {
 
-    func testLinkToTheSameScreenDoesNotStackACopy() {
-        let old: [CompanyRoute] = [.company(1), .companyAt(1, .operations)]
+    func testLinkToTheSameSectionDoesNotStackACopy() {
+        let old: [CompanyRoute] = [.companyAt(1, .operations)]
         XCTAssertEqual(GameStore.collapse(old, pushing: .companyAt(1, .operations)), old)
     }
 
-    func testLinkToTheCompanyHubFromInsideItGoesBackToTheHub() {
-        let old: [CompanyRoute] = [.company(1), .companyAt(1, .operations)]
-        XCTAssertEqual(GameStore.collapse(old, pushing: .company(1)), [.company(1)])
+    func testLinkToAnotherSectionOfTheCompanyAlreadyOpenReplacesItInsteadOfStacking() {
+        let old: [CompanyRoute] = [.company(1)]
+        XCTAssertEqual(GameStore.collapse(old, pushing: .companyAt(1, .staff)), [.companyAt(1, .staff)])
+        XCTAssertEqual(GameStore.collapse([.companyAt(1, .staff)], pushing: .company(1)), [.company(1)])
     }
 
-    func testLinkToAnotherScreenOfTheSameCompanyIsOneStepOnTop() {
-        let old: [CompanyRoute] = [.company(1), .companyAt(1, .operations)]
-        XCTAssertEqual(GameStore.collapse(old, pushing: .companyAt(1, .staff)), old + [.companyAt(1, .staff)])
+    func testAPageOfItsOwnIsPushedOnTopOfTheCompanyAndALinkToTheCompanyGoesBack() {
+        let old: [CompanyRoute] = [.company(1), .companyAt(1, .customers)]
+        XCTAssertEqual(GameStore.collapse([.company(1)], pushing: .companyAt(1, .customers)), old)
+        XCTAssertEqual(GameStore.collapse(old, pushing: .companyAt(1, .operations)), [.companyAt(1, .operations)])
     }
 
-    func testLinkToAnotherPartOfTheScreenAlreadyShownReplacesIt() {
-        let old: [CompanyRoute] = [.company(1), .companyAt(1, .finances)]
-        XCTAssertEqual(GameStore.collapse(old, pushing: .companyPart(1, .finances, "Ownership")), [.company(1), .companyPart(1, .finances, "Ownership")])
+    func testLinkToAnotherPartOfTheSectionAlreadyShownReplacesIt() {
+        let old: [CompanyRoute] = [.companyAt(1, .finances)]
+        XCTAssertEqual(GameStore.collapse(old, pushing: .companyPart(1, .finances, "Ownership")), [.companyPart(1, .finances, "Ownership")])
     }
 
     func testLinkToAnotherCompanyIsPushed() {
@@ -77,7 +79,7 @@ final class NavigationStackTests: XCTestCase {
     func testChoosingTheOpenTabPopsItToItsRoot() {
         let store = GameStore()
         store.push(.company(1), on: .company)
-        store.push(.companyAt(1, .operations), on: .company)
+        store.push(.companyAt(1, .customers), on: .company)
         XCTAssertEqual(store.depth(.company), 2)
         let token = store.rootToken(.company)
         store.selectTab(.company)
@@ -85,9 +87,10 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(store.rootToken(.company), token + 1)
     }
 
-    func testRoutesOfOneRecordShareAKeyAndDifferentScreensDoNot() {
+    func testSectionsOfOneCompanyShareAKeyAndPagesOfTheirOwnDoNot() {
         XCTAssertEqual(CompanyRoute.companyAt(1, .finances).key, CompanyRoute.companyPart(1, .finances, "Statements").key)
-        XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
+        XCTAssertEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
+        XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .customers).key)
         XCTAssertEqual(CompanyRoute.make(1, .properties, nil), .companyPart(1, .operations, "Premises"))
     }
 }

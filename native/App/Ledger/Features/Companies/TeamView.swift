@@ -51,7 +51,7 @@ struct TeamView: View {
                         .frame(maxWidth: 900).frame(maxWidth: .infinity)
                     }
                     .id(store.rootToken(.team))
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                     .scrollDismissesKeyboard(.interactively)
                 }
             }
@@ -286,8 +286,8 @@ struct TeamView: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 9).teamCard(radius: Theme.Radius.row)
 
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
+        WrapRow(spacing: 6) {
+            Group {
                 ForEach(PeopleFilter.allCases) { f in
                     let on = f == filter
                     Button { Haptics.tap(); filter = f } label: {
@@ -299,7 +299,7 @@ struct TeamView: View {
                     }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
-        }.scrollIndicators(.hidden)
+        }
 
         if shown.isEmpty {
             Text(everyone.isEmpty ? "No one works for you yet. Open a company, then hire from its Team section." : "No one matches.")

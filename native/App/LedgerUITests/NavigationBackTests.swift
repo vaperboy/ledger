@@ -46,10 +46,10 @@ final class NavigationBackTests: TourCase {
         return true
     }
 
-    /// A pushed company shows the Company hub (its six section rows). When the link did not open one on this device the test is skipped
+    /// A pushed company shows its Overview under the fixed section bar (Overview | Team | Manage | Sales | Stats). When the link did not open one on this device the test is skipped
     /// with a note (the picture is kept), instead of waiting out long timeouts and failing.
     private func assertCompanyOpen(_ from: String) throws {
-        if app.buttons["company-hub-overview"].waitForExistence(timeout: 3) || app.buttons["company-hub-operations"].waitForExistence(timeout: 1) { return }
+        if app.buttons["company-tab-overview"].waitForExistence(timeout: 3) || app.buttons["company-tab-manage"].waitForExistence(timeout: 1) { return }
         shot("90-nav-\(from.lowercased())-link-no-company")
         throw XCTSkip("the link from \(from) did not open a company on this device")
     }
@@ -60,7 +60,7 @@ final class NavigationBackTests: TourCase {
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         guard first.waitForExistence(timeout: 3) else { return false }
         first.tap()
-        return app.buttons["company-hub-overview"].waitForExistence(timeout: 5)
+        return app.buttons["company-tab-overview"].waitForExistence(timeout: 5)
     }
 
     func testBackFromHomeSuggestionReturnsToHome() throws {
@@ -112,17 +112,16 @@ final class NavigationBackTests: TourCase {
 
     // MARK: Stage 1 navigation
 
-    /// Choosing the tab that is already open returns it to its root: here a company's Operations screen on Home.
+    /// Choosing the tab that is already open returns it to its root: here a company open on its Manage section on Home.
     func testReselectingHomeReturnsToItsRoot() throws {
         guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
-        app.buttons["company-hub-operations"].tap()
-        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 3), "Operations should be pushed on the company hub")
+        app.buttons["company-tab-manage"].tap()
+        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 3), "the company should be pushed on Home")
         let pill = app.buttons["tab-Home"]
         guard pill.exists else { throw XCTSkip("no floating tab bar on this device (the iPad sidebar does not report a re-selected row)") }
         pill.tap()
         XCTAssertTrue(waitForHome(5), "choosing Home again should show the Home root")
-        XCTAssertFalse(app.buttons["company-hub-overview"].exists, "no company screen may stay on the Home stack")
-        XCTAssertFalse(app.buttons["company-hub-operations"].exists)
+        XCTAssertFalse(app.buttons["company-tab-overview"].exists, "no company screen may stay on the Home stack")
     }
 
     /// The same on the Phone tab: an app is open, choosing Phone again shows the grid of apps.
@@ -153,13 +152,16 @@ final class NavigationBackTests: TourCase {
         XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "the Phone tab should show its app grid, not the Bank app")
     }
 
-    /// A section of a company is a pushed step: one Back from it returns to the company hub, one more to Home.
-    func testASectionIsOneStepFromTheHub() throws {
+    /// Opening a company lands on its Overview; the five sections switch in place, so ONE Back leaves the company.
+    func testCompanyOpensOnOverviewAndOneBackLeavesIt() throws {
         guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
-        app.buttons["company-hub-operations"].tap()
+        for id in ["team", "manage", "sales", "stats", "overview"] {
+            let b = app.buttons["company-tab-\(id)"]
+            XCTAssertTrue(b.waitForExistence(timeout: 3), "the section bar should have \(id)")
+            b.tap()
+        }
+        app.buttons["company-tab-sales"].tap()
         XCTAssertTrue(tapRoundBack())
-        XCTAssertTrue(app.buttons["company-hub-operations"].waitForExistence(timeout: 3), "Back from a section returns to the company hub")
-        XCTAssertTrue(tapRoundBack())
-        XCTAssertTrue(waitForHome(5), "Back from the hub returns to Home")
+        XCTAssertTrue(waitForHome(5), "one Back from any section returns to Home")
     }
 }

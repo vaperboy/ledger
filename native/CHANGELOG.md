@@ -4,7 +4,7 @@
 
 ### Stage 1: navigation and the Company hub (31 Oct 2026)
 * One navigation owner: `GameStore` holds the route stack of every tab and one pending request for the app a link opened (replaces seven loose request slots). Choosing the open tab again returns it to its root; a link to a record already on the stack goes back to it instead of stacking a copy; Back from a screen a cross-tab link pushed returns to the tab the link came from and leaves nothing behind; a pushed screen has exactly one Back control.
-* Company is a hub of six rows (Overview, People, Operations, Sales & Market, Stats & Information, Projects); each is a pushed screen. Price, How you sell and Marketing moved from Operations to Sales & Market; Plant, Fish, Club, Chain, Book and Holding are reachable from the section they belong to. Company Projects exists for every company. Overview is cash-first with three parts (Overview, Performance, Insights).
+* A company opens on its Overview under a fixed bar Overview | Team | Manage | Sales | Stats (in-place switch, one Back leaves the company). Price, How you sell and Marketing moved from Operations to Sales; Stats has Finances, Performance and Insights; no Bank shortcuts inside Stats; Plant, Fish, Club, Chain, Book and Holding are reachable from the section they belong to. Company Projects exists for every company. Overview is cash-first. Sideways-scrolling chips (Team, Luxury, World) now wrap; main screens use size-based bounce.
 * `SectionTabs` no longer scrolls sideways: a fixed row, or the first three plus a More menu when titles do not fit.
 * Nothing was removed; save files are not touched.
 

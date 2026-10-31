@@ -8,8 +8,9 @@ import Simulation
 
 // MARK: Overview
 
-/// The three parts of a company's Overview on a phone.
-enum OverviewPart: String, CaseIterable, Hashable { case overview = "Overview", performance = "Performance", insights = "Insights" }
+/// What the shared Overview views show: the Overview screen itself (cash, what needs you, who runs it), or the Performance and Insights
+/// parts that live under Stats.
+enum OverviewMode { case overview, performance, insights }
 
 /// One company at a glance, the same template for every trade, in the new look. Scan order: the profit hero with the key figures,
 /// what needs the owner (warning cards), what is going on (each finding links to the tab that changes it), last week, the trend, and
@@ -22,34 +23,24 @@ struct CompanyOverview: View {
     @Binding var section: CompanySection
     @Binding var moneyPart: CompanyMoneyPart
     @State private var months = 12
-    @State private var part: OverviewPart = .overview
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    var mode: OverviewMode = .overview
     /// Energy, fish, holding and club have their own section instead of the customers-and-capacity picture.
     private var isSpecial: Bool { engine.tradeInfo(companyID: company.id).map { SpecialFamilies.handles($0) } ?? false }
 
     var body: some View {
         let co = company
         let h = engine.companyHealth(co)
-        if sizeClass == .regular {
-            HStack(alignment: .top, spacing: Theme.Space.l) {
-                VStack(alignment: .leading, spacing: Theme.Space.l) { hero(co, h); needsYou(co); diagnosis(co) }
-                VStack(alignment: .leading, spacing: Theme.Space.l) { if co.status == .open && !isSpecial { operations(co, h) }; performance(co, h); whoRunsIt(co) }
-            }
-        } else {
-            // Three parts as in the mockup, so the first screen holds what matters (cash, what needs you, who runs it) and nothing scrolls sideways.
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                SegmentedPill(items: OverviewPart.allCases, title: { $0.rawValue }, selection: $part)
-                switch part {
-                case .overview:
-                    hero(co, h)
-                    needsYou(co)
-                    whoRunsIt(co)
-                case .performance:
-                    if co.status == .open && !isSpecial { operations(co, h) }
-                    performance(co, h)
-                case .insights:
-                    diagnosis(co)
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            switch mode {
+            case .overview:
+                hero(co, h)
+                needsYou(co)
+                whoRunsIt(co)
+            case .performance:
+                if co.status == .open && !isSpecial { operations(co, h) }
+                performance(co, h)
+            case .insights:
+                diagnosis(co)
             }
         }
     }
