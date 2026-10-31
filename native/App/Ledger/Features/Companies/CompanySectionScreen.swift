@@ -37,7 +37,6 @@ struct CompanySectionScreen: View {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .appScreen(title: sec.rawValue, subtitle: co.name)
-            .overlay(alignment: .topTrailing) { navigationProbes(co.id, sec) }
             .onAppear { applyPart() }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -73,21 +72,6 @@ struct CompanySectionScreen: View {
         case .club: CompanyClub(engine: e, company: co)
         case .chain: CompanyChain(engine: e, company: co)
         }
-    }
-
-    /// Test-only: two near-invisible controls in a game started with `-showcase` that make this screen link to its own company, exactly as
-    /// the app's real links do (`GameStore.openCompany`), so the UI tests can check that such a link never stacks a second copy.
-    /// Compiled into debug builds only.
-    @ViewBuilder private func navigationProbes(_ id: Int, _ sec: CompanySection) -> some View {
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-showcase") {
-            HStack(spacing: 0) {
-                Button("") { store.openCompany(id) }.frame(width: 24, height: 24).accessibilityIdentifier("probe-link-company")
-                Button("") { store.openCompany(id, section: sec) }.frame(width: 24, height: 24).accessibilityIdentifier("probe-link-same-screen")
-            }
-            .opacity(0.02)
-        }
-        #endif
     }
 
     /// Opens on the part a link asked for, once (the screen appears again when a page pushed from it is closed).
