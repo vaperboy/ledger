@@ -353,7 +353,7 @@ public enum CompanySetup {
         return true
     }
 
-    static func chooseAccountant(_ s: inout GameState, companyID: Int, accountantID: Int?, data: GameData) {
+    public static func chooseAccountant(_ s: inout GameState, companyID: Int, accountantID: Int?, data: GameData) {
         guard let i = s.companyIndex(companyID) else { return }
         let pool = Providers.pool(for: s.companies[i].countryCode, state: &s, countries: data.countries).accountants
         guard let a = pool.first(where: { $0["id"].int == accountantID }) ?? (pool.count > 1 ? pool[1] : pool.first) else { return }

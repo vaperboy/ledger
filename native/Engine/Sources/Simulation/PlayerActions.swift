@@ -224,7 +224,7 @@ public extension GameEngine {
 
     mutating func repayLoan(id: Int, amount: Double) -> Bool {
         var ok = false
-        update { s, _, _ in ok = Banking.repay(loanID: id, amount: amount, state: &s) }
+        update { s, _, ctx in ok = Banking.repay(loanID: id, amount: amount, state: &s, context: ctx) }
         return ok
     }
 

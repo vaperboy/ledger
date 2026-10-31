@@ -126,7 +126,10 @@ public enum MonthEnd {
                 co.yearProfitSoFar = 0
                 co.taxAccrued = 0
             }
-            co.yearProfitSoFar += profit
+            // The part of the conversion month before the conversion was closed into the owner's personal return (CompanyConversion).
+            var corporateProfit = profit
+            if !co.value("convMonthProfit").isNull { corporateProfit -= co.num("convMonthProfit"); co.raw.removeValue(forKey: "convMonthProfit") }
+            co.yearProfitSoFar += corporateProfit
             s.companies[i] = co
             accrueTax(&s, companyIndex: i, bd, data: data)
             co = s.companies[i]

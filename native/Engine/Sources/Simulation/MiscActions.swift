@@ -12,7 +12,7 @@ import Businesses
 public extension GameEngine {
     enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, unknown }
     enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen }
-    enum ConvertResult: Equatable, Sendable { case ok, alreadyLimited, notEnoughCash, unknown }
+    enum ConvertResult: Equatable, Sendable { case ok, alreadyLimited, notEnoughCash, unknown, notAllowed(CompanyConversion.Block) }
 
     /// New name and signs for one company. Original: `renameCost`.
     func renameCost(companyID: Int) -> Double {
@@ -188,25 +188,36 @@ public extension GameEngine {
         return done
     }
 
-    /// Turn a sole trader into a limited company: registration and share capital come from your own account. Original: `convertToAS`.
-    @discardableResult mutating func convertToLimited(companyID: Int) -> ConvertResult {
+    /// Turn a sole trader into a limited company as one transaction (`CompanyConversion`): you pay the share capital personally, `payer` pays the fee,
+    /// the year's profit so far is closed into your personal return, the accountant the form requires is appointed, loans keep your guarantee.
+    /// Nothing changes unless it returns `.ok`. Original: `convertToAS`.
+    @discardableResult mutating func convertToLimited(companyID: Int, payer: CompanyConversion.Payer = .personal, accountantID: Int? = nil) -> ConvertResult {
         var r = ConvertResult.unknown
-        update { s, data, _ in
-            guard let i = s.companyIndex(companyID), let country = data.countries[s.companies[i].countryCode] else { return }
-            if s.companies[i].form == .limited { r = .alreadyLimited; return }
-            let need = country.shareCapitalMinimum + country.registrationFee
-            if s.cash < need { r = .notEnoughCash; return }
-            Payments.playerPays(&s, country.registrationFee, label: "Registration and conversion fee", companyID: companyID)
-            Payments.playerPays(&s, country.shareCapitalMinimum, label: "Share capital", companyID: companyID)
-            Ledger.moveRaw(&s, .company(companyID), country.shareCapitalMinimum)
-            s.companies[i].ownerNetFlow += country.shareCapitalMinimum
-            s.companies[i].shareCapital = country.shareCapitalMinimum
-            s.companies[i].injectedCapital += country.shareCapitalMinimum
-            s.companies[i].form = .limited
-            s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
-            s.note("\(s.companies[i].name) is now a limited company.", tone: "good", companyID: companyID)
-            r = .ok
+        update { s, data, ctx in
+            guard s.company(companyID) != nil else { return }
+            switch CompanyConversion.convert(&s, companyID: companyID, payer: payer, accountantID: accountantID, data: data, context: ctx) {
+            case .ok: r = .ok
+            case .notEnoughCash: r = .notEnoughCash
+            case .blocked(let b): r = b == .alreadyLimited ? .alreadyLimited : .notAllowed(b)
+            }
         }
+        return r
+    }
+
+    /// The review sheet of the conversion: requirements, costs, who pays (with balances and shortfalls), consequences, ownership, loans and the
+    /// figures before and after. Read only: cancelling the sheet changes nothing.
+    func conversionPlan(companyID: Int, payer: CompanyConversion.Payer = .personal, accountantID: Int? = nil) -> CompanyConversion.Plan? {
+        CompanyConversion.plan(state, companyID: companyID, payer: payer, accountantID: accountantID, data: data, context: context)
+    }
+
+    /// The personal guarantee on a company loan and whether the bank will talk about releasing it (after a conversion the guarantee stays).
+    func guaranteeTerms(loanID: Int) -> LoanGuarantee.Terms? { LoanGuarantee.terms(state, loanID: loanID) }
+
+    /// Bank discussion: offer `extraMargin` (a yearly rate added to the loan's margin) for the release of the personal guarantee.
+    /// The bank accepts, counters, refuses or ends the talk (shared `Negotiation`).
+    @discardableResult mutating func offerGuaranteeRelease(loanID: Int, extraMargin: Double) -> LoanGuarantee.Answer {
+        var r = LoanGuarantee.Answer.notPossible("That loan no longer exists.")
+        update { s, _, _ in r = LoanGuarantee.offer(&s, loanID: loanID, extraMargin: extraMargin) }
         return r
     }
 
