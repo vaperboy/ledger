@@ -37,3 +37,11 @@ Pricing: one pushed screen, no price-level picker, no Market > Pricing. How you 
 - Inbox confirmation: only spends (subject to the player's size setting) and irreversible answers (sales, court settlements, ransoms, dismissals) ask once.
 - Court judgments are a liability (payables "legal") paid from cash above wages owed; wages come first.
 - Home: the profit and due cards were removed to fit the command centre; that information stays in the Bank app and in Top priorities when a shortfall exists.
+
+## 1 Nov 2026 (night), owner reference images for the three new Phone apps
+Reference images: `native/design/mockups/phone_apps/01_home_screens.png`, `02_checkout_flows.png`. Follow their styles, each app with its own colours.
+- **Atlas Insurance** (blue): home with total coverage card, policy list, "all up to date", Get a quote; checkout (insured company with Change, period, coverage included, payment method, Confirm purchase); Insurance Activated (policy number, period, Go to My Insurance).
+- **AirStay** (red): Offices / Shops / Retail search, recommended listings (price per month, type, rating), property info page with Rent button; instead of a delivery screen, a "Choose company" screen (which company rents it) then the in-game confirmation screen; Rent confirmed screen. Tabs Explore / Saved / Rented (active rents) / Messages / Profile as fits.
+- **TechPro Store** (green): categories Software / Hardware / Tools / Office, popular products, add to cart, checkout (items, delivery method, totals), Pay securely, Order placed (order number, delivery date).
+- Payment details screen (all apps): saved account, Autofill from Bank (real account name + number), remember me, Continue.
+- The reference sheet is stretched to fit one picture: lay out to real iPhone proportions in our project.
