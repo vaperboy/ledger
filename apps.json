@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.10",
+          "buildVersion": "10",
+          "date": "2026-11-01T18:53:08Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v10/Ledger-unsigned.ipa",
+          "size": 25387284,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Home: pick up to four shortcuts, day chip after Next day\n- Weekly / monthly / yearly report sheets, read before the next day\n- Reward popups with haptic after a day\n- Swipe back everywhere, smoother motion, Reduce Motion respected\n- Ambition popup at game start (change freely in weeks 1-4)\n- Inbox decisions answerable again; Group Overview shortened\n- Earlier this week: Accounting + ivory Bank, new hiring talks, company screens\n\n# Missing / coming next\n- One in-game \"Are you sure\" popup replacing iOS dialogs\n- Insurance, Premises (AirStay) and Equipment (TechPro) as Phone apps\n- Startups as real companies with share counts"
+        },
+        {
           "version": "1.0.9",
           "buildVersion": "9",
           "date": "2026-11-01T13:51:57Z",
@@ -64,10 +73,10 @@
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.9",
-      "versionDate": "2026-11-01T13:51:57Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v9/Ledger-unsigned.ipa",
-      "size": 25280863
+      "version": "1.0.10",
+      "versionDate": "2026-11-01T18:53:08Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v10/Ledger-unsigned.ipa",
+      "size": 25387284
     }
   ]
 }
