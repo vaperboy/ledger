@@ -32,6 +32,12 @@ public extension GameEngine {
     func ambitionMilestones(path: String) -> [Ambitions.Milestone] { Ambitions.milestones(state, data, path: path, tier: Ambitions.tier(state, path)) }
     func ambitionPerk(path: String) -> String { Ambitions.perkText(path, level: max(0, Ambitions.perk(state, data, path))) }
     var legacyHistory: [(week: Int, text: String, pathName: String, points: Double)] { Ambitions.history(state) }
+    /// The ambition can be changed at no delay during the first four weeks of a game.
+    var ambitionChangeIsFree: Bool { state.week < Ambitions.freeChangeWeeks }
+    /// True when the start-of-game prompt should still be shown: no ambition chosen, never asked, still inside the free window.
+    var ambitionPromptPending: Bool { Ambitions.currentPath(state) == nil && state.rest["ambPrompt"] == nil && ambitionChangeIsFree }
+    /// The prompt has been shown (answered or skipped): it is not shown again. The key is written only now.
+    mutating func markAmbitionPromptShown() { update { s, _, _ in s.rest["ambPrompt"] = .number(1) } }
     @discardableResult mutating func chooseAmbition(path: String) -> Bool {
         var r = false
         update { s, d, _ in r = Ambitions.choose(&s, path: path, data: d) }

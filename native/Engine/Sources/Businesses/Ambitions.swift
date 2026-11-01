@@ -11,6 +11,8 @@ public enum Ambitions {
     public struct Milestone: Equatable, Sendable { public var id: String; public var text: String; public var now: Double; public var target: Double; public var done: Int? }
     public struct Path: Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var detail: String }
 
+    /// Weeks (from the start of the game) in which the ambition may be changed at no delay.
+    public static let freeChangeWeeks = 4
     public static let roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
     public static let paths: [Path] = [
         Path(id: "titan", name: "Industrial titan", detail: "Build a chain of companies that feed each other: materials, production, transport, sales. Lower costs and steadier supply, but one weak link hurts the whole group."),
@@ -201,7 +203,9 @@ public enum Ambitions {
         let switching = a["path"].isNull == false
         let had = a["hist"].array.contains { !$0["path"].string.isEmpty && $0["path"].string != "give" } || a["was"].bool
         a["path"] = .string(k); a["since"] = .number(Double(s.week))
-        a["settle"] = .number(had ? Double(s.week + 26) : 0)
+        // Free change window: during the first four weeks the ambition can be re-picked at no delay; later a switch settles after half a year.
+        let freeWindow = s.week < freeChangeWeeks
+        a["settle"] = .number(had && !freeWindow ? Double(s.week + 26) : 0)
         _ = switching
         a["was"] = true
         var t = a["tier"]; if t[k].isNull { t[k] = 0 }; a["tier"] = t

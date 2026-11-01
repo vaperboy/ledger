@@ -5,7 +5,6 @@ import Countries
 import SaveSystem
 import Simulation
 import Finance
-import Businesses
 
 /// First screen. The game keeps one save (written after every day, with the previous copy and month-end backups kept by
 /// `SaveStore`), so the screen has three states:
@@ -24,8 +23,6 @@ struct StartView: View {
     @State private var pending: PendingAction?
     @State private var story: LifeStory = .loan
     @State private var familyCityID = ""
-    /// The ambition chosen at setup ("" = decide later in Goals).
-    @State private var ambition = ""
     @State private var previews: [LifeStory: StoryPreview] = [:]
     private let countries: [Country] = ((try? CountryBook.bundled().countries) ?? []).sorted { $0.name < $1.name }
 
@@ -51,7 +48,7 @@ struct StartView: View {
 
     private func begin() {
         let n = name.trimmingCharacters(in: .whitespaces)
-        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil, ambition: ambition.isEmpty ? nil : ambition) }
+        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil) }
     }
 
     var body: some View {
@@ -173,7 +170,6 @@ struct StartView: View {
             }
         }
         if !countryCode.isEmpty { storyPicker }
-        if !countryCode.isEmpty { ambitionPicker }
         QuietButton(title: "Begin", fullWidth: true) { begin() }
             .disabled(countryCode.isEmpty).opacity(countryCode.isEmpty ? 0.4 : 1)
         if store.hasSavedGame {
@@ -197,24 +193,6 @@ struct StartView: View {
             }
         }
         .task(id: countryCode + "|" + familyCityID) { loadPreviews() }
-    }
-
-    /// The ambition is optional here and can be changed later in Goals (a later switch takes effect after half a year).
-    private var ambitionPicker: some View {
-        CardSection("Ambition") {
-            HStack {
-                Text("What you want to build").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                Spacer()
-                Picker("Ambition", selection: $ambition) {
-                    Text("Decide later").tag("")
-                    ForEach(Ambitions.paths, id: \.id) { p in Text(p.name).tag(p.id) }
-                }
-                .pickerStyle(.menu)
-            }
-            if let p = Ambitions.path(ambition) {
-                Text(p.detail).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            }
-        }
     }
 
     private func storyLine(_ s: LifeStory, _ cur: Currency?) -> String {

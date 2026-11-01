@@ -9,6 +9,8 @@ import Simulation
 /// below the brand's standard, managers nobody has met. Each row opens the record it concerns.
 struct GroupAttention: View {
     var engine: GameEngine
+    /// How many rows to list before "and N more" (the Group overview lists only the top three).
+    var limit: Int = 8
 
     struct Item: Identifiable {
         enum Target { case board(String), chain(Int), company(Int, CompanySection), none }
@@ -59,8 +61,8 @@ struct GroupAttention: View {
         let list = items
         if !list.isEmpty {
             MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: list.count, size: .small) }) {
-                ForEach(list.prefix(8)) { it in row(it) }
-                if list.count > 8 { Text("And \(list.count - 8) more under Structure and Board.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+                ForEach(list.prefix(limit)) { it in row(it) }
+                if list.count > limit { Text("And \(list.count - limit) more under Structure and Board.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
             }
         }
     }

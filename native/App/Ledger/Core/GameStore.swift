@@ -71,6 +71,8 @@ final class GameStore: ObservableObject {
     @Published private(set) var celebrationQueue: [Celebration] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
     @Published private(set) var dayChip: DayChip?
+    /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
+    @Published private(set) var ambitionPrompt = false
 
     // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
 
@@ -175,7 +177,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, engine != nil else { return }
+        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 40_000_000)
@@ -207,9 +209,21 @@ final class GameStore: ObservableObject {
         }
     }
 
+    /// The player answers the start-of-game ambition prompt: a path, or nil for "decide later". Either way it is not asked again.
+    func chooseAmbition(_ path: String?) {
+        act { e -> Bool in
+            if let path { e.chooseAmbition(path: path) }
+            e.markAmbitionPromptShown()
+            return true
+        }
+        ambitionPrompt = false
+        if let path, let name = engine?.ambitionPaths.first(where: { $0.id == path })?.name { show("Your ambition: \(name). Change it freely until week 4.", tone: "good") }
+    }
+
     /// Picks up what was earned or closed while the app was away (a saved game with an unread report or an unshown celebration).
     func refreshPending() {
         guard var e = engine, !isAdvancing else { return }
+        ambitionPrompt = e.ambitionPromptPending
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
         let waiting: [Celebration] = e.takeCelebrations()
         if !waiting.isEmpty {
@@ -512,7 +526,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; celebrationQueue = []; dayChip = nil
+        reportSheet = nil; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {

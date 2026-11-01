@@ -152,12 +152,12 @@ struct GroupOverviewTab: View {
     var body: some View {
         let live = engine.state.companies.filter { $0.status.isLive }
         VStack(alignment: .leading, spacing: 12) {
-            GroupAttention(engine: engine)
+            // One phone screen: top issues (three), the two key figures, the three biggest companies, the structure counts.
+            // The dividend log and this year's money moved behind their links (company Finances, Bank).
+            GroupAttention(engine: engine, limit: 3)
             figures
             companiesTable(live)
             tiles(live)
-            activity(live)
-            money
         }
     }
 
@@ -217,7 +217,7 @@ struct GroupOverviewTab: View {
 
     private func companiesTable(_ live: [Company]) -> some View {
         let ranked = live.map { (co: $0, value: engine.companyHealth($0).value) }.sorted { $0.value > $1.value }
-        let rows = ranked.prefix(5).map { companyRow($0.co, value: $0.value) }
+        let rows = ranked.prefix(3).map { companyRow($0.co, value: $0.value) }
         return OverviewTable(title: "Companies", rows: Array(rows), emptyText: "No companies yet. Start one from Home.",
                              footer: "View all companies ›", footerAction: { store.jump(to: .company) }) {
             periodMenu

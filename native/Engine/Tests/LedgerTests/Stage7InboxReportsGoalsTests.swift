@@ -164,6 +164,35 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
         XCTAssertEqual(Ambitions.currentPath(back), "champion")
     }
 
+    func testAmbitionCanBeChangedFreelyInTheFirstFourWeeksOnly() throws {
+        var (e, _) = try cafeGame(seed: 12)
+        XCTAssertTrue(e.ambitionChangeIsFree)
+        XCTAssertTrue(e.ambitionPromptPending, "asked once at the start of a new game")
+        e.chooseAmbition(path: "champion")
+        e.markAmbitionPromptShown()
+        XCTAssertFalse(e.ambitionPromptPending)
+        for _ in 0..<(2 * 7) { e.nextDay() }
+        XCTAssertTrue(e.ambitionChangeIsFree)
+        e.chooseAmbition(path: "dynasty")
+        XCTAssertEqual(e.currentAmbition, "dynasty")
+        XCTAssertEqual(Ambitions.perk(e.state, e.data, "dynasty"), 0, "a change inside the window is active at once")
+        while e.state.week < Ambitions.freeChangeWeeks && !e.state.isGameOver { e.nextDay() }
+        XCTAssertFalse(e.ambitionChangeIsFree, "week \(e.state.week) day \(e.state.day)")
+        e.chooseAmbition(path: "global")
+        XCTAssertEqual(e.currentAmbition, "global")
+        XCTAssertEqual(Ambitions.perk(e.state, e.data, "global"), -1, "after the window a switch settles after half a year")
+    }
+
+    func testSkippedPromptIsNotAskedAgainAndAKeyIsWrittenOnlyThen() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 13)
+        XCTAssertNil(e.state.rest["ambPrompt"])
+        e.markAmbitionPromptShown()
+        XCTAssertFalse(e.ambitionPromptPending)
+        XCTAssertNil(e.currentAmbition, "Decide later leaves it open")
+        let with = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 13, ambition: "titan")
+        XCTAssertFalse(with.ambitionPromptPending, "already chosen")
+    }
+
     func testSetupAmbitionSkipsTheLaterAskMessage() throws {
         var (e, _) = try cafeGame(weeks: 0)
         e.chooseAmbition(path: "dynasty")

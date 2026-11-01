@@ -121,7 +121,9 @@ struct CompaniesView: View {
 
     /// The reward popup, once the report sheet (if any) has been read.
     @ViewBuilder private var celebration: some View {
-        if store.reportSheet == nil, let first = store.celebrationQueue.first {
+        if store.ambitionPrompt {
+            AmbitionPrompt().transition(.opacity)
+        } else if store.reportSheet == nil, let first = store.celebrationQueue.first {
             CelebrationPopup(item: first).id(first.id).transition(.opacity)
         }
     }

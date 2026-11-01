@@ -124,6 +124,9 @@ struct GoalsView: View {
             } else {
                 Text("Choose what you want to build. Each path has its own milestones and a perk.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             }
+            if e.ambitionChangeIsFree {
+                Text("Change it freely until week 4.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
             ambitionMenu(e)
         }
     }
