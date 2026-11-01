@@ -40,16 +40,36 @@ struct PressableStyle: ButtonStyle {
 
 /// Swipe from the left edge goes back on every pushed screen. The app hides the system back button (it draws its own round one),
 /// and UIKit then turns the edge gesture off; giving the gesture a delegate that allows it whenever there is a screen to go back to
-/// brings it back, for every navigation stack in the app (Home, Team, Group, Projects and the Phone apps).
-extension UINavigationController: UIGestureRecognizerDelegate {
-    override open func viewDidLoad() {
-        super.viewDidLoad()
-        interactivePopGestureRecognizer?.delegate = self
-    }
+/// brings it back. `swipeBackEnabled()` is applied by the shared screen chrome (`AppScreen`, `OutsideScreen`, the Bank and Accounting
+/// apps), so it covers every pushed screen. No method override: a background view controller finds its navigation controller.
+final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
+    static let shared = SwipeBackDelegate()
 
-    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewControllers.count > 1
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        var responder: UIResponder? = gestureRecognizer.view
+        while let r = responder {
+            if let nav = r as? UINavigationController { return nav.viewControllers.count > 1 }
+            responder = r.next
+        }
+        return false
     }
+}
+
+private final class SwipeBackHookController: UIViewController {
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        navigationController?.interactivePopGestureRecognizer?.delegate = SwipeBackDelegate.shared
+    }
+}
+
+private struct SwipeBackHook: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController { SwipeBackHookController() }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+
+extension View {
+    /// Keeps the left-edge swipe-back working on a screen whose system back button is hidden.
+    func swipeBackEnabled() -> some View { background(SwipeBackHook().frame(width: 0, height: 0)) }
 }
 
 // MARK: Swipe between segments

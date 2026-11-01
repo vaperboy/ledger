@@ -113,6 +113,7 @@ struct AccountingApp: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(OutsidePalette.accounting.ground.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { setUp() }
         .onChange(of: store.appRequest) { _, _ in take() }

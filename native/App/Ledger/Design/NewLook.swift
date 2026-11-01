@@ -362,6 +362,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
