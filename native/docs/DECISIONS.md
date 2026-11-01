@@ -16,3 +16,8 @@ Employment: never auto-assign an accountant at creation (only if the legal form 
 Startups/investment: a founded startup becomes a real Company; shares are real integer counts with a price per share; cancelling a product refunds the unspent part; buying a rival transfers staff, equipment and customers WITH integration costs (and a loyalty dip).
 Payroll/pricing/gates/order: manual payroll alert only when wages are late or unapproved on the pay date; typed prices use a PER-TRADE price range from data (a balance task); chain/franchise gates: real requirements (capital, cash, stores open, reputation, documents) plus a short review time, pure waiting-time gates dropped; daily event order: keep current and document it (revisit in Stage 8).
 Release: exclude the five unused art sheets from the release build (files stay in the repo); disable main.yml and yesmain.yml but keep the files. No deletions approved.
+
+## 1 Nov 2026, Stages 7-10 additions (owner)
+- Motion and feel: add animations and fluid mobile movement: swipe left-to-right to go back (re-enable the interactive pop gesture everywhere), swipe between sub-tabs/segments, restrained meaningful animations, pressed feedback; Reduce Motion respected.
+- Reward feedback: after simulating a day, completed missions, awards and milestones appear as a CELEBRATORY POPUP with a light haptic on the main page (queued after the day, real reward shown), animated and respecting Reduce Motion.
+- Reports pacing: DAILY = small summary chip; WEEKLY, MONTHLY and YEARLY = a report sheet the player reads and dismisses with one tap before the next day runs (a natural pause, not a timer). Real figures only; no arbitrary waiting periods; routine reports must not repeat or overlap.
