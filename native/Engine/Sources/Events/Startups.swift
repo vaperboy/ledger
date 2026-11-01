@@ -136,9 +136,11 @@ public enum Startups {
         guard let d = StartupProducts.sector(sector) else { return .unknownSector }
         let cur = fc.homeCurrency(s)
         let seed = cur.scaledPrice(d.seed) * seedMultiple
-        if Payments.liquid(s) < seed { return .notEnoughMoney(seed) }
-        let rec = Funding.record(s)
         let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+        // Like any limited company it is registered (fee) and has an accountant (owner decision).
+        let fee = c.registrationFee
+        if Payments.liquid(s) < seed + fee { return .notEnoughMoney(seed + fee) }
+        let rec = Funding.record(s)
         var nm = (name ?? "").trimmingCharacters(in: .whitespaces)
         if nm.isEmpty {
             let root = (c.companyNameStarts.isEmpty ? "Nova" : s.random.pick(c.companyNameStarts)).filter { $0.isLetter }
@@ -149,7 +151,10 @@ public enum Startups {
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
         s.companies[i].ownerHours = 0
+        Payments.transferFromSavings(&s, need: seed + fee)
         Payments.injectCash(&s, companyID: id, amount: seed)
+        Payments.playerPays(&s, fee, label: "Registration of \(nm)", companyID: id)
+        CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)
         s.companies[i].set("cap", .object(["total": .number(Double(CapTable.initialShares)), "me": .number(Double(CapTable.initialShares))]))
         let wanted = who == "c4" ? 4 : who == "c2" ? 2 : 0
         var hired = 0
@@ -161,6 +166,16 @@ public enum Startups {
             let cands = Hiring.search(role: "dev", company: co, mode: .network, faces: false, state: &s, data: data)
             if AutoHire.hireWorker(role: "dev", companyID: id, candidates: cands, state: &s, data: data) != nil { hired += 1 } else { break }
         }
+        // The first support hire is part of the default founding team: someone has to look after the first customers.
+        var support = 0
+        if let co = s.company(id) {
+            let payroll: Double = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
+            let next: Double = Hiring.marketWage(role: "ittech", company: co, state: s, data: data)
+            if co.cash >= (payroll + next) * 1.12 * 3 {
+                let cands = Hiring.search(role: "ittech", company: co, mode: .network, faces: false, state: &s, data: data)
+                if AutoHire.hireWorker(role: "ittech", companyID: id, candidates: cands, state: &s, data: data) != nil { support = 1 }
+            }
+        }
         let selfH = who == "self" && d.canBuildYourself ? freeHours(s) : 0
         let q0 = clamp(s.random.range(0.25, 0.7) + Double(rec.exits) * 0.05 - Double(rec.fails) * 0.02, 0.1, 0.92)
         let reference = cur.scaledPrice(d.arpu)
@@ -168,7 +183,7 @@ public enum Startups {
         let f: JSONValue = .object([
             "id": .number(Double(id)), "cid": .number(Double(id)), "name": .string(nm), "sec": .string(sector), "secn": .string(StartupProducts.productName(sector: sector, product: product)),
             "ck": .number(Double(d.capitalNeed)), "stage": 0, "pct": 100, "val": .number(seed), "in": .number(seed), "q": .number(q0), "q0": .number(q0), "tr": 0.05,
-            "w0": .number(Double(s.week)), "st": "live", "wantTeam": .number(Double(wanted)), "hiredTeam": .number(Double(hired)),
+            "w0": .number(Double(s.week)), "st": "live", "wantTeam": .number(Double(wanted)), "hiredTeam": .number(Double(hired)), "support": .number(Double(support)),
             "sw16": .object(["cat": .string(sector), "prod": .string(product), "model": .string(model), "devs": .number(Double(hired)), "selfH": .number(selfH), "prog": 0,
                              "phase": "build", "cust": 0, "revW": 0, "int": 0, "use": .array([]), "deals": .array([]), "price": .number(price)]),
         ])

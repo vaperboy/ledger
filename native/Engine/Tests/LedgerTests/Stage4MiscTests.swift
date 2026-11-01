@@ -52,4 +52,62 @@ final class Stage4MiscTests: XCTestCase {
         XCTAssertGreaterThan(plan.clubCash, 0)
         XCTAssertEqual(plan.affordable, plan.liquidAfter >= 0)
     }
+
+    private func holderGame() throws -> (GameEngine, Int) {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 6)
+        var id = 0
+        e.update { s, d, c in
+            Ledger.move(&s, .me, 900_000_000, why: "funds")
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: d, context: c) { id = i }
+            _ = Payments.injectCash(&s, companyID: id, amount: 30_000_000)
+            let i = s.companyIndex(id)!
+            CapTable.issue(&s, i, newShares: CapTable.sharesForPercent(20, total: CapTable.table(s.companies[i]).total), to: "Old Holder", paid: 1)
+        }
+        return (e, id)
+    }
+
+    func testRightOfFirstRefusalLetsYouBuyTheStakeFirst() throws {
+        var (e, id) = try holderGame()
+        let cash0 = e.state.cash + e.state.savings
+        e.update { s, d, c in
+            let i = s.companyIndex(id)!
+            let data: JSONValue = .object(["co": .number(Double(id)), "kind": "rofr", "amt": 1_000_000, "hn": "Old Holder", "buyer": "Rival Capital", "g": .null, "gn": ""])
+            Shareholders.resolve(&s, i, data, 0, data: d, context: c)
+        }
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertEqual(co.ownership, 100, accuracy: 1e-9)
+        XCTAssertTrue(co.value("holders").array.isEmpty)
+        XCTAssertEqual(cash0 - (e.state.cash + e.state.savings), 1_000_000, accuracy: 1)
+    }
+
+    func testLettingThemSellMovesTheSharesToTheBuyerAndPaysNobody() throws {
+        var (e, id) = try holderGame()
+        let cash0 = e.state.cash + e.state.savings
+        let before = CapTable.table(try XCTUnwrap(e.state.company(id)))
+        e.update { s, d, c in
+            let i = s.companyIndex(id)!
+            let data: JSONValue = .object(["co": .number(Double(id)), "kind": "rofr", "amt": 1_000_000, "hn": "Old Holder", "buyer": "Rival Capital", "g": .null, "gn": ""])
+            Shareholders.resolve(&s, i, data, 1, data: d, context: c)
+        }
+        let co = try XCTUnwrap(e.state.company(id))
+        let after = CapTable.table(co)
+        XCTAssertEqual(after.total, before.total)
+        XCTAssertEqual(after.holders.map { $0.name }, ["Rival Capital"])
+        XCTAssertEqual(after.holders.first?.shares, before.holders.first?.shares)
+        XCTAssertEqual(e.state.cash + e.state.savings, cash0, accuracy: 0.5, "neither you nor the company is paid")
+    }
+
+    func testFoundedStartupIsRegisteredHasAnAccountantAndASupportHire() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
+        e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "funds") }
+        let cash0 = e.state.cash + e.state.savings
+        guard case .ok(let sid) = e.foundStartup(name: "Regco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 4) else { return XCTFail("found") }
+        let co = try XCTUnwrap(e.state.company(sid))
+        XCTAssertFalse(co.value("acc").isNull, "an accountant is appointed")
+        XCTAssertTrue(co.staff.contains { $0.role == "ittech" }, "the first support hire is part of the founding team")
+        let fee = e.homeCountry.registrationFee
+        XCTAssertGreaterThan(fee, 0)
+        let seed = e.homeCurrency.scaledPrice(StartupProducts.sector("saas")!.seed) * 4
+        XCTAssertLessThanOrEqual(e.state.cash + e.state.savings, cash0 - fee - seed + 1)
+    }
 }

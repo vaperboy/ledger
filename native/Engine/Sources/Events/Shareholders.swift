@@ -197,6 +197,7 @@ public enum Shareholders {
     public static func expired(_ s: inout GameState, message m: Message, data: GameData, context fc: FinanceContext) {
         let d = m.value("data")
         guard let i = s.companyIndex(d["co"].int), s.companies[i].status == .open else { return }
+        if d["kind"].string == "rofr" { completeHolderSale(&s, i, d, data: data); return }
         refused(&s, i, d, data: data, context: fc)
     }
 
@@ -224,6 +225,20 @@ public enum Shareholders {
             }
             if idx == 1 { bump(&s, i, s.random.chance(0.6) ? 8 : -2); s.companies[i].set("dm27", s.week + 26); return }
             refused(&s, i, d, data: data, context: fc)
+        case "rofr":
+            let hn = d["hn"].string
+            if idx == 0 {
+                let amt = d["amt"].double
+                if Payments.liquid(s) >= amt, CapTable.table(co).holders.contains(where: { $0.name == hn }) {
+                    Payments.transferFromSavings(&s, need: amt)
+                    Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
+                    CapTable.buyFromHolder(&s, i, holder: hn)
+                    s.note("You bought \(hn)'s stake in \(co.name) before it could be sold on. You now own \(Int(s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
+                    return
+                }
+                s.note("You could not pay \(fc.currency(co.countryCode, s).display(amt)), so the stake goes to the other buyer.", tone: "bad", companyID: id)
+            }
+            completeHolderSale(&s, i, d, data: data)
         case "exit":
             let hn = d["hn"].string
             let list = co.value("holders").array
@@ -262,24 +277,44 @@ public enum Shareholders {
             s.note("The other owners of \(co.name) will block share sales, a sale of the company and mergers for half a year.", tone: "bad", companyID: co.id)
             return
         }
-        // a small, unhappy owner sells: sometimes to a rival group
-        var list = s.companies[i].value("holders").array
+        // a small, unhappy owner wants to sell: you are asked first (right of first refusal); no answer lets them sell
+        let list = s.companies[i].value("holders").array
         guard let k = list.indices.filter({ list[$0]["sat"].double < 40 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
         let old = list[k]["name"].string
+        var buyer = "", gid = JSONValue.null, gname = ""
         let gs = GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 && (($0["types"].array.contains { $0.string == co.type }) || $0["strat"].string == "acq") }
         if !gs.isEmpty, s.random.chance(0.5) {
             let g = gs[s.random.int(0, gs.count - 1)]
-            list[k]["name"] = g["name"]; list[k]["g27"] = g["id"]; list[k]["k27"] = "exit"; list[k]["sat"] = 45; list[k]["w0"] = .number(Double(s.week))
-            s.companies[i].set("holders", .array(list))
-            s.addMessage(from: "Shareholders of \(co.name)", title: "\(g["name"].string) now owns \(String(format: "%.1f", list[k]["pct"].double))% of \(co.name)",
-                         body: "\(old) sold its stake to \(g["name"].string), a competitor. They will want a say, and may try to buy the rest.", companyID: co.id, tone: "bad")
+            buyer = g["name"].string; gid = g["id"]; gname = buyer
         } else {
-            let nm = Funding.personName(&s, countryCode: co.countryCode, data: data) + ", investor"
-            list[k]["name"] = .string(nm); list[k]["k27"] = .null; list[k]["sat"] = 55; list[k]["w0"] = .number(Double(s.week))
+            buyer = Funding.personName(&s, countryCode: co.countryCode, data: data) + ", investor"
+        }
+        let price = buyBackPrice(s, companyID: co.id, holder: old, data: data) ?? 0
+        let cur = fc.currency(co.countryCode, s)
+        let shares = CapTable.table(s.companies[i]).holders.first { $0.name == old }?.shares ?? 0
+        let rival = gname.isEmpty ? "" : " It is a competitor."
+        s.addMessage(kind: "ask", from: "\(old), shareholder", title: "\(old) wants to sell its stake in \(co.name)",
+                     body: "\(old) holds \(shares) shares (\(String(format: "%.1f", list[k]["pct"].double))%) and has found a buyer: \(buyer).\(rival) You may buy the stake first for about \(cur.display(price)); if you do not answer, the sale goes ahead and neither you nor the company receives anything.",
+                     companyID: co.id, tone: gname.isEmpty ? "n" : "bad", status: "open",
+                     options: [.option("Buy the stake first for \(cur.short(price))"), .option("Let them sell to \(buyer)")], action: action,
+                     data: .object(["co": .number(Double(co.id)), "kind": "rofr", "amt": .number(price), "hn": .string(old), "buyer": .string(buyer), "g": gid, "gn": .string(gname)]), expiresWeek: s.week + 3)
+    }
+
+    /// The holder's stake goes to the other buyer: shares move one for one, nobody of yours is paid.
+    static func completeHolderSale(_ s: inout GameState, _ i: Int, _ d: JSONValue, data: GameData) {
+        let co = s.companies[i]
+        let old = d["hn"].string, buyer = d["buyer"].string
+        var extra: [String: JSONValue] = ["k27": .null, "sat": 55]
+        if !d["g"].isNull { extra = ["g27": d["g"], "k27": "exit", "sat": 45] }
+        let moved = CapTable.holderSells(&s, i, holder: old, shares: nil, to: buyer, extra: extra)
+        guard moved > 0 else { return }
+        if var list = Optional(s.companies[i].value("holders").array), let k = list.firstIndex(where: { $0["name"].string == buyer }) {
+            list[k]["w0"] = .number(Double(s.week))
             _ = profile(&list[k], seed: s.seed, week: s.week)
             s.companies[i].set("holders", .array(list))
-            s.note("\(old) sold its stake in \(co.name) to \(nm).", tone: "n", companyID: co.id)
         }
+        if d["gn"].string.isEmpty { s.note("\(old) sold its stake in \(co.name) to \(buyer).", tone: "n", companyID: co.id) }
+        else { s.addMessage(from: "Shareholders of \(co.name)", title: "\(buyer) now owns a stake in \(co.name)", body: "\(old) sold its stake to \(buyer), a competitor. They will want a say, and may try to buy the rest.", companyID: co.id, tone: "bad") }
     }
 
     /// The whole company is sold to the best buyer who pays now. Original: `sellOut`.

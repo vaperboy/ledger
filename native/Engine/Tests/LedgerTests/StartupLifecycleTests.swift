@@ -22,7 +22,7 @@ final class StartupLifecycleTests: XCTestCase {
         XCTAssertEqual(co.type, "startup")
         XCTAssertEqual(co.form, .limited)
         XCTAssertEqual(co.status, .open)
-        XCTAssertEqual(co.staff.count, 2, "two builders hired through the ordinary hiring")
+        XCTAssertEqual(co.staff.filter { $0.role == "dev" }.count, 2, "two builders hired through the ordinary hiring")
         XCTAssertGreaterThan(co.cash, 0)
         XCTAssertEqual(CapTable.table(co).total, CapTable.initialShares)
         let cash0 = co.cash

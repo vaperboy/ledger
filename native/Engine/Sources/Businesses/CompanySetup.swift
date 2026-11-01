@@ -566,10 +566,12 @@ public enum CompanySetup {
     }
 
     /// Whether the company's cash carries the people already on the payroll, one more at `extra` a month and the rent for `months`.
-    private static func carries(_ co: Company, extraMonthly extra: Double, months: Double) -> Bool {
+    /// On top of the wages and rent for `months`, one more month of rent and of the company's loan instalments is always held back (owner decision).
+    private static func carries(_ co: Company, extraMonthly extra: Double, months: Double, loans: [Loan]) -> Bool {
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare }
         let rent = co.value("prem")["rent"].double
-        return co.cash >= (payroll * 1.12 + extra + rent) * months
+        let instalments = loans.filter { $0.companyID == co.id }.reduce(0.0) { $0 + $1.monthlyPayment }
+        return co.cash >= (payroll * 1.12 + extra + rent) * months + rent + instalments
     }
 
     private static func hireStandardTeam(_ s: inout GameState, companyID: Int, bd: Trade, data: GameData, faithfulHiring: Bool, options: SetupOptions, report rep: inout SetupReport) {
@@ -589,7 +591,7 @@ public enum CompanySetup {
             var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
             // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
             while n > 0 && attempts < allowed {
-                if let months = options.payrollMonthsReserve, !carries(s.companies[i], extraMonthly: wage, months: months) {
+                if let months = options.payrollMonthsReserve, !carries(s.companies[i], extraMonthly: wage, months: months, loans: s.loans) {
                     rep.skipped.append(SetupSkipped(id: "staff:\(st.role)", kind: .staff, title: roleName, count: n, cost: wage * Double(n),
                                                     reason: "The company's cash does not yet cover \(Int(months)) months of this wage."))
                     n = 0
