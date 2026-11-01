@@ -17,7 +17,7 @@ struct CoverageEntryRow: View {
         } label: {
             CardRow(glyph: Glyph.reports, title: "Insurance and advisers", subtitle: summary(o, cur))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 
     private func summary(_ o: CoverageOverview?, _ cur: Currency) -> String {
@@ -87,7 +87,7 @@ struct CompanyCoverageScreen: View {
                                 Text(p.isOn ? "a month · on" : "a month · off").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                             }
                         }.padding(.vertical, 9).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 Text("A covered loss is paid after a deductible of about \(cur.tidyShort(cur.scaledPrice(10000))); now and then the insurer pays only part. Premiums scale with revenue (property cover with what you own) and with your insurer's price factor. Anything uninsured comes out of company cash.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)

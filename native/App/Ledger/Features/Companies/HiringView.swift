@@ -14,7 +14,7 @@ struct HiringEntry: View {
         } label: {
             CardRow(glyph: Glyph.person, title: "Hire someone", subtitle: "Job ad, network or agency; see who applies and talk terms")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 
@@ -194,7 +194,7 @@ struct HiringApplicantCard: View {
     var body: some View {
         let a = applicant
         VStack(alignment: .leading, spacing: 10) {
-            Button(action: onTap) { summary(a) }.buttonStyle(.plain)
+            Button(action: onTap) { summary(a) }.buttonStyle(PressableStyle())
             if open { details(a) }
         }
         .padding(14)
@@ -244,10 +244,10 @@ struct HiringApplicantCard: View {
         }
         HStack(spacing: 8) {
             if a.trialObservations.isEmpty {
-                Button(action: onTrial) { actionLabel("Trial week \u{00B7} \(currency.tidyShort(trialCost))", strong: false) }.buttonStyle(.plain)
+                Button(action: onTrial) { actionLabel("Trial week \u{00B7} \(currency.tidyShort(trialCost))", strong: false) }.buttonStyle(PressableStyle())
             }
             Button { Haptics.tap(); onTalk() } label: { actionLabel("Talk terms \u{203A}", strong: true) }
-                .buttonStyle(.plain).accessibilityIdentifier("hire-talk-terms")
+                .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-talk-terms")
         }
     }
 

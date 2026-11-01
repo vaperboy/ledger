@@ -13,7 +13,7 @@ struct EquipmentEntryRow: View {
         } label: {
             CardRow(glyph: Glyph.settings, title: "Equipment, fleet and premises", subtitle: "Pick brands, buy new or used, lease, subscribe, choose where to work")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 
@@ -226,7 +226,7 @@ struct CompanyEquipmentScreen: View {
                                 MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -275,7 +275,7 @@ struct CompanyEquipmentScreen: View {
                     HStack(spacing: Theme.Space.m) {
                         NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: o.equipmentID) } label: { Text(o.subscription != nil ? "Plans" : "Buy more").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }
                         if o.subscription != nil {
-                            Button("Cancel plan") { pending = .cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Theme.loss)
+                            Button("Cancel plan") { pending = .cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
                         } else if o.licence == nil {
                             if o.count > 0 {
                                 Button("Service all · \(cur.tidyShort(o.serviceCost))") {
@@ -283,8 +283,8 @@ struct CompanyEquipmentScreen: View {
                                     case .ok?: store.show("Serviced.", tone: "good")
                                     default: store.show("Not enough cash.", tone: "warn")
                                     }
-                                }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Theme.ivoryMuted)
-                                Button("Sell all") { pending = .all(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Theme.loss)
+                                }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.ivoryMuted)
+                                Button("Sell all") { pending = .all(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
                             }
                         }
                         Spacer()
@@ -342,7 +342,6 @@ struct CompanyEquipmentScreen: View {
                     ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
                         FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
                     }
-                    Text("Leased for the Company car perk (Team > Perks). They go back when the perk is switched off or the person leaves.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
                 }
             }
         }
@@ -403,7 +402,7 @@ struct CompanyEquipmentScreen: View {
                                 MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -459,7 +458,7 @@ struct CompanyEquipmentScreen: View {
                                 }
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -540,7 +539,7 @@ struct EquipmentShopView: View {
                     Text(right).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint)
                 }.padding(.vertical, 9).contentShape(Rectangle())
             }
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     private func reliabilityWord(_ r: Double) -> String { r < 0.85 ? "excellent" : r < 1.05 ? "good" : r < 1.25 ? "fair" : "poor" }
@@ -556,7 +555,7 @@ struct EquipmentShopView: View {
                 let on = (c < 0 && cls == nil) || cls == c
                 Button { cls = c < 0 ? nil : c; selected = nil } label: {
                     Text(c < 0 ? "All" : EquipmentMarket.classNames[c]).font(.system(size: 13, weight: on ? .semibold : .regular)).foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
         CardSection(one ? "Suppliers" : "Brands") {
@@ -689,7 +688,6 @@ struct EquipmentShopView: View {
         } else {
             let offers = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID)
             let lease = mode == .lease
-            Text("Cash, finance (20% down, five years) or lease (three years, service and repairs included).").font(.caption).foregroundStyle(Theme.ivoryMuted)
             CardSection("Makes and models") {
                 VStack(spacing: 0) {
                     ForEach(Array(offers.enumerated()), id: \.element.id) { n, o in

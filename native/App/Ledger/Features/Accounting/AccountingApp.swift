@@ -177,7 +177,7 @@ struct AccountingApp: View {
             } label: {
                 Text("Stop").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(OutsidePalette.accounting.accent).padding(.horizontal, 10).padding(.vertical, 6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("acct-stop-preview")
         }
         .padding(.horizontal, 18).padding(.vertical, 8)

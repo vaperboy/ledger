@@ -104,7 +104,7 @@ struct WeatherWarningCards: View {
                             Spacer(minLength: 0)
                             GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.inkDim)
                         }.padding(.vertical, 4).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -274,7 +274,7 @@ struct WeatherCompaniesCard: View {
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 
     private func effects(_ l: (weather: Double, tourists: Double, workingTime: Double, kind: String)?) -> String {

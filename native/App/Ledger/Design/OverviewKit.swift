@@ -31,7 +31,7 @@ private struct OverviewCapsLine: View {
             if let action, !link.isEmpty {
                 Button { Haptics.tap(); action() } label: {
                     Text(link).font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }
@@ -87,7 +87,7 @@ struct OverviewRow: View {
 
     var body: some View {
         if row.menu.isEmpty {
-            Button { Haptics.tap(); row.action() } label: { label }.buttonStyle(.plain)
+            Button { Haptics.tap(); row.action() } label: { label }.buttonStyle(PressableStyle())
         } else {
             Menu {
                 ForEach(row.menu) { item in Button(item.title) { Haptics.choose(); item.action() } }
@@ -155,7 +155,7 @@ struct OverviewTable<Trailing: View>: View {
                         Spacer()
                         Button { Haptics.tap(); footerAction() } label: {
                             Text(footer).font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(minHeight: 36)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 } else {
                     Spacer().frame(height: 6)
@@ -212,7 +212,7 @@ struct CountTiles: View {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(t.label): \(t.count)")
     }
@@ -243,7 +243,7 @@ struct ActivityList: View {
                 }
                 ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
                     if i > 0 { CardLine() }
-                    Button { Haptics.tap(); item.action() } label: { row(item) }.buttonStyle(.plain)
+                    Button { Haptics.tap(); item.action() } label: { row(item) }.buttonStyle(PressableStyle())
                 }
                 Spacer().frame(height: 6)
             }
@@ -286,7 +286,7 @@ struct OverviewNote: View {
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityLabel(accessibilityLabel.isEmpty ? actionTitle : accessibilityLabel)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)

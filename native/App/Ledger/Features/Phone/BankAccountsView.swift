@@ -64,7 +64,7 @@ struct BankAccountsScreen: View {
         } label: {
             CardRow(glyph: BankGlyph.bill, title: "Bills", subtitle: sub, badge: all.alertCount)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-all-bills")
     }
 
@@ -87,7 +87,7 @@ struct BankAccountsScreen: View {
         return Button { Haptics.tap(); onPick(r.id) } label: {
             CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .disabled(lockedTo != nil && lockedTo != r.id)
         .opacity(lockedTo != nil && lockedTo != r.id ? 0.5 : 1)
         .accessibilityIdentifier("bank-account-\(r.id.id)")

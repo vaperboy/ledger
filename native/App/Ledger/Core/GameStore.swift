@@ -61,6 +61,17 @@ final class GameStore: ObservableObject {
     @Published var toast: Toast?
     @Published var errorText: String?
 
+    // MARK: Day state (Next day, the report sheet, rewards)
+
+    /// True while a day is running: the Next day button shows progress and ignores taps.
+    @Published private(set) var isAdvancing = false
+    /// The week, month or year report the player must read before the next day runs (nil = none waiting).
+    @Published private(set) var reportSheet: ReportDigest?
+    /// Rewards earned and not yet shown, oldest first. The Home screen shows the first, one at a time.
+    @Published private(set) var celebrationQueue: [Celebration] = []
+    /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
+    @Published private(set) var dayChip: DayChip?
+
     // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
 
     /// The selected tab. Selecting one by hand (`selectTab`) forgets where a link came from.
@@ -140,8 +151,8 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil) {
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil) {
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
@@ -160,14 +171,80 @@ final class GameStore: ObservableObject {
 
     // MARK: Time
 
+    /// Runs one day. Taps while a day is running, or while a report sheet is waiting to be read, are ignored: a day is never
+    /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
+    /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
+        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, engine != nil else { return }
+        isAdvancing = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 40_000_000)
+            self?.advanceOneDay()
+            self?.isAdvancing = false
+        }
+    }
+
+    private func advanceOneDay() {
         guard var e = engine else { return }
+        let nwBefore: Double? = e.dayHistory.netWorth.last
+        let cashBefore: Double? = e.dayHistory.cash.last
         let out = e.nextDay()
+        if !out.gameOver { e.celebrateDailyGoal() }
+        let celebrations: [Celebration] = e.takeCelebrations()
+        let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
         if out.completedWeek { Haptics.weekDone() } else { Haptics.advanceDay() }
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
+        celebrationQueue.append(contentsOf: celebrations)
+        reportSheet = digest
+        if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
+            let cashAfter: Double = e.dayHistory.cash.last ?? 0
+            dayChip = DayChip(id: UUID(), day: e.state.day + 1, netWorthChange: nwAfter - nwBefore, cashChange: cashAfter - (cashBefore ?? cashAfter))
+        } else {
+            dayChip = nil
+        }
+    }
+
+    /// Picks up what was earned or closed while the app was away (a saved game with an unread report or an unshown celebration).
+    func refreshPending() {
+        guard var e = engine, !isAdvancing else { return }
+        if reportSheet == nil { reportSheet = e.pendingReportDigest() }
+        let waiting: [Celebration] = e.takeCelebrations()
+        if !waiting.isEmpty {
+            engine = e
+            save()
+            celebrationQueue.append(contentsOf: waiting)
+        }
+    }
+
+    /// The player has read the report sheet: the report (and the shorter ones that closed with it) are marked seen.
+    func dismissReportSheet(openReports: Bool = false) {
+        guard let d = reportSheet else { return }
+        act { e -> Bool in
+            if let r = e.pendingReportPrompt() { e.dismissReportPrompt(r) }
+            return true
+        }
+        reportSheet = nil
+        if openReports { openReport(ReportRef(kind: d.kind, id: d.reportID)) }
+    }
+
+    /// The popup on screen has been seen: the next one (if any) shows.
+    func dismissCelebration() {
+        if !celebrationQueue.isEmpty { celebrationQueue.removeFirst() }
+    }
+
+    // MARK: Home shortcuts
+
+    /// The four boxes on Home (the saved choice, else the default four).
+    var homeShortcuts: [HomeShortcut] { HomeShortcut.resolve(engine?.homeShortcutIDs) }
+
+    func setHomeShortcuts(_ shortcuts: [HomeShortcut]) {
+        act { e -> Bool in
+            e.setHomeShortcutIDs(shortcuts.map { $0.rawValue })
+            return true
+        }
     }
 
     private func report(_ fresh: [Message]) {
@@ -435,6 +512,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
+        reportSheet = nil; celebrationQueue = []; dayChip = nil
     }
 
     func go(_ action: Suggestion.Action) {

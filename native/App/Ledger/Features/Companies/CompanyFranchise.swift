@@ -20,7 +20,6 @@ struct FranchiseeCard: View {
         let buyout = engine.franchiseBuyout(companyID: company.id)
         MoreBlock(title: "Franchise", trailing: { Text(f["brandName"].string).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("You run under a known brand: it brings customers and a name, and you pay for it out of every sale.").font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 6)
                 FlatRow(label: "Royalty", value: Currency.percent(f["roy"].double, decimals: 1) + " of revenue")
                 FlatRow(label: "Marketing fund", value: Currency.percent(f["mkt"].double, decimals: 0) + " of revenue")
                 FlatRow(label: "Brand", value: FranchiseBrands.brandWord(f["brand"].double), sub: "Your quality keeps it strong or drags it down.")
@@ -77,7 +76,7 @@ struct FranchisorCard: View {
                                 MoreChevron()
                             }.contentShape(Rectangle())
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 } else if on {
                     running(cur)
                 } else {
@@ -150,7 +149,6 @@ struct FranchisorCard: View {
                 if store.act({ $0.launchFranchise(companyID: company.id, entryFee: f, royalty: royalty, support: support) }) == .ok { Haptics.success(); store.show("Franchise launched.", tone: "good") }
                 else { Haptics.warning(); store.show("The franchise could not be launched now.", tone: "warn") }
             }.buttonStyle(TinyButtonStyle()).padding(.top, 6)
-            Text("Applicants come as the brand grows. You agree the terms with each one in a talk; units pay the fee and royalties, struggle, renew, leave or are ended.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }.padding(.top, 10)
     }
 
@@ -374,7 +372,7 @@ struct FranchisorCard: View {
                     }
                 }.contentShape(Rectangle())
             }
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     @ViewBuilder private func masterSection(_ f: JSONValue, _ cur: Currency) -> some View {
@@ -397,7 +395,6 @@ struct FranchisorCard: View {
         if !countries.isEmpty {
             Card(padding: 12, radius: Theme.Radius.row) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Sell a whole country to a local partner: a big fee up front and half the royalties. Legal work is slower and costlier in complex countries.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     HStack {
                         Picker("Country", selection: Binding(get: { masterCountry.isEmpty ? countries[0].code : masterCountry }, set: { masterCountry = $0 })) {
                             ForEach(countries) { Text("\($0.flag) \($0.name)").tag($0.code) }

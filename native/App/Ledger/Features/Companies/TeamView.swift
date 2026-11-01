@@ -53,6 +53,7 @@ struct TeamView: View {
                     .id(store.rootToken(.team))
                     .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                     .scrollDismissesKeyboard(.interactively)
+                    .swipeBetween(Tab.allCases, selection: $tab)
                 }
             }
             .ledgerBackground()
@@ -99,7 +100,7 @@ struct TeamView: View {
                         .overlay(alignment: .bottom) { Rectangle().fill(on ? Theme.gold : Color.clear).frame(height: 2) }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("team-tab-\(t.rawValue)")
                 .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
                 if t != Tab.allCases.last { Spacer(minLength: 0) }
@@ -136,7 +137,7 @@ struct TeamView: View {
                 if let l = hirable.first { path.append(.companyAt(l.id, .staff)) }
                 else { store.show("Open a company first, then hire from its Team section.", tone: "warn") }
             } label: { smallOutline("Hire") }
-            .buttonStyle(.plain).accessibilityLabel("Hire")
+            .buttonStyle(PressableStyle()).accessibilityLabel("Hire")
         }
     }
 
@@ -161,7 +162,7 @@ struct TeamView: View {
         ActivityList(items: items, emptyText: "Nothing needs you. Your managers have the rest in hand.")
         Button { Haptics.tap(); needYouOnly = false } label: {
             Text("Back to overview ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     /// One amber note per company where nobody approves payroll, with the way to appoint someone.
@@ -281,7 +282,7 @@ struct TeamView: View {
                 .font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier("team-search")
             if !query.isEmpty {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 14)).foregroundStyle(Theme.ivoryDim) }.buttonStyle(.plain).accessibilityLabel("Clear search")
+                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 14)).foregroundStyle(Theme.ivoryDim) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 9).teamCard(radius: Theme.Radius.row)
@@ -296,7 +297,7 @@ struct TeamView: View {
                             .padding(.horizontal, 12).padding(.vertical, 6)
                             .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
                             .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
-                    }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+                    }.buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
         }
@@ -307,7 +308,7 @@ struct TeamView: View {
         }
         VStack(spacing: 8) {
             ForEach(shown.prefix(200)) { p in
-                Button { Haptics.tap(); openPerson(p) } label: { personCard(p, e) }.buttonStyle(.plain)
+                Button { Haptics.tap(); openPerson(p) } label: { personCard(p, e) }.buttonStyle(PressableStyle())
             }
         }
         if shown.count > 200 { Text("Showing the first 200 of \(shown.count). Search to narrow it down.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
@@ -382,7 +383,7 @@ struct TeamView: View {
         if let limit, lines.count > limit {
             Button { Haptics.tap(); tab = .delegation } label: {
                 Text("All \(lines.count) companies ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -457,14 +458,12 @@ struct TeamView: View {
                             GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
                         }
                         .padding(.horizontal, 14).padding(.vertical, 10).teamCard().contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 if o.scorecards.count > limit {
                     Button(showAllScores ? "Show fewer" : "Show all \(o.scorecards.count)") { withAnimation { showAllScores.toggle() } }
                         .buttonStyle(QuietButtonStyle()).padding(.top, 4)
                 }
-                Text("Scorecard 0 to 100 from margin, reputation, quality, mistakes, paperwork and targets. Open a manager to coach, limit or replace them.")
-                    .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryDim).padding(.top, 2)
             }.padding(.top, 4)
         }
     }
@@ -491,7 +490,7 @@ struct TeamView: View {
                         Text(v.needed ? "Fill now  ›" : "Fill  ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(v.needed ? Theme.loss : Theme.gold).padding(.top, 2)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading).teamCard().contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }

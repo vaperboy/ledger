@@ -257,6 +257,21 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
         XCTAssertTrue(c.reward.hasSuffix("claim it in Goals"))
     }
 
+    // MARK: 7A Home shortcuts
+
+    func testHomeShortcutsAreStoredPerGameAndWrittenOnlyWhenSet() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
+        XCTAssertNil(e.homeShortcutIDs)
+        XCTAssertNil(e.state.rest["homeBoxes"], "no key until the player chooses")
+        let kept = e.setHomeShortcutIDs(["goals", "bank", "goals", " ", "news", "inbox", "stats"])
+        XCTAssertEqual(kept, ["goals", "bank", "news", "inbox"], "repeats and blanks dropped, at most four")
+        XCTAssertEqual(e.homeShortcutIDs, kept)
+        let back = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(e.state))
+        XCTAssertEqual(back.rest["homeBoxes"]?.array.map { $0.string }, kept)
+        XCTAssertNil(e.setHomeShortcutIDs(nil))
+        XCTAssertNil(e.state.rest["homeBoxes"], "clearing returns to the default and removes the key")
+    }
+
     // MARK: 7E Payroll and legal liability
 
     func lawsuit(claim: Double, fee: Double, p: Double = 0.5, big: Bool = false) -> JSONValue {

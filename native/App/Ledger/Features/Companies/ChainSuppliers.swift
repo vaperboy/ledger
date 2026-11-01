@@ -77,7 +77,7 @@ struct ChainSupplyOverview: View {
                             ForEach(Array(r.exceptions.prefix(8)), id: \.storeID) { x in
                                 NavigationLink(value: CompanyRoute.companyAt(x.storeID, .operations)) {
                                     GroupLinkRow(title: x.store, sub: "Exception: \(x.provider)", subTint: Theme.caution)
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(PressableStyle())
                             }
                             if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
@@ -98,7 +98,7 @@ struct ChainSupplyOverview: View {
                             EntityCard {
                                 GroupLinkRow(title: "\(supplier) → \(buyer)", sub: sub, trailing: yearly, subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
                             }
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
             }
@@ -126,7 +126,7 @@ struct ChainSupplyOverview: View {
             ForEach(kept.prefix(8)) { l in
                 NavigationLink(value: CompanyRoute.companyAt(l.storeID, .operations)) {
                     GroupLinkRow(title: l.storeName, sub: "Keeps its own, locked by the rule: \(l.reason ?? "")", subTint: Theme.caution)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             HStack(spacing: 12) {
                 if !kept.isEmpty || rule.plan.changing > 0 {

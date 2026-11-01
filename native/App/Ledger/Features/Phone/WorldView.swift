@@ -112,7 +112,7 @@ struct WorldAroundView: View {
                                 NewsView()
                             } label: {
                                 RowLine(glyph: Glyph.news, tint: Theme.gold, title: "Business paper", subtitle: "Front pages and headlines", chevron: true)
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(PressableStyle())
                         }
                     }
                     CardSection("Seen as") {
@@ -220,7 +220,7 @@ struct WorldAroundView: View {
             WorldRecordsView(page: page).appScreen(title: page.rawValue, subtitle: "Records of the world around you")
         } label: {
             RowLine(glyph: page.glyph, tint: Theme.gold, title: page.rawValue, subtitle: preview, chevron: true)
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     private func circle(_ title: String, _ names: [String]) -> some View {

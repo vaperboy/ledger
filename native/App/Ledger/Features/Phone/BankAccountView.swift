@@ -63,7 +63,7 @@ struct BankAccountScreen: View {
                 Text("Accounting").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.ink)
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.caution.opacity(0.10)))
@@ -90,7 +90,7 @@ struct BankAccountScreen: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
@@ -186,7 +186,7 @@ struct BankAccountScreen: View {
                         Spacer()
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.accent)
                     }.padding(.vertical, 10).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }
@@ -197,7 +197,7 @@ struct BankAccountScreen: View {
                 HStack {
                     Text("COMING UP").capsLabel()
                     Spacer()
-                    Button { tab = .bills; Haptics.tap() } label: { Text("Bills ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(.plain)
+                    Button { tab = .bills; Haptics.tap() } label: { Text("Bills ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(PressableStyle())
                 }.padding(.bottom, 4)
                 if d.upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
                 ForEach(Array(d.upcoming.prefix(3).enumerated()), id: \.element.id) { n, u in
@@ -214,7 +214,7 @@ struct BankAccountScreen: View {
                 HStack {
                     Text("RECENT").capsLabel()
                     Spacer()
-                    Button { viewAll = true; Haptics.tap() } label: { Text("View all ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(.plain)
+                    Button { viewAll = true; Haptics.tap() } label: { Text("View all ›").font(.system(size: 12)).foregroundStyle(P.accent) }.buttonStyle(PressableStyle())
                 }.padding(.bottom, 4)
                 if d.recent.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
                 ForEach(Array(d.recent.prefix(5).enumerated()), id: \.element.id) { n, t in

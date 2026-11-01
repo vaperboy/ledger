@@ -28,7 +28,7 @@ struct ProjectTimelineRow: View {
                 }
             }
             .padding(.vertical, 9).contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 }
 
@@ -103,7 +103,7 @@ struct ProjectTimelineDetail: View {
                     }
                     Button { Haptics.tap(); store.openCompany(co.id, section: .projects) } label: {
                         GroupLinkRow(title: "Open \(co.name) > Projects", sub: line.kind == .tender ? "Bid, or withdraw a bid, there." : "Hold, price or review the order book there.")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)

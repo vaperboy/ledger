@@ -113,8 +113,6 @@ struct CompanyClub: View {
                         FlatRow(label: "Season \(s.season)", value: "Position \(s.rank)\(s.division == 2 ? " (second tier)" : "")", rule: n >= 0)
                     }
                 }
-                Text("Results move revenue: a home match brings gate income, a winning side fills the ground and builds the fan base, and a title lifts the club's name. Relegation cuts television money and sponsors.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
             }
         }
     }
@@ -148,7 +146,6 @@ struct CompanyClub: View {
                     Text("Ticket prices").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SegmentedChoice(items: [-1, 0, 1], title: { ["Low", "Normal", "High"][$0 + 1] },
                                 selection: ticketBinding(c))
-                    Text("A bigger wage budget buys a stronger squad but eats the profit. Cheaper tickets fill the stadium and build the fan base.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
             MoreBlock("A normal week") {
@@ -171,7 +168,6 @@ struct CompanyClub: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreBlock("Football staff", card: false) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("You do not pick players: the manager does. Every club needs a manager and an assistant. If the manager is sacked, the assistant steps in until you hire a new one.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     person(c.coach, kind: "coach", title: "Manager", cur)
                     person(c.assistant, kind: "asst", title: "Assistant manager", cur)
                 }
@@ -258,7 +254,6 @@ struct CompanyClub: View {
             VStack(alignment: .leading, spacing: 10) {
                 Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: windowItems) }
                 ForEach(0..<FootballModel.tiers.count, id: \.self) { (i: Int) in tierCard(i, windowOpen: w.name != nil, cur) }
-                Text("Clubs bid for your players while a window is open; you will find the offer in your inbox. Selling brings cash and weakens the team. Signings cost a fee up front and more wages.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
@@ -461,7 +456,7 @@ struct ClubMarketView: View {
                                 MoreChevron()
                             }.contentShape(Rectangle())
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
             HStack { Button("Close") { offerFor = nil }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }

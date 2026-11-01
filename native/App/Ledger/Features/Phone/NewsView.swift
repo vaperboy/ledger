@@ -59,7 +59,7 @@ struct NewsView: View {
                 }
                 .padding(.vertical, 4).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("news-paper-link")
         }
         .padding(.bottom, 14)

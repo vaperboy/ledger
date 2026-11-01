@@ -42,7 +42,7 @@ struct LuxuryGateView: View {
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.accent))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("luxury-apply")
         } else {
             Text("You may apply again later.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)

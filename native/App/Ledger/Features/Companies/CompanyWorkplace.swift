@@ -38,7 +38,7 @@ struct CompanyWorkplaceSection: View {
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                             }.padding(.vertical, 6).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     } else {
                         let name = prem["lname"].string
                         Text("\(name.isEmpty ? "A \(word)" : name) · \(Int(prem["m2"].double)) m²" + (prem["owned"].bool ? " · owned" : " · \(cur.tidyShort(prem["rent"].double * prem["m2"].double / 12)) a month"))

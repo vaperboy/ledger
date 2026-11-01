@@ -50,7 +50,7 @@ struct CompanyAccounts: View {
         let lines = [Line(key: "rev", label: "Revenue")] + GameEngine.costLabels.filter { $0.key != "tax" }.map { Line(key: $0.key, label: $0.label) }
         let shown = lines.filter { l in periods.contains { abs($0.books[l.key] ?? 0) >= 0.5 } }
         return CardSection(title: "Profit and loss", trailing: {
-            NavigationLink { ReportsScreen(companyID: company.id) } label: { Text("Monthly reports  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(.plain)
+            NavigationLink { ReportsScreen(companyID: company.id) } label: { Text("Monthly reports  →").font(.system(size: 12)).foregroundStyle(Theme.gold) }.buttonStyle(PressableStyle())
         }) {
             VStack(spacing: 0) {
                 HStack(spacing: 4) {

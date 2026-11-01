@@ -66,7 +66,7 @@ struct CompanyStaffRoster: View {
                         withAnimation(.snappy(duration: 0.2)) { if open { expanded.remove(role) } else { expanded.insert(role) } }
                     } label: {
                         CardRowLabel(title: roleLabel(role), subtitle: "\(members.count) \(members.count == 1 ? "person" : "people")", value: pay, open: open)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                     if open { ForEach(members) { m in row(m, cur, showIssues: false) } }
                 }
             } else {
@@ -82,7 +82,7 @@ struct CompanyStaffRoster: View {
         HStack(spacing: 8) {
             GlyphView(glyph: Glyph.person, size: 14, weight: 1.5, tint: Theme.ivoryFaint)
             TextField("Name or role", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
-            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain).accessibilityLabel("Clear search") }
+            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search") }
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
@@ -99,7 +99,7 @@ struct CompanyStaffRoster: View {
         return NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
             PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role,
                        face: engine.state.people[m.id]?.faceKey)
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     @ViewBuilder private func footer(_ cur: Currency) -> some View {

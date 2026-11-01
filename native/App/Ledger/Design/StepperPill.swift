@@ -15,7 +15,7 @@ struct StepperPill: View {
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(Theme.gold)
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }
 }

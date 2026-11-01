@@ -79,7 +79,7 @@ struct RivalGroupProfileView: View {
             ForEach(overlap) { c in
                 Button { Haptics.tap(); store.openCompany(c.id, section: .market) } label: {
                     CardRow(glyph: Glyph.home, title: c.name, subtitle: "Same trade in \(e.cityName(c)): \(e.tradeName(c))")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             if !mine.isEmpty {
                 Text("Rivals it owns in your markets").capsLabel(Theme.ivoryFaint).padding(.horizontal, 2)

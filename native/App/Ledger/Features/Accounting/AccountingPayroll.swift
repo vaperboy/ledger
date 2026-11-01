@@ -31,6 +31,7 @@ struct AcctPayroll: View {
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+                .swipeBetween(AcctPayrollTab.allCases, selection: $m.payTab)
             }
             .confirmAction($pending)
         }

@@ -68,7 +68,7 @@ struct ProjectsRunningTab: View {
         ForEach(running.sorted { ($0.dueWeek ?? Int.max) < ($1.dueWeek ?? Int.max) }) { l in
             if let co = engine.state.company(l.companyID) {
                 NavigationLink { ProjectTimelineDetail(lineID: l.id) } label: { card(l, co, now) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
             }
         }
         if !rows.isEmpty {
@@ -77,7 +77,7 @@ struct ProjectsRunningTab: View {
                 Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
                     ProjectCardRow(title: r.co.name, sub: companyLine(r.board) + (!r.board.isDeveloper && r.board.outstandingPayments > 0 ? " · owed \(store.short(r.board.outstandingPayments, in: r.co))" : ""))
                 }
-                .buttonStyle(.plain).accessibilityIdentifier("open-project-company")
+                .buttonStyle(PressableStyle()).accessibilityIdentifier("open-project-company")
             }
         }
     }
@@ -183,7 +183,7 @@ struct ProjectsTimelineTab: View {
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .projectCard(radius: Theme.Radius.card)
                 .contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 }
@@ -246,10 +246,10 @@ struct ProjectsBidsTab: View {
             HStack(spacing: 8) {
                 NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: {
                     outlined("Details", strong: false)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 Button { Haptics.choose(); withAnimation(.snappy(duration: 0.2)) { openKey = openKey == x.id ? nil : x.id; priceIndex = 3; higherQuality = false } } label: {
                     outlined(openKey == x.id ? "Close" : "Place a bid ›", strong: true)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             if openKey == x.id { bidPanel(x) }
         }
@@ -311,7 +311,7 @@ struct ProjectsBidsTab: View {
             Button {
                 Haptics.tap()
                 store.settle(store.act { $0.withdrawBid(companyID: x.co.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.")
-            } label: { outlined("Take the bid back", strong: false) }.buttonStyle(.plain)
+            } label: { outlined("Take the bid back", strong: false) }.buttonStyle(PressableStyle())
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
         .projectCard()
@@ -326,15 +326,15 @@ struct ProjectsBidsTab: View {
             startTile("Refurbishment", "improve a property", "M4 20 H20 M6 20 V10 L12 5 L18 10 V20", landlords, .properties, none: "No company owns property yet.")
             startTile("Developer project", "build and sell", "M5 21 V4 H15 V21 M15 9 H19 V21", developers, .projects, none: "No developer company yet.")
             startTile("Event or contract", "one-off work", "M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7", contractors, .projects, none: "No contracting or events company yet.")
-            Button { Haptics.tap(); openVentures() } label: { tile("Venture", "back a startup", "M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3") }.buttonStyle(.plain)
+            Button { Haptics.tap(); openVentures() } label: { tile("Venture", "back a startup", "M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3") }.buttonStyle(PressableStyle())
         }
     }
 
     @ViewBuilder private func startTile(_ name: String, _ note: String, _ icon: String, _ cos: [Company], _ section: CompanySection, none: String) -> some View {
         if cos.isEmpty {
-            Button { Haptics.warning(); store.show(none, tone: "warn") } label: { tile(name, note, icon).opacity(0.6) }.buttonStyle(.plain)
+            Button { Haptics.warning(); store.show(none, tone: "warn") } label: { tile(name, note, icon).opacity(0.6) }.buttonStyle(PressableStyle())
         } else if cos.count == 1, let c = cos.first {
-            Button { Haptics.tap(); store.openCompany(c.id, section: section) } label: { tile(name, note, icon) }.buttonStyle(.plain)
+            Button { Haptics.tap(); store.openCompany(c.id, section: section) } label: { tile(name, note, icon) }.buttonStyle(PressableStyle())
         } else {
             Menu {
                 ForEach(cos, id: \.id) { c in Button(c.name) { store.openCompany(c.id, section: section) } }
@@ -391,7 +391,7 @@ struct ProjectsFinishedTab: View {
             ForEach(jobsDone, id: \.co.id) { r in
                 Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
                     ProjectCardRow(title: r.co.name, sub: "\(r.board.finishedCount) finished")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
         if !results.isEmpty {

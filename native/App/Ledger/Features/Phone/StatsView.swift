@@ -232,7 +232,7 @@ struct StatsView: View {
                 RowLine(glyph: Glyph.list, title: "Activity", subtitle: PhonePage.activity.note, chevron: true)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 
     private func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }

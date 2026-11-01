@@ -409,7 +409,7 @@ struct SectionTabs<T: Hashable>: View {
                 let on = selection == item
                 Button { selection = item; Haptics.choose() } label: {
                     cell(title(item), count: badge(item), on: on, more: false, spread: true)
-                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+                }.buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
             }
             if !rest.isEmpty { moreMenu(rest) }
         }
@@ -612,7 +612,7 @@ struct SegmentedChoice<T: Hashable>: View {
                         .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+                .buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(2)

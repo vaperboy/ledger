@@ -21,7 +21,7 @@ struct CompanyPayroll: View {
             Button { Haptics.tap(); store.openAccounting(companyID: company.id, payroll: true) } label: {
                 CardRow(glyph: Glyph.accounting, title: "Run payroll in Accounting", subtitle: company.name)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("bills-open-accounting-payroll")
             if let info = engine.paydayInfo(companyID: company.id) {
                 paydaySection(info)

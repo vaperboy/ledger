@@ -30,6 +30,7 @@ struct GroupView: View {
                     }
                     .id(store.rootToken(.group))
                     .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+                    .swipeBetween(GroupTab.allCases, selection: $tab)
                 }
             }
             .ledgerBackground()

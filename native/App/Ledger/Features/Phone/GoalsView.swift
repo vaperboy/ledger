@@ -66,8 +66,21 @@ struct GoalsView: View {
                         Haptics.success(); store.show("Daily goal: \(cur.tidyShort(r)). A new goal comes tomorrow.", tone: "good"); refresh()
                     } else { Haptics.warning(); store.show("That goal cannot be claimed yet.", tone: "warn") }
                 }
+                missionSwitch(off: false)
             }
+        } else if e.dailyGoalsOff {
+            CardSection("Today") { missionSwitch(off: true) }
         }
+    }
+
+    /// Daily missions are optional: off means no mission here, no popup and no reward prompt.
+    private func missionSwitch(off: Bool) -> some View {
+        Button(off ? "Turn the daily mission on" : "Turn daily missions off") {
+            store.act { $0.setDailyGoalsOff(!off) }
+            Haptics.tap()
+            refresh()
+        }
+        .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle()).frame(minHeight: 36)
     }
 
     // MARK: First steps
@@ -87,7 +100,7 @@ struct GoalsView: View {
                     if ok { store.show(hidden ? "First-step rewards are back." : "First-step rewards hidden. Rewards you have not claimed stay available.", tone: "n") }
                     else { store.show("That could not be changed.", tone: "warn") }
                 }
-                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain).frame(minHeight: 36)
+                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle()).frame(minHeight: 36)
             }
         }
     }
@@ -238,7 +251,7 @@ struct TrophyShelfRow: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 

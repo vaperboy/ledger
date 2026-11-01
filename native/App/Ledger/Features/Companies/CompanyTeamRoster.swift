@@ -186,7 +186,7 @@ struct TeamAction: View {
                 .frame(minHeight: 32)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 
@@ -209,7 +209,7 @@ struct CompanyTeamRoster: View {
             }) {
                 ForEach(slots) { slot in
                     let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
-                    Button { Haptics.tap(); openSlot = SlotRef(id: slot.id) } label: { PersonCard(row: row) }.buttonStyle(.plain)
+                    Button { Haptics.tap(); openSlot = SlotRef(id: slot.id) } label: { PersonCard(row: row) }.buttonStyle(PressableStyle())
                 }
             }
             .sheet(item: $openSlot) { ref in

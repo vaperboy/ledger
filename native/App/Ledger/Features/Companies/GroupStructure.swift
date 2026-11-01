@@ -73,9 +73,9 @@ struct GroupAttention: View {
 
     @ViewBuilder private func row(_ it: Item) -> some View {
         switch it.target {
-        case .board(let key): NavigationLink { BoardView(key: key) } label: { card(it) }.buttonStyle(.plain)
-        case .chain(let id): NavigationLink { ChainView(chainID: id) } label: { card(it) }.buttonStyle(.plain)
-        case .company(let id, let sec): NavigationLink(value: CompanyRoute.companyAt(id, sec)) { card(it) }.buttonStyle(.plain)
+        case .board(let key): NavigationLink { BoardView(key: key) } label: { card(it) }.buttonStyle(PressableStyle())
+        case .chain(let id): NavigationLink { ChainView(chainID: id) } label: { card(it) }.buttonStyle(PressableStyle())
+        case .company(let id, let sec): NavigationLink(value: CompanyRoute.companyAt(id, sec)) { card(it) }.buttonStyle(PressableStyle())
         case .none: card(it)
         }
     }
@@ -167,7 +167,7 @@ struct GroupStructureOverview: View {
                 ForEach(rows.prefix(8)) { c in
                     NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
                         CardRow(glyph: Glyph.reports, title: c.name, subtitle: dividendSub(c))
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 if rows.count > 8 { footnote("The rest are in each company's Finances.") }
                 footnote("Group tax is what came in (+) or went out (−) between group companies. The policy is set in the company's owners.")
@@ -198,7 +198,7 @@ struct GroupStructureOverview: View {
         let sub: String = "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(h.label) · value \(store.short(h.value, in: co))"
         return NavigationLink(value: CompanyRoute.company(co.id)) {
             CardRow(glyph: Glyph.home, title: co.name, subtitle: sub, value: store.short(h.profitTTM, in: co) + " / yr", valueTint: h.profitTTM < 0 ? Theme.loss : Theme.ivory)
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     /// Companies that belong to no chain, franchise or holding: key figures per company, opened in place (Back returns here).
@@ -236,7 +236,7 @@ struct GroupStructureOverview: View {
                     NavigationLink(value: CompanyRoute.companyAt(h.id, .holding)) {
                         CardRow(glyph: Glyph.bank, title: h.name, subtitle: holdingSub(subs),
                                 value: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h))
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 if !holdings.isEmpty && !free.isEmpty {
                     footnote("\(free.count) limited \(free.count == 1 ? "company is" : "companies are") still owned by you directly. Put them under a holding on its page.")
@@ -244,7 +244,7 @@ struct GroupStructureOverview: View {
                 if holdings.isEmpty {
                     NavigationLink { NewHoldingView() } label: {
                         CardRow(glyph: Glyph.hire, title: "Set up a holding company", subtitle: "Dividends into it are taxed far lower; companies it owns 90% of share profits and losses for tax.")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -268,13 +268,13 @@ struct GroupStructureOverview: View {
                 ForEach(chains) { s in
                     NavigationLink { ChainView(chainID: s.id) } label: {
                         CardRow(glyph: Glyph.group, title: s.name, subtitle: chainSub(s), value: engine.homeCurrency.tidyShort(s.profit) + " / mo", valueTint: s.profit < 0 ? Theme.loss : Theme.ivory)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 ForEach(loose) { g in
                     if let id = g.companyIDs.first {
                         NavigationLink(value: CompanyRoute.companyAt(id, .chain)) {
                             CardRow(glyph: Glyph.home, title: g.name, subtitle: "\(g.companyIDs.count) \(engine.data.catalog[g.tradeID]?.name.lowercased() ?? "stores") under one name · register them as a chain")
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
             }
@@ -296,7 +296,7 @@ struct GroupStructureOverview: View {
                 if !brands.isEmpty {
                     NavigationLink { FranchisesView() } label: {
                         CardRow(glyph: Glyph.hire, title: "Join a franchise", subtitle: "A known brand, their rules, a fee · \(brands.count) \(brands.count == 1 ? "brand takes" : "brands take") franchisees")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -313,9 +313,9 @@ struct GroupStructureOverview: View {
 
     @ViewBuilder private func franchisorRow(_ c: Company, chain: Chains.Summary?) -> some View {
         if let chain {
-            NavigationLink { ChainView(chainID: chain.id) } label: { franchisorCard(c, chain: chain) }.buttonStyle(.plain)
+            NavigationLink { ChainView(chainID: chain.id) } label: { franchisorCard(c, chain: chain) }.buttonStyle(PressableStyle())
         } else {
-            NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) { franchisorCard(c, chain: nil) }.buttonStyle(.plain)
+            NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) { franchisorCard(c, chain: nil) }.buttonStyle(PressableStyle())
         }
         // Applicants open the same talk as under Company > Chain: one record, one set of actions (offer, accept, walk away).
         let cur: Currency = engine.currency(for: c)
@@ -324,7 +324,7 @@ struct GroupStructureOverview: View {
                 CardRow(glyph: Glyph.person, title: a.name,
                         subtitle: "Applicant · \(engine.data.countries.city(a.cityID, preferring: c.countryCode)?.city.name ?? "") · \(a.experience) yr experience · own money \(cur.tidyShort(a.capital))",
                         value: "Talk")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -332,16 +332,16 @@ struct GroupStructureOverview: View {
         if cos.count == 1, let c = cos.first {
             NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) {
                 CardRow(glyph: Glyph.home, title: c.name, subtitle: "Franchisee of \(brand) · royalty \(Currency.percent(c.value("franchise")["roy"].double, decimals: 1)) · \(engine.cityName(c))")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         } else {
             Button { openBrand = openBrand == brand ? nil : brand } label: {
                 CardRow(glyph: Glyph.group, title: brand, subtitle: "\(cos.count) \(cos.count == 1 ? "unit" : "units") under this brand", value: openBrand == brand ? "Hide" : "Show", chevron: false)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if openBrand == brand {
                 ForEach(cos) { c in
                     NavigationLink(value: CompanyRoute.companyAt(c.id, .chain)) {
                         CardRow(glyph: Glyph.home, title: c.name, subtitle: engine.cityName(c))
-                    }.buttonStyle(.plain).padding(.leading, Theme.Space.m)
+                    }.buttonStyle(PressableStyle()).padding(.leading, Theme.Space.m)
                 }
             }
         }

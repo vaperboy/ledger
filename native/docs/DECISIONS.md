@@ -23,3 +23,10 @@ Pricing: one pushed screen, no price-level picker, no Market > Pricing. How you 
 - Motion and feel: add animations and fluid mobile movement: swipe left-to-right to go back (re-enable the interactive pop gesture everywhere), swipe between sub-tabs/segments, restrained meaningful animations, pressed feedback; Reduce Motion respected.
 - Reward feedback: after simulating a day, completed missions, awards and milestones appear as a CELEBRATORY POPUP with a light haptic on the main page (queued after the day, real reward shown), animated and respecting Reduce Motion.
 - Reports pacing: DAILY = small summary chip; WEEKLY, MONTHLY and YEARLY = a report sheet the player reads and dismisses with one tap before the next day runs (a natural pause, not a timer). Real figures only; no arbitrary waiting periods; routine reports must not repeat or overlap.
+
+## Stage 7 and 8 implementation notes (1 Nov 2026)
+- Reports: daily = a chip beside the week bar; weekly, monthly and yearly = one sheet read with one tap before the next day runs; a year covers its month and week.
+- Rewards: trophies, ambition milestones, finished first steps and the mission appear as a queued popup with the real reward.
+- Inbox confirmation: only spends (subject to the player's size setting) and irreversible answers (sales, court settlements, ransoms, dismissals) ask once.
+- Court judgments are a liability (payables "legal") paid from cash above wages owed; wages come first.
+- Home: the profit and due cards were removed to fit the command centre; that information stays in the Bank app and in Top priorities when a shortfall exists.

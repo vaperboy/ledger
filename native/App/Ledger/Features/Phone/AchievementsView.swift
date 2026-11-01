@@ -83,7 +83,7 @@ struct TrophiesPreview: View {
                     AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle)
                 } label: {
                     LinkLabel(text: "All \(entries.count)")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }) {
                 if got.isEmpty {
                     Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)

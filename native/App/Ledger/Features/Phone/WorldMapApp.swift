@@ -159,7 +159,7 @@ struct WorldMapApp: View {
                 .background(Capsule().fill(on ? P.accentSelected : Color.clear))
                 .overlay(Capsule().strokeBorder(on ? P.accent : P.lineStrong, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -247,7 +247,7 @@ struct WorldMapApp: View {
                     }
                     .padding(.vertical, 11).contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 Rectangle().fill(P.hairline).frame(height: 1)
             }
         }

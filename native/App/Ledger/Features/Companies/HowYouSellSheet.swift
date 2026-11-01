@@ -208,7 +208,7 @@ private struct SellChoiceRow: View {
             .overlay(shape.strokeBorder(current ? Theme.gold : Theme.border, lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .disabled(disabled || current)
         .accessibilityAddTraits(current ? .isSelected : [])
     }

@@ -41,7 +41,7 @@ struct ExpandAbroadView: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         }
         ForEach(list, id: \.id) { co in
-            NavigationLink { AbroadOptionsView(companyID: co.id) } label: { companyCard(co) }.buttonStyle(.plain)
+            NavigationLink { AbroadOptionsView(companyID: co.id) } label: { companyCard(co) }.buttonStyle(PressableStyle())
         }
     }
 
