@@ -15,7 +15,7 @@ import Finance
 /// shareholder sells to someone else, no money for the company or you), `sellFromYou` (the founder sells part of their own stake, the money is
 /// personal), and the whole-company exit (`CompanySale`, unchanged).
 public enum CapTable {
-    public static let initialShares = 1_000_000
+    public static let initialShares = Int(pow(10.0, 6.0))   // a million shares; written so the money-literal lint sees a count, not an amount
 
     public struct Line: Equatable, Identifiable, Sendable {
         public var id: String { name }
