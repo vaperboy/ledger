@@ -1,13 +1,10 @@
 # What's new
-- Home: pick up to four shortcuts, day chip after Next day
-- Weekly / monthly / yearly report sheets, read before the next day
-- Reward popups with haptic after a day
-- Swipe back everywhere, smoother motion, Reduce Motion respected
-- Ambition popup at game start (change freely in weeks 1-4)
-- Inbox decisions answerable again; Group Overview shortened
-- Earlier this week: Accounting + ivory Bank, new hiring talks, company screens
+- One in-game "Are you sure" popup replaces every iOS dialog; only big spends and irreversible actions ask
+- New button and popup style (gold, foil, Cancel | Apply)
+- Phone apps: AirStay (rent places), TechPro Store (equipment + software, basket, delivery days), Atlas Insurance
+- Perks popup for all workers; Rules under Stats; Stats and Manage cleanups
+- Stage 4: real share counts, budgeted company creation, startups as real companies, buying a rival moves staff and equipment
 
 # Missing / coming next
-- One in-game "Are you sure" popup replacing iOS dialogs
-- Insurance, Premises (AirStay) and Equipment (TechPro) as Phone apps
-- Startups as real companies with share counts
+- Own delivery company fee, typed prices per trade, chain/franchise application steps
+- Not yet compiled-tested on device: expect rough edges in the new apps
