@@ -149,7 +149,6 @@ public enum EventEngine {
                 s.inbox[k].set("ev", e.id)
                 s.inbox[k].set("cat", e.category)
             }
-            s.note("Decision needed: \(title)", tone: e.tone, companyID: co.id)
         }
     }
 

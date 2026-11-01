@@ -62,6 +62,7 @@ public enum PlayerGoals {
 
     /// Today's goal; a new one is picked when the real day changes. `today` and `yesterday` are "yyyy-m-d" (the phone's own date).
     public static func dailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> DailyGoal? {
+        if dailyGoalsOff(s) { return nil }
         var d = s.rest["dy59"] ?? .object(["streak": 0, "last": ""])
         let nw = Valuation.netWorth(s, trades: data.catalog).total
         if d["d"].string != today {
@@ -78,6 +79,41 @@ public enum PlayerGoals {
         let reward = cur.roundedStep(max(cur.scaledPrice(2500), nw * 0.0005) * Double(min(7, streak + 1)), about: 500)
         return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, cur), done: dailyDone(g.id, d["b"], s, nw: nw),
                          claimed: d["got"].int != 0, reward: reward, streak: streak)
+    }
+
+    /// Missions are optional: a player who turns them off sees no daily goal, no popup and no reward prompt. The key exists only once it was set.
+    public static func dailyGoalsOff(_ s: GameState) -> Bool { (s.rest["dy59"]?["off"].int ?? 0) != 0 }
+
+    public static func setDailyGoalsOff(_ s: inout GameState, _ off: Bool) {
+        var d = s.rest["dy59"] ?? .object(["streak": 0, "last": ""])
+        if off { d["off"] = .number(1) } else if !d["off"].isNull { d["off"] = .number(0) }
+        s.rest["dy59"] = d
+    }
+
+    /// Queues a celebration the first time today's goal is done (its reward still has to be claimed in Goals). Returns true when one was queued.
+    @discardableResult
+    public static func announceDailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> Bool {
+        guard let g = dailyGoal(&s, today: today, yesterday: yesterday, data: data, currency: cur), g.done, !g.claimed else { return false }
+        var d = s.rest["dy59"] ?? .object([:])
+        if d["said"].string == today { return false }
+        d["said"] = .string(today)
+        s.rest["dy59"] = d
+        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward) + ": claim it in Goals")
+        return true
+    }
+
+    /// Queues a celebration for each first step that has just been finished (once each; hidden checklists stay quiet).
+    public static func announceFirstSteps(_ s: inout GameState) {
+        guard var st = s.rest["fs58"], st["off"].int == 0 else { return }
+        var said = st["said"]
+        if said.isNull { said = .object([:]) }
+        var changed = false
+        for step in stepList where st["got"][step.id].isNull && said[step.id].isNull && stepDone(step.id, s) {
+            said[step.id] = .number(Double(s.week))
+            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward + ": claim it in Goals")
+            changed = true
+        }
+        if changed { st["said"] = said; s.rest["fs58"] = st }
     }
 
     /// Claim the daily reward. Original: `ACT.dy59claim`.
