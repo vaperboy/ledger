@@ -10,13 +10,13 @@ import Finance
 public enum SpecialFamilies {
     /// Does this trade use one of the special weekly models?
     public static func handles(_ bd: Trade) -> Bool {
-        bd.family == "energy" || bd.family == "hold" || bd.family == "club" || bd.id == "salmon"
+        bd.family == "energy" || bd.family == "hold" || bd.family == "club" || bd.id == "salmon" || bd.id == StartupModel.tradeID
     }
 
     /// Trades that are started from the trade menu. A holding and a football club have their own entry points
     /// (a holding takes the companies it holds, a club is bought or founded in a league).
     public static func isStartable(_ bd: Trade) -> Bool {
-        CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club"
+        CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club" && bd.id != StartupModel.tradeID
     }
 
     /// The week of a company with a special model: returns what the common bookkeeping (`book`, `weekEnd`) needs.
@@ -24,6 +24,7 @@ public enum SpecialFamilies {
         switch bd.family {
         case "hold": return HoldingModel.context(&s, i, data)
         case "club": return FootballModel.context(&s, i, bd, data)
+        case _ where bd.id == StartupModel.tradeID: return StartupModel.context(&s, i, bd, data)
         case "energy": return bd.hasTrait("power") ? EnergyModel.powerContext(&s, i, bd, data) : EnergyModel.oilContext(&s, i, bd, data)
         default: return SalmonModel.context(&s, i, bd, data)
         }
@@ -72,7 +73,7 @@ public enum SpecialFamilies {
 
     /// A company in the same shape `CompanySetup.create` makes, without charging the owner for registration or share capital.
     /// Used for football clubs, which are bought or founded rather than started.
-    static func blankCompany(_ s: inout GameState, tradeID: String, country: Country, cityID: String, name: String, size: Double, data: GameData) -> Int? {
+    public static func blankCompany(_ s: inout GameState, tradeID: String, country: Country, cityID: String, name: String, size: Double, data: GameData) -> Int? {
         guard let bd = data.catalog[tradeID] else { return nil }
         let currency = Currency(country: country, rates: ExchangeRates(drift: s.exchangeRates.values))
         var co = Company(raw: [:])

@@ -188,7 +188,7 @@ public enum Satisfaction {
     /// A company with no owner hours, no manager and no staff on duty closes until someone turns up. Original: weekCo.before 10.
     static func closeIfNobodyWorks(_ s: inout GameState, _ i: Int, _ bd: Trade) {
         let co = s.companies[i]
-        if !Pricing.noWorkFamilies.contains(bd.family), co.status == .open, co.managerID == nil, !(co.ownerHours > 0), !co.staff.contains(where: { $0.noticeWeeks <= 0 }) {
+        if !Pricing.noWorkFamilies.contains(bd.family), bd.id != StartupModel.tradeID, co.status == .open, co.managerID == nil, !(co.ownerHours > 0), !co.staff.contains(where: { $0.noticeWeeks <= 0 }) {
             s.companies[i].status = .closed
             s.companies[i].set("closeW", 9999); s.companies[i].set("closeTot", 9999); s.companies[i].set("idle", 1)
             s.note("\(co.name) is closed: nobody works there. Rent, software and other running costs continue.", tone: "bad", companyID: co.id)

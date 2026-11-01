@@ -130,8 +130,12 @@ public enum Funding {
         var out: [(pct: Double, o: JSONValue)] = []
         for n in 0..<k {
             let kd = kinds[n]
-            let a = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
+            let asked = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
             let pre = pre0 * s.random.range(0.7, 1.25) * (0.7 + it * 0.6) * (kd == "ff" ? 1.1 : 1)
+            // No single round hands over control: an investor takes at most 30% (a fund 40%) of the company after the round, whatever was asked for.
+            let share = kd == "fund" ? 0.4 : 0.3
+            let a = min(asked, (pre * share / (1 - share) / 1000).rounded(.down) * 1000)
+            if a <= 0 { continue }
             let name = kd == "fund" ? fundName(&s, countryCode: countryCode, data: data) : kd == "ff" ? "Friends and family" : personName(&s, countryCode: countryCode, data: data) + ", angel investor"
             let says = kd == "fund" ? "Contacts, advice, strict targets and a board seat" : kd == "ff" ? "Friendly, but it can get awkward if things go badly"
                 : s.random.pick(["Will stay quiet", "Interferes with managers", "Wants monthly numbers"])

@@ -41,6 +41,8 @@ public enum Valuation {
             return jsRound(jsRound(fm["val"].double + co.cash) - owed + fm["book"].double * 0.8)
         }
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
+        // A startup is worth what an investor would pay for its product, never less than its net assets (see StartupModel.value).
+        if bd.id == StartupModel.tradeID { return jsRound(co.form == .limited ? max(0, StartupModel.value(co, state: s, net: net)) : StartupModel.value(co, state: s, net: net)) }
         let mult: Double = bd.family == "fin" ? 1.0 : bd.family == "rent" ? 0.0 : bd.family == "energy" ? 5 : (bd.margin > 0.2 ? 5 : 4)
         // Profit that is really the owner's own pay is not goodwill: a buyer would have to hire someone to do that work.
         let ownerLabour = co.managerID == nil ? bd.ownerFTE * co.num("ownWage") * 12 : 0
@@ -74,7 +76,7 @@ public enum Valuation {
         var companies = 0.0
         for st in s.rest["startups"]?.array ?? [] where st["st"].string == "live" { companies += st["val"].double * st["pct"].double / 100 }
         // Startups you founded (live ones, by your share) and shares you hold in other people's startups
-        for f in s.rest["founded"]?.array ?? [] where f["st"].string == "live" { companies += f["val"].double * f["pct"].double / 100 }
+        // (A startup you founded is a company of yours and is counted with the companies below.)
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }
         companies += GroupStakes.stakesValue(s)
         // A company held through a holding is counted inside the holding's value (its `fm.assets`), so only the holding is added here.

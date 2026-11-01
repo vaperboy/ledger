@@ -27,33 +27,38 @@ public enum StartupProducts {
         public static func == (a: Sector, b: Sector) -> Bool { a.id == b.id }
     }
 
+    /// The sector tables were written in pounds; the game's accounting unit is about one krone (docs/MONEY_SCALING.md) and wages are in that unit.
+    /// Seed money and revenue per customer are therefore multiplied by the pound-to-unit factor, so a seed buys the same number of builder-months
+    /// as it did in the original and a customer pays in the same unit as the wages. Nothing else is changed.
+    public static let unit = 13.0
+
     public static let sectors: [Sector] = [
-        Sector(id: "saas", name: "SaaS / Software", capitalNeed: 1, seed: 250_000, work: 30, canBuildYourself: true, builders: "coders", arpu: 1200, growth: 1, countsUsers: false,
+        Sector(id: "saas", name: "SaaS / Software", capitalNeed: 1, seed: 250_000 * unit, work: 30, canBuildYourself: true, builders: "coders", arpu: 1200 * unit, growth: 1, countsUsers: false,
                products: [("crm", "CRM and sales"), ("book", "Booking and scheduling"), ("acct", "Accounting and payroll"), ("shop", "Shop and payments"), ("job", "Job and quoting"),
                           ("fleet", "Fleet and routing"), ("cad", "Design and CAD"), ("health", "Patient journals"), ("ticket", "Ticketing and events"), ("erp", "ERP and planning")],
                models: [("once", "One-time purchase"), ("sub", "Subscription"), ("both", "Setup fee + subscription")]),
-        Sector(id: "fintech", name: "FinTech", capitalNeed: 2, seed: 1_500_000, work: 48, canBuildYourself: true, builders: "coders", arpu: 1800, growth: 0.8, countsUsers: false,
+        Sector(id: "fintech", name: "FinTech", capitalNeed: 2, seed: 1_500_000 * unit, work: 48, canBuildYourself: true, builders: "coders", arpu: 1800 * unit, growth: 0.8, countsUsers: false,
                products: [("pay", "Payments and card terminals"), ("bankapp", "Banking app"), ("invest", "Investing app"), ("ins", "Insurance platform"), ("lend", "Lending platform")],
                models: [("fee", "Fee per transaction"), ("sub", "Subscription"), ("both", "Subscription + fees")]),
-        Sector(id: "ecom", name: "E-commerce", capitalNeed: 1, seed: 400_000, work: 30, canBuildYourself: true, builders: "coders", arpu: 900, growth: 1.1, countsUsers: false,
+        Sector(id: "ecom", name: "E-commerce", capitalNeed: 1, seed: 400_000 * unit, work: 30, canBuildYourself: true, builders: "coders", arpu: 900 * unit, growth: 1.1, countsUsers: false,
                products: [("store", "Online store builder"), ("mkt", "Marketplace for shops"), ("check", "Checkout and shipping")],
                models: [("sub", "Subscription"), ("fee", "Share of each sale"), ("both", "Subscription + share")]),
-        Sector(id: "ai", name: "AI / Machine Learning", capitalNeed: 2, seed: 800_000, work: 40, canBuildYourself: true, builders: "coders", arpu: 1500, growth: 1.2, countsUsers: false,
+        Sector(id: "ai", name: "AI / Machine Learning", capitalNeed: 2, seed: 800_000 * unit, work: 40, canBuildYourself: true, builders: "coders", arpu: 1500 * unit, growth: 1.2, countsUsers: false,
                products: [("code", "AI coding assistant"), ("create", "AI design and content"), ("agent", "AI agents for office work"), ("auto", "Process automation")],
                models: [("sub", "Subscription"), ("use", "Pay per use")]),
-        Sector(id: "health", name: "HealthTech", capitalNeed: 3, seed: 3_000_000, work: 60, canBuildYourself: true, builders: "developers and clinicians", arpu: 2500, growth: 0.5, countsUsers: false,
+        Sector(id: "health", name: "HealthTech", capitalNeed: 3, seed: 3_000_000 * unit, work: 60, canBuildYourself: true, builders: "developers and clinicians", arpu: 2500 * unit, growth: 0.5, countsUsers: false,
                products: [("diag", "Diagnostics"), ("clinic", "Clinic software"), ("well", "Wellness and training app"), ("tele", "Video consultations")],
                models: [("sub", "Subscription"), ("lic", "Licence per clinic")]),
-        Sector(id: "edtech", name: "EdTech", capitalNeed: 1, seed: 300_000, work: 30, canBuildYourself: true, builders: "coders", arpu: 600, growth: 1.1, countsUsers: false,
+        Sector(id: "edtech", name: "EdTech", capitalNeed: 1, seed: 300_000 * unit, work: 30, canBuildYourself: true, builders: "coders", arpu: 600 * unit, growth: 1.1, countsUsers: false,
                products: [("plat", "Learning platform"), ("tutor", "Tutoring app"), ("drive", "Driving theory app"), ("corp", "Staff training")],
                models: [("sub", "Subscription"), ("once", "One-time purchase")]),
-        Sector(id: "market", name: "Marketplace / Platform", capitalNeed: 2, seed: 600_000, work: 38, canBuildYourself: true, builders: "coders", arpu: 800, growth: 1.3, countsUsers: false,
+        Sector(id: "market", name: "Marketplace / Platform", capitalNeed: 2, seed: 600_000 * unit, work: 38, canBuildYourself: true, builders: "coders", arpu: 800 * unit, growth: 1.3, countsUsers: false,
                products: [("svc", "Booking platform for local services"), ("ride", "Ride and delivery app"), ("food", "Food delivery app"), ("b2b", "Supplier marketplace for businesses")],
                models: [("fee", "Commission per booking"), ("sub", "Subscription for sellers")]),
-        Sector(id: "consumer", name: "Consumer Apps", capitalNeed: 1, seed: 400_000, work: 32, canBuildYourself: true, builders: "coders", arpu: 2000, growth: 2.5, countsUsers: true,
+        Sector(id: "consumer", name: "Consumer Apps", capitalNeed: 1, seed: 400_000 * unit, work: 32, canBuildYourself: true, builders: "coders", arpu: 2000 * unit, growth: 2.5, countsUsers: true,
                products: [("social", "Social media app"), ("ent", "Entertainment app"), ("prod", "Productivity app"), ("life", "Lifestyle app")],
                models: [("ads", "Free with ads"), ("freemium", "Free + premium"), ("paid", "Paid app")]),
-        Sector(id: "clean", name: "CleanTech / ClimateTech", capitalNeed: 4, seed: 15_000_000, work: 80, canBuildYourself: false, builders: "engineers", arpu: 6000, growth: 0.3, countsUsers: false,
+        Sector(id: "clean", name: "CleanTech / ClimateTech", capitalNeed: 4, seed: 15_000_000 * unit, work: 80, canBuildYourself: false, builders: "engineers", arpu: 6000 * unit, growth: 0.3, countsUsers: false,
                products: [("solar", "Solar and storage"), ("ev", "EV charging and fleets"), ("eff", "Energy efficiency"), ("recy", "Recycling")],
                models: [("sale", "Sell the hardware"), ("lease", "Lease / service contract")]),
     ]
