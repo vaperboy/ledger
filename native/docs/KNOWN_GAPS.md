@@ -254,3 +254,11 @@ untouched next to the converted save.
 * **Conversion** is refused for sold/bust companies and for stores of a chain; setup, closed and franchisor companies convert (probed).
 * The conversion fee is the country's `conversionFee` (data, unverified, listed in TAX_SOURCES.md); the share capital is the country minimum.
 * Commission, bonus and overtime employer charges use the wage-weighted on-cost of the real people (`Payroll.averageFactor`, overtime per person).
+
+## Stage 3 employment engine (this pass)
+* **The screens still use the old read models.** `Applicant.claimedSkill/askMonthly/askVersusMarket/trialSkill`, `ContractTalk.Consequences.quitYear*`, `StaffProfile.Profile.skill/skillBand/personality/tiredness/learns/stamina`, `StaffProfile.personalityText`, `Course.maxGain`, `StaffPerks.Reward.skill` and `startTrialWeek`'s Double were REMOVED or replaced by words; the app files must move to `hireSalaryTalk`, `hireDraftOptions`, `quitRisk*`, `Profile.feedback`, `Course.benefit`.
+* Promises are offered for workers, managers, assistants and department heads. Executives, head-office staff and the analyst have no promise kinds, because their jobs have no system a promise could be checked against (no raise, course or perk model); their page 1 carries expectations only.
+* Managers, executives and head-office staff have a fixed full-time post: the working percentage field is 100 only (no hours model for them).
+* Work-log events are simulated outcomes of the weekly staff pass (the same factors that drive the business), drawn from a hash of person and week; late arrivals and complaints come from the existing quarterly tracker. Tasks are about one per five contracted hours.
+* A "salary review" promise counts as kept when their pay for a full week rises by about 2 percent or more.
+* Refusals (hour cuts of 20 percent or more, moves, commission plans) are decided by a stable roll per person, proposal and 8-week period, so the preview cannot show the answer; it only says they may refuse.
