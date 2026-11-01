@@ -102,8 +102,8 @@ struct CompaniesView: View {
             }
             .ledgerBackground()
             .overlay { celebration }
-            .sheet(item: reportBinding) { digest in
-                ReportDigestSheet(digest: digest)
+            .sheet(item: reportBinding) { item in
+                ReportDigestSheet(digest: item.digest)
             }
             .onAppear { store.refreshPending() }
             .navigationTitle("Home")
@@ -115,8 +115,8 @@ struct CompaniesView: View {
     }
 
     /// The report sheet: set by the store after a day closes a period. Dismissing it by any route marks the report read.
-    private var reportBinding: Binding<ReportDigest?> {
-        Binding<ReportDigest?>(get: { store.reportSheet }, set: { newValue in if newValue == nil { store.dismissReportSheet() } })
+    private var reportBinding: Binding<ReportSheetItem?> {
+        Binding<ReportSheetItem?>(get: { store.reportSheet.map { ReportSheetItem(digest: $0) } }, set: { newValue in if newValue == nil { store.dismissReportSheet() } })
     }
 
     /// The reward popup, once the report sheet (if any) has been read.

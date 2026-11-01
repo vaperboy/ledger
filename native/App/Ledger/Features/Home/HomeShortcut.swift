@@ -81,8 +81,10 @@ struct DayChip: Equatable, Identifiable {
     var cashChange: Double
 }
 
-extension ReportDigest: Identifiable {
-    var id: String { kind.rawValue + "-" + String(reportID) }
+/// Sheet item for a report digest (the engine type is not Identifiable).
+struct ReportSheetItem: Identifiable {
+    let digest: ReportDigest
+    var id: String { digest.kind.rawValue + "-" + String(digest.reportID) }
 }
 
 /// Choose up to four shortcuts for Home.
