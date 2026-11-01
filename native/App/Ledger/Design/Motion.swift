@@ -5,9 +5,8 @@ import UIKit
 /// a reward appeared, a segment changed). Every site passes the environment's Reduce Motion flag through here, so the setting is
 /// respected everywhere from one place. Pure functions: no screen state, nothing to keep in step.
 enum Motion {
-    /// Mirrors the system Reduce Motion setting. The root view keeps it current (`RootView`), so `withAnimation` below, which every
-    /// screen already calls, skips its animation when the player asked for less motion.
-    static var reduceFlag = false
+    // Under Reduce Motion the root view drops the animation of every transaction (`RootView`, `.transaction`), so the plain
+    // `withAnimation` calls all over the app need no wrapper of their own.
     /// The ordinary short ease for a state change; nil when Reduce Motion is on.
     static func standard(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeInOut(duration: 0.22) }
     /// A calm spring for something that arrives (the reward popup); nil when Reduce Motion is on.
@@ -16,12 +15,6 @@ enum Motion {
     static func run(_ reduceMotion: Bool, _ body: () -> Void) {
         if reduceMotion { body() } else { SwiftUI.withAnimation(.easeInOut(duration: 0.22), body) }
     }
-}
-
-/// Shadows SwiftUI's `withAnimation` inside the app: the same call, but the change is applied at once when Reduce Motion is on.
-func withAnimation<Result>(_ animation: Animation? = .default, _ body: () throws -> Result) rethrows -> Result {
-    if Motion.reduceFlag { return try body() }
-    return try SwiftUI.withAnimation(animation, body)
 }
 
 /// The one pressed state for rows, cards and chips: a calm dip in opacity while the finger is down (no movement, so a list never
