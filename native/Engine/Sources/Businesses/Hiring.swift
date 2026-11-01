@@ -192,7 +192,7 @@ public enum Hiring {
         let trialCost = jsRound(marketWage(role: n.role, company: s.companies[s.companyIndex(companyID)!], state: s, data: data) / 4)
         guard Payments.companyPays(&s, companyID: companyID, amount: trialCost, category: "wages", label: "Trial week") else { return nil }
         n.set("trial", 1)
-        let seen = WorkLog.trialObservations(person: n, role: n.role, week: s.week &+ Int(s.random.next() * 1000))
+        let seen = WorkLog.trialObservations(person: n, role: n.role, week: s.week &+ Int(s.random.next() * 500))
         n.set("trialObs", .array(seen.map { .string($0.text) }))
         s.people[personID] = n
         return seen

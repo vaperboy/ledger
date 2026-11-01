@@ -63,7 +63,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         let pid = try hireAgent(&e, id, hours: hours)
         // A security-minded person may refuse commission only; pick a seed-independent person by clearing the trait.
         e.update { s, _, _ in
-            s.people[pid]!.set("sec", 0.1)
+            s.people[pid]!.set("sec", 0.1); s.people[pid]!.set("pers", "loyal")   // commission only is a less secure plan: a content, flexible person takes it
+            do { let ci = s.companyIndex(id)!; var st = s.companies[ci].staff; if let k = st.firstIndex(where: { $0.id == pid }) { st[k].happyUntilWeek = s.week + 60; s.companies[ci].staff = st } }
             var flags = s.company(id)!.value("flags"); flags["noquit"] = 1; s.companies[s.companyIndex(id)!].set("flags", flags)
         }
         XCTAssertTrue(e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: mode)).changedTerms, code)
@@ -98,10 +99,11 @@ final class MileageAndCommissionFloorTests: XCTestCase {
 
     /// Commission still accrues with no base: the smoothed commission feeds `commEma` once the seller has sales.
     func testCommissionStillAccruesWithNoBase() throws {
-        var (e, id) = try estate("UK", seed: 3)
+        var (e, id) = try estate("UK", seed: 4)
         let pid = try hireAgent(&e, id)
         e.update { s, _, _ in
-            s.people[pid]!.set("sec", 0.1)
+            s.people[pid]!.set("sec", 0.1); s.people[pid]!.set("pers", "loyal")   // commission only is a less secure plan: a content, flexible person takes it
+            do { let ci = s.companyIndex(id)!; var st = s.companies[ci].staff; if let k = st.firstIndex(where: { $0.id == pid }) { st[k].happyUntilWeek = s.week + 60; s.companies[ci].staff = st } }
             var flags = s.company(id)!.value("flags"); flags["noquit"] = 1; s.companies[s.companyIndex(id)!].set("flags", flags)
             Ledger.move(&s, .company(id), 5_000_000, why: "Test funds")
         }

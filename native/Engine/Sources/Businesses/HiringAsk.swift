@@ -89,11 +89,17 @@ public extension Hiring {
         return basis / reading.factor
     }
 
+    /// What this person opens with in a talk with this company about these terms (their ask on the CV, read for the company and the package), a full-week
+    /// monthly wage. For callers that hire at the ask (company set-up, taking over a rival's staff).
+    static func askInThisTalk(_ n: Person, terms: Terms = Terms(), company co: Company?, state s: GameState, data: GameData) -> Double {
+        n.askingMonthlyWage / talkFactor(person: n, terms: terms, company: co, state: s, data: data)
+    }
+
     /// A fingerprint of everything in the terms that moves the ask, so a talk knows when its standing figures belong to other terms.
     static func termsSignature(_ t: Terms) -> Int {
         // A stable fold (Swift's Hasher is seeded per process).
         var v = 17
-        for x in [Int(t.effectiveHours * 100), t.fixedTermWeeks, t.seasonCount, t.ownCar ? 1 : 0, Int(t.commissionRate * 1000), t.promises.count, t.expenseItems.count,
+        for x in [Int(t.effectiveHours * 100), t.fixedTermWeeks, t.seasonCount, t.ownCar ? 1 : 0, Int(t.commissionRate * 100), t.promises.count, t.expenseItems.count,
                   t.expectations.count, (t.seasonMonths ?? []).reduce(0) { $0 * 13 + $1 }, t.basis == "fix" ? 1 : 2, t.payPlan == nil ? 0 : (t.payPlan == "mix" ? 1 : 2)] { v = v &* 31 &+ x }
         for c in (t.bonusPlan ?? "").unicodeScalars { v = v &* 31 &+ Int(c.value) }
         for k in t.promises { for c in k.kind.rawValue.unicodeScalars { v = v &* 31 &+ Int(c.value) } }
