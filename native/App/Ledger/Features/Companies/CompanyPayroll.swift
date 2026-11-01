@@ -18,7 +18,11 @@ struct CompanyPayroll: View {
         let o = engine.financeOverview(companyID: company.id)
         let due = o.upcoming.filter { $0.id == "pay\(company.id)" || $0.id == "bills\(company.id)" }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            CompanyPayrollRun(engine: engine, company: company)
+            Button { Haptics.tap(); store.openAccounting(companyID: company.id, payroll: true) } label: {
+                CardRow(glyph: Glyph.accounting, title: "Run payroll in Accounting", subtitle: company.name)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("bills-open-accounting-payroll")
             if let info = engine.paydayInfo(companyID: company.id) {
                 paydaySection(info)
             }
