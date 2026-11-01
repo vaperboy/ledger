@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.8",
+          "buildVersion": "8",
+          "date": "2026-11-01T09:30:11Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v8/Ledger-unsigned.ipa",
+          "size": 24941937,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v8 from dc57c56"
+        },
+        {
           "version": "1.0.7",
           "buildVersion": "7",
           "date": "2026-11-01T01:39:51Z",
@@ -46,10 +55,10 @@
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.7",
-      "versionDate": "2026-11-01T01:39:51Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v7/Ledger-unsigned.ipa",
-      "size": 24993611
+      "version": "1.0.8",
+      "versionDate": "2026-11-01T09:30:11Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v8/Ledger-unsigned.ipa",
+      "size": 24941937
     }
   ]
 }
