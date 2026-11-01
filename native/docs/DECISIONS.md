@@ -52,3 +52,9 @@ Files: `native/design/mockups/photos/` (vehicles_a/b, premises_retail/offices/st
 - **Icons**: flat, desaturated, outline-style icons on squircle bases for every Phone app (Bank, Accounting, Inbox, News, Weather, Stats, Goals, World, Luxury, Ventures, Rich list, Reports, Market, Reviews, Achievements, Settings, Airfly/AirStay, Techpro, Atlas, Support).
 - **Buttons and popups**: one game-wide system from the Private Banking mood board (basic/secondary, important gold, expensive gold-foil with amount, popup cards with Cancel | Apply, alert banners), at current phone sizes, not wide, clean.
 - `software_screens.jpg`: reference for what software looks like in the TechPro software category (old ERP vs modern CRM/analytics tiers).
+
+## 1 Nov 2026 (night), popup system answers
+- "Ask before spending" default for new players: step 2 (2,000 at reference level).
+- Always ask even when small: loans, sponsor signings, equity rounds, holding moves, emergency board decisions (as built).
+- Rent/Buy is a real choice popup, always shown.
+- "Your time" is read-only; hours follow from role choices only.
