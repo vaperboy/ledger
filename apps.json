@@ -24,7 +24,7 @@
           "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v9/Ledger-unsigned.ipa",
           "size": 25280863,
           "minOSVersion": "17.0",
-          "localizedDescription": "Build v9 from 226eb8e"
+          "localizedDescription": "What's new\n- Two-page hiring for every hire: contract terms (working percentage, seasonal/temporary, car, promises), then salary (your offer, their ask once they say it, market pay).\n- Promises under Company > Team > Promises, with due dates and consequences.\n- Contract changes show the cost before and after; Reward menu on executives, office staff and the analyst.\n- Hidden scores replaced by words (skill, quit risk, press image, manager scorecard).\n\nMissing / coming next\n- Startups as real companies, share counts, safer business creation (in progress).\n- Home shortcuts, report sheets after day/week/month/year, reward popups, swipe-back (in progress).\n- Typed prices, suppliers in Accounting, chain and franchise application steps.\n- Top Team tab still has two tabs that do the same thing.\n- Not yet hand-tested on a phone beyond what you report."
         },
         {
           "version": "1.0.8",
