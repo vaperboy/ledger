@@ -3,7 +3,7 @@ import SwiftUI
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
-    case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, achievements, settings
+    case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, market, reviews, achievements, settings
     var id: String { rawValue }
 
     var title: String {
@@ -20,6 +20,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .ventures: return "Ventures"
         case .richList: return "Rich list"
         case .reports: return "Reports"
+        case .market: return "Market"
+        case .reviews: return "Reviews"
         case .achievements: return "Achievements"
         case .settings: return "Settings"
         }
@@ -40,6 +42,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .ventures: return Glyph.ventures
         case .richList: return Glyph.richList
         case .reports: return Glyph.reports
+        case .market: return Glyph.market
+        case .reviews: return Glyph.reviewStar
         case .achievements: return Glyph.achievements
         case .settings: return Glyph.settings
         }
@@ -60,6 +64,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .ventures: return "Startups, funds and stakes"
         case .richList: return "Where you stand among the richest"
         case .reports: return "Weekly, monthly and yearly"
+        case .market: return "Your share, rivals and the groups around you"
+        case .reviews: return "What customers say about you and your rivals"
         case .achievements: return "Trophies and awards"
         case .settings: return "How much you decide, saving, haptics"
         }
@@ -82,6 +88,8 @@ extension PhoneApp {
         case .ventures: return Color(hex: 0xB5B07E)
         case .richList: return Color(hex: 0xD0A86F)
         case .reports: return Color(hex: 0xA39BC2)
+        case .market: return Color(hex: 0x9CB8A0)
+        case .reviews: return Color(hex: 0xD9C27E)
         case .achievements: return Color(hex: 0xC9B07A)
         case .settings: return Color(hex: 0xA19B8F)
         }

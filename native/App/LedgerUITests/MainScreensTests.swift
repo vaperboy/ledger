@@ -69,7 +69,7 @@ final class MainScreensTests: TourCase {
             let subpages: [String: [String]] = [
                 "team": ["Find workers"],
                 "manage": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
-                "sales": ["Marketing", "Customers", "Market"],
+                "sales": ["Pricing", "Marketing"],
                 "stats": ["Statements", "Ownership"],
             ]
             for section in ["overview", "team", "manage", "sales", "stats"] {

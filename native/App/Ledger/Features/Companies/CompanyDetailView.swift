@@ -11,12 +11,12 @@ import Simulation
 ///
 /// The company screen (`CompanyDetailView`) shows five of them as its fixed section bar: Overview, Team (`staff`), Manage (`operations`),
 /// Sales (`salesMarket`) and Stats (`finances`). `projects` is the last block of Sales, `holding` is the Team page of a holding company
-/// and `properties` is Premises inside Manage. The rest are pages pushed on top (Marketing, Customers, Market, Setup, Plant, Fish, Club,
-/// Chain, Book): see `isLeaf`.
+/// and `properties` is Premises inside Manage. `customers` is a part of Stats. The rest are pages pushed on top (Pricing, Marketing, Market
+/// (which opens the Phone's Market app), Setup, Plant, Fish, Club, Chain, Book): see `isLeaf`.
 enum CompanySection: String, CaseIterable, Hashable {
     case overview = "Overview", projects = "Projects", staff = "Team", finances = "Stats", operations = "Manage"
     case salesMarket = "Sales"
-    case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
+    case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup", pricing = "Pricing"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
     // Shown only for the trades that have them (energy, salmon farm, holding company, football club)
@@ -42,8 +42,11 @@ enum CompanyTab: String, CaseIterable, Hashable {
     var id: String { rawValue.lowercased() }
 }
 
-/// The parts of Stats: the finance summary and its pages, then how the company performs and what stands out.
-enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", performance = "Performance", insights = "Insights" }
+/// The parts of Stats: the finance summary and its pages, how the company performs, and its customers.
+enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", customers = "Customers" }
+
+/// The parts of Sales: the sales table, and Projects for the companies that take projects (project businesses) only.
+enum SalesPart: String, CaseIterable, Hashable { case sales = "Sales", projects = "Projects" }
 
 /// One company: Overview first (cash, what needs you, who runs it) under a fixed bar of five sections: Overview | Team | Manage | Sales |
 /// Stats. Switching section is in place (the bar never scrolls and there is no "More"); one Back leaves the company. Pages inside a
@@ -55,6 +58,7 @@ struct CompanyDetailView: View {
     var part: String? = nil
     @State private var segment: CompanyTab
     @State private var statsPart: StatsPart = .finances
+    @State private var salesPart: SalesPart = .sales
     @State private var moneyPart: CompanyMoneyPart = .summary
     @State private var opsPart: OpsPart = .setup
     @State private var appliedPart = false
@@ -116,19 +120,34 @@ struct CompanyDetailView: View {
                 CompanyClub(engine: e, company: co)
             }
         case .sales:
-            CompanyOperations(engine: e, company: co, part: $opsPart, mode: .sales)
-            CompanyProjectsPage(engine: e, company: co)
+            salesContent(co, e)
         case .stats:
-            SegmentedPill(items: StatsPart.allCases, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
+            // A holding company sells to no one: no Customers part.
+            let parts: [StatsPart] = co.type == "hold" ? [.finances] : StatsPart.allCases
+            if parts.count > 1 {
+                SegmentedPill(items: parts, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
+            }
             switch statsPart {
             case .finances:
                 CompanyMoney(engine: e, company: co, part: $moneyPart)
                 CompanyMorePages(engine: e, company: co, pages: [.book])
-            case .performance:
-                CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, mode: .performance)
-            case .insights:
-                CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, mode: .insights)
+            case .customers:
+                CompanyCustomers(engine: e, company: co)
             }
+        }
+    }
+
+    /// Sales & Market: the sales table; project businesses also get a Projects part (nobody else has projects of their own).
+    @ViewBuilder private func salesContent(_ co: Company, _ e: GameEngine) -> some View {
+        if Self.hasProjects(co, e) {
+            SegmentedPill(items: SalesPart.allCases, title: { $0.rawValue }, selection: $salesPart, identifier: { "sales-part-" + $0.rawValue.lowercased() })
+            if salesPart == .projects {
+                CompanyProjectsPage(engine: e, company: co)
+            } else {
+                CompanySales(engine: e, company: co, part: $opsPart)
+            }
+        } else {
+            CompanySales(engine: e, company: co, part: $opsPart)
         }
     }
 
@@ -139,6 +158,7 @@ struct CompanyDetailView: View {
         guard let part else { return }
         if let m = CompanyMoneyPart(rawValue: part) { moneyPart = m }
         if let o = OpsPart(rawValue: part) { opsPart = o }
+        if let sp = StatsPart(rawValue: part) { statsPart = sp }
     }
 
     /// The `section` the shared Overview and Setup views change to jump elsewhere: a section of this screen switches the bar in place; a
@@ -148,7 +168,7 @@ struct CompanyDetailView: View {
             get: { .overview },
             set: { new in
                 if let t = Self.tab(for: new, co, e) {
-                    if t == .stats { statsPart = .finances }
+                    if t == .stats { statsPart = new == .customers ? .customers : .finances }
                     withAnimation(.snappy(duration: 0.2)) { segment = t }
                 } else {
                     store.openCompany(companyID, section: new)
@@ -186,7 +206,7 @@ struct CompanyDetailView: View {
     /// A page that is its own pushed screen, not a section of the bar.
     static func isLeaf(_ s: CompanySection) -> Bool {
         switch s {
-        case .marketing, .customers, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
+        case .marketing, .pricing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
         default: return false
         }
     }
@@ -201,9 +221,14 @@ struct CompanyDetailView: View {
         case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
         case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
         case .salesMarket, .projects: return a.contains(.operations) ? .sales : .overview
-        case .finances: return .stats
+        case .finances, .customers: return .stats
         default: return nil
         }
+    }
+
+    /// True for the companies that take projects (project businesses): the only ones with a Projects part under Sales.
+    static func hasProjects(_ co: Company, _ e: GameEngine) -> Bool {
+        availableSections(co, e).contains(.projects)
     }
 
     /// The sections this company has (by family, status and type). Shared with the Overview so links only point at real sections.

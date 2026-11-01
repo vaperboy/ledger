@@ -156,7 +156,7 @@ extension PhoneApp {
         case .bank: return ownBankIsMain ? nil : .forest
         case .accounting: return .forest
         case .inbox: return .inbox
-        case .stats, .goals, .reports, .achievements, .settings: return nil
+        case .stats, .goals, .reports, .market, .reviews, .achievements, .settings: return nil
         }
     }
 }

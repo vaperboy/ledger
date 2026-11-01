@@ -38,6 +38,35 @@ public enum Development {
                   Project(id: "offer", name: "A new offer for customers", text: "More customers: about +4% demand", kind: "dem", size: 0.04, weeks: 12, share: 0.03)],
     ]
 
+    // MARK: Named for the trade
+
+    /// Trade families whose projects are written for the trade (a menu, a service line, a product range). The other families that still
+    /// have projects (project businesses, logistics) only have generic ones ("better processes"), which the screens do not offer.
+    public static let specificFamilies: Set<String> = ["prod", "venue", "retail", "svc"]
+
+    /// What a trade develops, singular, by trade; a trade not listed uses its family's noun (`familyNouns`).
+    static let tradeNouns: [String: String] = [
+        "foodtruck": "menu item", "cafe": "menu item", "restaurant": "menu item", "nightclub": "event night", "gym": "class", "hotel": "guest package",
+        "casino": "game", "fun": "attraction", "skires": "attraction", "indoorski": "attraction", "pcbang": "game offer",
+        "kiosk": "range", "boutique": "collection", "webshop": "product range", "grocery": "product range", "hardware": "product range", "cardealer": "brand",
+        "bakery": "bake", "brewery": "beer", "furniture": "furniture range", "salmon": "product line", "factory": "product line", "farm": "crop", "vineyard": "wine",
+        "tutor": "course", "law": "practice area", "dental": "treatment", "physio": "treatment", "barber": "service", "photo": "package", "cleaning": "service",
+        "webdev": "service", "mktg": "service", "acctfirm": "service", "gamestudio": "game", "security": "service", "staffing": "service line",
+    ]
+    static let familyNouns: [String: String] = ["prod": "product line", "venue": "menu item", "retail": "product range", "svc": "service line"]
+
+    /// True when this company's trade has development projects written for it (see `specificFamilies`).
+    public static func isSpecific(_ co: Company, data: GameData) -> Bool {
+        guard let bd = data.catalog[co.type] else { return false }
+        return specificFamilies.contains(bd.family) && !projects(for: co, data: data).isEmpty
+    }
+
+    /// The thing this trade develops, for its heading ("menu item", "service line", "product range"); nil where nothing specific exists.
+    public static func noun(for co: Company, data: GameData) -> String? {
+        guard isSpecific(co, data: data), let bd = data.catalog[co.type] else { return nil }
+        return tradeNouns[co.type] ?? familyNouns[bd.family]
+    }
+
     public enum StartResult: Equatable, Sendable { case ok, notPossible, busy, recent, notEnoughCash }
 
     /// The projects a company can run (none for finance, energy, rental, clubs and holdings).

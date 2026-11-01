@@ -18,13 +18,12 @@ struct CompanyMarketing: View {
         let mkt: JSONValue = company.value("mkt")
         let channels: [MarketingChannel] = engine.marketingChannels(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            header(cur: cur, mkt: mkt, channels: channels)
+            header(cur: cur, mkt: mkt)
             if channels.isEmpty {
                 Text("No marketing channels are open to this business yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
             } else {
                 channelTable(channels, cur: cur, mkt: mkt)
             }
-            CompanyWaysToSell(engine: engine, company: company)
         }
         .sheet(item: $open) { (o: OpenChannel) in channelSheet(o.id, cur: cur) }
     }
@@ -53,25 +52,17 @@ struct CompanyMarketing: View {
         }
     }
 
-    private func header(cur: Currency, mkt: JSONValue, channels: [MarketingChannel]) -> some View {
+    /// How well known the company is, in words (`StandingWords.awareness`), and what the campaigns cost a week.
+    private func header(cur: Currency, mkt: JSONValue) -> some View {
         let spend: Double = mkt.object.values.reduce(0) { $0 + $1["b"].double }
-        let running: Int = channels.filter { (c: MarketingChannel) -> Bool in
-            let m: JSONValue = mkt[c.id]
-            return !m.isNull && m["b"].double > 0
-        }.count
         let spendText: String = spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns"
-        let plural: String = running == 1 ? "" : "s"
         return VStack(alignment: .leading, spacing: 6) {
             Text("AWARENESS").capsLabel()
             Card {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("\(Int(company.awareness.rounded()))%").font(.hero(34)).foregroundStyle(Theme.ivory)
-                        Spacer()
-                        Chip(text: spendText, tint: spend > 0 ? Theme.gold : Theme.ivoryMuted)
-                    }
-                    Text("People who know about you. \(running) campaign\(plural) running.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    Text("Marketing builds awareness, which fades every week. Results vary: some channels pay off well, some do little.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(StandingWords.awareness(company.awareness)).font(.hero(30)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.7).lineLimit(1)
+                    Spacer()
+                    Chip(text: spendText, tint: spend > 0 ? Theme.gold : Theme.ivoryMuted)
                 }
             }
         }

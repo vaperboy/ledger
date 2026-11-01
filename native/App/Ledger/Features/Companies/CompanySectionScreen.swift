@@ -39,7 +39,7 @@ struct CompanySectionScreen: View {
                                 section: Binding<CompanySection>(get: { .setup }, set: { store.openCompany(companyID, section: $0) }),
                                 moneyPart: $moneyPart)
         case .marketing: CompanyMarketing(engine: e, company: co)
-        case .customers: CompanyCustomers(engine: e, company: co)
+        case .pricing: CompanyPricing(engine: e, company: co)
         case .market: CompanyMarket(engine: e, company: co)
         case .book: CompanyFinanceBook(engine: e, company: co)
         case .energy: CompanyEnergy(engine: e, company: co)
@@ -82,8 +82,8 @@ struct CompanyMorePages: View {
     }
 }
 
-/// Projects of one company, for every company: the last block of Sales. A project business shows its running jobs and developments with
-/// their stages and its order book (jobs, tenders, developments); any other business has no projects of its own, and says so.
+/// Projects of one project business (builders, developers, event firms): its running jobs and developments with their stages, and its order
+/// book (jobs, tenders, developments). It is the Projects part of Sales and only exists for those companies (`CompanyDetailView.hasProjects`).
 struct CompanyProjectsPage: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -93,16 +93,7 @@ struct CompanyProjectsPage: View {
         let lines: [ProjectTimeline] = engine.projectTimelines().filter { $0.companyID == company.id }
         let running: [ProjectTimeline] = lines.filter { $0.kind == .job || $0.kind == .event || $0.kind == .development }
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Projects").capsLabel()
-            if engine.projectBoard(companyID: company.id) == nil {
-                Card(padding: 14, radius: Theme.Radius.card) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("No projects").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text("\(company.name) does not run projects. Jobs, tenders and developments belong to project businesses such as builders, developers and event firms. Your own investments and startups are under Projects in the tab bar.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            } else {
+            if engine.projectBoard(companyID: company.id) != nil {
                 if running.isEmpty {
                     Card(padding: 12, radius: Theme.Radius.row) {
                         Text("Nothing running at the moment.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)

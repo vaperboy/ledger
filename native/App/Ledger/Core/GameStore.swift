@@ -42,6 +42,10 @@ enum AppRequest: Equatable {
     case report(ReportRef)
     /// Accounting on one company (its Payroll page when `payroll` is true).
     case accounting(companyID: Int, payroll: Bool)
+    /// The Market app on one company (0 = all markets).
+    case market(companyID: Int)
+    /// The Reviews app on one company.
+    case reviews(companyID: Int)
 }
 
 struct Toast: Identifiable, Equatable {
@@ -232,6 +236,11 @@ final class GameStore: ObservableObject {
     /// stacked twice: a link to it goes back to it. When a link's screen is popped the player returns to where the link came from.
     func setPath(_ new: [CompanyRoute], for tab: AppTab) {
         let old = path(for: tab)
+        // A link to the Market route (a deep link, a stored route) opens the Market app of the Phone instead of a page on this stack.
+        if new.count == old.count + 1, new.last == .market {
+            openMarket()
+            return
+        }
         var next = new
         if new.count == old.count + 1, let last = new.last {
             next = Self.collapse(old, pushing: last)
@@ -270,6 +279,7 @@ final class GameStore: ObservableObject {
     /// Pushes `route` on the stack of a tab: the one the player is on by default (a company opened from Team stays on Team, so Back
     /// returns to Team).
     func push(_ route: CompanyRoute, on target: AppTab? = nil) {
+        if route == .market { openMarket(); return }
         let t = target ?? tab
         if t == .phone { setPhonePath(phonePath + [.company(route)]) } else { setPath(path(for: t) + [route], for: t) }
     }
@@ -277,6 +287,8 @@ final class GameStore: ObservableObject {
     /// The one way to open a company (or one of its screens) from anywhere: pushed onto the stack of the tab the player is on, so Back
     /// returns to the screen they came from. A link to a company screen that is already on the stack goes back to it.
     func openCompany(_ id: Int, section: CompanySection? = nil, part: String? = nil) {
+        // The Market is a Phone app: a link to a company's market opens it with that company chosen.
+        if section == .market { openMarket(companyID: id); return }
         let route = CompanyRoute.make(id, section, part)
         let target = tab
         // One turn later: a screen that opens a company and then closes itself (a finished form) must pop before the push lands.
@@ -371,6 +383,16 @@ final class GameStore: ObservableObject {
         openApp(.accounting, request: .accounting(companyID: companyID, payroll: payroll))
     }
 
+    /// Opens the Market app (the Phone), on one company when `companyID` is given, else on all markets.
+    func openMarket(companyID: Int? = nil) {
+        openApp(.market, request: .market(companyID: companyID ?? 0))
+    }
+
+    /// Opens the Reviews app on one company.
+    func openReviews(companyID: Int) {
+        openApp(.reviews, request: .reviews(companyID: companyID))
+    }
+
     /// Opens one message in the Inbox app.
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
 
@@ -392,6 +414,16 @@ final class GameStore: ObservableObject {
         guard case .accounting(let id, let payroll)? = appRequest else { return nil }
         appRequest = nil
         return (id, payroll)
+    }
+    func takeMarketRequest() -> Int? {
+        guard case .market(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
+    }
+    func takeReviewsRequest() -> Int? {
+        guard case .reviews(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
     }
     func takeReportRequest() -> ReportRef? {
         guard case .report(let r)? = appRequest else { return nil }

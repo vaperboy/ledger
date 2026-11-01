@@ -200,6 +200,11 @@ struct PhoneAppScreen: View {
             RichListView()
         case .reports:
             ReportsScreen()
+        case .market:
+            // The Market app draws its own header, with the business selector under it.
+            MarketApp()
+        case .reviews:
+            ReviewsApp()
         case .settings:
             SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
         }

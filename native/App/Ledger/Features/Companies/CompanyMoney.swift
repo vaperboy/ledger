@@ -70,7 +70,8 @@ struct MoneyPageDestination: View {
 
 // MARK: Summary
 
-/// Read-only: cash, profit, what falls due, tax and VAT owed, costs, margins, ownership and sale value.
+/// Read-only: where the money goes and the margins under it, what is owed, then ownership and legal form. Cash is on the Overview, what is
+/// coming up is in the Bank and Accounting, and the reports are in the Reports app.
 struct CompanyMoneySummary: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -81,12 +82,11 @@ struct CompanyMoneySummary: View {
         let cur = engine.currency(for: company)
         let o = engine.financeOverview(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            CompanyPaymentStress(engine: engine, company: company)
-            CompanyStatsFigures(engine: engine, company: company)
-            settingsTable(cur, o)
+            CompanyStatsFigures(engine: engine, company: company, block: .spending)
             owedCard(cur, o)
-            comingUp(cur, o)
-            lastWeekReport(cur)
+            CompanyPaymentStress(engine: engine, company: company)
+            settingsTable(cur, o)
+            CompanyStatsFigures(engine: engine, company: company, block: .legal)
         }
     }
 
@@ -117,43 +117,6 @@ struct CompanyMoneySummary: View {
         let sub: String = loans.isEmpty ? "No loans" : "\(loans.count) \(loans.count == 1 ? "loan" : "loans") · \(cur.tidyShort(monthly)) a month"
         return VStack(alignment: .leading, spacing: 8) {
             FlatRow(label: "Loans", value: cur.tidyShort(debt), sub: sub, rule: true)
-        }
-    }
-
-    @ViewBuilder private func comingUp(_ cur: Currency, _ o: FinanceOverview) -> some View {
-        if !o.upcoming.isEmpty {
-            CardSection("Coming up") {
-                VStack(spacing: 0) {
-                    ForEach(Array(o.upcoming.prefix(4).enumerated()), id: \.element.id) { n, u in
-                        FlatRow(label: u.title, value: cur.tidyShort(u.amount), sub: u.detail + " · " + u.dateText, rule: n > 0)
-                    }
-                }
-            }
-        }
-    }
-
-    /// The company's last closed week in a few lines, with a link to all its weekly, monthly and yearly reports.
-    @ViewBuilder private func lastWeekReport(_ cur: Currency) -> some View {
-        let last = engine.latestReport(.week)?.filtered(to: company.id)
-        CardSection(title: "Reports", trailing: {
-            NavigationLink { ReportsScreen(companyID: company.id) } label: {
-                Text("Week, month, year  →").font(.system(size: 12)).foregroundStyle(Theme.gold)
-            }.buttonStyle(.plain)
-        }) {
-            if let r = last {
-                let net: Double = r.group.pnl.netProfit
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(cur.tidyShort(net)).font(.hero(26)).foregroundStyle(net < 0 ? Theme.loss : Theme.ivory)
-                        Text("profit · " + r.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    if let s = ReportSummary.sentences(r, currency: cur).first {
-                        Text(s).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            } else {
-                Text("The first report arrives when this company has been through a full week.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-            }
         }
     }
 

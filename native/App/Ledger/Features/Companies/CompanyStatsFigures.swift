@@ -6,14 +6,18 @@ import Finance
 import Businesses
 import Simulation
 
-/// The company's own figures on Stats (Master spec 2H): CASH first (one cash figure, with what payroll and tax will already need), then the result of
-/// the period with the costs from the real books, then the legal and ownership facts. All from `companyOverviewStats`, so Overview and Stats read the
-/// same numbers and cash is not repeated further down the page.
+/// The company's own figures on Stats > Finances (Master spec 2H): where the money goes first (the total in the box, no title), the margins
+/// box right under it (no title), and later the legal and ownership facts. Cash is not repeated here (it is on the Overview). All from
+/// `companyOverviewStats`, so Overview and Stats read the same numbers.
 struct CompanyStatsFigures: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    /// `spending` = where the money goes and the margins under it; `legal` = legal form and ownership.
+    var block: Block = .spending
     @State private var period: StatsPeriod = .year
+
+    enum Block { case spending, legal }
 
     enum StatsPeriod: String, CaseIterable, Hashable {
         case month = "This month", year = "This year"
@@ -25,39 +29,19 @@ struct CompanyStatsFigures: View {
     var body: some View {
         let cur: Currency = engine.currency(for: company)
         if let s = engine.companyOverviewStats(companyID: company.id, period: period.kind) {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                cashCard(s, cur)
-                resultCard(s, cur)
-                expensesCard(s, cur)
+            switch block {
+            case .spending:
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    expensesCard(s, cur)
+                    resultCard(s, cur)
+                }
+            case .legal:
                 legalCard(s, cur)
             }
         }
     }
 
-    // MARK: Cash first
-
-    private func cashCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        let h = engine.companyHealth(company)
-        let runway: String = h.runwayWeeks != nil ? "At the current rate of loss the cash lasts \(RunwayText.of(h))." : (s.runwayWeeks.map { String(format: "About %.0f weeks of costs in the bank.", $0) } ?? "")
-        let runwayTint: Color = h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryFaint
-        let cashTint: Color = s.cash < 0 ? Theme.loss : Theme.ivory
-        let freeTint: Color = s.reserves.free < 0 ? Theme.loss : Theme.ivory
-        let cells: [StatStrip.Cell] = [
-            .init(label: "Payroll reserve", value: cur.tidyShort(s.reserves.payroll)),
-            .init(label: "Tax reserve", value: cur.tidyShort(s.reserves.tax)),
-            .init(label: "Free to use", value: cur.tidyShort(s.reserves.free), tint: freeTint),
-        ]
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Company cash").capsLabel()
-                Text(cur.tidyDisplay(s.cash)).font(.hero(34)).foregroundStyle(cashTint).minimumScaleFactor(0.6).lineLimit(1)
-                if !runway.isEmpty { Text(runway).font(.system(size: 12)).foregroundStyle(runwayTint).fixedSize(horizontal: false, vertical: true) }
-                StatStrip(cells: cells)
-            }
-        }
-    }
-
-    // MARK: Result of the period
+    // MARK: Margins (no title)
 
     private func resultCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
         let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ivory
@@ -69,55 +53,64 @@ struct CompanyStatsFigures: View {
             .init(label: "Profit", value: cur.tidyShort(s.profit), tint: profitTint),
             .init(label: "Margin", value: marginText, tint: marginTint),
         ]
-        return CardSection(title: "Result", trailing: {
-            SegmentedPill(items: StatsPeriod.allCases, title: { $0.rawValue }, selection: $period, identifier: { "stats-period-" + $0.kindName })
-                .frame(width: 210)
-        }) {
-            StatStrip(cells: cells, ruled: false)
-            if s.taxBooked > 0.5 {
-                FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
-            }
-            if s.loansOwed > 0.5 {
-                FlatRow(label: "Loans owed", value: cur.tidyShort(s.loansOwed), sub: s.guaranteedLoans > 0.5 ? cur.tidyShort(s.guaranteedLoans) + " guaranteed by you" : "")
+        return Card(padding: 14, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                StatStrip(cells: cells, ruled: false)
+                if s.taxBooked > 0.5 {
+                    FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
+                }
+                if s.loansOwed > 0.5 {
+                    FlatRow(label: "Loans owed", value: cur.tidyShort(s.loansOwed), sub: s.guaranteedLoans > 0.5 ? cur.tidyShort(s.guaranteedLoans) + " guaranteed by you" : "")
+                }
             }
         }
     }
 
-    // MARK: Costs from the books
+    // MARK: Where the money goes (no title): the total, the period, the split from the books
 
-    @ViewBuilder private func expensesCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        CardSection(title: "Where the money goes", trailing: {
-            Text(s.period + " " + cur.tidyShort(s.operatingExpenses)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-        }) {
-            if s.expenses.isEmpty {
-                Text("No costs booked in this period yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-            } else {
-                VStack(spacing: Theme.Space.m) {
-                    HStack(spacing: Theme.Space.l) {
-                        Chart(s.expenses) { l in
-                            SectorMark(angle: .value("Amount", l.amount), innerRadius: .ratio(0.64), angularInset: 1.5)
-                                .foregroundStyle(by: .value("Cost", l.label))
-                                .cornerRadius(3)
-                        }
-                        .chartLegend(.hidden)
-                        .chartForegroundStyleScale(range: Self.palette)
-                        .frame(width: 112, height: 112)
-                        .accessibilityHidden(true)
-                        VStack(spacing: 7) {
-                            ForEach(Array(s.expenses.prefix(5).enumerated()), id: \.offset) { i, l in
-                                HStack(spacing: 6) {
-                                    Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
-                                    Text(l.label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                                    Spacer(minLength: 4)
-                                    Text("\(Int((l.share * 100).rounded()))%").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
-                                }
+    private func expensesCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(alignment: .center) {
+                    Text(cur.tidyDisplay(s.operatingExpenses)).font(.hero(28)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Spacer(minLength: 8)
+                    SegmentedPill(items: StatsPeriod.allCases, title: { $0.rawValue }, selection: $period, identifier: { "stats-period-" + $0.kindName })
+                        .frame(width: 210)
+                }
+                spendingSplit(s, cur)
+            }
+        }
+    }
+
+    @ViewBuilder private func spendingSplit(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
+        if s.expenses.isEmpty {
+            Text("No costs booked in this period yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+        } else {
+            VStack(spacing: Theme.Space.m) {
+                HStack(spacing: Theme.Space.l) {
+                    Chart(s.expenses) { l in
+                        SectorMark(angle: .value("Amount", l.amount), innerRadius: .ratio(0.64), angularInset: 1.5)
+                            .foregroundStyle(by: .value("Cost", l.label))
+                            .cornerRadius(3)
+                    }
+                    .chartLegend(.hidden)
+                    .chartForegroundStyleScale(range: Self.palette)
+                    .frame(width: 112, height: 112)
+                    .accessibilityHidden(true)
+                    VStack(spacing: 7) {
+                        ForEach(Array(s.expenses.prefix(5).enumerated()), id: \.offset) { i, l in
+                            HStack(spacing: 6) {
+                                Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
+                                Text(l.label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text("\(Int((l.share * 100).rounded()))%").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
                             }
                         }
                     }
-                    VStack(spacing: 0) {
-                        ForEach(Array(s.expenses.enumerated()), id: \.element.id) { n, l in
-                            FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0)
-                        }
+                }
+                VStack(spacing: 0) {
+                    ForEach(Array(s.expenses.enumerated()), id: \.element.id) { n, l in
+                        FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0)
                     }
                 }
             }

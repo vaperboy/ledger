@@ -8,14 +8,9 @@ import Simulation
 
 // MARK: Overview
 
-/// What the shared Overview views show: the Overview screen itself (cash, what needs you, who runs it), or the Performance and Insights
-/// parts that live under Stats.
-enum OverviewMode { case overview, performance, insights }
-
-/// One company at a glance, the same template for every trade, in the new look. Scan order: the profit hero with the key figures,
-/// what needs the owner (warning cards), what is going on (each finding links to the tab that changes it), last week, the trend, and
-/// who runs it. Families with a model of their own (energy, fish, property, finance, club, holding) keep this summary and do their
-/// detailed work in their own section, reached from More.
+/// One company at a glance, the same template for every trade, in the new look. Scan order: the cash hero with the key figures, what
+/// needs the owner (warning cards), last week, and revenue and profit by month. Families with a model of their own (energy, fish,
+/// property, finance, club, holding) keep this summary and do their detailed work in their own section.
 struct CompanyOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -23,7 +18,6 @@ struct CompanyOverview: View {
     @Binding var section: CompanySection
     @Binding var moneyPart: CompanyMoneyPart
     @State private var months = 12
-    var mode: OverviewMode = .overview
     /// Energy, fish, holding and club have their own section instead of the customers-and-capacity picture.
     private var isSpecial: Bool { engine.tradeInfo(companyID: company.id).map { SpecialFamilies.handles($0) } ?? false }
 
@@ -31,17 +25,10 @@ struct CompanyOverview: View {
         let co = company
         let h = engine.companyHealth(co)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            switch mode {
-            case .overview:
-                hero(co, h)
-                needsYou(co)
-                whoRunsIt(co)
-            case .performance:
-                if co.status == .open && !isSpecial { operations(co, h) }
-                performance(co, h)
-            case .insights:
-                diagnosis(co)
-            }
+            hero(co, h)
+            needsYou(co)
+            if co.status == .open && !isSpecial { operations(co, h) }
+            performance(co, h)
         }
     }
 
@@ -159,97 +146,15 @@ struct CompanyOverview: View {
         }
     }
 
-    // 3. Who runs it day to day, with what authority, and where that is changed
-    @ViewBuilder private func whoRunsIt(_ co: Company) -> some View {
-        if co.status.isLive && co.type != "hold" {
-            let chain = engine.decisionChain(companyID: co.id)
-            let trade = engine.tradeInfo(companyID: co.id)
-            let hasTeam: Bool = CompanyDetailView.availableSections(co, engine).contains(.staff)
-            let wageTotal: Double = co.staff.reduce(0) { $0 + $1.monthlyWage }
-            let wages: String = co.staff.isEmpty ? "" : " · " + store.short(wageTotal, in: co) + " a month in wages"
-            let title: String = chain.first?.name ?? (co.ownerHours > 0 ? "You" : "No one")
-            let sub: String = runsItSubtitle(co, chain, trade)
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Who runs it").capsLabel()
-                Button { go(.staff) } label: {
-                    CardRow(glyph: Glyph.person, title: title, subtitle: sub + wages, value: co.staff.count.peopleText, chevron: hasTeam)
-                }.buttonStyle(.plain).disabled(!hasTeam).accessibilityIdentifier("overview-who-runs-it")
-            }
-        }
-    }
-
-    private func runsItSubtitle(_ co: Company, _ chain: [ManagerModel.Boss], _ trade: Trade?) -> String {
-        if let boss = chain.first {
-            let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-            return GameEngine.bossTitle(boss.kind, trade: trade) + " · " + lvl
-        }
-        if co.ownerHours > 0 { return "\(Int(co.ownerHours.rounded())) h a week yourself" }
-        return "Hire a manager or put in hours under Operations"
-    }
-
-    // 4. Why, and where to act: findings from the company's own numbers, each with a way to the tab that changes it
-    private func diagnosis(_ co: Company) -> some View {
-        // "Needs you" already lists missing paperwork: do not show the same finding twice.
-        let paperShown = staffMatters(co).contains { $0.kind == .paperwork }
-        let items = Array(engine.insights(for: co, limit: 6).filter { !(paperShown && $0.id == "paper") }.prefix(5))
-        let available = CompanyDetailView.availableSections(company, engine)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("What is going on").capsLabel()
-            Card(padding: 0, radius: Theme.Radius.card) {
-                VStack(spacing: 0) {
-                    if items.isEmpty { Text("Nothing stands out yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(14) }
-                    ForEach(Array(items.enumerated()), id: \.element.id) { n, i in
-                        let linked: CompanySection? = i.section.flatMap { CompanySection(key: $0) }
-                        let target: CompanySection? = linked.flatMap { available.contains($0) ? $0 : nil }
-                        let raw: Color = Theme.tone(i.tone.rawValue)
-                        let toneColor: Color = raw == Theme.ivoryMuted ? Theme.gold : raw
-                        if n > 0 { Rectangle().fill(Theme.divider).frame(height: 1) }
-                        insightRow(i.text.tidyMoney, glyph: Self.glyph(for: target), tint: toneColor, target: target)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func insightRow(_ text: String, glyph: String, tint: Color, target: CompanySection?) -> some View {
-        let content = HStack(alignment: .center, spacing: 12) {
-            IconCircle(glyph: glyph, size: 32, tint: tint)
-            Text(text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 4)
-            if let target {
-                Text(target.shortTitle).font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize()
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        if let target {
-            Button { go(target) } label: { content }.buttonStyle(.plain).accessibilityHint("Opens \(target.shortTitle)")
-        } else {
-            content
-        }
-    }
-
-    private static func glyph(for s: CompanySection?) -> String {
-        guard let s else { return Glyph.stats }
-        switch s {
-        case .staff: return Glyph.team
-        case .finances, .book: return Glyph.bank
-        case .operations, .energy, .salmon: return Glyph.stats
-        case .marketing, .customers, .market: return Glyph.market
-        case .setup: return Glyph.reports
-        default: return Glyph.group
-        }
-    }
-
-    // 5. The operating picture: what limits sales, and how customers see the place
+    // 3. Last week: what limited sales, and how customers see the place
     private func operations(_ co: Company, _ h: CompanyHealth) -> some View {
         let turnedAway: Bool = h.demandCoverage > 1.05
         let note: String? = h.bottleneck.map { b in
             turnedAway ? "Limited by \(b.lowercased()) · turning customers away." : "Spare room: demand, not \(b.lowercased()), limits sales."
         }
         let cells: [StatStrip.Cell] = [
-            .init(label: "Rating", value: String(format: "%.1f / 5", h.rating)),
-            .init(label: "Reputation", value: "\(Int(co.reputation.rounded()))"),
+            .init(label: "Rating", value: StandingWords.ratingText(h.rating)),
+            .init(label: "Reputation", value: StandingWords.reputation(co.reputation)),
             .init(label: "Quality", value: "\(Int(co.quality.rounded()))"),
         ]
         let capTint: Color = h.capacityUse > 0.95 ? Theme.caution : Theme.gold
@@ -265,7 +170,11 @@ struct CompanyOverview: View {
                 VStack(alignment: .leading, spacing: 10) {
                     RateBar(label: "Capacity used", fraction: h.capacityUse, tint: capTint)
                     RateBar(label: "Demand met", fraction: demandFraction, tint: demandTint)
-                    RateBar(label: "Awareness", fraction: co.awareness / 100, tint: Theme.gold)
+                    HStack {
+                        Text("Awareness").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Spacer()
+                        Text(StandingWords.awareness(co.awareness)).font(.system(size: 12)).foregroundStyle(Theme.ivory)
+                    }
                     if let note {
                         Text(note).font(.system(size: 11.5)).foregroundStyle(turnedAway ? Theme.caution : Theme.ivoryMuted)
                     }
@@ -275,7 +184,7 @@ struct CompanyOverview: View {
         }
     }
 
-    // 6. The trend behind the figures
+    // 4. The trend behind the figures
     private func performance(_ co: Company, _ h: CompanyHealth) -> some View {
         let rev = Array(h.revenueSeries.suffix(months)), prof = Array(h.profitSeries.suffix(months))
         let monthsBinding = Binding<Int>(get: { months }, set: { months = $0 })
