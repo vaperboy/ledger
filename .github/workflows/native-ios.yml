@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ native-swiftui ]
-    paths: [ 'native/**', '.github/workflows/native-ios.yml' ]
+    paths: [ 'native/**', '!native/docs/**', '!native/design/**' ]
   pull_request:
-    paths: [ 'native/**', '.github/workflows/native-ios.yml' ]
+    paths: [ 'native/**', '!native/docs/**', '!native/design/**', '.github/workflows/native-ios.yml' ]
 
 permissions:
   contents: write
@@ -92,13 +92,28 @@ jobs:
           grep -E "warning:" build.log | grep "/native/App/" | sort -u | head -30 || true
           tail -n 3 build.log
 
-  # Ready-to-install build of the current UI: made after the app compiles and before the screenshots are taken.
-  # Download "Ledger-unsigned-ipa" from the run's artifacts and sign it with Sideloadly/AltStore (native/docs/SIDELOAD.md).
-  ipa:
+  # When the app compiles on a push to native-swiftui, publish it straight to AltStore: unsigned IPA as a GitHub Release
+  # and a new entry in apps.json (AltStore source). Engine tests run beside it and are evidence, not a gate.
+  # Version = latest version in apps.json + 1, so it always rises. Notes come from RELEASE_NOTES.md.
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/native-swiftui'
     runs-on: macos-15
     needs: app-build
+    concurrency:
+      group: ipa-release
+      cancel-in-progress: false
+    env:
+      BUNDLE_ID: com.example.ledger
+      SOURCE_BRANCH: native-swiftui
     steps:
       - uses: actions/checkout@v4
+      - name: Next version number
+        id: ver
+        run: |
+          git fetch origin "$SOURCE_BRANCH"
+          N=$(git show "origin/$SOURCE_BRANCH:apps.json" | python3 -c "import json,sys,re; d=json.load(sys.stdin); v=[int(x['version'].split('.')[-1]) for a in d.get('apps',[]) for x in a.get('versions',[])]; print(max(v+[0])+1)")
+          echo "n=$N" >> "$GITHUB_OUTPUT"
+          echo "Publishing 1.0.$N"
       - name: Use the newest installed Xcode
         run: |
           X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
@@ -114,6 +129,7 @@ jobs:
           set -o pipefail
           xcodebuild build -project Ledger.xcodeproj -scheme Ledger -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath $RUNNER_TEMP/dd \
+            MARKETING_VERSION=1.0.${{ steps.ver.outputs.n }} CURRENT_PROJECT_VERSION=${{ steps.ver.outputs.n }} \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 30
       - name: Package the IPA
         run: |
@@ -122,97 +138,83 @@ jobs:
           mkdir -p $RUNNER_TEMP/ipa/Payload
           cp -R "$APP" $RUNNER_TEMP/ipa/Payload/
           (cd $RUNNER_TEMP/ipa && zip -qry Ledger-unsigned.ipa Payload)
-          ls -l $RUNNER_TEMP/ipa/Ledger-unsigned.ipa
-      - uses: actions/upload-artifact@v4
+      - name: Check the app's version and bundle id match the AltStore entry
+        run: |
+          P="$RUNNER_TEMP/ipa/Payload/Ledger.app/Info.plist"
+          test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$P")" = "1.0.${{ steps.ver.outputs.n }}"
+          test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$P")" = "${{ steps.ver.outputs.n }}"
+          test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$P")" = "$BUNDLE_ID"
+      - name: Publish a GitHub Release with the IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.ver.outputs.n }}
+        run: |
+          gh release create "$TAG" "$RUNNER_TEMP/ipa/Ledger-unsigned.ipa" \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Ledger build $TAG" --notes-file RELEASE_NOTES.md --latest
+      - name: Check out the AltStore source branch
+        uses: actions/checkout@v4
         with:
-          name: Ledger-unsigned-ipa
-          path: ${{ runner.temp }}/ipa/Ledger-unsigned.ipa
-          retention-days: 30
-  screenshots:
-    runs-on: ${{ matrix.runner }}
-    needs: app-build
-    timeout-minutes: 30
-    # The iOS 26 run shows the real Liquid Glass; it depends on the runner image having Xcode 26, so it may not block.
-    continue-on-error: ${{ matrix.device == 'iphone-ios26' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { device: iphone, runner: macos-15, xcode: '16', sim: 'iPhone 16 Pro ' }
-          - { device: ipad, runner: macos-15, xcode: '16', sim: 'iPad Pro 13' }
-          - { device: iphone-ios26, runner: macos-26, xcode: '26', sim: 'iPhone 17 Pro ' }
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use the newest installed Xcode
+          ref: ${{ env.SOURCE_BRANCH }}
+          path: source
+      - name: Update apps.json with the new IPA
+        env:
+          TAG: v${{ steps.ver.outputs.n }}
+          RUN: ${{ steps.ver.outputs.n }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          IPA: ${{ runner.temp }}/ipa/Ledger-unsigned.ipa
         run: |
-          X=$(ls -d /Applications/Xcode_${{ matrix.xcode }}*.app | sort -V | tail -n 1)
-          sudo xcode-select -s "$X/Contents/Developer"
-          xcodebuild -version
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate the Xcode project
-        working-directory: native/App
-        run: xcodegen generate
-      - name: Pick a simulator
-        id: sim
-        run: |
-          # The image carries several iOS runtimes (macos-15 also has 26.x); use the one that belongs to this Xcode, by UDID.
-          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -40
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, re, subprocess
-          want = "${{ matrix.xcode }}"
-          pat = "${{ matrix.sim }}".strip()
-          d = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))["devices"]
-          pick = lambda ok: next((x for rt, devs in d.items() for x in devs if ok(rt, x)), None)
-          rtok = lambda rt: re.search(r"iOS-(\d+)", rt) and re.search(r"iOS-(\d+)", rt).group(1) == want
-          best = (pick(lambda rt, x: rtok(rt) and x["name"].startswith(pat))
-                  or pick(lambda rt, x: rtok(rt) and x["name"].startswith("iPhone"))
-                  or pick(lambda rt, x: x["name"].startswith("iPhone")))
-          print("name=" + best["name"])
-          print("udid=" + best["udid"])
-          PY
-      - name: Boot the simulator
-        run: xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b || true
-      - name: Run the UI tour and keep screenshots
-        working-directory: native/App
-        run: |
-          set -o pipefail
-          xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
-            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
-            -test-timeouts-enabled YES -default-test-execution-time-allowance 150 -maximum-test-execution-time-allowance 240 \
-            -resultBundlePath ../../shots.xcresult CODE_SIGNING_ALLOWED=NO | tail -n 40
-      - name: Export the pictures
-        if: always()
-        run: |
-          mkdir -p shots out
-          xcrun xcresulttool export attachments --path shots.xcresult --output-path shots || true
           python3 - <<'PY'
-          import json, os, re, shutil
-          d = "shots"
+          import json, os, datetime
+          p = "source/apps.json"
+          repo, tag, run = os.environ["REPO"], os.environ["TAG"], os.environ["RUN"]
+          size = os.path.getsize(os.environ["IPA"])
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          raw = "https://raw.githubusercontent.com/%s/%s" % (repo, os.environ.get("SOURCE_BRANCH", "native-swiftui"))
+          icon = raw + "/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+          url = "https://github.com/%s/releases/download/%s/Ledger-unsigned.ipa" % (repo, tag)
           try:
-              m = json.load(open(os.path.join(d, "manifest.json")))
-              for t in m:
-                  for a in t.get("attachments", []):
-                      name = a.get("suggestedHumanReadableName", "").split("_0_")[0]
-                      src = os.path.join(d, a["exportedFileName"])
-                      if re.match(r"^\d\d-[a-z0-9-]+$", name) and os.path.exists(src):
-                          shutil.copy(src, os.path.join("out", name + "-updated.png"))
-          except Exception as e:
-              print("manifest:", e)
+              src = json.load(open(p))
+          except Exception:
+              src = {}
+          src.setdefault("name", "Ledger")
+          src.setdefault("identifier", "com.example.ledger.source")
+          src.setdefault("subtitle", "Ledger business simulation builds")
+          src.setdefault("description", "Unsigned builds of the Ledger business simulation. AltStore signs them with your own Apple ID.")
+          src["iconURL"] = icon
+          src.setdefault("tintColor", "#CFB185")
+          src.setdefault("website", "https://github.com/%s" % repo)
+          src.setdefault("news", [])
+          apps = src.setdefault("apps", [])
+          app = next((a for a in apps if a.get("bundleIdentifier") == os.environ["BUNDLE_ID"]), None)
+          if app is None:
+              app = {"name": "Ledger", "bundleIdentifier": os.environ["BUNDLE_ID"], "developerName": "Ledger",
+                     "subtitle": "Run real businesses", "localizedDescription": "Ledger: a business-management simulation.",
+                     "tintColor": "#CFB185", "screenshotURLs": [], "versions": []}
+              apps.append(app)
+          app["iconURL"] = icon
+          version = "1.0.%s" % run
+          try:
+              notes = open("RELEASE_NOTES.md").read().strip()
+          except Exception:
+              notes = ""
+          if not notes:
+              notes = "Build %s from %s" % (tag, os.environ["SHA"][:7])
+          entry = {"version": version, "buildVersion": run, "date": now, "downloadURL": url, "size": size,
+                   "minOSVersion": "17.0", "localizedDescription": notes[:1200]}
+          versions = [v for v in app.get("versions", []) if v.get("version") != version]
+          app["versions"] = ([entry] + versions)[:20]
+          # fields older AltStore versions read
+          app.update({"version": version, "versionDate": now, "downloadURL": url, "size": size})
+          json.dump(src, open(p, "w"), indent=2)
+          open(p, "a").write("\n")
           PY
-          for f in out/*.png; do [ -f "$f" ] && sips -s format jpeg -s formatOptions 70 -Z 1100 "$f" --out "${f%.png}.jpg" >/dev/null && rm "$f"; done
-          ls -la out
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: screenshots-${{ matrix.device }}
-          path: out
-      - name: Publish the pictures to a branch (so they can be looked at without downloading)
-        if: always() && github.event_name == 'push'
+      - name: Commit and push apps.json
+        working-directory: source
         run: |
-          cd out
-          git init -q
-          git checkout -q -b ui-shots-${{ matrix.device }}
-          git add .
-          git -c user.name=ci -c user.email=ci@example.com commit -qm "UI screenshots for $GITHUB_SHA"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps.json
+          git commit -m "AltStore source: build v${{ steps.ver.outputs.n }}" || echo "nothing to commit"
+          for i in 1 2 3; do git pull --rebase origin "$SOURCE_BRANCH" && git push origin "HEAD:$SOURCE_BRANCH" && break; sleep 5; done
