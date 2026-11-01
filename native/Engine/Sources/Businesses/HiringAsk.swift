@@ -98,6 +98,7 @@ public extension Hiring {
         for c in (t.bonusPlan ?? "").unicodeScalars { v = v &* 31 &+ Int(c.value) }
         for k in t.promises { for c in k.kind.rawValue.unicodeScalars { v = v &* 31 &+ Int(c.value) } }
         for e in t.expectations + t.expenseItems { for c in e.unicodeScalars { v = v &* 31 &+ Int(c.value) } }
+        v &= 0x3fffffff
         return v == 0 ? 1 : v
     }
 

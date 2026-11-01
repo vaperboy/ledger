@@ -51,11 +51,11 @@ extension StaffTalks {
     /// The least a contract can have a week: 10 percent of a full week.
     static var minimumHours: Double { Hiring.workingPercentRange.lowerBound / 100 * StaffModel.fullWeekHours }
 
-    /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`. Hours are kept to a quarter of an hour (so 20 percent
-    /// is exactly 7.5 hours) and are not clipped to a hidden cap: callers check `Hiring.maxHoursPerWeek` first and say so.
+    /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`. Hours are kept to a thousandth of an hour (so 20 percent
+    /// is exactly 7.5 hours and 65 percent exactly 24.375) and are not clipped to a hidden cap: callers check `Hiring.maxHoursPerWeek` first and say so.
     @discardableResult
     static func setHours(_ m: inout StaffMember, _ h0: Double, scalePay: Bool = true) -> Double {
-        let h = max(minimumHours, min(60, (h0 * 4).rounded() / 4))
+        let h = max(minimumHours, min(60, (h0 * 1000).rounded() / 1000))
         if scalePay, payFollowsHours(m) { m.monthlyWage = m.monthlyWage * h / (m.weeklyHours ?? StaffModel.fullWeekHours) }
         m.weeklyHours = h
         m.partTimeShare = h / StaffModel.fullWeekHours

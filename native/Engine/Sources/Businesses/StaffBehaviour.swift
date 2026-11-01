@@ -75,7 +75,7 @@ public enum StaffBehaviour {
         }
         // they say so before it comes to that: after a few weeks of it, once a quarter, if they are the kind to speak up
         if !isDisengaged(m), !isSilent(m), uw >= 4, let top = why.first, week - m.int("voiced") >= 13 || m.value("voiced").isNull {
-            if r < 0.6 { m.set("voiced", week); return .voiced(reason: top, style: style(of: n)) }
+            if r < 0.6 || uw >= 6 { m.set("voiced", week); return .voiced(reason: top, style: style(of: n)) }
         }
         // some go quiet when it drags on: the blunt and the hinting stop raising things
         if isDisengaged(m), !isSilent(m), uw >= 16, ["arrogant", "restless", "lazy"].contains(n.str("pers")), r < 0.08 {
