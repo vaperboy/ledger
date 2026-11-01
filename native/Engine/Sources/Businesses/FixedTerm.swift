@@ -24,6 +24,8 @@ public enum FixedTerm {
     }()
 
     public static var termChoices: [Int] { tables.weeks }
+    /// Above this "security" a person wants a permanent job (data: `securityLimit`).
+    public static var securityThreshold: Double { tables.securityLimit }
 
     /// The week the term ends, nil for a permanent contract.
     public static func endWeek(_ m: StaffMember) -> Int? { m.value("ft").isNull ? nil : m.int("ft") }
@@ -68,11 +70,13 @@ public enum FixedTerm {
     /// Put someone on a fixed term of `weeks` from now (`weeks` nil: make the contract permanent). On a term already running, `weeks` is added to
     /// its end date (a renewal). False for an unknown person, a term that is not one of the data's lengths, or (when `labour` is given) a term its limits refuse.
     @discardableResult
-    public static func set(_ s: inout GameState, companyID: Int, staffID: Int, weeks: Int?, labour: LabourRules? = nil) -> Bool {
+    public static func set(_ s: inout GameState, companyID: Int, staffID: Int, weeks: Int?, labour: LabourRules? = nil, anyLength: Bool = false) -> Bool {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return false }
         var st = s.companies[ci].staff
         if let weeks {
-            guard tables.weeks.contains(weeks) else { return false }
+            // The screens offer the data's lengths; the engine also accepts any length in `Hiring.workingFixedTermWeeks` for a temporary contract
+            // (`anyLength`: a hire, a renewal of a length that was agreed before, a season).
+            guard tables.weeks.contains(weeks) || (anyLength && Hiring.workingFixedTermWeeks.contains(weeks)) else { return false }
             if let labour, renewalBlock(labour, st[k], weeks: weeks, now: s.week) != nil { return false }
             let running = isFixed(st[k])
             let from = max(s.week, endWeek(st[k]) ?? s.week)
@@ -119,9 +123,10 @@ public enum FixedTerm {
                 var st = s.companies[ci].staff
                 if let k = st.firstIndex(where: { $0.id == m.id }) { st[k].set("ftn", end); s.companies[ci].staff = st }
                 if let weeks = renew {
-                    s.addMessage(kind: "ask", from: n.name, title: "\(n.name)'s fixed term at \(co.name) ends in \(end - s.week) weeks",
-                                 body: "Their contract ends in week \(end). Renew it for \(weeks) weeks, or let it end on its date?", companyID: co.id, tone: "n", status: "open",
-                                 options: [.option("Renew for \(weeks) weeks", "Another fixed term\(weeks == len ? " of the same length" : ", the longest the rules here allow")."), .option("Let it end", "They leave on the date. What the country's rules require is paid.")],
+                    let seasonal = !m.value("seas").isNull
+                    s.addMessage(kind: "ask", from: n.name, title: seasonal ? "\(n.name)'s season at \(co.name) ends in \(end - s.week) weeks" : "\(n.name)'s fixed term at \(co.name) ends in \(end - s.week) weeks",
+                                 body: seasonal ? "Their seasonal contract ends in week \(end). Bring them back for another season, or let it end on its date?" : "Their contract ends in week \(end). Renew it for \(weeks) weeks, or let it end on its date?", companyID: co.id, tone: "n", status: "open",
+                                 options: [.option(seasonal ? "Another season" : "Renew for \(weeks) weeks", seasonal ? "The contract runs to the end of the next season." : "Another fixed term\(weeks == len ? " of the same length" : ", the longest the rules here allow")."), .option("Let it end", "They leave on the date. What the country's rules require is paid.")],
                                  action: action, data: .object(["sid": .number(Double(m.id)), "weeks": .number(Double(weeks)), "end": .number(Double(end))]), expiresWeek: end)
                 } else {
                     s.addMessage(kind: "ask", from: n.name, title: "\(n.name)'s fixed term at \(co.name) cannot be renewed again",
@@ -137,7 +142,14 @@ public enum FixedTerm {
     public static func answer(_ s: inout GameState, message m: Message, option idx: Int) {
         let d = m.value("data"), sid = d["sid"].int
         guard let ci = s.companyIndex(m.companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == sid }), endWeek(s.companies[ci].staff[k]) == d["end"].int else { return }
-        if idx == 0 { _ = set(&s, companyID: m.companyID, staffID: sid, weeks: d["perm"].int == 1 ? nil : d["weeks"].int) }
+        if idx == 0 {
+            if d["perm"].int != 1, !s.companies[ci].staff[k].value("seas").isNull {
+                _ = StaffTalks.renewSeason(&s, companyID: m.companyID, staffID: sid)   // a season: the contract runs to the end of the next one
+            } else {
+                _ = set(&s, companyID: m.companyID, staffID: sid, weeks: d["perm"].int == 1 ? nil : d["weeks"].int, anyLength: true)
+            }
+            ContractHistory.record(&s, companyID: m.companyID, staffID: sid, kind: "term", text: d["perm"].int == 1 ? "Contract made permanent." : "Contract renewed.")
+        }
         else { var st = s.companies[ci].staff; st[k].set("ftd", d["end"].int); s.companies[ci].staff = st }
     }
 }

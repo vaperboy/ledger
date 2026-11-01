@@ -159,14 +159,24 @@ public enum Negotiation {
         /// The standing counter, 0 if none.
         public var counter = 0.0
         public var week = 0
+        /// The other side has opened with an ask of its own, before any offer was made (a hire: the candidate states what they expect). Written only when set.
+        public var asked = false
+        /// A fingerprint of the terms the standing figures were named for; a talk about other terms keeps the rounds but not the figures. 0 = none. Written only when set.
+        public var terms = 0
         public init() {}
         public var isOpen: Bool { round > 0 }
+        /// Is there anything worth keeping on the record (a round answered, or an opening ask)?
+        var isKept: Bool { round > 0 || asked }
 
         public var json: JSONValue {
-            .object(["p": .number(Double(party)), "n": .number(Double(round)), "o": .number(lastOffer), "c": .number(counter), "w": .number(Double(week))])
+            var o: [String: JSONValue] = ["p": .number(Double(party)), "n": .number(Double(round)), "o": .number(lastOffer), "c": .number(counter), "w": .number(Double(week))]
+            if asked { o["a"] = .bool(true) }
+            if terms != 0 { o["t"] = .number(Double(terms)) }
+            return .object(o)
         }
         public init(json j: JSONValue) {
             party = j["p"].int; round = j["n"].int; lastOffer = j["o"].double; counter = j["c"].double; week = j["w"].int
+            asked = j["a"].bool; terms = j["t"].int
         }
         /// A talk remembered from `record` (key `neg`): kept if it was with the same party and not long ago, else a fresh one.
         public static func resume<R: JSONRecord>(_ record: R, party: Int, week: Int) -> State {
@@ -178,7 +188,7 @@ public enum Negotiation {
         }
         /// Keep the talk on the record, or remove the key when nothing is open.
         public func store<R: JSONRecord>(in record: inout R) {
-            if isOpen { record.set("neg", json) } else { record.raw.removeValue(forKey: "neg") }
+            if isKept { record.set("neg", json) } else { record.raw.removeValue(forKey: "neg") }
         }
     }
 
