@@ -103,4 +103,18 @@ final class CompanyBatchReadsTests: XCTestCase {
             XCTAssertTrue(d.reviews.allSatisfy { (1...5).contains($0.stars) })
         }
     }
+
+    func testEverySwitchableWayToSellStatesItsCost() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
+        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
+        var checked = 0
+        for trade in e.data.balance.salesWays.keys.sorted() {
+            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { continue }
+            for row in e.waysToSell(companyID: id) where row.canSwitch {
+                XCTAssertFalse(row.cost.isEmpty, "\(trade) / \(row.kind) shows its cost")
+                checked += 1
+            }
+        }
+        XCTAssertGreaterThan(checked, 0)
+    }
 }

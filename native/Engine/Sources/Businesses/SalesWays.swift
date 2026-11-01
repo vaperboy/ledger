@@ -31,6 +31,8 @@ public enum SalesWays {
         public var isOn: Bool
         public var canSwitch: Bool
         public var detail: String
+        /// What it costs, and nothing else (a commission, a perk bill, a weekly retainer, a set-up fee); empty for a way that costs nothing of its own.
+        public var cost: String = ""
     }
 
     static func ways(_ co: Company, _ w: World) -> [Balance.SalesWay] { w.balance.salesWays[co.type] ?? [] }
@@ -46,21 +48,27 @@ public enum SalesWays {
         return ways(co, w).filter { $0.kind != "contract" && $0.kind != "offer" }.map { (way: Balance.SalesWay) -> Row in
             let on = sw["on"][way.kind].bool
             var detail = ""
+            var cost = ""
             switch way.kind {
             case "platform":
                 detail = "About \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, \(Int(jsRound((way.options["fee"] ?? 0.2) * 100)))% commission on them"
+                cost = "\(Int(jsRound((way.options["fee"] ?? 0.2) * 100)))% commission"
                 if (way.options["deliv"] ?? 0) > 0, let dk = IntercompanySupply.deliveryKind {
                     let share = dk.buyers[co.type] ?? 0
                     let fill = IntercompanySupply.deliveryFill(s, buyer: co, way: way)
                     detail = "Up to \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, only for the orders that get delivered (\(Int(jsRound(fill * 100)))% now). "
                         + "\(Int(jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% marketplace commission plus delivery at \(Int(jsRound(share * 100)))% of those orders; set the courier under Suppliers"
+                    cost = "\(Int(jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% commission plus delivery at \(Int(jsRound(share * 100)))%"
                 }
             case "members":
                 detail = (on ? "\(Int(jsRound(sw["mem"].double))) members" : "Not offered") + ", perks cost 2% of sales"
+                cost = "Perks cost 2% of sales"
             case "emergency":
                 detail = "On call \(cur.display(cur.scaledPrice(2500))) a week, urgent jobs pay half again"
+                cost = "On call \(cur.display(cur.scaledPrice(2500))) a week"
             case "upsell":
                 detail = "About \(Int(jsRound((way.options["u"] ?? 0.08) * 100)))% extra per sale" + (sw["paidUp"].bool ? "" : ", set-up \(cur.display(cur.scaledPrice(12000)))")
+                cost = sw["paidUp"].bool ? "Set-up paid" : "Set-up \(cur.display(cur.scaledPrice(12000)))"
             case "referral":
                 detail = VolumeContracts.ratingFactor(co) < 0.2 ? "Too few happy customers" : "About \(jsRound(sw["ref"].double * 10) / 10) a week"
             case "peak":
@@ -68,7 +76,7 @@ public enum SalesWays {
             default:
                 break
             }
-            return Row(kind: way.kind, name: way.name, isOn: on, canSwitch: switchable.contains(way.kind), detail: detail)
+            return Row(kind: way.kind, name: way.name, isOn: on, canSwitch: switchable.contains(way.kind), detail: detail, cost: cost)
         }
     }
 
