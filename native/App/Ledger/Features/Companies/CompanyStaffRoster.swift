@@ -168,16 +168,16 @@ struct StaffProfileView: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let p = e.staffProfile(companyID: companyID, staffID: staffID) {
             let cur = e.currency(for: co)
-            let sub: String = "\(p.roleName) · age \(p.age) · \(p.skillBand.lowercased())"
+            let sub: String = "\(p.roleName) \u{00B7} age \(p.age)"
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     header(p, co, cur)
                     mood(p)
+                    performance(p)
+                    contractSection(p, cur)
+                    promisesSection(e)
                     record(p, m, cur)
                     actions(e, co, m, p, cur)
-                    if let t = p.personality.flatMap({ StaffProfile.personalityText[$0] }) {
-                        TeamGroup("Character") { Card(padding: 14, radius: Theme.Radius.row) { Text(t).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted) } }
-                    }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -196,8 +196,8 @@ struct StaffProfileView: View {
         let tenure: String = p.weeksWithYou >= 52 ? String(format: "%.1f yr", Double(p.weeksWithYou) / 52) : "\(p.weeksWithYou) wk"
         let items: [KeyFigures.Item] = [
             .init(label: "Pay", value: cur.tidyShort(p.monthlyWage), sub: basis),
-            .init(label: "Skill", value: "\(Int(p.skill.rounded()))", sub: p.skillGainedSinceStart ? "has grown here" : ""),
-            .init(label: "With you", value: tenure),
+            .init(label: "Contract", value: p.contract?.typeLabel ?? "Permanent", sub: p.contract.map { HireWords.percentText($0.workingPercent) } ?? ""),
+            .init(label: "With you", value: tenure, sub: p.skillGainedSinceStart ? "has learned new things here" : ""),
         ]
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
@@ -212,6 +212,67 @@ struct StaffProfileView: View {
                 Spacer(minLength: 0)
             }
             Card(padding: 14, radius: Theme.Radius.hero) { KeyFigures(items: items) }
+        }
+    }
+
+    /// What the work log says, in sentences built from what happened. No rating and no figure.
+    private func performance(_ p: StaffProfile.Profile) -> some View {
+        TeamGroup("How the work goes") {
+            Card(padding: 14, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if p.feedback.enoughToJudge {
+                        ForEach(p.feedback.observations) { o in
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(o.aspect).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text(o.text).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    } else {
+                        Text(p.feedback.summary).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if p.disengaged { Label("Seems to have lost interest in the work.", systemImage: "moon.zzz").font(.system(size: 12.5)).foregroundStyle(Theme.caution) }
+                }
+            }
+        }
+    }
+
+    /// The employment contract: type, percentage, real dates, notice and the history of every change.
+    @ViewBuilder private func contractSection(_ p: StaffProfile.Profile, _ cur: Currency) -> some View {
+        if let c = p.contract {
+            TeamGroup(title: "Contract", trailing: { TeamAction(title: "Discuss") { discussing = true } }) {
+                Card(padding: 14, radius: Theme.Radius.row) {
+                    VStack(spacing: 0) {
+                        FlatRow(label: "Type", value: c.typeLabel, sub: c.payBasisLabel, rule: false)
+                        FlatRow(label: "Working", value: HireWords.percentText(c.workingPercent), sub: HireWords.hours(c.contractedHoursPerWeek))
+                        FlatRow(label: "Started", value: GameCalendar.dateString(week: c.startWeek))
+                        if let end = c.endWeek { FlatRow(label: "Ends", value: GameCalendar.dateString(week: end)) }
+                        if !c.seasonText.isEmpty { FlatRow(label: "Season", value: c.seasonText, sub: c.onSeason ? "On season now" : "Off season now") }
+                        FlatRow(label: "Notice", value: "\(HireWords.weeksText(c.resignationNoticeWeeks)) from them", sub: "From you: \(String(format: "%g", c.employerNoticeWeeks)) weeks without cause")
+                        historyRows(c)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func historyRows(_ c: EmploymentContract.Summary) -> some View {
+        let recent: [ContractHistory.Entry] = Array(c.history.suffix(4).reversed())
+        ForEach(recent) { h in FlatRow(label: h.text, value: GameCalendar.dateString(week: h.week)) }
+    }
+
+    /// Promises made to this person (the whole list is Company > Team > Promises).
+    @ViewBuilder private func promisesSection(_ e: GameEngine) -> some View {
+        let list: [StaffPromises.Promise] = e.promises(personID: staffID).filter { $0.isOpen || $0.status == .broken }
+        if !list.isEmpty {
+            TeamGroup("Promises") {
+                Card(padding: 14, radius: Theme.Radius.row) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(list.enumerated()), id: \.element.id) { i, pr in
+                            FlatRow(label: pr.text, value: pr.status.rawValue, sub: pr.consequence, tint: pr.status == .broken ? Theme.loss : pr.status == .due ? Theme.caution : Theme.ivory, rule: i > 0)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -233,8 +294,6 @@ struct StaffProfileView: View {
     private func record(_ p: StaffProfile.Profile, _ m: StaffMember, _ cur: Currency) -> some View {
         let week: Int = store.engine?.state.week ?? 0
         let raise: String = p.lastRaiseWeek.map { "\(max(0, week - $0)) weeks ago" } ?? "never"
-        let term: String = FixedTerm.endWeek(m).map { "Fixed term to week \($0)" } ?? "Permanent"
-        let left: String = FixedTerm.endWeek(m).map { "\(max(0, $0 - week)) weeks left" } ?? ""
         return TeamGroup("Record") {
             Card(padding: 14, radius: Theme.Radius.row) {
                 VStack(spacing: 0) {
@@ -243,11 +302,7 @@ struct StaffProfileView: View {
                     if let plan = p.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: p.bonusPaidThisYear > 0 ? "\(cur.tidyShort(p.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
                     if !p.perks.isEmpty { FlatRow(label: "Perks", value: p.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(p.perksWorth)) a month to them, counted as pay") }
                     if !p.expenses.isEmpty { FlatRow(label: "Expenses paid", value: p.expenses.joined(separator: ", ")) }
-                    FlatRow(label: "Contract", value: term, sub: left)
-                    FlatRow(label: "Late this quarter", value: "\(p.lateThisQuarter)")
-                    FlatRow(label: "Complaints this quarter", value: "\(p.complaintsThisQuarter)")
                     FlatRow(label: "Written warnings", value: "\(p.warnings)", sub: p.dismissalDocumented ? "Enough on file to let them go for cause" : "")
-                    FlatRow(label: "Energy", value: p.tiredness > 60 ? "tired" : "fine", sub: "\(p.stamina). \(p.learns)", tint: p.tiredness > 60 ? Theme.caution : Theme.ivory)
                 }
             }
         }
@@ -274,7 +329,7 @@ struct StaffProfileView: View {
                         if !p.courses.isEmpty {
                             Menu {
                                 ForEach(p.courses, id: \.id) { c in
-                                    Button("\(c.name) · \(cur.tidyShort(c.cost)) · up to +\(Int(c.maxGain.rounded())) skill") { confirmCourse(c, p, cur) }
+                                    Button("\(c.name) \u{00B7} \(cur.tidyShort(c.cost))") { confirmCourse(c, p, cur) }
                                 }
                             } label: {
                                 Text("Send on a course").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
@@ -307,7 +362,7 @@ struct StaffProfileView: View {
     }
 
     private func confirmCourse(_ c: StaffProfile.Course, _ p: StaffProfile.Profile, _ cur: Currency) {
-        pending = PendingAction(title: "Send \(p.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from company cash. Skill may rise by up to \(Int(c.maxGain.rounded())) points, or not at all; a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur) { course(c, p) }
+        pending = PendingAction(title: "Send \(p.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from company cash. \(c.benefit) It may also change nothing, and a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur) { course(c, p) }
     }
 
     private func course(_ c: StaffProfile.Course, _ p: StaffProfile.Profile) {

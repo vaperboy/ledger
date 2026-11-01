@@ -256,9 +256,15 @@ untouched next to the converted save.
 * Commission, bonus and overtime employer charges use the wage-weighted on-cost of the real people (`Payroll.averageFactor`, overtime per person).
 
 ## Stage 3 employment engine (this pass)
-* **The screens still use the old read models.** `Applicant.claimedSkill/askMonthly/askVersusMarket/trialSkill`, `ContractTalk.Consequences.quitYear*`, `StaffProfile.Profile.skill/skillBand/personality/tiredness/learns/stamina`, `StaffProfile.personalityText`, `Course.maxGain`, `StaffPerks.Reward.skill` and `startTrialWeek`'s Double were REMOVED or replaced by words; the app files must move to `hireSalaryTalk`, `hireDraftOptions`, `quitRisk*`, `Profile.feedback`, `Course.benefit`.
+* **(Fixed by the Stage 3 screens pass.) The screens used the old read models.** `Applicant.claimedSkill/askMonthly/askVersusMarket/trialSkill`, `ContractTalk.Consequences.quitYear*`, `StaffProfile.Profile.skill/skillBand/personality/tiredness/learns/stamina`, `StaffProfile.personalityText`, `Course.maxGain`, `StaffPerks.Reward.skill` and `startTrialWeek`'s Double were REMOVED or replaced by words; the app files must move to `hireSalaryTalk`, `hireDraftOptions`, `quitRisk*`, `Profile.feedback`, `Course.benefit`.
 * Promises to executives, head-office staff and the analyst use all kinds, each kept by a real group action (`GroupPeople`: pay review, promotion, authority level, course, weekly reimbursement, working percentage); only reimbursements can be promised as a future benefit for them (no perks or bonus plans exist for group posts).
 * Managers, executives and head-office staff have a fixed full-time post: the working percentage field is 100 only (no hours model for them).
 * Work-log events are simulated outcomes of the weekly staff pass (the same factors that drive the business), drawn from a hash of person and week; late arrivals and complaints come from the existing quarterly tracker. Tasks are about one per five contracted hours.
 * A "salary review" promise counts as kept when their pay for a full week rises by about 2 percent or more.
 * Refusals (hour cuts of 20 percent or more, moves, commission plans) are decided by a stable roll per person, proposal and 8-week period, so the preview cannot show the answer; it only says they may refuse.
+
+## Stage 3 employment screens (this pass)
+* The hiring flow opens in a sheet from the list (or the Hiring screen) so it stays open when the list changes because the person was hired. Back from page 2 returns to page 1 (terms kept); closing the sheet on page 1 leaves nothing hired.
+* Group staff (executives, head office, analyst) have no profile screen: their promises are in Company > Team > Promises under "Group staff", with "Keep it now" calling the real group action (a 5 percent pay review, one level of promotion or authority, a course, the first expense reimbursement, the agreed percentage).
+* Promise kinds of a future benefit offer the company perks, bonus plans and expenses; a benefit that does not apply to the person is refused by the engine when it is checked.
+* Not changed (outside this pass): the manager scorecard numbers on a manager's card (a performance review, not a hidden value) and the Franchise applicant lines.

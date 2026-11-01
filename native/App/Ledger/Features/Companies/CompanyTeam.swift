@@ -6,7 +6,7 @@ import Simulation
 
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
-    case management = "Management", targets = "Goals", perks = "Perks and rules", hiring = "Hire someone"
+    case management = "Management", targets = "Goals", perks = "Perks and rules", promises = "Promises", hiring = "Hire someone"
     var id: String { rawValue }
 }
 
@@ -83,6 +83,11 @@ struct CompanyTeam: View {
 
     // MARK: Table of settings
 
+    private var promisesValue: String {
+        let open: Int = engine.promises(companyID: company.id).filter { $0.status == .pending || $0.status == .due }.count
+        return open == 0 ? "None open" : "\(open) open"
+    }
+
     private var settingsTable: some View {
         let cur: Currency = engine.currency(for: company)
         let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
@@ -90,6 +95,7 @@ struct CompanyTeam: View {
             SettingsTableRow(title: "Management", note: "Manager, assistant and posts above them", value: runBy) { page = .management }
             SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
             SettingsTableRow(title: "Perks and rules", note: "Cars, staff benefits, minimum pay, hours and notice", value: cur.country.name) { page = .perks }
+            SettingsTableRow(title: "Promises", note: "What you have promised your people, and when it falls due", value: promisesValue) { page = .promises }
             SettingsTableRow(title: "Hire someone", note: "Job ad, network or agency", value: "Find workers") { page = .hiring }
         }
     }
@@ -120,6 +126,7 @@ struct TeamPageDestination: View {
         case .perks:
             CompanyPerksCard(engine: e, company: co)
             CompanyLabourCard(engine: e, company: co)
+        case .promises: CompanyPromises(engine: e, company: co)
         case .hiring: EmptyView()
         }
     }

@@ -29,6 +29,7 @@ struct HiringView: View {
     @State private var searched = false
     @State private var openID: Int?
     @State private var pending: PendingAction?
+    @State private var talkRequest: HireRequest?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -69,6 +70,7 @@ struct HiringView: View {
             .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
         }
         .confirmAction($pending)
+        .sheet(item: $talkRequest) { r in HireFlowSheet(request: r).environmentObject(store) }
         .appScreen(title: roleName.isEmpty ? "Hire" : "Hire a \(roleName.lowercased())", subtitle: subtitle, tab: store.tab)
     }
 
@@ -139,7 +141,8 @@ struct HiringView: View {
             HiringApplicantCard(applicant: a, roleName: board.roleName, currency: cur, companyID: companyID, open: openID == a.personID,
                                 trialCost: board.marketMonthly / 4,
                                 onTap: { openID = openID == a.personID ? nil : a.personID },
-                                onTrial: { askTrial(a, board.marketMonthly / 4, cur) })
+                                onTrial: { askTrial(a, board.marketMonthly / 4, cur) },
+                                onTalk: { talkRequest = HireRequest(post: .worker(role: a.role), companyID: companyID, personID: a.personID, roleTitle: board.roleName) })
         }
     }
 
@@ -147,10 +150,10 @@ struct HiringView: View {
         let cid = companyID, pid = a.personID
         pending = PendingAction(
             title: "Pay for a trial week with \(a.name)?",
-            message: "Cost: \(cur.tidyShort(cost)) paid now, whatever you decide. Benefit: you see about how good their work really is. Risk: the reading is approximate, and they may take another job. It does not hire them.",
+            message: "Cost: \(cur.tidyShort(cost)) paid now, whatever you decide. Benefit: you see how their work really goes. Risk: one week shows only part of the picture, and they may take another job. It does not hire them.",
             button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur) {
                 if let seen = store.act({ $0.startTrialWeek(personID: pid, companyID: cid) }) ?? nil {
-                    Haptics.success(); store.show("After a week their work looks like \(Int(seen)) skill.", tone: "n")
+                    Haptics.success(); store.show(seen.first?.text ?? "The trial week is done.", tone: "n")
                 } else {
                     Haptics.warning(); store.show("Could not arrange a trial week: it was done already, or the company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
                 }
@@ -168,24 +171,9 @@ enum PatienceWords {
     }
 }
 
-/// How an ask or an offer compares with the market, in words and colour: "3% above market" amber, "8% below market" green, "14% above market" red.
-enum HiringFigures {
-    static func versusMarket(_ v: Double, wording: String = "market") -> (text: String, tint: Color) {
-        let pct = Int((abs(v) * 100).rounded())
-        if pct == 0 { return ("at \(wording)", Theme.ivoryMuted) }
-        if v > 0 { return ("\(pct)% above \(wording)", v >= 0.10 ? Theme.loss : Theme.caution) }
-        return ("\(pct)% below \(wording)", Theme.gain)
-    }
-
-    static func initials(_ name: String) -> String {
-        let letters: [String] = name.split(separator: " ").compactMap { $0.first.map { String($0) } }
-        return (letters.first ?? "") + (letters.count > 1 ? (letters.last ?? "") : "")
-    }
-}
-
-/// One applicant (option A): initials circle, name, age / role / experience, the ask against the market, the claimed skill, claimed experience and
-/// first impression. The selected card opens to the CV line and the two actions. Only what the player can see before an interview is shown:
-/// the skill is what they claim, never the true one.
+/// One applicant: portrait, name, age / role / experience, the market pay for the role, how the CV reads and the first impression. The selected card
+/// opens to the CV line and the actions. Only what the player can see before an interview is shown, in words: never a skill figure, never their ask
+/// (they name it in the salary talk).
 struct HiringApplicantCard: View {
     var applicant: Applicant
     var roleName: String
@@ -195,6 +183,7 @@ struct HiringApplicantCard: View {
     var trialCost: Double
     var onTap: () -> Void
     var onTrial: () -> Void
+    var onTalk: () -> Void
 
     private var experienceLine: String {
         guard let y = applicant.claimedExperienceYears else { return "no experience given" }
@@ -204,9 +193,8 @@ struct HiringApplicantCard: View {
 
     var body: some View {
         let a = applicant
-        let versus = HiringFigures.versusMarket(a.askVersusMarket)
         VStack(alignment: .leading, spacing: 10) {
-            Button(action: onTap) { summary(a, versus) }.buttonStyle(.plain)
+            Button(action: onTap) { summary(a) }.buttonStyle(.plain)
             if open { details(a) }
         }
         .padding(14)
@@ -216,32 +204,22 @@ struct HiringApplicantCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func summary(_ a: Applicant, _ versus: (text: String, tint: Color)) -> some View {
+    private func summary(_ a: Applicant) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                ThumbnailView(kind: .person, key: applicant.role, size: 40, initials: a.name,
-                              face: a.faceKey)
+                ThumbnailView(kind: .person, key: applicant.role, size: 40, initials: a.name, face: a.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(a.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text("\(a.age) · \(roleName) · \(experienceLine)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                    Text("\(a.age) \u{00B7} \(roleName) \u{00B7} \(experienceLine)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
                 }
                 Spacer(minLength: 6)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(currency.tidyShort(a.askYearly)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text(versus.text).font(.system(size: 11)).foregroundStyle(versus.tint)
+                    Text(currency.tidyShort(a.marketYearly)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text("market pay a year").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
             HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Skill").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    GeometryReader { g in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Theme.border).frame(height: 4)
-                            Capsule().fill(Theme.gold).frame(width: g.size.width * CGFloat(min(1, max(0, a.claimedSkill / 100))), height: 4)
-                        }
-                    }.frame(height: 4).padding(.top, 5).padding(.bottom, 4)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                fact("Experience", a.claimedExperienceYears.map { "\(Int($0.rounded())) \(Int($0.rounded()) == 1 ? "yr" : "yrs") claimed" } ?? "none given")
+                fact("CV", a.cvImpression)
                 fact("Seems", a.seems)
             }
         }
@@ -251,7 +229,7 @@ struct HiringApplicantCard: View {
     private func fact(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            Text(value).font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+            Text(value).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -259,18 +237,17 @@ struct HiringApplicantCard: View {
         Rectangle().fill(Theme.divider).frame(height: 1)
         VStack(alignment: .leading, spacing: 6) {
             if !a.resume.isEmpty { Text("\u{201C}\(a.resume)\u{201D}").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-            let claim: String = a.claimedExperienceYears.map { "Claims \(Int($0.rounded())) \(Int($0.rounded()) == 1 ? "year" : "years")" } ?? "No experience given"
-            Text(claim + (a.referencesChecked ? "; references checked." : "; not checked.")).font(.system(size: 12)).foregroundStyle(Theme.ivoryDim)
-            if let t = a.trialSkill {
-                Text("After a trial week their work looked like skill \(Int(t.rounded())), give or take a few points.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text(a.referencesChecked ? "References checked." : "References not checked.").font(.system(size: 12)).foregroundStyle(Theme.ivoryDim)
+            ForEach(a.trialObservations, id: \.self) { line in
+                Text(line).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
         HStack(spacing: 8) {
-            if a.trialSkill == nil {
-                Button(action: onTrial) { actionLabel("Trial week · \(currency.tidyShort(trialCost))", strong: false) }.buttonStyle(.plain)
+            if a.trialObservations.isEmpty {
+                Button(action: onTrial) { actionLabel("Trial week \u{00B7} \(currency.tidyShort(trialCost))", strong: false) }.buttonStyle(.plain)
             }
-            NavigationLink { HiringNegotiationView(companyID: companyID, personID: a.personID) } label: { actionLabel("Talk terms \u{203A}", strong: true) }
-                .buttonStyle(.plain)
+            Button { Haptics.tap(); onTalk() } label: { actionLabel("Talk terms \u{203A}", strong: true) }
+                .buttonStyle(.plain).accessibilityIdentifier("hire-talk-terms")
         }
     }
 

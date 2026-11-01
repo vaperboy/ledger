@@ -264,12 +264,8 @@ struct DataAnalystCard: View {
                         }
                         if !candidates.isEmpty {
                             CandidateHireList(people: candidates, emptyText: "") { p in
-                                CandidateHireRow(person: p, currency: e.homeCurrency, subtitle: "Says \(Int(p.claimedSkill.rounded())) skill · age \(p.age)",
-                                                 market: e.goingRate(for: .analyst), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
-                                    let feedback = HireFeedback.from(store.act { $0.hireDataAnalyst(personID: p.id, monthlyWage: wage) }, name: p.name)
-                                    if feedback.isHired { candidates = []; store.show(feedback.text, tone: "good") }
-                                    return feedback
-                                }
+                                let request = HireRequest(post: .analyst, companyID: nil, personID: p.id, roleTitle: "Data analyst", onHired: { candidates = [] })
+                                CandidateHireRow(person: p, currency: e.homeCurrency, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .analyst), request: request)
                             }
                         }
                     }

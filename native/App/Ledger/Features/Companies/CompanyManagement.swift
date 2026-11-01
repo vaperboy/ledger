@@ -240,7 +240,6 @@ struct ManagerSheet: View {
     /// The three pages of the manager's sheet: how they are doing, what they may decide, and what they are paid and how you talk.
     enum ManagerTab: String, CaseIterable, Hashable { case results = "Results", powers = "Powers", pay = "Pay and talks" }
 
-    private func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
 
     var body: some View {
         PeopleSheet(title: "Manager") {
@@ -306,18 +305,7 @@ struct ManagerSheet: View {
                     if card.fraud > 0 { Text("Fraud was found under this manager.").font(.system(size: 11.5)).foregroundStyle(Theme.loss) }
                 }
                 if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
-                if months >= 3 {
-                    let st = m.value("stats")
-                    ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
-                        HStack {
-                            Text(k.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                            Spacer()
-                            Text(band(st[k.key].double)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
-                        }
-                    }
-                } else {
-                    Text("Detailed skills show after a few months. Judge by results.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                }
+                Text("How well they do shows in the scorecard and in the results of the business.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 Text("The scorecard weighs margin, reputation, quality, mistakes, paperwork and targets met. Targets and their bonus are set under Targets and budget.")
                     .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
@@ -483,27 +471,37 @@ struct ManagerSheet: View {
         }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
+            let request = HireRequest(post: .manager, companyID: co.id, personID: p.id, roleTitle: title, onHired: { candidates = [] })
             CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p, extra: ManagerModel.typeTitles[p.str("mtype")] ?? "Manager"),
-                             market: e.goingRate(for: .manager, companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3], roleKey: "manager", offer: { wage in
-                let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: co.id, monthlyWage: wage) }, name: p.name, company: co.name)
-                if fb.isHired { candidates = []; store.show(fb.text, tone: "good") }
-                return fb
-            }) {
+                             market: e.goingRate(for: .manager, companyID: co.id), request: request, roleKey: "manager") {
                 ManagerCandidateChecks(person: p, companyID: co.id, currency: cur)
             }
         }
     }
 }
 
-/// What a manager candidate says about themselves, the interview questions left and the reference check (the engine's interview model).
+/// What a manager candidate says about themselves, in words, the paid trial week and the reference check (the engine's interview model).
+/// No skill figure or band is shown: a trial week gives observations from a simulated week, a reference check says whether the CV holds.
 struct ManagerCandidateChecks: View {
     @EnvironmentObject var store: GameStore
     var person: Person
     var companyID: Int
     var currency: Currency
-    @State private var trialSeen: Double?
+    @State private var trialSeen: [String] = []
 
-    private func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
+    /// How a checked skill compares with what the CV claimed, in words.
+    private func comparison(_ key: String) -> String {
+        let claimed: Double = person.value("q")[key].double
+        let real: Double = person.value("stats")[key].double
+        if real < claimed - 12 { return "weaker than the CV says" }
+        if real > claimed + 12 { return "stronger than the CV says" }
+        return "as the CV says"
+    }
+
+    private var seenLines: [String] {
+        let kept: [String] = person.value("trialObs").array.map { $0.string }
+        return trialSeen.isEmpty ? kept : trialSeen
+    }
 
     var body: some View {
         let q = person.value("q")
@@ -511,34 +509,32 @@ struct ManagerCandidateChecks: View {
         let fee = currency.scaledPrice(2500)
         VStack(alignment: .leading, spacing: 4) {
             if !person.str("resume").isEmpty { Text(person.str("resume")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-            ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
-                if checked {
-                    Text("\(k.label): really \(band(person.value("stats")[k.key].double).lowercased())").font(.system(size: 11.5)).foregroundStyle(Theme.ivory)
-                } else if !q[k.key].isNull {
-                    Text("\(k.label): says \(band(q[k.key].double).lowercased())").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
+            if checked {
+                ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
+                    if !q[k.key].isNull { Text("\(k.label): \(comparison(k.key))").font(.system(size: 11.5)).foregroundStyle(Theme.ivory) }
                 }
             }
+            ForEach(seenLines, id: \.self) { line in
+                Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
             WrapRow {
-                if let seen = trialSeen {
-                    Text("Trial week: their work looked like skill \(Int(seen.rounded())).").font(.system(size: 11.5)).foregroundStyle(Theme.ivory)
-                } else {
+                if seenLines.isEmpty {
                     Button("Trial week") {
-                        let r: Double? = store.act { $0.startTrialWeek(personID: person.id, companyID: companyID) } ?? nil
-                        if let r { trialSeen = r; Haptics.success(); store.show("After a paid trial week their work looks like \(Int(r.rounded())) skill.", tone: "n") }
+                        let r: [WorkLog.Observation]? = store.act { $0.startTrialWeek(personID: person.id, companyID: companyID) } ?? nil
+                        if let r { trialSeen = r.map { $0.text }; Haptics.success(); store.show("The trial week is done: see how their work went.", tone: "n") }
                         else { Haptics.warning(); store.show("Could not arrange a trial week: it was done already, or the company lacks the cash for a week's wage.", tone: "warn") }
                     }.buttonStyle(QuietButtonStyle())
                 }
                 if !checked {
-                    Button("References · \(currency.tidyShort(fee))") {
+                    Button("References \u{00B7} \(currency.tidyShort(fee))") {
                         let ok = store.act { $0.checkManagerReferences(personID: person.id, companyID: companyID) } ?? false
                         if !ok { Haptics.warning() }
-                        store.show(ok ? "References in: their real skills are shown. Paid \(currency.tidyShort(fee))." : "Not enough cash for the reference check (\(currency.tidyShort(fee))).", tone: ok ? "n" : "warn")
+                        store.show(ok ? "References are in: you can see whether the CV holds. Paid \(currency.tidyShort(fee))." : "Not enough cash for the reference check (\(currency.tidyShort(fee))).", tone: ok ? "n" : "warn")
                     }.buttonStyle(QuietButtonStyle())
                 } else {
                     Text("References checked").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
                 }
             }
-            Text("A paid trial week shows about how good their work is; references show what is true.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
         }
     }
 }
@@ -647,11 +643,8 @@ struct AssistantSheet: View {
         }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Place a job ad to see applicants." : "Everyone has taken another job. Place a new ad.") { p in
-            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .assistant, companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3], roleKey: "assistant-manager") { wage in
-                var fb = HireFeedback.from(store.act { $0.hireAssistant(personID: p.id, companyID: co.id, monthlyWage: wage) }, name: p.name, role: "Assistant manager")
-                if fb.isHired { candidates = []; fb = .hired("\(p.name) is your assistant manager. Pick their two jobs."); store.show(fb.text, tone: "good") }
-                return fb
-            }
+            let request = HireRequest(post: .assistant, companyID: co.id, personID: p.id, roleTitle: "Assistant manager", onHired: { candidates = [] })
+            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .assistant, companyID: co.id), request: request, roleKey: "assistant-manager")
         }
     }
 }
