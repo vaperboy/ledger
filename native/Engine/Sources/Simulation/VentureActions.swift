@@ -143,11 +143,68 @@ public extension GameEngine {
     mutating func changeBuilders(startupID: Int, by delta: Int) -> SettingResult {
         applySetting(refuse: { s in
             guard let f = (s.rest["founded"]?.array ?? []).first(where: { $0["id"].int == startupID }), !f["sw16"].isNull else { return "This startup has no product to build." }
-            let n = f["sw16"]["devs"].int + delta
+            let n = (s.company(startupID).map { StartupModel.developers($0) } ?? f["sw16"]["devs"].int) + delta
             if n > 10 { return "Ten builders is the most." }
             if n < 0 { return "No builders left to let go." }
             return nil
-        }, probe: { .object($0.rest) }) { s, _, c in Startups.setBuilders(&s, startupID: startupID, delta: delta, context: c) }
+        }, probe: { .object(["n": .number(Double($0.company(startupID)?.staff.count ?? 0))]) }) { s, d, _ in Startups.setBuilders(&s, startupID: startupID, delta: delta, data: d) }
+    }
+
+    // MARK: Launch and the cap table (Stage 4)
+
+    /// Put the whole company (a startup included) on the market. The exit is the ordinary company sale: buyers' offers, the talk, the proceeds.
+    @discardableResult
+    mutating func listCompanyForSale(companyID: Int, broker: Bool, percent: Int = 100) -> Bool {
+        var ok = false
+        update { s, _, _ in ok = CompanySale.startListing(&s, companyID: companyID, broker: broker, pct: percent) }
+        return ok
+    }
+    /// Accept a buyer's offer. Returns the price paid, nil if it could not be done.
+    @discardableResult
+    mutating func acceptBuyerOffer(companyID: Int, offerID: Int) -> Double? {
+        var r: Double?
+        update { s, d, c in r = CompanySale.accept(&s, companyID: companyID, offerID: offerID, data: d, context: c) }
+        return r
+    }
+
+    /// The launch decision: the price, and (optionally) a weekly budget on one of the company's ordinary marketing channels.
+    @discardableResult
+    mutating func launchStartup(startupID: Int, price: Double, marketingChannel: String? = nil, marketingWeekly: Double = 0) -> Startups.LaunchResult {
+        var r = Startups.LaunchResult.notReady
+        update { s, _, _ in r = Startups.launch(&s, startupID: startupID, price: price) }
+        if r == .ok, let ch = marketingChannel, marketingWeekly > 0 { _ = setCampaign(companyID: startupID, channel: ch, weeklyBudget: marketingWeekly) }
+        return r
+    }
+    @discardableResult
+    mutating func setStartupPrice(startupID: Int, price: Double) -> Bool { var ok = false; update { s, _, _ in ok = Startups.setPrice(&s, startupID: startupID, price: price) }; return ok }
+    func startupLaunchPreview(startupID: Int, price: Double) -> StartupModel.Funnel? {
+        Startups.launchPreview(state, startupID: startupID, price: price, data: data, context: context)
+    }
+
+    /// The cap table of a company of yours: share counts, price per share, who holds what.
+    func capTable(companyID: Int) -> CapTable.Table? { state.company(companyID).map { CapTable.table($0) } }
+    /// What a funding offer does, before it is accepted: valuation, price per share, shares issued, ownership before and after, dilution, who gets the money.
+    func fundingOfferTerms(companyID: Int, offerIndex: Int) -> CapTable.DealTerms? {
+        guard let co = state.company(companyID), let o = Funding.offers(state, companyID: companyID).first(where: { $0.id == offerIndex }) else { return nil }
+        var conditions: [String] = [o.says]
+        if o.kind == "fund" { conditions.append("A seat on the board for the fund.") }
+        conditions.append("Another round cannot be pitched for four weeks.")
+        return CapTable.issueTerms(co, preMoney: o.preMoney, amount: o.amount, buyer: o.name, conditions: conditions)
+    }
+    /// The same for a private share sale at a percentage (mode "primary": new shares, the company is paid; "secondary": part of your stake, you are paid).
+    func shareSaleTerms(companyID: Int, percent: Double, mode: String) -> CapTable.DealTerms? {
+        guard let co = state.company(companyID), co.form == .limited else { return nil }
+        let v = max(1, Valuation.companyValue(co, state: state, trades: data.catalog))
+        let t = CapTable.table(co)
+        if mode == "primary" {
+            let amt = jsRound(v * percent / (100 - percent) * 0.9)
+            let n = CapTable.sharesForPercent(percent, total: t.total)
+            return CapTable.issueTerms(co, preMoney: amt > 0 ? amt * Double(t.total) / max(1, Double(n)) : v, amount: amt, buyer: "A private investor",
+                                       conditions: ["The buyer pays 10% under the estimated value.", "The money goes into the company."])
+        }
+        let n = Int((Double(t.you) * percent / 100).rounded())
+        let price = v / Double(t.total) * 0.85
+        return CapTable.founderSaleTerms(co, shares: n, pricePerShare: price, buyer: "A private buyer", conditions: ["The buyer pays 15% under the estimated value.", "The money is yours, not the company's."])
     }
     @discardableResult
     mutating func toggleOwnerHoursOnProduct(startupID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Startups.toggleOwnerHours(&s, startupID: startupID) }; return ok }

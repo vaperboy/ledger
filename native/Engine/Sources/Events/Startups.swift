@@ -39,6 +39,12 @@ public enum Startups {
         public var runwayWeeks: Int
         public var offers: [Funding.FundOffer]
         public var product: Product?
+        /// The real company behind it (open it for people, pay, marketing, shares), its team, the builders among them, the team asked for at founding, the price.
+        public var companyID: Int
+        public var teamSize: Int
+        public var developers: Int
+        public var teamWanted: Int
+        public var price: Double
         public var stageName: String { live ? rounds[min(stage, 4)] : exited ? "Acquired" : "Shut down" }
     }
 
@@ -47,16 +53,32 @@ public enum Startups {
                                  selfHours: w["selfH"].double, progress: w["prog"].double, customers: w["cust"].double, revenueWeekly: w["revW"].double,
                                  internalPrice: w["int"].double, usedBy: w["use"].array.map { $0.int })
     }
-    static func read(_ f: JSONValue) -> Founded {
-        let burn = f["burn"].double, cash = f["cash"].double
-        return Founded(id: f["id"].int, name: f["name"].string, productName: f["secn"].string, sectorName: StartupProducts.sector(f["sec"].string)?.name ?? "",
-                       live: f["st"].string == "live", exited: f["st"].string == "exit", stage: f["stage"].int, ownership: f["pct"].double, valuation: f["val"].double,
-                       cash: cash, burn: burn, invested: f["in"].double, exitValue: f["exitV"].double, quality: f["q"].double, traction: f["tr"].double,
-                       runwayWeeks: CompanyFigures.runwayWeeks(cash: cash, weeklyLoss: burn).map { Int($0) } ?? 0,
-                       offers: f["offers"].array.enumerated().map { n, o in Funding.FundOffer(id: n, kind: o["k"].string, name: o["name"].string, amount: o["amt"].double, preMoney: o["pre"].double, pct: o["pct"].double, says: o["says"].string, countered: o["ctr"].bool) },
-                       product: product(f["sw16"]))
+    /// A startup as the screens see it: the company's own cash, people, shares and value, and the product record.
+    static func read(_ f: JSONValue, _ s: GameState) -> Founded {
+        let co = s.company(f["cid"].int)
+        let cash = co?.cash ?? 0
+        let payroll = (co?.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare } ?? 0) * 12 / 52
+        let burn = payroll * 1.12 + (co.map { $0.value("prem")["rent"].double * 12 / 52 } ?? 0)
+        let status = co?.status
+        let live = status?.isLive ?? false
+        let exited = status == .sold && f["st"].string == "exit"
+        let val = f["val"].double
+        return Founded(id: f["id"].int, name: co?.name ?? f["name"].string, productName: f["secn"].string, sectorName: StartupProducts.sector(f["sec"].string)?.name ?? "",
+                       live: live, exited: exited, stage: stageIndex(f), ownership: co?.ownership ?? f["pct"].double, valuation: val,
+                       cash: cash, burn: burn, invested: co?.injectedCapital ?? f["in"].double, exitValue: f["exitV"].double, quality: f["q"].double, traction: f["tr"].double,
+                       runwayWeeks: CompanyFigures.runwayWeeks(cash: cash, weeklyLoss: max(0, burn - f["sw16"]["revW"].double)).map { Int($0) } ?? 0,
+                       offers: Funding.offers(s, companyID: f["cid"].int),
+                       product: product(f["sw16"]), companyID: f["cid"].int, teamSize: co?.staff.count ?? 0, developers: co.map { StartupModel.developers($0) } ?? 0,
+                       teamWanted: f["wantTeam"].int, price: f["sw16"]["price"].double)
     }
-    public static func founded(_ s: GameState) -> [Founded] { (s.rest["founded"]?.array ?? []).map(read) }
+    /// Stage by what is true: building, launched, with customers, with real revenue, scaling.
+    static func stageIndex(_ f: JSONValue) -> Int {
+        let w = f["sw16"]
+        if w["phase"].string != "live" { return 0 }
+        let rev = w["revW"].double
+        return rev <= 0 ? 1 : w["cust"].double < 100 ? 2 : w["cust"].double < 500 ? 3 : 4
+    }
+    public static func founded(_ s: GameState) -> [Founded] { (s.rest["founded"]?.array ?? []).map { read($0, s) } }
     public static func founded(_ s: GameState, id: Int) -> Founded? { founded(s).first { $0.id == id } }
 
     static func index(_ s: GameState, _ id: Int) -> Int? { (s.rest["founded"]?.array ?? []).firstIndex { $0["id"].int == id } }
@@ -105,108 +127,173 @@ public enum Startups {
 
     public enum FoundResult: Equatable { case ok(Int), notEnoughMoney(Double), unknownSector }
 
-    /// Found a startup. who: "self", "c2" (two builders) or "c4"; seedMultiple 1, 2 or 4. Original: `ACT.f17go`.
+    /// Found a startup: a REAL company (limited, home-based) funded with the seed money, whose builders are hired and paid like any staff.
+    /// who: "self", "c2" (two builders) or "c4"; seedMultiple 1, 2 or 4. The builders are hired only as far as the seed carries their wages for
+    /// three months; the rest are shown as wanted and can be hired from the company's team screen. Original: `ACT.f17go` (the blob is gone).
     @discardableResult
     public static func found(_ s: inout GameState, name: String?, sector: String, product: String, model: String, who: String, seedMultiple: Double,
                              data: GameData, context fc: FinanceContext) -> FoundResult {
         guard let d = StartupProducts.sector(sector) else { return .unknownSector }
         let cur = fc.homeCurrency(s)
         let seed = cur.scaledPrice(d.seed) * seedMultiple
-        if Payments.liquid(s) < seed { return .notEnoughMoney(seed) }
-        Payments.transferFromSavings(&s, need: seed)
-        Payments.playerPays(&s, seed, label: "Founded a startup")
-        let rec = Funding.record(s)
         let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+        // Like any limited company it is registered (fee) and has an accountant (owner decision).
+        let fee = c.registrationFee
+        if Payments.liquid(s) < seed + fee { return .notEnoughMoney(seed + fee) }
+        let rec = Funding.record(s)
         var nm = (name ?? "").trimmingCharacters(in: .whitespaces)
         if nm.isEmpty {
             let root = (c.companyNameStarts.isEmpty ? "Nova" : s.random.pick(c.companyNameStarts)).filter { $0.isLetter }
             nm = String(root.prefix(5)) + s.random.pick(["ly", " Labs", "io", " Tech"])
         }
-        let devs = who == "c4" ? 4 : who == "c2" ? 2 : 0
+        guard let id = SpecialFamilies.blankCompany(&s, tradeID: StartupModel.tradeID, country: c, cityID: s.player.cityID, name: nm, size: 1, data: data),
+              let i = s.companyIndex(id) else { return .unknownSector }
+        s.companies[i].status = .open
+        s.companies[i].openedWeek = s.week
+        s.companies[i].ownerHours = 0
+        Payments.transferFromSavings(&s, need: seed + fee)
+        Payments.injectCash(&s, companyID: id, amount: seed)
+        Payments.playerPays(&s, fee, label: "Registration of \(nm)", companyID: id)
+        CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)
+        s.companies[i].set("cap", .object(["total": .number(Double(CapTable.initialShares)), "me": .number(Double(CapTable.initialShares))]))
+        let wanted = who == "c4" ? 4 : who == "c2" ? 2 : 0
+        var hired = 0
+        for _ in 0..<wanted {
+            guard let co = s.company(id) else { break }
+            let payroll: Double = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
+            let next: Double = Hiring.marketWage(role: "dev", company: co, state: s, data: data)
+            if co.cash < (payroll + next) * 1.12 * 3 { break }
+            let cands = Hiring.search(role: "dev", company: co, mode: .network, faces: false, state: &s, data: data)
+            if AutoHire.hireWorker(role: "dev", companyID: id, candidates: cands, state: &s, data: data) != nil { hired += 1 } else { break }
+        }
+        // The first support hire is part of the default founding team: someone has to look after the first customers.
+        var support = 0
+        if let co = s.company(id) {
+            let payroll: Double = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
+            let next: Double = Hiring.marketWage(role: "ittech", company: co, state: s, data: data)
+            if co.cash >= (payroll + next) * 1.12 * 3 {
+                let cands = Hiring.search(role: "ittech", company: co, mode: .network, faces: false, state: &s, data: data)
+                if AutoHire.hireWorker(role: "ittech", companyID: id, candidates: cands, state: &s, data: data) != nil { support = 1 }
+            }
+        }
         let selfH = who == "self" && d.canBuildYourself ? freeHours(s) : 0
-        let q = clamp(s.random.range(0.25, 0.7) + Double(rec.exits) * 0.05 - Double(rec.fails) * 0.02, 0.1, 0.92)
-        let price: Double = model == "once" ? cur.scaledPrice(15000) : model == "sub" ? cur.scaledPrice(1200) : cur.scaledPrice(800)
+        let q0 = clamp(s.random.range(0.25, 0.7) + Double(rec.exits) * 0.05 - Double(rec.fails) * 0.02, 0.1, 0.92)
+        let reference = cur.scaledPrice(d.arpu)
+        let price: Double = ["once", "sale", "lic"].contains(model) ? reference * 2 : reference / 12 * (model == "both" ? 0.7 : 1)
         let f: JSONValue = .object([
-            "id": .number(Double(s.makeID())), "name": .string(nm), "sec": .string(sector), "secn": .string(StartupProducts.productName(sector: sector, product: product)),
-            "ck": .number(Double(d.capitalNeed)), "stage": 0, "pct": 100, "val": .number(seed * 1.2), "cash": .number(seed),
-            "burn": .number(seed / (26 * seedMultiple) + Double(devs) * builderCost(sector, cur) * 12 / 52), "in": .number(seed), "q": .number(q), "tr": 0.05,
-            "w0": .number(Double(s.week)), "wNext": .number(Double(s.week + s.random.int(20, 34))), "st": "live", "offers": .array([]),
-            "sw16": .object(["cat": .string(sector), "prod": .string(product), "model": .string(model), "devs": .number(Double(devs)), "selfH": .number(selfH), "prog": 0,
+            "id": .number(Double(id)), "cid": .number(Double(id)), "name": .string(nm), "sec": .string(sector), "secn": .string(StartupProducts.productName(sector: sector, product: product)),
+            "ck": .number(Double(d.capitalNeed)), "stage": 0, "pct": 100, "val": .number(seed), "in": .number(seed), "q": .number(q0), "q0": .number(q0), "tr": 0.05,
+            "w0": .number(Double(s.week)), "st": "live", "wantTeam": .number(Double(wanted)), "hiredTeam": .number(Double(hired)), "support": .number(Double(support)),
+            "sw16": .object(["cat": .string(sector), "prod": .string(product), "model": .string(model), "devs": .number(Double(hired)), "selfH": .number(selfH), "prog": 0,
                              "phase": "build", "cust": 0, "revW": 0, "int": 0, "use": .array([]), "deals": .array([]), "price": .number(price)]),
         ])
         s.rest["founded"] = .array((s.rest["founded"]?.array ?? []) + [f])
-        s.note("\(nm) is founded.", tone: "good")
-        return .ok(f["id"].int)
+        s.note("\(nm) is founded as a company of yours.", tone: "good", companyID: id)
+        return .ok(id)
+    }
+
+    // MARK: Launch
+
+    public enum LaunchResult: Equatable { case ok, notReady, badPrice }
+
+    /// The launch decision once the product is finished: the price from now on (the marketing campaign is set by the caller through the ordinary
+    /// campaigns). Revenue starts the next week.
+    @discardableResult
+    public static func launch(_ s: inout GameState, startupID: Int, price: Double) -> LaunchResult {
+        guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], f["sw16"]["phase"].string == "ready" else { return .notReady }
+        guard price > 0 else { return .badPrice }
+        edit(&s, startupID) { $0["sw16"]["phase"] = "live"; $0["sw16"]["price"] = .number(price) }
+        s.note("\(f["name"].string) is launched.", tone: "good", companyID: startupID)
+        s.news("\(f["name"].string) launches.", tone: "good")
+        return .ok
+    }
+
+    /// Change the price of a launched product. Customers answer next week.
+    @discardableResult
+    public static func setPrice(_ s: inout GameState, startupID: Int, price: Double) -> Bool {
+        guard price > 0, let k = index(s, startupID), let f = s.rest["founded"]?.array[k], ["live", "ready"].contains(f["sw16"]["phase"].string) else { return false }
+        edit(&s, startupID) { $0["sw16"]["price"] = .number(price) }
+        return true
+    }
+
+    /// What the launch screen shows for a price: the expected first weeks without luck. The campaign budget is read from the company's own plan.
+    public static func launchPreview(_ s: GameState, startupID: Int, price: Double, data: GameData, context fc: FinanceContext) -> StartupModel.Funnel? {
+        guard let f = (s.rest["founded"]?.array ?? []).first(where: { $0["id"].int == startupID }), let co = s.company(startupID),
+              let d = StartupProducts.sector(f["sw16"]["cat"].string) else { return nil }
+        let cur = fc.currency(co.countryCode, s)
+        let q = StartupModel.quality(s, co, base: f["q0"].double)
+        return StartupModel.expectedFunnel(s, co, sector: d, model: f["sw16"]["model"].string, price: price, awareness: co.awareness, customers: f["sw16"]["cust"].double, quality: q, currency: cur)
     }
 
     // MARK: Raising rounds, putting in money, shutting down
 
     public enum RoundResult: Equatable { case offers(Int), none, tooSoon(weeksLeft: Int), notLive }
 
-    /// Pitch to investors for a round. Original: `ACT.fpitch`.
+    /// Pitch to investors for a round: the ordinary company pitch (`Funding.pitch`), sized to 26 weeks of the team's cost against the company's value.
+    /// The offers, their share counts and their terms are `Funding`'s and `CapTable`'s, the same as for any company of yours.
     @discardableResult
     public static func pitchRound(_ s: inout GameState, startupID: Int, data: GameData) -> RoundResult {
-        guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], f["st"].string == "live" else { return .notLive }
-        if !f["pitchW"].isNull, s.week - f["pitchW"].int < 4 { return .tooSoon(weeksLeft: 4 - (s.week - f["pitchW"].int)) }
-        let it = Funding.interest(s, capitalNeed: f["ck"].int, traction: clamp(f["tr"].double + f["stage"].double * 0.15, 0, 1))
-        let list = Funding.makeOffers(&s, countryCode: s.homeCountryCode, data: data, interest: it, amount: max(f["burn"].double * 26, f["val"].double * 0.3), preMoney: max(f["val"].double, f["in"].double * 1.5))
-        let wk = Double(s.week)
-        edit(&s, startupID) { $0["pitchW"] = .number(wk); $0["offers"] = .array(list) }
-        return list.isEmpty ? .none : .offers(list.count)
+        guard let co = s.company(startupID), co.status.isLive else { return .notLive }
+        let fc = FinanceContext(countries: data.countries, trades: data.catalog)
+        let weeklyCost = (co.staff.reduce(0.0) { $0 + $1.monthlyWage } * 12 / 52) * 1.12 + fc.weeklyCost(co, s)
+        let amount = max(weeklyCost * 26, fc.currency(co.countryCode, s).scaledPrice(100000))
+        switch Funding.pitch(&s, companyID: startupID, amount: amount, data: data, context: fc) {
+        case .offers(let n): return .offers(n)
+        case .none: return RoundResult.none
+        case .tooSoon(let w): return .tooSoon(weeksLeft: w)
+        case .notLimited: return .notLive
+        }
     }
 
     @discardableResult
-    public static func acceptRound(_ s: inout GameState, startupID: Int, index n: Int) -> Bool {
-        guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], f["offers"].array.indices.contains(n) else { return false }
-        let o = f["offers"].array[n]
-        edit(&s, startupID) {
-            $0["cash"] = .number($0["cash"].double + o["amt"].double)
-            $0["val"] = .number(o["pre"].double + o["amt"].double)
-            $0["pct"] = .number($0["pct"].double * (1 - o["pct"].double / 100))
-            $0["burn"] = .number($0["burn"].double * 1.35)
-            $0["warn"] = 0
-            $0["offers"] = .array([])
-        }
-        Funding.bump(&s, "raised", o["amt"].double)
-        s.note("\(f["name"].string) raised \(Int(o["amt"].double)) from \(o["name"].string).", tone: "good")
-        return true
-    }
+    public static func acceptRound(_ s: inout GameState, startupID: Int, index n: Int) -> Bool { Funding.acceptOffer(&s, companyID: startupID, index: n) }
 
-    public static func declineRound(_ s: inout GameState, startupID: Int, index n: Int) {
-        edit(&s, startupID) { var l = $0["offers"].array; if l.indices.contains(n) { l.remove(at: n) }; $0["offers"] = .array(l) }
-    }
+    public static func declineRound(_ s: inout GameState, startupID: Int, index n: Int) { Funding.declineOffer(&s, companyID: startupID, index: n) }
 
-    /// Put your own money into the startup. Original: `ACT.ftopgo`.
+    /// Put your own money into the company (an owner investment, no new shares).
     @discardableResult
     public static func topUp(_ s: inout GameState, startupID: Int, amount: Double) -> Bool {
         let a = jsRound(amount)
-        guard a > 0, let k = index(s, startupID), s.rest["founded"]?.array[k]["st"].string == "live", Payments.liquid(s) >= a else { return false }
-        Payments.transferFromSavings(&s, need: a)
-        Payments.playerPays(&s, a, label: "Put money into \(s.rest["founded"]!.array[k]["name"].string)")
-        edit(&s, startupID) { $0["cash"] = .number($0["cash"].double + a); $0["in"] = .number($0["in"].double + a); $0["warn"] = 0 }
-        return true
+        guard a > 0, let co = s.company(startupID), co.status.isLive, Payments.liquid(s) >= a else { return false }
+        return Payments.injectCash(&s, companyID: startupID, amount: a)
     }
 
-    /// Close it. Your share of the cash that is left comes back; it counts as a failed startup. Original: `ACT.fshut`.
+    /// Close it: the ordinary winding-up is `GameEngine.windUpCompany`; this keeps the old entry point for the founder's record and returns what you got back.
     @discardableResult
     public static func shutDown(_ s: inout GameState, startupID: Int) -> Double? {
-        guard let k = index(s, startupID), let f = s.rest["founded"]?.array[k], f["st"].string == "live" else { return nil }
-        let back = max(0, f["cash"].double) * f["pct"].double / 100
-        if back > 0 { Payments.playerReceives(&s, back, label: "Closed \(f["name"].string)") }
-        edit(&s, startupID) { $0["st"] = "failed"; $0["val"] = 0 }
+        guard let i = s.companyIndex(startupID), s.companies[i].status.isLive else { return nil }
+        let co = s.companies[i]
+        let back = max(0, co.cash) * co.ownership / 100
+        if back > 0 { Payments.playerReceives(&s, back, label: "Closed \(co.name)", companyID: startupID) }
+        Ledger.set(&s, .company(startupID), to: 0)
+        for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
+        s.companies[i].staff = []
+        s.companies[i].status = .sold
+        edit(&s, startupID) { $0["st"] = "failed" }
         Funding.bump(&s, "fails")
         return back
     }
 
     // MARK: The product: builders, your hours, use in your companies, internal price
 
-    public static func setBuilders(_ s: inout GameState, startupID: Int, delta: Int, context fc: FinanceContext) {
-        let cur = fc.homeCurrency(s)
-        edit(&s, startupID) { f in
-            guard !f["sw16"].isNull else { return }
-            let old = f["sw16"]["devs"].int, n = max(0, min(10, old + delta))
-            f["burn"] = .number(f["burn"].double + Double(n - old) * builderCost(f["sw16"]["cat"].string, cur) * 12 / 52)
-            f["sw16"]["devs"] = .number(Double(n))
+    /// Hire one more builder (delta > 0) or let one go (delta < 0) through the ordinary hiring and dismissal. Pay, notice and severance are the company's.
+    public static func setBuilders(_ s: inout GameState, startupID: Int, delta: Int, data: GameData) {
+        guard s.company(startupID) != nil else { return }
+        if delta > 0 {
+            for _ in 0..<delta {
+                guard let co = s.company(startupID) else { return }
+                var tries = 0
+                while tries < 4 {
+                    tries += 1
+                    let cands = Hiring.search(role: "dev", company: co, mode: .network, faces: false, state: &s, data: data)
+                    if AutoHire.hireWorker(role: "dev", companyID: startupID, candidates: cands, state: &s, data: data) != nil { break }
+                }
+            }
+        } else if delta < 0 {
+            for _ in 0..<(-delta) {
+                guard let co = s.company(startupID), let m = co.staff.filter({ $0.role == "dev" }).max(by: { $0.hiredWeek < $1.hiredWeek }) else { return }
+                _ = Dismissal.dismiss(&s, companyID: startupID, staffID: m.id, reason: .redundancy, data: data)
+            }
         }
     }
     /// Give (or take back) your own hours to the product. Fails when you have fewer than 5 free.
@@ -296,51 +383,69 @@ public enum Startups {
 
     // MARK: The week
 
-    static func addMod(_ s: inout GameState, _ i: Int, _ k: String, _ m: Double, _ w: Double) { EventEngine.addModifier(&s, i, key: k, multiplier: m, weeks: w) }
+    /// A startup saved before startups became companies (no `cid`): it becomes a real company holding the cash the blob had, with the builders on the
+    /// payroll and your share as it was. Nothing the player had is lost; the record keeps its product and takes the company's id.
+    static func migrateLegacy(_ s: inout GameState, data: GameData) {
+        guard var list = s.rest["founded"]?.array else { return }
+        var changed = false
+        for k in list.indices where list[k]["cid"].isNull && list[k]["st"].string == "live" {
+            var f = list[k]
+            let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+            guard let id = SpecialFamilies.blankCompany(&s, tradeID: StartupModel.tradeID, country: c, cityID: s.player.cityID, name: f["name"].string, size: 1, data: data),
+                  let i = s.companyIndex(id) else { continue }
+            s.companies[i].status = .open
+            s.companies[i].openedWeek = s.week
+            s.companies[i].ownerHours = 0
+            Ledger.set(&s, .company(id), to: max(0, f["cash"].double))
+            s.companies[i].injectedCapital = f["in"].double
+            s.companies[i].ownership = clamp(f["pct"].double, 0.01, 100)
+            s.companies[i].set("cap", .null)
+            CapTable.normalise(&s, i)
+            var hired = 0
+            for _ in 0..<max(0, f["sw16"]["devs"].int) {
+                let cands = Hiring.search(role: "dev", company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
+                if AutoHire.hireWorker(role: "dev", companyID: id, candidates: cands, state: &s, data: data) != nil { hired += 1 }
+            }
+            f["id"] = .number(Double(id)); f["cid"] = .number(Double(id)); f["q0"] = f["q"]; f["wantTeam"] = f["sw16"]["devs"]; f["hiredTeam"] = .number(Double(hired))
+            list[k] = f
+            changed = true
+        }
+        if changed { s.rest["founded"] = .array(list) }
+    }
 
-    /// Cash burns, milestones come (valuation up or down), products progress, customers and revenue arrive. Original: `foundedWeek` + startup_sectors `weekly`.
+    /// Once a week: keep each startup's record in line with its company (value, share, builders), notice the end of the company (broke or sold),
+    /// warn when the money runs short, and settle rival deals. The product itself runs inside the company's own week (`StartupModel.context`).
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         _ = pitches(&s, data: data)
+        migrateLegacy(&s, data: data)
         guard var list = s.rest["founded"]?.array, !list.isEmpty else { weeklyStakes(&s); return }
         for k in list.indices where list[k]["st"].string == "live" {
             var f = list[k]
-            let name = f["name"].string
-            f["cash"] = .number(f["cash"].double - f["burn"].double)
-            f["tr"] = .number(clamp(f["tr"].double + (f["q"].double - 0.3) * 0.012 + s.random.gauss() * 0.004, 0, 1))
-            if f["cash"].double < 0 {
+            guard let co = s.company(f["cid"].int) else { f["st"] = "failed"; list[k] = f; continue }
+            if co.status == .bust {
                 f["st"] = "failed"; f["val"] = 0
                 Funding.bump(&s, "fails")
-                s.note("\(name) ran out of money and shut down.", tone: "bad")
-                s.news("Startup \(name) shuts down.", tone: "n")
+                s.news("Startup \(co.name) shuts down.", tone: "n")
                 list[k] = f; continue
             }
-            let runway = CompanyFigures.runwayWeeks(cash: f["cash"].double, weeklyLoss: f["burn"].double)
-            if (runway ?? .infinity) < 6 && !f["warn"].bool {
+            if co.status == .sold {
+                f["st"] = "exit"; f["val"] = 0
+                Funding.bump(&s, "exits")
+                list[k] = f; continue
+            }
+            f["val"] = .number(Valuation.companyValue(co, state: s, trades: data.catalog))
+            f["pct"] = .number(co.ownership)
+            f["in"] = .number(co.injectedCapital)
+            f["sw16"]["devs"] = .number(Double(StartupModel.developers(co)))
+            f["stage"] = .number(Double(stageIndex(f)))
+            let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare } * 12 / 52 * 1.12
+            let net = payroll + fc.weeklyCost(co, s) - f["sw16"]["revW"].double
+            let runway = CompanyFigures.runwayWeeks(cash: co.cash, weeklyLoss: max(0, net))
+            if let r = runway, r < 6, !f["warn"].bool {
                 f["warn"] = 1
-                s.addMessage(from: name, title: "\(name) has about \(Int(runway ?? 0)) weeks of money left",
-                             body: "Raise a round or put in more money, or it shuts down.", tone: "bad")
-            }
-            if s.week >= f["wNext"].int {
-                f["wNext"] = .number(Double(s.week + s.random.int(20, 34)))
-                if s.random.chance(clamp(f["q"].double * 0.9 + f["tr"].double * 0.3 - f["stage"].double * 0.05, 0.1, 0.9)) {
-                    f["stage"] = .number(min(4, f["stage"].double + 1))
-                    f["val"] = .number(f["val"].double * s.random.range(1.8, 3.2))
-                    s.note("\(name) hit its milestone and is now at \(rounds[f["stage"].int]) stage.", tone: "good")
-                    if f["stage"].int >= 4 && s.random.chance(0.5 + f["q"].double * 0.3) {
-                        let ex = f["val"].double * s.random.range(1.2, 2.8), pr = ex * f["pct"].double / 100
-                        Payments.playerReceives(&s, pr, label: "Exit: \(name)")
-                        s.tax.gains += max(0, pr - f["in"].double)
-                        f["st"] = "exit"; f["exitV"] = .number(ex); f["val"] = 0
-                        Funding.bump(&s, "exits")
-                        s.note("EXIT! \(name) was acquired. Your \(Int(f["pct"].double.rounded()))% pays \(Int(pr)).", tone: "good")
-                        s.news("\(name) is acquired for \(fc.homeCurrency(s).short(ex)).", tone: "good")
-                    }
-                } else {
-                    f["val"] = .number(f["val"].double * s.random.range(0.6, 0.95))
-                    s.note("\(name) missed its milestone. The valuation fell.", tone: "bad")
-                }
-            }
-            if f["st"].string == "live", !f["sw16"].isNull { productWeek(&s, &f, data: data, context: fc) }
+                s.addMessage(from: co.name, title: "\(co.name) has about \(Int(r)) weeks of money left",
+                             body: "Raise a round or put in more money, cut costs, or the company runs out of cash.", companyID: co.id, tone: "bad")
+            } else if (runway ?? 99) >= 10 { f["warn"] = 0 }
             list[k] = f
         }
         s.rest["founded"] = .array(list)
@@ -359,48 +464,6 @@ public enum Startups {
             }
         }
         weeklyStakes(&s)
-    }
-
-    /// Building, testing, selling, and the bill your own companies pay. Original: startup_sectors `weekly`.
-    static func productWeek(_ s: inout GameState, _ f: inout JSONValue, data: GameData, context fc: FinanceContext) {
-        let w = f["sw16"]
-        guard let d = StartupProducts.sector(w["cat"].string) else { return }
-        let speed = w["devs"].double + w["selfH"].double / 40 * 0.7 * CapacityModel.ownerFactor(s)
-        var phase = w["phase"].string, prog = w["prog"].double, cust = w["cust"].double
-        let name = f["name"].string, q = f["q"].double
-        let cur = fc.homeCurrency(s)
-        if phase != "live" {
-            prog = min(1, prog + speed / d.work * (0.7 + q * 0.6))
-            if phase == "build" && prog >= 0.5 { phase = "beta"; s.note("\(name) is ready to test. You can switch it on in your own companies.", tone: "good") }
-            if prog >= 1 { phase = "live"; s.note("\(name) is launched.", tone: "good"); s.news("\(name) launches.", tone: "good") }
-        }
-        var rev = 0.0
-        let arpu = cur.scaledPrice(d.arpu)
-        if phase == "live" {
-            let nc = max(0, ((q * 2.2 + f["tr"].double * 3 + w["devs"].double * 0.3) * d.growth * (1 + cust / 250) * s.random.range(0.2, 1.3)).rounded())
-            cust = (cust * (1 - 0.005 - (1 - q) * 0.02)).rounded() + nc
-            let one = ["once", "sale", "lic"].contains(w["model"].string)
-            rev = one ? nc * arpu * 8 : cust * arpu * 12 / 52 * (w["model"].string == "both" ? 1.15 : 1)
-            f["tr"] = .number(clamp(f["tr"].double + min(0.01, rev / max(1, f["burn"].double) * 0.004), 0, 1))
-        } else if phase == "beta" { cust = max(cust, 2 + (prog * 8).rounded(.down)) }
-        // Your companies pay the internal price
-        var gl = Set<Int>()
-        for idv in w["use"].array {
-            guard let ci = s.companyIndex(idv.int), s.companies[ci].status == .open else { continue }
-            if phase == "beta" && s.random.chance(0.1) {
-                var g = s.companies[ci].value("gl16"); g[String(f["id"].int)] = .number(Double(s.week + 1)); s.companies[ci].set("gl16", g)
-                s.note("\(name) (test version) failed at \(s.companies[ci].name) this week.", tone: "bad", companyID: s.companies[ci].id)
-                gl.insert(ci)
-            }
-            let fee = jsRound(arpu * w["int"].double / 100 * 12 / 52)
-            if fee > 0 { _ = Payments.companyPays(&s, companyID: s.companies[ci].id, amount: fee, category: "oth", label: "Own product: \(name)"); rev += fee }
-            if let bd = data.catalog[s.companies[ci].type], let x = StartupProducts.effect(sector: w["cat"].string, product: w["prod"].string, trade: bd), x.c > 0 {
-                addMod(&s, ci, "cogsup", 1 - x.c * (phase == "live" ? 1 : 0.6) * (0.6 + q * 0.6), 2)
-            }
-        }
-        f["sw16"]["phase"] = .string(phase); f["sw16"]["prog"] = .number(prog); f["sw16"]["cust"] = .number(cust); f["sw16"]["revW"] = .number(jsRound(rev))
-        f["cash"] = .number(f["cash"].double + rev)
-        if rev > 0 { f["val"] = .number(max(f["val"].double, rev * 52 * 3)) }
     }
 
     // MARK: Startups of others: pitches, stakes, rounds and bridges

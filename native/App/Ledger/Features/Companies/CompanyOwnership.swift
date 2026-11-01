@@ -97,6 +97,9 @@ struct CompanyOwnershipSection: View {
                 ownershipBar(all)
                 Text(power.text).font(.system(size: 12)).foregroundStyle(power.kind == .control ? Theme.caution : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 StatStrip(cells: cells)
+                if let t = engine.capTable(companyID: company.id) {
+                    Text("\(t.total) shares in issue, \(t.you) of them yours.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                }
             }
         }
     }
@@ -141,7 +144,8 @@ struct CompanyOwnershipSection: View {
 
     private func holderCard(_ h: Shareholders.Holder, tint: Color, cur: Currency) -> some View {
         let id = company.id
-        let sub: String = "\(Shareholders.profileNames[h.profile] ?? "") · mood: \(h.moodWord)"
+        let held: Int = engine.capTable(companyID: company.id)?.holders.first { $0.name == h.name }?.shares ?? 0
+        let sub: String = "\(Shareholders.profileNames[h.profile] ?? "") · mood: \(h.moodWord)" + (held > 0 ? " · \(held) shares" : "")
         let buyBack: Double? = engine.buyBackPrice(companyID: id, holder: h.name)
         return Card(padding: 12, radius: Theme.Radius.row) {
             VStack(alignment: .leading, spacing: 10) {
@@ -245,7 +249,7 @@ struct CompanyOwnershipSection: View {
                 }
                 WrapRow {
                     QuietButton(title: "Accept") {
-                        pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?", message: "The money goes into the company. \(o.name) becomes an owner with votes and a share of profits; your share falls. This cannot be undone.", button: "Accept", destructive: true) {
+                        pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?", message: DealText.describe(engine.fundingOfferTerms(companyID: id, offerIndex: o.id), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Accept", destructive: true) {
                             let ok = store.act { $0.acceptFundingOffer(companyID: id, index: o.id) } ?? false
                             if !ok { Haptics.warning() } else { Haptics.success() }
                             store.show(ok ? "\(cur.tidyShort(o.amount)) is in the company; \(o.name) now owns \(Int(o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
@@ -326,6 +330,17 @@ struct CompanyOwnershipSection: View {
             }
             Card(padding: 14, radius: Theme.Radius.row) {
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("New shares for a private investor").capsLabel()
+                    HStack(spacing: 8) {
+                        ForEach([5, 10, 20], id: \.self) { p in
+                            QuietButton(title: "\(p)%", fullWidth: true) { confirmNewShares(p, cur: cur) }
+                        }
+                    }
+                    Text("The company issues new shares and receives the money; every owner, you included, is diluted. Different from selling some of your own shares above.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+            Card(padding: 14, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         GlyphView(glyph: Glyph.arrowOut, size: 15, weight: 1.6)
                         Text("Look for a buyer").capsLabel()
@@ -343,13 +358,25 @@ struct CompanyOwnershipSection: View {
 
     private func confirmSale(_ pct: Int, _ secondary: Double, cur: Currency) {
         let id = company.id
-        pending = PendingAction(title: "Sell \(pct)% of your shares?", message: "About \(cur.tidyDisplay(secondary)) comes to you (gains are taxed). The buyer gets votes and a share of every dividend; your control falls. This cannot be undone.", button: "Sell", destructive: true) {
+        pending = PendingAction(title: "Sell \(pct)% of your shares?", message: DealText.describe(engine.shareSaleTerms(companyID: id, percent: Double(pct), mode: "secondary"), cur, companyName: company.name) + "\nThe buyer gets votes and a share of every dividend. This cannot be undone.", button: "Sell", destructive: true) {
             switch store.act({ $0.sellPrivateShares(companyID: id, percent: Double(pct), mode: "secondary") }) {
             case .ok(let v)?: Haptics.success(); store.show("Sold for \(cur.tidyShort(v)).", tone: "good")
             case .notLimited?: Haptics.warning(); store.show("Only a limited company can sell shares.", tone: "warn")
             case .tooMuch?: Haptics.warning(); store.show("That would cost you control.", tone: "warn")
             case nil: break
             default: Haptics.warning(); store.show("The owners blocked the sale.", tone: "warn")
+            }
+        }
+    }
+
+    private func confirmNewShares(_ pct: Int, cur: Currency) {
+        let id = company.id
+        pending = PendingAction(title: "Issue new shares for \(pct)% of the company?", message: DealText.describe(engine.shareSaleTerms(companyID: id, percent: Double(pct), mode: "primary"), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Issue the shares", destructive: true) {
+            switch store.act({ $0.sellPrivateShares(companyID: id, percent: Double(pct), mode: "primary") }) {
+            case .ok(let v)?: Haptics.success(); store.show(cur.tidyShort(v) + " went into the company.", tone: "good")
+            case .tooMuch?: Haptics.warning(); store.show("That would cost you control.", tone: "warn")
+            case .blocked?: Haptics.warning(); store.show("The other owners block new shares for now.", tone: "warn")
+            default: Haptics.warning(); store.show("Not possible now.", tone: "warn")
             }
         }
     }

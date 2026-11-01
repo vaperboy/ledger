@@ -310,9 +310,12 @@ struct CompanySetupSection: View {
     }
 
     private func confirmQuickSetup() {
-        pending = PendingAction(title: "Fill in what is missing?", message: "Applies for every document, rents a standard place, buys the standard equipment (financed where possible) and hires the standard team, paid from company cash. It opens by itself once the paperwork is approved.", button: "Fill in", alwaysAsk: true) {
-            let failed = store.act { $0.quickSetup(companyID: company.id) } ?? []
-            if failed.isEmpty { Haptics.success(); store.show("Done: documents applied for, premises, equipment and team in place.", tone: "good") }
+        pending = PendingAction(title: "Fill in what is missing?", message: "Applies for every document, rents a standard place, buys the equipment the trade cannot open without and hires the core team, only as far as the company's own cash carries it (two months of wages kept). Anything it leaves out is listed with its cost. It opens by itself once the paperwork is approved.", button: "Fill in", alwaysAsk: true) {
+            let report = store.act { $0.quickSetupWithinBudget(companyID: company.id) }
+            let failed: [String] = report?.log ?? []
+            let left: [String] = (report?.skipped ?? []).map { $0.title }
+            if failed.isEmpty && left.isEmpty { Haptics.success(); store.show("Done: documents applied for, premises, equipment and team in place.", tone: "good") }
+            else if failed.isEmpty { Haptics.warning(); store.show("Done as far as the cash goes. Left for you to decide: \(left.prefix(3).joined(separator: ", "))\(left.count > 3 ? "…" : "")", tone: "warn") }
             else { Haptics.warning(); store.show("Partly done. Not possible: \(failed.prefix(3).joined(separator: "; "))\(failed.count > 3 ? "…" : "")", tone: "warn") }
         }
     }

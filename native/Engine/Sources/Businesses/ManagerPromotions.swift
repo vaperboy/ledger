@@ -177,13 +177,10 @@ extension ManagerModel {
     @discardableResult
     static func giveShares(_ s: inout GameState, companyID: Int, personID: Int, percent: Double) -> String {
         guard let i = s.companyIndex(companyID), let n = s.people[personID] else { return "" }
-        let pct = min(percent, s.companies[i].ownership - 1)
-        if pct <= 0 { return "" }
-        s.companies[i].ownership -= pct
-        var H = s.companies[i].value("holders").array
-        if let k = H.firstIndex(where: { $0["npc"].int == personID && !$0["npc"].isNull }) { H[k]["pct"] = .number(H[k]["pct"].double + pct) }
-        else { H.append(.object(["name": .string(n.name), "pct": .number(pct), "in": 0, "npc": .number(Double(personID)), "mood": 70])) }
-        s.companies[i].set("holders", .array(H))
+        let total = CapTable.table(s.companies[i]).total
+        let moved = CapTable.award(&s, i, percent: min(percent, s.companies[i].ownership - 1), to: n.name, extra: ["npc": .number(Double(personID)), "mood": 70])
+        let pct = Double(moved) / Double(total) * 100
+        if moved <= 0 { return "" }
         return " \(firstName(n.name)) now owns \(Int(pct))% of \(s.companies[i].name)."
     }
 

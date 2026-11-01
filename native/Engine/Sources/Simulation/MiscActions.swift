@@ -294,6 +294,19 @@ public extension GameEngine {
         return r
     }
 
+    /// The product-expansion form's read: cost, weeks, odds, requirements and the cash left, nothing paid.
+    func developmentPlan(companyID: Int, project: String) -> Development.Plan? {
+        guard let co = state.company(companyID) else { return nil }
+        return Development.plan(for: co, project: project, state: state, data: data)
+    }
+    /// Cancel the running project; the unspent part of its cost returns to the company.
+    @discardableResult
+    mutating func cancelDevelopment(companyID: Int) -> Double? {
+        var r: Double?
+        update { s, _, _ in r = Development.cancel(&s, companyID: companyID) }
+        return r
+    }
+
     // MARK: Goals
 
     /// "yyyy-m-d" of a real date, the key of the daily goal.

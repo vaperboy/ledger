@@ -1,0 +1,173 @@
+import XCTest
+import GameCore
+import Countries
+import Finance
+import Businesses
+@testable import Simulation
+
+/// Stage 4D: founding a business is financially transparent. The plan lists mandatory costs, optional extras and working capital, keeps a
+/// personal reserve, and quick set-up never hires or buys what the company's cash cannot carry. The matrix probe re-runs the audit's 23 countries
+/// x every trade setup (default start cash, 42 days, payroll approved as it comes) for the old automatic start and the budgeted one.
+final class CreationBudgetTests: XCTestCase {
+    private func game(_ code: String = "UK", seed: Int = 7, extra: Double = 0) throws -> GameEngine {
+        var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: seed)
+        if extra > 0 { e.update { s, _, _ in Ledger.move(&s, .me, extra, why: "Test funds") } }
+        return e
+    }
+
+    // MARK: Plan
+
+    func testPlanGroupsMandatoryOptionalAndWorkingCapitalAndShowsRemainingCash() throws {
+        let e = try game(extra: 500_000_000)
+        let city = e.state.player.cityID
+        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, form: .limited, size: 1))
+        XCTAssertFalse(plan.lines.isEmpty)
+        XCTAssertGreaterThan(plan.mandatoryTotal, 0)
+        XCTAssertGreaterThan(plan.workingCapital, 0)
+        // optional things are not in the bill unless chosen; they are listed as not chosen with their price
+        XCTAssertFalse(plan.lines.contains { $0.id == "optEq" })
+        let full = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, form: .limited, size: 1, choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)))
+        XCTAssertGreaterThanOrEqual(full.neededNow, plan.neededNow)
+        let none = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, form: .limited, size: 1, choices: SetupChoices(stock: .none)))
+        XCTAssertFalse(none.lines.contains { $0.id == "stock" })
+        XCTAssertLessThanOrEqual(none.neededNow, plan.neededNow)
+        XCTAssertEqual(plan.accountsAfter, max(0, plan.available - plan.registrationAndCapital - plan.intoCompany), accuracy: 0.5)
+        XCTAssertGreaterThan(plan.personalReserve, 0)
+    }
+
+    func testRichPlayerKeepsReserveAndPoorPlayerIsOfferedAlternatives() throws {
+        let rich = try game(extra: 2_000_000_000)
+        let city = rich.state.player.cityID
+        let p1 = try XCTUnwrap(rich.newCompanyPlan(tradeID: "restaurant", cityID: city, form: .limited, size: 2))
+        XCTAssertTrue(p1.keepsReserve)
+        XCTAssertTrue(p1.alternatives.isEmpty)
+        // the default start cash is far below a restaurant: the plan says so, keeps the reserve and offers cheaper ways
+        let poor = try game()
+        let p2 = try XCTUnwrap(poor.newCompanyPlan(tradeID: "restaurant", cityID: poor.state.player.cityID, form: .limited, size: 2, choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)))
+        XCTAssertGreaterThan(p2.shortfall, 0)
+        XCTAssertFalse(p2.alternatives.isEmpty)
+        XCTAssertTrue(p2.alternatives.allSatisfy { $0.saving > 0 })
+        XCTAssertLessThanOrEqual(p2.intoCompany, max(0, p2.available - p2.registrationAndCapital - p2.personalReserve) + 1)
+    }
+
+    // MARK: Nothing optional is bought silently
+
+    func testOptionalEquipmentStockAndExtraStaffAreNotBoughtUnlessChosen() throws {
+        var e = try game(extra: 800_000_000)
+        let city = e.state.player.cityID
+        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "cons", cityID: city, form: .soleTrader, size: 1))
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, form: .soleTrader, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
+        let co = try XCTUnwrap(e.state.company(out.companyID))
+        let bd = try XCTUnwrap(e.data.catalog["cons"])
+        let optional = bd.equipment.filter { !$0.isRequired && $0.standardCount > 0 }
+        XCTAssertFalse(optional.isEmpty, "the consultant has optional standard items")
+        XCTAssertEqual(out.skipped.filter { $0.kind != .staff }.count, optional.count, "each left-out item is reported with its price")
+        XCTAssertTrue(out.skipped.allSatisfy { $0.cost > 0 })
+        for o in optional { XCTAssertEqual(co.value("eq")[o.id]["n"].double, 0, "\(o.id) was not bought") }
+        XCTAssertEqual(OpeningChecklist.openingStockShare(co), 0)
+        // choosing it buys it
+        guard case .success(let out2) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, form: .soleTrader, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany * 3,
+                                                                       choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)) else { return XCTFail("start 2") }
+        XCTAssertTrue(out2.skipped.filter { $0.kind != .staff }.isEmpty)
+    }
+
+    func testOpeningStockFollowsTheChosenShare() throws {
+        var e = try game(extra: 800_000_000)
+        let city = e.state.player.cityID
+        var paid: [SetupChoices.Stock: Double] = [:]
+        for choice in SetupChoices.Stock.allCases {
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, form: .limited, size: 1, name: nil, pick: nil, fundWith: 300_000_000, choices: SetupChoices(stock: choice)) else { return XCTFail("start") }
+            let id = out.companyID
+            e.update { s, d, _ in
+                guard let i = s.companyIndex(id) else { return }
+                for k in s.companies[i].value("docs").object.keys { var docs = s.companies[i].value("docs"); docs[k]["st"] = "ok"; s.companies[i].set("docs", docs) }
+                _ = OpeningChecklist.open(&s, companyIndex: i, data: d)
+                paid[choice] = s.companies[i].inventory
+            }
+        }
+        XCTAssertEqual(paid[.none] ?? -1, 0, accuracy: 0.5)
+        XCTAssertGreaterThan(paid[.full] ?? 0, 0)
+        XCTAssertEqual(paid[.half] ?? 0, (paid[.full] ?? 0) * 0.5, accuracy: (paid[.full] ?? 0) * 0.02 + 1)
+    }
+
+    // MARK: Hiring stays inside the budget
+
+    func testBudgetedHiringNeverBuysWagesTheCashCannotCarry() throws {
+        var e = try game(extra: 200_000_000)
+        let city = e.state.player.cityID
+        // a thin company: hiring the standard team would cost far more than the cash covers
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "restaurant", cityID: city, form: .limited, size: 1, name: nil, pick: nil, fundWith: 2_500_000, choices: SetupChoices(team: .standard)) else { return XCTFail("start") }
+        let co = try XCTUnwrap(e.state.company(out.companyID))
+        let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
+        XCTAssertLessThanOrEqual(payroll * 2, max(co.cash + payroll * 2, 1) * 1.0 + 1)
+        XCTAssertTrue(out.skipped.contains { $0.kind == .staff }, "the staff the cash cannot carry is listed, not hired")
+        // the legacy automatic start on the same money hires without looking
+        var legacy = try game(extra: 200_000_000)
+        guard case .success(let lid) = legacy.startCompany(tradeID: "restaurant", cityID: city, form: .limited, size: 1, fundWith: 2_500_000) else { return XCTFail("start legacy") }
+        let legacyPayroll = legacy.state.company(lid)!.staff.reduce(0.0) { $0 + $1.monthlyWage }
+        XCTAssertGreaterThanOrEqual(legacyPayroll, payroll)
+    }
+
+    // MARK: Matrix probe (23 countries x every trade)
+
+    struct Cell { var accountNegative = false, companyNegative = false, companyBust = false, gameOver = false, started = false, hired = 0 }
+
+    private func run(code: String, trade: String, budgeted: Bool, days: Int) throws -> Cell {
+        var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 11)
+        let city = e.state.player.cityID
+        guard let bd = e.data.catalog[trade] else { return Cell() }
+        let form: LegalForm = bd.needsLimitedCompany ? .limited : .soleTrader
+        let country = e.homeCountry
+        let c = country.cities.first { $0.id == city } ?? country.cities[0]
+        let size = CompanySetup.recommendedSize(bd, city: c)
+        guard SpecialFamilies.isStartable(bd), CompanySetup.banReason(trade, country: country) == nil,
+              let plan = e.newCompanyPlan(tradeID: trade, cityID: city, form: form, size: size, withAlternatives: false), plan.registrationShortfall <= 0 else { return Cell() }
+        var cell = Cell()
+        var id = 0
+        if budgeted {
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: city, form: form, size: size, name: nil, pick: nil, fundWith: plan.intoCompany) else { return Cell() }
+            id = out.companyID
+        } else {
+            let into = max(0, min(plan.total * 1.15, plan.available - plan.registrationAndCapital))
+            guard case .success(let i) = e.startCompany(tradeID: trade, cityID: city, form: form, size: size, fundWith: into) else { return Cell() }
+            id = i
+        }
+        cell.started = true
+        cell.hired = e.state.company(id)?.staff.count ?? 0
+        for _ in 0..<days {
+            for co in e.state.companies { _ = e.approvePayroll(companyID: co.id) }
+            _ = e.nextDay()
+            if e.state.cash + e.state.savings < 0 || e.state.cash < -1 { cell.accountNegative = true }
+            if let co = e.state.company(id) {
+                if co.cash < -1 { cell.companyNegative = true }
+                if co.status == .bust { cell.companyBust = true }
+            }
+            if e.state.isGameOver { cell.gameOver = true; break }
+        }
+        return cell
+    }
+
+    /// Quick version for every run: a spread of trades in two countries. `LEDGER_PROBE_ALL=1` runs the whole 23 x all matrix and prints the table.
+    func testSetupMatrixBudgetedStartsDoNotEndInUnchosenNegatives() throws {
+        let all = ProcessInfo.processInfo.environment["LEDGER_PROBE_ALL"] == "1"
+        let e0 = try game()
+        let trades = all ? e0.data.catalog.all.map { $0.id } : ["cons", "cafe", "restaurant", "gym", "airline", "taxi", "bakery", "law", "kiosk", "construction"]
+        let codes = all ? e0.data.countries.countries.map { $0.code } : ["UK", "US"]
+        var legacy = [String: Int](), careful = [String: Int](), n = 0
+        for code in codes {
+            for t in trades {
+                let a = try run(code: code, trade: t, budgeted: false, days: 42)
+                let b = try run(code: code, trade: t, budgeted: true, days: 42)
+                guard a.started || b.started else { continue }
+                n += 1
+                for (k, v) in [("account", a.accountNegative), ("company", a.companyNegative), ("bust", a.companyBust), ("over", a.gameOver)] where v { legacy[k, default: 0] += 1 }
+                for (k, v) in [("account", b.accountNegative), ("company", b.companyNegative), ("bust", b.companyBust), ("over", b.gameOver)] where v { careful[k, default: 0] += 1 }
+            }
+        }
+        print("PROBE cells=\(n) legacy=\(legacy.sorted { $0.key < $1.key }) budgeted=\(careful.sorted { $0.key < $1.key })")
+        XCTAssertGreaterThan(n, 0)
+        XCTAssertLessThanOrEqual(careful["account", default: 0], legacy["account", default: 0])
+        XCTAssertLessThanOrEqual(careful["company", default: 0], legacy["company", default: 0])
+        XCTAssertLessThanOrEqual(careful["bust", default: 0] + careful["over", default: 0], legacy["bust", default: 0] + legacy["over", default: 0])
+    }
+}

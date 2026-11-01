@@ -17,6 +17,11 @@ extension Rivals {
         return jsRound((CompanySetup.estimate(tradeID: co.type, cityID: co.cityID, form: .limited, size: size, countryCode: co.countryCode, state: s, data: data)?.total ?? 0) * 1.15)
     }
 
+    /// Share of the price spent on integration, and the dip in demand while the rival's customers decide whether to stay.
+    public static let integrationShare = 0.04
+    public static let loyaltyDip = 0.12
+    public static let loyaltyDipWeeks = 10
+
     public static func acquire(_ s: inout GameState, companyID: Int, rivalID: Int, price: Double, data: GameData, context: FinanceContext) -> AcquireResult {
         guard let co = s.company(companyID), let bd = data.catalog[co.type], let r = rivals(s, for: co).first(where: { $0.id == rivalID }) else { return .failed("That rival is gone.") }
         let k = key(co)
@@ -32,11 +37,24 @@ extension Rivals {
         }
         Payments.playerPays(&s, price, label: "Acquisition of \(r.name)", companyID: id)
         _ = Payments.injectCash(&s, companyID: id, amount: startup)
-        _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+        // The rival's equipment and people come with the business; set-up only does the paperwork and the premises.
+        let movedEquipment = CompanySetup.transferEquipment(&s, companyID: id, data: data)
+        let transfer = CompanySetup.transferStaff(&s, companyID: id, data: data)
+        _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(equipmentInPlace: true, teamInPlace: true))
+        // Integration costs: a retention bonus of a month's pay each so they stay, and the cost of merging systems, suppliers and paperwork.
+        let retention = jsRound(transfer.retention)
+        let integration = jsRound(price * integrationShare)
+        if retention + integration > 0 { _ = Payments.companyPays(&s, companyID: id, amount: retention + integration, category: "oth", label: "Integration of \(r.name): retention bonuses and merging systems") }
+        if let i = s.companyIndex(id) {
+            var f0 = s.companies[i].value("flags"); f0["integ"] = .number(Double(s.week)); f0["integCost"] = .number(retention + integration)
+            f0["integPeople"] = .number(Double(transfer.people)); f0["integKit"] = .number(Double(movedEquipment)); s.companies[i].set("flags", f0)
+            // Customers are uneasy about the new owner: a dip in demand while they decide whether to stay.
+            PriceMoves.addModifier(&s, i, key: "dem", multiplier: 1 - loyaltyDip, weeks: Double(loyaltyDipWeeks))
+        }
         if let i = s.companyIndex(id) {
             s.companies[i].reputation = max(s.companies[i].reputation, 50 + r.size * 6)
             s.companies[i].awareness = max(s.companies[i].awareness, 36 + r.size * 22)
-            s.companies[i].set("wom", s.companies[i].num("wom") + 10)
+            s.companies[i].set("wom", s.companies[i].num("wom") + 10 - 6)
             var f = s.companies[i].value("flags"); f["acq"] = .number(Double(s.week)); s.companies[i].set("flags", f)
             _ = OpeningChecklist.open(&s, companyIndex: i, data: data)
         }

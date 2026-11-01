@@ -367,6 +367,10 @@ public enum CompanySetup {
 
     public struct Estimate: Equatable {
         public var documents = 0.0, equipment = 0.0, vehicles = 0.0, premises = 0.0, stock = 0.0, firstPayroll = 0.0, buffer = 0.0
+        /// The parts of `equipment` and `vehicles` the trade cannot open without; the rest is optional.
+        public var requiredEquipment = 0.0, requiredVehicles = 0.0
+        /// The first month's employer cost of the minimum viable team (the first staff line only); `firstPayroll` is the whole standard team.
+        public var minimumPayroll = 0.0
         /// The part of `premises` that is fit-out (the rest is the three months' rent deposit); for the cost breakdown screens.
         public var premisesFitOut = 0.0
         /// Rent a month of the standard place the estimate prices (0 when the trade needs none).
@@ -402,8 +406,12 @@ public enum CompanySetup {
             if let model = e.vehicleModels?.first {
                 let price = data.catalog.tables.vehicles[model]?.price ?? 300000
                 r.vehicles += price * q * w.inflationIndex * 0.2
+                if e.isRequired { r.requiredVehicles += price * q * w.inflationIndex * 0.2 }
                 vehicleFull += price * q
-            } else { r.equipment += equipmentPrice(e, company: co, w) * q }
+            } else {
+                r.equipment += equipmentPrice(e, company: co, w) * q
+                if e.isRequired { r.requiredEquipment += equipmentPrice(e, company: co, w) * q }
+            }
         }
         if let kind = bd.premisesKind, let P = data.catalog.tables.premises[kind], bd.premisesM2 > 0 {
             let m2 = jsRound(bd.premisesM2 * size)
@@ -416,7 +424,9 @@ public enum CompanySetup {
         for (i, st) in bd.standardStaff.enumerated() {
             let n = (i == 0 && bd.ownerFTE >= 1) ? max(0, st.count - 1) : st.count
             let base = data.catalog.tables.roles[st.role]?.baseMonthlyWage ?? 40000
-            r.firstPayroll += n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: w.rates) * country.employerCostFactor
+            let cost = n * Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: w.rates) * country.employerCostFactor
+            r.firstPayroll += cost
+            if i == 0 { r.minimumPayroll += cost }
         }
         r.buffer = bd.weeklyFixedCosts * 6 * pow(size, 0.9) * city.rent * 0.5 + SpecialFamilies.extraStartupBuffer(bd, size: size, country: country)
         RentalFinance.addEstimate(&r, bd, size: size, city: city, currency: w.currency(co), tmp, w)
@@ -429,6 +439,7 @@ public enum CompanySetup {
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
         r.premisesFitOut = min(r.premises, round(r.premisesFitOut)); r.monthlyRent = round(monthlyRent)
+        r.requiredEquipment = round(r.requiredEquipment); r.requiredVehicles = round(r.requiredVehicles); r.minimumPayroll = round(r.minimumPayroll)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
         if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(Ambitions.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) }
@@ -437,61 +448,166 @@ public enum CompanySetup {
 
     // MARK: Quick setup
 
+    /// How far quick set-up may go. The default is the original's: everything the trade normally has, no look at the cash left.
+    /// A player-facing start passes a budget: required equipment only unless asked, the minimum viable team, and no hire the company's cash cannot
+    /// carry for `payrollMonthsReserve` months. Anything left out is returned (never bought silently) so the screen can show it with its cost.
+    public struct SetupOptions: Equatable, Sendable {
+        public enum Team: String, Equatable, Sendable { case minimum, standard }
+        public var team: Team = .standard
+        public var optionalEquipment = true
+        /// nil: hire without looking at cash. A number: hire only while cash covers (wages so far + this one + rent) for that many months.
+        public var payrollMonthsReserve: Double? = nil
+        /// A business that was bought brings its equipment and people with it: set-up neither buys the equipment nor hires the team.
+        public var equipmentInPlace = false
+        public var teamInPlace = false
+        public init(team: Team = .standard, optionalEquipment: Bool = true, payrollMonthsReserve: Double? = nil, equipmentInPlace: Bool = false, teamInPlace: Bool = false) {
+            self.team = team; self.optionalEquipment = optionalEquipment; self.payrollMonthsReserve = payrollMonthsReserve
+            self.equipmentInPlace = equipmentInPlace; self.teamInPlace = teamInPlace
+        }
+        /// What a player start uses: required equipment, the minimum team, wages covered for two months.
+        public static let careful = SetupOptions(team: .minimum, optionalEquipment: false, payrollMonthsReserve: 2)
+    }
+
+    /// One thing quick set-up did not buy or hire, with its cost, so it can be offered as an optional extra.
+    public struct SetupSkipped: Equatable, Sendable, Identifiable {
+        public enum Kind: String, Equatable, Sendable { case staff, equipment, vehicle }
+        public var id: String
+        public var kind: Kind
+        public var title: String
+        public var count: Int
+        /// Staff: employer cost a month for all of them. Equipment and vehicles: the price now (a vehicle: its down payment).
+        public var cost: Double
+        public var reason: String
+    }
+
+    public struct SetupReport: Equatable, Sendable {
+        public var log: [String] = []
+        public var skipped: [SetupSkipped] = []
+        public init(log: [String] = [], skipped: [SetupSkipped] = []) { self.log = log; self.skipped = skipped }
+    }
+
     /// Do everything a company needs to open with sensible standard choices: apply for all documents, rent a
     /// standard place, buy the standard equipment, hire the standard team. It then opens by itself once the
     /// paperwork is approved. Returns what could not be done (usually: not enough cash). Original: `autoSetup`.
     /// The original makes one offer to the median-priced candidate per job and does not retry a refusal; the app retries and picks the
     /// best value. `faithfulHiring` switches to the original's way (used only by the statistical comparison tests).
     public static func quickSetup(_ s: inout GameState, companyID: Int, data: GameData, faithfulHiring: Bool = false) -> [String] {
-        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return ["unknown company"] }
-        var log: [String] = []
+        quickSetupReport(&s, companyID: companyID, data: data, faithfulHiring: faithfulHiring, options: SetupOptions()).log
+    }
+
+    public static func quickSetupReport(_ s: inout GameState, companyID: Int, data: GameData, faithfulHiring: Bool = false, options: SetupOptions) -> SetupReport {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return SetupReport(log: ["unknown company"]) }
+        var rep = SetupReport()
         let w = World(state: s, data: data)
         for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" {
             let st = s.companies[i].value("docs")[d]["st"].string
             if st == "ok" || st == "applied" { continue }
             let r = Documents.apply(d, companyID: companyID, state: &s, data: data)
-            if r != .ok && r != .alreadyHeld { log.append("document \(d): \(r)") }
+            if r != .ok && r != .alreadyHeld { rep.log.append("document \(d): \(r)") }
         }
         if let kind = bd.premisesKind, kind != "none", kind != "home", s.companies[i].value("prem").isNull {
             let ls = listings(for: s.companies[i], bd, World(state: s, data: data))
             if ls.count > 2 {
                 let r = setPremises(&s, companyID: companyID, listing: ls[2], data: data)
-                if r != .ok { log.append("premises: \(r)") }
+                if r != .ok { rep.log.append("premises: \(r)") }
             }
         }
         let need = standardEquipment(bd, size: s.companies[i].size)
         // Fixed equipment first, vehicles last: vehicles can be financed or leased, a counter cannot.
         for e in bd.equipment.filter({ $0.vehicleModels == nil }) + bd.equipment.filter({ $0.vehicleModels != nil }) {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
-            if q <= 0 { continue }
+            if q <= 0 || options.equipmentInPlace { continue }
+            if !options.optionalEquipment && !e.isRequired {
+                let each: Double
+                if let model = e.vehicleModels?.first {
+                    each = (data.catalog.tables.vehicles[model]?.price ?? 300000) * w.inflationIndex * 0.2
+                } else { each = equipmentPrice(e, company: s.companies[i], w) }
+                rep.skipped.append(SetupSkipped(id: "eq:\(e.id)", kind: e.vehicleModels == nil ? .equipment : .vehicle, title: e.name, count: Int(q), cost: each * q,
+                                                reason: "Not needed to open; buy it when the business can carry it."))
+                continue
+            }
             var qq = q
             var ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true)
             while !ok && qq > 1 { qq = max(1, (qq / 2).rounded(.down)); ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true) }
-            if !ok { log.append("equipment \(e.id): not enough cash") }
+            if !ok { rep.log.append("equipment \(e.id): not enough cash") }
         }
-        RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &log)
-        if !bd.hasTrait("noStaff") && bd.family != "rent" {
-            for (idx, st) in standardStaff(bd, size: s.companies[i].size).enumerated() {
-                let have = s.companies[i].staff.filter { $0.role == st.role }.count
-                var n = st.count - have
-                if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil && s.companies[i].ownerHours >= 20 { n = max(0, n - 1) }
-                var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
-                // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
-                while n > 0 && attempts < allowed {
-                    attempts += 1
-                    let found = Hiring.search(role: st.role, company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
-                    guard !found.isEmpty else { break }
-                    if faithfulHiring {
-                        let cands = found.sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
-                        let pick = cands[cands.count / 2]
-                        let offer = w.currency(s.companies[i]).roundedStep(Hiring.askInThisTalk(pick, company: s.companies[i], state: s, data: data) * 1.02, about: 100)
-                        if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }
-                    } else if AutoHire.hireWorker(role: st.role, companyID: companyID, candidates: found, state: &s, data: data) != nil { n -= 1 }
-                }
-                if n > 0 { log.append("hire \(st.role): \(n) missing") }
-            }
+        RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &rep.log)
+        if !bd.hasTrait("noStaff") && bd.family != "rent" && !options.teamInPlace {
+            hireStandardTeam(&s, companyID: companyID, bd: bd, data: data, faithfulHiring: faithfulHiring, options: options, report: &rep)
         }
         RentalFinance.finishSetup(&s, companyID: companyID, data: data)
-        return log
+        return rep
+    }
+
+    /// A bought business brings its fixed equipment (not vehicles) with it, at the used price the purchase already covers. Returns the pieces moved.
+    @discardableResult
+    public static func transferEquipment(_ s: inout GameState, companyID: Int, data: GameData) -> Int {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return 0 }
+        let w = World(state: s, data: data)
+        let need = standardEquipment(bd, size: s.companies[i].size)
+        var moved = 0
+        for e in bd.equipment where e.vehicleModels == nil {
+            let q = need[e.id] ?? (e.isRequired ? 1 : 0)
+            if q <= 0 { continue }
+            addEquipment(&s, companyIndex: i, e, tradeID: bd.id, quantity: q, totalPrice: equipmentPrice(e, company: s.companies[i], w) * q * 0.6, brand: nil, used: nil, data: data)
+            moved += Int(q)
+        }
+        return moved
+    }
+
+    /// The people of a bought business keep their jobs: the standard team of its size is taken on at today's market pay. Returns how many and
+    /// the retention bonus (one month's pay each) the buyer owes them.
+    public static func transferStaff(_ s: inout GameState, companyID: Int, data: GameData) -> (people: Int, retention: Double) {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return (0, 0) }
+        var rep = SetupReport()
+        hireStandardTeam(&s, companyID: companyID, bd: bd, data: data, faithfulHiring: false, options: SetupOptions(), report: &rep)
+        let staff = s.companies[i].staff
+        return (staff.count, staff.reduce(0) { $0 + $1.monthlyWage })
+    }
+
+    /// Whether the company's cash carries the people already on the payroll, one more at `extra` a month and the rent for `months`.
+    /// On top of the wages and rent for `months`, one more month of rent and of the company's loan instalments is always held back (owner decision).
+    private static func carries(_ co: Company, extraMonthly extra: Double, months: Double, loans: [Loan]) -> Bool {
+        let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare }
+        let rent = co.value("prem")["rent"].double
+        let instalments = loans.filter { $0.companyID == co.id }.reduce(0.0) { $0 + $1.monthlyPayment }
+        return co.cash >= (payroll * 1.12 + extra + rent) * months + rent + instalments
+    }
+
+    private static func hireStandardTeam(_ s: inout GameState, companyID: Int, bd: Trade, data: GameData, faithfulHiring: Bool, options: SetupOptions, report rep: inout SetupReport) {
+        guard let i = s.companyIndex(companyID) else { return }
+        let w = World(state: s, data: data)
+        let factor = w.country(s.companies[i]).employerCostFactor
+        for (idx, st) in standardStaff(bd, size: s.companies[i].size).enumerated() {
+            let have = s.companies[i].staff.filter { $0.role == st.role }.count
+            var n = st.count - have
+            if idx == 0 && bd.ownerFTE >= 1 && s.companies[i].managerID == nil && s.companies[i].ownerHours >= 20 { n = max(0, n - 1) }
+            let roleName = data.catalog.tables.roles[st.role]?.name ?? st.role
+            let wage = Hiring.marketWage(role: st.role, company: s.companies[i], state: s, data: data) * factor
+            if options.team == .minimum && idx > 0 {
+                if n > 0 { rep.skipped.append(SetupSkipped(id: "staff:\(st.role)", kind: .staff, title: roleName, count: n, cost: wage * Double(n), reason: "Not needed to open; hire when the money is coming in.")) }
+                continue
+            }
+            var attempts = 0; let allowed = faithfulHiring ? max(0, n) : 6
+            // faithfulHiring (balance comparison with the original only): one offer to the median-priced candidate, no retry.
+            while n > 0 && attempts < allowed {
+                if let months = options.payrollMonthsReserve, !carries(s.companies[i], extraMonthly: wage, months: months, loans: s.loans) {
+                    rep.skipped.append(SetupSkipped(id: "staff:\(st.role)", kind: .staff, title: roleName, count: n, cost: wage * Double(n),
+                                                    reason: "The company's cash does not yet cover \(Int(months)) months of this wage."))
+                    n = 0
+                    break
+                }
+                attempts += 1
+                let found = Hiring.search(role: st.role, company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
+                guard !found.isEmpty else { break }
+                if faithfulHiring {
+                    let cands = found.sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
+                    let pick = cands[cands.count / 2]
+                    let offer = w.currency(s.companies[i]).roundedStep(Hiring.askInThisTalk(pick, company: s.companies[i], state: s, data: data) * 1.02, about: 100)
+                    if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }
+                } else if AutoHire.hireWorker(role: st.role, companyID: companyID, candidates: found, state: &s, data: data) != nil { n -= 1 }
+            }
+            if n > 0 { rep.log.append("hire \(st.role): \(n) missing") }
+        }
     }
 }

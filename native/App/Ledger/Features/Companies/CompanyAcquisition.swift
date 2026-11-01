@@ -30,7 +30,7 @@ struct AcquisitionSheet: View {
 
     private func effects(_ k: AcquisitionPlan.Kind, _ co: Company, _ r: Rivals.Rival) -> (gets: String, control: String, risk: String) {
         switch k {
-        case .own: return ("A separate limited company with \(r.name)'s customers and goodwill, set up and open from day one.", "You own it fully and run it yourself or through a manager. It has its own books, staff and loans.", "Its own running costs start at once; it is not yet profitable by itself.")
+        case .own: return ("A separate limited company with \(r.name)'s staff, equipment and customers, open from day one. Nothing is bought twice.", "You own it fully and run it yourself or through a manager. It has its own books, staff and loans.", "Integration costs, paid by the new company: a month's pay as a retention bonus for each person who stays, and about 4% of the price for merging systems and suppliers. Customers are unsettled for about ten weeks (demand around 12% lower) before they decide to stay.")
         case .branch: return ("Carries your name \(co.name) from day one, with the rival's customers.", "Run as a site of \(co.name) with its own books; your brand covers it.", "A weak site hurts the name of the whole brand.")
         case .merge: return ("Their customers come over and some of their staff join \(co.name).", "The rival ceases to exist; \(co.name) simply grows. No separate company to manage.", "Hired staff add wages to \(co.name); the extra 8% is paid now.")
         case .shut: return ("One competitor less in the market.", "The rival closes and its staff go. You get nothing but the empty field.", "A large market share (over a third) can draw a fine from the competition authority; the extra 12% is paid now.")
@@ -102,6 +102,7 @@ struct AcquisitionSheet: View {
                 if ch.loan > 0 { FlatRow(label: "Loan from your bank", value: "−" + cur.tidyShort(ch.loan), sub: loanSub, tint: Theme.caution) }
                 FlatRow(label: "Cash you need", value: cur.tidyShort(ch.cashNeeded), sub: needSub, tint: ch.affordable ? Theme.ivory : Theme.loss)
                 FlatRow(label: "You have", value: cur.tidyShort(have), sub: haveSub)
+                FlatRow(label: "Left after buying", value: cur.tidyShort(max(0, have - ch.cashNeeded)), sub: "before integration costs of about \(cur.tidyShort(price * Rivals.integrationShare)) and retention bonuses, paid from the new company's cash", tint: have - ch.cashNeeded < 0 ? Theme.loss : Theme.ivory)
             }
         }
     }

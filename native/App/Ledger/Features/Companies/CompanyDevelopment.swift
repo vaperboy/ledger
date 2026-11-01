@@ -12,6 +12,7 @@ struct CompanyDevelopment: View {
     var engine: GameEngine
     var company: Company
     @State private var pending: PendingAction?
+    @State private var formFor: ExpansionChoice?
 
     /// The page title: "New menu item".
     static func title(_ co: Company, _ e: GameEngine) -> String {
@@ -35,6 +36,7 @@ struct CompanyDevelopment: View {
             finishedCard
         }
         .confirmAction($pending)
+        .sheet(item: $formFor) { c in ExpansionForm(engine: engine, company: company, project: c.project, onStarted: { formFor = nil }) }
     }
 
     private static func kindGlyph(_ kind: String) -> String {
@@ -58,9 +60,13 @@ struct CompanyDevelopment: View {
                 }
                 RateBar(label: "Progress", fraction: fraction)
                 StatStrip(cells: [
-                    .init(label: "Spent", value: cur.tidyShort(run.cost)),
+                    .init(label: "Paid", value: cur.tidyShort(run.cost)),
                     .init(label: "To go", value: left.weeksText, tint: Theme.caution),
                 ])
+                HStack {
+                    Spacer(minLength: 8)
+                    QuietButton(title: "Cancel the project") { confirmCancel(p, cost: run.cost, left: left, cur) }
+                }
             }
         }
     }
@@ -79,7 +85,7 @@ struct CompanyDevelopment: View {
                 ])
                 HStack {
                     Spacer(minLength: 8)
-                    QuietButton(title: "Start") { confirm(p, cost: cost, cur) }
+                    QuietButton(title: "Plan it") { formFor = ExpansionChoice(id: p.id, project: p) }
                 }
             }
         }
@@ -105,6 +111,17 @@ struct CompanyDevelopment: View {
         }
     }
 
+    /// Cancelling returns the part of the cost that has not been spent yet (the weeks still to run); what was spent is gone.
+    private func confirmCancel(_ p: Development.Project, cost: Double, left: Int, _ cur: Currency) {
+        let refund: Double = p.weeks > 0 ? cost * Double(min(left, p.weeks)) / Double(p.weeks) : 0
+        let message: String = "\(cur.tidyShort(refund)) of the \(cur.tidyShort(cost)) comes back to the company, for the \(left.weeksText) that will not be run. The rest is spent. Nothing else changes."
+        pending = PendingAction(title: "Cancel \(p.name.lowercased())?", message: message, button: "Cancel it and take \(cur.tidyShort(refund)) back") {
+            if let back = store.act({ $0.cancelDevelopment(companyID: company.id) }) ?? nil {
+                Haptics.success(); store.show("Cancelled. \(cur.tidyShort(back)) came back.", tone: "good")
+            } else { store.show("Nothing to cancel.", tone: "warn") }
+        }
+    }
+
     /// Spending real money on something that can fail: the question says what it costs and how long it takes.
     private func confirm(_ p: Development.Project, cost: Double, _ cur: Currency) {
         let message: String = "Costs \(cur.tidyShort(cost)), paid now. Takes \(p.weeks.weeksText). The team's skill and your quality decide how well it works; it can work fully, partly or not at all."
@@ -114,6 +131,81 @@ struct CompanyDevelopment: View {
     private func start(_ p: Development.Project) {
         switch store.act({ $0.startDevelopment(companyID: company.id, project: p.id) }) {
         case .ok?: Haptics.success(); store.show("Development started.", tone: "good")
+        case .notEnoughCash?: store.show("Not enough cash in the company.", tone: "warn")
+        case .busy?: store.show("One project at a time.", tone: "warn")
+        default: store.show("Not possible right now.", tone: "warn")
+        }
+    }
+}
+
+
+/// Which project the expansion form is open for.
+struct ExpansionChoice: Identifiable {
+    var id: String
+    var project: Development.Project
+}
+
+/// The product-expansion form: only what matters to the decision. What it is, what it costs and when, what it needs, what you can expect, and the
+/// company's cash before and after. Closing the sheet changes nothing; "Start" pays and begins the project. Read from `developmentPlan`.
+struct ExpansionForm: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    var engine: GameEngine
+    var company: Company
+    var project: Development.Project
+    var onStarted: () -> Void
+
+    var body: some View {
+        let cur: Currency = engine.currency(for: company)
+        let plan: Development.Plan? = engine.developmentPlan(companyID: company.id, project: project.id)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    Text(project.text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    if let plan { details(plan, cur) }
+                }
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 30)
+                .frame(maxWidth: 760).frame(maxWidth: .infinity)
+            }
+            .appScreen(title: project.name, subtitle: "Plan the project", tab: .company)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HStack(spacing: 12) {
+                    QuietButton(title: "Close") { dismiss() }
+                    QuietButton(title: "Start for \(cur.tidyShort(plan?.cost ?? 0))", fullWidth: true) { start() }
+                        .opacity(plan?.blockedReason == nil ? 1 : 0.4).disabled(plan?.blockedReason != nil)
+                }
+                .padding(.horizontal, 18).padding(.vertical, 10)
+                .background(Theme.page)
+                .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+            }
+        }
+    }
+
+    @ViewBuilder private func details(_ plan: Development.Plan, _ cur: Currency) -> some View {
+        let columns: [TableColumn] = [TableColumn(title: "Cash"), TableColumn(title: "Amount", width: 96)]
+        StatStrip(cells: [.init(label: "Costs", value: cur.tidyShort(plan.cost)), .init(label: "Takes", value: plan.weeks.weeksText),
+                          .init(label: "Ready", value: "week " + String(engine.state.week + plan.weeks))])
+        SharpTable {
+            TableHeader(columns: columns)
+            TableRow(columns: columns, title: "Company cash now", values: [cur.tidyShort(plan.cashBefore)])
+            TableRow(columns: columns, title: "This project", values: [cur.tidyShort(plan.cost)])
+            TableRow(columns: columns, title: "Cash left after", values: [cur.tidyShort(plan.cashAfter)], valueTints: [plan.cashAfter < 0 ? Theme.loss : Theme.gain], selected: true)
+        }
+        CardSection("What to expect") {
+            Text("Works fully: \(Int((plan.oddsFull * 100).rounded()))% · works half as well: \(Int((plan.oddsPartial * 100).rounded()))% · does not work out: \(Int(((1 - plan.oddsFull - plan.oddsPartial) * 100).rounded()))%")
+                .font(.system(size: 13)).foregroundStyle(Theme.ivory)
+            Text("Rivals copy it in time: about half the gain is gone after two years, 40% stays.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+        CardSection("Requirements") {
+            ForEach(plan.requirements, id: \.self) { r in Text(r).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+            if let why = plan.blockedReason { Text(why).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.caution) }
+        }
+        Text("Closing this sheet changes nothing. A running project can be cancelled later and the part not yet spent comes back.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    private func start() {
+        switch store.act({ $0.startDevelopment(companyID: company.id, project: project.id) }) {
+        case .ok?: Haptics.success(); store.show("Development started.", tone: "good"); onStarted()
         case .notEnoughCash?: store.show("Not enough cash in the company.", tone: "warn")
         case .busy?: store.show("One project at a time.", tone: "warn")
         default: store.show("Not possible right now.", tone: "warn")

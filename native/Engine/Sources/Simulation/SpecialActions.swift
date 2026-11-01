@@ -103,6 +103,7 @@ public extension GameEngine {
         update { s, d, c in r = FootballModel.propose(&s, clubID: clubID, multiple: multiple, currency: c.currency(code, s)) }
         return r
     }
+    func clubPurchasePlan(clubID: String, price: Double) -> FootballModel.PurchasePlan? { FootballModel.purchasePlan(state, clubID: clubID, price: price) }
     mutating func buyClub(clubID: String, price: Double) -> FootballModel.BuyResult {
         var r = FootballModel.BuyResult.notAvailable
         update { s, d, c in r = FootballModel.buy(&s, clubID: clubID, price: price, data: d, context: c) }

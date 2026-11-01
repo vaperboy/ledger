@@ -21,6 +21,17 @@ public enum OpeningChecklist {
         return jsRound(weekly * stock / 7 * max(0.5, co.size) * 0.6)
     }
 
+    /// The share of the standard opening stock the owner chose to buy: 1 when nothing was chosen (older companies and the original's way),
+    /// 0.5 or 0 when the owner picked half or none on the start-up plan. Stored in `flags.stockShare`.
+    public static func openingStockShare(_ co: Company) -> Double {
+        let v = co.value("flags")["stockShare"]
+        return v.isNull ? 1 : clamp(v.double, 0, 1)
+    }
+    /// What the opening stock costs the company at the owner's chosen share.
+    public static func openingStockCost(_ co: Company, _ bd: Trade, _ w: World) -> Double {
+        jsRound(initialStockCost(co, bd, w) * openingStockShare(co))
+    }
+
     public static func items(_ co: Company, _ bd: Trade, _ w: World) -> [Item] {
         var out: [Item] = []
         let country = w.country(co)
@@ -43,7 +54,7 @@ public enum OpeningChecklist {
         }
         out += RentalFinance.checklist(co, bd, w)
         out += SpecialFamilies.checklist(co, bd, w)
-        let stock = initialStockCost(co, bd, w)
+        let stock = openingStockCost(co, bd, w)
         if stock > 0 {
             let ok = co.cash >= stock
             out.append(Item(id: "stockcash", title: "Cash for opening stock", isDone: ok,
@@ -64,7 +75,7 @@ public enum OpeningChecklist {
         if bd.family == "venue" && bd.hasTrait("sub") {
             var fm = co.value("fm"); fm["memb"] = .number(bd.normalDemand * 0.18 * (w.city(co)?.demand ?? 1)); s.companies[i].set("fm", fm)
         }
-        let stock = initialStockCost(co, bd, w)
+        let stock = openingStockCost(co, bd, w)
         if stock > 0 {
             if co.cash < stock { return .needsStockCash(stock) }
             Payments.companyPays(&s, companyID: co.id, amount: stock, category: nil, label: "Opening stock")

@@ -130,8 +130,12 @@ public enum Funding {
         var out: [(pct: Double, o: JSONValue)] = []
         for n in 0..<k {
             let kd = kinds[n]
-            let a = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
+            let asked = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
             let pre = pre0 * s.random.range(0.7, 1.25) * (0.7 + it * 0.6) * (kd == "ff" ? 1.1 : 1)
+            // No single round hands over control: an investor takes at most 30% (a fund 40%) of the company after the round, whatever was asked for.
+            let share = kd == "fund" ? 0.4 : 0.3
+            let a = min(asked, (pre * share / (1 - share) / 1000).rounded(.down) * 1000)
+            if a <= 0 { continue }
             let name = kd == "fund" ? fundName(&s, countryCode: countryCode, data: data) : kd == "ff" ? "Friends and family" : personName(&s, countryCode: countryCode, data: data) + ", angel investor"
             let says = kd == "fund" ? "Contacts, advice, strict targets and a board seat" : kd == "ff" ? "Friendly, but it can get awkward if things go badly"
                 : s.random.pick(["Will stay quiet", "Interferes with managers", "Wants monthly numbers"])
@@ -167,9 +171,9 @@ public enum Funding {
         guard list.indices.contains(index), let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
         let o = list[index], co = s.companies[i]
         let amt = o["amt"].double, pct = o["pct"].double
+        let shares = CapTable.sharesForPercent(pct, total: CapTable.table(co).total)
         Payments.companyReceives(&s, companyID: companyID, amount: amt, category: nil, label: "New shares sold to \(o["name"].string)")
-        addHolder(&s, i, name: o["name"].string, pct: pct * co.ownership / 100, paid: amt)
-        s.companies[i].ownership = jsRound(co.ownership * (1 - pct / 100) * 100) / 100
+        CapTable.issue(&s, i, newShares: shares, to: o["name"].string, paid: amt)
         if o["k"].string == "fund" { addBoardSeats(&s, i, 1) }
         bump(&s, "raised", amt)
         writeOffers(&s, companyID, [])
@@ -219,25 +223,28 @@ public enum Funding {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notLimited }
         let co = s.companies[i]
         guard co.form == .limited else { return .notLimited }
-        if co.ownership - pct < 1 { return .tooMuch }
+        let t = CapTable.table(co)
+        // primary: pct is the buyer's share of the company AFTER the issue. secondary: pct is the share of YOUR holding you sell.
+        let newPct = mode == "primary" ? t.youPct * (100 - pct) / 100 : t.youPct * (1 - pct / 100)
+        if newPct < 1 { return .tooMuch }
         if mode == "primary" && Shareholders.isBlocked(s, companyID: companyID) { return .blocked }
         let v = max(1, Valuation.companyValue(co, state: s, trades: data.catalog))
         let inv = personName(&s, countryCode: co.countryCode, data: data)
         let cur = fc.currency(co.countryCode, s)
         if mode == "primary" {
             let amt = jsRound(v * pct / (100 - pct) * 0.9)
+            let shares = CapTable.sharesForPercent(pct, total: t.total)
             Payments.companyReceives(&s, companyID: companyID, amount: amt, category: nil, label: "New shares sold to \(inv)")
-            addHolder(&s, i, name: inv, pct: pct * co.ownership / 100, paid: amt)
-            s.companies[i].ownership = co.ownership * (1 - pct / 100)
-            s.note("Sold \(Int(pct))% of \(co.name) to \(inv) for \(cur.display(amt)) (new shares).", tone: "good", companyID: companyID)
+            CapTable.issue(&s, i, newShares: shares, to: inv, paid: amt)
+            s.note("Sold \(Int(pct))% of \(co.name) to \(inv) for \(cur.display(amt)) (\(shares) new shares).", tone: "good", companyID: companyID)
             return .ok(amt)
         }
-        let amt = jsRound(v * pct / 100 * 0.85 * co.ownership / 100)
-        Payments.ownerReceivesSale(&s, from: co, amount: amt, gain: amt * 0.7, label: "Sold \(Int(pct))% of \(co.name)")
-        addHolder(&s, i, name: inv, pct: pct, paid: amt)
-        s.companies[i].ownership = co.ownership - pct * co.ownership / 100
-        if pct >= 20 { addBoardSeats(&s, i, 1) }
-        s.note("Sold \(Int(pct))% of \(co.name) to \(inv) for \(cur.display(amt)).", tone: "good", companyID: companyID)
+        let shares = Int((Double(t.you) * pct / 100).rounded())
+        let amt = jsRound(v * Double(shares) / Double(t.total) * 0.85)
+        let moved = CapTable.sellFromYou(&s, i, shares: shares, to: inv, paid: amt)
+        Payments.ownerReceivesSale(&s, from: co, amount: amt, gain: amt * 0.7, label: "Sold \(Int(pct))% of your stake in \(co.name)")
+        if Double(moved) / Double(t.total) * 100 >= 20 { addBoardSeats(&s, i, 1) }
+        s.note("Sold \(moved) shares of \(co.name) to \(inv) for \(cur.display(amt)).", tone: "good", companyID: companyID)
         return .ok(amt)
     }
 
@@ -299,11 +306,8 @@ public enum Funding {
         let r = raisePlan(s, holdingID: holdingID, goal: goal, mode: m, data: data, context: fc)
         let buyer = m == "public" ? "Shareholders on the exchange" : fundName(&s, countryCode: s.companies[i].countryCode, data: data)
         Payments.companyReceives(&s, companyID: holdingID, amount: r.amount - r.fee, category: nil, label: "New shares sold to \(buyer)")
-        var list = s.companies[i].value("holders").array
-        for k in list.indices { list[k]["pct"] = .number(list[k]["pct"].double * (1 - r.given / 100)) }
-        list.append(.object(["name": .string(buyer), "pct": .number(r.given), "in": .number(r.amount), "w0": .number(Double(s.week))]))
-        s.companies[i].set("holders", .array(list))
-        s.companies[i].ownership = jsRound(s.companies[i].ownership * (1 - r.given / 100) * 100) / 100
+        let issued = CapTable.sharesForPercent(r.given, total: CapTable.table(s.companies[i]).total)
+        CapTable.issue(&s, i, newShares: issued, to: buyer, paid: r.amount)
         bump(&s, "raised", r.amount)
         s.note("\(s.companies[i].name) raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer).", tone: "good", companyID: holdingID)
         if let who = r.manager, m == "private" {   // the finance manager reports back
