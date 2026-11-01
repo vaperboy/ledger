@@ -188,7 +188,7 @@ struct VenturesFeedApp: View {
         let pct = p.postMoney > 0 ? amt / p.postMoney * 100 : 0
         pending = PendingAction(title: "Invest \(cur.tidyShort(amt)) in \(p.name)?",
                                 message: "You get about \(String(format: "%.1f", pct))% of it" + (pct >= 20 ? " and a board seat" : "") + ". The money is locked until a sale or exit; later rounds make your share smaller, and most young companies fail.",
-                                button: "Invest") {
+                                button: "Invest", amount: amt, currency: cur) {
             switch store.act({ $0.investInStartup(pitchID: p.id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("You invested \(cur.tidyShort(amt)) in \(p.name).", tone: "good")
             case .tooSmall?: store.show("They want a bigger cheque.", tone: "warn")

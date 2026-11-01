@@ -79,7 +79,7 @@ struct BankSavingsAndDeposits: View {
                     let a = amount, w = depositWeeks
                     pending = PendingAction(title: "Lock \(cur.tidyShort(a)) for \(w) weeks?",
                                             message: "It earns \(Currency.percent(q.yearlyRate, decimals: 2)) a year: \(cur.tidyDisplay(q.interest)) interest, paid with the money in \(w) weeks. Until then it is out of reach, also for bills. The interest is taxed as income.",
-                                            button: "Lock it") {
+                                            button: "Lock it", amount: a, currency: cur) {
                         if store.act({ $0.openDeposit(amount: a, weeks: w) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) locked until week \((store.engine?.state.week ?? 0) + w).", tone: "good"); amount = 0 }
                         else { Haptics.warning(); store.show("Not enough on the current account for that deposit.", tone: "warn") }
                     }

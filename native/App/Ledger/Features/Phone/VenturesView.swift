@@ -242,7 +242,7 @@ private struct FoundedCard: View {
                             }
                         }.buttonStyle(GreyOutlineButtonStyle())
                         Button("Put in \(cur.tidyShort(topUp))") {
-                            pending = PendingAction(title: "Put \(cur.tidyShort(topUp)) into \(f.name)?", message: "From your own cash. It buys about \(Int((topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.", button: "Put it in") {
+                            pending = PendingAction(title: "Put \(cur.tidyShort(topUp)) into \(f.name)?", message: "From your own cash. It buys about \(Int((topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.", button: "Put it in", amount: topUp, currency: cur) {
                                 let ok = store.act { $0.putMoneyIntoStartup(startupID: f.id, amount: topUp) } ?? false
                                 store.show(ok ? "\(cur.tidyShort(topUp)) put in." : "Not enough cash.", tone: ok ? "good" : "warn")
                             }
@@ -488,7 +488,7 @@ private struct BackedStartups: View {
         let pct = p.postMoney > 0 ? amt / p.postMoney * 100 : 0
         pending = PendingAction(title: "Invest \(cur.tidyShort(amt)) in \(p.name)?",
                                 message: "You get about \(String(format: "%.1f", pct))% of it" + (pct >= 20 ? " and a board seat" : "") + ". The money is locked until a sale or exit; later rounds make your share smaller, and most young companies fail.",
-                                button: "Invest") {
+                                button: "Invest", amount: amt, currency: cur) {
             switch store.act({ $0.investInStartup(pitchID: p.id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("You invested \(cur.tidyShort(amt)) in \(p.name).", tone: "good")
             case .tooSmall?: store.show("They want a bigger cheque.", tone: "warn")
@@ -597,7 +597,7 @@ private struct PrivateEquityPart: View {
     private func confirmCommit(_ o: PrivateEquity.Offer, _ amt: Double, _ cur: Currency) {
         pending = PendingAction(title: "Commit \(cur.tidyShort(amt)) to \(o.name)?",
                                 message: "Nothing is paid today: the fund calls the money over the next four years and you must have it ready each time. Fees about \(cur.tidyShort(amt * 0.02)) a year while it invests. Money comes back from year four; the value can fall, venture funds most.",
-                                button: "Commit") {
+                                button: "Commit", alwaysAsk: true) {
             switch store.act({ $0.commitToFund(offerID: o.id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("Committed \(cur.tidyShort(amt)) to \(o.name).", tone: "good")
             case .tooSmall?: store.show("Below the fund's minimum.", tone: "warn")

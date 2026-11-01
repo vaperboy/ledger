@@ -209,7 +209,7 @@ struct ChainAttention: View {
                 Button("Group loan \(currency.tidyShort(need))") {
                     pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
                                             message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
-                                            button: "Lend") {
+                                            button: "Lend", amount: need, currency: currency) {
                         let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
                         if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
                         else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
