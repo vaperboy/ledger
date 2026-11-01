@@ -63,8 +63,18 @@ struct CompanyTeam: View {
 
     private var keyFigures: some View {
         let heads: Int = PremisesExtras.heads(company)
+        let cur: Currency = engine.currency(for: company)
+        let metrics: TeamMetrics? = engine.teamMetrics(companyID: company.id)
+        let rate: String = (metrics?.averageHourlyRate ?? 0) > 0 ? cur.tidyDisplay(metrics?.averageHourlyRate ?? 0) : "none"
+        let hours: String = String(Int((metrics?.totalHoursPerWeek ?? 0).rounded()))
+        let payroll: String = cur.tidyShort(metrics?.totalMonthlyCost ?? 0)
+        let metricCells: [StatStrip.Cell] = [
+            .init(label: "Workers", value: String(metrics?.workers ?? 0)),
+            .init(label: "Avg rate/h", value: rate),
+            .init(label: "Hours/week", value: hours),
+            .init(label: "Payroll/month", value: payroll),
+        ]
         let cells: [StatStrip.Cell] = [
-            .init(label: "People", value: "\(heads)"),
             .init(label: "Run by", value: runBy, tint: runBy == "No one" ? Theme.caution : Theme.ivory),
             .init(label: "Your time", value: "\(Int(company.ownerHours.rounded())) h"),
         ]
@@ -72,6 +82,7 @@ struct CompanyTeam: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("The team").capsLabel()
                 Text("\(heads) \(heads == 1 ? "person" : "people") work here").font(.hero(30)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.7).lineLimit(1)
+                StatStrip(cells: metricCells)
                 StatStrip(cells: cells)
             }
         }

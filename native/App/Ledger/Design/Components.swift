@@ -64,6 +64,7 @@ struct IconBadge: View {
 
 /// A list row: glyph, title and subtitle, a figure and a small line under it, optional chevron.
 struct ListRow: View {
+    @Environment(\.outsidePalette) private var P
     var symbol: String
     var tint: Color = Theme.gold
     var title: String
@@ -74,19 +75,19 @@ struct ListRow: View {
     var chevron = false
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            IconBadge(symbol: symbol, tint: tint)
+            IconBadge(symbol: symbol, tint: tint.inPalette(P))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title.tidyText).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.caption).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+                Text(title.tidyText).font(.system(size: 14.5)).foregroundStyle(P.ink).lineLimit(2)
+                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.caption).foregroundStyle(P.inkFaint).lineLimit(2) }
             }
             Spacer(minLength: 8)
             if !trailing.isEmpty || !trailingSub.isEmpty {
                 VStack(alignment: .trailing, spacing: 2) {
-                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(trailingTint) }
-                    if !trailingSub.isEmpty { Text(trailingSub.tidyText).font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(trailingTint.inPalette(P)) }
+                    if !trailingSub.isEmpty { Text(trailingSub.tidyText).font(.caption2).foregroundStyle(P.inkFaint) }
                 }
             }
-            if chevron { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.ivoryFaint) }
+            if chevron { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(P.inkFaint) }
         }
         .padding(.vertical, 7)
         .accessibilityElement(children: .combine)
@@ -96,13 +97,14 @@ struct ListRow: View {
 /// The one filled control: a champagne pill with dark text. House rule: ONLY Next Day uses it; every other action is `QuietButton` /
 /// `QuietButtonStyle` (outline) or `SmallOutlineButton`.
 struct GoldButtonStyle: ButtonStyle {
+    @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+            .foregroundStyle(P.isLight ? P.onAccent : Color(red: 0.09, green: 0.075, blue: 0.055))
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, minHeight: 46)
-            .background(Capsule().fill(Theme.gold))
+            .background(Capsule().fill(P.isLight ? P.accent : Theme.gold))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.9 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -189,15 +191,16 @@ struct Sparkline: View {
 
 /// A small status: a dot and a word. No capsule, no border.
 struct Chip: View {
+    @Environment(\.outsidePalette) private var P
     var text: String
     var tint: Color = Theme.ivoryMuted
     var symbol: String? = nil
     var body: some View {
         HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint).frame(width: 5, height: 5) }
+            if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint.inPalette(P)).frame(width: 5, height: 5) }
             Text(text.tidyText).font(.system(size: 11.5, weight: .medium))
         }
-        .foregroundStyle(tint)
+        .foregroundStyle(tint.inPalette(P))
     }
 }
 
@@ -211,7 +214,7 @@ struct Stat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.system(size: 10.5)).foregroundStyle(palette.inkFaint).lineLimit(1)
-            Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
+            Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint.inPalette(palette)).minimumScaleFactor(0.7).lineLimit(1)
             if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(palette.inkFaint).lineLimit(1) }
         }
     }
@@ -219,6 +222,7 @@ struct Stat: View {
 
 /// Key figures in a joined row, separated by vertical hairlines. `columns` per row; a second row follows the first.
 struct KeyFigures: View {
+    @Environment(\.outsidePalette) private var P
     struct Item: Identifiable { var id = UUID(); var label: String; var value: String; var tint: Color = Theme.ivory; var sub: String = "" }
     var items: [Item]
     var columns = 3
@@ -232,7 +236,7 @@ struct KeyFigures: View {
                         Stat(label: it.label, value: it.value, tint: it.tint, sub: it.sub)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.leading, i == 0 ? 0 : 10)
-                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(Theme.hairline).frame(width: 0.5) } }
+                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(P.hairline).frame(width: 0.5) } }
                     }
                     ForEach(0..<(columns - row.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
                 }
@@ -250,6 +254,7 @@ struct LedgerBackground: ViewModifier {
             .ledgerScreen()
             .background(palette.ground.ignoresSafeArea())
             .foregroundStyle(palette.ink)
+            .environment(\.colorScheme, palette.isLight ? .light : .dark)
     }
 }
 
@@ -276,6 +281,7 @@ struct LedgerScreen: ViewModifier {
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: tabBarClearance) }
             .toolbarBackground(palette.ground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(palette.isLight ? .light : .dark, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
                 Color.clear.frame(height: 0).background(palette.ground.ignoresSafeArea(edges: .top))
             }
@@ -288,20 +294,22 @@ extension View {
 
 /// A row of label and value, used in lists.
 struct ValueRow: View {
+    @Environment(\.outsidePalette) private var P
     var label: String
     var value: String
     var tint: Color = Theme.ivory
     var body: some View {
         HStack {
-            Text(label).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).font(.system(size: 14)).foregroundStyle(P.inkSoft)
             Spacer()
-            Text(value).font(.system(size: 14).monospacedDigit()).foregroundStyle(tint)
+            Text(value).font(.system(size: 14).monospacedDigit()).foregroundStyle(tint.inPalette(P))
         }
     }
 }
 
 /// A money input in the currency being shown. Converts what the player types into the game's accounting units.
 struct AmountField: View {
+    @Environment(\.outsidePalette) private var P
     var title: String
     var currency: Currency
     @Binding var amount: Double          // accounting units
@@ -310,19 +318,20 @@ struct AmountField: View {
 
     var body: some View {
         HStack {
-            Text(currency.country.currencyCode).font(.label).foregroundStyle(Theme.ivoryFaint)
+            Text(currency.country.currencyCode).font(.label).foregroundStyle(P.inkFaint)
             TextField(title, text: $text)
                 .keyboardType(.decimalPad)
                 .focused($focused)
                 .font(.system(.body, design: .default).monospacedDigit())
                 .multilineTextAlignment(.trailing)
+                .foregroundStyle(P.ink)
                 .onChange(of: text) { _, new in
                     let cleaned = new.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." }
                     amount = (Double(cleaned) ?? 0) * currency.rate
                 }
         }
         .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(focused ? Theme.gold : Theme.hairline).frame(height: focused ? 1 : 0.5) }
+        .overlay(alignment: .bottom) { Rectangle().fill(focused ? P.accent : P.hairline).frame(height: focused ? 1 : 0.5) }
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focused = false } } }
     }
 }
@@ -492,12 +501,13 @@ struct SmallGoldButtonStyle: ButtonStyle {
 
 /// Compact hairline button for the other answers.
 struct SmallOutlineButtonStyle: ButtonStyle {
+    @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.medium))
-            .foregroundStyle(Theme.ivory)
+            .foregroundStyle(P.ink)
             .frame(maxWidth: .infinity, minHeight: 34)
-            .overlay(Capsule().strokeBorder(Theme.ivory.opacity(configuration.isPressed ? 0.4 : 0.22), lineWidth: 0.75))
+            .overlay(Capsule().strokeBorder(P.ink.opacity(configuration.isPressed ? 0.4 : 0.22), lineWidth: 0.75))
     }
 }
 
@@ -583,6 +593,7 @@ extension View {
 /// Compact segmented control for a choice made inside a page (Minimal / Normal / Thorough, Shares / Crypto / Funds). A filled
 /// track with the chosen option raised, so it never reads as page navigation (the underlined SectionTabs).
 struct SegmentedChoice<T: Hashable>: View {
+    @Environment(\.outsidePalette) private var P
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
@@ -595,16 +606,16 @@ struct SegmentedChoice<T: Hashable>: View {
                     Text(title(item))
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
                         .lineLimit(1).minimumScaleFactor(0.85)
-                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+                        .foregroundStyle(on ? P.ink : P.inkSoft)
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(on ? Theme.hairline : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? Theme.gold.opacity(0.7) : Color.clear, lineWidth: 1))
+                        .background(RoundedRectangle(cornerRadius: 7).fill(on ? P.hairline : Color.clear))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(2)
-        .background(RoundedRectangle(cornerRadius: 9).fill(Theme.ivory.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 9).fill(P.ink.opacity(0.05)))
     }
 }

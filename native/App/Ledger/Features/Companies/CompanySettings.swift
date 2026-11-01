@@ -18,6 +18,7 @@ struct CompanySettings: View {
     @State private var giveUpRent = false
     @State private var pauseSubscriptions = false
     @State private var pending: PendingAction?
+    @State private var converting = false
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -30,6 +31,7 @@ struct CompanySettings: View {
             documents(cur)
         }
         .confirmAction($pending)
+        .sheet(isPresented: $converting) { ConversionSheet(companyID: company.id).environmentObject(store) }
     }
 
     // MARK: Legal form
@@ -40,26 +42,15 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
                         .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    FlatRow(label: "Registration fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account", rule: false)
-                    FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "moves from your account into the company")
-                    Button("Convert to a limited company…") { confirmConvert(cost, cur) }.buttonStyle(QuietButtonStyle())
+                    FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
+                    FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
+                    Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
+                        .accessibilityIdentifier("company-convert-review")
+                    Text("The review shows costs, who pays, what changes and your loan guarantees. Nothing happens until you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             } else {
                 Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
                     .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func confirmConvert(_ cost: (registrationFee: Double, shareCapital: Double), _ cur: Currency) {
-        let total = cost.registrationFee + cost.shareCapital
-        pending = PendingAction(title: "Convert \(company.name) to a limited company?", message: "\(cur.tidyDisplay(total)) leaves your account (\(cur.tidyDisplay(cost.shareCapital)) of it becomes the company's share capital). From then on profit pays company tax and money comes out as salary or dividends. This cannot be undone.", button: "Convert") {
-            switch store.act({ $0.convertToLimited(companyID: company.id) }) {
-            case .ok?: Haptics.success(); store.show("\(company.name) is now a limited company.", tone: "good")
-            case .notEnoughCash?: Haptics.warning(); store.show("You need \(cur.tidyDisplay(total)) in your own account.", tone: "warn")
-            case .alreadyLimited?: store.show("It is already a limited company.", tone: "n")
-            case nil: break
-            default: Haptics.warning(); store.show("It cannot be converted now.", tone: "warn")
             }
         }
     }

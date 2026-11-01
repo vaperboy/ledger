@@ -4,8 +4,8 @@ import Countries
 import Finance
 import Simulation
 
-/// A list of coming payments, each with Pay now: payroll is approved (or, when late, run now) through `resolvePayrollAlert`; a loan
-/// instalment is paid early with `repayLoan`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
+/// A list of coming payments, each with Pay now: payroll is run in Accounting (a link opens it there); a loan
+/// instalment is paid now with `payLoanInstalmentNow`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
 /// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
     @Environment(\.outsidePalette) private var P
@@ -48,8 +48,8 @@ struct BankBillsList: View {
     @ViewBuilder private func action(_ u: Obligation, _ alerts: [PayrollAlert], _ e: GameEngine) -> some View {
         switch u.kind {
         case .payroll:
-            if let a = alerts.first(where: { $0.companyID == u.companyID }) {
-                SmallOutlineButton(title: a.isLate ? "Pay now" : "Approve") { BankPay.resolve(store, companyID: u.companyID) }
+            if alerts.contains(where: { $0.companyID == u.companyID }) {
+                SmallOutlineButton(title: "Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }
             } else {
                 Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(P.inkFaint)
             }

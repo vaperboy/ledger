@@ -55,6 +55,8 @@ struct NetWorthCard: View {
         let week = DayHistory.change(hist.netWorth, days: 7)
         let month = DayHistory.change(hist.netWorth, days: 30)
         let owed = nw.debt + nw.pendingTax
+        let wealth: NetWorthBreakdown = engine.netWorthBreakdown()
+        let otherAssets: Double = wealth.investments + wealth.luxury + wealth.otherEstimatedHoldings
         Card(padding: 0, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
@@ -75,9 +77,11 @@ struct NetWorthCard: View {
                 }
                 NetWorthChart(engine: engine, days: days, height: 30)
                 HStack(spacing: 0) {
-                    box("Private", store.short(nw.personal), Theme.ivory)
+                    box("Spendable", store.short(wealth.liquid), Theme.ivory)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Companies", store.short(nw.companies), Theme.ivory)
+                    box("Investments", store.short(otherAssets), Theme.ivory)
+                    Rectangle().fill(Theme.divider).frame(width: 1)
+                    box("Companies (est.)", store.short(wealth.estimatedCompanyEquity), Theme.ivory)
                     Rectangle().fill(Theme.divider).frame(width: 1)
                     box("Owed", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory)
                 }

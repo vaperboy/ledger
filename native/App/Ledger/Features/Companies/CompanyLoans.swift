@@ -8,6 +8,7 @@ import Simulation
 /// The company's loans: what it owes and on what terms, and early repayment. New loans are applied for with the Bank's apply flow.
 /// Original: money.js `loansheet/loanterm/loango/repaysheet/repaygo`. Uses the engine's `takeLoan` and `repayLoan`.
 struct CompanyLoans: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
@@ -21,31 +22,32 @@ struct CompanyLoans: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if missedTotal > 0 || company.int("loanCall") != 0 {
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.loss).padding(.top, 2)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(P.loss).padding(.top, 2)
                     Text(company.int("loanCall") != 0 ? "The bank has called a loan. Pay the next instalment in time or the company is wound up."
                          : "\(missedTotal) missed \(missedTotal == 1 ? "instalment" : "instalments"). Penalties are added each month until the loan is back on track.")
-                        .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 14, weight: .medium)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
                 }
             }
             CardSection(title: "What the company owes", trailing: {
                 Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
-                    .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                    .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(P.inkFaint)
             }) {
-                if loans.isEmpty { Text("This company has no loans. Use Apply for a loan above to borrow.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+                if loans.isEmpty { Text("This company has no loans. Use Apply for a loan above to borrow.").font(.bodyText).foregroundStyle(P.inkSoft) }
                 VStack(spacing: 0) {
                     ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                         if n > 0 { Hairline() }
                         HStack(alignment: .center, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(l.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text(l.name).font(.system(size: 13.5)).foregroundStyle(P.ink)
                                 Text("Interest \(Currency.percent(Banking.rate(of: l, state: engine.state, modifiers: engine.context.lending, countryShift: shift), decimals: 2)) · \(cur.tidyDisplay(l.monthlyPayment)) a month" + (l.termMonths > 0 ? " · \(l.termMonths / 12 >= 1 && l.termMonths % 12 == 0 ? "\(l.termMonths / 12)-year" : "\(l.termMonths)-month") term" : "") + (l.isGuaranteed ? " · you guarantee it" : ""))
-                                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                                if l.int("miss") > 0 { Text("\(l.int("miss")) instalment\(l.int("miss") == 1 ? "" : "s") missed").font(.system(size: 11)).foregroundStyle(Theme.loss) }
+                                    .font(.system(size: 11)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                                if l.int("miss") > 0 { Text("\(l.int("miss")) instalment\(l.int("miss") == 1 ? "" : "s") missed").font(.system(size: 11)).foregroundStyle(P.loss) }
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.tidyShort(l.balance)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Button("Repay…") { repaying = l }.buttonStyle(QuietButtonStyle())
+                                Text(cur.tidyShort(l.balance)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(P.ink)
+                                Button("Details…") { repaying = l }.buttonStyle(QuietButtonStyle())
+                                    .accessibilityIdentifier("company-loan-details")
                             }
                         }.padding(.vertical, 9)
                     }
@@ -53,13 +55,14 @@ struct CompanyLoans: View {
             }
         }
         .sheet(item: $repaying) { l in
-            RepayLoanSheet(engine: engine, company: company, loan: l).environmentObject(store)
+            LoanDetailSheet(loanID: l.id).environmentObject(store).presentationDetents([.large])
         }
     }
 }
 
 /// Pay a loan off early, in part or in full, from company cash.
 struct RepayLoanSheet: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
     var engine: GameEngine
@@ -77,16 +80,16 @@ struct RepayLoanSheet: View {
                     KeyFigures(items: [
                         .init(label: "Left to pay", value: cur.tidyShort(loan.balance)),
                         .init(label: "A month now", value: cur.tidyShort(loan.monthlyPayment)),
-                        .init(label: "Company cash", value: cur.tidyShort(cash), tint: cash < loan.balance ? Theme.caution : Theme.ivory),
+                        .init(label: "Company cash", value: cur.tidyShort(cash), tint: cash < loan.balance ? P.caution : P.ink),
                     ])
                     AmountField(title: "Repay", currency: cur, amount: $amount)
-                    if cash < loan.balance { Text("The company holds less than the whole balance: put money in first to repay it all.").font(.caption).foregroundStyle(Theme.caution) }
+                    if cash < loan.balance { Text("The company holds less than the whole balance: put money in first to repay it all.").font(.caption).foregroundStyle(P.caution) }
                     HStack {
                         Button("Repay this amount…") { confirmRepay(min(amount, loan.balance), cur, cash) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
                         Button("Repay all…") { confirmRepay(loan.balance, cur, cash) }.buttonStyle(QuietButtonStyle())
                     }
                     Text("Paid from the company's cash, with no fee for paying early. Less owed means less interest; the monthly instalment falls with the balance.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(Theme.Space.margin)
             }

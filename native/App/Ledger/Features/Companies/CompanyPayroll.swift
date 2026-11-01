@@ -7,6 +7,7 @@ import Simulation
 
 /// Pay day and what falls due: the one home for the company's pay day. A change made while this month's payroll is unpaid waits for it.
 struct CompanyPayroll: View {
+    @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
@@ -25,7 +26,7 @@ struct CompanyPayroll: View {
                 if due.isEmpty {
                     Card(padding: 14, radius: Theme.Radius.row) {
                         Text("Nothing is waiting: no wages are owed and no rent or supplier bills have built up this month.")
-                            .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            .font(.bodyText).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
                     ForEach(due) { u in
@@ -33,7 +34,7 @@ struct CompanyPayroll: View {
                     }
                 }
                 Text("Wages build up week by week and leave on pay day. Rent and supplier bills leave on the last day of the month. Both come from company cash; if it runs short, wages are late and the bills carry interest.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
         .confirmAction($pending)
@@ -41,24 +42,24 @@ struct CompanyPayroll: View {
 
     @ViewBuilder private func paydaySection(_ info: PaydayInfo) -> some View {
         TeamGroup(title: "Pay day", trailing: {
-            Text(info.dayLabel).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text(info.dayLabel).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
         }) {
             if !info.hasPayroll {
                 Card(padding: 14, radius: Theme.Radius.row) {
                     Text("No one is on the payroll yet, so there is nothing to pay. Pay day matters once you hire someone.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Card(padding: 14, radius: Theme.Radius.row) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Staff are next paid on \(info.nextPayText). Rent and supplier bills follow on \(info.billText).")
-                            .font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 13.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
                         if let q = info.pendingLabel {
                             Text("Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                                .font(.system(size: 12)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
                         }
                         if info.isLate {
-                            Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
+                            Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.loss)
                         }
                     }
                 }
@@ -67,7 +68,7 @@ struct CompanyPayroll: View {
                     ChoiceCard(title: c.label, subtitle: timing(c, info), trailing: tag, selected: c.isCurrent || c.isQueued) { choose(c, info) }
                 }
                 Text("A weekend pay day is paid the Friday before. Early in the month last month's takings are in; the last day stacks wages and rent on one day.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

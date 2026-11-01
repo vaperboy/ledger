@@ -61,12 +61,14 @@ struct BankApp: View {
         .toolbar(.hidden, for: .navigationBar)
         .ledgerBackground()
         .safeAreaInset(edge: .top, spacing: 0) {
+            // On the ivory Bank the header is a forest-green band with ivory text; with the player's own bank as the main bank it stays the game's own.
             VStack(spacing: 0) {
                 ReturnLine(tab: .phone)
                 header
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
+                    .environment(\.outsidePalette, P.isLight ? OutsidePalette.forest : P)
             }
-            .background(P.ground)
+            .background((P.isLight ? FinanceColor.forest : P.ground).ignoresSafeArea(edges: .top))
         }
         .onAppear { take() }
         .onChange(of: store.appRequest) { _, _ in take() }

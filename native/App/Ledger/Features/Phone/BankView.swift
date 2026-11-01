@@ -37,12 +37,9 @@ struct BankLoansTab: View {
     }
 
     private func applyCard(_ e: GameEngine) -> some View {
-        let kind: String = account.companyID == nil ? "cons" : "biz"
-        let q = e.loanApplicationQuote(kind: kind, amount: 0, termMonths: 36, companyID: account.companyID)
-        let cur: Currency = account.companyID.flatMap { e.state.company($0) }.map { e.currency(for: $0) } ?? e.homeCurrency
-        let sub: String = q.maximum > 0 ? "The bank would lend up to \(cur.tidyShort(q.maximum)) today" : "The bank would not lend at the moment"
+        let sub: String = "Ask the bank, see its offer, then choose how much"
         return Button { Haptics.tap(); applying = true } label: {
-            CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub, value: Currency.percent(q.yearlyRate, decimals: 2))
+            CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("bank-apply-loan")
@@ -79,7 +76,7 @@ struct BankPersonalLoans: View {
             }
             loansCard(e, cur, personal)
         }
-        .sheet(item: $repaying) { l in RepayPersonalLoanSheet(loanID: l.id).presentationDetents([.medium, .large]) }
+        .sheet(item: $repaying) { l in LoanDetailSheet(loanID: l.id).presentationDetents([.large]) }
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
@@ -91,7 +88,7 @@ struct BankPersonalLoans: View {
                     Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(.plain)
                 }
                 if !loans.isEmpty {
-                    Text("Tap a loan to pay some or all of it back early. Early repayment has no fee and cuts the interest still to come.").font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)
+                    Text("Tap a loan for its schedule, this month's instalment, early repayment and, if you guaranteed it, the guarantee. Early repayment has no fee and cuts the interest still to come.").font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)
                 }
             }
         }

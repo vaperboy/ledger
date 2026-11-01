@@ -107,6 +107,29 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(docs.first { $0.kind == "financing" }?.amount ?? 0, lr.balance, accuracy: 1)
     }
 
+    func testInsuranceAndApplicationsAreRealRecords() throws {
+        var (e, id) = try firm(days: 10)
+        // No policy is held at first: no insurance rows, and nothing is made up.
+        XCTAssertTrue(try XCTUnwrap(e.companyDocuments(companyID: id, group: .insurance)).isEmpty || (e.coverageOverview(companyID: id)?.activeCount ?? 0) > 0)
+        let policy = try XCTUnwrap(e.coverageOverview(companyID: id)?.policies.first(where: { !$0.isOn }))
+        _ = e.toggleInsurancePolicy(companyID: id, product: policy.id)
+        let held = try XCTUnwrap(e.coverageOverview(companyID: id)?.policies.first(where: { $0.id == policy.id }))
+        let ins = try XCTUnwrap(e.companyDocuments(companyID: id, group: .insurance))
+        XCTAssertEqual(ins.contains { $0.id == "ins-" + policy.id }, held.isOn, "a policy appears exactly when the company holds it")
+        XCTAssertEqual(ins.count, e.coverageOverview(companyID: id)?.activeCount ?? -1)
+        // A franchise application is a record with its status; chain and franchise papers are applications, not licences.
+        XCTAssertTrue(try XCTUnwrap(e.companyDocuments(companyID: id, group: .applications)).isEmpty)
+        e.update { s, _, _ in
+            s.rest["fbApps"] = .object(["x:GL:0": .object(["st": "pending", "w0": .number(Double(s.week)), "due": .number(Double(s.week + 2)), "country": "UK", "city": ""])])
+        }
+        let apps = try XCTUnwrap(e.companyDocuments(companyID: id, group: .applications))
+        XCTAssertEqual(apps.filter { $0.kind == "franchise" }.count, 1)
+        XCTAssertEqual(apps.first { $0.kind == "franchise" }?.status, "Under review")
+        XCTAssertFalse(try XCTUnwrap(e.companyDocuments(companyID: id, group: .company)).contains { $0.id == "doc-chain" || $0.id == "doc-fran" })
+        // Access follows the same rule as every Accounting record.
+        XCTAssertNil(e.companyDocuments(companyID: id, group: .applications, user: "p999"))
+    }
+
     func testCustomerInvoicesAreRecordsWithStatusAndTax() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
