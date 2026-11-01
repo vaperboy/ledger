@@ -457,8 +457,12 @@ public enum CompanySetup {
         public var optionalEquipment = true
         /// nil: hire without looking at cash. A number: hire only while cash covers (wages so far + this one + rent) for that many months.
         public var payrollMonthsReserve: Double? = nil
-        public init(team: Team = .standard, optionalEquipment: Bool = true, payrollMonthsReserve: Double? = nil) {
+        /// A business that was bought brings its equipment and people with it: set-up neither buys the equipment nor hires the team.
+        public var equipmentInPlace = false
+        public var teamInPlace = false
+        public init(team: Team = .standard, optionalEquipment: Bool = true, payrollMonthsReserve: Double? = nil, equipmentInPlace: Bool = false, teamInPlace: Bool = false) {
             self.team = team; self.optionalEquipment = optionalEquipment; self.payrollMonthsReserve = payrollMonthsReserve
+            self.equipmentInPlace = equipmentInPlace; self.teamInPlace = teamInPlace
         }
         /// What a player start uses: required equipment, the minimum team, wages covered for two months.
         public static let careful = SetupOptions(team: .minimum, optionalEquipment: false, payrollMonthsReserve: 2)
@@ -511,7 +515,7 @@ public enum CompanySetup {
         // Fixed equipment first, vehicles last: vehicles can be financed or leased, a counter cannot.
         for e in bd.equipment.filter({ $0.vehicleModels == nil }) + bd.equipment.filter({ $0.vehicleModels != nil }) {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
-            if q <= 0 { continue }
+            if q <= 0 || options.equipmentInPlace { continue }
             if !options.optionalEquipment && !e.isRequired {
                 let each: Double
                 if let model = e.vehicleModels?.first {
@@ -527,11 +531,37 @@ public enum CompanySetup {
             if !ok { rep.log.append("equipment \(e.id): not enough cash") }
         }
         RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &rep.log)
-        if !bd.hasTrait("noStaff") && bd.family != "rent" {
+        if !bd.hasTrait("noStaff") && bd.family != "rent" && !options.teamInPlace {
             hireStandardTeam(&s, companyID: companyID, bd: bd, data: data, faithfulHiring: faithfulHiring, options: options, report: &rep)
         }
         RentalFinance.finishSetup(&s, companyID: companyID, data: data)
         return rep
+    }
+
+    /// A bought business brings its fixed equipment (not vehicles) with it, at the used price the purchase already covers. Returns the pieces moved.
+    @discardableResult
+    public static func transferEquipment(_ s: inout GameState, companyID: Int, data: GameData) -> Int {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return 0 }
+        let w = World(state: s, data: data)
+        let need = standardEquipment(bd, size: s.companies[i].size)
+        var moved = 0
+        for e in bd.equipment where e.vehicleModels == nil {
+            let q = need[e.id] ?? (e.isRequired ? 1 : 0)
+            if q <= 0 { continue }
+            addEquipment(&s, companyIndex: i, e, tradeID: bd.id, quantity: q, totalPrice: equipmentPrice(e, company: s.companies[i], w) * q * 0.6, brand: nil, used: nil, data: data)
+            moved += Int(q)
+        }
+        return moved
+    }
+
+    /// The people of a bought business keep their jobs: the standard team of its size is taken on at today's market pay. Returns how many and
+    /// the retention bonus (one month's pay each) the buyer owes them.
+    public static func transferStaff(_ s: inout GameState, companyID: Int, data: GameData) -> (people: Int, retention: Double) {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return (0, 0) }
+        var rep = SetupReport()
+        hireStandardTeam(&s, companyID: companyID, bd: bd, data: data, faithfulHiring: false, options: SetupOptions(), report: &rep)
+        let staff = s.companies[i].staff
+        return (staff.count, staff.reduce(0) { $0 + $1.monthlyWage })
     }
 
     /// Whether the company's cash carries the people already on the payroll, one more at `extra` a month and the rent for `months`.

@@ -108,6 +108,55 @@ public enum Development {
         return .ok
     }
 
+    // MARK: The expansion form (read and cancel)
+
+    /// Everything the product-expansion form shows before anything is paid.
+    public struct Plan: Equatable, Sendable {
+        public var project: Project
+        public var cost: Double
+        public var weeks: Int
+        public var cashBefore: Double
+        public var cashAfter: Double
+        public var oddsFull: Double
+        public var oddsPartial: Double
+        /// Why it cannot be started now (nil: it can).
+        public var blockedReason: String?
+        public var requirements: [String]
+    }
+
+    public static func plan(for co: Company, project id: String, state s: GameState, data: GameData) -> Plan? {
+        guard let p = projects(for: co, data: data).first(where: { $0.id == id }), let bd = data.catalog[co.type] else { return nil }
+        let c = cost(p, for: co, currency: World(state: s, data: data).currency(co))
+        let sk = co.staff.isEmpty ? 50 : co.staff.reduce(0.0) { $0 + StaffModel.skill($1, person: s.people[$1.id], salesRoles: data.catalog.tables.salesRoles) } / Double(co.staff.count)
+        let mgrBonus = co.managerID != nil ? (ManagerModel.quality(co, bd, people: s.people) - 0.5) * 0.3 : 0
+        let odds = clamp(0.45 + (sk - 50) / 160 + (co.quality - 50) / 200 + mgrBonus, 0.15, 0.9)
+        var why: String?
+        let r = co.value("rd56")
+        if !r.isNull, !r["run"].isNull { why = "Another project is already running." }
+        else if !r.isNull, r["done"].array.contains(where: { $0["k"].string == id && s.week - $0["w"].int < 104 }) { why = "You developed this less than two years ago." }
+        else if co.cash < c { why = "The company does not have the cash for it yet." }
+        return Plan(project: p, cost: c, weeks: p.weeks, cashBefore: co.cash, cashAfter: co.cash - c, oddsFull: odds, oddsPartial: (1 - odds) * 0.4, blockedReason: why,
+                    requirements: ["Paid in full when you start", "One project at a time", "The team's skill and the company's quality decide how well it works"])
+    }
+
+    /// Stop the running project. The part of the money not yet spent (weeks still to run) comes back to the company; nothing else changes.
+    @discardableResult
+    public static func cancel(_ s: inout GameState, companyID: Int) -> Double? {
+        guard let i = s.companyIndex(companyID) else { return nil }
+        var r = s.companies[i].value("rd56")
+        guard !r.isNull, !r["run"].isNull else { return nil }
+        let run = r["run"]
+        let total = max(1, run["wEnd"].double - run["w0"].double)
+        let left = max(0, min(total, run["wEnd"].double - Double(s.week)))
+        let refund = jsRound(run["cost"].double * left / total)
+        r["run"] = .null
+        s.companies[i].set("rd56", r)
+        if refund > 0 { Payments.companyReceives(&s, companyID: companyID, amount: refund, category: nil, label: "Development cancelled: unspent part returned") }
+        refreshFactors(&s, i)
+        s.note("\(s.companies[i].name) cancelled a development project; \(refund) of the cost came back.", tone: "n", companyID: companyID)
+        return refund
+    }
+
     /// Finish projects that are due and write the factors the demand, capacity, price and cost models read. Run once a week
     /// per company. Original: the 'development projects finish' step.
     public static func weekly(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
