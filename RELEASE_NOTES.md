@@ -1,12 +1,13 @@
-What's new
-- Two-page hiring for every hire: contract terms (working percentage, seasonal/temporary, car, promises), then salary (your offer, their ask once they say it, market pay).
-- Promises under Company > Team > Promises, with due dates and consequences.
-- Contract changes show the cost before and after; Reward menu on executives, office staff and the analyst.
-- Hidden scores replaced by words (skill, quit risk, press image, manager scorecard).
+# What's new
+- Home: pick up to four shortcuts, day chip after Next day
+- Weekly / monthly / yearly report sheets, read before the next day
+- Reward popups with haptic after a day
+- Swipe back everywhere, smoother motion, Reduce Motion respected
+- Ambition popup at game start (change freely in weeks 1-4)
+- Inbox decisions answerable again; Group Overview shortened
+- Earlier this week: Accounting + ivory Bank, new hiring talks, company screens
 
-Missing / coming next
-- Startups as real companies, share counts, safer business creation (in progress).
-- Home shortcuts, report sheets after day/week/month/year, reward popups, swipe-back (in progress).
-- Typed prices, suppliers in Accounting, chain and franchise application steps.
-- Top Team tab still has two tabs that do the same thing.
-- Not yet hand-tested on a phone beyond what you report.
+# Missing / coming next
+- One in-game "Are you sure" popup replacing iOS dialogs
+- Insurance, Premises (AirStay) and Equipment (TechPro) as Phone apps
+- Startups as real companies with share counts
