@@ -173,10 +173,10 @@ public enum CompanySale {
     /// Part of your shares go to a buyer; the cash is yours. Original: `sellPart`.
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
-        let pts = min(pct * co.ownership / 100, co.ownership - 1)
+        let t = CapTable.table(co)
+        let moved = CapTable.sellFromYou(&s, i, shares: Int((Double(t.you) * pct / 100).rounded()), to: buyer, paid: amount)
+        let pts = Double(moved) / Double(t.total) * 100
         Payments.ownerReceivesSale(&s, from: co, amount: amount, gain: amount - co.injectedCapital * pts / 100, label: "Sold \(Int(pct))% of \(co.name)")
-        Funding.addHolder(&s, i, name: buyer, pct: pts, paid: amount)
-        s.companies[i].ownership = jsRound((co.ownership - pts) * 100) / 100
         if pts >= 20 { Funding.addBoardSeats(&s, i, 1) }
         s.note("Sold \(Int(pct))% of your shares in \(co.name) to \(buyer) for \(fc.currency(co.countryCode, s).display(amount)).", tone: "good", companyID: co.id)
     }

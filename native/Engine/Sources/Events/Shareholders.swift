@@ -86,14 +86,12 @@ public enum Shareholders {
     @discardableResult
     public static func buyBack(_ s: inout GameState, companyID: Int, holder name: String, data: GameData) -> Bool {
         guard let i = s.companyIndex(companyID), let price = buyBackPrice(s, companyID: companyID, holder: name, data: data), Payments.liquid(s) >= price else { return false }
-        var list = s.companies[i].value("holders").array
+        let list = s.companies[i].value("holders").array
         guard let k = list.firstIndex(where: { $0["name"].string == name }) else { return false }
         let h = list[k]
         Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Bought \(name)'s stake in \(s.companies[i].name)", companyID: companyID)
-        s.companies[i].ownership = min(100, s.companies[i].ownership + h["pct"].double)
-        list.remove(at: k)
-        s.companies[i].set("holders", .array(list))
+        CapTable.buyFromHolder(&s, i, holder: name)
         if h["pct"].double >= 20 {
             var f = s.companies[i].value("flags"); f["boardSeat"] = .number(max(0, (f["boardSeat"].isNull ? 1 : f["boardSeat"].double) - 1)); s.companies[i].set("flags", f)
         }
@@ -228,14 +226,13 @@ public enum Shareholders {
             refused(&s, i, d, data: data, context: fc)
         case "exit":
             let hn = d["hn"].string
-            var list = co.value("holders").array
+            let list = co.value("holders").array
             if idx == 0, let k = list.firstIndex(where: { $0["name"].string == hn }) {
                 let h = list[k], amt = d["amt"].double
                 if Payments.liquid(s) < amt { s.note("You do not have \(fc.currency(co.countryCode, s).display(amt)) to buy the stake.", tone: "bad", companyID: id); refused(&s, i, d, data: data, context: fc); return }
                 Payments.transferFromSavings(&s, need: amt)
                 Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
-                s.companies[i].ownership = min(100, co.ownership + h["pct"].double)
-                list.remove(at: k); s.companies[i].set("holders", .array(list))
+                CapTable.buyFromHolder(&s, i, holder: hn)
                 s.note("You bought back \(String(format: "%.1f", h["pct"].double))% of \(co.name). You now own \(Int(s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
                 return
             }
@@ -300,6 +297,7 @@ public enum Shareholders {
 
     /// Every third month, each limited company runs its quarter.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
+        CapTable.normaliseAll(&s)   // counts and percentages agree, and the table never adds up to more than 100
         let mi = GameCalendar.monthIndex(week: s.week)
         let last = s.rest["m27d"]?.int ?? mi
         if s.rest["m27d"] == nil { s.rest["m27d"] = .number(Double(mi)) }

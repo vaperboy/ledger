@@ -71,8 +71,7 @@ extension StrategicDecisions {
         s.companies[x.i].size = min(maxSize, co.size + (r["size"].isNull ? 1 : r["size"].double) * 0.6)
         s.companies[x.i].awareness = min(100, co.awareness + 10)
         dem(&s, x, 1.15, 52)
-        Funding.addHolder(&s, x.i, name: x.d["o"].string, pct: pct * co.ownership / 100, paid: 0, extra: ["sat": 65])
-        s.companies[x.i].ownership = co.ownership * (1 - pct / 100)
+        CapTable.issue(&s, x.i, newShares: CapTable.sharesForPercent(pct, total: CapTable.table(co).total), to: x.d["o"].string, paid: 0, extra: ["sat": 65])
         s.note("\(co.name) merged with \(x.d["n"].string). \(x.d["o"].string) now owns \(Int(pct))%.", tone: "good", companyID: co.id)
         if let sh = marketShares(s, data: x.data).first(where: { $0.key == key }), sh.share > 0.3 { later(&s, 8, "e_merger_review", x.i, .object(["s": .number(sh.share)])) }
     }
@@ -209,16 +208,16 @@ extension StrategicDecisions {
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.6 * c.ownership / 100)
                             Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 60% of \(c.name) to private equity")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
-                            Funding.addHolder(&s, ci, name: who, pct: 60, paid: amt, extra: ["k27": "exit", "sat": 65])
-                            s.companies[ci].ownership = c.ownership * 0.4
+                            let sold = Int((Double(CapTable.table(c).you) * 0.6).rounded())
+                            CapTable.sellFromYou(&s, ci, shares: sold, to: who, paid: amt, extra: ["k27": "exit", "sat": 65])
                             Funding.addBoardSeats(&s, ci, 2) },
                         Opt(label: "Offer them 25% instead", detail: "They may accept a minority stake.") { s, x in
                             guard let ci = s.companyIndex(x.d["c"].int), s.random.chance(0.5) else { s.note("They only wanted control.", tone: "n"); return }
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.25 * c.ownership / 100)
                             Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 25% of \(c.name)")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
-                            Funding.addHolder(&s, ci, name: who, pct: 25, paid: amt, extra: ["k27": "growth", "sat": 60])
-                            s.companies[ci].ownership = c.ownership * 0.75
+                            let sold = Int((Double(CapTable.table(c).you) * 0.25).rounded())
+                            CapTable.sellFromYou(&s, ci, shares: sold, to: who, paid: amt, extra: ["k27": "growth", "sat": 60])
                             Funding.addBoardSeats(&s, ci, 1) },
                         Opt(label: "Say no", detail: "") { _, _ in }]))
 
@@ -238,7 +237,7 @@ extension StrategicDecisions {
                             if Payments.liquid(s) < c { s.note("Not enough cash to buy back shares.", tone: "bad"); hostile(&s, h: h, d: x.d, p: 0.6, x: x); return }
                             Payments.transferFromSavings(&s, need: c)
                             Payments.playerPays(&s, c, label: "Share buyback in \(h.name)")
-                            s.companies[hi].ownership = h.ownership + add
+                            CapTable.buyBackPercent(&s, hi, percent: add)
                             hostile(&s, h: s.companies[hi], d: x.d, p: 0.25, x: x) },
                         Opt(label: "Find a friendly investor", detail: "A \"white knight\" takes a stake and votes with you.") { s, x in
                             if let h = s.company(x.d["h"].int) { hostile(&s, h: h, d: x.d, p: 0.3, x: x) } },
@@ -341,8 +340,7 @@ extension StrategicDecisions {
                             let c = s.companies[x.i], amt = jsRound(x.d["v"].double * 0.2 / 0.8)
                             Payments.companyReceives(&s, companyID: c.id, amount: amt, category: nil, label: "Venture capital")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Ventures")
-                            Funding.addHolder(&s, x.i, name: who, pct: 20 * c.ownership / 100, paid: amt, extra: ["k27": "growth", "sat": 65])
-                            s.companies[x.i].ownership = c.ownership * 0.8
+                            CapTable.issue(&s, x.i, newShares: CapTable.sharesForPercent(20, total: CapTable.table(c).total), to: who, paid: amt, extra: ["k27": "growth", "sat": 65])
                             Funding.addBoardSeats(&s, x.i, 1) },
                         Opt(label: "Borrow instead", detail: "Keep the shares, take on debt.") { s, x in
                             let c = s.companies[x.i], k = x.fc.country(of: c, s)
