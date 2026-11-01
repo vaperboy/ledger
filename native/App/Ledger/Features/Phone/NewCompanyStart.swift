@@ -20,6 +20,7 @@ struct TradeDetailView: View {
     @State private var rentIndex: Int?
     @State private var buying = false
     @State private var pending: PendingAction?
+    @State private var choices = SetupChoices()
 
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
@@ -30,7 +31,7 @@ struct TradeDetailView: View {
             let cityName = country.cities.first { $0.id == city }?.name ?? "town"
             let ban = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "This kind of business is coming in a later update.")
             let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
-            let plan = ban == nil ? e.newCompanyPlan(tradeID: t.id, cityID: city, form: form, size: size, pick: pick) : nil
+            let plan = ban == nil ? e.newCompanyPlan(tradeID: t.id, cityID: city, form: form, size: size, pick: pick, choices: choices) : nil
             let brands = e.franchiseBrands().filter { $0.tradeID == t.id }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -44,12 +45,12 @@ struct TradeDetailView: View {
                         whereAndHow(t, country, city, form)
                         if let plan {
                             premises(t, plan, cur)
-                            costLines(plan, cur)
+                            PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
                             risks(plan)
                             if plan.registrationShortfall > 0 {
                                 NoteCard(text: "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.", glyph: Glyph.warning, tint: Theme.caution)
                             }
-                            QuietButton(title: "Review and start · \(cur.tidyShort(plan.total))", fullWidth: true) { pending = confirmation(e, t, plan, form, city, cityName, cur) }
+                            QuietButton(title: "Review and start · \(cur.tidyShort(plan.neededNow))", fullWidth: true) { pending = confirmation(e, t, plan, form, city, cityName, cur) }
                                 .disabled(plan.registrationShortfall > 0).opacity(plan.registrationShortfall > 0 ? 0.4 : 1)
                         } else if ban == nil {
                             NoteCard(text: "This trade cannot be priced here.")
@@ -186,6 +187,16 @@ struct TradeDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// An alternative that is not only a choice: rent instead of buy, a smaller size, a sole trader.
+    private func applyAlternative(_ alt: PlanAlternative, _ t: Trade) {
+        switch alt.id {
+        case "rent": buying = false
+        case "smaller": size = max(t.minSize, size - 0.5)
+        case "sole": limited = false
+        default: break
+        }
+    }
+
     // MARK: Brands
 
     @ViewBuilder private func brandList(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ cur: Currency) -> some View {
@@ -211,22 +222,24 @@ struct TradeDetailView: View {
                 return ((plan.pick?.buy ?? false) ? "Buying " : "Renting ") + (o?.name ?? "a place") + "."
             }
         }()
-        let msg = "\(cur.tidyShort(plan.total)) to start. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep about \(cur.tidyShort(plan.personalLeft)). \(place) " +
-            (plan.shortfall > 0 ? "You are \(cur.tidyShort(plan.shortfall)) short, so opening will wait for money. " : "") +
+        let msg = "The company needs \(cur.tidyShort(plan.neededNow)): \(cur.tidyShort(plan.mandatoryTotal)) that must be paid, \(cur.tidyShort(plan.optionalTotal)) of optional extras you chose and \(cur.tidyShort(plan.workingCapital)) of working capital. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep \(cur.tidyShort(plan.accountsAfter)) (your reserve is \(cur.tidyShort(plan.personalReserve))). \(place) " +
+            (plan.shortfall > 0 ? "The company is \(cur.tidyShort(plan.shortfall)) short of that scope, so set-up skips what the cash cannot carry and opening waits for money. " : "") +
             (form == .limited ? "A limited company protects your personal assets." : "As a sole trader you are personally liable for its debts.") + " Risk: it earns nothing until it is set up and open."
         let pick = plan.pick
         let fund = plan.intoCompany
         let nm = name.trimmingCharacters(in: .whitespaces)
         let sz = size
+        let chosen = choices
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it") {
-            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund) }
+            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen) }
             switch r {
             case .success(let out)?:
                 Haptics.success()
                 var text = "Started. Set it up, then open for business."
                 if out.premises == .notEnoughCash { text = "Started, but the company could not pay for the place you picked. Choose premises under Equipment." }
+                else if !out.skipped.isEmpty { text = "Started. Left for you to decide: " + out.skipped.map { $0.title }.prefix(3).joined(separator: ", ") + (out.skipped.count > 3 ? " and more." : ".") }
                 else if !out.setupNotes.isEmpty { text = "Started. Some set-up is left (usually cash): see the checklist in the company." }
-                store.show(text, tone: out.premises == .notEnoughCash || !out.setupNotes.isEmpty ? "warn" : "good")
+                store.show(text, tone: out.premises == .notEnoughCash || !out.setupNotes.isEmpty || !out.skipped.isEmpty ? "warn" : "good")
                 store.openCompany(out.companyID)
             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
             case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")

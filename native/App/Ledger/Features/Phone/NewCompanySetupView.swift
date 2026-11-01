@@ -12,6 +12,7 @@ struct NewCompanyDraft: Equatable {
     var form: LegalForm
     var name: String
     var pick: NewCompanyPlan.Pick?
+    var choices = SetupChoices()
 
     /// The size the picker prices the trade at, so the figures here match the table to the penny.
     func size(_ e: GameEngine) -> Double? {
@@ -22,7 +23,7 @@ struct NewCompanyDraft: Equatable {
     }
     func plan(_ e: GameEngine) -> NewCompanyPlan? {
         guard let s = size(e) else { return nil }
-        return e.newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: s, pick: pick)
+        return e.newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: s, pick: pick, choices: choices)
     }
     func costs(_ e: GameEngine) -> StartUpCostBreakdown? {
         e.startUpCostBreakdown(tradeID: tradeID, cityID: cityID, legalForm: form, premises: pick)
@@ -45,6 +46,7 @@ struct NewCompanySetupView: View {
     @State private var way: Way = .rent
     @State private var placeIndex: Int?
     @State private var goReview = false
+    @State private var choices = SetupChoices()
 
     init(tradeID: String, cityID: String) {
         self.tradeID = tradeID
@@ -55,9 +57,9 @@ struct NewCompanySetupView: View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
             let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
-            let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: "", pick: nil).plan(e)
+            let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
-            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick)
+            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
@@ -67,7 +69,7 @@ struct NewCompanySetupView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     fields(t, country, form, costs)
                     if let plan { premisesBlock(plan) }
-                    if let costs, let plan { costCard(costs, plan) }
+                    if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
                     if let monthly { monthlyCard(monthly) }
                     if !brands.isEmpty {
                         NavigationLink { TradeDetailView(tradeID: t.id) } label: {
@@ -83,6 +85,14 @@ struct NewCompanySetupView: View {
             .navigationDestination(isPresented: $goReview) { NewCompanyReviewView(draft: draft) }
         } else {
             Text("This trade is not available.").foregroundStyle(Theme.ivoryMuted).appScreen(title: "Set up", tab: .company)
+        }
+    }
+
+    private func applyAlternative(_ alt: PlanAlternative) {
+        switch alt.id {
+        case "rent": way = .rent
+        case "sole": limited = false
+        default: break
         }
     }
 
@@ -291,17 +301,21 @@ struct NewCompanyReviewView: View {
                         line("Trade", "\(t.name) in \(cityName)")
                         line("Legal form", draft.form == .limited ? "Limited company" : "Sole trader")
                         line("Premises", premisesText(plan))
-                        line("Start-up cost", store.money((costs?.total ?? plan.total)))
+                        line("The company needs", store.money(plan.neededNow))
+                        line("Of which must be paid", store.money(plan.mandatoryTotal))
+                        line("Optional extras you chose", store.money(plan.optionalTotal))
+                        line("Working capital", store.money(plan.workingCapital))
                         if plan.estimate.shareCapital > 0 { line("Share capital (locked in)", store.money(plan.estimate.shareCapital)) }
                         line("Paid from", "Personal account")
-                        line("Left in your accounts", store.money(plan.personalLeft))
+                        line("Left in your accounts", store.money(plan.accountsAfter))
+                        line("Your reserve", store.money(plan.personalReserve))
                         if let monthly { line("Monthly after opening", "about " + store.money(monthly.total)) }
                     }
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
                     if plan.shortfall > 0 {
-                        Text("You are \(store.money(plan.shortfall)) short of the whole cost, so opening will wait for money.")
+                        Text("The company is \(store.money(plan.shortfall)) short of that scope: set-up pays the mandatory costs first, skips what the cash cannot carry and opening waits for money.")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(Array(plan.risks.enumerated()), id: \.offset) { _, r in
@@ -319,7 +333,7 @@ struct NewCompanyReviewView: View {
                 let blocked: Bool = plan.registrationShortfall > 0 || working
                 HStack(spacing: 12) {
                     QuietButton(title: "Back") { dismiss() }
-                    QuietButton(title: "Pay \(store.money(plan.total + plan.estimate.shareCapital)) and register", fullWidth: true) { register(e, t, plan) }
+                    QuietButton(title: "Pay \(store.money(plan.intoCompany + plan.estimate.shareCapital + plan.estimate.registration + plan.estimate.abroad)) and register", fullWidth: true) { register(e, t, plan) }
                         .opacity(blocked ? 0.4 : 1).disabled(blocked)
                 }
                 .padding(.horizontal, 18).padding(.vertical, 10)
@@ -358,7 +372,7 @@ struct NewCompanyReviewView: View {
         let size: Double? = d.size(e)
         let fund: Double = plan.intoCompany
         let nm: String? = d.name.isEmpty ? nil : d.name
-        let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund) }
+        let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices) }
         working = false
         switch r {
         case .success(let out)?:
@@ -366,6 +380,7 @@ struct NewCompanyReviewView: View {
             var text = "Registered. Set it up, then open for business."
             var tone = "good"
             if out.premises == .notEnoughCash { text = "Registered, but the company could not pay for the place you picked. Choose premises under Setup."; tone = "warn" }
+            else if !out.skipped.isEmpty { text = "Registered. Left for you to decide: " + out.skipped.map { $0.title }.prefix(3).joined(separator: ", ") + (out.skipped.count > 3 ? " and more." : "."); tone = "warn" }
             else if !out.setupNotes.isEmpty { text = "Registered. Some set-up is left (usually cash): see the checklist in the company."; tone = "warn" }
             store.show(text, tone: tone)
             store.openCompany(out.companyID, section: .setup)

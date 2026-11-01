@@ -192,6 +192,7 @@ private struct FoundedCard: View {
     var engine: GameEngine
     var f: Startups.Founded
     @State private var pending: PendingAction?
+    @State private var launching = false
 
     init(engine: GameEngine, startup: Startups.Founded) { self.engine = engine; self.f = startup }
 
@@ -213,14 +214,14 @@ private struct FoundedCard: View {
                 Text("Investors: \(interest.word)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                 if f.runwayWeeks < 8 { Text("Runway is short: raise a round or put money in, or it closes when the cash runs out.").font(.caption).foregroundStyle(Theme.caution) }
                 ForEach(f.offers) { o in
-                    let after = f.ownership * (1 - o.pct / 100)
+                    let terms: CapTable.DealTerms? = engine.fundingOfferTerms(companyID: f.id, offerIndex: o.id)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(o.name) offers \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%").font(.system(size: 13.5)).foregroundStyle(Theme.gold)
-                        Text("\(o.says) Values it at \(cur.tidyShort(o.preMoney)) before the money.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text("\(o.says) Values it at \(cur.tidyShort(o.preMoney)) before the money, \(terms.map { cur.tidyDisplay($0.pricePerShare) } ?? "") a share, \(terms.map { String($0.sharesIssued) } ?? "") new shares.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                         HStack {
                             Button("Accept") {
                                 pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?",
-                                                        message: "The money goes into \(f.name). You go from \(Int(f.ownership.rounded()))% to about \(Int(after.rounded()))%; the investor gets a say and a share of any exit.",
+                                                        message: DealText.describe(terms, cur, companyName: f.name),
                                                         button: "Close the round") {
                                     let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
                                     store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
@@ -248,11 +249,24 @@ private struct FoundedCard: View {
                         }.buttonStyle(GreyOutlineButtonStyle())
                         if let p = f.product {
                             Button("− builder") {
-                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: -1) }, "One builder fewer: slower work, lower costs.")
-                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.builders == 0)
+                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: -1) }, "One builder let go (notice and severance paid by the company): slower work, lower wages.")
+                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(f.developers == 0)
                             Button("+ builder") {
-                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: 1) }, "One more builder: faster work, higher monthly cost.")
-                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(p.builders >= 10)
+                                store.settle(store.act { $0.changeBuilders(startupID: f.id, by: 1) }, "A builder hired at market pay: faster work, higher payroll.")
+                            }.buttonStyle(GreyOutlineButtonStyle()).disabled(f.developers >= 10)
+                            if p.phase == "ready" {
+                                Button("Launch it") { launching = true }.buttonStyle(QuietButtonStyle())
+                            }
+                            if p.phase == "live" {
+                                Button("Change the price") { launching = true }.buttonStyle(GreyOutlineButtonStyle())
+                            }
+                            Button("Open the company") { store.openCompany(f.companyID) }.buttonStyle(GreyOutlineButtonStyle())
+                            Button("Sell it") {
+                                pending = PendingAction(title: "Put \(f.name) up for sale?", message: "Buyers make offers on the company as a whole (people, product, customers and cash). You see each offer with the price and can talk to the buyer before accepting. Open the company to follow the offers.", button: "Put it up for sale") {
+                                    let ok = store.act { $0.listCompanyForSale(companyID: f.id, broker: false, percent: 100) } ?? false
+                                    store.show(ok ? "Listed. Offers will arrive over the coming weeks." : "It cannot be sold right now.", tone: ok ? "good" : "warn")
+                                }
+                            }.buttonStyle(GreyOutlineButtonStyle())
                             Button(p.selfHours > 0 ? "Stop working on it" : "Work on it yourself") {
                                 let ok = store.act { $0.toggleOwnerHoursOnProduct(startupID: f.id) } ?? false
                                 store.show(ok ? (p.selfHours > 0 ? "You stopped working on the product." : "You now put your free hours into the product.") : "You cannot build this product yourself.", tone: ok ? "good" : "warn")
@@ -324,11 +338,14 @@ private struct FoundedCard: View {
             }
         }
         .confirmAction($pending)
+        .sheet(isPresented: $launching) { StartupLaunchSheet(engine: engine, f: f) }
     }
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {
-        let phase = p.phase == "live" ? "On sale" : p.phase == "beta" ? "Being tested" : "Being built"
-        var parts = ["\(phase) \(Int((p.progress * 100).rounded()))%", "\(p.builders) builder\(p.builders == 1 ? "" : "s")"]
+        let phase = p.phase == "live" ? "On sale" : p.phase == "ready" ? "Finished, waiting for your launch decision" : p.phase == "beta" ? "Being tested" : "Being built"
+        var parts = ["\(phase) \(Int((p.progress * 100).rounded()))%", "\(f.developers) builder\(f.developers == 1 ? "" : "s") on the payroll"]
+        if f.teamWanted > f.developers && p.phase != "live" { parts.append("you asked for \(f.teamWanted)") }
+        if p.phase == "live" && f.price > 0 { parts.append("\(cur.tidyDisplay(f.price)) each") }
         if p.selfHours > 0 { parts.append("you help") }
         if p.customers > 0 { parts.append("\(Int(p.customers)) customers") }
         if p.revenueWeekly > 0 { parts.append("\(cur.tidyShort(p.revenueWeekly)) a week") }
@@ -761,6 +778,79 @@ private struct SoftwarePart: View {
                     }
                 }
             }
+        }
+    }
+}
+
+
+/// The launch decision (and, after launch, the price): the price per customer, a weekly marketing budget, and what to expect. Read from
+/// `startupLaunchPreview`; nothing is decided until "Launch". Hiring and firing are in the company's own team screens.
+private struct StartupLaunchSheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    var engine: GameEngine
+    var f: Startups.Founded
+    @State private var priceStep = 0
+    @State private var campaign = 0
+
+    private var launched: Bool { f.product?.phase == "live" }
+
+    var body: some View {
+        let cur = engine.homeCurrency
+        let steps: [Double] = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
+        let base: Double = f.price
+        let factor: Double = steps[min(max(0, priceStep), steps.count - 1)]
+        let price: Double = base * factor
+        let budgets: [Double] = [0, cur.scaledPrice(1000), cur.scaledPrice(3000), cur.scaledPrice(8000)]
+        let weekly: Double = budgets[min(max(0, campaign), budgets.count - 1)]
+        let funnel: StartupModel.Funnel? = engine.startupLaunchPreview(startupID: f.id, price: price)
+        VStack(spacing: 0) {
+            AppHeader(title: launched ? "Change the price" : "Launch \(f.name)", subtitle: "Price, marketing and what to expect") {
+                QuietButton(title: "Close") { dismiss() }
+            }
+            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    CardSection("Price per customer") {
+                        SegmentedPill(items: Array(steps.indices), title: { "\(Int((steps[$0] * 100).rounded()))%" }, selection: $priceStep)
+                        Text("\(cur.tidyDisplay(price)) for each customer. 100% is the usual price in this sector; cheaper brings more customers, dearer fewer.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    if !launched {
+                        CardSection("Marketing each week") {
+                            SegmentedPill(items: Array(budgets.indices), title: { $0 == 0 ? "None" : cur.tidyShort(budgets[$0]) }, selection: $campaign)
+                            Text("Paid by the company from its own cash, on the ordinary online channel. More awareness brings more customers; it is a real cost.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        }
+                    }
+                    if let funnel {
+                        FigureCard(items: [
+                            .init(label: "New customers", value: String(Int(funnel.newCustomersWeekly.rounded())), sub: "a week, without luck"),
+                            .init(label: "Can look after", value: String(Int(funnel.capacity)), sub: "customers with today's team"),
+                            .init(label: "Revenue", value: cur.tidyShort(funnel.weeklyRevenueAt), sub: "a week once they join"),
+                            .init(label: "Company cash", value: cur.tidyShort(f.cash), sub: "\(f.runwayWeeks) weeks of runway"),
+                        ])
+                    }
+                    Text("Customers beyond what the team can look after leave faster. A support person serves far more customers than a builder; hire one in the company's Team screen.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    QuietButton(title: launched ? "Set this price" : "Launch at \(cur.tidyDisplay(price))", fullWidth: true) { decide(price, weekly) }
+                }
+                .padding(.horizontal, 18).padding(.bottom, 30)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .ledgerBackground()
+        .onAppear { priceStep = 2 }
+    }
+
+    private func decide(_ price: Double, _ weekly: Double) {
+        if launched {
+            let ok = store.act { $0.setStartupPrice(startupID: f.id, price: price) } ?? false
+            store.show(ok ? "New price set. Customers answer over the coming weeks." : "That price could not be set.", tone: ok ? "good" : "warn")
+            if ok { dismiss() }
+            return
+        }
+        switch store.act({ $0.launchStartup(startupID: f.id, price: price, marketingChannel: weekly > 0 ? "google" : nil, marketingWeekly: weekly) }) {
+        case .ok?: Haptics.success(); store.show("\(f.name) is launched. Sales start next week.", tone: "good"); dismiss()
+        case .notReady?: store.show("The product is not finished yet.", tone: "warn")
+        default: store.show("That price does not work.", tone: "warn")
         }
     }
 }
