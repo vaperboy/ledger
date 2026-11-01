@@ -251,8 +251,9 @@ public extension GameEngine {
     func marketWage(role: String, companyID: Int) -> Double { Hiring.marketWage(role: role, company: state.company(companyID), state: state, data: data) }
 
     /// Pay for a trial week and see what the person can really do. Original: `ACT.trial`.
-    mutating func startTrialWeek(personID: Int, companyID: Int) -> Double? {
-        var r: Double?
+    /// The observations from the simulated week (completed work, mistakes, pace, lateness, how much guidance they needed), nil if it could not be done.
+    mutating func startTrialWeek(personID: Int, companyID: Int) -> [WorkLog.Observation]? {
+        var r: [WorkLog.Observation]?
         update { s, data, _ in r = Hiring.trialWeek(personID, for: companyID, state: &s, data: data) }
         return r
     }

@@ -32,7 +32,7 @@ extension ManagerModel {
     /// What a manager of this skill, age group and experience asks: the base for the company's size by skill, age group and experience, in this
     /// city and economy. Candidates are made with it; whoever weighs them (`AutoHire`) uses it to judge what a given skill is worth.
     static func askingPay(heads: Double, skill: Double, tier: String, experience exp: Double, cityWage: Double, inflation: Double) -> Double {
-        var pay = payBase(heads: heads) * (0.85 + skill / 400) * (tier == "senior" ? 1.1 : tier == "young" ? 0.86 : 1) * cityWage * inflation
+        var pay = payBase(heads: heads) * (0.85 + skill / 400) * cityWage * inflation
         pay *= 0.82 + 0.18 * min(1, exp / 9)
         return pay
     }

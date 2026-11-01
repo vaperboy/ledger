@@ -190,6 +190,7 @@ extension ManagerModel {
     /// Give the person a new job. Original: `applyPost`, `promoteStaff`.
     static func applyPromotion(_ s: inout GameState, _ c: Candidate, post: PromotionPost, wage w: Double, terms u: PromotionTerms, data: GameData) -> String {
         guard var n = s.people[c.n.id], let ci = s.companyIndex(c.co.id) else { return "Something went wrong." }
+        defer { StaffPromises.noticeChange(&s, companyID: c.co.id) }
         let co = s.companies[ci]
         let first = firstName(n.name)
         let cur = World(state: s, data: data).currency(co)

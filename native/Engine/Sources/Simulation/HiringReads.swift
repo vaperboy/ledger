@@ -25,25 +25,21 @@ public struct Applicant: Identifiable, Equatable, Sendable {
     public var name: String
     public var age: Int
     public var role: String
-    /// The skill they say they have, 0-100 (what they claim, not what a trial week would show).
-    public var claimedSkill: Double
+    /// How their CV reads, in words ("presents as experienced"). Never a number: the skill itself stays hidden.
+    public var cvImpression: String
     /// The years of experience on their CV (nil if the CV gives none).
     public var claimedExperienceYears: Double?
     /// The line from the CV.
     public var resume: String
-    /// What they ask a month, and what the role pays on this labour market.
-    public var askMonthly: Double
+    /// What the role pays on this labour market. What they ask is NOT here: it is named in the salary talk (`hireSalaryTalk`), after they have said it.
     public var marketMonthly: Double
-    /// Their ask against the market: +0.03 is 3% above, -0.08 is 8% below.
-    public var askVersusMarket: Double
-    /// First impression from what is visible before an interview: their age, their CV and what they ask. It does not read character or true skill.
+    /// First impression from what is visible before an interview: their CV and experience. It does not read character or true skill.
     public var seems: String
     public var referencesChecked: Bool
-    /// What a paid trial week showed (about the true skill), once one has been done.
-    public var trialSkill: Double?
+    /// What a paid trial week showed, in observations from the simulated week (empty until one has been done).
+    public var trialObservations: [String]
     /// The portrait the engine gave this person ("c12.0"), nil when none.
     public var faceKey: String? = nil
-    public var askYearly: Double { askMonthly * 12 }
     public var marketYearly: Double { marketMonthly * 12 }
 }
 
@@ -73,11 +69,10 @@ public extension GameEngine {
     func applicant(personID: Int, companyID: Int) -> Applicant? {
         guard let p = state.people[personID], p.employerID == 0 else { return nil }
         let market = marketWage(role: p.role, companyID: companyID)
-        let versus = market > 0 ? p.askingMonthlyWage / market - 1 : 0
         let exp = claimedExperienceYears(personID: personID)
-        return Applicant(personID: p.id, name: p.name, age: p.age, role: p.role, claimedSkill: p.claimedSkill, claimedExperienceYears: exp, resume: p.str("resume"),
-                         askMonthly: p.askingMonthlyWage, marketMonthly: market, askVersusMarket: versus, seems: Self.firstImpression(askVersusMarket: versus, experience: exp),
-                         referencesChecked: p.flag("checked"), trialSkill: p.value("trialRes").isNull ? nil : p.num("trialRes"), faceKey: p.faceKey)
+        return Applicant(personID: p.id, name: p.name, age: p.age, role: p.role, cvImpression: Self.cvImpression(claimed: p.claimedSkill, experience: exp), claimedExperienceYears: exp,
+                         resume: p.str("resume"), marketMonthly: market, seems: Self.firstImpression(experience: exp),
+                         referencesChecked: p.flag("checked"), trialObservations: p.value("trialObs").array.map { $0.string }, faceKey: p.faceKey)
     }
 
     /// The Hiring screen for a role at a company: the going pay, the ways to search and the people found (`personIDs`, as the search returned them).
@@ -86,10 +81,17 @@ public extension GameEngine {
                     searches: hiringSearchOptions(), applicants: personIDs.compactMap { applicant(personID: $0, companyID: companyID) })
     }
 
-    /// Eager (asks less than the market, or is new to the work), Proud (asks well above it), Steady otherwise.
-    private static func firstImpression(askVersusMarket v: Double, experience: Double?) -> String {
-        if v >= 0.10 { return "Proud" }
-        if v <= -0.05 || (experience ?? 0) <= 1 { return "Eager" }
+    /// Eager (new to the work), Seasoned (many years on the CV), Steady otherwise. Reads nothing hidden, and not the age.
+    private static func firstImpression(experience: Double?) -> String {
+        if (experience ?? 0) <= 1 { return "Eager" }
+        if (experience ?? 0) >= 12 { return "Seasoned" }
         return "Steady"
+    }
+
+    /// How the CV reads, from what it claims (the claim, not the truth), in words.
+    static func cvImpression(claimed: Double, experience: Double?) -> String {
+        let level = claimed >= 70 ? "presents as highly capable" : claimed >= 50 ? "presents as capable" : claimed >= 30 ? "presents as still learning the work" : "presents as a beginner"
+        guard let e = experience, e > 0 else { return level }
+        return level + ", with \(String(format: "%g", e)) years on the CV"
     }
 }

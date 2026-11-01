@@ -16,6 +16,7 @@ enum MiscWeekly {
         StaffPerks.weekly(&s, data: data)
         StaffExpenses.weekly(&s, data: data)
         FixedTerm.weekly(&s, data: data)
+        StaffPromises.weekly(&s, data: data)
         Giving.weekly(&s, data: data)
         Ambitions.weekly(&s, data: data)
         Stories.weekly(&s, data: data)   // staff stories, the rivalry, the Top 50 (before the paper picks its front page)

@@ -107,7 +107,7 @@ public enum ContractHistory {
         /// "hired", "hours", "pay", "basis", "term", "season", "benefit", "role", "promise", "notice", "move".
         public var kind: String
         public var text: String
-        public var id: String { "\(week):\(kind):\(text.hashValueStable)" }
+        public var id: String { "\(week):\(kind):\(text.stableHash)" }
         public var date: GameCalendar.Date { GameCalendar.date(week: week) }
     }
 
@@ -180,7 +180,7 @@ public enum ContractHistory {
 
 extension String {
     /// A stable small hash for ids (Swift's `hashValue` differs between runs).
-    var hashValueStable: Int { unicodeScalars.reduce(7) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff } }
+    var stableHash: Int { unicodeScalars.reduce(7) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff } }
 }
 
 // MARK: Seasons with real dates
@@ -245,6 +245,7 @@ extension StaffTalks {
             setHours(&st[k], hours)
         }
         s.companies[ci].staff = st
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return .ok
     }
 }

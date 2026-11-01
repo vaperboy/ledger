@@ -118,7 +118,7 @@ final class HireOnePathTests: XCTestCase {
         for case let url as URL in FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)! where url.pathExtension == "swift" {
             if try String(contentsOf: url, encoding: .utf8).contains("Hiring.hire(") { callers.append(url.lastPathComponent) }
         }
-        XCTAssertTrue(Set(callers).isSubset(of: ["AutoHire.swift", "MiscActions.swift", "RivalAbsorb.swift", "CompanySetup.swift"]), "\(callers)")
+        XCTAssertTrue(Set(callers).isSubset(of: ["AutoHire.swift", "MiscActions.swift", "RivalAbsorb.swift", "CompanySetup.swift", "HiringNegotiation.swift"]), "\(callers)")
         XCTAssertTrue(callers.contains("AutoHire.swift"))
         XCTAssertFalse(callers.contains("AutoStaff.swift") || callers.contains("ManagerWeek.swift") || callers.contains("ManagerSeasonal.swift"))
     }

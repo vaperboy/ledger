@@ -11,9 +11,6 @@ import Finance
 public enum StaffProfile {
     public static func band(_ v: Double) -> String { v >= 80 ? "Outstanding" : v >= 65 ? "Strong" : v >= 45 ? "Capable" : v >= 28 ? "Developing" : "Entry level" }
 
-    public static let personalityText: [String: String] = [
-        "driven": "Driven: wants to do well and move up", "steady": "Steady: calm and reliable", "loyal": "Loyal: sticks with you",
-        "arrogant": "Arrogant: knows best, clashes now and then", "lazy": "Complacent: does what is asked, not more", "restless": "Restless: always looking at the next thing"]
     public static let problemText: [String: String] = [
         "late": "is often late", "lazy": "is under-performing", "conflict": "is causing conflict", "sick": "has high sick leave", "theft": "is suspected of stealing"]
 
@@ -33,13 +30,13 @@ public enum StaffProfile {
         public var monthlyWage: Double
         public var payBasis: String
         public var hoursPerWeek: Double
-        public var skill: Double
-        public var skillBand: String
+        /// Whether they have picked up new abilities since they started (a fact, not a figure).
         public var skillGainedSinceStart: Bool
-        public var personality: String?
-        public var learns: String
-        public var stamina: String
-        public var tiredness: Double
+        /// What the work log says about their work, from events (completed tasks, mistakes, lateness, initiative, communication ...). No rating, no figures.
+        public var feedback: WorkLog.Feedback
+        /// Lost interest in the work (still turns up).
+        public var disengaged: Bool
+        public var contract: EmploymentContract.Summary?
         public var weeksWithYou: Int
         public var lastRaiseWeek: Int?
         public var noticeWeeks: Int
@@ -70,7 +67,12 @@ public enum StaffProfile {
         public var expenses: [String] = []
     }
 
-    public struct Course: Equatable, Sendable { public var id: String; public var name: String; public var cost: Double; public var maxGain: Double }
+    public struct Course: Equatable, Sendable {
+        public var id: String; public var name: String; public var cost: Double
+        /// What the course is good for, in words (a modest, solid or large boost); the result is never certain.
+        public var benefit: String
+        var maxGain: Double
+    }
 
     // MARK: Reading
 
@@ -84,7 +86,7 @@ public enum StaffProfile {
     public static func courses(_ co: Company, data: GameData) -> [Course] {
         guard let bd = data.catalog[co.type] else { return [] }
         let cur = Currency(country: data.countries[co.countryCode] ?? data.countries.countries[0], rates: ExchangeRates())
-        return bd.raw["crs"].array.map { Course(id: $0[0].string, name: $0[1].string, cost: cur.scaledPrice($0[2].double), maxGain: $0[4].double) }
+        return bd.raw["crs"].array.map { Course(id: $0[0].string, name: $0[1].string, cost: cur.scaledPrice($0[2].double), benefit: $0[4].double >= 10 ? "A large boost to what they can do, if it takes." : $0[4].double >= 5 ? "A solid boost to what they can do, if it takes." : "A modest boost to what they can do, if it takes.", maxGain: $0[4].double) }
     }
 
     /// Why they feel the way they do. Original: `moodOf`.
@@ -108,6 +110,9 @@ public enum StaffProfile {
         if denied != 0 && s.week - denied < 26 { bad.append("was turned down for a raise \(s.week - denied) weeks ago") }
         else if s.week - lr >= 52 { bad.append("no raise for over a year") }
         if m.tiredness >= 40 { bad.append("tired from long weeks") }
+        if StaffPromises.letDown(m, week: s.week) { bad.append("was promised something that did not happen") }
+        else if StaffPromises.promises(s, personID: staffID).contains(where: { $0.status == .fulfilled && s.week - ($0.resolvedWeek ?? 0) < 52 }) { good.append("what was promised to them was kept") }
+        if StaffBehaviour.isDisengaged(m) { bad.append("has lost interest in the work") }
         if !m.value("flag").isNull { bad.append("there is a problem to sort out") }
         if !co.value("mood").isNull {
             if co.num("mood") < 40 { bad.append("the mood in the team is low") } else if co.num("mood") >= 75 { good.append("the team gets on well") }
@@ -121,14 +126,13 @@ public enum StaffProfile {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }), let n = s.people[staffID],
               let mood = mood(s, companyID: companyID, staffID: staffID, data: data) else { return nil }
         let t = data.catalog.tables
-        let skill = StaffModel.skill(m, person: n, salesRoles: t.salesRoles)
         let sev = Dismissal.quote(s, companyID: companyID, staffID: staffID, data: data)?.total ?? 0
         let market = marketPay(s, co, m, data: data)
         let gap = (market * (0.7 + n.skill / 160) - m.monthlyWage) / max(1, m.monthlyWage)
         let hours = m.weeklyHours ?? StaffModel.fullWeekHours
         return Profile(staffID: staffID, name: n.name, age: n.age, role: m.role, roleName: t.roles[m.role]?.name ?? m.role, monthlyWage: m.monthlyWage, payBasis: m.payBasis,
-                       hoursPerWeek: hours, skill: skill, skillBand: band(skill), skillGainedSinceStart: m.skillGain >= 3, personality: n.trait == nil ? (n.str("pers").isEmpty ? nil : n.str("pers")) : n.str("pers"),
-                       learns: StaffModel.learningType(m), stamina: StaffModel.staminaType(m), tiredness: m.tiredness, weeksWithYou: max(0, s.week - m.hiredWeek),
+                       hoursPerWeek: hours, skillGainedSinceStart: m.skillGain >= 3, feedback: WorkLog.feedback(m, week: s.week), disengaged: StaffBehaviour.isDisengaged(m),
+                       contract: EmploymentContract.summary(s, companyID: companyID, personID: staffID, data: data), weeksWithYou: max(0, s.week - m.hiredWeek),
                        lastRaiseWeek: m.raw["lr"].flatMap { $0.isNull ? nil : $0.int }, noticeWeeks: m.noticeWeeks,
                        problem: m.value("flag").isNull ? nil : m.str("flag"), mood: mood, lateThisQuarter: m.int("late"), complaintsThisQuarter: m.int("cmp"),
                        warnings: m.int("warn"), underpaid: gap > 0.1, newInRole: m.num("nr") > 0, dismissalDocumented: isDocumented(m),
@@ -159,7 +163,8 @@ public enum StaffProfile {
         let poach = staffID != nil && roll > 0.9 && s.random.chance(0.3)
         let name: String
         if let id = staffID, let k = s.companies[i].staff.firstIndex(where: { $0.id == id }) {
-            var st = s.companies[i].staff; st[k].skillGain = clamp(st[k].skillGain + gain, -10, 70); s.companies[i].staff = st
+            var st = s.companies[i].staff; st[k].skillGain = clamp(st[k].skillGain + gain, -10, 70); st[k].set("crsN", st[k].int("crsN") + 1); s.companies[i].staff = st
+            StaffPromises.noticeChange(&s, companyID: companyID)
             name = s.people[id]?.name ?? "A team member"
         } else {
             s.companies[i].ownerSkill = clamp(s.companies[i].ownerSkill + gain, 0, 100)
@@ -279,8 +284,8 @@ public enum StaffProfile {
                 changed = true
                 if st[k].raw["qtr"].map({ $0.int }) != q4 || st[k].raw["qtr"] == nil { st[k].set("qtr", q4); st[k].set("late", 0); st[k].set("cmp", 0) }
                 let flag = st[k].str("flag")
-                if s.random.chance(flag == "late" ? 0.45 : 0.01) { st[k].set("late", st[k].int("late") + 1) }
-                if ["conflict", "lazy", "theft"].contains(flag) && s.random.chance(0.18) { st[k].set("cmp", st[k].int("cmp") + 1) }
+                if s.random.chance(flag == "late" ? 0.45 : 0.01) { st[k].set("late", st[k].int("late") + 1); WorkLog.note(&st[k], week: s.week, late: 1) }
+                if ["conflict", "lazy", "theft"].contains(flag) && s.random.chance(0.18) { st[k].set("cmp", st[k].int("cmp") + 1); WorkLog.note(&st[k], week: s.week, complaints: 1) }
                 if !flag.isEmpty, st[k].int("warnW") != 0, s.week - st[k].int("warnW") <= 8, s.random.chance(0.05) {
                     st[k].set("flag", JSONValue.null)
                     if let n = s.people[st[k].id] { s.note("\(n.name) has improved after the warning.", tone: "good", companyID: s.companies[i].id) }

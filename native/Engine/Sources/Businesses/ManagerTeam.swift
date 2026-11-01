@@ -35,7 +35,7 @@ extension ManagerModel {
 
     // MARK: Small helpers
 
-    static func playerCurrency(_ s: GameState, _ data: GameData) -> Currency {
+    public static func playerCurrency(_ s: GameState, _ data: GameData) -> Currency {
         let w = World(state: s, data: data)
         return Currency(country: w.countries[s.homeCountryCode]!, rates: w.rates)
     }
@@ -257,7 +257,7 @@ extension ManagerModel {
     }
 
     /// The rank of a team post for the pay talk: the managing director sits above the department heads.
-    static func teamRank(_ key: String) -> String { key == "ceo" ? "ceo" : key == "reg" ? "region" : "teamHead" }
+    public static func teamRank(_ key: String) -> String { key == "ceo" ? "ceo" : key == "reg" ? "region" : "teamHead" }
 
     /// Hire into a team role: at or above what they would settle for they accept, below it they counter, refuse or walk away
     /// (higher posts are more patient). Original: `hireTeam`.
@@ -364,7 +364,7 @@ extension ManagerModel {
     }
 
     /// The rank of an executive level for the pay talk: the higher the post, the more patience.
-    static func execRank(_ level: ExecLevel) -> String {
+    public static func execRank(_ level: ExecLevel) -> String {
         switch level { case .md: return "groupDirector"; case .ceo56: return "ceo"; case .chainmgr: return "chainManager"; case .region: return "region" }
     }
 

@@ -55,6 +55,7 @@ public enum WorkerBonus {
         var st = s.companies[ci].staff
         if l.isNone { st[k].raw.removeValue(forKey: "bp") } else { st[k].set("bp", l.id) }
         s.companies[ci].staff = st
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return true
     }
 

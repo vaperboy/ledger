@@ -130,7 +130,7 @@ public extension Hiring {
         if terms.seasonCount > 0 && terms.seasonMonths == nil { return "Seasonal terms need the months of the season." }
         if let months = terms.seasonMonths, months.isEmpty || months.contains(where: { !(1...12).contains($0) }) { return "Choose the months of the season." }
         if terms.fixedTermWeeks > 0, let co, let lab = Optional(World(state: s, data: data).labour(co)),
-           let why = FixedTerm.renewalBlock(lab, StaffMember(raw: [:]), weeks: terms.fixedTermWeeks, now: s.week) { return why }
+           let why = FixedTerm.renewalBlock(lab, StaffMember.init(raw: [:]), weeks: terms.fixedTermWeeks, now: s.week) { return why }
         if let plan = terms.bonusPlan, WorkerBonus.level(plan) == nil { return "That bonus plan does not exist." }
         for x in terms.expenseItems where StaffExpenses.item(x) == nil { return "That expense does not exist." }
         for p in terms.promises where !p.isPlausible { return "A promise needs a due date in the future." }

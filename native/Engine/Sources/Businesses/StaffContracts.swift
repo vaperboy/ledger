@@ -103,6 +103,7 @@ extension StaffTalks {
         guard let ci = s.companyIndex(companyID), let m = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
         if hours > m.num("maxH", 999) { return .student }
         edit(&s, ci, staffID) { setHours(&$0, hours) }
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return .ok
     }
 

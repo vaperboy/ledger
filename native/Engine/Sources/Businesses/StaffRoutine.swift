@@ -46,6 +46,7 @@ public enum StaffRoutine {
         var goneIDs: [Int] = []
         let labour = LabourRules(country: country)
         var overtimePay = 0.0, lifted = 0
+        var behaviour: [(id: Int, update: StaffBehaviour.Update)] = []
         var changedPeople: [Int: Person] = [:]
         let utilisationLast: Double? = co.value("lastW")["util"].isNull ? nil : co.value("lastW")["util"].double
         for idx in staff.indices {
@@ -68,6 +69,8 @@ public enum StaffRoutine {
             let contracted = m.weeklyHours ?? m.num("wh", StaffModel.fullWeekHours)
             let worked = StaffWeek.hoursWorked(m, utilisation: util, limitedByPeople: bottleneckIsPeople)
             Self.recordHours(&m, week: s.week, hours: (m.isOffSeason || StaffModel.isSick(m, week: s.week)) ? 0 : worked, contracted: contracted)
+            WorkLog.record(&m, person: n, week: s.week, contracted: contracted, worked: worked, skill: StaffModel.skill(m, person: n, salesRoles: tables.salesRoles),
+                           limitedByPeople: bottleneckIsPeople, tiredFactor: StaffModel.tirednessFactor(m), ramp: StaffModel.rampFactor(m, week: s.week, person: n), sick: StaffModel.isSick(m, week: s.week))
             if StaffWeek.tire(&m, hoursWorked: worked, from: labour.tirednessThreshold(contracted: contracted), week: s.week, random: &s.random) {
                 events.append(.sick(staffID: m.id))
             }
@@ -91,7 +94,9 @@ public enum StaffRoutine {
             let odds = StaffWeek.quitOdds(family: bd.family, tradeID: co.type, staff: m, person: n, payGap: gap, tenure: tenure,
                                           week: s.week, hasHRManager: s.hasHeadOffice("hr"), hasTeamLead: hasLead)
             let perkShare = market > 0 ? StaffPerks.worthMonthly(co, m, currency: w.currency(co)) / market : 0
-            if let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, perkShare: perkShare, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
+            if let u = StaffBehaviour.update(&m, person: n, gap: gap, week: s.week) { behaviour.append((m.id, u)) }
+            // someone who has gone quiet no longer raises anything with you
+            if !StaffBehaviour.isSilent(m), let talk = StaffTalks.nextTalk(m, n, company: co, gap: gap, perkShare: perkShare, tenure: tenure, week: s.week, salesRoles: tables.salesRoles) { events.append(talk) }
             probe?(gap, odds, m.tiredness, StaffWeek.fit(staff: m, tradeID: co.type), tenure)
             if s.random.chance(quitChance(odds: odds, company: co, member: m)) && !co.value("flags")["noquit"].bool { events.append(.quit(staffID: m.id)) }
             if let trait = n.trait, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
@@ -108,6 +113,10 @@ public enum StaffRoutine {
         applyExtras(&s, companyIndex: i, extras, currency: w.currency(co))
         if lifted > 0 { s.note("\(lifted) \(lifted == 1 ? "person's pay was" : "people's pay was") raised to the new minimum wage at \(co.name).", companyID: co.id) }
         if overtimePay > 0 { Payments.companyPays(&s, companyID: co.id, amount: overtimePay, category: "wages", label: "Overtime pay") }
+        for b in behaviour {
+            guard let n = s.people[b.id], let msg = StaffBehaviour.message(for: b.update, name: n.name, company: co.name) else { continue }
+            s.addMessage(kind: "info", from: n.name, title: msg.title, body: msg.body, companyID: co.id, tone: msg.tone, status: "done")
+        }
         for e in events { handle(&s, companyIndex: i, e, data: data) }
         growSkills(&s, companyIndex: i)
     }
@@ -152,10 +161,12 @@ public enum StaffRoutine {
         switch e {
         case .quit(let id):
             guard var m = co.staff.first(where: { $0.id == id }), m.noticeWeeks == 0 else { return }
-            m.noticeWeeks = (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx")   // plus the extra notice agreed in a contract talk
+            let standard = (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx")   // plus the extra notice agreed in a contract talk
+            let quit = s.people[id].map { StaffBehaviour.resignationNotice(m, person: $0, week: s.week, standardNotice: standard) } ?? (weeks: standard, abrupt: false)
+            m.noticeWeeks = quit.weeks
             co.staff = co.staff.map { $0.id == id ? m : $0 }
             s.companies[i] = co
-            s.note("\(name(id)) handed in notice at \(co.name) and leaves in \(m.noticeWeeks) weeks.", tone: "bad", companyID: co.id)
+            s.note(quit.abrupt ? "\(name(id)) left \(co.name) with almost no notice." : "\(name(id)) handed in notice at \(co.name) and leaves in \(m.noticeWeeks) weeks.", tone: "bad", companyID: co.id)
         case .sick(let id):
             s.note("\(name(id)) is off sick this week at \(co.name).", tone: "bad", companyID: co.id)
         case .leave(let id):

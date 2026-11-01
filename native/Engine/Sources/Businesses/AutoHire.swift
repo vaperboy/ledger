@@ -151,9 +151,12 @@ public enum AutoHire {
         let h = given ?? hirer(of: co, state: s)
         let world = World(state: s, data: data)
         let market = Hiring.marketWage(role: role, company: co, state: s, data: data)
+        // the same reading of the ask the hire itself uses (pay basis, the company's finances, size and stage, the package), so the deal struck is accepted
+        var factors: [Int: Double] = [:]
+        for p in candidates { factors[p.id] = Hiring.talkFactor(person: p, terms: terms, company: co, state: s, data: data) }
         let deal = bestDeal(candidates, hirer: h, rank: "worker", floor: world.minimumWage(co), currency: world.currency(co), about: 100,
-                            fair: { p, perceived in market * Hiring.askCurve(tier: Hiring.tier(forAge: p.age), skill: perceived) },
-                            factor: { Hiring.payBasis($0, terms: terms, fixedSalaryRoles: Hiring.fixedSalaryNorm).factor }, state: &s)
+                            fair: { p, perceived in market * Hiring.askSpread(skill: perceived, experience: p.num("exp")) },
+                            factor: { factors[$0.id] ?? 1 }, state: &s)
         guard let d = deal, Hiring.hire(d.person.id, into: companyID, monthlyWage: d.price, state: &s, data: data, terms: terms) == .ok else { return nil }
         return s.people[d.person.id]
     }
