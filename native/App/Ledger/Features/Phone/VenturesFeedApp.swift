@@ -248,7 +248,7 @@ struct VenturesFeedApp: View {
 
     private func confirmSell(_ st: Startups.Stake, _ f: Double, _ cur: Currency) {
         pending = PendingAction(title: f == 1 ? "Sell your stake in \(st.name)?" : "Sell half your stake in \(st.name)?",
-                                message: "A buyer of private shares pays below the paper value of about \(cur.tidyShort(st.value * f)). A gain is taxed.", button: "Sell") {
+                                message: "A buyer of private shares pays below the paper value of about \(cur.tidyShort(st.value * f)). A gain is taxed.", button: "Sell", destructive: true) {
             let v = store.act { $0.sellStartupStake(stakeID: st.id, fraction: f) } ?? 0
             store.show(v > 0 ? "Sold for \(cur.tidyShort(v))." : "No buyer.", tone: v > 0 ? "good" : "warn")
         }

@@ -8,7 +8,7 @@ struct LuxuryVaultTab: View {
     @EnvironmentObject var store: GameStore
     var onInspect: (Int) -> Void
     var onShowroom: () -> Void
-    @State private var selling: Int? = nil
+    @State private var pending: PendingAction? = nil
     private var P: OutsidePalette { .luxury }
 
     var body: some View {
@@ -23,27 +23,20 @@ struct LuxuryVaultTab: View {
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .confirmationDialog(sellTitle(e), isPresented: Binding(get: { selling != nil }, set: { if !$0 { selling = nil } }), titleVisibility: .visible) {
-                if let id = selling, let get = e.luxurySellQuote(pieceID: id) {
-                    Button("Sell for \(store.short(get))", role: .destructive) { sell(id) }
-                }
-            } message: {
-                if let id = selling, let get = e.luxurySellQuote(pieceID: id) {
-                    Text("You receive \(store.money(get)), after \(Int((Luxury.sellFee * 100).rounded()))% selling costs. A gain is taxed with your other gains.")
-                }
-            }
+            .confirmAction($pending)
         }
     }
 
-    private func sellTitle(_ e: GameEngine) -> String {
-        guard let id = selling, let p = e.luxuryPieces.first(where: { $0.id == id }) else { return "" }
-        return "Sell \(p.item.name)?"
+    private func askToSell(_ e: GameEngine, _ p: Luxury.Piece) {
+        guard let get = e.luxurySellQuote(pieceID: p.id) else { return }
+        let fee: Int = Int((Luxury.sellFee * 100).rounded())
+        let message: String = "You receive \(store.money(get)), after \(fee)% selling costs. A gain is taxed with your other gains."
+        pending = PendingAction(title: "Sell \(p.item.name)?", message: message, button: "Sell for \(store.short(get))", destructive: true) { sell(p.id) }
     }
 
     private func sell(_ id: Int) {
         let v: Double = store.act { $0.sellLuxury(pieceID: id) } ?? 0
         store.show(v > 0 ? "Sold for \(store.short(v))." : "It cannot be sold right now.", tone: v > 0 ? "good" : "warn")
-        selling = nil
     }
 
     private func summary(_ e: GameEngine, _ pieces: [Luxury.Piece]) -> some View {
@@ -96,7 +89,7 @@ struct LuxuryVaultTab: View {
             }
             HStack(spacing: 10) {
                 Button("Inspect") { onInspect(p.id) }.buttonStyle(QuietButtonStyle())
-                Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { selling = p.id }
+                Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { askToSell(e, p) }
                     .buttonStyle(QuietButtonStyle(tint: P.inkSoft)).disabled(get == nil)
                     .accessibilityIdentifier("luxury-sell")
             }
@@ -183,7 +176,7 @@ struct LuxuryInspectSheet: View {
                     Button(q.waitWeeks > 0 ? "Dinner in \(q.waitWeeks) wk" : "Host a dinner") {
                         pending = PendingAction(title: "Host a dinner on board?",
                                                 message: "Costs \(store.short(q.cost)) from your cash. Warms the three suppliers you know least. Possible once every four weeks.",
-                                                button: "Host for \(store.short(q.cost))") {
+                                                button: "Host for \(store.short(q.cost))", amount: q.cost, currency: e.homeCurrency) {
                             switch store.act({ $0.hostYachtDinner() }) {
                             case .ok(let guests)?: store.show(guests.isEmpty ? "A quiet evening on board: you know nobody to invite yet." : "Aboard: " + guests.joined(separator: ", ") + ".", tone: "good")
                             case .wait?: store.show("Your last dinner was less than four weeks ago.", tone: "warn")
@@ -195,7 +188,8 @@ struct LuxuryInspectSheet: View {
                 }
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
-                        pending = PendingAction(title: "Host a retreat on the island?", message: "Paid from your cash. Possible once every three months.", button: "Host") {
+                        pending = PendingAction(title: "Host a retreat on the island?", message: "Paid from your cash. Possible once every three months.", button: "Host",
+                                                amount: Luxury.retreatCost(e.homeCurrency), currency: e.homeCurrency) {
                         switch store.act({ $0.hostIslandRetreat() }) {
                         case .ok?: store.show("A retreat on the island.", tone: "good")
                         case .wait?: store.show("Your last retreat was less than three months ago.", tone: "warn")

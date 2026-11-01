@@ -70,7 +70,7 @@ final class MainScreensTests: TourCase {
                 "team": ["Find workers"],
                 "manage": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
                 "sales": ["Pricing", "Marketing"],
-                "stats": ["Statements", "Ownership"],
+                "stats": ["Ownership"],
             ]
             for section in ["overview", "team", "manage", "sales", "stats"] {
                 let b = app.buttons["company-tab-" + section]

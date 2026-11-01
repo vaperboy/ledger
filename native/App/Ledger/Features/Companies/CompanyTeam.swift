@@ -6,17 +6,18 @@ import Simulation
 
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
-    case management = "Management", targets = "Goals", perks = "Perks and rules", promises = "Promises", hiring = "Hire someone"
+    case management = "Management", targets = "Goals", promises = "Promises", hiring = "Hire someone"
     var id: String { rawValue }
 }
 
 /// One company's Team tab on ONE page: compact key figures above, a table of settings (management, goals, perks and labour rules, hiring),
-/// and a plain line about who runs the team and the rosters below. Payroll is in Accounting and the Bank, not here.
+/// and a plain line about who runs the team and the rosters below. Perks open as a popup; the labour rules are in Stats. Payroll is in Accounting and the Bank, not here.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @State private var page: TeamPage?
+    @State private var showPerks = false
 
     /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
     @ViewBuilder private var delegation: some View {
@@ -45,6 +46,9 @@ struct CompanyTeam: View {
             CompanyStaffRoster(engine: engine, company: company)
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
+        .fullScreenCover(isPresented: $showPerks) {
+            CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).presentationBackground(.clear)
+        }
     }
 
     // MARK: Key figures above
@@ -91,10 +95,13 @@ struct CompanyTeam: View {
     private var settingsTable: some View {
         let cur: Currency = engine.currency(for: company)
         let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
+        let perksOn: Int = engine.staffPerkOptions.filter { engine.staffPerkIsOn(companyID: company.id, perk: $0.id) }.count
+        let perksCost: Double = engine.staffPerksMonthlyTotal(companyID: company.id)
+        let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on · " + cur.tidyShort(perksCost) + " a month"
         return SettingsTable(heading: "Team matters") {
             SettingsTableRow(title: "Management", note: "Manager, assistant and posts above them", value: runBy) { page = .management }
             SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
-            SettingsTableRow(title: "Perks and rules", note: "Cars, staff benefits, minimum pay, hours and notice", value: cur.country.name) { page = .perks }
+            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { showPerks = true }
             SettingsTableRow(title: "Promises", note: "What you have promised your people, and when it falls due", value: promisesValue) { page = .promises }
             SettingsTableRow(title: "Hire someone", note: "Job ad, network or agency", value: "Find workers") { page = .hiring }
         }
@@ -123,9 +130,6 @@ struct TeamPageDestination: View {
         switch page {
         case .management: CompanyManagement(engine: e, company: co)
         case .targets: CompanyTargetsCard(engine: e, company: co)
-        case .perks:
-            CompanyPerksCard(engine: e, company: co)
-            CompanyLabourCard(engine: e, company: co)
         case .promises: CompanyPromises(engine: e, company: co)
         case .hiring: EmptyView()
         }

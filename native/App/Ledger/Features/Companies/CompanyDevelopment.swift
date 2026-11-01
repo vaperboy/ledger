@@ -108,7 +108,7 @@ struct CompanyDevelopment: View {
     /// Spending real money on something that can fail: the question says what it costs and how long it takes.
     private func confirm(_ p: Development.Project, cost: Double, _ cur: Currency) {
         let message: String = "Costs \(cur.tidyShort(cost)), paid now. Takes \(p.weeks.weeksText). The team's skill and your quality decide how well it works; it can work fully, partly or not at all."
-        pending = PendingAction(title: "Start \(p.name.lowercased())?", message: message, button: "Start for \(cur.tidyShort(cost))") { start(p) }
+        pending = PendingAction(title: "Start \(p.name.lowercased())?", message: message, button: "Start for \(cur.tidyShort(cost))", amount: cost, currency: cur) { start(p) }
     }
 
     private func start(_ p: Development.Project) {

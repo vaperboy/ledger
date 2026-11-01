@@ -70,7 +70,7 @@ struct AcquisitionSheet: View {
                             }
                         }
                         HStack { Button("Buy for \(cur.tidyShort(price))") {
-                            pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it") {
+                            pending = PendingAction(title: "\(title(ch.kind)): buy \(r.name)?", message: "\(cur.tidyDisplay(ch.cashNeeded)) needed in cash\(ch.loan > 0 ? ", of which \(cur.tidyDisplay(ch.loan)) borrowed from your bank" : ""). This cannot be undone.", button: "Buy it", destructive: true) {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
                         }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable); Spacer() }

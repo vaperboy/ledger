@@ -120,7 +120,7 @@ struct LoanDetailSheet: View {
         var message: String = "Balance \(cur.tidyDisplay(q.balance)) plus \(cur.tidyDisplay(q.accruedInterest)) interest accrued since the last month end: \(cur.tidyDisplay(q.total)) from \(accountName(e, rec)). "
         message += "There is no early repayment fee, the interest still to come is saved and the loan ends today. "
         message += funds >= q.total ? "About \(cur.tidyShort(funds - q.total)) is left afterwards." : "It holds \(cur.tidyShort(funds)), which is not enough."
-        pending = PendingAction(title: "Pay off \(name) in full?", message: message, button: "Pay off \(cur.tidyShort(q.total))") {
+        pending = PendingAction(title: "Pay off \(name) in full?", message: message, button: "Pay off \(cur.tidyShort(q.total))", amount: q.total, currency: cur) {
             let ok: Bool = store.act({ (g: inout GameEngine) -> Bool in g.payOffLoan(loanID: id) }) ?? false
             if ok {
                 Haptics.success()

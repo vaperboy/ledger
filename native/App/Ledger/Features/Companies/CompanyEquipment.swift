@@ -30,7 +30,7 @@ struct CompanyEquipmentScreen: View {
     /// Opened from the setup checklist's premises row: start on the choice of premises.
     var opensOnPremises = false
     @State private var tab: EquipmentTab?
-    @State private var pending: Pending? = nil
+    @State private var asking: PendingAction? = nil
     @State private var pendingListing: CompanySetup.Listing? = nil
 
     private enum Pending: Identifiable {
@@ -68,17 +68,10 @@ struct CompanyEquipmentScreen: View {
             .onAppear { if opensOnPremises && tabs.contains(.premises) && tab == nil { tab = .premises } }
             .navigationDestination(item: $tab) { (t: EquipmentTab) in
                 SettingsPage(title: t.rawValue, subtitle: co.name) { pageContent(t, e, co, needs) }
-                    .confirmationDialog(pendingTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                        if let p = pending { Button(pendingButton(p), role: .destructive) { confirm(p) } }
-                    } message: { Text(pendingMessage) }
-                    .confirmationDialog("Where to work", isPresented: Binding(get: { pendingListing != nil }, set: { if !$0 { pendingListing = nil } }), titleVisibility: .visible) {
-                        if let l = pendingListing, let t = e.premisesTerms(companyID: companyID, listing: l) {
-                            Button("Rent: \(store.short(t.monthlyRent, in: co)) a month, deposit \(store.short(t.deposit, in: co))") { takePremises(l, buy: false) }
-                            if !(e.tradeInfo(companyID: companyID)?.premisesKind == "slope") {
-                                Button("Buy: \(store.short(t.purchasePrice, in: co)), \(store.short(t.downPayment, in: co)) down") { takePremises(l, buy: true) }
-                            }
-                        }
-                    } message: { Text(pendingListing.map { "\($0.name), \(Int($0.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back." } ?? "") }
+                    .confirmAction($asking)
+                    .fullScreenCover(isPresented: Binding(get: { pendingListing != nil }, set: { if !$0 { pendingListing = nil } })) {
+                        premisesChoice(e, co).presentationBackground(.clear)
+                    }
             }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -134,30 +127,32 @@ struct CompanyEquipmentScreen: View {
 
     // MARK: Confirmations
 
-    private var pendingTitle: String {
-        switch pending {
-        case .unit(_, _, let n)?: return "Sell this \(n)?"
-        case .all(_, let n)?: return "Sell all \(n)?"
-        case .vehicle(_, let n)?: return "Sell \(n)?"
-        case .cancelPlan(_, let n)?: return "Cancel \(n)?"
-        case .endLease(_, let n, _, _)?: return "End the lease of \(n)?"
-        case nil: return ""
+    private func askTitle(_ p: Pending) -> String {
+        switch p {
+        case .unit(_, _, let n): return "Sell this \(n)?"
+        case .all(_, let n): return "Sell all \(n)?"
+        case .vehicle(_, let n): return "Sell \(n)?"
+        case .cancelPlan(_, let n): return "Cancel \(n)?"
+        case .endLease(_, let n, _, _): return "End the lease of \(n)?"
         }
     }
-    private var pendingMessage: String {
-        switch pending {
-        case .unit?: return "Used equipment sells for well under what you paid, less if it looks worn."
-        case .all?: return "You get about 70% of book value. Capacity may collapse."
-        case .vehicle?: return "You get roughly 78% of its book value. A loan on it is settled; a lease just ends."
-        case .cancelPlan?: return "It stops working right away."
-        case .endLease(_, _, let units, let monthly)?: return "The \(units) leased \(units == 1 ? "unit goes" : "units go") back at once and the capacity they gave is lost until you replace \(units == 1 ? "it" : "them"). The \(monthly) a month stops."
-        case nil: return ""
+    private func askMessage(_ p: Pending) -> String {
+        switch p {
+        case .unit: return "Used equipment sells for well under what you paid, less if it looks worn."
+        case .all: return "You get about 70% of book value. Capacity may collapse."
+        case .vehicle: return "You get roughly 78% of its book value. A loan on it is settled; a lease just ends."
+        case .cancelPlan: return "It stops working right away."
+        case .endLease(_, _, let units, let monthly): return "The \(units) leased \(units == 1 ? "unit goes" : "units go") back at once and the capacity they gave is lost until you replace \(units == 1 ? "it" : "them"). The \(monthly) a month stops."
         }
     }
-    private func pendingButton(_ p: Pending) -> String {
+    private func buttonTitle(_ p: Pending) -> String {
         if case .cancelPlan = p { return "Cancel plan" }
         if case .endLease = p { return "End the lease" }
         return "Sell"
+    }
+    /// Selling, cancelling and ending a lease cannot be taken back, so each one asks.
+    private func ask(_ p: Pending) {
+        asking = PendingAction(title: askTitle(p), message: askMessage(p), button: buttonTitle(p), destructive: true) { confirm(p) }
     }
     private func confirm(_ p: Pending) {
         switch p {
@@ -177,7 +172,28 @@ struct CompanyEquipmentScreen: View {
             if store.act({ $0.endEquipmentLease(companyID: companyID, equipmentID: eq) }) == true { Haptics.warning(); store.show("Lease of \(name) ended.", tone: "n") }
             else { store.show("There is no lease of \(name) to end.", tone: "warn") }
         }
-        pending = nil
+    }
+
+    /// The two ways to take a place: rent it or buy it. A choice popup with the money of each shown.
+    @ViewBuilder private func premisesChoice(_ e: GameEngine, _ co: Company) -> some View {
+        if let l = pendingListing, let t = e.premisesTerms(companyID: companyID, listing: l) {
+            let canBuy: Bool = e.tradeInfo(companyID: companyID)?.premisesKind != "slope"
+            GamePopup(title: "Where to work", onClose: { pendingListing = nil }) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("\(l.name), \(Int(l.squareMetres)) m². Fit-out is paid on top. Moving gives the old deposit back.")
+                        .font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Button("Rent: \(store.short(t.monthlyRent, in: co)) a month, deposit \(store.short(t.deposit, in: co))") { takePremises(l, buy: false) }
+                        .buttonStyle(QuietButtonStyle())
+                    if canBuy {
+                        Button("Buy: \(store.short(t.purchasePrice, in: co)), \(store.short(t.downPayment, in: co)) down") { takePremises(l, buy: true) }
+                            .buttonStyle(QuietButtonStyle())
+                    }
+                }
+            }
+
+        } else {
+            Color.clear.onAppear { pendingListing = nil }
+        }
     }
 
     private func takePremises(_ l: CompanySetup.Listing, buy: Bool) {
@@ -265,17 +281,17 @@ struct CompanyEquipmentScreen: View {
                             }
                             Spacer(minLength: 8)
                             Text(u.wear).font(.system(size: 12.5)).foregroundStyle(u.seenCondition >= 0.8 ? Theme.gain : u.seenCondition >= 0.48 ? Theme.ivoryMuted : Theme.loss)
-                            Button("Sell") { pending = .unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased()) }.buttonStyle(QuietButtonStyle())
+                            Button("Sell") { ask(.unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased())) }.buttonStyle(QuietButtonStyle())
                         }.padding(.vertical, 8).overlay(alignment: .top) { if n > 0 || o.subscription != nil || o.licence != nil { CardLine() } }
                     }
                     if o.leasedCount > 0 {
                         FlatRow(label: "\(Int(o.leasedCount)) on lease", value: cur.tidyShort(o.leaseMonthly) + "/mo", sub: "Service included", rule: !o.units.isEmpty)
-                        Button("End the lease…") { pending = .endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly)) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                        Button("End the lease…") { ask(.endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly))) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                     }
                     HStack(spacing: Theme.Space.m) {
                         NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: o.equipmentID) } label: { Text(o.subscription != nil ? "Plans" : "Buy more").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }
                         if o.subscription != nil {
-                            Button("Cancel plan") { pending = .cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
+                            Button("Cancel plan") { ask(.cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased())) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
                         } else if o.licence == nil {
                             if o.count > 0 {
                                 Button("Service all · \(cur.tidyShort(o.serviceCost))") {
@@ -284,7 +300,7 @@ struct CompanyEquipmentScreen: View {
                                     default: store.show("Not enough cash.", tone: "warn")
                                     }
                                 }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.ivoryMuted)
-                                Button("Sell all") { pending = .all(equipmentID: o.equipmentID, name: o.name.lowercased()) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
+                                Button("Sell all") { ask(.all(equipmentID: o.equipmentID, name: o.name.lowercased())) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
                             }
                         }
                         Spacer()
@@ -322,7 +338,7 @@ struct CompanyEquipmentScreen: View {
                             }
                             Spacer(minLength: 8)
                             Text(v.wear).font(.system(size: 12.5)).foregroundStyle(v.seenCondition >= 0.8 ? Theme.gain : v.seenCondition >= 0.48 ? Theme.ivoryMuted : Theme.loss)
-                            Button(v.mode == "lease" ? "Return" : "Sell") { pending = .vehicle(id: v.id, name: v.name) }.buttonStyle(QuietButtonStyle())
+                            Button(v.mode == "lease" ? "Return" : "Sell") { ask(.vehicle(id: v.id, name: v.name)) }.buttonStyle(QuietButtonStyle())
                         }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { CardLine() } }
                     }
                     NavigationLink { EquipmentShopView(companyID: companyID, equipmentID: n.equipmentID) } label: { Text("Buy, buy used or lease").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }.padding(.top, 8)
@@ -612,7 +628,7 @@ struct EquipmentShopView: View {
     private func confirmOwn(_ o: SoftwareProducts.Offer, _ producer: String, _ cur: Currency) {
         let id = companyID, equip = equipmentID
         let price = o.cost == 0 ? "at no charge" : "for \(cur.tidyDisplay(o.cost))" + (o.monthly ? " a month" : " once")
-        pendingOwn = PendingAction(title: "Use \(o.name)?", message: "This company takes \(o.name) from \(producer) \(price); the money goes to \(producer). " + (o.tested ? "It is still a test version and may let you down. " : "") + "It replaces any other software of this kind here.", button: "Use it") {
+        pendingOwn = PendingAction(title: "Use \(o.name)?", message: "This company takes \(o.name) from \(producer) \(price); the money goes to \(producer). " + (o.tested ? "It is still a test version and may let you down. " : "") + "It replaces any other software of this kind here.", button: "Use it", amount: o.cost, currency: cur) {
             switch store.act({ $0.useOwnSoftware(companyID: id, equipmentID: equip, producerID: o.producerID) }) {
             case .ok?: Haptics.success(); store.show("Now using \(o.name) from \(producer).", tone: "good")
             case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")

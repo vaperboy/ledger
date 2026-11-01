@@ -218,7 +218,7 @@ struct TradeDetailView: View {
         let fund = plan.intoCompany
         let nm = name.trimmingCharacters(in: .whitespaces)
         let sz = size
-        return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it") {
+        return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
             let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund) }
             switch r {
             case .success(let out)?:

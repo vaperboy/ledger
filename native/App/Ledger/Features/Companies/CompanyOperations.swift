@@ -69,7 +69,7 @@ struct CompanyOperations: View {
 
     @ViewBuilder private var smallRows: some View {
         let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
-        SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", opens: .sheet, glyph: Glyph.clock) { sheet = .hours }
+        SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", glyph: Glyph.clock, readOnly: true) { }
         SettingsTableRow(title: "Upkeep", note: stockNote, value: OpsWords.name(OpsWords.maintenance, company.maintenance) + " / " + OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased(), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .upkeep }
     }
 

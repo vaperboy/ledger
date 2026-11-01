@@ -131,7 +131,7 @@ struct WorkplaceMoveView: View {
         let msg = buy
             ? "\(cur.tidyShort(now)) leaves the company now (down payment \(cur.tidyShort(t.downPayment)) and fit-out \(cur.tidyShort(t.fitOut))); a 15-year mortgage covers the other \(cur.tidyShort(t.purchasePrice - t.downPayment)). No rent. Everyone moves in from this week, so the home-working morale and quality loss stops."
             : "\(cur.tidyShort(now)) leaves the company now (deposit \(cur.tidyShort(t.deposit)), returned when you leave, and fit-out \(cur.tidyShort(t.fitOut))). Then \(cur.tidyShort(t.monthlyRent)) a month in rent. Everyone moves in from this week."
-        pending = PendingAction(title: (buy ? "Buy " : "Rent ") + l.name + "?", message: msg, button: buy ? "Buy it" : "Rent it") {
+        pending = PendingAction(title: (buy ? "Buy " : "Rent ") + l.name + "?", message: msg, button: buy ? "Buy it" : "Rent it", amount: now, currency: cur) {
             switch store.act({ $0.takePremises(companyID: id, listing: l, buy: buy) }) {
             case .ok?: Haptics.success(); store.show((buy ? "Bought " : "Rented ") + l.name + ". The team has moved in.", tone: "good"); dismiss()
             case .notEnoughCash?: Haptics.warning(); store.show("The company does not have enough cash for that.", tone: "warn")

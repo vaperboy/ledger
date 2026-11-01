@@ -126,7 +126,7 @@ private struct BigMeetingCard: View {
                     Button("Accept") {
                         pending = PendingAction(title: "Buy \(o.pct)% of \(o.target) for \(cur.tidyShort(o.price))?",
                                                 message: "\(cur.tidyDisplay(f.own)) from your cash and savings" + (f.borrow > 0 ? ", \(cur.tidyDisplay(f.borrow)) as a 10-year acquisition loan in your name" : "") + ". You receive about \(cur.tidyDisplay(o.yearlyProfitShare)) a year as your share of the profit; the value can fall.",
-                                                button: "Buy the stake") {
+                                                button: "Buy the stake", amount: o.price, currency: cur) {
                             switch store.act({ $0.acceptBigMeetingOffer() }) {
                             case .ok?: Haptics.success(); store.show("You bought \(o.pct)% of \(o.target).", tone: "good")
                             case .needsOwnMoney(let v)?: Haptics.warning(); store.show("The bank wants \(cur.tidyShort(v)) of your own money first.", tone: "warn")
@@ -136,7 +136,7 @@ private struct BigMeetingCard: View {
                     }.buttonStyle(QuietButtonStyle())
                     if !o.countered {
                         Button("Counter −10%") {
-                            pending = PendingAction(title: "Ask for 10% off?", message: "They may accept the lower price, or withdraw the offer for good.", button: "Counter") {
+                            pending = PendingAction(title: "Ask for 10% off?", message: "They may accept the lower price, or withdraw the offer for good.", button: "Counter", destructive: true) {
                                 let r = store.act { $0.counterBigMeetingOffer() } ?? nil
                                 store.show(r == true ? "They accepted the lower price." : r == false ? "They refused and withdrew the offer." : "The offer has gone.", tone: r == true ? "good" : "warn")
                             }
@@ -221,7 +221,7 @@ private struct FoundedCard: View {
                             Button("Accept") {
                                 pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?",
                                                         message: "The money goes into \(f.name). You go from \(Int(f.ownership.rounded()))% to about \(Int(after.rounded()))%; the investor gets a say and a share of any exit.",
-                                                        button: "Close the round") {
+                                                        button: "Close the round", destructive: true) {
                                     let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
                                     store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
                                 }
@@ -506,7 +506,7 @@ private struct BackedStartups: View {
                     ForEach([0.5, 1.0], id: \.self) { f in
                         Button(f == 1 ? "Sell all" : "Sell half") {
                             pending = PendingAction(title: f == 1 ? "Sell your stake in \(st.name)?" : "Sell half your stake in \(st.name)?",
-                                                    message: "A buyer of private shares pays below the paper value of about \(cur.tidyShort(st.value * f)). A gain is taxed.", button: "Sell") {
+                                                    message: "A buyer of private shares pays below the paper value of about \(cur.tidyShort(st.value * f)). A gain is taxed.", button: "Sell", destructive: true) {
                                 let v = store.act { $0.sellStartupStake(stakeID: st.id, fraction: f) } ?? 0
                                 store.show(v > 0 ? "Sold for \(cur.tidyShort(v))." : "No buyer.", tone: v > 0 ? "good" : "warn")
                             }
@@ -611,7 +611,7 @@ private struct PrivateEquityPart: View {
                 Button("Sell on the secondary market · \(cur.tidyShort(price))") {
                     pending = PendingAction(title: "Sell your stake in \(f.name)?",
                                             message: "A buyer pays \(cur.tidyDisplay(price)), \(Int((engine.secondaryDiscount(fundID: f.id) * 100).rounded()))% below its value, and takes over the capital calls still to come.",
-                                            button: "Sell") {
+                                            button: "Sell", destructive: true) {
                         let v = store.act { $0.sellFundStake(fundID: f.id) } ?? nil
                         store.show(v.map { "Stake sold for \(cur.tidyShort($0))." } ?? "No buyer for the stake.", tone: v == nil ? "warn" : "good")
                     }
@@ -690,7 +690,7 @@ private struct SoftwarePart: View {
                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 Button("Start building") {
                     let name = SoftwareProducts.types.first { $0.id == type }?.name ?? type
-                    pending = PendingAction(title: "Build \(name) software in \(co.name)?", message: "It starts with one coder at about \(cur.tidyShort(coder)) a month from the company's cash, until you change the team. Nothing sells until it is published.", button: "Start") {
+                    pending = PendingAction(title: "Build \(name) software in \(co.name)?", message: "It starts with one coder at about \(cur.tidyShort(coder)) a month from the company's cash, until you change the team. Nothing sells until it is published.", button: "Start", amount: coder, currency: cur) {
                         let ok = store.act { $0.startSoftware(companyID: co.id, type: type, model: model) } ?? false
                         store.show(ok ? "\(co.name) has started building it." : "\(co.name) cannot start a product now (it must be open).", tone: ok ? "good" : "warn")
                     }

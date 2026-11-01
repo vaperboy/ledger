@@ -118,7 +118,7 @@ struct BoardView: View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: String) in
                 Button(o) {
-                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide") {
+                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
                         let r: String? = store.act { $0.pickEmergency(key: key, meetingID: m.id, option: i) } ?? nil
                         message = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
                         Haptics.success()
@@ -327,7 +327,7 @@ struct BoardView: View {
             Text("\(p.name) · \(p.str("advBg"))").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
             Spacer(minLength: 8)
             Button("Seat · \(store.short(fee)) a month") {
-                pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them") { seat(p, fee: fee) }
+                pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seat(p, fee: fee) }
             }.buttonStyle(TinyButtonStyle()).fixedSize()
         }
     }

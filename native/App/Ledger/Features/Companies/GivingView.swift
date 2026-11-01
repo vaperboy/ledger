@@ -98,7 +98,7 @@ struct GivingView: View {
                         title: "\(g.name) in \(place.name)?",
                         message: "Costs \(cur.tidyDisplay(cost)) from your own cash" + (g.yearly ? ", and again every year; if you cannot pay one year the sponsorship ends." : ", once.")
                             + " Your standing in \(place.name) rises by about \(Int(g.standing)) and your legacy by \(Int(g.legacy)). It cannot be undone, and there is no financial return except the small demand lift in that city.",
-                        button: g.yearly ? "Sponsor" : "Give") { give(g, place) }  // irreversible: no amount, so it always asks
+                        button: g.yearly ? "Sponsor" : "Give", destructive: true) { give(g, place) }  // irreversible: always asks
                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(short)
                 if short { Text("Short by \(cur.tidyShort(cost - e.state.cash)).").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
             }

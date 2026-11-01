@@ -8,7 +8,6 @@ import Simulation
 struct SettingsView: View {
     @EnvironmentObject var store: GameStore
     @State private var haptics = Haptics.enabled
-    @State private var confirmQuit = false
     @State private var showImporter = false
     @State private var policy = ManagementPolicy()
     @State private var askStep = ConfirmThreshold.step
@@ -40,9 +39,6 @@ struct SettingsView: View {
             store.saved(policyChange(from: old, to: v))
         }
         .confirmAction($pending)
-        .confirmationDialog("Leave this game?", isPresented: $confirmQuit) {
-            Button("Save and leave", role: .destructive) { store.quitToMenu() }
-        } message: { Text("It is saved first. You can continue it from the start screen.") }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
     }
 
@@ -66,7 +62,7 @@ struct SettingsView: View {
                 v == 0 ? "None" : "\(v.formatted()) weeks"
             }
             rule
-            choiceRow(Glyph.info, "Ask before spending", detail: "Small spends under this are not asked; the result is still reported", selection: $askStep, options: Array(0..<ConfirmThreshold.sizes.count)) { (v: Int) in
+            choiceRow(Glyph.info, "Ask before spending", detail: "Spends under this are done at once; the result is still reported", selection: $askStep, options: Array(0..<ConfirmThreshold.sizes.count)) { (v: Int) in
                 askLabel(v)
             }
             rule
@@ -96,7 +92,7 @@ struct SettingsView: View {
 
     private var gameGroup: some View {
         group("Game") {
-            Button { confirmQuit = true } label: {
+            Button { store.quitToMenu() } label: {
                 plainRow(Glyph.exit, "Back to the start screen", detail: "Saved first", tint: Theme.loss, chevron: true)
             }.buttonStyle(PressableStyle())
             rule

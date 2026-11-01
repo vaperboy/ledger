@@ -406,7 +406,7 @@ struct StartFranchisedView: View {
                          city: String, form: LegalForm, pick: NewCompanyPlan.Pick?) {
         pending = PendingAction(title: "Start under \(b.name)?",
                                 message: "\(cur.tidyShort(f.total)) to start, including the \(cur.tidyShort(fp.fee)) entry fee. \(cur.tidyShort(f.fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(f.left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
-                                button: "Start it") {
+                                button: "Start it", amount: f.total, currency: cur) {
             let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, form: form, name: name, pick: pick, fundWith: f.fund) }
             switch r {
             case .success(let out)?:

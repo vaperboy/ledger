@@ -221,7 +221,7 @@ private struct HoldPricesRow: View {
             store.show(on ? "\(name) now holds its prices." : "\(name)'s prices follow inflation again.", tone: "n")
         }
         if !on && edge >= 0.5 {
-            pending = PendingAction(title: "Let prices follow inflation?", message: "The edge built up while holding (about \(Int(edge.rounded()))% cheaper in customers' eyes) is dropped at once.", button: "Let go", run: apply)
+            pending = PendingAction(title: "Let prices follow inflation?", message: "The edge built up while holding (about \(Int(edge.rounded()))% cheaper in customers' eyes) is dropped at once.", button: "Let go", destructive: true, run: apply)
         } else {
             apply()
         }

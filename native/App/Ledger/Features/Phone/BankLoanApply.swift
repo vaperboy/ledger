@@ -110,7 +110,7 @@ struct BankLoanApplyFlow: View {
         message += "\(cur.tidyDisplay(q.disbursal)) is paid into \(into) after the \(cur.tidyDisplay(q.fee)) arrangement fee; you owe the full amount, \(cur.tidyDisplay(q.monthlyPayment)) a month. "
         message += a.personalGuarantee ? "You are personally liable for it. " : ""
         message += "A missed instalment adds a penalty and lowers your credit."
-        pending = PendingAction(title: "Take this loan?", message: message, button: "Confirm and pay into \(into)") { apply(cur) }
+        pending = PendingAction(title: "Take this loan?", message: message, button: "Confirm and pay into \(into)", alwaysAsk: true) { apply(cur) }
     }
 
     private func apply(_ cur: Currency) {
