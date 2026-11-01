@@ -58,3 +58,9 @@ Files: `native/design/mockups/photos/` (vehicles_a/b, premises_retail/offices/st
 - Always ask even when small: loans, sponsor signings, equity rounds, holding moves, emergency board decisions (as built).
 - Rent/Buy is a real choice popup, always shown.
 - "Your time" is read-only; hours follow from role choices only.
+
+## 1 Nov 2026 (night), Stage 4 answers
+- Careful company start holds back one month of rent and loan instalments before any hire.
+- Startups: first support hire is part of the default founding team.
+- Startups require the accountant and registration fee at founding like any limited company.
+- A holder selling their stake: the player gets a right-of-first-refusal prompt to buy it first.
