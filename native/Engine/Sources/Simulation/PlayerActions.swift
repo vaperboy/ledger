@@ -323,6 +323,13 @@ public extension GameEngine {
 
     /// Fill in whatever is missing with standard choices (documents, premises, equipment). Returns what was bought.
     @discardableResult
+    /// The "fill in what is missing" button: the same set-up, but only as far as the company's cash carries (required equipment and the core team);
+    /// what it left out comes back with its cost.
+    mutating func quickSetupWithinBudget(companyID: Int) -> CompanySetup.SetupReport {
+        var rep = CompanySetup.SetupReport()
+        update { s, d, _ in rep = CompanySetup.quickSetupReport(&s, companyID: companyID, data: d, options: .careful) }
+        return rep
+    }
     mutating func quickSetup(companyID: Int) -> [String] {
         var bought: [String] = []
         update { s, data, _ in bought = CompanySetup.quickSetup(&s, companyID: companyID, data: data) }

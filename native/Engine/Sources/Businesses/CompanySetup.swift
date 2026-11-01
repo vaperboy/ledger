@@ -483,6 +483,7 @@ public enum CompanySetup {
     public struct SetupReport: Equatable, Sendable {
         public var log: [String] = []
         public var skipped: [SetupSkipped] = []
+        public init(log: [String] = [], skipped: [SetupSkipped] = []) { self.log = log; self.skipped = skipped }
     }
 
     /// Do everything a company needs to open with sensible standard choices: apply for all documents, rent a

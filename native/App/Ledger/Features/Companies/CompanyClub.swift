@@ -442,6 +442,10 @@ struct ClubMarketView: View {
             if let a = answer {
                 Text(a.message.tidyMoney).font(.bodyText).foregroundStyle(a.answer == .accept ? Theme.gain : a.answer == .counter ? Theme.ivory : Theme.loss)
                 if let p = a.price, a.answer == .accept || a.answer == .counter {
+                    if let plan = store.engine?.clubPurchasePlan(clubID: c.id, price: p) {
+                        Text("The club starts with \(cur.tidyShort(plan.clubCash)) of its own cash" + (plan.debt > 0 ? " and takes over \(cur.tidyShort(plan.debt)) of debt, \(cur.tidyShort(plan.monthlyDebtPayment)) a month for twenty years" : "") + ". You pay \(cur.tidyShort(p)) from cash and savings and have \(cur.tidyShort(max(0, plan.liquidAfter))) left." + (plan.affordable ? "" : " That is more than you have."))
+                            .font(.caption).foregroundStyle(plan.affordable ? Theme.ivoryMuted : Theme.loss).fixedSize(horizontal: false, vertical: true)
+                    }
                     Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.tidyShort(p)) {
                         switch store.act({ $0.buyClub(clubID: c.id, price: p) }) {
                         case .ok(let id)?: Haptics.success(); offerFor = nil; store.openCompany(id)

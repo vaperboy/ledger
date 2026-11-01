@@ -377,11 +377,32 @@ public enum FootballModel {
 
     public enum BuyResult: Equatable { case ok(Int), notEnoughCash, notAvailable }
 
+    /// What buying a club at `price` does to your money, shown before it is agreed: the cash the club company starts with, the debt it takes over
+    /// and its monthly payment, and what is left of your cash and savings.
+    public struct PurchasePlan: Equatable, Sendable {
+        public var price: Double
+        public var clubCash: Double
+        public var debt: Double
+        public var monthlyDebtPayment: Double
+        public var liquidBefore: Double
+        public var liquidAfter: Double
+        public var affordable: Bool { liquidAfter >= 0 }
+    }
+    public static func purchasePlan(_ s: GameState, clubID: String, price: Double) -> PurchasePlan? {
+        guard let club = findClub(s, id: clubID) else { return nil }
+        let debt = clubDebt(club, seed: s.seed)
+        let rate = s.economy.policyRate + Banking.creditMargin(s.credit) + 0.015
+        let pay = debt > 0 ? Loans.annuity(principal: debt, yearlyRate: rate, months: 240) : 0
+        let liquid = Payments.liquid(s)
+        return PurchasePlan(price: price, clubCash: jsRound(club["val"].double * 0.03), debt: debt, monthlyDebtPayment: pay, liquidBefore: liquid, liquidAfter: liquid - price)
+    }
+
     /// Buy the club at the agreed price (the club's debt comes with it). Original: `buyClub` + the debt step.
     public static func buy(_ s: inout GameState, clubID: String, price: Double, data: GameData, context fc: FinanceContext) -> BuyResult {
         guard let club = findClub(s, id: clubID), club["owner"].string == "ai", let country = data.countries[club["country"].string] else { return .notAvailable }
-        if s.cash < price { return .notEnoughCash }
+        if Payments.liquid(s) < price { return .notEnoughCash }
         let debt = clubDebt(club, seed: s.seed)
+        Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Purchase of \(club["name"].string)")
         setClub(&s, country.code, id: clubID) { $0["owner"] = "you"; $0["listed"] = false }
         guard let id = makeClubCompany(&s, club: club, division: 1, cash: jsRound(club["val"].double * 0.03), country: country, data: data) else { return .notAvailable }
@@ -407,7 +428,8 @@ public enum FootballModel {
     /// Found a club in the second tier; it must earn promotion to the top league. Original: `foundClub`.
     public static func found(_ s: inout GameState, country: Country, cityID: String?, data: GameData) -> BuyResult {
         guard let val = foundingValue(country) else { return .notAvailable }
-        if s.cash < val * 0.4 { return .notEnoughCash }
+        if Payments.liquid(s) < val * 0.4 { return .notEnoughCash }
+        Payments.transferFromSavings(&s, need: jsRound(val * 0.4))
         var list = ensureClubs(&s, country)
         let city = cityID ?? country.cities[0].id
         let name = cleanName(s.random.pick(country.lastNames)) + " " + s.random.pick(suffixes)

@@ -368,10 +368,41 @@ public enum Startups {
 
     // MARK: The week
 
+    /// A startup saved before startups became companies (no `cid`): it becomes a real company holding the cash the blob had, with the builders on the
+    /// payroll and your share as it was. Nothing the player had is lost; the record keeps its product and takes the company's id.
+    static func migrateLegacy(_ s: inout GameState, data: GameData) {
+        guard var list = s.rest["founded"]?.array else { return }
+        var changed = false
+        for k in list.indices where list[k]["cid"].isNull && list[k]["st"].string == "live" {
+            var f = list[k]
+            let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
+            guard let id = SpecialFamilies.blankCompany(&s, tradeID: StartupModel.tradeID, country: c, cityID: s.player.cityID, name: f["name"].string, size: 1, data: data),
+                  let i = s.companyIndex(id) else { continue }
+            s.companies[i].status = .open
+            s.companies[i].openedWeek = s.week
+            s.companies[i].ownerHours = 0
+            Ledger.set(&s, .company(id), to: max(0, f["cash"].double))
+            s.companies[i].injectedCapital = f["in"].double
+            s.companies[i].ownership = clamp(f["pct"].double, 0.01, 100)
+            s.companies[i].set("cap", .null)
+            CapTable.normalise(&s, i)
+            var hired = 0
+            for _ in 0..<max(0, f["sw16"]["devs"].int) {
+                let cands = Hiring.search(role: "dev", company: s.companies[i], mode: .network, faces: false, state: &s, data: data)
+                if AutoHire.hireWorker(role: "dev", companyID: id, candidates: cands, state: &s, data: data) != nil { hired += 1 }
+            }
+            f["id"] = .number(Double(id)); f["cid"] = .number(Double(id)); f["q0"] = f["q"]; f["wantTeam"] = f["sw16"]["devs"]; f["hiredTeam"] = .number(Double(hired))
+            list[k] = f
+            changed = true
+        }
+        if changed { s.rest["founded"] = .array(list) }
+    }
+
     /// Once a week: keep each startup's record in line with its company (value, share, builders), notice the end of the company (broke or sold),
     /// warn when the money runs short, and settle rival deals. The product itself runs inside the company's own week (`StartupModel.context`).
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         _ = pitches(&s, data: data)
+        migrateLegacy(&s, data: data)
         guard var list = s.rest["founded"]?.array, !list.isEmpty else { weeklyStakes(&s); return }
         for k in list.indices where list[k]["st"].string == "live" {
             var f = list[k]
