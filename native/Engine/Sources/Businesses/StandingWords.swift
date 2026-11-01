@@ -30,7 +30,7 @@ public enum StandingWords {
     /// Five star glyphs for a rating out of 5: filled for each whole star the rating reaches when rounded, empty for the rest.
     public static func starGlyphs(_ rating: Double) -> String {
         let filled: Int = min(5, max(0, Int(rating.rounded())))
-        return String(repeating: "\u{2605}", count: filled) + String(repeating: "\u{2606}", count: 5 - filled)
+        return String(repeating: "★", count: filled) + String(repeating: "☆", count: 5 - filled)
     }
 
     /// "★★★★☆ 4.2 / 5".
