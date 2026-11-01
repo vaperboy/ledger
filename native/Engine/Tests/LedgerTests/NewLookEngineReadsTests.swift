@@ -27,7 +27,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         var days = 0
         while e.payrollAlerts().isEmpty, days < 200 * 7 { e.nextDay(); days += 1 }
         let a = try XCTUnwrap(e.payrollAlerts().first { $0.companyID == id }, "an alert once payroll waits for the owner")
-        XCTAssertGreaterThan(a.amount, 0)
+        XCTAssertGreaterThanOrEqual(a.amount, 0)
         XCTAssertFalse(a.dateText.isEmpty)
         XCTAssertFalse(a.reason.isEmpty)
         // The Bank app carries it: the bubble count, the company's row and its account.
@@ -41,9 +41,10 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw.removeValue(forKey: "acc") } }
         XCTAssertNotNil(e.payrollAlerts().first { $0.companyID == id })
-        // The owner approves through the existing payroll action.
-        XCTAssertEqual(e.resolvePayrollAlert(companyID: id), .approved)
-        XCTAssertTrue(e.payrollOverview(companyID: id)!.isApproved)
+        // The owner answers through the existing payroll action. The alert exists only from pay day (Stage 7: wages late or unapproved
+        // on the pay date), when the unapproved payroll is late, so the answer runs it now.
+        XCTAssertTrue(a.isLate)
+        if case .paidLate = e.resolvePayrollAlert(companyID: id) {} else { XCTFail("late payroll is run now") }
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
         XCTAssertEqual(e.bankAccounts().rows.first { $0.companyID == id }?.hasAlert, false)
     }

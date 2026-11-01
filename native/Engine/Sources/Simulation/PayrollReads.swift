@@ -142,7 +142,7 @@ public extension GameEngine {
         state.liveCompanies.compactMap { co -> PayrollAlert? in
             guard let o = payrollOverview(companyID: co.id), o.hasPayroll, o.mode == .manual, !o.modeIsFixed else { return nil }
             if o.isLate {
-                return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(o.wagesOwed, o.wageShortfall), dateText: o.nextPayText,
+                return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(o.wagesOwed, o.wageShortfall, o.estimate), dateText: o.nextPayText,
                                     reason: o.lateReason.isEmpty ? "Payroll is late." : o.lateReason, isLate: true)
             }
             guard o.needsApproval else { return nil }
