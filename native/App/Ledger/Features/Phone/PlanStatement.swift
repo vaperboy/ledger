@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Businesses
 import Finance
+import Countries
 import Simulation
 
 /// The start-up statement of a new company, shared by both New company screens: what is mandatory, what is optional and chosen, deposits that come
