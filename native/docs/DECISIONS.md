@@ -45,3 +45,10 @@ Reference images: `native/design/mockups/phone_apps/01_home_screens.png`, `02_ch
 - **TechPro Store** (green): categories Software / Hardware / Tools / Office, popular products, add to cart, checkout (items, delivery method, totals), Pay securely, Order placed (order number, delivery date).
 - Payment details screen (all apps): saved account, Autofill from Bank (real account name + number), remember me, Continue.
 - The reference sheet is stretched to fit one picture: lay out to real iPhone proportions in our project.
+
+## 1 Nov 2026 (night), owner reference pictures: photos, icons, buttons
+Files: `native/design/mockups/photos/` (vehicles_a/b, premises_retail/offices/storage), `icons_moodboard.jpg`, `software_screens.jpg`, `button_popup_system.jpg`.
+- **Photos**: premises listings (AirStay) use the retail, office and storage/warehouse pictures, small to large by size tier; vehicles pictures for fleet/cars in the Equipment store. Bundled as downsized assets only for what is used.
+- **Icons**: flat, desaturated, outline-style icons on squircle bases for every Phone app (Bank, Accounting, Inbox, News, Weather, Stats, Goals, World, Luxury, Ventures, Rich list, Reports, Market, Reviews, Achievements, Settings, Airfly/AirStay, Techpro, Atlas, Support).
+- **Buttons and popups**: one game-wide system from the Private Banking mood board (basic/secondary, important gold, expensive gold-foil with amount, popup cards with Cancel | Apply, alert banners), at current phone sizes, not wide, clean.
+- `software_screens.jpg`: reference for what software looks like in the TechPro software category (old ERP vs modern CRM/analytics tiers).
