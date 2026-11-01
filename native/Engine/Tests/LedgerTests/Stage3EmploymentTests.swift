@@ -585,6 +585,64 @@ final class Stage3EmploymentTests: XCTestCase {
         XCTAssertEqual(StaffTalks.raiseNeeded(role: "cook", age: 19, tables: t!), StaffTalks.raiseNeeded(role: "cook", age: 55, tables: t!))
     }
 
+    // MARK: Promises to group employees
+
+    func testPromisesToTheAnalystAreKeptByRealGroupActions() throws {
+        var (e, id) = try shop(seed: 31)
+        let exp = try XCTUnwrap(StaffExpenses.items(forRole: "analyst").first ?? StaffExpenses.items.first)
+        var analyst = 0
+        e.update { s, d, _ in analyst = MarketMap.dataAnalystCandidates(&s, count: 1, data: d)[0].id }
+        let ask = try XCTUnwrap(e.hearTheirAsk(post: .analyst, companyID: nil, personID: analyst))
+        let opts = try XCTUnwrap(e.hireDraftOptions(post: .analyst, companyID: nil, personID: analyst))
+        XCTAssertEqual(Set(opts.promiseKinds.map(\.id)), Set(StaffPromises.Kind.allCases.map(\.rawValue)), "all kinds are offered")
+        XCTAssertTrue(opts.promiseKinds.allSatisfy { !$0.detail.isEmpty })
+        let drafts: [StaffPromises.Draft] = [.init(.salaryReview, dueInWeeks: 20), .init(.promotion, dueInWeeks: 20), .init(.responsibility, dueInWeeks: 20), .init(.training, dueInWeeks: 20),
+                                            .init(.betterConditions, dueInWeeks: 20), .init(.futureBenefits, dueInWeeks: 20, detail: "exp:\(exp.id)"), .init(.percentageChange, dueInWeeks: 20, detail: "80")]
+        // a perk is not something a group employee can be promised
+        e.update { s, _, _ in XCTAssertNil(StaffPromises.make(&s, companyID: 0, personID: analyst, draft: .init(.futureBenefits, dueInWeeks: 5, detail: "perk:health"))) }
+        guard e.hireOffer(post: .analyst, companyID: nil, personID: analyst, monthlyWage: ask * 1.4, terms: Hiring.Terms(promises: drafts)) == .hired else { return }
+        func status(_ k: StaffPromises.Kind) -> StaffPromises.Status? { StaffPromises.promises(e.state, personID: analyst).first { $0.kind == k }?.status }
+        XCTAssertEqual(StaffPromises.promises(e.state, personID: analyst).count, 7)
+        XCTAssertTrue(StaffPromises.promises(e.state, personID: analyst).allSatisfy { $0.status == .pending })
+        let wage0 = try XCTUnwrap(GroupPeople.wage(e.state, personID: analyst))
+        XCTAssertTrue(e.groupSetPercent(personID: analyst, percent: 80))
+        XCTAssertEqual(status(.percentageChange), .fulfilled)
+        XCTAssertEqual(GroupPeople.wage(e.state, personID: analyst) ?? 0, wage0 * 0.8, accuracy: 1, "pay follows the percentage")
+        XCTAssertNotEqual(status(.salaryReview), .fulfilled, "a lower percentage is not a pay review")
+        XCTAssertTrue(e.groupRaise(personID: analyst, percent: 0.1))
+        XCTAssertEqual(status(.salaryReview), .fulfilled)
+        XCTAssertNotEqual(status(.training), .fulfilled)
+        XCTAssertTrue(e.groupTrain(personID: analyst))
+        XCTAssertEqual(status(.training), .fulfilled)
+        XCTAssertTrue(e.groupSetExpense(personID: analyst, item: exp.id, on: true))
+        XCTAssertEqual(status(.betterConditions), .fulfilled)
+        XCTAssertEqual(status(.futureBenefits), .fulfilled)
+        XCTAssertNotEqual(status(.promotion), .fulfilled)
+        let wageBefore = GroupPeople.wage(e.state, personID: analyst) ?? 0
+        XCTAssertTrue(e.groupPromote(personID: analyst))
+        XCTAssertEqual(status(.promotion), .fulfilled)
+        XCTAssertEqual(status(.responsibility), .fulfilled)
+        XCTAssertGreaterThan(GroupPeople.wage(e.state, personID: analyst) ?? 0, wageBefore)
+        // the weekly entitlement is paid
+        let cashBefore = Payments.liquid(e.state)
+        e.update { s, d, _ in StaffPromises.weekly(&s, data: d) }
+        XCTAssertLessThan(Payments.liquid(e.state), cashBefore)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
+    func testAnUnkeptGroupPromiseBreaksAndTheWordHelperHasNoNumbers() throws {
+        var (e, _) = try shop(seed: 32)
+        var analyst = 0
+        e.update { s, d, _ in analyst = MarketMap.dataAnalystCandidates(&s, count: 1, data: d)[0].id }
+        let ask = try XCTUnwrap(e.hearTheirAsk(post: .analyst, companyID: nil, personID: analyst))
+        guard e.hireOffer(post: .analyst, companyID: nil, personID: analyst, monthlyWage: ask * 1.4, terms: Hiring.Terms(promises: [.init(.salaryReview, dueInWeeks: 4)])) == .hired else { return }
+        e.update { s, d, _ in s.week += 4; StaffPromises.weekly(&s, data: d); s.week += 5; StaffPromises.weekly(&s, data: d) }
+        XCTAssertEqual(StaffPromises.promises(e.state, personID: analyst).first?.status, .broken)
+        for v in [0.0, 20, 40, 60, 90] { for axis in ["trust", "bold", "care"] { XCTAssertFalse(StandingWords.pressImage(axis, v).contains(where: \.isNumber)) } }
+        XCTAssertEqual(e.publicImageWords.count, 3)
+        XCTAssertNotEqual(StandingWords.pressImage("trust", 10), StandingWords.pressImage("trust", 90))
+    }
+
     // MARK: Saves
 
     func testNewKeysSurviveASaveRoundTrip() throws {

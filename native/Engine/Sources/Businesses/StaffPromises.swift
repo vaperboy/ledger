@@ -36,6 +36,18 @@ public enum StaffPromises {
             }
         }
         /// What the real fulfilment check is, in words (the Promises screen and the hire page show it).
+        /// What counts as keeping it for someone who works for the group (an executive, head-office member or the analyst): the nearest real action, named.
+        public var fulfilledByForGroup: String {
+            switch self {
+            case .salaryReview: return "A pay review: their pay is raised."
+            case .promotion: return "A promotion: one more level of authority and a raise."
+            case .responsibility: return "More authority: their level of authority is raised."
+            case .training: return "A course is arranged and paid for."
+            case .betterConditions: return "A reimbursement (phone, uniform, training, travel) is agreed for them."
+            case .futureBenefits: return "The named reimbursement is agreed for them."
+            case .percentageChange: return "Their working percentage reaches the agreed one, and pay follows."
+            }
+        }
         public var fulfilledBy: String {
             switch self {
             case .salaryReview: return "A raise is given."
@@ -126,7 +138,7 @@ public enum StaffPromises {
     // MARK: Reading and writing the records
 
     struct Baseline {
-        var unitWage = 0.0, role = "", promo = 0, k11Week = 0, duties = 0, courses = 0, conditions = 0
+        var unitWage = 0.0, role = "", promo = 0, k11Week = 0, duties = 0, courses = 0, conditions = 0, lvl = 0
     }
 
     static func unitWage(_ m: StaffMember) -> Double { m.monthlyWage / max(0.05, m.partTimeShare) }
@@ -138,8 +150,20 @@ public enum StaffPromises {
         return StaffPerks.perks(for: m, in: co).count + (WorkerBonus.level(of: m) == nil ? 0 : 1) + StaffExpenses.on(m).count + (m.flag("ownCar") ? 1 : 0)
     }
 
+    /// Someone who works for the group, not in a company's staff list and not a company's manager.
+    static func isGroup(_ s: GameState, companyID: Int, personID: Int) -> Bool {
+        if let co = s.company(companyID), co.managerID == personID || co.staff.contains(where: { $0.id == personID }) { return false }
+        return GroupPeople.isGroupPerson(s, personID)
+    }
+
     static func baseline(_ s: GameState, companyID: Int, personID: Int) -> Baseline {
         var b = Baseline()
+        if isGroup(s, companyID: companyID, personID: personID), let n = s.people[personID] {
+            b.unitWage = (GroupPeople.wage(s, personID: personID) ?? 0) / max(0.05, GroupPeople.percent(s, personID: personID) / 100)
+            b.promo = n.int("gpro"); b.courses = n.int("crsN"); b.conditions = GroupPeople.expenseItems(s, personID: personID).count
+            b.lvl = GroupPeople.level(s, personID: personID); b.k11Week = n.value("k11")["w0"].int
+            return b
+        }
         guard let co = s.company(companyID) else { return b }
         if let m = co.staff.first(where: { $0.id == personID }) { b.unitWage = unitWage(m); b.role = m.role; b.promo = m.int("promo"); b.courses = m.int("crsN") }
         else if co.managerID == personID { b.unitWage = co.managerMonthlyWage }
@@ -153,7 +177,7 @@ public enum StaffPromises {
         guard let kind = Kind(rawValue: v["k"].string), let status = Status(rawValue: v["s"].string) else { return nil }
         var b = Baseline()
         let bv = v["b"]
-        b.unitWage = bv["u"].double; b.role = bv["r"].string; b.promo = bv["p"].int; b.k11Week = bv["w"].int; b.duties = bv["d"].int; b.courses = bv["c"].int; b.conditions = bv["n"].int
+        b.unitWage = bv["u"].double; b.role = bv["r"].string; b.promo = bv["p"].int; b.k11Week = bv["w"].int; b.duties = bv["d"].int; b.courses = bv["c"].int; b.conditions = bv["n"].int; b.lvl = bv["l"].int
         let p = Promise(id: v["id"].int, personID: personID, companyID: v["co"].int, kind: kind, text: v["t"].string, detail: v["x"].string, madeWeek: v["m"].int, dueWeek: v["d"].int,
                         status: status, resolvedWeek: v["r"].isNull ? nil : v["r"].int, renegotiations: v["n"].int, consequence: "")
         return (p, b)
@@ -163,7 +187,7 @@ public enum StaffPromises {
         var o: [String: JSONValue] = ["id": .number(Double(p.id)), "co": .number(Double(p.companyID)), "k": .string(p.kind.rawValue), "t": .string(p.text), "x": .string(p.detail),
                                       "m": .number(Double(p.madeWeek)), "d": .number(Double(p.dueWeek)), "s": .string(p.status.rawValue),
                                       "b": .object(["u": .number(b.unitWage), "r": .string(b.role), "p": .number(Double(b.promo)), "w": .number(Double(b.k11Week)), "d": .number(Double(b.duties)),
-                                                    "c": .number(Double(b.courses)), "n": .number(Double(b.conditions))])]
+                                                    "c": .number(Double(b.courses)), "n": .number(Double(b.conditions)), "l": .number(Double(b.lvl))])]
         if let r = p.resolvedWeek { o["r"] = .number(Double(r)) }
         if p.renegotiations > 0 { o["n"] = .number(Double(p.renegotiations)) }
         return .object(o)
@@ -197,8 +221,14 @@ public enum StaffPromises {
     /// same kind of promise is already open for them.
     @discardableResult
     public static func make(_ s: inout GameState, companyID: Int, personID: Int, draft d: Draft) -> Promise? {
-        guard d.isPlausible, let n = s.people[personID], let co = s.company(companyID),
-              co.managerID == personID || co.staff.contains(where: { $0.id == personID }) || n.employerID == companyID || n.employerID == 0 else { return nil }
+        guard d.isPlausible, let n = s.people[personID] else { return nil }
+        if isGroup(s, companyID: companyID, personID: personID) {
+            // a group employee: only benefits that can be agreed for them (a reimbursement) can be promised
+            if d.kind == .futureBenefits, case .expense? = benefit(d.detail) {} else if d.kind == .futureBenefits { return nil }
+        } else {
+            guard let co = s.company(companyID),
+                  co.managerID == personID || co.staff.contains(where: { $0.id == personID }) || n.employerID == companyID || n.employerID == 0 else { return nil }
+        }
         var list = records(n)
         if list.contains(where: { $0.0.isOpen && $0.0.kind == d.kind && $0.0.detail == d.detail }) { return nil }
         var b = baseline(s, companyID: companyID, personID: personID)
@@ -225,7 +255,23 @@ public enum StaffPromises {
 
     // MARK: Fulfilment
 
+    /// Kept, for someone who works for the group: the real action named in the promise happened (see `GroupPeople`).
+    static func isKeptForGroup(_ p: Promise, _ b: Baseline, _ s: GameState, _ n: Person) -> Bool {
+        switch p.kind {
+        case .salaryReview: return b.unitWage > 0 && (GroupPeople.wage(s, personID: p.personID) ?? 0) / max(0.05, GroupPeople.percent(s, personID: p.personID) / 100) >= b.unitWage * 1.02
+        case .promotion: return n.int("gpro") > b.promo || (n.value("k11")["w0"].int > b.k11Week && n.value("k11")["w0"].int >= p.madeWeek)
+        case .responsibility: return GroupPeople.level(s, personID: p.personID) > b.lvl || n.int("gpro") > b.promo
+        case .training: return n.int("crsN") > b.courses
+        case .betterConditions: return GroupPeople.expenseItems(s, personID: p.personID).count > b.conditions
+        case .futureBenefits:
+            if case .expense(let id)? = benefit(p.detail) { return GroupPeople.expenseItems(s, personID: p.personID).contains(id) }
+            return false
+        case .percentageChange: return Double(p.detail).map { abs(GroupPeople.percent(s, personID: p.personID) - $0) < 0.6 } ?? false
+        }
+    }
+
     static func isKept(_ p: Promise, _ b: Baseline, _ s: GameState) -> Bool {
+        if let n = s.people[p.personID], isGroup(s, companyID: p.companyID, personID: p.personID) { return isKeptForGroup(p, b, s, n) }
         guard let co = s.company(p.companyID), let n = s.people[p.personID] else { return false }
         let m = co.staff.first(where: { $0.id == p.personID })
         let k11 = n.value("k11")
@@ -273,7 +319,7 @@ public enum StaffPromises {
         for i in list.indices where list[i].0.isOpen {
             var p = list[i].0
             let b = list[i].1
-            if s.company(p.companyID) == nil { continue }
+            if p.companyID != 0, s.company(p.companyID) == nil { continue }
             if isKept(p, b, s) {
                 p.status = .fulfilled; p.resolvedWeek = s.week
                 list[i].0 = p; changed = true
@@ -284,7 +330,7 @@ public enum StaffPromises {
             if p.status == .pending, s.week >= p.dueWeek {
                 p.status = .due; changed = true
                 s.addMessage(kind: "info", from: n.name, title: "\(ManagerModelNames.first(n.name)) is waiting for what you promised",
-                             body: "You promised: \(p.text) It is due now. \(p.kind.fulfilledBy) Keep it, or ask to move the date in the Promises list.", companyID: p.companyID, tone: "n", status: "done",
+                             body: "You promised: \(p.text) It is due now. \(isGroup(s, companyID: p.companyID, personID: personID) ? p.kind.fulfilledByForGroup : p.kind.fulfilledBy) Keep it, or ask to move the date in the Promises list.", companyID: p.companyID, tone: "n", status: "done",
                              data: .object(["promise": .number(Double(p.id)), "pid": .number(Double(personID))]))
                 list[i].0 = p
             } else if p.status == .due, s.week >= p.dueWeek + graceWeeks {
@@ -394,7 +440,9 @@ public enum StaffPromises {
                 var list = records(n2)
                 let before = list.count
                 list.removeAll { p, _ in
-                    guard p.isOpen, let co = s.company(p.companyID) else { return false }
+                    guard p.isOpen else { return false }
+                    if isGroup(s, companyID: p.companyID, personID: id) { return n2.employerID == 0 || n2.employerID == Hiring.goneElsewhere }
+                    guard let co = s.company(p.companyID) else { return false }
                     let still = co.managerID == id || co.staff.contains { $0.id == id } || n2.employerID == p.companyID || n2.employerID == 0
                     return !still
                 }
@@ -402,6 +450,7 @@ public enum StaffPromises {
             }
             _ = n
         }
+        GroupPeople.weekly(&s, data: data)
     }
 
     // MARK: Reads

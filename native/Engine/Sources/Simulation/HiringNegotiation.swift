@@ -141,7 +141,7 @@ public extension GameEngine {
         switch post {
         case .worker: return ["contractType", "percent", "duration", "benefits", "vehicle", "promises", "expectations"]
         case .manager, .assistant, .team: return ["benefits", "promises", "expectations"]
-        case .executive, .office, .analyst: return ["expectations"]
+        case .executive, .office, .analyst: return ["promises", "expectations"]
         }
     }
 
@@ -167,12 +167,8 @@ public extension GameEngine {
         if isWorker, let co, let bd = data.catalog[co.type] { ownCar = PersonalEquipment.canUseOwnCar(role: role, bd, tables: data.catalog.tables) }
         var promiseKinds: [HireOption] = []
         if fields(for: post).contains("promises") {
-            promiseKinds = StaffPromises.Kind.allCases.filter { k in
-                switch post {
-                case .worker: return true
-                default: return k == .salaryReview || k == .futureBenefits || k == .training || k == .betterConditions
-                }
-            }.map { HireOption(id: $0.rawValue, title: $0.title, detail: $0.fulfilledBy) }
+            let group: Bool = { switch post { case .executive, .office, .analyst: return true; default: return false } }()
+            promiseKinds = StaffPromises.Kind.allCases.map { HireOption(id: $0.rawValue, title: $0.title, detail: group ? $0.fulfilledByForGroup : $0.fulfilledBy) }
         }
         let expectations = [HireOption(id: "responsibility", title: "Responsibility", detail: "You expect them to take on responsibility as the business grows."),
                             HireOption(id: "career", title: "A path forward", detail: "You see them growing into a bigger role."),
@@ -326,8 +322,8 @@ public extension GameEngine {
             switch outcome {
             case .hired:
                 if !terms.expectations.isEmpty { p.set("xp", .array(terms.expectations.map { .string($0) })); s.people[personID] = p }
-                if case .worker = post {} else if let id = companyID {
-                    for dr in terms.promises { StaffPromises.make(&s, companyID: id, personID: personID, draft: dr) }
+                if case .worker = post {} else {
+                    for dr in terms.promises { StaffPromises.make(&s, companyID: companyID ?? 0, personID: personID, draft: dr) }
                 }
             case .countered:
                 // the standing figure belongs to these terms

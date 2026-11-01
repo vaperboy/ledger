@@ -71,4 +71,25 @@ public extension GameEngine {
         update { s, _, _ in r = StaffPromises.renegotiate(&s, personID: personID, promiseID: promiseID, newDueInWeeks: newDueInWeeks) }
         return r
     }
+
+    // MARK: Group employees (executives, head-office staff, the analyst): the real actions behind their promises
+
+    /// A pay review for a group employee (0.05 = 5 percent). Keeps a salary-review promise.
+    @discardableResult mutating func groupRaise(personID: Int, percent: Double) -> Bool { var r = false; update { s, d, _ in r = GroupPeople.raise(&s, personID: personID, percent: percent, data: d) }; return r }
+    /// A promotion: one more level of authority and at least 5 percent more pay.
+    @discardableResult mutating func groupPromote(personID: Int) -> Bool { var r = false; update { s, d, _ in r = GroupPeople.promote(&s, personID: personID, data: d) }; return r }
+    /// Authority 0 (asks you first), 1 (within limits), 2 (full control). Keeps an additional-responsibility promise when it rises.
+    @discardableResult mutating func groupSetLevel(personID: Int, level: Int) -> Bool { var r = false; update { s, _, _ in r = GroupPeople.setLevel(&s, personID: personID, level: level) }; return r }
+    /// A course paid by you. False when you cannot pay.
+    @discardableResult mutating func groupTrain(personID: Int) -> Bool { var r = false; update { s, d, _ in r = GroupPeople.train(&s, personID: personID, data: d) }; return r }
+    /// A reimbursement entitlement (`StaffExpenses` item id), paid every week while on.
+    @discardableResult mutating func groupSetExpense(personID: Int, item: String, on: Bool) -> Bool { var r = false; update { s, _, _ in r = GroupPeople.setExpense(&s, personID: personID, item: item, on: on) }; return r }
+    /// Working percentage 10-100; pay follows.
+    @discardableResult mutating func groupSetPercent(personID: Int, percent: Double) -> Bool { var r = false; update { s, _, _ in r = GroupPeople.setPercent(&s, personID: personID, percent: percent) }; return r }
+
+    /// Your press image in words (Trust, Boldness, Care) instead of the bare numbers.
+    var publicImageWords: [(axis: String, word: String)] {
+        let i = Press.image(state)
+        return StandingWords.pressImage(trust: i.trust, bold: i.bold, care: i.care)
+    }
 }
