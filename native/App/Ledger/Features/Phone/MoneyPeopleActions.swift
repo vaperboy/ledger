@@ -11,7 +11,7 @@ struct HostingSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var onlyRival: Int? = nil
-    @State private var pending: (piece: Luxury.Piece, option: StaffPerks.GuestOption)?
+    @State private var pending: PendingAction?
 
     private var guests: [StaffPerks.GuestOption] {
         engine.hostingGuests.filter { g in
@@ -31,7 +31,7 @@ struct HostingSection: View {
             Spacer(minLength: 8)
             Menu {
                 ForEach(venues) { v in
-                    Button("\(v.item.name) · \(cur.tidyShort(engine.hostingCost(pieceID: v.id) ?? 0))") { pending = (v, g) }
+                    Button("\(v.item.name) · \(cur.tidyShort(engine.hostingCost(pieceID: v.id) ?? 0))") { askToHost(v, g, cur) }
                 }
             } label: {
                 HStack(spacing: 4) {
@@ -57,21 +57,21 @@ struct HostingSection: View {
                     guestRow(g, venues, cur)
                 }
             }
-            .confirmationDialog(pending.map { "Host \($0.option.title) on \($0.piece.item.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                if let p = pending {
-                    Button("Host for \(cur.tidyShort(engine.hostingCost(pieceID: p.piece.id) ?? 0))") {
-                        switch store.act({ $0.hostDeal(pieceID: p.piece.id, guest: p.option.guest) }) {
-                        case .ok(let title, _)?: Haptics.success(); store.show(title, tone: "good")
-                        case .away?: store.show("That piece is away.", tone: "warn")
-                        case .wait?: store.show("You hosted on it a few weeks ago.", tone: "warn")
-                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the evening.", tone: "warn")
-                        default: store.show("Not possible.", tone: "warn")
-                        }
-                        pending = nil
-                    }
-                }
-            } message: {
-                Text("Cost: the evening is paid from your cash. Benefit: for about three months the guests deal with you on better terms (a rival takes your offers more seriously, buyers come sooner, applicants come keener). Risk: it does not guarantee a deal, and the effect fades.")
+            .confirmAction($pending)
+        }
+    }
+
+    private func askToHost(_ v: Luxury.Piece, _ g: StaffPerks.GuestOption, _ cur: Currency) {
+        let cost: Double = engine.hostingCost(pieceID: v.id) ?? 0
+        let effect: String = "The evening is paid from your cash. For about three months the guests deal with you on better terms (a rival takes your offers more seriously, buyers come sooner, applicants come keener)."
+        pending = PendingAction(title: "Host \(g.title) on \(v.item.name)?", message: effect, button: "Host for \(cur.tidyShort(cost))",
+                                amount: cost, currency: cur, risk: "It does not guarantee a deal, and the effect fades.") {
+            switch store.act({ $0.hostDeal(pieceID: v.id, guest: g.guest) }) {
+            case .ok(let title, _)?: Haptics.success(); store.show(title, tone: "good")
+            case .away?: store.show("That piece is away.", tone: "warn")
+            case .wait?: store.show("You hosted on it a few weeks ago.", tone: "warn")
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash for the evening.", tone: "warn")
+            default: store.show("Not possible.", tone: "warn")
             }
         }
     }
@@ -82,8 +82,6 @@ struct LendPieceSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var piece: Luxury.Piece
-    @State private var pending: StaffPerks.Reward?
-
     private var weeks: Int { ["cars": 26, "homes": 2, "yachts": 1, "estates": 1][piece.item.category] ?? 1 }
 
     var body: some View {
@@ -98,7 +96,7 @@ struct LendPieceSection: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Menu {
                         ForEach(people) { r in
-                            Button("\(r.name) · \(r.companyName)\(r.isManager ? " (manager)" : "")\(r.rewardedLately ? " · rewarded lately" : "")") { pending = r }
+                            Button("\(r.name) · \(r.companyName)\(r.isManager ? " (manager)" : "")\(r.rewardedLately ? " · rewarded lately" : "")") { lend(r) }
                         }
                     } label: {
                         HStack(spacing: 6) {
@@ -110,20 +108,17 @@ struct LendPieceSection: View {
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
                     }
                 }.padding(.top, 8)
-                .confirmationDialog(pending.map { "Lend \(piece.item.name) to \($0.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                    if let r = pending {
-                        Button("Lend it") {
-                            switch store.act({ $0.lendPiece(pieceID: piece.id, companyID: r.companyID, staffID: r.staffID) }) {
-                            case .ok(let name)?: Haptics.success(); store.show("\(name) has the \(piece.item.name.lowercased()).", tone: "good")
-                            default: store.show("Not possible.", tone: "warn")
-                            }
-                            pending = nil
-                        }
-                    }
-                } message: {
-                    Text("Cost: the piece is away for about \(weeks) week\(weeks == 1 ? "" : "s") and wears a little, so it is worth slightly less. Benefit: a happier, more loyal manager (or a rested worker) for about half a year. Risk: a second reward within half a year counts for half.")
-                }
             }
+        }
+    }
+
+    /// Lending costs no money and is a routine reward, so it is done at once; the message says what it does.
+    private func lend(_ r: StaffPerks.Reward) {
+        switch store.act({ $0.lendPiece(pieceID: piece.id, companyID: r.companyID, staffID: r.staffID) }) {
+        case .ok(let name)?:
+            Haptics.success()
+            store.show("\(name) has the \(piece.item.name.lowercased()). Away for about \(weeks) week\(weeks == 1 ? "" : "s").", tone: "good")
+        default: store.show("Not possible.", tone: "warn")
         }
     }
 }
@@ -134,8 +129,7 @@ struct FundManagerCard: View {
     var engine: GameEngine
     @State private var amount = 0.0
     @State private var mandate = FinanceManager.Mandate.balanced
-    @State private var hiring: FinanceManager.Candidate?
-    @State private var confirmDismiss = false
+    @State private var pending: PendingAction?
 
     private func pct(_ v: Double) -> String { String(format: "%.1f%%", v * 100) }
     private func note(_ m: FinanceManager.Mandate) -> String {
@@ -167,7 +161,7 @@ struct FundManagerCard: View {
                 HStack(spacing: 8) {
                     QuietButton(title: "Add", fullWidth: true) { addMoney(cur) }
                     QuietButton(title: "Take out", fullWidth: true) { takeOut(cur) }
-                    QuietButton(title: "Let go", tint: Theme.loss, fullWidth: true) { confirmDismiss = true }
+                    QuietButton(title: "Let go", tint: Theme.loss, fullWidth: true) { askToLetGo() }
                 }
                 Text("A gain is taxed as a capital gain when you take it out. The fee is taken from the balance, so a weak year can leave you with less than you put in.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
@@ -218,7 +212,7 @@ struct FundManagerCard: View {
                     Text("Age \(c.age) · \(GameEngine.cvImpression(claimed: c.claimedSkill, experience: c.yearsClaimed)) · fee \(pct(c.fee))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                 }
                 Spacer(minLength: 8)
-                QuietButton(title: "Hire") { hiring = c }
+                QuietButton(title: "Hire") { askToHire(c) }
             }
         }
     }
@@ -228,29 +222,30 @@ struct FundManagerCard: View {
         VStack(alignment: .leading, spacing: 14) {
             if let a = engine.fundManager { hiredView(a, cur) } else { hireView(cur) }
         }
-        .confirmationDialog(hiring.map { "Hand \(cur.tidyShort(amount)) to \($0.name)?" } ?? "", isPresented: Binding(get: { hiring != nil }, set: { if !$0 { hiring = nil } }), titleVisibility: .visible) {
-            if let c = hiring {
-                Button("Hire, \(mandate.title.lowercased()) mandate") {
-                    switch store.act({ $0.hireFundManager(personID: c.id, mandate: mandate, amount: amount) }) {
-                    case .ok?: Haptics.success(); store.show("\(c.name) now manages your money.", tone: "good"); amount = 0
-                    case .notEnoughCash?: Haptics.warning(); store.show("You don't have that much available.", tone: "warn")
-                    case .tooSmall?: store.show("Enter an amount first.", tone: "warn")
-                    default: store.show("Not possible.", tone: "warn")
-                    }
-                    hiring = nil
-                }
-            }
-        } message: {
-            if let c = hiring {
-                Text("Cost: a fee of \(pct(c.fee)) a year on the managed money, about \(cur.tidyShort(amount * c.fee)) a year on this sum. Benefit: it is invested for you without your time. Risk: it can lose value, more under an aggressive mandate, and the fee is due even in a bad year.")
+        .confirmAction($pending)
+    }
+
+    private func askToHire(_ c: FinanceManager.Candidate) {
+        let cur: Currency = engine.homeCurrency
+        let sum: Double = amount
+        let effect: String = "A fee of \(pct(c.fee)) a year on the managed money, about \(cur.tidyShort(sum * c.fee)) a year on this sum. It is invested for you without your time."
+        let chosen: FinanceManager.Mandate = mandate
+        pending = PendingAction(title: "Hand \(cur.tidyShort(sum)) to \(c.name)?", message: effect, button: "Hire, \(chosen.title.lowercased()) mandate",
+                                amount: sum, currency: cur, risk: "It can lose value, more under an aggressive mandate, and the fee is due even in a bad year.") {
+            switch store.act({ $0.hireFundManager(personID: c.id, mandate: chosen, amount: sum) }) {
+            case .ok?: Haptics.success(); store.show("\(c.name) now manages your money.", tone: "good"); amount = 0
+            case .notEnoughCash?: Haptics.warning(); store.show("You don't have that much available.", tone: "warn")
+            case .tooSmall?: store.show("Enter an amount first.", tone: "warn")
+            default: store.show("Not possible.", tone: "warn")
             }
         }
-        .confirmationDialog("Let the fund manager go?", isPresented: $confirmDismiss, titleVisibility: .visible) {
-            Button("Let go", role: .destructive) {
-                if store.act({ $0.dismissFundManager() }) == true { Haptics.warning(); store.show("The fund manager is gone. The managed money is back in your account.", tone: "n") }
-                else { store.show("You have no fund manager.", tone: "warn") }
-            }
-        } message: { Text("All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.") }
+    }
+
+    private func askToLetGo() {
+        pending = PendingAction(title: "Let the fund manager go?", message: "All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.", button: "Let go", destructive: true) {
+            if store.act({ $0.dismissFundManager() }) == true { Haptics.warning(); store.show("The fund manager is gone. The managed money is back in your account.", tone: "n") }
+            else { store.show("You have no fund manager.", tone: "warn") }
+        }
     }
 }
 
@@ -259,9 +254,8 @@ struct HoldingFinanceManagerCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var confirm = false
     @State private var found: [Person] = []
-    @State private var confirmFire = false
+    @State private var pending: PendingAction?
 
     private var staffEntry: JSONValue? { engine.officeStaff.first { $0["role"].string == "fin" } }
 
@@ -289,7 +283,7 @@ struct HoldingFinanceManagerCard: View {
                     if !item.done { QuietButton(title: "Done") { store.act { $0.tickOfficePaperwork(personID: id, item: item.key) } } }
                 }
             }
-            QuietButton(title: "Let go", tint: Theme.loss) { confirmFire = true }
+            QuietButton(title: "Let go", tint: Theme.loss) { askToFire() }
         } else if room == .ok {
             Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             if found.isEmpty {
@@ -339,22 +333,24 @@ struct HoldingFinanceManagerCard: View {
             termLine(Glyph.check, "Cost", "None beyond their pay, which you already pay.")
             termLine(Glyph.arrowIn, "Benefit", "Cash above \(cur.tidyShort(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better.")
             termLine(Glyph.warning, "Risk", "The index fund can fall, and selling it costs 0.66%.")
-            if staffEntry != nil { QuietButton(title: on ? "Take it back" : "Let the finance manager run it", fullWidth: true) { confirm = true } }
+            if staffEntry != nil { QuietButton(title: on ? "Take it back" : "Let the finance manager run it", fullWidth: true) { toggleManager() } }
             else { Text("You have no finance manager. Hire one for the group office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
             hireFlow
         }
-        .confirmationDialog("Let the finance manager go?", isPresented: $confirmFire, titleVisibility: .visible) {
-            Button("Let go", role: .destructive) {
-                if let id = staffEntry?["id"].int {
-                    if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("The finance manager has left. You run your holdings yourself again.", tone: "n") }
-                    else { store.show("The finance manager is no longer in the group office.", tone: "warn") }
-                }
-            }
-        } message: { Text("He stops running your holdings, and you run them yourself again.") }
-        .confirmationDialog(on ? "Run \(company.name) yourself again?" : "Let the finance manager run \(company.name)?", isPresented: $confirm, titleVisibility: .visible) {
-            Button(on ? "Take it back" : "Hand it over") {
-                if let now = store.act({ $0.toggleHoldingFinanceManager(holdingID: company.id) }) ?? nil { Haptics.success(); store.show(now ? "Handed over." : "You run it yourself again.", tone: "n") }
-                else { store.show("Hire a finance manager in the group office first.", tone: "warn") }
+        .confirmAction($pending)
+    }
+
+    /// Handing the holding over, or taking it back, costs nothing and can be changed back, so it is done at once.
+    private func toggleManager() {
+        if let now = store.act({ $0.toggleHoldingFinanceManager(holdingID: company.id) }) ?? nil { Haptics.success(); store.show(now ? "Handed over." : "You run it yourself again.", tone: "n") }
+        else { store.show("Hire a finance manager in the group office first.", tone: "warn") }
+    }
+
+    private func askToFire() {
+        pending = PendingAction(title: "Let the finance manager go?", message: "He stops running your holdings, and you run them yourself again.", button: "Let go", destructive: true) {
+            if let id = staffEntry?["id"].int {
+                if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("The finance manager has left. You run your holdings yourself again.", tone: "n") }
+                else { store.show("The finance manager is no longer in the group office.", tone: "warn") }
             }
         }
     }

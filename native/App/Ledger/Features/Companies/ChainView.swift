@@ -42,15 +42,32 @@ struct ChainView: View {
                 SmallOutlineButton(title: "Rename") { newName = sum.name; renaming = true }
             }
             .confirmAction($pending)
-            .alert("Rename the chain", isPresented: $renaming) {
-                TextField("New name", text: $newName)
-                Button("Rename") { rename(sum, cur) }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
+            .fullScreenCover(isPresented: $renaming) {
+                renamePopup(sum, cur).presentationBackground(.clear)
             }
         } else {
             Text("This chain no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    /// The rename question in the in-game popup: the new name, what it costs, then Cancel or Rename.
+    private func renamePopup(_ sum: Chains.Summary, _ cur: Currency) -> some View {
+        GamePopup(title: "Rename the chain", onClose: { renaming = false }) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                TextField("New name", text: $newName)
+                    .font(.system(size: 15)).foregroundStyle(Theme.ivory)
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+                    .accessibilityIdentifier("chain-rename-field")
+                HStack(spacing: 10) {
+                    Spacer(minLength: 0)
+                    Button("Cancel") { renaming = false }.buttonStyle(GreyOutlineButtonStyle())
+                    Button("Rename") { renaming = false; rename(sum, cur) }.buttonStyle(QuietButtonStyle())
+                }
+            }
         }
     }
 
@@ -439,7 +456,7 @@ struct ChainRulesSection: View {
             if plan.exceptions > 0 { lines.append("\(plan.exceptions) cannot right now and keep what they have: " + plan.lines.filter { $0.changes && $0.reason != nil }.map { "\($0.storeName) (\($0.reason ?? ""))" }.joined(separator: "; ")) }
         }
         lines.append("No guarantee: it can win or lose customers and margin.")
-        pending = PendingAction(title: "Make \(name) the chain standard?", message: lines.joined(separator: "\n"), button: plan.totalCost > 0 ? "Change for \(cur.tidyShort(plan.totalCost))" : "Set standard") {
+        pending = PendingAction(title: "Make \(name) the chain standard?", message: lines.joined(separator: "\n"), button: plan.totalCost > 0 ? "Change for \(cur.tidyShort(plan.totalCost))" : "Set standard", amount: plan.totalCost, currency: cur) {
             if let done = store.act({ $0.setChainKnob(chainID: chainID, knob: knob.id, value: option) }) {
                 store.show("\(name) is the standard. \(done.changing) changed over, \(done.exceptions) could not.", tone: done.exceptions > 0 ? "warn" : "good")
             }
@@ -486,7 +503,7 @@ struct ChainNewStore: View {
                     QuietButton(title: "Open \(summary.name) \(cityName)", fullWidth: true) {
                         pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
                                                 message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
-                                                button: "Open the store") { open(cityID: cityID) }
+                                                button: "Open the store", amount: cost, currency: currency) { open(cityID: cityID) }
                     }
                 } else {
                     Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)

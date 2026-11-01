@@ -108,12 +108,38 @@ public enum Advisers {
         guard let i = s.companyIndex(companyID) else { return .unknown }
         var ins = s.companies[i].value("ins")
         if !ins[product].bool && s.companies[i].value("insr").isNull { return .needInsurer }
+        let turningOn = !ins[product].bool
         ins[product] = ins[product].bool ? 0 : 1
         s.companies[i].set("ins", ins)
+        recordPolicyNumber(&s, companyIndex: i, product: product, on: turningOn)
         if s.companies[i].managerID != nil {
             var own = s.companies[i].value("insOwn"); own[product] = 1; s.companies[i].set("insOwn", own)
         }
         return .done
+    }
+
+    // MARK: Policy numbers
+
+    /// A policy gets its number when it is switched on and loses it when it is switched off. The record (`polNo`) exists only once a policy has been on.
+    static func recordPolicyNumber(_ s: inout GameState, companyIndex i: Int, product: String, on: Bool) {
+        var nos = s.companies[i].value("polNo")
+        if on {
+            var r = HashedRandom("\(s.seed):pol:\(s.companies[i].id):\(product):\(s.week):\(s.day)")
+            let digits: String = (0..<5).map { _ in String(Int((r.next() * 10).rounded(.down))) }.joined()
+            let no = "AT-" + String(GameCalendar.year(week: s.week)) + "-" + digits
+            nos[product] = .object(["no": .string(no), "w": .number(Double(s.week)), "d": .number(Double(s.day))])
+            s.companies[i].set("polNo", nos)
+        } else if !nos[product].isNull {
+            nos[product] = .null
+            s.companies[i].set("polNo", .object(nos.object.filter { !$0.value.isNull }))
+        }
+    }
+
+    /// The number and start date of a policy that is on, if it was recorded.
+    public static func policyRecord(_ co: Company, product: String) -> (number: String, week: Int, day: Int)? {
+        let r = co.value("polNo")[product]
+        guard !r.isNull, co.value("ins")[product].bool else { return nil }
+        return (r["no"].string, r["w"].int, r["d"].int)
     }
 
     // MARK: In the weekly turn

@@ -11,7 +11,7 @@ struct FranchiseeCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var confirmLeave = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         let f = company.value("franchise")
@@ -29,18 +29,19 @@ struct FranchiseeCard: View {
                 if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.tidyShort(f["owed"].double), sub: "Paid first from the company's cash; unpaid parts pile up.", tint: Theme.loss) }
                 CardLine()
                 HStack {
-                    Button("Leave the franchise · buyout \(cur.tidyShort(buyout))") { confirmLeave = true }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+                    Button("Leave the franchise · buyout \(cur.tidyShort(buyout))") { askToLeave(buyout, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
                     Spacer()
                 }.padding(.top, 10)
             }
         }
-        .confirmationDialog("Leave the franchise?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button("Pay \(cur.tidyShort(buyout)) and leave", role: .destructive) {
-                if store.act({ $0.leaveFranchise(companyID: company.id) }) == true { Haptics.success(); store.show("\(company.name) is now independent.", tone: "good") }
-                else { Haptics.warning(); store.show("The franchise could not be left now. The company may not have the cash for the buyout.", tone: "warn") }
-            }
-        } message: {
-            Text("You pay \(cur.tidyShort(buyout)) to buy out the contract (including any royalties you owe), put up new signs, and lose much of the brand awareness. No more royalties after that.")
+        .confirmAction($pending)
+    }
+
+    private func askToLeave(_ buyout: Double, _ cur: Currency) {
+        let message: String = "You pay \(cur.tidyShort(buyout)) to buy out the contract (including any royalties you owe), put up new signs, and lose much of the brand awareness. No more royalties after that."
+        pending = PendingAction(title: "Leave the franchise?", message: message, button: "Pay \(cur.tidyShort(buyout)) and leave", destructive: true) {
+            if store.act({ $0.leaveFranchise(companyID: company.id) }) == true { Haptics.success(); store.show("\(company.name) is now independent.", tone: "good") }
+            else { Haptics.warning(); store.show("The franchise could not be left now. The company may not have the cash for the buyout.", tone: "warn") }
         }
     }
 }
@@ -54,7 +55,7 @@ struct FranchisorCard: View {
     @State private var royalty = 0.06
     @State private var support = 0
     @State private var masterCountry = ""
-    @State private var terminate: Int?
+    @State private var pending: PendingAction?
     @State private var ftab: FranchiseTab?
 
     var body: some View {
@@ -205,15 +206,15 @@ struct FranchisorCard: View {
                 case .countries: masterSection(f, cur)
                 }
             }
-            .confirmationDialog("End this contract?", isPresented: Binding(get: { terminate != nil }, set: { if !$0 { terminate = nil } }), titleVisibility: .visible) {
-            Button("End contract", role: .destructive) {
-                if let u = terminate {
-                    if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: u) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
-                    else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
-                }
-                terminate = nil
-            }
-        } message: { Text("The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears.") }
+            .confirmAction($pending)
+        }
+    }
+
+    private func askToEnd(_ unitID: Int, _ cur: Currency) {
+        let message: String = "The unit loses your brand and stops paying royalties. A lawyer costs \(cur.tidyShort(cur.scaledPrice(15000))) and may recover part of any arrears."
+        pending = PendingAction(title: "End this contract?", message: message, button: "End contract", destructive: true) {
+            if store.act({ $0.terminateFranchiseUnit(companyID: company.id, unitID: unitID) }) == true { Haptics.warning(); store.show("The contract is ended. The unit loses your brand.", tone: "n") }
+            else { Haptics.warning(); store.show("The contract could not be ended.", tone: "warn") }
         }
     }
 
@@ -317,7 +318,7 @@ struct FranchisorCard: View {
                     }
                 }
                 HStack {
-                    Button("End contract…") { terminate = unitID }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+                    Button("End contract…") { askToEnd(unitID, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
                     Spacer()
                 }
             }

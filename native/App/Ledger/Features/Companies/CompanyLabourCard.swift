@@ -14,7 +14,7 @@ struct CompanyLabourCard: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let rules = LabourRules(country: cur.country)
-        TeamGroup(title: "Labour rules", trailing: { Text(cur.country.name).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        TeamGroup(title: "Rules", trailing: { Text(cur.country.name).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
             Card(padding: 14, radius: Theme.Radius.row) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(rules.summary(currency: cur).enumerated()), id: \.offset) { n, row in

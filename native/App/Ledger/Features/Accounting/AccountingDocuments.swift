@@ -83,6 +83,7 @@ struct AcctDocuments: View {
         case "financing": return BankGlyph.transfer
         case "chain", "franchise": return Glyph.group
         case "insurance": return Glyph.lock
+        case "receipt": return BankGlyph.bill
         default: return Glyph.list
         }
     }
@@ -100,7 +101,7 @@ struct AcctDocuments: View {
         }
         if d.kind == "insurance" {
             return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
-                store.openCompany(co.id, section: .operations, part: OpsPart.insurance.rawValue)
+                store.openAtlas(companyID: co.id)
             })
         }
         if d.kind == "chain" {

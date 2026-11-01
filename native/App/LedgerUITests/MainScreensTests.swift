@@ -68,9 +68,10 @@ final class MainScreensTests: TourCase {
             // The five sections of the fixed bar switch in place. Pages inside a section are pushed: Back once returns to the section.
             let subpages: [String: [String]] = [
                 "team": ["Find workers"],
-                "manage": ["Suppliers", "Insurance", "Premises", "Where you work", "Equipment"],
+                // Premises, Where you work and Insurance now open the AirStay and Atlas Insurance apps on the Phone (see NavigationBackTests).
+                "manage": ["Suppliers", "Equipment"],
                 "sales": ["Pricing", "Marketing"],
-                "stats": ["Statements", "Ownership"],
+                "stats": ["Ownership"],
             ]
             for section in ["overview", "team", "manage", "sales", "stats"] {
                 let b = app.buttons["company-tab-" + section]

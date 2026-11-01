@@ -101,7 +101,7 @@ final class NavigationStackTests: XCTestCase {
     }
 
     func testSectionsOfOneCompanyShareAKeyAndPagesOfTheirOwnDoNot() {
-        XCTAssertEqual(CompanyRoute.companyAt(1, .finances).key, CompanyRoute.companyPart(1, .finances, "Statements").key)
+        XCTAssertEqual(CompanyRoute.companyAt(1, .finances).key, CompanyRoute.companyPart(1, .finances, "Ownership").key)
         XCTAssertEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
         XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .marketing).key)
         XCTAssertEqual(CompanyRoute.make(1, .properties, nil), .companyPart(1, .operations, "Premises"))

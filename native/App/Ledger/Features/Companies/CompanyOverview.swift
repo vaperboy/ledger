@@ -274,7 +274,9 @@ struct CompanySetupSection: View {
         } else {
             switch target {
             case .equipment(let premises):
-                NavigationLink { CompanyEquipmentScreen(companyID: company.id, opensOnPremises: premises) } label: { content }.buttonStyle(PressableStyle())
+                Button {
+                    if premises { store.openAirStay(companyID: company.id) } else { store.openTechPro(companyID: company.id) }
+                } label: { content }.buttonStyle(PressableStyle())
             case .money:
                 Button { moneyPart = .owners; section = .finances; Haptics.choose() } label: { content }.buttonStyle(PressableStyle())
             case .section(let s):
@@ -308,7 +310,7 @@ struct CompanySetupSection: View {
     }
 
     private func confirmQuickSetup() {
-        pending = PendingAction(title: "Fill in what is missing?", message: "Applies for every document, rents a standard place, buys the standard equipment (financed where possible) and hires the standard team, paid from company cash. It opens by itself once the paperwork is approved.", button: "Fill in") {
+        pending = PendingAction(title: "Fill in what is missing?", message: "Applies for every document, rents a standard place, buys the standard equipment (financed where possible) and hires the standard team, paid from company cash. It opens by itself once the paperwork is approved.", button: "Fill in", alwaysAsk: true) {
             let failed = store.act { $0.quickSetup(companyID: company.id) } ?? []
             if failed.isEmpty { Haptics.success(); store.show("Done: documents applied for, premises, equipment and team in place.", tone: "good") }
             else { Haptics.warning(); store.show("Partly done. Not possible: \(failed.prefix(3).joined(separator: "; "))\(failed.count > 3 ? "…" : "")", tone: "warn") }

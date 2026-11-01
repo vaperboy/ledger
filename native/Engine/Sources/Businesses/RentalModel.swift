@@ -190,6 +190,12 @@ public enum RentalModel {
         Payments.book(&s, companyID: companyID, category: gain > 0 ? "rev" : "loss", amount: gain > 0 ? gain : -gain)
     }
 
+    /// What renovating this property costs: two percent of the reference price per unit.
+    public static func renovationCost(_ co: Company, propertyID: Int, data: GameData) -> Double? {
+        guard let bd = data.catalog[co.type], let p = co.properties.first(where: { $0.id == propertyID }) else { return nil }
+        return jsRound(p.units * ((bd.trait("price") ?? 0) * 0.02))
+    }
+
     /// Renovate: costs two percent of the reference price per unit, restores condition and adds 1.5% to the value. Original: `renovateProp`.
     @discardableResult
     public static func renovate(_ s: inout GameState, companyID: Int, propertyID: Int, data: GameData) -> BuyResult {

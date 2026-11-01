@@ -4,6 +4,8 @@ import SwiftUI
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
     case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, market, reviews, achievements, settings
+    /// The three shopping and insurance apps (each in its own colours): places to rent, equipment and software, insurance.
+    case airStay, techPro, atlas
     var id: String { rawValue }
 
     var title: String {
@@ -24,6 +26,9 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .reviews: return "Reviews"
         case .achievements: return "Achievements"
         case .settings: return "Settings"
+        case .airStay: return "AirStay"
+        case .techPro: return "TechPro Store"
+        case .atlas: return "Atlas Insurance"
         }
     }
 
@@ -46,6 +51,9 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .reviews: return Glyph.reviewStar
         case .achievements: return Glyph.achievements
         case .settings: return Glyph.settings
+        case .airStay: return Glyph.airStay
+        case .techPro: return Glyph.techPro
+        case .atlas: return Glyph.atlas
         }
     }
 
@@ -68,6 +76,9 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
         case .reviews: return "What customers say about you and your rivals"
         case .achievements: return "Trophies and awards"
         case .settings: return "How much you decide, saving, haptics"
+        case .airStay: return "Offices, shops and storage to rent"
+        case .techPro: return "Software, hardware, tools and vehicles"
+        case .atlas: return "Cover for your companies"
         }
     }
 }
@@ -76,22 +87,25 @@ extension PhoneApp {
     /// The muted colour inside the app's icon (Ivory Ledger tints, never loud). The glyph and the label always stay, so colour is never alone.
     var tint: Color {
         switch self {
-        case .bank: return Color(hex: 0x8DB89B)
-        case .accounting: return Color(hex: 0xB9C79A)
-        case .inbox: return Color(hex: 0xD6B889)
-        case .news: return Color(hex: 0xB8A58C)
-        case .weather: return Color(hex: 0x8FB0C4)
-        case .stats: return Color(hex: 0x9AA7C4)
-        case .goals: return Color(hex: 0xC9A38C)
-        case .world: return Color(hex: 0x7FB3B0)
-        case .luxury: return Color(hex: 0xC4A3B4)
-        case .ventures: return Color(hex: 0xB5B07E)
+        case .bank: return Color(hex: 0x86B4A0)
+        case .accounting: return Color(hex: 0xA8B88A)
+        case .inbox: return Color(hex: 0xCF9A6A)
+        case .news: return Color(hex: 0x7F9BC4)
+        case .weather: return Color(hex: 0x93A9BD)
+        case .stats: return Color(hex: 0x9A94C4)
+        case .goals: return Color(hex: 0xC8706A)
+        case .world: return Color(hex: 0x78B0A8)
+        case .luxury: return Color(hex: 0xC48CB8)
+        case .ventures: return Color(hex: 0xE0BC5E)
         case .richList: return Color(hex: 0xD0A86F)
-        case .reports: return Color(hex: 0xA39BC2)
-        case .market: return Color(hex: 0x9CB8A0)
-        case .reviews: return Color(hex: 0xD9C27E)
-        case .achievements: return Color(hex: 0xC9B07A)
+        case .reports: return Color(hex: 0x7F9CC0)
+        case .market: return Color(hex: 0x86B890)
+        case .reviews: return Color(hex: 0xD2B97C)
+        case .achievements: return Color(hex: 0xE0A458)
         case .settings: return Color(hex: 0xA19B8F)
+        case .airStay: return Color(hex: 0xCF6A6A)
+        case .techPro: return Color(hex: 0x7FB088)
+        case .atlas: return Color(hex: 0x7F9FC8)
         }
     }
 }

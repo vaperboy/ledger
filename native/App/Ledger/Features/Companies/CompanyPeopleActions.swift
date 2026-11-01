@@ -7,7 +7,7 @@ import Simulation
 
 // Three people actions of Company > Team, each grouped by its purpose and each with its own layout:
 //   Goals      (CompanyTargetsCard)  what the manager is judged on: month targets as progress bars, the year's budget, a history strip, and a setter.
-//   Rewards    (CompanyPerksCard)    what keeps people: a cost summary and one card per perk.
+//   Rewards    (CompanyPerksPopup)   what keeps people: a popup list of perks, each switched on or off for every worker.
 //   Succession (SuccessorSection)    what happens when the manager leaves: the search and the shortlist.
 // Every card says what an action costs, what it gains and what it risks before it is confirmed. The engine decides all of it.
 
@@ -66,7 +66,6 @@ struct CompanyTargetsCard: View {
     var company: Company
     @State private var mode = 1
     @State private var bonus = 1
-    @State private var confirm = false
 
     private static let names = ["rev": "Sales", "profit": "Profit", "rating": "Rating", "util": "How busy", "aware": "Awareness"]
     private static let modeNames = ["Easy", "Realistic", "Stretch"]
@@ -85,15 +84,13 @@ struct CompanyTargetsCard: View {
                 setterCard(st, cur)
             }
             .onAppear { bonus = min(2, max(0, st.bonusLevel)) }
-            .confirmationDialog("Set the targets for this month?", isPresented: $confirm, titleVisibility: .visible) {
-                Button("Set targets") {
-                    if store.act({ $0.setTargets(companyID: company.id, mode: mode, bonus: bonus) }) == true { Haptics.success(); store.show("Targets set.", tone: "good") }
-                    else { Haptics.warning(); store.show("Targets cannot be set now.", tone: "warn") }
-                }
-            } message: {
-                Text(confirmMessage(cur))
-            }
         }
+    }
+
+    /// Setting the month's targets costs nothing and can be set again, so it is applied at once; the message says what was set.
+    private func setTargets(_ cur: Currency) {
+        if store.act({ $0.setTargets(companyID: company.id, mode: mode, bonus: bonus) }) == true { Haptics.success(); store.show("Targets set. " + confirmMessage(cur), tone: "good") }
+        else { Haptics.warning(); store.show("Targets cannot be set now.", tone: "warn") }
     }
 
     private func confirmMessage(_ cur: Currency) -> String {
@@ -210,7 +207,7 @@ struct CompanyTargetsCard: View {
                         SegmentedPill(items: [0, 1, 2], title: { ManagerTargets.bonusLevels[$0].name }, selection: $bonus)
                     }
                     ConsequenceNote(cost: costLine(pv, cur), benefit: benefitLine + " This also approves the year's budget.", risk: riskLine)
-                    QuietButton(title: "Set targets…", fullWidth: true) { confirm = true }
+                    QuietButton(title: "Set targets", fullWidth: true) { setTargets(cur) }
                 }
             }
         } else if !st.canSet && !st.setter.isOwner {
@@ -262,13 +259,13 @@ struct CompanyTargetsCard: View {
 
 // MARK: - Rewards: staff perks
 
-/// Staff perks (Company > Team): a cost summary, then one card per perk with its monthly cost and what it does before it is switched on.
-struct CompanyPerksCard: View {
+/// The perks popup (Company > Team > Perks): one row per perk with a switch. A perk is on for ALL workers, active the moment it is
+/// switched on, and its monthly cost is shown while it is on. Closes with the small x or a tap outside.
+struct CompanyPerksPopup: View {
     @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @State private var pending: StaffPerks.Perk?
-    @State private var pendingGroup: (perk: StaffPerks.Perk, group: StaffPerks.RoleGroup)?
+    @Environment(\.outsidePalette) private var P
+    var companyID: Int
+    var onClose: () -> Void
 
     private func recipientLine(_ r: CompanyCarPerk.Recipient, _ cur: Currency) -> String {
         let role = r.role == "Manager" ? "manager" : "team lead"
@@ -282,159 +279,71 @@ struct CompanyPerksCard: View {
         return f >= 0.2 ? "much fewer" : f >= 0.1 ? "fewer" : "slightly fewer"
     }
 
-    private static func glyph(_ id: String) -> String {
-        switch id {
-        case "gym": return Glyph.gym
-        case "lunch": return Glyph.cafe
-        case "car": return Glyph.luxury
-        case "trips": return Glyph.world
-        case "health": return Glyph.person
-        case "crew": return Glyph.team
-        case "sales": return Glyph.stats
-        case "keys": return Glyph.settings
-        default: return Glyph.hire
-        }
-    }
-
     var body: some View {
-        if !company.staff.isEmpty || company.managerID != nil {
-            let cur = engine.currency(for: company)
-            let total = engine.staffPerksMonthlyTotal(companyID: company.id)
-            let options: [StaffPerks.Perk] = engine.staffPerkOptions
-            TeamGroup(title: "Rewards", trailing: {
-                Text(total > 0 ? "\(cur.tidyShort(total)) a month" : "none yet").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }) {
-                summary(options, total: total, cur)
-                ForEach(options) { p in perkCard(p, cur) }
+        if let e = store.engine, let co = e.state.company(companyID) {
+            let cur: Currency = e.currency(for: co)
+            let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
+            GamePopup(title: "Perks", onClose: onClose) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
+                        .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    ScrollView {
+                        VStack(spacing: 0) { perkRows(e, co, cur) }
+                    }
+                    .scrollIndicators(.hidden)
+                    .frame(maxHeight: 420)
+                }
             }
-            .confirmationDialog(pendingGroup.map { "Add \($0.perk.name.lowercased()) for \($0.group.name.lowercased())?" } ?? "", isPresented: Binding(get: { pendingGroup != nil }, set: { if !$0 { pendingGroup = nil } }), titleVisibility: .visible) {
-                groupDialogButton(cur)
-            } message: {
-                groupDialogMessage
-            }
-            .confirmationDialog(pending.map { "Add \($0.name.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                perkDialogButton(cur)
-            } message: {
-                perkDialogMessage
-            }
+        } else {
+            Color.clear.onAppear { onClose() }
         }
     }
 
-    // MARK: Summary and cards
-
-    private func summary(_ options: [StaffPerks.Perk], total: Double, _ cur: Currency) -> some View {
-        let on: Int = options.filter { engine.staffPerkIsOn(companyID: company.id, perk: $0.id) }.count
-        let together: Double = engine.staffPerksFewerLeavePercent(companyID: company.id)
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                PurposeHeader(glyph: Glyph.people, title: "Keeping people", note: "A perk costs every month and makes fewer people leave")
-                StatStrip(cells: [
-                    .init(label: "Switched on", value: "\(on) of \(options.count)"),
-                    .init(label: "Cost a month", value: total > 0 ? cur.tidyShort(total) : "none"),
-                    .init(label: "Fewer leave", value: together > 0 ? "\(Int(together.rounded()))%" : "none", tint: together > 0 ? Theme.gain : Theme.ivory),
-                ])
-            }
+    @ViewBuilder private func perkRows(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
+        let options: [StaffPerks.Perk] = e.staffPerkOptions
+        ForEach(Array(options.enumerated()), id: \.element.id) { n, p in
+            if n > 0 { CardLine() }
+            perkRow(e, co, p, cur)
         }
     }
 
-    private func perkCard(_ p: StaffPerks.Perk, _ cur: Currency) -> some View {
-        let on: Bool = engine.staffPerkIsOn(companyID: company.id, perk: p.id)
-        let cost: String = cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))
-        return Card(padding: 14, radius: Theme.Radius.card, stroke: on ? Theme.gold.opacity(0.6) : Theme.border) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    IconCircle(glyph: Self.glyph(p.id), tint: on ? Theme.gold : Theme.ivoryMuted)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(p.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 0)
+    private func perkRow(_ e: GameEngine, _ co: Company, _ p: StaffPerks.Perk, _ cur: Currency) -> some View {
+        let on: Bool = e.staffPerkIsOn(companyID: companyID, perk: p.id)
+        let cost: String = cur.tidyShort(e.staffPerkMonthlyCost(companyID: companyID, perk: p.id))
+        let costLine: String = on ? "Costs \(cost) a month while it is on" : "Would cost \(cost) a month"
+        let binding = Binding<Bool>(get: { on }, set: { _ in toggle(p, cur) })
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink)
+                    Text(p.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    Text(costLine + " · " + fewer(p) + " people leave").font(.system(size: 11.5)).foregroundStyle(on ? P.gain : P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                StatStrip(cells: [
-                    .init(label: "Cost a month", value: cost),
-                    .init(label: "People leave", value: fewer(p), tint: Theme.gain),
-                ])
-                groupChoices(p, cur)
-                if p.id == "car" && on {
-                    ForEach(engine.companyCarRecipients(companyID: company.id)) { r in
-                        Text(recipientLine(r, cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                }
-                HStack {
-                    Text(on ? "A fixed cost while it is on." : "Cost, benefit and risk are shown before you confirm.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-                    Spacer(minLength: 8)
-                    if on {
-                        QuietButton(title: "On · switch off", tint: Theme.gain) { switchOff(p) }
-                    } else {
-                        QuietButton(title: "Add…") { pending = p }
-                    }
+                Spacer(minLength: 8)
+                Toggle(p.name, isOn: binding).labelsHidden().tint(P.accent)
+                    .accessibilityIdentifier("perk-" + p.id)
+            }
+            if p.id == "car" && on {
+                ForEach(e.companyCarRecipients(companyID: companyID)) { r in
+                    Text(recipientLine(r, cur)).font(.system(size: 11)).foregroundStyle(P.inkFaint)
                 }
             }
         }
+        .padding(.vertical, 10)
     }
 
-    private func switchOff(_ p: StaffPerks.Perk) {
-        let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil
+    /// Switches the perk for everyone at once. The result is reported; nothing is asked (it can be switched off again).
+    private func toggle(_ p: StaffPerks.Perk, _ cur: Currency) {
+        let r = store.act { $0.toggleStaffPerk(companyID: companyID, perk: p.id) } ?? nil
         Haptics.tap()
-        store.show(r == nil ? "Not possible right now." : "\(p.name) switched off.", tone: r == nil ? "warn" : "n")
-    }
-
-    // MARK: Confirmations
-
-    @ViewBuilder private func groupDialogButton(_ cur: Currency) -> some View {
-        if let pg = pendingGroup {
-            Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: pg.perk.id, group: pg.group.id))) a month") {
-                let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: pg.perk.id, group: pg.group.id) } ?? nil
-                if r == true { Haptics.success(); store.show("\(pg.perk.name) added for \(pg.group.name.lowercased()).", tone: "good") } else { Haptics.warning(); store.show("Not possible right now.", tone: "warn") }
-                pendingGroup = nil
-            }
-        }
-    }
-
-    @ViewBuilder private var groupDialogMessage: some View {
-        if let pg = pendingGroup {
-            Text("Cost: paid every month for \(engine.staffPerkPeople(companyID: company.id, group: pg.group.id)) people in this group while it is on. Benefit: \(fewer(pg.perk)) of them leave, and better applicants come for their jobs. Risk: a fixed cost in a bad month. Switch it off at any time.")
-        }
-    }
-
-    @ViewBuilder private func perkDialogButton(_ cur: Currency) -> some View {
-        if let p = pending {
-            Button("Add for \(cur.tidyShort(engine.staffPerkMonthlyCost(companyID: company.id, perk: p.id))) a month") {
-                let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id) } ?? nil
-                if r == true { Haptics.success(); store.show("\(p.name) added.", tone: "good") } else { Haptics.warning(); store.show("Not possible right now.", tone: "warn") }
-                pending = nil
-            }
-        }
-    }
-
-    @ViewBuilder private var perkDialogMessage: some View {
-        if let p = pending, p.id == "car" {
-            Text("Cost: a leased car for the manager and for each team lead; the lease and the fuel are paid every month while it is on, and the cars show in the fleet. Benefit: \(fewer(p)) people leave and better applicants come. Risk: cars are a fixed cost in a bad month. Switch it off and the cars go back.")
-        } else if let p = pending {
-            Text("Cost: paid every month while it is on. Benefit: \(fewer(p)) people leave and better applicants come. Risk: it is a fixed cost in a bad month. Switch it off at any time.")
-        }
-    }
-}
-
-extension CompanyPerksCard {
-    /// Who a perk is for: one chip per role group it may be given to (only where there is a choice), each switching it on or off for that group.
-    @ViewBuilder func groupChoices(_ p: StaffPerks.Perk, _ cur: Currency) -> some View {
-        let groups = engine.staffPerkGroups(perk: p.id)
-        if groups.count > 1 {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Who it covers").capsLabel(Theme.ivoryFaint)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 6)], alignment: .leading, spacing: 6) {
-                    ForEach(groups) { g in
-                        let covered = engine.staffPerkCovers(companyID: company.id, perk: p.id, group: g.id)
-                        let people = engine.staffPerkPeople(companyID: company.id, group: g.id)
-                        Button("\(g.name) (\(people))\(covered ? " · on" : "")") {
-                            if covered { let r = store.act { $0.toggleStaffPerk(companyID: company.id, perk: p.id, group: g.id) } ?? nil; Haptics.tap(); if r == nil { store.show("Not possible right now.", tone: "warn") } }
-                            else if people > 0 { pendingGroup = (p, g) }
-                            else { store.show("Nobody is in this group at \(company.name) yet.", tone: "n") }
-                        }.buttonStyle(QuietButtonStyle(tint: covered ? Theme.gain : Theme.ivoryMuted))
-                    }
-                }
-            }
+        if r == true {
+            let cost: String = cur.tidyShort(store.engine?.staffPerkMonthlyCost(companyID: companyID, perk: p.id) ?? 0)
+            store.show("\(p.name) is on for everyone: \(cost) a month.", tone: "good")
+        } else if r == false {
+            store.show("\(p.name) switched off.", tone: "n")
+        } else {
+            Haptics.warning()
+            store.show("Not possible right now.", tone: "warn")
         }
     }
 }
@@ -446,7 +355,7 @@ struct SuccessorSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var confirm = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -458,7 +367,7 @@ struct SuccessorSection: View {
                 ConsequenceNote(cost: "the executive search fee, \(fee).",
                                 benefit: "four candidates to choose from before the handover, so the company is not left without a manager.",
                                 risk: "none may suit, and the fee is not refunded.")
-                QuietButton(title: "Find a successor · \(fee)…", fullWidth: true) { confirm = true }
+                QuietButton(title: "Find a successor · \(fee)…", fullWidth: true) { askToSearch(cur) }
             } else {
                 CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
                     let request = HireRequest(post: .manager, companyID: company.id, personID: p.id, roleTitle: "Manager")
@@ -468,11 +377,16 @@ struct SuccessorSection: View {
                 }
             }
         }
-        .confirmationDialog("Start the search?", isPresented: $confirm, titleVisibility: .visible) {
-            Button("Pay \(fee) and search") {
-                if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found. Search paid: \(fee).", tone: "good") }
-                else { Haptics.warning(); store.show("The search found no one, or the company cannot pay \(fee).", tone: "warn") }
-            }
-        } message: { Text("Three people from the trade and one generalist. The list stays for about six months.") }
+        .confirmAction($pending)
+    }
+
+    private func askToSearch(_ cur: Currency) {
+        let feeAmount: Double = ManagerModel.searchFee(currency: cur)
+        let fee: String = cur.tidyShort(feeAmount)
+        pending = PendingAction(title: "Start the search?", message: "Three people from the trade and one generalist. The list stays for about six months.", button: "Pay \(fee) and search",
+                                amount: feeAmount, currency: cur, risk: "None may suit, and the fee is not refunded.") {
+            if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found. Search paid: \(fee).", tone: "good") }
+            else { Haptics.warning(); store.show("The search found no one, or the company cannot pay \(fee).", tone: "warn") }
+        }
     }
 }

@@ -114,8 +114,9 @@ struct InboxView: View {
 
     // MARK: Answering
 
-    /// A routine answer is sent at once. Only a consequential one (it spends money, or cannot be undone; the engine decides, see
-    /// `DecisionConfirm`) is confirmed, with what it costs, and a small spend under the player's own "how much I decide" size is not asked.
+    /// A routine answer is sent at once, and the sheet closes. Only a consequential one is confirmed, in the in-game popup: one that cannot be
+    /// undone, or a spend at or above the player's own "Ask before spending" size (the engine decides which, see `DecisionConfirm`). A small
+    /// spend under that size is sent at once too, and the "Answered" message says what it was.
     private func ask(_ message: Message, _ index: Int) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
@@ -133,10 +134,13 @@ struct InboxView: View {
         let title: String = label + (where_.isEmpty ? "" : " · " + where_)
         let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
         var action = PendingAction(title: title, message: body, button: label, destructive: need.irreversible) { answer(message, index, label) }
-        if !need.irreversible, let amount = need.amount, let company {
+        if !need.irreversible, let amount = need.amount {
+            // A message about the group or you personally has no company: its money is in the home currency.
             action.amount = amount
-            action.currency = e.currency(for: company)
+            action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
         }
+        // Under the player's size: no question at all, so nothing can hold the answer back.
+        if ConfirmThreshold.skips(action) { answer(message, index, label); return }
         pending = action
     }
 

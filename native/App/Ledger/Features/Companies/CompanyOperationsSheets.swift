@@ -27,7 +27,6 @@ struct OpsPageDestination: View {
         case .suppliers: CompanySuppliersScreen(companyID: co.id)
         case .equipment: CompanyEquipmentScreen(companyID: co.id)
         case .insurance: CompanyCoverageScreen(companyID: co.id)
-        case .workplace: SettingsPage(title: "Where you work", subtitle: co.name) { CompanyWorkplaceSection(engine: e, company: co) }
         }
     }
 
@@ -35,7 +34,12 @@ struct OpsPageDestination: View {
         if e.tradeInfo(companyID: co.id)?.family == "rent" {
             SettingsPage(title: "Properties", subtitle: co.name) { CompanyProperties(engine: e, company: co) }
         } else {
-            CompanyEquipmentScreen(companyID: co.id, opensOnPremises: true)
+            // Premises are rented and bought in AirStay (Phone).
+            VStack(spacing: Theme.Space.m) {
+                Text("Places to rent and buy are in AirStay.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Button("Open AirStay") { store.openAirStay(companyID: co.id) }.buttonStyle(QuietButtonStyle())
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 }

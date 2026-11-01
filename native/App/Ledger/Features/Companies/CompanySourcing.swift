@@ -42,9 +42,9 @@ struct CompanySourcing: View {
             let cur = engine.currency(for: company)
             let both: Bool = !inputs.isEmpty && !sells.isEmpty
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                summary(inputs, sells: sells, cur: cur)
+                note(inputs)
                 if both {
-                    SettingsTable(heading: "Sourcing") {
+                    SharpTable {
                         SettingsTableRow(title: "Supplying", note: "Companies you sell to", value: "\(sells.count) \(sells.count == 1 ? "company" : "companies")") { showSupplying = true }
                     }
                 }
@@ -59,38 +59,19 @@ struct CompanySourcing: View {
 
     // MARK: Summary
 
-    private func summary(_ inputs: [SupplierInput], sells: [IntercompanySupply.Link], cur: Currency) -> some View {
-        let saving: Double = inputs.reduce(0) { $0 + ($1.current?.yearlyVsMarket ?? 0) }
-        let own: Int = inputs.filter { $0.current?.kind == .ownCompany }.count
-        let savingTint: Color = saving > 0.5 ? Theme.gain : saving < -0.5 ? Theme.caution : Theme.ivory
-        let savingText: String = saving > 0.5 ? "+" + cur.tidyShort(saving) : saving < -0.5 ? "-" + cur.tidyShort(-saving) : cur.tidyShort(0)
-        let cells: [StatStrip.Cell] = [
-            StatStrip.Cell(label: "Inputs", value: "\(inputs.count)"),
-            StatStrip.Cell(label: "Own providers", value: "\(own)"),
-            StatStrip.Cell(label: "Vs market a year", value: savingText, tint: savingTint)
-        ]
+    /// No box of its own: only the board's agreement and whether an own company supplies this one, as plain lines above the suppliers.
+    @ViewBuilder private func note(_ inputs: [SupplierInput]) -> some View {
         let agreement: String? = engine.boardAgreement(scope: "goods").map { a in
             "Board agreement: goods for every company through \(engine.knownSuppliers.first { $0.id == a }?.name ?? "one supplier"), unless a company names its own."
         }
-        let inside: Bool = engine.isSuppliedFromInside(companyID: company.id)
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Sourcing").capsLabel()
-                    Spacer(minLength: 8)
-                    if inside { Chip(text: "Own supplier", tint: Theme.gain) }
-                    GlyphView(glyph: Glyph.suppliers, size: 18, weight: 1.6)
-                }
-                if let agreement { Text(agreement).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
-                StatStrip(cells: cells)
-            }
-        }
+        if let agreement { Text(agreement).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2) }
+        if engine.isSuppliedFromInside(companyID: company.id) { Chip(text: "Own supplier", tint: Theme.gain) }
     }
 
     // MARK: Inputs
 
     private func inputsList(_ inputs: [SupplierInput], cur: Currency) -> some View {
-        let openID: String? = open ?? inputs.first?.id
+        let openID: String? = open
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             ForEach(inputs) { input in
                 inputBlock(input, isOpen: openID == input.id, cur: cur)
@@ -109,9 +90,11 @@ struct CompanySourcing: View {
         }
     }
 
+    /// One supplier in its own closed box: its name as the title and what it supplies under it; a tap opens the comparison inside the box.
     private func inputBlock(_ input: SupplierInput, isOpen: Bool, cur: Currency) -> some View {
         let line: String = headerLine(input, cur: cur)
         let name: String = input.current?.name ?? "Not set"
+        let supplies: String = "Supplies: " + input.title.lowercased()
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Button {
                 withAnimation(.easeOut(duration: 0.18)) { open = isOpen ? "" : input.id }
@@ -120,8 +103,8 @@ struct CompanySourcing: View {
                 HStack(spacing: 12) {
                     IconCircle(glyph: inputGlyph(input), size: 38)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(input.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                        Text(name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(supplies.tidyMoney).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryMuted).lineLimit(2).multilineTextAlignment(.leading)
                         Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 8)
@@ -130,12 +113,12 @@ struct CompanySourcing: View {
                 }
                 .padding(.horizontal, 12).padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(isOpen ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
                 .contentShape(Rectangle())
             }.buttonStyle(PressableStyle())
-            if isOpen { comparison(input, cur: cur) }
+            if isOpen { comparison(input, cur: cur).padding(.horizontal, 12).padding(.bottom, 12) }
         }
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(isOpen ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
     }
 
     private func comparison(_ input: SupplierInput, cur: Currency) -> some View {
@@ -469,7 +452,7 @@ struct CompanySourcing: View {
 
     private func lunch(_ vendorID: String, name: String) {
         let cost = engine.homeCurrency.tidyShort(engine.homeCurrency.scaledPrice(5000))
-        pending = PendingAction(title: "Take \(name) to lunch?", message: "About \(cost). It warms the relationship, which becomes a better discount on every order. You can only do this every four weeks, and relationships fade if you stop buying.", button: "Go to lunch") {
+        pending = PendingAction(title: "Take \(name) to lunch?", message: "About \(cost). It warms the relationship, which becomes a better discount on every order. You can only do this every four weeks, and relationships fade if you stop buying.", button: "Go to lunch", amount: engine.homeCurrency.scaledPrice(5000), currency: engine.homeCurrency) {
             switch store.act({ $0.lunchWithSupplier(vendorID: vendorID) }) {
             case .ok?: Haptics.success(); store.show("A good lunch. The relationship is warmer.", tone: "good")
             case .wait?: Haptics.warning(); store.show("You met recently. Wait a few weeks.", tone: "warn")

@@ -14,7 +14,7 @@ struct ExecutivePosts: View {
     var chainID: Int?
     @State private var searching: String?
     @State private var candidates: [Int] = []
-    @State private var releasing: Post?
+    @State private var pending: PendingAction?
 
     struct Post: Identifiable {
         var id: String
@@ -64,12 +64,15 @@ struct ExecutivePosts: View {
                 }
             }
         }
-        .confirmationDialog("Let \(releasing?.level.title.lowercased() ?? "them") go?", isPresented: Binding(get: { releasing != nil }, set: { if !$0 { releasing = nil } }), titleVisibility: .visible) {
-            Button("Let go", role: .destructive) {
-                if let r = releasing { let ok = store.act { $0.releaseExecutive(r.level, chainID: chainID, regionalID: r.regionalID) } ?? false; Haptics.warning(); store.show(ok ? "Let go. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn") }
-                releasing = nil
-            }
-        } message: { Text("Severance of about a month's pay plus costs is paid now.") }
+        .confirmAction($pending)
+    }
+
+    private func askToRelease(_ r: Post) {
+        pending = PendingAction(title: "Let \(r.level.title.lowercased()) go?", message: "Severance of about a month's pay plus costs is paid now.", button: "Let go", destructive: true) {
+            let ok = store.act { $0.releaseExecutive(r.level, chainID: chainID, regionalID: r.regionalID) } ?? false
+            Haptics.warning()
+            store.show(ok ? "Let go. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn")
+        }
     }
 
     /// The entity that employs these people: the chain for chain levels, otherwise the group office (or the holding that carries it).
@@ -106,7 +109,7 @@ struct ExecutivePosts: View {
                                     setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
                     GroupRewardMenu(engine: engine, personID: p.rec["npc"].int, name: person?.name ?? "them")
-                    Button("Let go") { releasing = p }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                    Button("Let go") { askToRelease(p) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 }.buttonStyle(QuietButtonStyle())
             } else {
                 searchButton(p, cur)

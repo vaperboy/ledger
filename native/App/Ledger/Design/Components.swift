@@ -1,5 +1,6 @@
 import SwiftUI
 import Countries
+import enum Events.ConfirmRule
 
 /// The house container (new look): a bordered card on the #151617 surface. Radius per mockup: `Theme.Radius.hero` (16) for the big
 /// summary boxes, `.card` (14, the default) for standard cards, `.row` (12) for compact row cards, `.table` (8) for sharp boxes.
@@ -530,63 +531,106 @@ enum TradeSymbol {
     }
 }
 
-/// A consequential action waiting for confirmation: what it is, what it costs or changes, and what to run.
-/// One shared confirmation instead of a hand-written dialog per button.
+/// A consequential action waiting for the in-game "Are you sure" popup: what it is, what it costs or changes, and what to run.
+/// One shared popup instead of a hand-written dialog per button.
 ///
-/// `amount` (in `currency`) is the money the action spends. Only a reversible spend that supplies it can skip the question, when the
-/// player chose a size under which they do not want to be asked (Settings, "How much I decide"). Anything `destructive` (dismissals,
-/// wind-up, sales, closing, anything irreversible) and anything without an amount always asks.
+/// The popup shows ONLY for a spend at or above the size the player chose (Settings, "Ask before spending") and for an irreversible
+/// action. Every other action runs at once when it is set. So a SPEND must give `amount` (in `currency`), or it would run unasked;
+/// anything irreversible (dismissals, wind-up, sales, closing, conversions) is `destructive`, which always asks (red button).
 struct PendingAction: Identifiable {
     let id = UUID()
     var title: String
     var message: String
     var button: String
     var destructive = false
+    /// Asks whatever the size, without the red button: a commitment of a size the screen cannot state (a loan, a bulk set-up).
+    var alwaysAsk = false
     var amount: Double? = nil
     var currency: Currency? = nil
+    /// What can go wrong, shown under the effect. Empty: nothing extra (an irreversible action says it cannot be undone).
+    var risk = ""
     var run: () -> Void
 }
 
 /// The one money-size rule for confirmations. A device preference, not game state: it is not in the save and never travels with it.
 enum ConfirmThreshold {
-    /// Reference-economy sizes (scaled to the spend's own currency like every price). Step 0 = always ask.
+    /// Reference-economy sizes (scaled to the spend's own currency like every price). Step 0 = always ask a spend.
     static let sizes: [Double] = [0, 500, 2_000, 10_000, 50_000, 250_000]
+    /// What a new player gets: small everyday spends are not asked (step 2, 2,000 at the reference level).
+    static let defaultStep = 2
     static let key = "askBelowStep"
     static var step: Int {
-        get { min(max(UserDefaults.standard.integer(forKey: key), 0), sizes.count - 1) }
+        get {
+            guard UserDefaults.standard.object(forKey: key) != nil else { return defaultStep }
+            return min(max(UserDefaults.standard.integer(forKey: key), 0), sizes.count - 1)
+        }
         set { UserDefaults.standard.set(min(max(newValue, 0), sizes.count - 1), forKey: key) }
     }
 
-    /// True when `p` may run without asking. Pure so it can be tested as a decision table.
+    /// True when `p` runs without asking. Pure so it can be tested as a decision table.
     static func skips(_ p: PendingAction, step: Int) -> Bool {
-        decide(destructive: p.destructive, amount: p.amount, limit: p.currency.map { limit(step: step, currency: $0) })
+        var size: Double? = nil
+        if let currency = p.currency { size = limit(step: step, currency: currency) }
+        return !ConfirmRule.asks(irreversible: p.destructive || p.alwaysAsk, amount: p.amount, limit: size)
     }
     static func skips(_ p: PendingAction) -> Bool { skips(p, step: step) }
 
-    static func decide(destructive: Bool, amount: Double?, limit: Double?) -> Bool {
-        guard !destructive, let amount, let limit, limit > 0 else { return false }
-        return amount < limit
-    }
-    /// The size in this currency under which the player is not asked (0 = always asked).
+    /// The size in this currency under which the player is not asked (0 = a spend is always asked).
     static func limit(step: Int, currency: Currency) -> Double {
         let i = min(max(step, 0), sizes.count - 1)
         return sizes[i] == 0 ? 0 : currency.scaledPrice(sizes[i])
     }
 }
 
-extension View {
-    /// Shows `pending` as a confirmation dialog; confirming runs it, cancelling drops it. A reversible spend under the player's chosen
-    /// size runs at once instead (its own result message says what was spent); destructive and irreversible actions always ask.
-    func confirmAction(_ pending: Binding<PendingAction?>) -> some View {
-        confirmationDialog(pending.wrappedValue?.title ?? "",
-                           isPresented: Binding(get: { pending.wrappedValue.map { !ConfirmThreshold.skips($0) } ?? false },
-                                                set: { if !$0 { pending.wrappedValue = nil } }),
-                           titleVisibility: .visible, presenting: pending.wrappedValue) { p in
-            Button(p.button, role: p.destructive ? .destructive : nil) { p.run(); pending.wrappedValue = nil }
-        } message: { p in Text(p.message.tidyMoney) }
-        .onChange(of: pending.wrappedValue?.id) { _, _ in
-            if let p = pending.wrappedValue, ConfirmThreshold.skips(p) { pending.wrappedValue = nil; p.run() }
+/// Holds the popup for a `PendingAction`: setting `pending` either runs it at once (a small or free action) or opens the popup.
+/// The popup is a clear full-screen cover, so it sits above the whole screen (and above a sheet) whichever view the modifier is on.
+private struct ConfirmActionModifier: ViewModifier {
+    @Binding var pending: PendingAction?
+    @State private var asked: PendingAction?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pending?.id) { _, _ in settle() }
+            .fullScreenCover(item: $asked) { p in
+                ConfirmPopup(action: p, onConfirm: { answer(p, go: true) }, onCancel: { answer(p, go: false) })
+                    .presentationBackground(.clear)
+            }
+    }
+
+    private func settle() {
+        guard let p = pending else { instant { asked = nil }; return }
+        if ConfirmThreshold.skips(p) {
+            pending = nil
+            p.run()
+        } else {
+            instant { asked = p }
         }
+    }
+
+    private func answer(_ p: PendingAction, go: Bool) {
+        instant { asked = nil; pending = nil }
+        // Once the cover is gone, so the action may open or close screens without clashing with it.
+        if go { DispatchQueue.main.async { p.run() } }
+    }
+
+    /// The popup fades in itself; the system slide-up of a cover is switched off.
+    private func instant(_ change: () -> Void) {
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t, change)
+    }
+}
+
+/// Runs `show` once a sheet that is closing has gone, so the popup it opens is not lost to the sheet's dismissal.
+func presentAfterSheet(_ show: @escaping () -> Void) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: show)
+}
+
+extension View {
+    /// Shows `pending` as the in-game "Are you sure" popup when it is a spend above the player's size or irreversible; any other
+    /// action runs at once. Confirming runs it, cancelling drops it.
+    func confirmAction(_ pending: Binding<PendingAction?>) -> some View {
+        modifier(ConfirmActionModifier(pending: pending))
     }
 }
 

@@ -139,7 +139,7 @@ struct CompanyMarketing: View {
         if plan.lockedWeeks > 0 { lines.append("You cannot cut it for the first \(plan.lockedWeeks) weeks.") }
         if plan.nearCapacity { lines.append("You are near your limit: more awareness will not become more sales.") }
         lines.append(ch.isHighVariance ? "Hit or miss: it can do much less than it costs." : "Results vary: it raises awareness, it does not promise customers.")
-        pending = PendingAction(title: "Run \(ch.name)?", message: lines.joined(separator: "\n"), button: "Start campaign") { set(ch.id, budget, weeks) }
+        pending = PendingAction(title: "Run \(ch.name)?", message: lines.joined(separator: "\n"), button: "Start campaign", amount: plan.totalCost ?? budget * 4, currency: cur) { set(ch.id, budget, weeks) }
     }
 
     private func glyph(_ id: String) -> String {

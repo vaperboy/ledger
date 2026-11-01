@@ -46,6 +46,12 @@ enum AppRequest: Equatable {
     case market(companyID: Int)
     /// The Reviews app on one company.
     case reviews(companyID: Int)
+    /// AirStay on one company (0 = all), at the places it could take or the one it works in.
+    case airStay(companyID: Int)
+    /// TechPro Store shopping for one company, on one item's page ("" = the store front).
+    case techPro(companyID: Int, equipmentID: String)
+    /// Atlas Insurance for one company.
+    case atlas(companyID: Int)
 }
 
 struct Toast: Identifiable, Equatable {
@@ -484,6 +490,15 @@ final class GameStore: ObservableObject {
         openApp(.reviews, request: .reviews(companyID: companyID))
     }
 
+    /// Opens AirStay (places to rent) for one company.
+    func openAirStay(companyID: Int = 0) { openApp(.airStay, request: .airStay(companyID: companyID)) }
+
+    /// Opens TechPro Store for one company, on one item's page when `equipmentID` is given.
+    func openTechPro(companyID: Int, equipmentID: String = "") { openApp(.techPro, request: .techPro(companyID: companyID, equipmentID: equipmentID)) }
+
+    /// Opens Atlas Insurance for one company.
+    func openAtlas(companyID: Int) { openApp(.atlas, request: .atlas(companyID: companyID)) }
+
     /// Opens one message in the Inbox app.
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
 
@@ -513,6 +528,21 @@ final class GameStore: ObservableObject {
     }
     func takeReviewsRequest() -> Int? {
         guard case .reviews(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
+    }
+    func takeAirStayRequest() -> Int? {
+        guard case .airStay(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
+    }
+    func takeTechProRequest() -> (companyID: Int, equipmentID: String)? {
+        guard case .techPro(let id, let item)? = appRequest else { return nil }
+        appRequest = nil
+        return (id, item)
+    }
+    func takeAtlasRequest() -> Int? {
+        guard case .atlas(let id)? = appRequest else { return nil }
         appRequest = nil
         return id
     }

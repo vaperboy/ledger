@@ -210,6 +210,7 @@ public struct GameEngine {
     }
 
     mutating func tradeAndPay(day: Int) {
+        StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)

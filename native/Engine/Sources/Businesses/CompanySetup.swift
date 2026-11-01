@@ -241,17 +241,17 @@ public enum CompanySetup {
     /// Add one vehicle: paid for in full (`own`), on a loan with 20% down (`fin`) or leased (`lease`). The first payment is made here.
     /// Returns false when the money for it is not there. Original: `buyVehCore`.
     static func addVehicle(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, model: String, modelName: String, price: Double, mode: String,
-                           brand: EquipmentMarket.Brand?, data: GameData) -> Bool {
+                           brand: EquipmentMarket.Brand?, prepaid: Bool = false, data: GameData) -> Bool {
         let companyID = s.companies[i].id
         var loanID = 0, lease = 0.0, bookValue = price
         let name = brand?.name ?? modelName
         switch mode {
         case "own":
-            if s.companies[i].cash < price { return false }
-            Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: name)
+            if !prepaid && s.companies[i].cash < price { return false }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: price, category: nil, label: name) }
         case "fin":
-            if s.companies[i].cash < price * 0.2 { return false }
-            Payments.companyPays(&s, companyID: companyID, amount: price * 0.2, category: nil, label: "Down payment: \(name)")
+            if !prepaid && s.companies[i].cash < price * 0.2 { return false }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: price * 0.2, category: nil, label: "Down payment: \(name)") }
             loanID = EquipmentMarket.openLoan(&s, companyID: companyID, name: "Vehicle loan: \(name)", amount: price * 0.8, months: 60, extraMargin: 0.015)
         default:
             lease = jsRound(price * 0.0215); bookValue = 0

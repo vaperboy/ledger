@@ -130,7 +130,7 @@ struct CompanyHolding: View {
     }
 
     private func askAdd(_ id: Int, _ name: String) {
-        pending = PendingAction(title: "Put \(name) under this holding?", message: "The holding takes over your shares in it. Dividends then flow into the holding at the lower rate, and at 90% or more in one country it joins the tax group.", button: "Put under holding") {
+        pending = PendingAction(title: "Put \(name) under this holding?", message: "The holding takes over your shares in it. Dividends then flow into the holding at the lower rate, and at 90% or more in one country it joins the tax group.", button: "Put under holding", alwaysAsk: true) {
             if store.act({ $0.moveToHolding(companyID: id, holdingID: company.id) }) == true { Haptics.success(); store.show("\(name) is now held by \(company.name).", tone: "good") }
             else { Haptics.warning(); store.show("\(name) could not be moved under the holding.", tone: "warn") }
         }

@@ -167,7 +167,7 @@ struct PhoneAppScreen: View {
 
     var body: some View {
         AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint,
-                        palette: app.outsidePalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { appContent }
+                        palette: app.splashPalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { appContent }
     }
 
     @ViewBuilder private var appContent: some View {
@@ -207,6 +207,13 @@ struct PhoneAppScreen: View {
             ReviewsApp()
         case .settings:
             SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .airStay:
+            // The three shopping and insurance apps draw their own coloured header and keep their own steps (Back goes up one step first).
+            AirStayApp()
+        case .techPro:
+            TechProApp()
+        case .atlas:
+            AtlasApp()
         }
     }
 }

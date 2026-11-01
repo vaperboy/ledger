@@ -17,9 +17,23 @@ struct RootView: View {
         }
         .overlay(alignment: .top) { ToastView() }
         .transaction { t in if reduceMotion { t.animation = nil } }
-        .alert("Something went wrong", isPresented: Binding(get: { store.errorText != nil }, set: { if !$0 { store.errorText = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: { Text(store.errorText ?? "") }
+        .overlay { errorPopup }
+    }
+
+    /// An error is told in the same in-game popup as every question, not in an iOS alert.
+    @ViewBuilder private var errorPopup: some View {
+        if let text = store.errorText {
+            GamePopup(title: "Something went wrong", showsClose: false, onClose: { store.errorText = nil }) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button("OK") { store.errorText = nil }
+                            .buttonStyle(QuietButtonStyle()).accessibilityIdentifier("error-ok")
+                    }
+                }
+            }
+        }
     }
 }
 

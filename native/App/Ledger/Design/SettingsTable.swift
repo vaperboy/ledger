@@ -22,18 +22,28 @@ struct SettingsTableRow: View {
     var thumb: ThumbSpec? = nil
     var change: String = ""
     var changeTint: Color = Theme.gain
+    /// A row that only shows a value: no button, no chevron, nothing opens.
+    var readOnly = false
     var action: () -> Void
 
     var body: some View {
-        Button {
-            Haptics.tap()
-            action()
-        } label: {
-            if glyph != nil { overviewRow } else { plainRow }
+        if readOnly {
+            rowLook.accessibilityElement(children: .combine)
+        } else {
+            Button {
+                Haptics.tap()
+                action()
+            } label: {
+                rowLook
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(opens == .sheet ? "Opens a small sheet to change it" : "Opens a page")
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(opens == .sheet ? "Opens a small sheet to change it" : "Opens a page")
+    }
+
+    @ViewBuilder private var rowLook: some View {
+        if glyph != nil { overviewRow } else { plainRow }
     }
 
     private var overviewRow: some View {
@@ -49,7 +59,7 @@ struct SettingsTableRow: View {
                 if !change.isEmpty { Text(change.tidyText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(changeTint).lineLimit(1) }
             }
             .frame(maxWidth: 150, alignment: .trailing)
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryFaint)
+            if !readOnly { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryFaint) }
         }
         .padding(.vertical, 9)
         .overlay(alignment: .top) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
@@ -66,7 +76,7 @@ struct SettingsTableRow: View {
                 Text(value.tidyText).font(.system(size: 13).monospacedDigit()).foregroundStyle(valueTint)
                     .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                     .frame(maxWidth: 150, alignment: .trailing)
-                GlyphView(glyph: opens.glyph, size: opens == .sheet ? 14 : 12, weight: 1.8, tint: Theme.ivoryDim)
+                if !readOnly { GlyphView(glyph: opens.glyph, size: opens == .sheet ? 14 : 12, weight: 1.8, tint: Theme.ivoryDim) }
             }
             .padding(.horizontal, 12).padding(.vertical, 11)
             .overlay(alignment: .bottom) { Rectangle().fill(Theme.tableLine).frame(height: 1) }

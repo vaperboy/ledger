@@ -77,7 +77,7 @@ struct CompanySettings: View {
 
     private func confirmRename(_ cost: Double, _ cur: Currency) {
         let name = newName.trimmingCharacters(in: .whitespaces)
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename") {
+        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur) {
             switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
             case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
             case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")

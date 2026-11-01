@@ -141,10 +141,7 @@ struct HowYouSellSheet: View {
         return lines.joined(separator: "\n")
     }
 
-    /// Only a change that costs money, needs a licence or reduces capacity asks first; a free one is applied at once.
-    private func needsConfirm(_ q: KnobChangeQuote) -> Bool {
-        q.totalCost > 0 || !q.documents.isEmpty || q.transitionWeeks > 0
-    }
+    // A change is applied at once; it asks first only when it costs more than the size the player set (the cost is `amount`).
 
     private func choose(_ e: GameEngine, _ co: Company, _ knob: Knob, _ option: Int, _ cur: Currency) {
         guard let q = e.knobChangeQuote(companyID: co.id, knob: knob.id, option: option) else { return }
@@ -153,8 +150,8 @@ struct HowYouSellSheet: View {
         let run = {
             report(store.act { $0.changeKnob(companyID: id, knob: knob.id, option: option) }, cur)
         }
-        if !needsConfirm(q) { run(); return }
-        pending = PendingAction(title: "Sell by \(q.optionName)?", message: costLines(q, cur), button: q.totalCost > 0 ? "Change for \(cur.tidyShort(q.totalCost))" : "Change", run: run)
+        pending = PendingAction(title: "Sell by \(q.optionName)?", message: costLines(q, cur), button: q.totalCost > 0 ? "Change for \(cur.tidyShort(q.totalCost))" : "Change",
+                                amount: q.totalCost, currency: cur, run: run)
     }
 
     private func toggle(_ e: GameEngine, _ co: Company, _ knob: Knob, _ option: Int, _ on: Bool, _ cur: Currency) {
@@ -166,9 +163,8 @@ struct HowYouSellSheet: View {
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.tap(); store.show(on ? "\(q.optionName) is on." : "\(q.optionName) is off.", tone: "good") }
         }
-        if !needsConfirm(q) { run(); return }
         let button: String = on ? (q.totalCost > 0 ? "Add for \(cur.tidyShort(q.totalCost))" : "Add") : "Drop"
-        pending = PendingAction(title: on ? "Add \(q.optionName)?" : "Drop \(q.optionName)?", message: costLines(q, cur), button: button, run: run)
+        pending = PendingAction(title: on ? "Add \(q.optionName)?" : "Drop \(q.optionName)?", message: costLines(q, cur), button: button, amount: q.totalCost, currency: cur, run: run)
     }
 
     private func report(_ r: KnobChangeOutcome?, _ cur: Currency) {

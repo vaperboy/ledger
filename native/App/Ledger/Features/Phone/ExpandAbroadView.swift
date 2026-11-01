@@ -134,7 +134,7 @@ struct AbroadOptionsView: View {
     private func register(_ co: Company, _ o: Abroad.Option, _ cur: Currency) {
         pending = PendingAction(title: "Register \(co.name) in \(o.name)?",
                                 message: "Start-up cost about \(cur.tidyDisplay(o.estimatedStartCost)), taken from your own cash and savings once the company is registered. It is a separate limited company that must finish the foreign registration (about \(Int(o.registrationWeeks)) weeks) and get local permits before it opens. " + (o.hasDesk ? "" : "Without a head-office desk for \(o.name), new local rules can bring fines. ") + "Most new foreign operations run at a loss for a while.",
-                                button: "Register") {
+                                button: "Register", amount: o.estimatedStartCost, currency: cur) {
             switch store.act({ $0.expandAbroad(companyID: co.id, countryCode: o.countryCode) }) {
             case .success(let id)?: Haptics.success(); store.show("Registered in \(o.name). Complete the registration, then open.", tone: "good"); store.openCompany(id)
             case .failure(.brandTooWeak)?: Haptics.warning(); store.show("The brand is too weak to go abroad yet.", tone: "warn")

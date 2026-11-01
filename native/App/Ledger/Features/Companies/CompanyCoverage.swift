@@ -110,7 +110,7 @@ struct CompanyCoverageScreen: View {
         } else if !hasInsurer {
             Haptics.warning(); store.show("Choose an insurer first.", tone: "warn")
         } else {
-            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", run: run)
+            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, run: run)
         }
     }
 
@@ -175,7 +175,7 @@ struct CompanyCoverageScreen: View {
         let id = companyID
         let cost = a.kind == .insurer ? "Premiums change with the insurer's price factor." : "\(cur.tidyShort(a.monthlyFee)) a month from company cash."
         let verb = current == nil ? "Hire" : "Switch to"
-        pending = PendingAction(title: "\(verb) \(a.name)?", message: cost + (current != nil ? " \(current!.name) is dropped." : "") + (a.ownFirmID != nil ? " Your fees go to your own firm." : ""), button: current == nil ? "Hire" : "Switch") {
+        pending = PendingAction(title: "\(verb) \(a.name)?", message: cost + (current != nil ? " \(current!.name) is dropped." : "") + (a.ownFirmID != nil ? " Your fees go to your own firm." : ""), button: current == nil ? "Hire" : "Switch", amount: a.kind == .insurer ? 0 : a.monthlyFee, currency: cur) {
             let r = store.act { (e: inout GameEngine) -> Advisers.Result in
                 if let firm = a.ownFirmID { return e.chooseOwnAdviser(companyID: id, kind: a.kind, firmID: firm) }
                 return e.chooseAdviser(companyID: id, kind: a.kind, providerID: a.id)

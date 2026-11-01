@@ -145,7 +145,7 @@ struct HeadOfficeSection: View {
             m += "Risk: rent and salaries run every month whether or not they pay off. Your companies keep running without it."
             message = m
         }
-        pending = PendingAction(title: moving ? "Move to \(t.name)?" : "Set up a \(t.name.lowercased()) as your group office?", message: message, button: moving ? "Move" : "Set up") { rent(t) }
+        pending = PendingAction(title: moving ? "Move to \(t.name)?" : "Set up a \(t.name.lowercased()) as your group office?", message: message, button: moving ? "Move" : "Set up", amount: cost, currency: engine.homeCurrency) { rent(t) }
     }
 
     private func rent(_ t: Headquarters.Tier) {

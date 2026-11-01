@@ -10,7 +10,7 @@ struct CompanySaleSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var confirming: CompanySale.Offer?
+    @State private var pending: PendingAction?
     @State private var talking: Int?
 
     var body: some View {
@@ -36,23 +36,33 @@ struct CompanySaleSection: View {
                 }
             }
             .sheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
-                BuyerTalkSheet(companyID: company.id, offerID: t.id) { confirming = $0 }
+                BuyerTalkSheet(companyID: company.id, offerID: t.id) { o in laterAsk(o) }
             }
-            .confirmationDialog("Sell \(company.name)?", isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible, presenting: confirming) { o in
-                Button("Sell for " + cur.tidyShort(o.price * company.ownership / 100), role: .destructive) {
-                    let alone = engine.boardVote(kind: "sell", companyID: company.id).pushedThroughAlone
-                    let got = store.act { $0.update { s, data, ctx in CompanySale.accept(&s, companyID: company.id, offerID: o.id, data: data, context: ctx) } }
-                    if store.engine?.state.company(company.id)?.status == .sold {
-                        if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
-                        Haptics.success(); store.show("\(company.name) is sold to \(o.buyer)." + (alone ? " The other owners did not want this." : ""), tone: "good")
-                    }
-                    else { _ = got; Haptics.warning(); store.show("The sale did not go through: the other owners may be blocking it.", tone: "warn") }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { o in
-                Text("\(o.buyer) pays " + cur.tidyDisplay(o.price * company.ownership / 100) + (o.kind == "mbo" ? ", a third of it after two years" : "") + ". " + consequences(o, cur))
-            }
+            .confirmAction($pending)
         }
+    }
+
+    /// The talk sheet is closing when it hands the offer over: ask once it is gone.
+    private func laterAsk(_ o: CompanySale.Offer) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { askToSell(o) }
+    }
+
+    private func askToSell(_ o: CompanySale.Offer) {
+        let cur: Currency = engine.currency(for: company)
+        let mine: Double = o.price * company.ownership / 100
+        let tail: String = o.kind == "mbo" ? ", a third of it after two years" : ""
+        let message: String = "\(o.buyer) pays " + cur.tidyDisplay(mine) + tail + ". " + consequences(o, cur)
+        pending = PendingAction(title: "Sell \(company.name)?", message: message, button: "Sell for " + cur.tidyShort(mine), destructive: true) { accept(o) }
+    }
+
+    private func accept(_ o: CompanySale.Offer) {
+        let alone = engine.boardVote(kind: "sell", companyID: company.id).pushedThroughAlone
+        let got = store.act { $0.update { s, data, ctx in CompanySale.accept(&s, companyID: company.id, offerID: o.id, data: data, context: ctx) } }
+        if store.engine?.state.company(company.id)?.status == .sold {
+            if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
+            Haptics.success(); store.show("\(company.name) is sold to \(o.buyer)." + (alone ? " The other owners did not want this." : ""), tone: "good")
+        }
+        else { _ = got; Haptics.warning(); store.show("The sale did not go through: the other owners may be blocking it.", tone: "warn") }
     }
 
     private struct TalkID: Identifiable { var id: Int }
@@ -91,7 +101,7 @@ struct CompanySaleSection: View {
                     }
                     Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     WrapRow {
-                        Button("Accept…") { Haptics.tap(); confirming = o }.buttonStyle(QuietButtonStyle())
+                        Button("Accept…") { Haptics.tap(); askToSell(o) }.buttonStyle(QuietButtonStyle())
                         Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(QuietButtonStyle())
                         Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(QuietButtonStyle())
                     }

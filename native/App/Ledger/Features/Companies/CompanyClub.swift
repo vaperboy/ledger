@@ -202,7 +202,7 @@ struct CompanyClub: View {
         let kind: String = hiringKind
         let post: String = kind == "coach" ? "manager" : "assistant manager"
         let message: String = "\(cur.tidyDisplay(cd.wage)) a week for a \(post) of quality \(cd.quality). Whoever holds the post now is replaced."
-        pending = PendingAction(title: "Hire \(cd.name)?", message: message, button: "Hire") {
+        pending = PendingAction(title: "Hire \(cd.name)?", message: message, button: "Hire", amount: cd.wage * 52, currency: cur) {
             if store.act({ $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }) == true {
                 candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(post).", tone: "good")
             } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(post) now.", tone: "warn") }
@@ -278,7 +278,7 @@ struct CompanyClub: View {
 
     private func askSign(_ i: Int, _ tierName: String, _ fee: Double, _ cur: Currency) {
         let message: String = "\(cur.tidyDisplay(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.tidyShort(company.cash))."
-        pending = PendingAction(title: "Sign a \(tierName.lowercased())?", message: message, button: "Sign") {
+        pending = PendingAction(title: "Sign a \(tierName.lowercased())?", message: message, button: "Sign", amount: fee, currency: cur) {
             switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
             case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
             case .closed?: store.show("The transfer window is closed.", tone: "warn")
@@ -335,7 +335,7 @@ struct CompanyClub: View {
                 Spacer()
                 Button("Sign…") {
                     let message: String = "\(cur.tidyDisplay(o.weekly)) a week for \(o.years) year\(plural) as your \(title.lowercased()). You cannot take another offer for this slot until it ends."
-                    pending = PendingAction(title: "Sign \(o.name)?", message: message, button: "Sign") {
+                    pending = PendingAction(title: "Sign \(o.name)?", message: message, button: "Sign", alwaysAsk: true) {
                         if store.act({ $0.signSponsor(companyID: company.id, slot: key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
                         else { store.show("That offer is no longer available.", tone: "warn") }
                     }
@@ -364,7 +364,7 @@ struct ClubMarketView: View {
     @State private var country = ""
     @State private var offerFor: FootballModel.ClubInfo?
     @State private var answer: FootballModel.Offer?
-    @State private var confirmFound = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine {
@@ -391,7 +391,7 @@ struct ClubMarketView: View {
                         MoreBlock("Found a new club") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 Text("Start a club in the second tier. It costs about \(cur.tidyShort(cost)) and must earn promotion to the top league (finish in the top three).").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                                Button("Found a club") { confirmFound = true }.buttonStyle(TinyButtonStyle())
+                                Button("Found a club") { askToFound(code, cost, cur) }.buttonStyle(TinyButtonStyle())
                             }
                         }
                     }
@@ -402,15 +402,18 @@ struct ClubMarketView: View {
             .ledgerBackground()
             .appScreen(title: "Football clubs", subtitle: "Buy a club or found a new one.")
             .sheet(item: $offerFor) { c in offerSheet(c, cur) }
-            .confirmationDialog("Found a new club?", isPresented: $confirmFound, titleVisibility: .visible) {
-                Button("Found it") {
-                    switch store.act({ $0.foundClub(countryCode: code) }) {
-                    case .ok(let id)?: Haptics.success(); store.openCompany(id)
-                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
-                    default: store.show("Not possible.", tone: "warn")
-                    }
-                }
-            } message: { Text("You pay about 40% of its starting value and fund the early seasons yourself.") }
+            .confirmAction($pending)
+        }
+    }
+
+    private func askToFound(_ code: String, _ cost: Double, _ cur: Currency) {
+        pending = PendingAction(title: "Found a new club?", message: "You pay about 40% of its starting value and fund the early seasons yourself.", button: "Found it",
+                                amount: cost, currency: cur, risk: "Most clubs lose money or break even.") {
+            switch store.act({ $0.foundClub(countryCode: code) }) {
+            case .ok(let id)?: Haptics.success(); store.openCompany(id)
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")
+            default: store.show("Not possible.", tone: "warn")
+            }
         }
     }
 

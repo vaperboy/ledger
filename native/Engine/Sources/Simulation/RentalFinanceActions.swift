@@ -146,6 +146,12 @@ public extension GameEngine {
         return net
     }
 
+    /// What renovating the property would cost the company, for the confirmation; nil when it is gone.
+    func renovationCost(companyID: Int, propertyID: Int) -> Double? {
+        guard let co = state.company(companyID) else { return nil }
+        return RentalModel.renovationCost(co, propertyID: propertyID, data: data)
+    }
+
     @discardableResult
     mutating func renovateProperty(companyID: Int, propertyID: Int) -> RentalModel.BuyResult {
         var r = RentalModel.BuyResult.unknown

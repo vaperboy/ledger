@@ -58,3 +58,21 @@ public enum DecisionConfirm {
         return DecisionConfirmation(amount: amount > 0 ? amount : nil, irreversible: irreversible)
     }
 }
+
+/// The one rule for when the game stops to ask "Are you sure": only for a spend at or above the player's "Ask before spending" size, and
+/// for anything that cannot be undone. Everything else applies at once. Pure, so the app (every confirmation, Inbox answers included)
+/// and the tests share it.
+public enum ConfirmRule {
+    /// - Parameters:
+    ///   - irreversible: the action cannot be undone (a sale, a dismissal, closing, converting): always asked.
+    ///   - amount: the money the action spends, in the currency `limit` is expressed in; nil or zero when it spends nothing.
+    ///   - limit: the player's size under which a spend is not asked; 0 means "always ask a spend"; nil when the spend's currency is unknown
+    ///     (then a spend is asked, because it cannot be compared).
+    public static func asks(irreversible: Bool, amount: Double?, limit: Double?) -> Bool {
+        if irreversible { return true }
+        guard let amount, amount > 0 else { return false }
+        guard let limit else { return true }
+        if limit <= 0 { return true }
+        return amount >= limit
+    }
+}

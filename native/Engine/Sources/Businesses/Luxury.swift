@@ -323,12 +323,15 @@ public enum Luxury {
         save(&s, list)
     }
 
+    /// What a retreat on the island costs in `currency`.
+    public static func retreatCost(_ currency: Currency) -> Double { currency.scaledPrice(120000) }
+
     /// A retreat on the island, once a quarter. Your managers are in a better mood afterwards. Original: `EST.retreat`.
     @discardableResult
     public static func hostRetreat(_ s: inout GameState, currency: Currency) -> EstateResult {
         guard record(s).contains(where: { $0["k"].string == "e2" && $0["co"].int == 0 }) else { return .none }
         if let last = s.rest["ret56"], !last.isNull, s.week - last.int < 13 { return .wait }
-        let cost = currency.scaledPrice(120000)
+        let cost = retreatCost(currency)
         if s.cash < cost { return .notEnoughCash }
         Payments.playerPays(&s, cost, label: "Retreat on the island")
         s.rest["ret56"] = .number(Double(s.week))

@@ -340,13 +340,13 @@ public enum EquipmentMarket {
     }
 
     @discardableResult
-    public static func subscribe(_ s: inout GameState, companyID: Int, equipmentID: String, plan: Int, offer: Offer?, data: GameData) -> Result {
+    public static func subscribe(_ s: inout GameState, companyID: Int, equipmentID: String, plan: Int, offer: Offer?, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
         let all = offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: c.co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
         guard let o = offer ?? all.first(where: { $0.cls == 1 }) ?? all.first, plan >= 0, plan < 3 else { return .notPossible }
         let p = plans(e, company: c.co, c.w, factor: o.priceFactor)[plan]
-        if c.co.cash < p.monthlyFee { return .notEnoughCash }
-        Payments.companyPays(&s, companyID: companyID, amount: p.monthlyFee, category: "oth", label: "Subscription: \(o.brand) \(p.name)")
+        if !prepaid && c.co.cash < p.monthlyFee { return .notEnoughCash }
+        if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: p.monthlyFee, category: "oth", label: "Subscription: \(o.brand) \(p.name)") }
         var eq = s.companies[i].value("eq")
         let old = eq[e.id]
         let had = !old.isNull && old["sub"].isNull
@@ -479,19 +479,20 @@ public enum EquipmentMarket {
     /// Buy new equipment of a chosen brand: for cash, on a loan (20% down, four years) or on a lease (3 years, service included).
     /// Software and services are one licence; a licence already owned is replaced by the new version. Original: `buyEq` + the steps.
     @discardableResult
-    public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, data: GameData) -> Result {
+    public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return .notPossible }
         let k = kind(e, tradeID: c.bd.id, tables: c.tables)
         let one = k == "soft" || k == "svc"
         let mode = one ? softwareMode(e, tradeID: c.bd.id, company: c.co, c.w) : nil
-        if mode == .subscription { return subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: 1, offer: offer, data: data) }
+        if mode == .subscription { return subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: 1, offer: offer, prepaid: prepaid, data: data) }
         let q = one ? 1 : max(1, quantity)
         let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
         let total = unit * Double(q)
-        if c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
+        if prepaid || c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
         var pay = payment
-        if one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
-        if pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
+        // A prepaid order was checked and charged at checkout: the way to pay is kept as it was.
+        if !prepaid, one || (pay == .lease && !canLease(e, tradeID: c.bd.id, unitPrice: unit, company: c.co, c.w, tables: c.tables)) { pay = .cash }
+        if !prepaid, pay == .finance && !canFinance(e, tradeID: c.bd.id, total: total, company: c.co, c.w, tables: c.tables) { pay = .cash }
         let brand = Brand(name: offer.name, cls: offer.cls, reliability: offer.reliability, performance: offer.performance, rating: offer.rating)
         if pay == .lease {
             var lease = s.companies[i].value("lease")
@@ -504,8 +505,8 @@ public enum EquipmentMarket {
         }
         // A newer version of a licence already owned
         if one, case let eq = s.companies[i].value("eq"), !eq[e.id].isNull, eq[e.id]["sub"].isNull {
-            if c.co.cash < total { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "New version: \(offer.name)")
+            if !prepaid && c.co.cash < total { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "New version: \(offer.name)") }
             var rec = s.companies[i].value("eq")
             rec[e.id]["ver"] = .number(Double(s.week)); rec[e.id]["perf"] = .number(offer.performance)
             rec[e.id]["cost"] = .number(rec[e.id]["cost"].double + total); rec[e.id]["bv"] = .number(rec[e.id]["bv"].double + total)
@@ -515,12 +516,12 @@ public enum EquipmentMarket {
         }
         if pay == .finance {
             let down = total * 0.2
-            if c.co.cash < down { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: companyID, amount: down, category: nil, label: "Down payment: \(e.name)")
+            if !prepaid && c.co.cash < down { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: down, category: nil, label: "Down payment: \(e.name)") }
             openLoan(&s, companyID: companyID, name: "Equipment loan: \(e.name)", amount: total - down, months: 48, extraMargin: 0.02)
         } else {
-            if c.co.cash < total { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "\(e.name) x\(q)")
+            if !prepaid && c.co.cash < total { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: total, category: nil, label: "\(e.name) x\(q)") }
         }
         CompanySetup.addEquipment(&s, companyIndex: i, e, tradeID: c.bd.id, quantity: Double(q), totalPrice: total, brand: brand, used: nil, data: data)
         if one {
@@ -536,16 +537,16 @@ public enum EquipmentMarket {
 
     /// Buy a used item from this month's listings. Original: `buyUsedEq`.
     @discardableResult
-    public static func buyUsed(_ s: inout GameState, companyID: Int, equipmentID: String, listing L: UsedOffer, payment: Payment, data: GameData) -> Result {
+    public static func buyUsed(_ s: inout GameState, companyID: Int, equipmentID: String, listing L: UsedOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
-        if e.vehicleModels != nil { return buyUsedVehicle(&s, companyIndex: i, e, L, payment: payment, data: data) }
+        if e.vehicleModels != nil { return buyUsedVehicle(&s, companyIndex: i, e, L, payment: payment, prepaid: prepaid, data: data) }
         if payment == .finance {
-            if c.co.cash < L.price * 0.2 { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: companyID, amount: L.price * 0.2, category: nil, label: "Down payment: used \(L.name)")
+            if !prepaid && c.co.cash < L.price * 0.2 { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: L.price * 0.2, category: nil, label: "Down payment: used \(L.name)") }
             openLoan(&s, companyID: companyID, name: "Equipment loan: \(L.name)", amount: L.price * 0.8, months: 36, extraMargin: 0.025)
         } else {
-            if c.co.cash < L.price { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: companyID, amount: L.price, category: nil, label: "Used \(L.name) (\(L.year))")
+            if !prepaid && c.co.cash < L.price { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: companyID, amount: L.price, category: nil, label: "Used \(L.name) (\(L.year))") }
         }
         let brand = Brand(name: L.name, cls: L.cls, reliability: L.reliability, performance: L.performance, rating: L.rating)
         CompanySetup.addEquipment(&s, companyIndex: i, e, tradeID: c.bd.id, quantity: 1, totalPrice: L.price, brand: brand, used: L, data: data)
@@ -553,16 +554,16 @@ public enum EquipmentMarket {
         return .ok
     }
 
-    static func buyUsedVehicle(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, _ L: UsedOffer, payment: Payment, data: GameData) -> Result {
+    static func buyUsedVehicle(_ s: inout GameState, companyIndex i: Int, _ e: EquipmentSpec, _ L: UsedOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         let id = s.companies[i].id
         var loan = 0
         if payment == .finance {
-            if s.companies[i].cash < L.price * 0.2 { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: id, amount: L.price * 0.2, category: nil, label: "Down payment: used \(L.name)")
+            if !prepaid && s.companies[i].cash < L.price * 0.2 { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: id, amount: L.price * 0.2, category: nil, label: "Down payment: used \(L.name)") }
             loan = openLoan(&s, companyID: id, name: "Vehicle loan: \(L.name)", amount: L.price * 0.8, months: 48, extraMargin: 0.02)
         } else {
-            if s.companies[i].cash < L.price { return .notEnoughCash }
-            Payments.companyPays(&s, companyID: id, amount: L.price, category: nil, label: "Used \(L.name) (\(L.year))")
+            if !prepaid && s.companies[i].cash < L.price { return .notEnoughCash }
+            if !prepaid { Payments.companyPays(&s, companyID: id, amount: L.price, category: nil, label: "Used \(L.name) (\(L.year))") }
         }
         var list = s.companies[i].value("veh").array
         list.append(.object(["id": .number(Double(s.makeID())), "eq": .string(e.id), "model": .string(L.modelID), "cost": .number(L.price), "bv": .number(L.price), "cond": .number(L.trueCondition),
@@ -576,14 +577,14 @@ public enum EquipmentMarket {
 
     /// Buy a new vehicle of a chosen make. Cash, loan (20% down, five years) or lease (3 years). Original: `buyVehCore`.
     @discardableResult
-    public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, data: GameData) -> Result {
+    public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }),
               let vm = c.tables.vehicles[offer.modelID] else { return .notPossible }
         let base = vehiclePrice(vm, factor: offer.priceFactor, c.w)
         let mode = payment == .lease ? "lease" : payment == .finance ? "fin" : "own"
-        if payment == .finance && c.co.cash < base * 0.2 { return .notEnoughCash }
-        if payment == .cash && c.co.cash < base { return .notEnoughCash }
-        return CompanySetup.addVehicle(&s, companyIndex: i, e, model: offer.modelID, modelName: vm.name, price: base, mode: mode, brand: Brand(name: offer.name, cls: 1, reliability: offer.reliability, performance: 1, rating: offer.rating), data: data) ? .ok : .notEnoughCash
+        if !prepaid && payment == .finance && c.co.cash < base * 0.2 { return .notEnoughCash }
+        if !prepaid && payment == .cash && c.co.cash < base { return .notEnoughCash }
+        return CompanySetup.addVehicle(&s, companyIndex: i, e, model: offer.modelID, modelName: vm.name, price: base, mode: mode, brand: Brand(name: offer.name, cls: 1, reliability: offer.reliability, performance: 1, rating: offer.rating), prepaid: prepaid, data: data) ? .ok : .notEnoughCash
     }
 
     // MARK: Selling

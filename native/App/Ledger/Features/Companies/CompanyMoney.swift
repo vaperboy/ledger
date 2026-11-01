@@ -7,12 +7,12 @@ import Businesses
 import Events
 import Simulation
 
-/// The parts of a company's Finances tab: Summary, Statements, Ownership and Settings. Every payment, loan and money move is in the Bank
+/// The parts of a company's Finances tab: Summary, Ownership and Settings. Every payment, loan and money move is in the Bank
 /// app, on this company's account ("Open in Bank").
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
-    case summary = "Summary", accounts = "Statements", owners = "Ownership", settings = "Settings"
+    case summary = "Summary", owners = "Ownership", settings = "Settings"
     /// The tab row.
-    static let tabs: [CompanyMoneyPart] = [.summary, .accounts, .owners, .settings]
+    static let tabs: [CompanyMoneyPart] = [.summary, .owners, .settings]
 }
 
 /// "Open in Bank": all money handling (transfers, loans, deposits, taxes, bills, payroll approval, statements) lives in the Bank app.
@@ -44,7 +44,7 @@ struct CompanyMoney: View {
     }
 }
 
-/// The full-screen page a row of the Finances table opens: Statements, Ownership or the company's own settings.
+/// The full-screen page a row of the Finances table opens: Ownership or the company's own settings.
 struct MoneyPageDestination: View {
     @EnvironmentObject var store: GameStore
     var part: CompanyMoneyPart
@@ -61,7 +61,6 @@ struct MoneyPageDestination: View {
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch part {
         case .summary: EmptyView()
-        case .accounts: CompanyAccounts(engine: e, company: co)
         case .owners: CompanyOwnerMoney(engine: e, company: co)
         case .settings: CompanySettings(engine: e, company: co)
         }
@@ -85,8 +84,9 @@ struct CompanyMoneySummary: View {
             CompanyStatsFigures(engine: engine, company: company, block: .spending)
             owedCard(cur, o)
             CompanyPaymentStress(engine: engine, company: company)
-            settingsTable(cur, o)
+            settingsTable(cur)
             CompanyStatsFigures(engine: engine, company: company, block: .legal)
+            CompanyLabourCard(engine: engine, company: company)
         }
     }
 
@@ -102,11 +102,12 @@ struct CompanyMoneySummary: View {
             .init(label: "Debt", value: cur.tidyShort(h.debt), tint: debtTint),
             .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: dueTint),
         ]
-        return CardSection("Owed") {
+        return Card(padding: 14, radius: Theme.Radius.card) {
             VStack(alignment: .leading, spacing: 10) {
                 StatStrip(cells: cells, ruled: false)
                 loansRow(cur, h.debt)
             }
+            .environment(\.insideCard, true)
         }
     }
 
@@ -123,14 +124,13 @@ struct CompanyMoneySummary: View {
     // MARK: Table of settings
 
     /// One row per area of the company's money; each opens a full page (the decisions there are big: dividends, selling, closing).
-    private func settingsTable(_ cur: Currency, _ o: FinanceOverview) -> some View {
+    private func settingsTable(_ cur: Currency) -> some View {
         let canSell = CompanySale.canSell(engine.state, companyID: company.id)
         let whole: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
         let share: String = "You own \(Int(company.ownership.rounded()))%" + (canSell ? ", worth about " + cur.tidyShort(whole * company.ownership / 100) : "")
         let form: String = company.form == .limited ? "Limited company" : "Sole trader"
         let closed: Bool = company.status == .closed
-        return SettingsTable(heading: "Money matters") {
-            SettingsTableRow(title: "Statements", note: "Profit and loss, balance sheet, cash flow, tax", value: "Month " + cur.tidyShort(o.monthProfit), valueTint: o.monthProfit < 0 ? Theme.loss : Theme.ivory) { part = .accounts }
+        return SharpTable {
             SettingsTableRow(title: "Ownership", note: "Dividends, owners, shares, selling", value: share) { part = .owners }
             SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
         }

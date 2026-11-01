@@ -294,7 +294,7 @@ struct AcctPayroll: View {
         var message: String = "\(fmt.short(r.amountDue)) is charged to \(r.account) for \(r.lines.count.peopleText) (employer cost \(fmt.short(r.totalEmployerCost)))."
         message += after >= 0 ? " About \(fmt.short(after)) is left." : " The account is short by \(fmt.short(-after)): part of the wages would stay unpaid."
         message += late ? " Paid today." : " It goes out on \(r.payDateText)."
-        pending = PendingAction(title: title, message: message, button: late ? "Pay now" : "Approve") { runNow(id, r) }
+        pending = PendingAction(title: title, message: message, button: late ? "Pay now" : "Approve", amount: r.amountDue, currency: store.engine.map { $0.currency(for: co) }) { runNow(id, r) }
     }
 
     private func runNow(_ id: Int, _ r: PayrollRunReview) {
