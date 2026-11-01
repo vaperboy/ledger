@@ -181,6 +181,7 @@ struct HeadOfficeSection: View {
                     }
                 }
                 Spacer(minLength: 0)
+                GroupRewardMenu(engine: engine, personID: id, name: x["name"].string)
                 Button("Let go") {
                     let name = x["name"].string
                     pending = PendingAction(title: "Let \(name) go?", message: "What they do for the group stops at once. " + engine.officeRoleResult(role: x["role"].string), button: "Let go", destructive: true) {

@@ -128,7 +128,7 @@ struct CompanyManagement: View {
                                  lineTint: Theme.loss, wage: cur.tidyShort(company.managerMonthlyWage))
         }
         var line = ""
-        if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard \(card.score), \(Self.scoreWord(card.score))" }
+        if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard: \(Self.scoreWord(card.score))" }
         if company.managerProfitBonus > 0 { line += (line.isEmpty ? "" : " · ") + "\(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
         return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage))
@@ -296,10 +296,10 @@ struct ManagerSheet: View {
                 RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id))
                 if let card = e.managerScorecard(companyID: co.id) {
                     FigureCard(items: [
-                        .init(label: "Scorecard", value: "\(card.score)", tint: card.score < 35 ? Theme.loss : card.score >= 65 ? Theme.gain : Theme.ivory, sub: CompanyManagement.scoreWord(card.score)),
+                        .init(label: "Scorecard", value: CompanyManagement.scoreWord(card.score).capitalized, tint: card.score < 35 ? Theme.loss : card.score >= 65 ? Theme.gain : Theme.ivory),
                         .init(label: "Margin, 3 months", value: String(format: "%.0f%%", card.margin * 100), tint: Theme.change(card.margin)),
-                        .init(label: "Reputation", value: "\(card.reputation)"),
-                        .init(label: "Quality", value: "\(card.quality)"),
+                        .init(label: "Reputation", value: StandingWords.reputation(Double(card.reputation))),
+                        .init(label: "Quality", value: StandingWords.reputation(Double(card.quality))),
                     ], columns: 4)
                     if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                     if card.fraud > 0 { Text("Fraud was found under this manager.").font(.system(size: 11.5)).foregroundStyle(Theme.loss) }

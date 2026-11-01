@@ -350,7 +350,7 @@ struct FranchisorCard: View {
 
     private func applicantCard(_ a: Franchising.Applicant, _ cur: Currency) -> some View {
         let cityName: String = engine.data.countries.city(a.cityID, preferring: company.countryCode)?.city.name ?? ""
-        let line: String = "\(cityName) · \(a.experience) yr experience · \(a.personalityText)"
+        let line: String = "\(cityName) · \(FranchiseApplicantWords.sentence(a))"
         let cover = coverage(a)
         let coverTint: Color = (cover?.fraction ?? 1) >= 1 ? Theme.gain : Theme.caution
         return NavigationLink { FranchiseTalkView(companyID: company.id, applicantID: a.id) } label: {
@@ -467,7 +467,7 @@ struct FranchiseTalkView: View {
                                     FlatRow(label: "Their profit a year", value: cur.tidyShort(s.theirs), tint: s.theirs < 0 ? Theme.loss : Theme.ivory)
                                     FlatRow(label: "Yours a year", value: cur.tidyShort(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.tidyShort(s.youPutIn))." : "")
                                 }
-                                Text("Mood: " + PatienceWords.feeling(left: patience, of: Franchising.patienceDots(for: a.personality)).text)
+                                Text("Seems " + PatienceWords.feeling(left: patience, of: Franchising.patienceDots(for: a.personality)).text.lowercased() + ".")
                                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                                 Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(TinyButtonStyle())
                             }
@@ -480,7 +480,7 @@ struct FranchiseTalkView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()
-            .appScreen(title: a.name, subtitle: "\(e.data.countries.city(a.cityID, preferring: co.countryCode)?.city.name ?? "") · \(a.experience) yr experience · \(a.personalityText)", tab: .group)
+            .appScreen(title: a.name, subtitle: "\(e.data.countries.city(a.cityID, preferring: co.countryCode)?.city.name ?? "") · \(FranchiseApplicantWords.sentence(a))", tab: .group)
             .onAppear {
                 if !loaded { terms = e.standardTalkTerms(companyID: companyID); applicantCopy = a; patience = a.patience; loaded = true }
             }
@@ -524,5 +524,19 @@ struct FranchiseTalkView: View {
             if let hint = r.answer.hint { terms.help = hint }
             if r.walkedAway { finished = true; Haptics.warning() }
         }
+    }
+}
+
+/// What a franchise applicant is like, as a sentence of what you notice (no labels, no figures).
+enum FranchiseApplicantWords {
+    static func sentence(_ a: Franchising.Applicant) -> String {
+        let years: String = a.experience <= 0 ? "Has not run a business before" : a.experience == 1 ? "Has run a business for a year" : "Has run a business for \(a.experience) years"
+        let manner: String
+        switch a.personality {
+        case "eager": manner = "keen to get going"
+        case "tough": manner = "drives a hard bargain"
+        default: manner = "careful with money"
+        }
+        return years + ", " + manner + "."
     }
 }
