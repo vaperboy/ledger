@@ -61,7 +61,7 @@ public enum StaffModel {
             if s.commissionMode != nil && (salesRoles.contains(s.role) || s.flag("ppx")) {
                 pay = s.commissionMode == "mix" ? 1.06 : s.commissionMode == "com" ? 1.12 : 1
             }
-            let lazy = s.str("flag") == "lazy" ? 0.82 : 1
+            let lazy = (s.str("flag") == "lazy" ? 0.82 : 1) * (s.value("dis").isNull ? 1 : 0.9)
             t += rampFactor(s, week: week, person: people[s.id]) * tirednessFactor(s) * s.partTimeShare * 0.92 * (0.75 + 0.5 * skill / 100) * lazy * pay
         }
         return t

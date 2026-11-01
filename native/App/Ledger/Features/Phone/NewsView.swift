@@ -215,16 +215,15 @@ struct NewsView: View {
 
     @ViewBuilder private func paper(_ e: GameEngine) -> some View {
         let pages = e.frontPages
-        let img = e.publicImage
         VStack(alignment: .leading, spacing: 4) {
             Text(e.paperName).font(.serifTitle(24)).foregroundStyle(P.ink)
             Text("The local business paper. A front page every week; interviews arrive in your inbox.").font(.system(size: 12)).foregroundStyle(P.inkSoft)
         }
         CardSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(P.accent) }) {
             VStack(spacing: 0) {
-                FlatRow(label: "Trust", value: "\(Int(img.trust.rounded()))", rule: false)
-                FlatRow(label: "Boldness", value: "\(Int(img.bold.rounded()))")
-                FlatRow(label: "Care for people", value: "\(Int(img.care.rounded()))")
+                ForEach(Array(e.publicImageWords.enumerated()), id: \.offset) { i, w in
+                    FlatRow(label: w.axis, value: w.word, rule: i > 0)
+                }
             }
         }
         if pages.isEmpty {

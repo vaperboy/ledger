@@ -82,7 +82,7 @@ public enum RivalAbsorb {
             if !roles.isEmpty {
                 for n in 0..<max(1, Int(jsRound(sz * 2))) {
                     let cand = Hiring.generateCandidate(role: roles[n % roles.count], company: owner, faces: false, state: &s, data: data)
-                    if Hiring.hire(cand.id, into: co.id, monthlyWage: cand.askingMonthlyWage, state: &s, data: data) == .ok { came += 1 }
+                    if Hiring.hire(cand.id, into: co.id, monthlyWage: Hiring.askInThisTalk(cand, company: s.company(co.id), state: s, data: data) * 1.02, state: &s, data: data) == .ok { came += 1 }
                 }
             }
             let text = "\(r.name) is now part of \(co.name). Their customers come over" + (came > 0 ? ", and \(came) of their staff \(came == 1 ? "joins" : "join") you" : "") + "."

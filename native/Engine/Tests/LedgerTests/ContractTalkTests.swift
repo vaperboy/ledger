@@ -142,7 +142,8 @@ final class ContractTalkTests: XCTestCase {
                 var p = Hiring.generateCandidate(role: "barista", company: s.company(id), tier: "mid", state: &s, data: d)
                 p.set("pers", pers); s.people[p.id] = p; pid = p.id
             }
-            let ask = e.state.people[pid]!.askingMonthlyWage
+            // what they ask of THIS company with THIS package (the salary talk's ask), not the bare figure on the CV
+            let ask = try XCTUnwrap(e.hearTheirAsk(post: .worker(role: "barista"), companyID: id, personID: pid))
             XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: ask), .ok, "\(pers): an offer at their ask is accepted")
         }
     }
@@ -258,6 +259,12 @@ final class ContractTalkTests: XCTestCase {
         guard case .notPossible = e.contractPropose(companyID: id, personID: mgr, proposal: .init(.bonus, amount: 0.05)) else { return XCTFail("no cut here") }
         let agent = hire(&e, id, role: "estate")
         guard case .notPossible = e.contractPropose(companyID: id, personID: agent, proposal: .init(.bonus, amount: 0.05)) else { return XCTFail("fixed pay has no plan") }
+        // a move to a less secure pay plan is something a person may refuse: a content, flexible person takes it
+        e.update { s, _, _ in
+            var p = s.people[agent]!; p.set("pers", "loyal"); s.people[agent] = p
+            let ci = s.companyIndex(id)!, k = s.companies[ci].staff.firstIndex { $0.id == agent }!
+            var st = s.companies[ci].staff; st[k].happyUntilWeek = s.week + 40; s.companies[ci].staff = st
+        }
         _ = e.contractPropose(companyID: id, personID: agent, proposal: .init(.payBasis, choice: "mix"))
         guard case .agreed = e.contractPropose(companyID: id, personID: agent, proposal: .init(.bonus, amount: 0.08)) else { return XCTFail("rate") }
         XCTAssertEqual(member(e, id, agent)?.commissionRate ?? 0, 0.08, accuracy: 1e-9)
@@ -359,8 +366,9 @@ final class ContractTalkTests: XCTestCase {
         let m = member(e, id, pid)!
         XCTAssertEqual(pv.costPerMonth, (wage(e, id, pid) * 0.1) * (1 + w.country(co).employerOnCost(monthlyWage: m.monthlyWage * 1.1)), accuracy: wage(e, id, pid) * 0.03)
         XCTAssertGreaterThan(pv.costPerMonth, 0)
-        let before = try XCTUnwrap(pv.quitYearBefore), after = try XCTUnwrap(pv.quitYearAfter)
-        XCTAssertLessThanOrEqual(after, before, "pay that is closer to the market does not make leaving likelier")
+        let before = try XCTUnwrap(pv.quitRiskBefore), after = try XCTUnwrap(pv.quitRiskAfter)
+        XCTAssertTrue(after == before || after == .unlikely || (before == .likely && after == .possible), "pay that is closer to the market does not make leaving likelier")
+        XCTAssertFalse(pv.lines.joined().contains("%") && pv.lines.joined().lowercased().contains("chance"), "no probabilities in the text")
         XCTAssertTrue(pv.labour.contains { $0.contains("minimum pay") }, "the UK data has a minimum wage")
         XCTAssertTrue(pv.lines.contains { $0.hasPrefix("Pay:") })
         let blocked = e.contractPreview(companyID: id, personID: 999_999, proposal: .init(.payRise, amount: 0.1))
@@ -384,8 +392,10 @@ final class ContractTalkTests: XCTestCase {
         ask(&e, id, pid, .payRise)
         let talk = try XCTUnwrap(e.contractTalk(personID: pid))
         let pv = e.contractPreview(companyID: id, personID: pid, proposal: talk.proposal, asRequest: true)
-        let before = try XCTUnwrap(pv.quitYearBefore), declined = try XCTUnwrap(pv.quitYearIfDeclined)
-        XCTAssertGreaterThan(declined, before)
+        let declinedRisk = try XCTUnwrap(pv.quitRiskIfDeclined)
+        let declined = try XCTUnwrap(ContractTalk.quitYear(e.state, companyID: id, personID: pid, data: e.data, declined: true))
+        XCTAssertGreaterThan(declined, try XCTUnwrap(ContractTalk.quitYear(e.state, companyID: id, personID: pid, data: e.data)))
+        XCTAssertEqual(declinedRisk, ContractTalk.QuitRisk.band(declined))
         XCTAssertTrue(pv.risks.contains { $0.contains("If you decline") })
         guard case .declined(let text) = e.contractRespond(companyID: id, personID: pid, decision: .decline) else { return XCTFail("declined") }
         XCTAssertFalse(text.isEmpty)

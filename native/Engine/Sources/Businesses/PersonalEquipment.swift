@@ -182,6 +182,7 @@ public enum PersonalEquipment {
         let on = set ?? !st[k].flag("ownCar")
         st[k].set("ownCar", on ? 1 : 0)
         s.companies[i].staff = st
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return on
     }
 }

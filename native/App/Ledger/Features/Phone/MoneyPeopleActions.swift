@@ -206,7 +206,7 @@ struct FundManagerCard: View {
                 AmountField(title: "Amount to hand over", currency: cur, amount: $amount)
             }
             ForEach(cands, id: \.id) { c in candidateCard(c) }
-            Text("Their claims may be exaggerated; the true skill is never shown.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Their claims may be exaggerated; how good they really are shows only in the results.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }
     }
 
@@ -216,7 +216,7 @@ struct FundManagerCard: View {
                 IconCircle(glyph: Glyph.person, size: 36)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(c.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text("Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill · \(String(format: "%g", c.yearsClaimed)) yr track record · fee \(pct(c.fee))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Text("Age \(c.age) · \(GameEngine.cvImpression(claimed: c.claimedSkill, experience: c.yearsClaimed)) · fee \(pct(c.fee))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                 }
                 Spacer(minLength: 8)
                 QuietButton(title: "Hire") { hiring = c }
@@ -302,8 +302,9 @@ struct HoldingFinanceManagerCard: View {
                 Text("An agency checks references; with the others the paperwork is yours to verify.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             } else {
                 CandidateHireList(people: found, emptyText: "Nobody to meet now.") { c in
-                    CandidateHireRow(person: c, currency: cur, subtitle: "Age \(c.age) · says \(Int(c.claimedSkill.rounded())) skill\(c.flag("checked") ? " · references checked" : "")",
-                                     market: engine.goingRate(for: .office(role: "fin")), factors: [0.9, 1.0, 1.15, 1.3]) { wage in hire(c, wage) }
+                    let request = HireRequest(post: .office(role: "fin"), companyID: nil, personID: c.id, roleTitle: "Finance manager", onHired: { found = [] })
+                    CandidateHireRow(person: c, currency: cur, subtitle: CandidateClaims.line(engine, c, extra: c.flag("checked") ? "references checked" : ""),
+                                     market: engine.goingRate(for: .office(role: "fin")), request: request)
                 }
             }
         } else {
@@ -316,17 +317,9 @@ struct HoldingFinanceManagerCard: View {
         else { store.show("Nobody to meet now. Try again later or pay for a search.", tone: "warn") }
     }
 
-    /// The same main-office hire as Group > Main office (`hireOffice`), reported in the same words.
-    private func hire(_ c: Person, _ wage: Double) -> HireFeedback {
-        let feedback = HireFeedback.from(store.act { $0.hireOffice(role: "fin", personID: c.id, monthlyWage: wage) }, name: c.name, role: "Finance manager")
-        if feedback.isHired { found = [] }
-        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
-        return feedback
-    }
-
     private func statusTitle(_ on: Bool) -> String {
         if on, let n = FinanceManager.negotiator(engine.state, holdingID: company.id) {
-            return "\(n.name) runs this holding (negotiator skill \(Int((n.skill * 100).rounded())))"
+            return "\(n.name) runs this holding"
         }
         return on ? "Your finance manager runs this holding" : "You run this holding yourself"
     }

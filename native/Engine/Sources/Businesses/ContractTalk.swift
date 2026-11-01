@@ -17,8 +17,10 @@ import Finance
 ///  - Nobody who works for you ever refuses MORE pay for the same job. A rise is always taken. A person's counter can only ask for more than what is
 ///    on the table; when their patience is gone they take what is offered (and are not happy about it), they do not walk away. Hours, a commission-only
 ///    pay basis and moving are not "more pay", so a person may be unwilling there, and the preview says so beforehand.
-///  - You may decline, or delay, a fair request. That has real consequences, shown before you confirm: the chance that they hand in notice within a year
-///    (`StaffWeek.quitOdds`, through the `denied` mark), the mood, and what it costs a month.
+///  - You may decline, or delay, a fair request. That has real consequences, shown before you confirm in words (how likely they are to start looking
+///    elsewhere, never a percentage): the `denied` mark of `StaffWeek.quitOdds`, the mood, and what it costs a month and a year.
+///  - A person may refuse what costs them: a big cut in hours, a change of role, a move to a less secure pay plan. How likely they are to say no depends on
+///    their temperament, on whether they feel let down, and on whether they are in a good mood; never on their age. Pay rises are never refused.
 ///
 /// An open talk is kept on the person under the key `ctalk`, so a saved game keeps it; the key exists only while a talk is open.
 public enum ContractTalk {
@@ -229,6 +231,9 @@ public enum ContractTalk {
             guard let m = sub.member else { return [] }
             let end = FixedTerm.endWeek(m)
             var out = [Choice(id: "perm", title: "Permanent" + (end == nil ? " (now)" : ""), detail: "No end date. Ending it later follows the labour rules for dismissal and resignation.", on: end == nil)]
+            if !m.value("seas").isNull {
+                for n in 1...2 { out.append(Choice(id: "seasons:\(n)", title: "Contract for \(n) \(n == 1 ? "season" : "seasons")", detail: "Ends with the last season; you are asked about bringing them back.", on: nil)) }
+            }
             for w in FixedTerm.termChoices {
                 out.append(Choice(id: "fixed:\(w)", title: (end == nil ? "Fixed term of \(w) weeks" : "Renew for \(w) more weeks"),
                                   detail: end == nil ? "Ends on its date unless you renew it." : "Added to the end date (week \(end ?? 0)).", on: nil))
@@ -248,7 +253,8 @@ public enum ContractTalk {
                 .map { Choice(id: $0.id, title: $0.title, detail: "\($0.place) · they will ask about \(cur.display($0.ask)) a month", amount: $0.ask) }
         case .hours:
             guard let m = sub.member else { return [] }
-            var out = [Choice(id: "hours", title: "Set the hours a week", detail: "Pay follows the hours for people paid by the hour.")]
+            var out = [Choice(id: "percent", title: "Set the working percentage", detail: "20, 50, 80 or 100 percent of a full week, or another figure from 10 to 100. Pay follows for people paid by the hour; employer cost, expected hours and capacity follow."),
+                       Choice(id: "hours", title: "Set the hours a week", detail: "Pay follows the hours for people paid by the hour.")]
             if m.weeklyHours != nil { out.append(Choice(id: "full", title: "Offer full time", detail: "Only if that is the work they want.")) }
             if !m.value("seas").isNull {
                 out.append(Choice(id: "part", title: "Part time all year", detail: "Yes unless they only want the season."))
@@ -333,11 +339,23 @@ public enum ContractTalk {
         public var blocked = ""
         public var costBefore = 0.0
         public var costAfter = 0.0
-        /// The chance that they hand in notice within a year, now and if this is agreed (nil for a manager, who has no such model).
-        public var quitYearBefore: Double?
-        public var quitYearAfter: Double?
-        /// For a request of theirs: the same chance if you decline it, and the mood word.
-        public var quitYearIfDeclined: Double?
+        /// How likely they are to start looking elsewhere, now and if this is agreed (nil for a manager, who has no such model). Words, not a probability.
+        public var quitRiskBefore: QuitRisk?
+        public var quitRiskAfter: QuitRisk?
+        /// For a request of theirs: the same if you decline it.
+        public var quitRiskIfDeclined: QuitRisk?
+        /// This person's employer cost before and after (the one `EmployerCost` rule), for the monthly and annual difference of THIS change.
+        public var employerBefore: EmployerCost.Breakdown?
+        public var employerAfter: EmployerCost.Breakdown?
+        /// Contracted hours a week before and after (a manager: 0).
+        public var hoursBefore = 0.0
+        public var hoursAfter = 0.0
+        /// What it does to payroll (wages, charges, leave cover, benefits), in words.
+        public var payrollImpact = ""
+        /// What it does to the work the business can do, in words.
+        public var operationalImpact = ""
+        /// They may well say no to this (a cut in hours, a change of role, a less secure pay plan). Words only; the answer comes when you ask.
+        public var mayRefuse = false
         /// What changes, in words.
         public var lines: [String] = []
         /// What the country's labour data requires or sets.
@@ -347,6 +365,24 @@ public enum ContractTalk {
         /// Risks and who may refuse.
         public var risks: [String] = []
         public var costPerMonth: Double { costAfter - costBefore }
+        public var costPerYear: Double { costPerMonth * 12 }
+        public var hoursDifference: Double { hoursAfter - hoursBefore }
+        /// This person's own monthly and annual difference.
+        public var personMonthlyDifference: Double { (employerAfter?.totalMonthly ?? 0) - (employerBefore?.totalMonthly ?? 0) }
+        public var personAnnualDifference: Double { personMonthlyDifference * 12 }
+    }
+
+    /// How likely a person is to hand in notice, in words.
+    public enum QuitRisk: String, Sendable {
+        case unlikely, possible, likely
+        public var words: String {
+            switch self {
+            case .unlikely: return "unlikely to look elsewhere"
+            case .possible: return "may start looking elsewhere"
+            case .likely: return "likely to start looking elsewhere"
+            }
+        }
+        static func band(_ p: Double?) -> QuitRisk? { p.map { $0 < 0.15 ? .unlikely : $0 < 0.4 ? .possible : .likely } }
     }
 
     /// What the company pays a month for its people and perks: wages with the employer's charges, the manager and his profit share, perks, own-car mileage.
@@ -377,9 +413,11 @@ public enum ContractTalk {
         let w = World(state: s, data: data), co = s.companies[sub.ci], cur = w.currency(co), lab = w.labour(co)
         let first = ManagerModel.firstName(sub.person.name)
         c.costBefore = employerCost(s, companyID: companyID, data: data)
-        c.quitYearBefore = quitYear(s, companyID: companyID, personID: personID, data: data)
+        c.quitRiskBefore = QuitRisk.band(quitYear(s, companyID: companyID, personID: personID, data: data))
+        c.employerBefore = sub.member.map { EmployerCosts.staff($0, company: co, state: s, data: data) }
         var t = s
-        let done = applyFinal(&t, sub, p, data: data)
+        let done = applyFinal(&t, sub, p, data: data, refuses: false)
+        c.mayRefuse = refusalLikelihood(sub, p, week: s.week) != nil
         switch done {
         case .notPossible(let why): c.blocked = why; return c
         case .unwilling(let why): c.risks.append(why)
@@ -390,8 +428,11 @@ public enum ContractTalk {
         if p.topic == .move, let to = Int(p.choice) { otherCost = employerCost(s, companyID: to, data: data); c.costAfter = employerCost(t, companyID: to, data: data) - otherCost + employerCost(t, companyID: companyID, data: data) }
         else { c.costAfter = employerCost(t, companyID: companyID, data: data) }
         if p.topic == .move, let to = Int(p.choice) { c.costBefore += otherCost; c.costAfter += otherCost; _ = to }
-        c.quitYearAfter = quitYear(t, companyID: p.topic == .move ? (Int(p.choice) ?? companyID) : companyID, personID: personID, data: data)
-        if asRequest { c.quitYearIfDeclined = quitYear(s, companyID: companyID, personID: personID, data: data, declined: true) }
+        c.quitRiskAfter = QuitRisk.band(quitYear(t, companyID: p.topic == .move ? (Int(p.choice) ?? companyID) : companyID, personID: personID, data: data))
+        if asRequest { c.quitRiskIfDeclined = QuitRisk.band(quitYear(s, companyID: companyID, personID: personID, data: data, declined: true)) }
+        if p.topic != .move, let m2 = t.company(companyID)?.staff.first(where: { $0.id == personID }), let co2 = t.company(companyID) {
+            c.employerAfter = EmployerCosts.staff(m2, company: co2, state: t, data: data)
+        }
 
         let after = subject(t, companyID: sub.isManager && p.topic == .move ? (Int(p.choice) ?? companyID) : companyID, personID: personID)
         let wageBefore = sub.member?.monthlyWage ?? co.managerMonthlyWage
@@ -399,7 +440,17 @@ public enum ContractTalk {
         if abs(wageAfter - wageBefore) > 0.5 { c.lines.append("Pay: \(cur.display(wageBefore)) -> \(cur.display(wageAfter)) a month (\(wageAfter >= wageBefore ? "+" : "")\(cur.display(wageAfter - wageBefore)))") }
         let hoursBefore = sub.member?.weeklyHours ?? StaffModel.fullWeekHours
         let hoursAfter = after?.member?.weeklyHours ?? StaffModel.fullWeekHours
-        if abs(hoursAfter - hoursBefore) > 0.01 { c.lines.append("Hours: \(Int(hoursBefore.rounded())) -> \(Int(hoursAfter.rounded())) a week") }
+        c.hoursBefore = sub.member == nil ? 0 : hoursBefore
+        c.hoursAfter = after?.member == nil ? 0 : hoursAfter
+        if abs(hoursAfter - hoursBefore) > 0.01 {
+            c.lines.append("Hours: \(ContractHistory.fmt(hoursBefore)) -> \(ContractHistory.fmt(hoursAfter)) a week (working percentage \(ContractHistory.fmt(hoursBefore / StaffModel.fullWeekHours * 100)) -> \(ContractHistory.fmt(hoursAfter / StaffModel.fullWeekHours * 100)))")
+        }
+        c.payrollImpact = abs(c.costPerMonth) < 0.5 ? "Payroll does not change."
+            : "Payroll " + (c.costPerMonth > 0 ? "rises" : "falls") + " by \(cur.display(abs(c.costPerMonth))) a month (\(cur.display(abs(c.costPerYear))) a year), wages, charges, leave cover and benefits included."
+        let capacity = (c.hoursAfter - c.hoursBefore) / StaffModel.fullWeekHours
+        c.operationalImpact = abs(capacity) < 0.01 ? "The work the team can do stays the same."
+            : capacity < 0 ? "The team loses about \(ContractHistory.fmt(c.hoursBefore - c.hoursAfter)) hours of work a week; capacity and output fall with it."
+            : "The team gains about \(ContractHistory.fmt(c.hoursAfter - c.hoursBefore)) hours of work a week; capacity and output rise with it."
 
         switch p.topic {
         case .payRise:
@@ -422,7 +473,7 @@ public enum ContractTalk {
         case .payBasis:
             if p.choice == "com" {
                 c.lines.append("Commission only: no base pay; they earn only what they sell. Commission is paid on top of nothing, and it is not counted in the cost above.")
-                if sub.person.num("sec") > 0.65 { c.risks.append("\(first) wants security: likely to refuse and resign (about 6 in 10).") }
+                if sub.person.num("sec") > 0.65 { c.risks.append("\(first) wants security and may well refuse and resign.") }
             } else if p.choice == "mix" || p.choice == "fix" { c.lines.append("Commission is paid on their sales on top of the salary" + (p.choice == "fix" ? " only if they stay on a plan." : ", and is not counted in the cost above.")) }
         case .bonus where p.choice.hasPrefix("plan:"):
             if let l = WorkerBonus.level(String(p.choice.dropFirst(5))), !l.isNone {
@@ -440,7 +491,7 @@ public enum ContractTalk {
             } else if let (perk, group) = perkChoice(p.choice) {
                 let people = group.map { StaffPerks.people(co, group: $0) } ?? StaffPerks.eligibleCount(co, perk)
                 c.peers.append("It covers \(group == nil ? "everyone it applies to" : "that group"): \(people) \(people == 1 ? "person" : "people"), not just \(first).")
-                c.peers.append("People leave about \(Int(((1 - perk.quitFactor) * 100).rounded()))% less while it is on.")
+                if perk.quitFactor < 1 { c.peers.append("People are less inclined to leave while it is on.") }
                 if let m = after?.member {
                     let worth = StaffPerks.worthMonthly(t.companies[sub.ci], m, currency: cur)
                     if worth > 0 { c.lines.append("Perks they count as pay: \(cur.display(worth)) a month in all.") }
@@ -477,9 +528,10 @@ public enum ContractTalk {
         }
         let tenure = Double(s.week - (sub.member?.hiredWeek ?? s.week))
         if sub.member != nil, lab.probationWeeks > tenure { c.labour.append("They are still in probation for \(Int((lab.probationWeeks - tenure).rounded())) more weeks.") }
-        if asRequest, let before = c.quitYearBefore, let declined = c.quitYearIfDeclined, declined > before {
-            c.risks.append("If you decline: the chance they hand in notice within a year goes from \(Int((before * 100).rounded()))% to \(Int((declined * 100).rounded()))%, and they feel turned down for \(rules.yearWeeks / 2) weeks.")
-        }
+        if asRequest, let before = c.quitRiskBefore, let declined = c.quitRiskIfDeclined, declined != before {
+            c.risks.append("If you decline: \(first) is \(declined.words), and feels turned down for \(rules.yearWeeks / 2) weeks.")
+        } else if asRequest { c.risks.append("If you decline: \(first) feels turned down for \(rules.yearWeeks / 2) weeks.") }
+        if c.mayRefuse { c.risks.append("\(first) may not like this and could say no.") }
         return c
     }
 
@@ -487,8 +539,55 @@ public enum ContractTalk {
 
     enum Done { case ok(String), notPossible(String), unwilling(String), resigned(String) }
 
-    /// Do it: the engine action behind each topic. Used for the real thing and, on a copy, for the preview.
-    static func applyFinal(_ s: inout GameState, _ sub: Subject, _ p: Proposal, data: GameData) -> Done {
+    /// Is this a change they may refuse? A big cut in hours, a change of role, a move to a less secure pay plan (never more pay), and how likely they are to say no,
+    /// by temperament; being let down by a broken promise makes it likelier, a good mood less likely. nil when it is not that kind of change.
+    static func refusalLikelihood(_ sub: Subject, _ p: Proposal, week: Int) -> Double? {
+        var applies = false
+        switch p.topic {
+        case .hours:
+            guard let m = sub.member else { return nil }
+            let now = EmploymentContract.hours(m)
+            let new: Double? = p.choice == "hours" ? p.amount : p.choice == "percent" ? p.amount / 100 * StaffModel.fullWeekHours : nil
+            if let new, new < now * 0.8 - 1e-9 { applies = true }
+        case .move: applies = true
+        case .payBasis: applies = (p.choice == "com" || p.choice == "mix") && sub.member?.commissionMode != p.choice
+        default: break
+        }
+        guard applies else { return nil }
+        var likelihood = ["flexible": 0.15, "steady": 0.3, "stubborn": 0.55, "greedy": 0.5][Hiring.temperament(of: sub.person).id] ?? 0.3
+        if let m = sub.member {
+            if StaffPromises.letDown(m, week: week) { likelihood += 0.2 }
+            if m.happyUntilWeek != 0 && week < m.happyUntilWeek { likelihood -= 0.12 }
+        }
+        return min(0.9, max(0.05, likelihood))
+    }
+
+    static func refusal(_ sub: Subject, _ p: Proposal, week: Int) -> String? {
+        guard let l = refusalLikelihood(sub, p, week: week) else { return nil }
+        guard HashedRandom.first("refuse:\(sub.person.id):\(p.topic.rawValue):\(p.choice):\(Int(p.amount.rounded())):\(week / 8)") < l else { return nil }
+        let first = ManagerModel.firstName(sub.person.name)
+        switch p.topic {
+        case .hours: return "\(first) does not want fewer hours and says no."
+        case .move: return "\(first) does not want to move and says no."
+        default: return "\(first) does not want a less secure way of being paid and says no."
+        }
+    }
+
+    /// Do it: the engine action behind each topic, with the contract history written and promises checked. `refuses: false` for the preview and for what
+    /// they asked for themselves.
+    static func applyFinal(_ s: inout GameState, _ sub: Subject, _ p: Proposal, data: GameData, refuses: Bool = true) -> Done {
+        if refuses, let why = refusal(sub, p, week: s.week) { return .unwilling(why) }
+        let before = sub.member.map { ContractHistory.snapshot($0) }
+        let done = applyFinalCore(&s, sub, p, data: data)
+        if case .ok = done {
+            let cid = s.companies[sub.ci].id
+            ContractHistory.recordChange(&s, companyID: p.topic == .move ? (Int(p.choice) ?? cid) : cid, staffID: sub.person.id, before: before, data: data)
+            StaffPromises.noticeChange(&s, companyID: cid)
+        }
+        return done
+    }
+
+    static func applyFinalCore(_ s: inout GameState, _ sub: Subject, _ p: Proposal, data: GameData) -> Done {
         let co = s.companies[sub.ci], id = sub.person.id, name = sub.person.name
         let cur = World(state: s, data: data).currency(co)
         func edit(_ f: (inout StaffMember) -> Void) {
@@ -510,6 +609,13 @@ public enum ContractTalk {
             guard let m = sub.member else { return .notPossible("Not for a manager.") }
             func why(_ want: String) -> String { StaffTalks.wishWhy(m, name: name, want: want) }
             switch p.choice {
+            case "percent":
+                switch StaffTalks.setWorkingPercentage(&s, companyID: co.id, staffID: id, percent: p.amount) {
+                case .ok: return .ok("\(name) now works \(ContractHistory.fmt(p.amount)) percent of a full week.")
+                case .student: return .notPossible(why("part"))
+                case .refused: return .notPossible("A working percentage has to be between 10 and 100.")
+                default: return .notPossible("They no longer work here.")
+                }
             case "hours":
                 switch StaffTalks.setStaffHours(&s, companyID: co.id, staffID: id, hours: p.amount) {
                 case .ok: return .ok("\(name) now works \(Int(p.amount.rounded())) hours a week.")
@@ -529,6 +635,7 @@ public enum ContractTalk {
                 case .ok: return .ok("\(name) stays on part time all year.")
                 case .already: return .notPossible("They are not a seasonal worker.")
                 case .refused: return .unwilling(why("season"))
+                case .student: return .notPossible(why("part"))
                 default: return .notPossible("They no longer work here.")
                 }
             default:
@@ -584,10 +691,17 @@ public enum ContractTalk {
                 _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: nil)
                 return .ok("\(name) is on a permanent contract now.")
             }
-            guard p.choice.hasPrefix("fixed:"), let weeks = Int(p.choice.dropFirst(6)), FixedTerm.termChoices.contains(weeks) else { return .notPossible("That is not a contract term you can agree.") }
+            if p.choice.hasPrefix("seasons:"), let n = Int(p.choice.dropFirst(8)), n > 0 {
+                let months = m.value("seas").array.map { $0.int }
+                guard !months.isEmpty, let end = StaffTalks.seasonEnd(months: months, fromWeek: s.week, occurrences: n) else { return .notPossible("Only a seasonal worker can be hired for a number of seasons.") }
+                var st = s.companies[sub.ci].staff
+                if let k = st.firstIndex(where: { $0.id == id }) { st[k].set("ft", end); st[k].set("ftl", max(1, end - s.week)); st[k].set("fts", s.week); s.companies[sub.ci].staff = st }
+                return .ok("\(name)'s seasonal contract runs for \(n) \(n == 1 ? "season" : "seasons"), until week \(end).")
+            }
+            guard p.choice.hasPrefix("fixed:"), let weeks = Int(p.choice.dropFirst(6)), Hiring.workingFixedTermWeeks.contains(weeks) else { return .notPossible("That is not a contract term you can agree.") }
             if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { return .unwilling("\(name) wants security and will not take a fixed-term job in place of a permanent one.") }
             if let why = FixedTerm.renewalBlock(World(state: s, data: data).labour(co), m, weeks: weeks, now: s.week) { return .notPossible(why) }
-            _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: weeks)
+            _ = FixedTerm.set(&s, companyID: co.id, staffID: id, weeks: weeks, anyLength: true)
             let end = s.companies[sub.ci].staff.first { $0.id == id }.flatMap { FixedTerm.endWeek($0) } ?? 0
             return .ok("\(name) is on a fixed term until week \(end).")
         case .notice:
@@ -647,7 +761,10 @@ public enum ContractTalk {
             var neg = talk.neg
             let out = ManagerModel.offerPromotion(&s, companyID: companyID, personID: personID, post: p.choice, monthlyWage: p.amount, terms: p.terms, negotiation: &neg, data: data)
             switch out {
-            case .accepted(let text): finish(); return .agreed(text)
+            case .accepted(let text):
+                finish()
+                ContractHistory.record(&s, companyID: companyID, staffID: personID, kind: "role", text: text)
+                return .agreed(text)
             case .unavailable(let text): return .notPossible(text)
             case .counter(let ask, let text):
                 talk.neg = neg; talk.week = s.week; talk.offered = p.amount; talk.proposal.amount = ask; talk.proposal.terms = p.terms; talk.proposal.choice = p.choice
@@ -783,6 +900,8 @@ public enum ContractTalk {
         case counter(Double)
         case delay
         case decline
+        /// Instead of deciding now, promise something (a review, training ...) by a date. They may take it well or not, by temperament.
+        case promise(StaffPromises.Draft)
     }
 
     /// Answer a request of theirs: agree, counter, delay or decline. You, the employer, may decline; they never decline a rise.
@@ -804,9 +923,9 @@ public enum ContractTalk {
             if p.topic == .promotion {
                 var neg = Negotiation.State()
                 let r = ManagerModel.offerPromotion(&s, companyID: s.companies[sub.ci].id, personID: id, post: p.choice, monthlyWage: go.amount, terms: p.terms, negotiation: &neg, data: data)
-                if case .accepted(let text) = r { out = .agreed(text) } else if case .unavailable(let text) = r { out = .notPossible(text) } else { out = .notPossible("They want more for this job.") }
+                if case .accepted(let text) = r { out = .agreed(text); ContractHistory.record(&s, companyID: s.companies[sub.ci].id, staffID: id, kind: "role", text: text) } else if case .unavailable(let text) = r { out = .notPossible(text) } else { out = .notPossible("They want more for this job.") }
             } else {
-                switch applyFinal(&s, sub, go, data: data) {
+                switch applyFinal(&s, sub, go, data: data, refuses: false) {   // they asked for it themselves
                 case .ok(let text): out = .agreed(text)
                 case .notPossible(let why): out = .notPossible(why)
                 case .unwilling(let why): out = .unwilling(why)
@@ -831,6 +950,8 @@ public enum ContractTalk {
             let text = declineRequest(&s, sub, talk, data: data)
             close(&s, personID: id)
             return .declined(text)
+        case .promise(let draft):
+            return promise(&s, sub, draft, closing: true)
         }
     }
 
@@ -846,8 +967,34 @@ public enum ContractTalk {
         if let k = s.companies[sub.ci].staff.firstIndex(where: { $0.id == sub.person.id }) {
             var st = s.companies[sub.ci].staff; st[k].happyUntilWeek = 0; s.companies[sub.ci].staff = st
         }
-        let after = quitYear(s, companyID: s.companies[sub.ci].id, personID: sub.person.id, data: data)
-        return "\(first) feels turned down" + (after.map { ": the chance they hand in notice within a year is now \(Int(($0 * 100).rounded()))%." } ?? ".")
+        let after = QuitRisk.band(quitYear(s, companyID: s.companies[sub.ci].id, personID: sub.person.id, data: data))
+        let reaction = StaffBehaviour.afterRefusal(&s, companyIndex: sub.ci, staffID: sub.person.id)
+        return "\(first) feels turned down" + (after.map { ", and is now \($0.words)" } ?? "") + (reaction.map { "; \(first) \($0)." } ?? ".")
+    }
+
+    /// Put a promise in place of a decision: the talk is closed, the promise is recorded with its date and the real check, and they take it as a flexible or a
+    /// stubborn person would (some take it as a polite no).
+    @discardableResult
+    public static func promise(_ s: inout GameState, companyID: Int, personID: Int, draft: StaffPromises.Draft) -> Reply {
+        guard let sub = subject(s, companyID: companyID, personID: personID) else { return .notPossible("This person no longer works here.") }
+        return promise(&s, sub, draft, closing: openTalk(s, personID: personID) != nil)
+    }
+
+    static func promise(_ s: inout GameState, _ sub: Subject, _ d: StaffPromises.Draft, closing: Bool) -> Reply {
+        let first = ManagerModel.firstName(sub.person.name)
+        guard d.isPlausible else { return .notPossible("A promise needs a date between a week and three years away and, for a benefit or a percentage, what exactly is promised.") }
+        let cid = s.companies[sub.ci].id
+        guard StaffPromises.make(&s, companyID: cid, personID: sub.person.id, draft: d) != nil else { return .notPossible("Something like that is already promised to \(first).") }
+        if closing { close(&s, personID: sub.person.id) }
+        ContractHistory.record(&s, companyID: cid, staffID: sub.person.id, kind: "promise", text: "Promised: " + StaffPromises.text(for: d, now: s.week))
+        // a stubborn person hears a promise as a delay
+        if Hiring.temperament(of: sub.person).id == "stubborn", HashedRandom.first("prom:\(sub.person.id):\(s.week)") < 0.35 {
+            return .agreed("\(first) takes the promise, but says they will believe it when they see it.")
+        }
+        if let k = s.companies[sub.ci].staff.firstIndex(where: { $0.id == sub.person.id }) {
+            var st = s.companies[sub.ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 13); s.companies[sub.ci].staff = st
+        }
+        return .agreed("\(first) accepts your word: \(StaffPromises.text(for: d, now: s.week))")
     }
 
     /// Leave a request to the manager: they decide it if it is inside their limit (level 2: anything, level 1: up to the pay limit on their card),

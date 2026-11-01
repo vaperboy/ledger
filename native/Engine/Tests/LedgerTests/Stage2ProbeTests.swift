@@ -69,7 +69,7 @@ final class Stage2ProbeTests: XCTestCase {
     func testPayslipDeductionsHoursWorkedAndOvertimeComeFromRealData() throws {
         var (e, id) = try start(.limited)
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
-        for _ in 0..<75 { _ = e.nextDay() }
+        for _ in 0..<110 { _ = e.nextDay() }   // long enough for a replacement hire to have worked some weeks
         let co = try XCTUnwrap(e.state.company(id))
         let country = try XCTUnwrap(e.data.countries["UK"])
         let run = try XCTUnwrap(e.payrollRuns(companyID: id)?.first)
@@ -83,8 +83,10 @@ final class Stage2ProbeTests: XCTestCase {
         XCTAssertEqual(line.totalEmployerCost, line.grossMonthly + line.employerContributions + line.insurance + line.paidLeaveCover, accuracy: 1)
         // Hours actually worked come from the weekly simulation.
         let sheets = try XCTUnwrap(e.timesheets(companyID: id))
+        let thisMonth = GameCalendar.monthIndex(week: e.state.week)
+        let lastMonth = (1...3).flatMap { e.timesheets(companyID: id, monthIndex: thisMonth - $0) ?? [] }   // the weeks since opening may straddle a month end
         XCTAssertEqual(sheets.count, co.staff.count)
-        XCTAssertTrue(sheets.contains { ($0.actualHoursRecorded ?? 0) > 0 && $0.weeksRecorded > 0 }, "worked hours are recorded")
+        XCTAssertTrue((sheets + lastMonth).contains { ($0.actualHoursRecorded ?? 0) > 0 && $0.weeksRecorded > 0 }, "worked hours are recorded")
         XCTAssertTrue(sheets.allSatisfy { $0.paidLeaveHoursCovered >= 0 })
     }
 

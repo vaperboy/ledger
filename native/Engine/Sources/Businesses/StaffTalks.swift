@@ -7,12 +7,11 @@ import Employees
 /// salary. Originals: `raiseFelt`, `raiseStaff`, `setFixedPay`, `wantsFix`, `ACTS.staffx` and the 'payask' / 'fixask' parts of
 /// `handleStaffEvent` (engine/people/people.js, staff_extras.js).
 public enum StaffTalks {
-    /// The raise that feels like a raise: most people shrug at 3 %, 6 % is noticed; younger people in lower-paid jobs feel a smaller one.
+    /// The raise that feels like a raise: in better-paid jobs a larger one is needed to be noticed. Age plays no part (owner decision, Nov 2026); the argument
+    /// `age` is kept so existing callers compile.
     public static func raiseNeeded(role: String, age: Int, tables: TradeTables) -> Double {
         let base = tables.roles[role]?.baseMonthlyWage ?? 50000
-        var need = base >= 70000 ? 0.07 : 0.06
-        if age < 26 { need = base < 45000 ? 0.03 : 0.04 } else if age < 30 { need -= 0.01 }
-        return need
+        return base >= 70000 ? 0.07 : 0.06
     }
 
     /// Some people want a fixed salary, some prefer hours. Stable per person. Original: `wantsFix`.
@@ -76,6 +75,7 @@ public enum StaffTalks {
         }
         staff[k] = m
         s.companies[i].staff = staff
+        StaffPromises.noticeChange(&s, companyID: s.companies[i].id)
     }
 
     /// Move a full-timer to a fixed salary. Original: `setFixedPay`.

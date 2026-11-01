@@ -137,11 +137,10 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(board.applicants.count, found.count)
         XCTAssertEqual(board.marketMonthly, e.marketWage(role: "barista", companyID: id))
         for (a, p) in zip(board.applicants, found) {
-            XCTAssertEqual(a.claimedSkill, p.claimedSkill, "the claim, never the true skill")
-            XCTAssertEqual(a.askVersusMarket, p.askingMonthlyWage / board.marketMonthly - 1, accuracy: 1e-9)
+            XCTAssertFalse(a.cvImpression.isEmpty, "the CV in words, never a number")
             XCTAssertEqual(a.claimedExperienceYears, e.claimedExperienceYears(personID: p.id))
-            XCTAssertNil(a.trialSkill)
-            XCTAssertTrue(["Proud", "Eager", "Steady"].contains(a.seems))
+            XCTAssertTrue(a.trialObservations.isEmpty)
+            XCTAssertTrue(["Seasoned", "Eager", "Steady"].contains(a.seems))
         }
         XCTAssertNil(e.applicant(personID: -1, companyID: id))
     }

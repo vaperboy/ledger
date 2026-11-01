@@ -276,7 +276,11 @@ struct CompanyPerksCard: View {
         return "\(r.name) · \(role) · \(car), lease \(cur.tidyShort(r.monthlyLease)) a month"
     }
 
-    private func fewer(_ p: StaffPerks.Perk) -> Int { Int(((1 - p.quitFactor) * 100).rounded()) }
+    /// How much a perk keeps people, in words (never a percentage).
+    private func fewer(_ p: StaffPerks.Perk) -> String {
+        let f: Double = 1 - p.quitFactor
+        return f >= 0.2 ? "much fewer" : f >= 0.1 ? "fewer" : "slightly fewer"
+    }
 
     private static func glyph(_ id: String) -> String {
         switch id {
@@ -348,7 +352,7 @@ struct CompanyPerksCard: View {
                 }
                 StatStrip(cells: [
                     .init(label: "Cost a month", value: cost),
-                    .init(label: "Fewer leave", value: "\(fewer(p))%", tint: Theme.gain),
+                    .init(label: "People leave", value: fewer(p), tint: Theme.gain),
                 ])
                 groupChoices(p, cur)
                 if p.id == "car" && on {
@@ -389,7 +393,7 @@ struct CompanyPerksCard: View {
 
     @ViewBuilder private var groupDialogMessage: some View {
         if let pg = pendingGroup {
-            Text("Cost: paid every month for \(engine.staffPerkPeople(companyID: company.id, group: pg.group.id)) people in this group while it is on. Benefit: they leave about \(fewer(pg.perk))% less, and better applicants come for their jobs. Risk: a fixed cost in a bad month. Switch it off at any time.")
+            Text("Cost: paid every month for \(engine.staffPerkPeople(companyID: company.id, group: pg.group.id)) people in this group while it is on. Benefit: \(fewer(pg.perk)) of them leave, and better applicants come for their jobs. Risk: a fixed cost in a bad month. Switch it off at any time.")
         }
     }
 
@@ -405,9 +409,9 @@ struct CompanyPerksCard: View {
 
     @ViewBuilder private var perkDialogMessage: some View {
         if let p = pending, p.id == "car" {
-            Text("Cost: a leased car for the manager and for each team lead; the lease and the fuel are paid every month while it is on, and the cars show in the fleet. Benefit: \(fewer(p))% fewer people leave and better applicants come. Risk: cars are a fixed cost in a bad month. Switch it off and the cars go back.")
+            Text("Cost: a leased car for the manager and for each team lead; the lease and the fuel are paid every month while it is on, and the cars show in the fleet. Benefit: \(fewer(p)) people leave and better applicants come. Risk: cars are a fixed cost in a bad month. Switch it off and the cars go back.")
         } else if let p = pending {
-            Text("Cost: paid every month while it is on. Benefit: \(fewer(p))% fewer people leave and better applicants come. Risk: it is a fixed cost in a bad month. Switch it off at any time.")
+            Text("Cost: paid every month while it is on. Benefit: \(fewer(p)) people leave and better applicants come. Risk: it is a fixed cost in a bad month. Switch it off at any time.")
         }
     }
 }
@@ -457,11 +461,10 @@ struct SuccessorSection: View {
                 QuietButton(title: "Find a successor · \(fee)…", fullWidth: true) { confirm = true }
             } else {
                 CandidateHireList(people: waiting.filter { $0.employerID == 0 }, emptyText: "Everyone on the list has taken another job. Search again.") { p in
-                    CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(engine, p), market: engine.goingRate(for: .manager, companyID: company.id), factors: [0.9, 1.0, 1.15, 1.3], roleKey: "manager", offer: { wage in
-                        let fb = HireFeedback.from(store.act { $0.hireManager(personID: p.id, companyID: company.id, monthlyWage: wage) }, name: p.name, company: company.name)
-                        if fb.isHired { store.show(fb.text, tone: "good") }
-                        return fb
-                    }) { ManagerCandidateChecks(person: p, companyID: company.id, currency: cur) }
+                    let request = HireRequest(post: .manager, companyID: company.id, personID: p.id, roleTitle: "Manager")
+                    CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(engine, p), market: engine.goingRate(for: .manager, companyID: company.id), request: request, roleKey: "manager") {
+                        ManagerCandidateChecks(person: p, companyID: company.id, currency: cur)
+                    }
                 }
             }
         }

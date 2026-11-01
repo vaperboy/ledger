@@ -59,3 +59,9 @@ Stage 2 (financial systems), all keys written only when set, no resets, older sa
 * Loan: `ptm` (calendar month the instalment was last settled), `app` (application record: week, fee, net, account), `guarReleased`, `guarLock`, and the open bank talk under `neg`.
 * Personal tax: `enkFrozen` (already existed, now written at conversion; cleared with the tax year).
 * `pr29.mode` (old payroll choice) is kept but no longer used.
+
+Stage 3 employment (engine), all keys written only when set; older saves load and write back unchanged, and nothing is migrated (the working percentage is derived from the existing `hrs`/`pt`, so an old 20-hour part-timer reads as 53.3 percent and a 25-hour seasonal worker as 66.7 percent):
+* Staff record: `chist` (contract history, last 40: `{w, k, t}`), `wlog` (work log, last 26 weeks, one number row per week: week, contracted and worked hours x4, tasks assigned and done, mistakes, late, sick week, initiative, guidance, informed, silent, complaints), `crsN` (courses taken), `uw` (running discontent), `dis` (week disengagement began), `voiced`, `silentW`, `broke` (week a promise was broken), `bp`/`ex` as before (now also set at hire), `ft`/`ftl`/`fts` now also for any temporary length and for a seasonal contract that ends with its season.
+* Person record: `prm` (promises, last 12: id, company, kind, text, detail, made, due, status, baseline, resolved week, renegotiations), `xp` (hire expectations), `trialObs` (trial week observations), `tf` (transient, exists only inside a hire call), `neg` may now also hold `a` (the candidate has opened with an ask) and `t` (fingerprint of the terms the figures belong to).
+* Company record: `ptr` ({k: weeks promises were kept, b: weeks they were broken}, last 8 each).
+* `trialRes` (old trial skill) is no longer written; old values stay in the save, unread.

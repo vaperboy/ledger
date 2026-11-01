@@ -31,12 +31,16 @@ extension StaffTalks {
     static func month1(_ week: Int) -> Int { GameCalendar.month(week: week) + 1 }
     static func payFollowsHours(_ m: StaffMember) -> Bool { m.payBasis != "fix" && !(m.commissionMode != nil && m.commissionMode != "fix") }
 
-    /// Pay and hours for a person hired part time or for a season. One in four studies and can work 20 or 30 h at most. Original: `hireWorker`.
+    /// Pay and hours for a person hired part time or for a season. The hours are the contract's working percentage (`Hiring.Terms.effectiveHours`) and are
+    /// never cut down silently: a limit on the person's hours (one in four studies and can work 20 or 30 at most) is checked before the hire
+    /// (`Hiring.termsProblem`), and the limit is kept on the record (`maxH`) so later changes respect it.
     static func applyPartTime(_ m: inout StaffMember, terms: Hiring.Terms, week: Int) {
-        var r = HashedRandom("stu:\(m.id)")
-        if r.next() < 0.25 { m.set("maxH", r.next() < 0.5 ? 20 : 30) }
-        m.payBasis = "hour"
-        setHours(&m, min(terms.hours > 0 ? terms.hours : 30, m.num("maxH", 60)))
+        if let cap = Hiring.maxHoursPerWeek(personID: m.id) { m.set("maxH", cap) }
+        // A part-timer is paid by the hour unless a fixed monthly salary was agreed; either way the pay offered for a full week is scaled to the hours.
+        let fixed = terms.basis == "fix"
+        m.payBasis = fixed ? "fix" : "hour"
+        let h = terms.effectiveHours > 0 ? terms.effectiveHours : (terms.seasonMonths != nil ? 30 : StaffModel.fullWeekHours)
+        if fixed { m.monthlyWage = m.monthlyWage * min(h, StaffModel.fullWeekHours) / StaffModel.fullWeekHours; setHours(&m, h, scalePay: false) } else { setHours(&m, h) }
         if let ms = terms.seasonMonths {
             m.set("seas", .array(ms.map { .number(Double($0)) }))
             m.set("off", !ms.contains(month1(week)))
@@ -44,11 +48,15 @@ extension StaffTalks {
         if terms.ownCar { m.set("ownCar", 1) }   // Hiring.hire drops it for a job that does not use a car
     }
 
-    /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`.
+    /// The least a contract can have a week: 10 percent of a full week.
+    static var minimumHours: Double { Hiring.workingPercentRange.lowerBound / 100 * StaffModel.fullWeekHours }
+
+    /// Hours a week for a part-timer or seasonal worker; pay follows hours. Original: `setStaffHours`. Hours are kept to a sixty-fourth of an hour (so 20 percent
+    /// is exactly 7.5 hours and 65 percent exactly 24.375) and are not clipped to a hidden cap: callers check `Hiring.maxHoursPerWeek` first and say so.
     @discardableResult
-    static func setHours(_ m: inout StaffMember, _ h0: Double) -> Double {
-        let h = max(5, min(m.num("maxH", 60), h0.rounded()))
-        if payFollowsHours(m) { m.monthlyWage = m.monthlyWage * h / (m.weeklyHours ?? StaffModel.fullWeekHours) }
+    static func setHours(_ m: inout StaffMember, _ h0: Double, scalePay: Bool = true) -> Double {
+        let h = max(minimumHours, min(60, (h0 * 64).rounded() / 64))
+        if scalePay, payFollowsHours(m) { m.monthlyWage = m.monthlyWage * h / (m.weeklyHours ?? StaffModel.fullWeekHours) }
         m.weeklyHours = h
         m.partTimeShare = h / StaffModel.fullWeekHours
         return h
@@ -95,6 +103,7 @@ extension StaffTalks {
         guard let ci = s.companyIndex(companyID), let m = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
         if hours > m.num("maxH", 999) { return .student }
         edit(&s, ci, staffID) { setHours(&$0, hours) }
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return .ok
     }
 
@@ -118,12 +127,13 @@ extension StaffTalks {
     public static func offerPartTime(_ s: inout GameState, companyID: Int, staffID: Int, hours: Double = 20) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let m0 = s.companies[ci].staff.first(where: { $0.id == staffID }) else { return .unknown }
         guard !m0.value("seas").isNull else { return .already }
+        if (hours > 0 ? hours : (m0.weeklyHours ?? 20)) > m0.num("maxH", 999) { return .student }
         var result = OfferResult.ok
         let week = s.week
         edit(&s, ci, staffID) { m in
             if workWish(&m, week: week) == "season" { m.set("wishNo", week); result = .refused; return }
             for key in ["seas", "off", "wishNo"] { m.raw.removeValue(forKey: key) }
-            setHours(&m, min(hours > 0 ? hours : (m.weeklyHours ?? 20), m.num("maxH", 60)))
+            setHours(&m, hours > 0 ? hours : (m.weeklyHours ?? 20))
         }
         return result
     }

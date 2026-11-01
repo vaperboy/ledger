@@ -189,6 +189,7 @@ public enum StaffPerks {
         else { f[id] = .object(state.mapValues { .number($0 ? 1 : 0) }) }
         s.companies[i].set("perks58", f)
         if id == "car", !isOn(s.companies[i], "car") { CompanyCarPerk.release(&s, companyIndex: i) }
+        StaffPromises.noticeChange(&s, companyID: companyID)
         return true
     }
 
@@ -391,17 +392,17 @@ public enum StaffPerks {
     public struct Reward: Identifiable, Equatable, Sendable {
         public var id: String { "\(companyID):\(staffID ?? 0)" }
         public var companyID: Int, staffID: Int?, personID: Int
-        public var name: String, companyName: String, isManager: Bool, skill: Double, rewardedLately: Bool
+        public var name: String, companyName: String, isManager: Bool, note: String, rewardedLately: Bool
     }
     /// Managers and star workers you can reward (up to 14). Original: `people`.
     public static func rewards(_ s: GameState) -> [Reward] {
         var out: [Reward] = []
         for co in s.companies where co.status == .open {
             if let mid = co.managerID, let n = s.people[mid] {
-                out.append(Reward(companyID: co.id, staffID: nil, personID: mid, name: n.name, companyName: co.name, isManager: true, skill: n.skill, rewardedLately: lately(n, s)))
+                out.append(Reward(companyID: co.id, staffID: nil, personID: mid, name: n.name, companyName: co.name, isManager: true, note: "Runs the business", rewardedLately: lately(n, s)))
             }
             for m in co.staff { if let n = s.people[m.id], n.skill >= 75 || n.flag("super") {
-                out.append(Reward(companyID: co.id, staffID: m.id, personID: m.id, name: n.name, companyName: co.name, isManager: false, skill: n.skill, rewardedLately: lately(n, s)))
+                out.append(Reward(companyID: co.id, staffID: m.id, personID: m.id, name: n.name, companyName: co.name, isManager: false, note: "Stands out in their work", rewardedLately: lately(n, s)))
             } }
         }
         return Array(out.prefix(14))

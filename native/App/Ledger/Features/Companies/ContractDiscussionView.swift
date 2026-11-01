@@ -25,6 +25,7 @@ struct ContractDiscussionView: View {
     @State private var percent = 0.06
     @State private var pay = 0.0
     @State private var hours = 30.0
+    @State private var workPercent = 100.0
     @State private var rate = 0.05
     @State private var weeks = 0
     @State private var authority = 1
@@ -38,11 +39,14 @@ struct ContractDiscussionView: View {
                 let cur = e.currency(for: co)
                 header(e, co, n, cur)
                 if let talk = e.contractTalk(personID: personID) { open(e, co, n, talk, cur) }
+                contractCard(e, cur)
                 topics(e)
                 editor(e, co, cur)
                 preview(e, co, cur)
                 if !reply.isEmpty { SpeechBubble(text: reply, mine: false) }
                 send(e, co, n, cur)
+                promiseSection(e, co, n)
+                historySection(e)
             } else {
                 Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted)
             }
@@ -91,6 +95,9 @@ struct ContractDiscussionView: View {
                         Button("Agree") { answer(.accept, e, n, cur, pv) }.buttonStyle(QuietButtonStyle())
                         if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
                         Button("Decline") { answer(.decline, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                    }
+                    promiseMaker(e, label: "Promise instead") { draft in
+                        show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
                     }
                     if e.contractHandler(companyID: companyID) != nil {
                         Button("Leave it to the manager") {
@@ -185,6 +192,7 @@ struct ContractDiscussionView: View {
                     }.pickerStyle(.segmented)
                 case .hours:
                     pick(options)
+                    if choice == "percent" { percentEditor() }
                     if choice == "hours" { Stepper("\(Int(hours)) hours a week", value: $hours, in: 5...60, step: 5).font(.system(size: 13)).foregroundStyle(Theme.ivory) }
                 case .payBasis:
                     pick(options)
@@ -253,7 +261,7 @@ struct ContractDiscussionView: View {
         switch topic {
         case .payRise: return .init(.payRise, amount: percent)
         case .promotion: return .init(.promotion, amount: pay, choice: choice, terms: .init(authority: authority))
-        case .hours: return .init(.hours, amount: hours, choice: choice.isEmpty ? "hours" : choice)
+        case .hours: return .init(.hours, amount: choice == "percent" ? workPercent : hours, choice: choice.isEmpty ? "percent" : choice)
         case .payBasis: return .init(.payBasis, amount: (choice == "mix" || choice == "com") ? rate : 0, choice: choice)
         case .bonus: return choice.hasPrefix("plan:") ? .init(.bonus, choice: choice) : .init(.bonus, amount: rate)
         case .term: return .init(.term, choice: choice)
@@ -275,17 +283,52 @@ struct ContractDiscussionView: View {
             Text(c.blocked).font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                FlatRow(label: "Cost a month, with employer charges", value: (c.costPerMonth >= 0 ? "+" : "") + cur.tidyShort(c.costPerMonth), tint: c.costPerMonth > 0 ? Theme.loss : Theme.ivory, rule: false)
-                if let b = c.quitYearBefore, let a = c.quitYearAfter {
-                    FlatRow(label: "Chance they hand in notice within a year", value: "\(Int((b * 100).rounded()))% → \(Int((a * 100).rounded()))%", tint: a > b ? Theme.loss : Theme.ivory)
+                costRows(c, cur)
+                hoursRows(c)
+                words(c)
+                if c.mayRefuse {
+                    Label("They may well say no to this. You find out when you put it to them.", systemImage: "exclamationmark.bubble")
+                        .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
                 }
-                if let d = c.quitYearIfDeclined { FlatRow(label: "If you decline", value: "\(Int((d * 100).rounded()))%", tint: Theme.loss) }
                 ForEach(c.lines, id: \.self) { Text($0).font(.system(size: 12)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
-                ForEach(c.peers, id: \.self) { Label($0, systemImage: "person.2").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                ForEach(c.labour, id: \.self) { Label($0, systemImage: "doc.text").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                ForEach(c.risks, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
+                notes(c)
             }
         }
+    }
+
+    private func signed(_ v: Double, _ cur: Currency) -> String { (v > 0 ? "+" : "") + cur.tidyShort(v) }
+
+    /// Employer cost of the whole company's people before and after, the difference a month and a year, and this person's own difference.
+    @ViewBuilder private func costRows(_ c: ContractTalk.Consequences, _ cur: Currency) -> some View {
+        FlatRow(label: "People cost a month, with employer charges", value: "\(cur.tidyShort(c.costBefore)) \u{2192} \(cur.tidyShort(c.costAfter))", rule: false)
+        FlatRow(label: "Difference", value: "\(signed(c.costPerMonth, cur)) a month", sub: "\(signed(c.costPerYear, cur)) a year", tint: c.costPerMonth > 0 ? Theme.loss : c.costPerMonth < 0 ? Theme.gain : Theme.ivory)
+        if c.employerBefore != nil && c.employerAfter != nil {
+            FlatRow(label: "This person, a month", value: signed(c.personMonthlyDifference, cur), sub: "\(signed(c.personAnnualDifference, cur)) a year")
+        }
+    }
+
+    @ViewBuilder private func hoursRows(_ c: ContractTalk.Consequences) -> some View {
+        if c.hoursBefore > 0 || c.hoursAfter > 0 {
+            let d: Double = c.hoursDifference
+            let diff: String = d == 0 ? "no change" : (d > 0 ? "+" : "") + HireWords.hours(d).replacingOccurrences(of: " a week", with: "")
+            FlatRow(label: "Hours a week", value: "\(String(format: "%g", c.hoursBefore)) \u{2192} \(String(format: "%g", c.hoursAfter))", sub: diff)
+        }
+    }
+
+    /// Payroll and operational impact and how the person may react, all in words.
+    @ViewBuilder private func words(_ c: ContractTalk.Consequences) -> some View {
+        if !c.payrollImpact.isEmpty { FlatRow(label: "Payroll", value: "", sub: c.payrollImpact) }
+        if !c.operationalImpact.isEmpty { FlatRow(label: "The business", value: "", sub: c.operationalImpact) }
+        if let after = c.quitRiskAfter {
+            FlatRow(label: "How they may react", value: after.words, sub: c.quitRiskBefore.map { "Now: " + $0.words } ?? "", tint: after == .unlikely ? Theme.ivory : Theme.caution)
+        }
+        if let d = c.quitRiskIfDeclined { FlatRow(label: "If you decline", value: d.words, tint: d == .unlikely ? Theme.ivory : Theme.loss) }
+    }
+
+    @ViewBuilder private func notes(_ c: ContractTalk.Consequences) -> some View {
+        ForEach(c.peers, id: \.self) { Label($0, systemImage: "person.2").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+        ForEach(c.labour, id: \.self) { Label($0, systemImage: "doc.text").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+        ForEach(c.risks, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
     }
 
     @ViewBuilder private func send(_ e: GameEngine, _ co: Company, _ n: Person, _ cur: Currency) -> some View {
@@ -310,8 +353,12 @@ struct ContractDiscussionView: View {
     private func counterValue(_ p: ContractTalk.Proposal) -> Double { p.topic == .promotion || p.topic == .payRise || p.topic == .hours ? p.amount : p.amount }
 
     private func summary(_ c: ContractTalk.Consequences, _ cur: Currency) -> String {
-        var parts = ["Cost a month: " + (c.costPerMonth >= 0 ? "+" : "") + cur.tidyShort(c.costPerMonth) + "."]
-        if let b = c.quitYearBefore, let a = c.quitYearAfter { parts.append("Chance they hand in notice within a year: \(Int((b * 100).rounded()))% to \(Int((a * 100).rounded()))%.") }
+        var parts = ["Cost a month: " + signed(c.costPerMonth, cur) + ", a year: " + signed(c.costPerYear, cur) + "."]
+        if c.hoursBefore > 0 || c.hoursAfter > 0 { parts.append("Hours a week: \(String(format: "%g", c.hoursBefore)) to \(String(format: "%g", c.hoursAfter)).") }
+        if !c.payrollImpact.isEmpty { parts.append(c.payrollImpact) }
+        if !c.operationalImpact.isEmpty { parts.append(c.operationalImpact) }
+        if let after = c.quitRiskAfter { parts.append("They would be " + after.words + ".") }
+        if c.mayRefuse { parts.append("They may refuse.") }
         parts += c.risks
         parts += c.labour.prefix(2)
         return parts.joined(separator: " ")
@@ -341,6 +388,74 @@ struct ContractDiscussionView: View {
         if let e = store.engine, let co = e.state.company(companyID), !isEmployee(co) { dismiss() }
     }
 
+    // MARK: Working percentage, the current contract, promises and history
+
+    private func percentEditor() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WrapRow {
+                ForEach([20.0, 50.0, 80.0, 100.0], id: \.self) { v in
+                    Button("\(Int(v)) percent") { workPercent = v }
+                        .buttonStyle(QuietButtonStyle(tint: abs(workPercent - v) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
+                }
+            }
+            Stepper("Other: \(HireWords.percentText(workPercent))", value: $workPercent, in: 10...100, step: 5).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+            Text(HireWords.hours(workPercent / 100 * StaffModel.fullWeekHours)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+        }
+    }
+
+    @ViewBuilder private func contractCard(_ e: GameEngine, _ cur: Currency) -> some View {
+        if let c = e.employmentContract(companyID: companyID, personID: personID) {
+            LedgerSection("Current contract") {
+                VStack(alignment: .leading, spacing: 0) {
+                    FlatRow(label: "Type", value: c.typeLabel, sub: c.payBasisLabel, rule: false)
+                    FlatRow(label: "Working", value: HireWords.percentText(c.workingPercent), sub: HireWords.hours(c.contractedHoursPerWeek))
+                    FlatRow(label: "Started", value: GameCalendar.dateString(week: c.startWeek))
+                    if let end = c.endWeek { FlatRow(label: "Ends", value: GameCalendar.dateString(week: end), sub: c.renewalQuestionWeek.map { "You are asked about renewing from " + GameCalendar.dateString(week: $0) } ?? "") }
+                    if !c.seasonText.isEmpty { FlatRow(label: "Season", value: c.seasonText) }
+                    FlatRow(label: "Notice", value: "\(HireWords.weeksText(c.resignationNoticeWeeks)) from them", sub: "From you: \(String(format: "%g", c.employerNoticeWeeks)) weeks without cause")
+                }
+            }
+        }
+    }
+
+    private func promiseBenefits(_ e: GameEngine) -> [PromiseMaker.Choice] {
+        let plans: [ContractTalk.Choice] = e.contractChoices(companyID: companyID, personID: personID, topic: .bonus).filter { $0.id.hasPrefix("plan:") }
+        let others: [ContractTalk.Choice] = e.contractChoices(companyID: companyID, personID: personID, topic: .benefits).filter { c in
+            (c.id.hasPrefix("perk:") && c.id.split(separator: ":").count == 2) || c.id.hasPrefix("exp:")
+        }
+        return (plans + others).map { PromiseMaker.Choice(id: $0.id, title: $0.title) }
+    }
+
+    private func promiseMaker(_ e: GameEngine, label: String, _ add: @escaping (StaffPromises.Draft) -> Void) -> PromiseMaker {
+        var words: [String: String] = [:]
+        for k in StaffPromises.Kind.allCases { words[k.rawValue] = k.fulfilledBy }
+        return PromiseMaker(kinds: StaffPromises.Kind.allCases, details: words, benefits: promiseBenefits(e), percents: [20, 50, 80, 100], current: workPercent, label: label, add: add)
+    }
+
+    /// A promise made here goes to Company > Team > Promises, where its date, status and consequences are kept.
+    @ViewBuilder private func promiseSection(_ e: GameEngine, _ co: Company, _ n: Person) -> some View {
+        LedgerSection("Promise") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Instead of deciding now, promise \(first(n)) something by a date. It is kept in the Promises list.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                promiseMaker(e, label: "Make a promise") { draft in
+                    show(store.act { $0.promise(companyID: companyID, personID: personID, draft: draft) })
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func historySection(_ e: GameEngine) -> some View {
+        let entries: [ContractHistory.Entry] = Array(e.contractHistory(companyID: companyID, personID: personID).reversed())
+        LedgerSection("Contract history") {
+            VStack(alignment: .leading, spacing: 0) {
+                if entries.isEmpty { Text("No changes yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                ForEach(Array(entries.enumerated()), id: \.element.id) { i, h in
+                    FlatRow(label: h.text, value: GameCalendar.dateString(week: h.week), rule: i > 0)
+                }
+            }
+        }
+    }
+
     // MARK: Defaults
 
     private func seed() {
@@ -349,6 +464,7 @@ struct ContractDiscussionView: View {
         let talk = e.contractTalk(personID: personID)
         topic = startTopic ?? talk?.proposal.topic ?? .payRise
         if let m = co.staff.first(where: { $0.id == personID }) { hours = m.weeklyHours ?? 30 }
+        if let c = e.employmentContract(companyID: companyID, personID: personID) { workPercent = max(10, min(100, c.workingPercent.rounded())) }
         if let t = talk {
             if t.proposal.topic == .payRise { percent = max(0.005, t.proposal.amount) }
             if t.proposal.topic == .hours { hours = t.proposal.amount }

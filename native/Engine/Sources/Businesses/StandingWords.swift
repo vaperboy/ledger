@@ -27,6 +27,27 @@ public enum StandingWords {
         }
     }
 
+    /// How the press and public see you on one of the three press-image axes (0...100): `trust`, `bold` or `care`. Words for the screens instead of the bare numbers.
+    public static func pressImage(_ axis: String, _ value: Double) -> String {
+        let (low, mid, high, top): (String, String, String, String)
+        switch axis {
+        case "trust": (low, mid, high, top) = ("Doubted", "Not yet trusted", "Trusted", "Deeply trusted")
+        case "bold": (low, mid, high, top) = ("Cautious", "Measured", "Bold", "Fearless")
+        default: (low, mid, high, top) = ("Seen as cold", "Seen as neutral", "Seen as caring", "Seen as very caring")
+        }
+        switch value {
+        case ..<30: return low
+        case ..<55: return mid
+        case ..<78: return high
+        default: return top
+        }
+    }
+
+    /// The three axes in words, in the order trust, bold, care.
+    public static func pressImage(trust: Double, bold: Double, care: Double) -> [(axis: String, word: String)] {
+        [("Trust", pressImage("trust", trust)), ("Boldness", pressImage("bold", bold)), ("Care", pressImage("care", care))]
+    }
+
     /// Five star glyphs for a rating out of 5: filled for each whole star the rating reaches when rounded, empty for the rest.
     public static func starGlyphs(_ rating: Double) -> String {
         let filled: Int = min(5, max(0, Int(rating.rounded())))

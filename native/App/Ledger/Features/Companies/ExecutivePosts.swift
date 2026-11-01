@@ -105,6 +105,7 @@ struct ExecutivePosts: View {
                                     setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
                                     setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
+                    GroupRewardMenu(engine: engine, personID: p.rec["npc"].int, name: person?.name ?? "them")
                     Button("Let go") { releasing = p }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 }.buttonStyle(QuietButtonStyle())
             } else {
@@ -123,7 +124,9 @@ struct ExecutivePosts: View {
 
     @ViewBuilder private func candidateList(_ p: Post, _ cur: Currency) -> some View {
         CandidateHireList(people: candidates.compactMap { engine.state.people[$0] }, emptyText: "Everyone on the shortlist has taken another job. Search again.") { c in
-            CandidateHireRow(person: c, currency: cur, market: engine.goingRate(for: .executive(p.level)), factors: [0.9, 1.0, 1.15, 1.3]) { wage in hire(p, c, wage) }
+            let request = HireRequest(post: .executive(p.level), companyID: nil, chainID: chainID, city: p.city ?? regionCity, personID: c.id, roleTitle: p.level.title,
+                                      onHired: { candidates = []; searching = nil; regionCity = nil })
+            CandidateHireRow(person: c, currency: cur, subtitle: CandidateClaims.line(engine, c), market: engine.goingRate(for: .executive(p.level)), request: request)
         }
     }
 
@@ -154,15 +157,5 @@ struct ExecutivePosts: View {
         guard let city = regionCity else { return }
         if let list = store.act({ $0.searchExecutive(.region) }) ?? nil { searching = "rg\(city)"; candidates = list.map { $0.id }; Haptics.tap() }
         else { store.show("Not enough cash for the search.", tone: "warn") }
-    }
-
-    /// The engine's answer, in the words every hiring screen uses; the shared row shows it under the candidate.
-    private func hire(_ p: Post, _ c: Person, _ wage: Double) -> HireFeedback {
-        let city = p.city ?? regionCity
-        let r = store.act { $0.hireExecutive(p.level, personID: c.id, monthlyWage: wage, chainID: chainID, city: city) }
-        let feedback = HireFeedback.from(r, name: c.name, role: p.level.title)
-        if feedback.isHired { candidates = []; searching = nil; regionCity = nil }
-        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
-        return feedback
     }
 }

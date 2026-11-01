@@ -2,6 +2,12 @@
 
 ## Unreleased — native migration (branch `native-swiftui`)
 
+### Stage 3 screens: hiring, contracts, promises (1 Nov 2026)
+* One two-page hiring flow for every hire (workers, managers, assistants, team heads, executives, office staff, the analyst): page 1 contract terms (type, working percentage 20/50/80/100, seasonal or temporary duration, benefits, vehicle or own car, promises, expectations), page 2 salary (your offer, their ask only once named, market pay, "Offer market pay", live hourly wage and total annual employer cost). Back keeps the terms.
+* Contract discussion shows the employer cost before and after, per year, hours, payroll and business impact, a "may refuse" warning, a working percentage topic, promises and the contract history.
+* Company > Team > Promises lists every promise with dates, status and consequence, and renegotiates a date.
+* The staff profile shows the contract, promises and sentences about the work; skill, energy, character, quit percentages and the News trust/boldness/care numbers are gone (words instead).
+
 ### Company screens batch (1 Nov 2026)
 * Sales: **Pricing** is one pushed screen (your price and margin, rivals bar, Change price, Discount campaign, Price war, Hold my prices) reached from the Sales table; the price-level sheet and Market > Pricing are gone. The slider no longer recomputes engine reads on each tick (cards of their own; the forecast waits for the slider to rest). **How you sell** is a popup with only the choices and their cost; Ways to sell moved into it from Marketing. "Develop something new" is named per trade (`Development.noun`: menu item, class, collection, course ...) and only exists for trades with development written for them; its confirmation shows cost and weeks. Projects are a part of Sales only for project businesses. No Market or Customers row in Sales.
 * Marketing: awareness is a phrase (`StandingWords.awareness`), no helper text. Reputation is a word, ratings are stars out of 5.

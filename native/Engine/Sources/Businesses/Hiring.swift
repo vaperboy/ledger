@@ -11,10 +11,12 @@ import Finance
 public enum Hiring {
     public enum SearchMode: Sendable { case ads, network, agency }
 
-    static let tiers: [String: (age: (Int, Int), skill: (Double, Double), exp: (Double, Double), ask: Double, lie: Double)] = [
-        "young": ((18, 24), (12, 48), (0, 1.5), 0.82, 0.3),
-        "mid": ((25, 40), (35, 78), (2, 12), 1.0, 0.22),
-        "senior": ((41, 63), (42, 90), (10, 35), 1.2, 0.15),
+    /// Age groups only decide who turns up (age, skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
+    /// (`askSpread`), never age (owner decision, Nov 2026).
+    static let tiers: [String: (age: (Int, Int), skill: (Double, Double), exp: (Double, Double), lie: Double)] = [
+        "young": ((18, 24), (12, 48), (0, 1.5), 0.3),
+        "mid": ((25, 40), (35, 78), (2, 12), 0.22),
+        "senior": ((41, 63), (42, 90), (10, 35), 0.15),
     ]
     static let personalities = ["driven", "steady", "loyal", "arrogant", "lazy", "restless"]
     static let traits = ["late", "lazy", "conflict", "sick", "theft"]
@@ -59,7 +61,7 @@ public enum Hiring {
         let cityWage = (co.flatMap { w.city($0) }?.wage) ?? 1
         let spread = Wages.paySpread(baseMonthlyWage: base, country: country)
         let perkAsk = 1 - 0.04 * pull
-        let ask = roundTo(base * cityWage * T.ask * skillCurve(skill, lie: lie) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk * (co.map { Rivals.hiringPressure(s, $0) } ?? 1), step: 100)
+        let ask = roundTo(base * cityWage * askSpread(skill: skill, experience: exp, lie: lie) * w.inflationIndex * (w.catalog.tables.roles[role] != nil ? spread : 1) * perkAsk * (co.map { Rivals.hiringPressure(s, $0) } ?? 1), step: 100)
         let trait: String? = s.random.chance(0.14 * (1 - 0.4 * pull)) ? s.random.pick(traits) : nil
         let rel = clamp(s.random.range(0.55, 1) - (trait != nil ? 0.12 : 0), 0.3, 1)
         let name = personName(country, &s.random)
@@ -143,11 +145,29 @@ public enum Hiring {
         public var commissionRate = 0.0
         /// A fixed-term contract of this many weeks (one of `FixedTerm.termChoices`); 0 = permanent.
         public var fixedTermWeeks = 0
-        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0, fixedTermWeeks: Int = 0) {
+        /// The working percentage, 10-100 (20, 50, 80 and 100 are the usual ones). 0 = not given: `hours` decides. 100 = full time.
+        public var percent = 0.0
+        /// A seasonal job that ends with its season: the number of seasons it runs (0 = it returns every year, as before).
+        public var seasonCount = 0
+        /// A bonus plan (`WorkerBonus.Level.id`) and expense reimbursements (`StaffExpenses.Item.id`) that come with the job.
+        public var bonusPlan: String? = nil
+        public var expenseItems: [String] = []
+        /// Promises made in the talk, recorded when the person joins.
+        public var promises: [StaffPromises.Draft] = []
+        /// What the job is expected to grow into: "responsibility", "career", "training".
+        public var expectations: [String] = []
+        public init(hours: Double = 0, seasonMonths: [Int]? = nil, basis: String? = nil, ownCar: Bool = false, payPlan: String? = nil, commissionRate: Double = 0, fixedTermWeeks: Int = 0,
+                    percent: Double = 0, seasonCount: Int = 0, bonusPlan: String? = nil, expenseItems: [String] = [], promises: [StaffPromises.Draft] = [], expectations: [String] = []) {
             self.hours = hours; self.seasonMonths = seasonMonths; self.basis = basis; self.ownCar = ownCar; self.payPlan = payPlan; self.commissionRate = commissionRate
             self.fixedTermWeeks = fixedTermWeeks
+            self.percent = percent; self.seasonCount = seasonCount; self.bonusPlan = bonusPlan; self.expenseItems = expenseItems; self.promises = promises; self.expectations = expectations
         }
-        public var isPartTime: Bool { hours > 0 || seasonMonths != nil }
+        /// Contracted hours a week: from the working percentage when given, else `hours`; 0 = a full week.
+        public var effectiveHours: Double {
+            if percent > 0 { return percent >= 100 ? 0 : percent / 100 * StaffModel.fullWeekHours }
+            return hours
+        }
+        public var isPartTime: Bool { effectiveHours > 0 || seasonMonths != nil }
     }
 
     /// The staff record a hire at this wage and these terms would have, for cost previews only (nothing is stored). The real record is made in `hire`.
@@ -158,19 +178,22 @@ public enum Hiring {
         m.payBasis = payBasis(n, terms: terms, fixedSalaryRoles: fixedSalaryNorm).basis
         if terms.isPartTime { StaffTalks.applyPartTime(&m, terms: terms, week: week) } else if terms.ownCar { m.set("ownCar", 1) }
         if terms.payPlan == "com", PayPlans.eligible(role: n.role, trade: co.type, salesRoles: data.catalog.tables.salesRoles) { m.monthlyWage = 0 }
+        if let plan = terms.bonusPlan, let l = WorkerBonus.level(plan), !l.isNone { m.set("bp", l.id) }
+        for x in terms.expenseItems where StaffExpenses.item(x) != nil { var ex = m.value("ex"); if ex.isNull { ex = .object([:]) }; ex[x] = 1; m.set("ex", ex) }
+        if let k = terms.fixedTermWeeks as Int?, k > 0 { m.set("ft", week + k) }
         return m
     }
 
     /// A paid trial week (a quarter of the market wage for the role) shows how good someone really is, give or take a few points.
-    /// Returns the skill seen, or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
-    public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> Double? {
+    /// Returns what the week showed as observations (never a skill figure), or nil if the person or company is unknown or the company cannot pay. Original: `trialWeek`, `ACT.trial`.
+    public static func trialWeek(_ personID: Int, for companyID: Int, state s: inout GameState, data: GameData) -> [WorkLog.Observation]? {
         guard var n = s.people[personID], n.employerID == 0, s.companyIndex(companyID) != nil else { return nil }
         guard (n.raw["trial"]?.double ?? 0) == 0 else { return nil }   // one trial week per candidate (the result is kept in `trialRes`)
         let trialCost = jsRound(marketWage(role: n.role, company: s.companies[s.companyIndex(companyID)!], state: s, data: data) / 4)
         guard Payments.companyPays(&s, companyID: companyID, amount: trialCost, category: "wages", label: "Trial week") else { return nil }
         n.set("trial", 1)
-        let seen = jsRound(n.skill + s.random.gauss() * 6)
-        n.set("trialRes", seen)
+        let seen = WorkLog.trialObservations(person: n, role: n.role, week: s.week &+ Int(s.random.next() * 500))
+        n.set("trialObs", .array(seen.map { .string($0.text) }))
         s.people[personID] = n
         return seen
     }
@@ -189,7 +212,7 @@ public enum Hiring {
     /// someone who would rather have a salary, is worth a little more or less to them than the same figure on the other basis.
     static func payBasis(_ n: Person, terms: Terms, fixedSalaryRoles: Set<String>) -> (basis: String, factor: Double) {
         let part = terms.isPartTime
-        let basis = part ? "hour" : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
+        let basis = part ? (terms.basis == "fix" ? "fix" : "hour") : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
         let wantsFixed = HashedRandom.first("fix:\(n.id)") < (n.age < 26 ? 0.55 : 0.8)
         let factor = basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed && !part ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
         return (basis, factor)
@@ -197,9 +220,9 @@ public enum Hiring {
 
     /// How asking pay rises with skill (a candidate who exaggerates asks a little extra). Candidates are made with it, and whoever weighs
     /// them (`AutoHire`) uses the same curve to judge what someone of a given skill is worth.
-    static func skillCurve(_ skill: Double, lie: Bool = false) -> Double { 0.55 + skill / 110 + (lie ? 0.05 : 0) }
-    /// What someone of this age group and skill would ask, as a multiple of the going rate for the job.
-    static func askCurve(tier: String, skill: Double) -> Double { tiers[tier]!.ask * skillCurve(skill) }
+    static func skillCurve(_ skill: Double, lie: Bool = false, experience: Double = 6) -> Double { askSpread(skill: skill, experience: experience, lie: lie) }
+    /// What someone of this skill (and typical experience for the age group) would ask, as a multiple of the going rate for the job.
+    static func askCurve(tier: String, skill: Double) -> Double { askSpread(skill: skill, experience: (tiers[tier]!.exp.0 + tiers[tier]!.exp.1) / 2) }
 
     /// The age group of a person (the groups do not overlap).
     static func tier(forAge age: Int) -> String { age <= tiers["young"]!.age.1 ? "young" : age <= tiers["mid"]!.age.1 ? "mid" : "senior" }
@@ -227,7 +250,7 @@ public enum Hiring {
                               state s: inout GameState) -> Negotiation.Response {
         guard var n = s.people[personID] else { return Negotiation.Response(.refuse) }
         var talk = Negotiation.State.resume(n, party: employer, week: s.week)
-        let r = Negotiation.respond(offer: offer, position: position(for: n, factor: factor), temperament: temperament(of: n), rank: rank, state: &talk,
+        let r = Negotiation.respond(offer: offer, position: position(for: n, factor: factor * n.num("tf", 1)), temperament: temperament(of: n), rank: rank, state: &talk,
                                     week: s.week, step: currency.stepSize(about: about), random: &s.random)
         switch r.answer {
         case .accept: Negotiation.State().store(in: &n)
@@ -260,7 +283,10 @@ public enum Hiring {
         let wage0 = max(offered, world.minimumWage(s.companies[ci]))
         if wage0 > offered { s.note("The offer to \(n0.name) was raised to the minimum wage of \(world.country(s.companies[ci]).name).", companyID: companyID) }
         let part = terms.isPartTime
-        let (basis, factor) = payBasis(n0, terms: terms, fixedSalaryRoles: fixedSalaryRoles)
+        let (basis, _) = payBasis(n0, terms: terms, fixedSalaryRoles: fixedSalaryRoles)
+        // Terms that cannot be agreed (a percentage out of range, more hours than the person can work, a bad date) are refused with a reason, never cut silently.
+        if termsProblem(person: n0, terms: terms, company: s.companies[ci], state: s, data: data) != nil { return .planRefused }
+        let factor = talkFactor(person: n0, terms: terms, company: s.companies[ci], state: s, data: data)
         let reply = answer(personID: personID, employer: companyID, rank: "worker", offer: wage0, factor: factor,
                            currency: world.currency(s.companies[ci]), about: 100, state: &s)
         switch reply.answer {
@@ -274,7 +300,13 @@ public enum Hiring {
         let plan: String? = (!part && (terms.payPlan == "mix" || terms.payPlan == "com") && PayPlans.eligible(role: n.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles)) ? terms.payPlan : nil
         if plan == "com", n.num("sec") > 0.65, s.random.chance(0.6) { return .planRefused }
         // Someone who needs security does not take a fixed-term job (see FixedTerm.wantsPermanent).
-        let term = FixedTerm.termChoices.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
+        var term = workingFixedTermWeeks.contains(terms.fixedTermWeeks) ? terms.fixedTermWeeks : 0
+        // A seasonal job that runs for a number of seasons ends with the last of them.
+        var seasonEnd: Int? = nil
+        if terms.seasonCount > 0, let months = terms.seasonMonths {
+            guard let e = StaffTalks.seasonEnd(months: months, fromWeek: s.week, occurrences: terms.seasonCount) else { return .planRefused }
+            seasonEnd = e; term = max(1, e - s.week)
+        }
         if term > 0, FixedTerm.wantsPermanent(n) { return .planRefused }
         // A first fixed term longer than the country's maximum is not offered (optional labour data; none by default).
         if term > 0, FixedTerm.renewalBlock(World(state: s, data: data).labour(s.companies[ci]), StaffMember(raw: [:]), weeks: term, now: s.week) != nil { return .planRefused }
@@ -293,11 +325,16 @@ public enum Hiring {
             if plan == "com" { m.monthlyWage = 0 }   // commission only has no base
             if PayPlans.isExtra(role: m.role, trade: s.companies[ci].type, salesRoles: data.catalog.tables.salesRoles) { m.set("ppx", 1) }
         }
-        if term > 0 { m.set("ft", s.week + term); m.set("ftl", term) }
+        if term > 0 { m.set("ft", s.week + term); m.set("ftl", term); m.set("fts", s.week) }
+        _ = seasonEnd
+        if let plan = terms.bonusPlan, let l = WorkerBonus.level(plan), !l.isNone { m.set("bp", l.id) }
+        for x in terms.expenseItems where StaffExpenses.item(x) != nil { var ex = m.value("ex"); if ex.isNull { ex = .object([:]) }; ex[x] = 1; m.set("ex", ex) }
+        ContractHistory.append(&m, week: s.week, kind: "hired", text: "Hired: " + EmploymentContract.typeLabels(m).joined(separator: ", ").lowercased() + ", \(ContractHistory.fmt(EmploymentContract.percent(m))) percent of a full week.")
         onboardByManager(&m, company: s.companies[ci], state: &s)
         var staff = s.companies[ci].staff
         staff.append(m)
         s.companies[ci].staff = staff
+        for d in terms.promises { StaffPromises.make(&s, companyID: companyID, personID: personID, draft: d) }
         return .ok
     }
 

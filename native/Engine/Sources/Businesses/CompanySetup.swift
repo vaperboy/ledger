@@ -484,7 +484,7 @@ public enum CompanySetup {
                     if faithfulHiring {
                         let cands = found.sorted { $0.askingMonthlyWage < $1.askingMonthlyWage }
                         let pick = cands[cands.count / 2]
-                        let offer = w.currency(s.companies[i]).roundedStep(pick.askingMonthlyWage * 1.02, about: 100)
+                        let offer = w.currency(s.companies[i]).roundedStep(Hiring.askInThisTalk(pick, company: s.companies[i], state: s, data: data) * 1.02, about: 100)
                         if Hiring.hire(pick.id, into: companyID, monthlyWage: offer, state: &s, data: data) == .ok { n -= 1 }
                     } else if AutoHire.hireWorker(role: st.role, companyID: companyID, candidates: found, state: &s, data: data) != nil { n -= 1 }
                 }

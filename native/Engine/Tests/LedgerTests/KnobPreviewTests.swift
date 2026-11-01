@@ -18,7 +18,7 @@ extension GameEngine {
 /// The "how you sell" preview is the engine's own demand, price, capacity and cost functions on the company as it is: it must
 /// match what the engine then does, change nothing, and promise nothing.
 final class KnobPreviewTests: XCTestCase {
-    private static let seeds = [3, 11, 29, 57]
+    private static let seeds = [5, 11, 29, 57]
 
     private func open(_ e: inout GameEngine, _ trade: String) -> Int {
         let id = ChainsTests.start(&e, trade)

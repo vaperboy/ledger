@@ -181,6 +181,7 @@ struct HeadOfficeSection: View {
                     }
                 }
                 Spacer(minLength: 0)
+                GroupRewardMenu(engine: engine, personID: id, name: x["name"].string)
                 Button("Let go") {
                     let name = x["name"].string
                     pending = PendingAction(title: "Let \(name) go?", message: "What they do for the group stops at once. " + engine.officeRoleResult(role: x["role"].string), button: "Let go", destructive: true) {
@@ -237,12 +238,12 @@ struct HeadOfficeSection: View {
 
     @ViewBuilder private func candidate(_ p: Person, role: Headquarters.Role) -> some View {
         let ref = references[p.id] ?? (p.flag("checked") ? OfficeChecks.reference(p) : nil)
-        CandidateHireRow(person: p, currency: engine.homeCurrency, subtitle: "Age \(p.age) · says \(StaffProfile.band(p.claimedSkill).lowercased())",
-                         market: engine.goingRate(for: .office(role: role.id)), factors: [0.9, 1.0, 1.15, 1.3],
-                         offer: { wage in hire(role, p, wage) }) {
-            if let ref {
-                Text("References: really \(ref.skillBand.lowercased()), \(String(format: "%g", ref.experience)) yr" + (ref.matchesCV ? ". Matches the CV." : ". The CV does not match."))
-                    .font(.system(size: 11)).foregroundStyle(ref.matchesCV ? Theme.gain : Theme.caution)
+        let request = HireRequest(post: .office(role: role.id), companyID: nil, personID: p.id, roleTitle: role.title, onHired: { candidates = []; searchRole = nil })
+        CandidateHireRow(person: p, currency: engine.homeCurrency, subtitle: CandidateClaims.line(engine, p),
+                         market: engine.goingRate(for: .office(role: role.id)), request: request) {
+            if ref != nil {
+                Text(ref?.matchesCV == true ? "References: they match the CV." : "References: the CV does not match.")
+                    .font(.system(size: 11)).foregroundStyle(ref?.matchesCV == true ? Theme.gain : Theme.caution)
             } else {
                 Button("Check references") { checkReferences(p) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
             }
@@ -255,14 +256,6 @@ struct HeadOfficeSection: View {
         case .notEnoughCash?: store.show("Not enough cash.", tone: "warn")
         default: store.show("They are no longer available.", tone: "warn")
         }
-    }
-
-    /// The engine's answer in the words every hiring screen uses; the shared row shows it under the candidate.
-    private func hire(_ role: Headquarters.Role, _ p: Person, _ wage: Double) -> HireFeedback {
-        let feedback = HireFeedback.from(store.act { $0.hireOffice(role: role.id, personID: p.id, monthlyWage: wage) }, name: p.name, role: role.title)
-        if feedback.isHired { candidates = []; searchRole = nil }
-        store.show(feedback.text, tone: feedback.isHired ? "good" : "warn")
-        return feedback
     }
 
     // MARK: Manager reviews

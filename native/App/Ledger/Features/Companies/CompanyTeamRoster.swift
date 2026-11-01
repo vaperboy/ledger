@@ -10,18 +10,6 @@ import Simulation
 /// In Company > Team these posts are rows of the one management list in `CompanyManagement`, so this standalone list only shows
 /// where that list does not (a holding, which has no store manager). Each row opens `TeamSlotSheet` for hire, authority and release.
 /// Chain and group posts are the same kind of rows seen from the chain and from Group (see ExecutivePosts).
-/// What a candidate says about themselves on the CV: age, what they claim to have done (never the real figure), and what they say they can do.
-enum CandidateClaims {
-    static func line(_ engine: GameEngine, _ p: Person, extra: String = "") -> String {
-        var parts = ["Age \(p.age)"]
-        if let y = engine.claimedExperienceYears(personID: p.id) { let n = Int(y.rounded()); parts.append("Claims \(n) \(n == 1 ? "year" : "years")") }
-        parts.append("says \(StaffProfile.band(p.claimedSkill).lowercased())")
-        if !extra.isEmpty { parts.append(extra) }
-        return parts.joined(separator: " · ")
-    }
-}
-
-
 // MARK: Person cards (new look)
 
 /// The initials of a name in a round outlined holder: the face of every person card. A vacant post shows the plus icon instead.
@@ -331,12 +319,8 @@ struct TeamSlotSheet: View {
         }
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
-            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .team(key: slot.key), companyID: co.id), factors: [0.9, 1.0, 1.15, 1.3]) { wage in
-                let r = store.act { $0.hireTeam(companyID: co.id, key: slot.key, personID: p.id, monthlyWage: wage) }
-                let fb = HireFeedback.from(r, name: p.name, role: slot.title)
-                if fb.isHired { candidates = []; store.show(fb.text, tone: "good") }
-                return fb
-            }
+            let request = HireRequest(post: .team(key: slot.key), companyID: co.id, personID: p.id, roleTitle: slot.title, onHired: { candidates = [] })
+            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .team(key: slot.key), companyID: co.id), request: request)
         }
     }
 }
