@@ -31,7 +31,7 @@ struct SettingsTableRow: View {
         } label: {
             if glyph != nil { overviewRow } else { plainRow }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityHint(opens == .sheet ? "Opens a small sheet to change it" : "Opens a page")
     }

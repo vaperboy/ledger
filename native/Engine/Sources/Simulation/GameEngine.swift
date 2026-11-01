@@ -49,7 +49,7 @@ public struct GameEngine {
 
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
-    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan) throws -> GameEngine {
+    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647
@@ -105,6 +105,8 @@ public struct GameEngine {
         engine.openReportBaselines()
         engine.snapshot()
         engine.recordDay()
+        // An ambition chosen on the start screen is stored like any other choice (perk active at once: there is nothing to switch from).
+        if let ambition, Ambitions.path(ambition) != nil { engine.chooseAmbition(path: ambition) }
         return engine
     }
 

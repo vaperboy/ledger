@@ -6,7 +6,10 @@ import Finance
 /// Losses that insurance can cover, shared by lawsuits and cyber attacks. Original: `applyFx(co, { loss }, null, { cat })`.
 enum Incidents {
     /// A loss with a deductible: insurance for this category pays most of it (now and then it pays only part).
-    static func loss(_ s: inout GameState, companyID: Int, amount amt: Double, category cat: String, label: String, data: GameData) {
+    ///
+    /// `wagesFirst`: a court judgment is a liability, not a bill that may leave the staff unpaid. The company pays at once only what it
+    /// can spare after the wages it already owes; the rest is recorded as a legal liability (`LegalDebts`) and settled from later cash.
+    static func loss(_ s: inout GameState, companyID: Int, amount amt: Double, category cat: String, label: String, data: GameData, wagesFirst: Bool = false) {
         guard let i = s.companyIndex(companyID), amt > 0 else { return }
         if cat != "none", s.companies[i].value("ins")[cat].bool {
             let cur = World(state: s, data: data).currency(s.companies[i])
@@ -20,7 +23,46 @@ enum Incidents {
                 }
             }
         }
+        if wagesFirst, let k = s.companyIndex(companyID) {
+            let now = min(amt, LegalDebts.spare(s.companies[k]))
+            if now > 0 { Payments.companyPays(&s, companyID: companyID, amount: now, category: "loss", label: label) }
+            let rest = jsRound(amt - now)
+            if rest >= 1 {
+                s.companies[k].addPayable(LegalDebts.key, rest)
+                Payments.book(&s, companyID: companyID, category: "loss", amount: rest)
+            }
+            return
+        }
         Payments.companyPays(&s, companyID: companyID, amount: amt, category: "loss", label: label)
+    }
+}
+
+/// Court judgments the company could not pay at once. A real liability on the balance sheet (`payables["legal"]`, counted in
+/// `CompanyFigures.billsOwed`), settled from cash left over once the wages it owes are covered, so a lost case can no longer push
+/// the account negative and leave the staff unpaid. Payday calls `settle` every day.
+public enum LegalDebts {
+    public static let key = "legal"
+
+    /// What is still owed on judgments.
+    public static func owed(_ co: Company) -> Double { co.payables[key] ?? 0 }
+
+    /// Cash the company can spend on a judgment without leaving wages unpaid.
+    static func spare(_ co: Company) -> Double { max(0, co.cash - (co.payables["wages"] ?? 0)) }
+
+    /// Pays what the cash left after wages allows. Returns the amount paid.
+    @discardableResult
+    public static func settle(_ s: inout GameState, companyIndex i: Int) -> Double {
+        let co = s.companies[i]
+        let owed = owed(co)
+        guard owed >= 1, co.status.isLive else { return 0 }
+        let pay = jsRound(min(owed, spare(co)))
+        guard pay >= 1 else { return 0 }
+        Payments.companyPays(&s, companyID: co.id, amount: pay, category: nil, label: "Court judgment paid")
+        var p = s.companies[i].payables
+        p[key] = max(0, owed - pay)
+        if (p[key] ?? 0) < 1 { p[key] = nil }
+        s.companies[i].payables = p
+        return pay
     }
 }
 
@@ -71,7 +113,6 @@ public enum Lawsuits {
                      options: [.option("Settle · \(cur.display(settle))", "Pay now and the case is closed."),
                                .option("Go to court · \(cur.display(fee)) lawyer", big ? "Ruling in \(weeks) weeks." : "Decided at one hearing.")],
                      action: "sue16", data: d, expiresWeek: s.week + 3)
-        s.note("Decision needed: \(who) is suing \(co.name).", tone: "bad", companyID: co.id)
     }
 
     /// Settle or go to court. Returns what happened in words. Original: `sue`.
@@ -103,7 +144,7 @@ public enum Lawsuits {
     }
 
     static func lose(_ s: inout GameState, _ id: Int, _ d: JSONValue, extra: Double = 0, data: GameData) {
-        Incidents.loss(&s, companyID: id, amount: d["claim"].double + extra, category: "liab", label: "Court: \(d["who"].string)", data: data)
+        Incidents.loss(&s, companyID: id, amount: d["claim"].double + extra, category: "liab", label: "Court: \(d["who"].string)", data: data, wagesFirst: true)
         if let i = s.companyIndex(id) {
             s.companies[i].reputation = clamp(s.companies[i].reputation - (d["big"].bool ? 4.5 : 3), 0, 100)
             // The ruling is public: reviews and local press hurt for a while, the insurer reprices, and a big loss invites copycat claims.

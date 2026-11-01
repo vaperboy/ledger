@@ -24,8 +24,6 @@ struct CompanyProperties: View {
                 figures(pf, cur)
                 owned(pf, cur)
                 forSale(pf, cur)
-                Text("Housing prices rise and fall with the economy and with interest rates, and a mortgage magnifies both. Rent and vacancy follow the rent you set under Operations, the condition of the buildings, and whether you have caretakers and property managers.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }
         }
     }
@@ -127,7 +125,7 @@ struct CompanyProperties: View {
                             }
                             Button("Sell") { detailID = nil; pendingSell = p }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss)
                             Spacer()
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                         if openTenants == p.id { tenants(p, cur) }
                     } }
                 }
@@ -159,7 +157,7 @@ struct CompanyProperties: View {
                             Text("\(Int(o.squareMetres)) m2 · \(cur.tidyShort(o.squareMetres * o.weeklyRentPerM2)) a week · \(o.years) year lease").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Button("Lease") { lease(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(.plain)
+                        Button("Lease") { lease(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle())
                     }
                 }
                 Text("Wants to buy the building").capsLabel(Theme.ivoryFaint).padding(.top, 4)
@@ -170,7 +168,7 @@ struct CompanyProperties: View {
                             Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                         }
                         Spacer()
-                        Button("Sell to them") { detailID = nil; pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(.plain)
+                        Button("Sell to them") { detailID = nil; pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(PressableStyle())
                     }
                 }
             }

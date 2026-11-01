@@ -113,6 +113,7 @@ struct AccountingApp: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(OutsidePalette.accounting.ground.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { setUp() }
         .onChange(of: store.appRequest) { _, _ in take() }
@@ -177,7 +178,7 @@ struct AccountingApp: View {
             } label: {
                 Text("Stop").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(OutsidePalette.accounting.accent).padding(.horizontal, 10).padding(.vertical, 6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("acct-stop-preview")
         }
         .padding(.horizontal, 18).padding(.vertical, 8)

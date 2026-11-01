@@ -30,7 +30,7 @@ struct ProjectsView: View {
                             VenturesContent()
                             Button { Haptics.tap(); store.openApp(.ventures) } label: {
                                 ProjectCardRow(title: "Open Ventures in Phone", sub: "The same startups, funds and stakes, as an app.")
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(PressableStyle())
                         }
                     }
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 40)
@@ -85,7 +85,7 @@ struct ProjectUnderlineTabs<T: Hashable>: View {
                         .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 2) } }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
             }
         }

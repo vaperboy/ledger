@@ -33,7 +33,7 @@ struct CompanyChain: View {
             // Supply between your own companies lives in Operations > Suppliers (one record, one action).
             NavigationLink(value: CompanyRoute.companyAt(company.id, .operations)) {
                 CardRow(glyph: Glyph.market, title: "Suppliers and supply from your own companies", subtitle: "Who provides each input, prices, terms and risks. Switch provider in Operations.")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -137,7 +137,7 @@ struct StoreInChainCard: View {
             NavigationLink { ChainView(chainID: summary.id) } label: {
                 CardRow(glyph: Glyph.group, title: "Open the chain", subtitle: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
                         value: cur.tidyShort(summary.profit) + " / mo", valueTint: summary.profit < 0 ? Theme.loss : Theme.ivory)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if summary.stores.count > 1 || owed > 0 {
                 standing(rank: rank, mine: mine, owed: owed, cur: cur)
             }

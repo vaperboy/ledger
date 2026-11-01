@@ -268,3 +268,7 @@ untouched next to the converted save.
 * Group staff (executives, head office, analyst) have no profile screen: their promises are in Company > Team > Promises under "Group staff", with "Keep it now" calling the real group action (a 5 percent pay review, one level of promotion or authority, a course, the first expense reimbursement, the agreed percentage).
 * Promise kinds of a future benefit offer the company perks, bonus plans and expenses; a benefit that does not apply to the person is refused by the engine when it is checked.
 * Not changed (outside this pass): the manager scorecard numbers on a manager's card (a performance review, not a hidden value) and the Franchise applicant lines.
+
+## Stage 7/8 open points
+- The chosen ambition is not yet a trackable mission on the company Overview: its milestones live in Phone > Goals only, and there is no mission record to link to, so no fake mission was added. Needs a small mission-link model (owner call).
+- Finance and Operations overviews were not trimmed (no screenshot evidence they overflow); the Group Overview was cut to top three issues, key figures, three biggest companies and structure counts.

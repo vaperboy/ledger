@@ -58,6 +58,7 @@ struct BankApp: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
         .toolbar(.hidden, for: .navigationBar)
         .ledgerBackground()
         .safeAreaInset(edge: .top, spacing: 0) {

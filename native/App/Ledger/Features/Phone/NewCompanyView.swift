@@ -133,18 +133,18 @@ struct NewCompanyView: View {
             Text("Other ways in").capsLabel().padding(.top, Theme.Space.s)
             NavigationLink { NewHoldingView() } label: {
                 CardRow(glyph: Glyph.richList, title: "Holding company", subtitle: "Owns your other companies; dividends into it are taxed far lower")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             NavigationLink { FranchisesView() } label: {
                 CardRow(glyph: Glyph.market, title: "Join a franchise", subtitle: "A known brand, their rules and a fee")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if hasOpen {
                 NavigationLink { ExpandAbroadView() } label: {
                     CardRow(glyph: Glyph.world, title: "Expand abroad", subtitle: "A subsidiary of one of your companies in another country")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             NavigationLink { ClubMarketView() } label: {
                 CardRow(glyph: Glyph.group, title: "Football club", subtitle: "Buy a club in a top league, or found one")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 

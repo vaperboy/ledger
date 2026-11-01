@@ -117,7 +117,7 @@ struct PhoneHome: View {
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color(hex: 0x2F3033), lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("phone-banner")
     }
 }
@@ -153,7 +153,7 @@ struct AppIcon: View {
             .overlay(alignment: .topTrailing) { RedBubble(count: badge).offset(x: -2, y: -5) }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(app.title)
         .accessibilityValue(badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")

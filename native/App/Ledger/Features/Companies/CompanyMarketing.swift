@@ -179,7 +179,7 @@ private struct OptionPill: View {
                 .overlay(shape.strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

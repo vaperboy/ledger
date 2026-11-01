@@ -3,9 +3,9 @@ import Simulation
 import Finance
 import Businesses
 
-/// Today's summary, the top of the Home tab (route name `.company`), built like native/design/new-look-2026-10/HomeMix.dc.html:
-/// header, one slim net worth card, four boxes (Bank, Hire, Reports, Market), profit and due cards, "Needs you", a one-line report row.
-/// The companies list follows below it (CompaniesView), then the Next day bar. First steps and goals live in Phone > Goals.
+/// The top of the Home tab (route name `.company`), the compact command centre of "Home variation 1" (native/design/MOCKUP_DECISIONS.md):
+/// date and name, the net worth hero with its four figures, the player's shortcut boxes, the top priorities (at most three, the rest
+/// in the Inbox), then the companies list below (CompaniesView) and the Next day bar. Report sheets and reward popups appear on top of it.
 struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
@@ -15,22 +15,16 @@ struct HomeSummary: View {
     var body: some View {
         let e = engine
         VStack(alignment: .leading, spacing: 8) {
-            HomeHeader(name: playerName, dateText: "Week \(e.state.week + 1) · \(e.date)", onNewCompany: onNewCompany)
+            HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", onNewCompany: onNewCompany)
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {
                     NetWorthCard(engine: e)
-                    VStack(spacing: 8) { HomeQuickBoxes(engine: e); HomeMoneyCards(engine: e) }
-                }
-                HStack(alignment: .top, spacing: Theme.Space.l) {
-                    NeedsYouCard(engine: e)
-                    ReportPromptSection(engine: e)
+                    VStack(spacing: 8) { HomeShortcutRow(); TopPriorities(engine: e) }
                 }
             } else {
                 NetWorthCard(engine: e)
-                HomeQuickBoxes(engine: e)
-                HomeMoneyCards(engine: e)
-                NeedsYouCard(engine: e)
-                ReportPromptSection(engine: e)
+                HomeShortcutRow()
+                TopPriorities(engine: e)
             }
         }
     }
@@ -43,7 +37,7 @@ struct HomeSummary: View {
 
 // MARK: Net worth
 
-/// The one slim hero card: the figure, what it did this week and in 30 days, a thin chart, the period picker, and the three boxes it is made of.
+/// The hero: the serif figure, what it did this week and in 30 days, a thin chart, the period picker, and the four figures it is made of.
 struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -77,13 +71,13 @@ struct NetWorthCard: View {
                 }
                 NetWorthChart(engine: engine, days: days, height: 30)
                 HStack(spacing: 0) {
-                    box("Spendable", store.short(wealth.liquid), Theme.ivory)
+                    box("Personal cash", store.short(wealth.liquid), Theme.ivory)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Investments", store.short(otherAssets), Theme.ivory)
+                    box("Invested", store.short(otherAssets), Theme.ivory)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Companies (est.)", store.short(wealth.estimatedCompanyEquity), Theme.ivory)
+                    box("Companies", store.short(wealth.estimatedCompanyEquity), Theme.ivory)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Owed", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory)
+                    box("Debt", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory)
                 }
                 .padding(.top, 7).overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
                 .fixedSize(horizontal: false, vertical: true)
@@ -95,7 +89,7 @@ struct NetWorthCard: View {
 
     private func box(_ label: String, _ value: String, _ tint: Color) -> some View {
         VStack(spacing: 0) {
-            Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
         }.frame(maxWidth: .infinity)
     }
@@ -124,35 +118,36 @@ struct PeriodPicker: View {
                         .padding(.vertical, 3)
                         .overlay(alignment: .bottom) { if days == p.days { Rectangle().fill(Theme.gold).frame(height: 1) } }
                         .contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }
 }
 
-// MARK: Four boxes
+// MARK: Shortcut boxes
 
-/// Bank, Hire, Reports, Market: each opens the matching Phone app or flow.
-struct HomeQuickBoxes: View {
+/// The player's boxes (up to four, chosen with a long press or "Edit"). Each opens the matching Phone app or flow.
+struct HomeShortcutRow: View {
     @EnvironmentObject var store: GameStore
-    var engine: GameEngine
+    @State private var editing = false
 
     var body: some View {
         let badges = store.phoneBadges
         HStack(spacing: 6) {
-            box("Bank", Glyph.bank, badge: badges[.bank] ?? 0) { store.openApp(.bank) }
-            box("Hire", Glyph.hire) { store.openHiring() }
-            box("Reports", Glyph.reports) { store.openApp(.reports) }
-            box("Market", Glyph.market) { store.openMarket() }
+            ForEach(store.homeShortcuts) { item in
+                box(item, badge: item.badgeApp.map { badges[$0] ?? 0 } ?? 0)
+            }
         }
+        .contextMenu { Button("Edit shortcuts") { editing = true } }
+        .sheet(isPresented: $editing) { HomeShortcutEditor() }
     }
 
-    private func box(_ title: String, _ glyph: String, badge: Int = 0, action: @escaping () -> Void) -> some View {
+    private func box(_ item: HomeShortcut, badge: Int) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-        return Button { Haptics.tap(); action() } label: {
+        return Button { Haptics.tap(); item.open(store) } label: {
             VStack(spacing: 4) {
-                GlyphView(glyph: glyph, size: 17, weight: 1.7)
-                Text(title).font(.system(size: 11)).foregroundStyle(Theme.ivory)
+                GlyphView(glyph: item.glyph, size: 17, weight: 1.7)
+                Text(item.title).font(.system(size: 11)).foregroundStyle(Theme.ivory).lineLimit(1)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 8)
             .background(shape.fill(Theme.surface))
@@ -160,9 +155,10 @@ struct HomeQuickBoxes: View {
             .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: 4, y: -5) }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityIdentifier("home-" + title.lowercased())
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(item.title)
+        .accessibilityIdentifier("home-" + item.rawValue)
+        .accessibilityAction(named: "Edit shortcuts") { editing = true }
     }
 }
 
@@ -178,73 +174,41 @@ extension GameStore {
     }
 }
 
-// MARK: Profit and due
+// MARK: Top priorities
 
-/// Profit this month and what falls due in 30 days (covered or short). Both open the Bank app.
-struct HomeMoneyCards: View {
+/// What needs the owner, worst first: at most three rows, each opening the exact object; the rest wait in the Inbox. Decisions that a
+/// manager already handled never reach this list (the engine settles them), and neutral information (a tax estimate, idle cash) is
+/// not a priority.
+struct TopPriorities: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
 
     var body: some View {
-        let o = engine.financeOverview(companyID: nil)
-        let short = o.shortfall > 0
-        let profitTint: Color = o.monthProfit < -0.5 ? Theme.loss : o.monthProfit > 0.5 ? Theme.gain : Theme.ivory
-        HStack(spacing: 8) {
-            card("Profit this month", signed(o.monthProfit), profitTint, "year so far " + signed(o.yearProfit), Theme.ivoryFaint, id: "home-profit")
-            card("Due in 30 days", store.short(o.dueWithin30Days), short ? Theme.loss : Theme.ivory,
-                 short ? "✗ short by " + store.short(o.shortfall) : (o.dueWithin30Days > 0.5 ? "✓ covered by " + store.short(o.cashAvailable) : "nothing due"),
-                 short ? Theme.loss : (o.dueWithin30Days > 0.5 ? Theme.gain : Theme.ivoryFaint), id: "home-due")
-        }
-    }
-
-    private func card(_ label: String, _ value: String, _ tint: Color, _ sub: String, _ subTint: Color, id: String) -> some View {
-        Button { Haptics.tap(); store.openApp(.bank) } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                Text(value).font(.system(size: 19, weight: .medium).monospacedDigit()).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
-                Text(sub).font(.system(size: 11)).foregroundStyle(subTint).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(id)
-        .accessibilityHint("Opens the Bank")
-    }
-
-    private func signed(_ v: Double) -> String { abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v)) }
-}
-
-// MARK: Needs you
-
-/// What needs the player, worst first: compact one-line rows from the engine's suggestions, each with its own action.
-struct NeedsYouCard: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-
-    var body: some View {
-        let list = engine.suggestions(limit: 6)
-        let shown = Array(list.prefix(3))
+        let list: [Suggestion] = engine.suggestions(limit: 8).filter { $0.tone != .neutral }
+        let shown: [Suggestion] = Array(list.prefix(3))
+        let waiting: Int = store.openDecisionCount
         Card(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text(list.isEmpty ? "All clear" : "Needs you · \(list.count)")
-                        .font(.system(size: 10.5, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(Theme.gold)
-                    Spacer()
-                    Button { Haptics.tap(); store.openApp(.inbox) } label: {
-                        Text("Open Inbox ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold).frame(minHeight: 24).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityIdentifier("home-open-inbox")
-                }
-                .padding(.bottom, 3)
-                if list.isEmpty {
+                Text(shown.isEmpty ? "All clear" : "Top priorities")
+                    .font(.system(size: 10.5, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(Theme.gold)
+                    .padding(.bottom, 3)
+                if shown.isEmpty {
                     Text("Nothing needs you right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6)
                 }
                 ForEach(shown) { item in
                     Rectangle().fill(Theme.divider).frame(height: 1)
                     row(item)
+                }
+                if waiting > 0 {
+                    Rectangle().fill(Theme.divider).frame(height: 1)
+                    Button { Haptics.tap(); store.openApp(.inbox) } label: {
+                        HStack {
+                            Spacer()
+                            Text("See all \(waiting) in Inbox ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
+                        }
+                        .frame(minHeight: 32).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-inbox")
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
@@ -254,14 +218,17 @@ struct NeedsYouCard: View {
     private func row(_ item: Suggestion) -> some View {
         Button { store.go(item.action) } label: {
             HStack(spacing: 8) {
-                GlyphView(glyph: Glyph.warning, size: 14, weight: 1.9, tint: tint(item.tone))
+                Circle().fill(tint(item.tone)).frame(width: 7, height: 7)
                 Text(item.title.tidyMoney).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(item.actionLabel + " ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold).lineLimit(1).fixedSize()
+                Text(item.actionLabel)
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.gold).lineLimit(1).fixedSize()
+                    .padding(.horizontal, 9).padding(.vertical, 3)
+                    .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
             }
             .padding(.vertical, 6).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier({ if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" } }())
     }
@@ -273,15 +240,17 @@ struct NeedsYouCard: View {
 
 // MARK: Next day
 
-/// The one filled control on the screen: a champagne pill at the bottom right, the week's progress at the left.
+/// The one filled control on the screen: a champagne pill at the bottom right, the week's progress (seven segments) at the left with
+/// what the last day did to net worth. While a day runs the button shows progress and ignores taps.
 struct AdvanceBar: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Day \(engine.state.day + 1) of 7").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                caption
                 HStack(spacing: 4) {
                     ForEach(0..<7, id: \.self) { d in
                         Capsule().fill(d <= engine.state.day ? Theme.gold : Theme.hairline).frame(width: 22, height: 3)
@@ -289,17 +258,45 @@ struct AdvanceBar: View {
                 }
             }
             Spacer(minLength: 8)
-            Button { store.nextDay() } label: {
-                Text(engine.state.isGameOver ? "Game over" : "Next day  ›")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
-                    .lineLimit(1).fixedSize()
-                    .padding(.horizontal, 24).frame(height: 44)
-                    .background(Capsule().fill(Theme.gold))
-            }
-            .buttonStyle(.plain)
-            .disabled(engine.state.isGameOver)
+            nextButton
         }
         .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 4)
         .background(LinearGradient(colors: [Theme.page.opacity(0), Theme.page.opacity(0.94), Theme.page], startPoint: .top, endPoint: .center))
+    }
+
+    /// "Day 3 of 7", and after a day the real change in net worth (an arrow and the amount). The line keeps its height, so nothing jumps.
+    private var caption: some View {
+        HStack(spacing: 6) {
+            Text("Day \(engine.state.day + 1) of 7").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            if let chip = store.dayChip {
+                let c: Double = chip.netWorthChange
+                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c)) + " net worth")
+                    .font(.system(size: 10.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.change(c))
+                    .id(chip.id)
+                    .transition(.opacity)
+            }
+        }
+        .frame(height: 14, alignment: .leading)
+        .animation(Motion.standard(reduceMotion), value: store.dayChip?.id)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var nextButton: some View {
+        let busy: Bool = store.isAdvancing
+        let over: Bool = engine.state.isGameOver
+        return Button { store.nextDay() } label: {
+            HStack(spacing: 8) {
+                if busy { ProgressView().controlSize(.small).tint(Color(red: 0.09, green: 0.075, blue: 0.055)) }
+                Text(over ? "Game over" : busy ? "Running" : "Next day  ›")
+            }
+            .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+            .lineLimit(1).fixedSize()
+            .padding(.horizontal, 24).frame(height: 44)
+            .background(Capsule().fill(Theme.gold))
+            .opacity(busy ? 0.75 : 1)
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(over || busy || store.reportSheet != nil)
+        .accessibilityIdentifier("next-day")
     }
 }

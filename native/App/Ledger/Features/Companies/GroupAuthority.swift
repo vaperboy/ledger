@@ -42,8 +42,6 @@ struct GroupAuthoritySection: View {
                     figure("\(delegated)", delegated == 1 ? "company delegated" : "companies delegated")
                     figure("\(byYou)", byYou == 1 ? "company you run" : "companies you run")
                 }
-                Text("Each manager runs the staff of their own company and decides within the authority you gave. You decide what is above that. Staff do not report to you directly unless nobody runs their company.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -66,7 +64,7 @@ struct GroupAuthoritySection: View {
                 Text("\(lines.count)").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
             }
             ForEach(shown) { line in
-                NavigationLink(value: CompanyRoute.companyAt(line.id, .staff)) { row(line) }.buttonStyle(.plain)
+                NavigationLink(value: CompanyRoute.companyAt(line.id, .staff)) { row(line) }.buttonStyle(PressableStyle())
             }
             if sorted.count > rowLimit {
                 Text("And \(sorted.count - rowLimit) more. Open the Team tab for every manager.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
@@ -114,6 +112,6 @@ struct GroupAuthoritySection: View {
         Button { Haptics.tap(); openMore(.office) } label: {
             CardRow(glyph: Glyph.team, title: "Group office",
                     subtitle: g.groupOfficeEstablished ? "Group managing director, reviews and shared services." : "Optional. Set it up only if you want posts above the companies.")
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 }

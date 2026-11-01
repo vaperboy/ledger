@@ -69,7 +69,7 @@ struct LuxuryView: View {
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("luxury-tab-" + t.rawValue)
         .accessibilityLabel(name)
         .accessibilityAddTraits(on ? .isSelected : [])

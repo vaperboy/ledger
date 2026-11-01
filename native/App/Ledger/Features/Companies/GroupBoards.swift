@@ -20,11 +20,11 @@ struct BoardsGroupSection: View {
                 NoteCard(text: "A board forms once you register a chain or somebody else owns part of a company.")
             }
             ForEach(ordered, id: \.self) { key in
-                NavigationLink { BoardView(key: key) } label: { BoardLinkRow(engine: engine, key: key) }.buttonStyle(.plain)
+                NavigationLink { BoardView(key: key) } label: { BoardLinkRow(engine: engine, key: key) }.buttonStyle(PressableStyle())
             }
             Button(action: openInvest) {
                 CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 }
@@ -86,7 +86,7 @@ struct BoardView: View {
         if key.hasPrefix("co:"), let co = companies.first {
             NavigationLink(value: CompanyRoute.companyAt(co.id, .finances)) {
                 CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)", subtitle: "Who owns what, dividends and buy-backs, in the company's Finances.")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 

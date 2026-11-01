@@ -104,7 +104,6 @@ struct ContractDiscussionView: View {
                             show(store.act { $0.contractLeaveToManager(companyID: companyID, personID: personID) })
                         }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                     }
-                    Text("To answer with a figure of your own, set it below and send it. They may ask for more; they will not turn a raise down.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         } else if talk.proposal.amount > 0 {
@@ -181,7 +180,6 @@ struct ContractDiscussionView: View {
             VStack(alignment: .leading, spacing: 10) {
                 switch topic {
                 case .payRise:
-                    Text("A raise they will notice is about 6 to 7 points; a smaller one is taken, but they stay unhappy.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
                     steps([0.03, 0.06, 0.10, 0.15], current: percent) { percent = $0 }
                     Stepper("Raise: +\(String(format: "%.1f", percent * 100))%", value: $percent, in: 0.005...0.5, step: 0.005).font(.system(size: 13)).foregroundStyle(Theme.ivory)
                 case .promotion:
@@ -247,7 +245,7 @@ struct ContractDiscussionView: View {
                     Spacer()
                     Image(systemName: choice == o.id ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(choice == o.id ? Theme.gold : Theme.ivoryFaint)
                 }.padding(.vertical, 6).contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 

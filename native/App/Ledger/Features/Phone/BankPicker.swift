@@ -49,7 +49,7 @@ struct BankPickerScreen: View {
             CardRow(glyph: glyph, title: r.name, subtitle: sub, badge: r.hasAlert ? 1 : 0,
                     thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-pick-\(r.id.id)")
     }
 }

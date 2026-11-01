@@ -49,7 +49,7 @@ struct InvestContent: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { n, q in
                         if n > 0 { Hairline() }
-                        Button { Haptics.tap(); selected = q } label: { AssetRow(quote: q, cur: cur) }.buttonStyle(.plain)
+                        Button { Haptics.tap(); selected = q } label: { AssetRow(quote: q, cur: cur) }.buttonStyle(PressableStyle())
                     }
                 }
                 .padding(.horizontal, 12)
@@ -159,7 +159,7 @@ struct VenturesLinkRow: View {
                 RowLine(glyph: Glyph.ventures, title: "Startups, private equity and stakes",
                         subtitle: total > 0 ? "Managed in Projects > Ventures" : "Found or back a startup, commit to a fund: Projects > Ventures",
                         trailing: total > 0 ? cur.tidyShort(total) : "", chevron: true)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 }

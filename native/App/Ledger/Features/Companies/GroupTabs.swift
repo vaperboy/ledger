@@ -64,7 +64,7 @@ struct GroupTabBar: View {
         HStack(spacing: 0) {
             ForEach(GroupTab.allCases.filter { $0 != .more }, id: \.self) { t in
                 Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, menu: false) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
                     .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
                     .accessibilityIdentifier("group-tab-\(t.rawValue)")
             }
@@ -119,7 +119,7 @@ private struct GroupCaps: View {
             Text(text.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
             Spacer()
             if let action, !link.isEmpty {
-                Button { Haptics.tap(); action() } label: { Text(link).font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28) }.buttonStyle(.plain)
+                Button { Haptics.tap(); action() } label: { Text(link).font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28) }.buttonStyle(PressableStyle())
             }
         }
     }
@@ -152,12 +152,12 @@ struct GroupOverviewTab: View {
     var body: some View {
         let live = engine.state.companies.filter { $0.status.isLive }
         VStack(alignment: .leading, spacing: 12) {
-            GroupAttention(engine: engine)
+            // One phone screen: top issues (three), the two key figures, the three biggest companies, the structure counts.
+            // The dividend log and this year's money moved behind their links (company Finances, Bank).
+            GroupAttention(engine: engine, limit: 3)
             figures
             companiesTable(live)
             tiles(live)
-            activity(live)
-            money
         }
     }
 
@@ -217,7 +217,7 @@ struct GroupOverviewTab: View {
 
     private func companiesTable(_ live: [Company]) -> some View {
         let ranked = live.map { (co: $0, value: engine.companyHealth($0).value) }.sorted { $0.value > $1.value }
-        let rows = ranked.prefix(5).map { companyRow($0.co, value: $0.value) }
+        let rows = ranked.prefix(3).map { companyRow($0.co, value: $0.value) }
         return OverviewTable(title: "Companies", rows: Array(rows), emptyText: "No companies yet. Start one from Home.",
                              footer: "View all companies ›", footerAction: { store.jump(to: .company) }) {
             periodMenu
@@ -337,13 +337,13 @@ struct GroupStructureTab: View {
                     NavigationLink(value: CompanyRoute.companyAt(h.id, .holding)) {
                         node(name: h.name, kind: "Holding company · \(subs.count) \(subs.count == 1 ? "company" : "companies") under it",
                              value: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h), profit: nil, in: h)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                     ForEach(subs) { c in
-                        NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(.plain).padding(.leading, 18)
+                        NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(PressableStyle()).padding(.leading, 18)
                     }
                 }
                 ForEach(direct) { c in
-                    NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(.plain)
+                    NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(PressableStyle())
                 }
                 if live.isEmpty {
                     Text("Start a company to build a group.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6)
@@ -358,7 +358,7 @@ struct GroupStructureTab: View {
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                         .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
             .padding(.leading, 18)
@@ -412,7 +412,7 @@ struct GroupStructureTab: View {
             .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
             .contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 }
 
@@ -478,7 +478,7 @@ struct GroupBoardTab: View {
                                         fee: fee.map { store.short($0) + " / month" } ?? "no fee")
                             }
                         }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 if let key = keys.first {
                     NavigationLink { BoardView(key: key) } label: {
@@ -486,7 +486,7 @@ struct GroupBoardTab: View {
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                             .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
 
@@ -494,7 +494,7 @@ struct GroupBoardTab: View {
 
             Button { Haptics.tap(); store.openApp(.bank) } label: {
                 CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -539,7 +539,7 @@ struct GroupBoardTab: View {
                 }
             }
             .contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     /// Who owns each company with other owners (or the first few): bars of the shares. "Details" opens the company's Finances.
@@ -556,7 +556,7 @@ struct GroupBoardTab: View {
                             GroupCaps(text: shown.count > 1 ? "Owners · \(c.name)" : "Owners and stakes")
                             NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
                                 Text("Details ›").font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28)
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(PressableStyle())
                         }.padding(.top, c.id == shown.first?.id ? 0 : 8)
                         stakeRow("\(engine.state.player.name) (you)", mine, you: true)
                         ForEach(others) { h in stakeRow(h.name, h.pct, you: false) }
@@ -604,18 +604,18 @@ struct GroupDealsTab: View {
                         NavigationLink { FranchiseTalkView(companyID: c.id, applicantID: a.id) } label: {
                             CardRow(glyph: Glyph.person, title: "\(a.name) applies to \(chain?.name ?? c.name)",
                                     subtitle: "\(a.experience) yr experience · own money \(cur.tidyShort(a.capital))", value: "Talk")
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
                 NavigationLink { FranchisesView() } label: {
                     CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
                             subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") · apply, meet them, agree terms",
                             value: brands.isEmpty ? "" : "\(brands.count)")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 if !franchisors.isEmpty {
                     Button { Haptics.tap(); openMore(.franchises) } label: {
                         CardRow(glyph: Glyph.chevron, title: "Your franchise system", subtitle: "Units, fees and royalties of what you franchise out")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
 
@@ -626,7 +626,7 @@ struct GroupDealsTab: View {
                 } else {
                     Button { Haptics.tap(); store.openMarket() } label: {
                         CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
 
@@ -636,7 +636,7 @@ struct GroupDealsTab: View {
                 if !engine.knownSuppliers.isEmpty {
                     Button { Haptics.tap(); openMore(.office) } label: {
                         CardRow(glyph: Glyph.bank, title: "Supplier deals for the whole group", subtitle: "\(engine.knownSuppliers.count) known \(engine.knownSuppliers.count == 1 ? "supplier" : "suppliers") · under Group office")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -673,7 +673,7 @@ struct GroupMoreTab: View {
                     ExecutivePosts(engine: engine, chainID: nil)
                 } else {
                     Text("Group posts exist once you set up a group office and run two companies.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                    Button { pick(.office) } label: { Text("Open Group office ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36) }.buttonStyle(.plain)
+                    Button { pick(.office) } label: { Text("Open Group office ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36) }.buttonStyle(PressableStyle())
                 }
             case .boards:
                 BoardsGroupSection(engine: engine) { store.openApp(.bank) }
@@ -681,7 +681,7 @@ struct GroupMoreTab: View {
                 if live.contains(where: { $0.status == .open }) {
                     Button { Haptics.tap(); store.openMarket() } label: {
                         CardRow(glyph: Glyph.market, title: "Market and rivals", subtitle: "Rival groups and how your trades compare.")
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 } else {
                     Text("Open a company to see the market and rival groups.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                 }
@@ -689,13 +689,13 @@ struct GroupMoreTab: View {
                 Button { Haptics.tap(); showGiving() } label: {
                     CardRow(glyph: Glyph.richList, title: "Gifts, sponsorships and your foundation",
                             subtitle: "\(engine.givingMarks.count) \(engine.givingMarks.count == 1 ? "mark" : "marks")" + (engine.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 GroupCaps(text: "Other pages")
                 ForEach(GroupMorePage.allCases.filter { $0 != page && $0.inMore }) { p in
-                    Button { Haptics.tap(); pick(p) } label: { CardRow(glyph: p.glyph, title: p.rawValue, subtitle: p.sub) }.buttonStyle(.plain)
+                    Button { Haptics.tap(); pick(p) } label: { CardRow(glyph: p.glyph, title: p.rawValue, subtitle: p.sub) }.buttonStyle(PressableStyle())
                 }
             }
             .padding(.top, 8)

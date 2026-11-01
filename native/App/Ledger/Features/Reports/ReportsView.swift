@@ -70,6 +70,7 @@ struct ReportsContent: View {
         }
         .onAppear { takeRequest() }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
+        .swipeBetween(ReportKind.allCases, selection: $kind)
     }
 
     @ViewBuilder private func detail(_ d: ReportDest, _ r: PeriodReport, _ all: [PeriodReport]) -> some View {
@@ -120,7 +121,7 @@ struct ReportsContent: View {
                 .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain).disabled(!enabled).accessibilityLabel(label)
+        .buttonStyle(PressableStyle()).disabled(!enabled).accessibilityLabel(label)
     }
 
     // MARK: Hero, story and tables
@@ -248,7 +249,7 @@ struct ReportsContent: View {
                         }
                         .padding(.vertical, 9)
                         .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                     if i < rows.count - 1 { CardLine() }
                 }
             }

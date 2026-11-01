@@ -88,7 +88,8 @@ public extension GameEngine {
             return PayrollModeChoice(mode: m, monthlyFee: Payday.fee(for: m, co: co, currency: cur, hasAccountingHQ: hq), isCurrent: m == mode, unavailable: why)
         }
         let key = Payday.monthNumber(next)
-        let late = cfg.lateSince != nil
+        // Late means wages are really owed: a lateness "for cash" with no wages left to pay (settled another way) is not an alert.
+        let late = cfg.lateSince != nil && !(cfg.lateWhy == "cash" && (co.payables["wages"] ?? 0) < 1)
         let reason: String = {
             guard late else { return "" }
             switch cfg.lateWhy {
@@ -141,10 +142,12 @@ public extension GameEngine {
         state.liveCompanies.compactMap { co -> PayrollAlert? in
             guard let o = payrollOverview(companyID: co.id), o.hasPayroll, o.mode == .manual, !o.modeIsFixed else { return nil }
             if o.isLate {
-                return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(o.wagesOwed, o.wageShortfall), dateText: o.nextPayText,
+                return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(o.wagesOwed, o.wageShortfall, o.estimate), dateText: o.nextPayText,
                                     reason: o.lateReason.isEmpty ? "Payroll is late." : o.lateReason, isLate: true)
             }
             guard o.needsApproval else { return nil }
+            // Owner decision: an unapproved payroll is an alert only once the pay date has come (before it, the Inbox asks for approval).
+            guard o.nextPayDay <= Payday.dayNumber(week: state.week, day: state.day) else { return nil }
             let covered = o.autoApproves && o.companyCash >= o.estimate
             guard !covered else { return nil }
             let why = o.autoApproves ? "No manager or accountant approves it, and the company's cash does not cover it yet, so the routine rule cannot approve it."

@@ -38,7 +38,7 @@ struct AcctHeader: View {
                     .overlay(Circle().strokeBorder(FinanceColor.ivoryText.opacity(0.45), lineWidth: 1))
                     .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityLabel(backLabel)
             .accessibilityIdentifier("back-button")
             VStack(alignment: .leading, spacing: 1) {
@@ -313,7 +313,7 @@ struct AcctSearchField: View {
                 .accessibilityIdentifier(identifier)
             if !text.isEmpty {
                 Button { text = "" } label: { GlyphView(glyph: Glyph.close, size: 14, weight: 1.8, tint: P.inkFaint).frame(width: 28, height: 28) }
-                    .buttonStyle(.plain).accessibilityLabel("Clear search")
+                    .buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 12).frame(minHeight: 44)

@@ -81,13 +81,13 @@ struct FranchiseBrandRow: View {
             statusLine("Application sent. Answer in about \(max(1, a["due"].int - e.state.week).weeksText).", Theme.caution)
         case "invited":
             statusLine("They want to talk. Open for \(max(0, a["exp"].int - e.state.week)) more weeks.", Theme.gain)
-            NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Meet the \(b.role)") }.buttonStyle(.plain)
+            NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Meet the \(b.role)") }.buttonStyle(PressableStyle())
         case "agreed":
             let t = e.franchiseAgreedTerms(b.id)
             statusLine("Terms agreed. Entry fee \(cur.tidyShort(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).", Theme.gain)
             HStack(spacing: 8) {
-                NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Talk again", tint: Theme.ivoryMuted) }.buttonStyle(.plain)
-                NavigationLink { StartFranchisedView(brandID: b.id) } label: { chipLabel("Start with this deal") }.buttonStyle(.plain)
+                NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Talk again", tint: Theme.ivoryMuted) }.buttonStyle(PressableStyle())
+                NavigationLink { StartFranchisedView(brandID: b.id) } label: { chipLabel("Start with this deal") }.buttonStyle(PressableStyle())
             }
         default:
             if st == "refused" { statusLine("They turned you down for now.", Theme.loss) }
@@ -274,7 +274,7 @@ struct BrandMeetingView: View {
                 .frame(width: 32, height: 32)
                 .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
                 .contentShape(Circle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     private func stepper(_ title: String, _ steps: [Double], current: Double, label: @escaping (Double) -> String, set: @escaping (Double) -> Void) -> some View {

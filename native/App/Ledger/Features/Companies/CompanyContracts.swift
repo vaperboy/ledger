@@ -188,7 +188,7 @@ struct CompanyContracts: View {
                         }
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 if isOpen, let d {
                     CardLine()
                     contractSheet(c, d)
@@ -267,7 +267,7 @@ struct CompanyContracts: View {
                         }
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 if isOpen {
                     CardLine()
                     tenderSheet(t, qualifies: q.ok, hasBid: mine != nil, weeksToBid: weeksToBid)

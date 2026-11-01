@@ -40,7 +40,7 @@ struct BankStatementsTab: View {
                         Spacer()
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.accent)
                     }.padding(.vertical, 10).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }
@@ -50,10 +50,10 @@ struct BankStatementsTab: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Button { back = min(back + 1, count - 1); Haptics.choose() } label: { Text("‹ Earlier").font(.system(size: 12)).foregroundStyle(back >= count - 1 ? P.inkDim : P.accent) }
-                        .buttonStyle(.plain).disabled(back >= count - 1)
+                        .buttonStyle(PressableStyle()).disabled(back >= count - 1)
                     Spacer()
                     Button { back = max(back - 1, 0); Haptics.choose() } label: { Text("Later ›").font(.system(size: 12)).foregroundStyle(back == 0 ? P.inkDim : P.accent) }
-                        .buttonStyle(.plain).disabled(back == 0)
+                        .buttonStyle(PressableStyle()).disabled(back == 0)
                 }
                 StatStrip(cells: [
                     .init(label: "Opening", value: fmt.short(s.opening)),

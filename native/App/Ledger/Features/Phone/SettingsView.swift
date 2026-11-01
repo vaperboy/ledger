@@ -80,17 +80,17 @@ struct SettingsView: View {
         group("Saving", footer: "The game saves itself every day, and keeps a backup every month. Imports keep your original file untouched.") {
             Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: {
                 plainRow(Glyph.save, "Save now", chevron: true)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if let text = store.exportText() {
                 rule
                 ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) {
                     plainRow(Glyph.share, "Export this game", chevron: true)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             rule
             Button { showImporter = true } label: {
                 plainRow(Glyph.download, "Import a save from the web game", chevron: true)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -98,7 +98,7 @@ struct SettingsView: View {
         group("Game") {
             Button { confirmQuit = true } label: {
                 plainRow(Glyph.exit, "Back to the start screen", detail: "Saved first", tint: Theme.loss, chevron: true)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             rule
             plainRow(Glyph.info, "Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
         }

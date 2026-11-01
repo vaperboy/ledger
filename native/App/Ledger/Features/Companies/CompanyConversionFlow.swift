@@ -61,7 +61,7 @@ struct ConversionSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Convert").capsLabel()
                 Text(plan.companyName).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
-                Text("From \(plan.currentFormName) to \(plan.newFormName). Review what it costs and what changes. Nothing happens until you confirm.")
+                Text("From \(plan.currentFormName) to \(plan.newFormName). Nothing happens until you confirm.")
                     .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -116,7 +116,7 @@ struct ConversionSheet: View {
                     ForEach(Array(plan.loans.enumerated()), id: \.element.id) { n, l in
                         FlatRow(label: l.name, value: cur.tidyShort(l.balance), sub: l.personallyGuaranteed ? "your personal guarantee stays" : "company loan", rule: n > 0)
                     }
-                    Text("Banks keep the personal guarantee after a conversion. You can ask the bank to release it from the loan's details in the Bank app; it will want a higher margin.")
+                    Text("Banks keep the personal guarantee; ask to release it in the Bank app, at a higher margin.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                 }
             }
@@ -149,7 +149,7 @@ struct ConversionSheet: View {
     @ViewBuilder private func decision(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !plan.affordable {
-                Text("The chosen account cannot cover this. Pick the other account or put money in first: nothing is charged and nothing changes.")
+                Text("The chosen account cannot cover this: pick the other or put money in. Nothing is charged.")
                     .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("conversion-unaffordable")
             }
@@ -207,7 +207,7 @@ struct ConversionSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Converted").font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text(text.tidyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    Text("The legal form, name, ownership and records are updated everywhere. See Accounting > Documents for the registration and the accountant agreement.")
+                    Text("Form, name and records are updated; see Accounting > Documents for the registration.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }

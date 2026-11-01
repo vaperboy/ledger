@@ -11,6 +11,8 @@ public enum Ambitions {
     public struct Milestone: Equatable, Sendable { public var id: String; public var text: String; public var now: Double; public var target: Double; public var done: Int? }
     public struct Path: Equatable, Sendable, Identifiable { public var id: String; public var name: String; public var detail: String }
 
+    /// Weeks (from the start of the game) in which the ambition may be changed at no delay.
+    public static let freeChangeWeeks = 4
     public static let roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
     public static let paths: [Path] = [
         Path(id: "titan", name: "Industrial titan", detail: "Build a chain of companies that feed each other: materials, production, transport, sales. Lower costs and steadier supply, but one weak link hurts the whole group."),
@@ -201,7 +203,9 @@ public enum Ambitions {
         let switching = a["path"].isNull == false
         let had = a["hist"].array.contains { !$0["path"].string.isEmpty && $0["path"].string != "give" } || a["was"].bool
         a["path"] = .string(k); a["since"] = .number(Double(s.week))
-        a["settle"] = .number(had ? Double(s.week + 26) : 0)
+        // Free change window: during the first four weeks the ambition can be re-picked at no delay; later a switch settles after half a year.
+        let freeWindow = s.week < freeChangeWeeks
+        a["settle"] = .number(had && !freeWindow ? Double(s.week + 26) : 0)
         _ = switching
         a["was"] = true
         var t = a["tier"]; if t[k].isNull { t[k] = 0 }; a["tier"] = t
@@ -226,6 +230,7 @@ public enum Ambitions {
             if h.count > 40 { h.removeLast(h.count - 40) }
             a["hist"] = .array(h); s.rest["amb27"] = a
             s.addMessage(kind: "info", from: "Ambition", title: "Milestone: \(m.text)", body: "\(path(k)?.name ?? k) \(roman[min(9, t)]). +\(Int(ptsBase)) legacy points.", tone: "good")
+            Celebrations.add(&s, kind: "milestone", title: m.text, detail: "\(path(k)?.name ?? k) \(roman[min(9, t)])", reward: "+\(Int(ptsBase)) legacy points")
         }
         let fresh = milestones(s, data, path: k, tier: t)
         if fresh.allSatisfy({ $0.done != nil }) {
@@ -238,6 +243,8 @@ public enum Ambitions {
             a["hist"] = .array(h); s.rest["amb27"] = a
             s.news("\(s.player.name) reaches \((path(k)?.name ?? k).lowercased()) level \(roman[min(9, t)]).", tone: "good")
             let next = milestones(s, data, path: k, tier: t + 1).map { $0.text }.joined(separator: "; ")
+            Celebrations.add(&s, kind: "milestone", title: "\(path(k)?.name ?? k) \(roman[min(9, t)]) complete", detail: t < 2 ? "Your perk grows" : "The next level asks for three times as much",
+                             reward: "+\(Int(bonus)) legacy points")
             s.addMessage(kind: "info", from: "Ambition", title: "\(path(k)?.name ?? k) \(roman[min(9, t)]) complete",
                          body: "+\(Int(bonus)) legacy points. \(t < 2 ? "Your perk grows: " + perkText(k, level: t + 1) : "The next level asks for three times as much.") Next: \(next).", tone: "good")
         }

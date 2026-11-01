@@ -50,7 +50,7 @@ struct InboxMailRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button { Haptics.tap(); openDetail() } label: { content }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("inbox-row")
             companyLink
         }
@@ -115,7 +115,7 @@ struct InboxMailRow: View {
                 }
                 .foregroundStyle(P.accent).frame(minHeight: 32).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .padding(.leading, 70)
             .accessibilityIdentifier("open-company-link")
         }

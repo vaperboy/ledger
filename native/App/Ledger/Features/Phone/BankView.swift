@@ -41,7 +41,7 @@ struct BankLoansTab: View {
         return Button { Haptics.tap(); applying = true } label: {
             CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-apply-loan")
     }
 }
@@ -85,7 +85,7 @@ struct BankPersonalLoans: View {
                 if loans.isEmpty { Text("You owe nothing personally.").font(.system(size: 13)).foregroundStyle(P.inkSoft) }
                 ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                     if n > 0 { Hairline() }
-                    Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(.plain)
+                    Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(PressableStyle())
                 }
                 if !loans.isEmpty {
                     Text("Tap a loan for its schedule, this month's instalment, early repayment and, if you guaranteed it, the guarantee. Early repayment has no fee and cuts the interest still to come.").font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)

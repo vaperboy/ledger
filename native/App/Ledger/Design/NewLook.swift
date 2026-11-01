@@ -287,7 +287,7 @@ struct RoundBackButton: View {
                 .overlay(Circle().strokeBorder(palette.lineStrong, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier("back-button")
     }
@@ -362,6 +362,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -394,7 +395,7 @@ struct ReturnLine: View {
                 .foregroundStyle(Theme.gold)
                 .padding(.horizontal, 18).padding(.vertical, 8)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("return-bar")
         }
     }
@@ -512,7 +513,7 @@ struct ActionTile: View {
             .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: 4, y: -5) }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(title)
     }
 }
@@ -553,7 +554,7 @@ struct ChoiceCard: View {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(selected ? P.accent : P.line, lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -584,7 +585,7 @@ struct SegmentedPill<T: Hashable>: View {
                         .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? palette.accent : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityIdentifier(identifier?(item) ?? "segment-\(title(item))")
             }
@@ -678,7 +679,7 @@ struct TableRow: View {
         .contentShape(Rectangle())
         if let action {
             Button { Haptics.tap(); action() } label: { row }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(selected ? .isSelected : [])
         } else {
             row
@@ -709,7 +710,7 @@ struct QuietButton: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint ?? palette.accent, lineWidth: 1))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 
@@ -732,7 +733,7 @@ struct SmallOutlineButton: View {
                 .frame(minHeight: 30)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(title)
     }
 }
@@ -775,7 +776,7 @@ struct PillTabBar: View {
                     .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).padding(.trailing, 14).offset(y: -4) }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .accessibilityLabel(item.title)
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
                 .accessibilityIdentifier("tab-\(item.title)")

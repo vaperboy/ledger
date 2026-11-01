@@ -7,6 +7,7 @@ import Simulation
 struct RootView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -15,6 +16,7 @@ struct RootView: View {
             } else { StartView() }
         }
         .overlay(alignment: .top) { ToastView() }
+        .transaction { t in if reduceMotion { t.animation = nil } }
         .alert("Something went wrong", isPresented: Binding(get: { store.errorText != nil }, set: { if !$0 { store.errorText = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(store.errorText ?? "") }

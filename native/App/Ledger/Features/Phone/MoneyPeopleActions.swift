@@ -56,7 +56,6 @@ struct HostingSection: View {
                     if n > 0 { CardLine() }
                     guestRow(g, venues, cur)
                 }
-                Text("An evening needs a piece of yours that is not away, and once a month at most on the same piece.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             .confirmationDialog(pending.map { "Host \($0.option.title) on \($0.piece.item.name)?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
                 if let p = pending {
@@ -299,7 +298,6 @@ struct HoldingFinanceManagerCard: View {
                     QuietButton(title: "Job ad, \(cur.tidyShort(cur.scaledPrice(1500)))", fullWidth: true) { search(.ad) }
                     QuietButton(title: "Agency, \(cur.tidyShort(cur.scaledPrice(12000)))", fullWidth: true) { search(.agency) }
                 }
-                Text("An agency checks references; with the others the paperwork is yours to verify.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
             } else {
                 CandidateHireList(people: found, emptyText: "Nobody to meet now.") { c in
                     let request = HireRequest(post: .office(role: "fin"), companyID: nil, personID: c.id, roleTitle: "Finance manager", onHired: { found = [] })

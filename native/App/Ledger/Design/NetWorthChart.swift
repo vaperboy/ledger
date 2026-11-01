@@ -9,6 +9,7 @@ struct NetWorthChart: View {
     var days: Int = 365
     /// The plot height; Home uses a thin 30 pt line.
     var height: CGFloat = 66
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Point: Identifiable { var id: Int; var value: Double }
 
@@ -35,7 +36,7 @@ struct NetWorthChart: View {
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .frame(height: height)
-                .animation(.snappy(duration: 0.3), value: days)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: days)
             } else {
                 Text("The chart fills in day by day.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: height)
             }

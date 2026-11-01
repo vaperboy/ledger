@@ -69,6 +69,6 @@ struct CompanySecurityCard: View {
                 Text(costText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                 GlyphView(glyph: on ? Glyph.check : Glyph.ring, size: 14, weight: 1.6, tint: on ? Theme.gold : Theme.ivoryFaint)
             }.contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 }

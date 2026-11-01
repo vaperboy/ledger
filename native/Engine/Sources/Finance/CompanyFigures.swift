@@ -63,6 +63,7 @@ public enum CompanyFigures {
         total += p["rent"] ?? 0
         total += max(0, co.vatBalance)
         total += p["tax"] ?? 0
+        total += p["legal"] ?? 0
         if !fm["liab"].isNull { total += fm["liab"].double }
         return total
     }
