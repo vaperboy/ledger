@@ -1,0 +1,12 @@
+{
+  "about": "Bonus plans for ordinary staff (WorkerBonus.swift), built on the monthly targets and the yearly budget of ManagerTargets. Every figure is a game design value, not taken from a source; none is a money amount. A level pays three things, each a share of the person's monthly pay: `targetRate` for every monthly target the company met (of three, the same judgement as a manager's bonus), `yearEndMonths` months of pay when the year's sales and profit budget is met (pro rata to the weeks they served in the year), `performanceRate` each month to people whose skill is at or above the team's average, but only in a month the company did not make a loss. Everything is paid through payroll, so it carries the employer's charges like wages. `expect` are the figures used to show what a plan is likely to cost a month before it is agreed. `smoothing` is how fast the average bonus a person counts as pay follows the months. `happyWeeks` is how long a bonus paid keeps a person pleased.",
+  "levels": [
+    { "id": "none",     "name": "No bonus plan", "detail": "Pay is the salary or hourly pay only.",                                            "targetRate": 0,    "yearEndMonths": 0,   "performanceRate": 0 },
+    { "id": "standard", "name": "Standard plan", "detail": "A little for every target the company meets, a half month at year end, a small reward for the best.", "targetRate": 0.02, "yearEndMonths": 0.5, "performanceRate": 0.02 },
+    { "id": "high",     "name": "High plan",     "detail": "More for every target, a full month at year end and a real reward for the best.",     "targetRate": 0.04, "yearEndMonths": 1,   "performanceRate": 0.04 }
+  ],
+  "expect": { "hits": 1.5, "performance": 0.5, "yearEnd": 0.5 },
+  "smoothing": 0.25,
+  "happyWeeks": 8,
+  "performanceNeedsProfit": true
+}

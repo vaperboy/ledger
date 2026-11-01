@@ -1,0 +1,149 @@
+{
+ "sheet": "cars",
+ "cells": {
+  "b1-1": {
+   "file": "cars/b1-1.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Velocita"
+  },
+  "b1-2": {
+   "file": "cars/b1-2.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Stradale"
+  },
+  "b1-3": {
+   "file": "cars/b1-3.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Grandiosa"
+  },
+  "b2-1": {
+   "file": "cars/b2-1.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Presidio"
+  },
+  "b2-2": {
+   "file": "cars/b2-2.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Elysium"
+  },
+  "b2-3": {
+   "file": "cars/b2-3.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Apex"
+  },
+  "b3-1": {
+   "file": "cars/b3-1.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Eon"
+  },
+  "b3-2": {
+   "file": "cars/b3-2.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Aero"
+  },
+  "b3-3": {
+   "file": "cars/b3-3.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Volt"
+  },
+  "b4-1": {
+   "file": "cars/b4-1.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Majesty"
+  },
+  "b4-2": {
+   "file": "cars/b4-2.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Vanguard"
+  },
+  "b4-3": {
+   "file": "cars/b4-3.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Regent"
+  },
+  "b5-1": {
+   "file": "cars/b5-1.jpg",
+   "row": 4,
+   "col": 0,
+   "caption": "GT-Ryu"
+  },
+  "b5-2": {
+   "file": "cars/b5-2.jpg",
+   "row": 4,
+   "col": 1,
+   "caption": "Kage"
+  },
+  "b5-3": {
+   "file": "cars/b5-3.jpg",
+   "row": 4,
+   "col": 2,
+   "caption": "Shinobi"
+  },
+  "b6-1": {
+   "file": "cars/b6-1.jpg",
+   "row": 5,
+   "col": 0,
+   "caption": "Trojan"
+  },
+  "b6-2": {
+   "file": "cars/b6-2.jpg",
+   "row": 5,
+   "col": 1,
+   "caption": "Odyssey"
+  },
+  "b6-3": {
+   "file": "cars/b6-3.jpg",
+   "row": 5,
+   "col": 2,
+   "caption": "Titan"
+  },
+  "b7-1": {
+   "file": "cars/b7-1.jpg",
+   "row": 6,
+   "col": 0,
+   "caption": "Siren"
+  },
+  "b7-2": {
+   "file": "cars/b7-2.jpg",
+   "row": 6,
+   "col": 1,
+   "caption": "Odin"
+  },
+  "b7-3": {
+   "file": "cars/b7-3.jpg",
+   "row": 6,
+   "col": 2,
+   "caption": "Asgard"
+  },
+  "b8-1": {
+   "file": "cars/b8-1.jpg",
+   "row": 7,
+   "col": 0,
+   "caption": "Meridian"
+  },
+  "b8-2": {
+   "file": "cars/b8-2.jpg",
+   "row": 7,
+   "col": 1,
+   "caption": "Riviera"
+  },
+  "b8-3": {
+   "file": "cars/b8-3.jpg",
+   "row": 7,
+   "col": 2,
+   "caption": "Sirocco"
+  }
+ }
+}

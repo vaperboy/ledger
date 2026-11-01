@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Company overview variations</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0b0c0d;font-family:-apple-system,"Helvetica Neue",Arial,sans-serif}
+.row3{display:flex;gap:30px;padding:30px;box-sizing:border-box;width:1290px;height:900px}
+.ph{width:390px;height:840px;background:#111315;color:#EFE9DF;border-radius:44px;border:1px solid #2a2c2e;overflow:hidden;position:relative;padding:54px 22px 0;box-sizing:border-box}
+.cap{font-size:10.5px;font-weight:600;letter-spacing:1.6px;color:#CFB185;text-transform:uppercase}
+.mut{color:#9D978E;font-size:12px}.fa{color:#6C6862;font-size:11px}
+.ser{font-family:ui-serif,"New York",Georgia,serif}
+.hr{border-top:1px solid rgba(239,233,223,.09);margin:12px 0}
+.gain{color:#86C79D}.loss{color:#DC8770}.warn{color:#D9AE62}
+.kf{display:flex;border-top:1px solid rgba(239,233,223,.09);border-bottom:1px solid rgba(239,233,223,.09);padding:9px 0}
+.kf>div{flex:1;padding-left:10px;border-left:1px solid rgba(239,233,223,.09)}.kf>div:first-child{border:0;padding-left:0}
+.kf b{display:block;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.li{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(239,233,223,.07);font-size:13px}
+.li small{display:block;color:#9D978E;font-size:11.5px;margin-top:2px}
+.chev:after{content:"\203A";color:#CFB185;font-size:18px;margin-left:8px}
+.pill{display:inline-block;border:1px solid rgba(207,177,133,.5);color:#CFB185;border-radius:20px;padding:3px 10px;font-size:11.5px}
+.tabs{display:flex;gap:18px;font-size:13px;color:#9D978E;border-bottom:1px solid rgba(239,233,223,.09);padding-bottom:8px;margin-top:12px;overflow:hidden;position:relative}
+.tabs .on{color:#EFE9DF;border-bottom:2px solid #CFB185;padding-bottom:6px}
+.fade{position:absolute;right:0;top:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,#111315);text-align:right;color:#CFB185;font-size:18px}
+.bar{height:5px;background:#2a2c2e;border-radius:3px;position:relative;flex:1;margin:0 10px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:#CFB185;border-radius:3px}
+.br{display:flex;align-items:center;font-size:12.5px;margin:7px 0}.br span:first-child{width:104px;color:#9D978E}.br span:last-child{width:40px;text-align:right}
+.tl{position:absolute;left:0;right:0;bottom:0;height:78px;background:#0D0F11;border-top:1px solid rgba(239,233,223,.09);display:flex;justify-content:space-around;padding-top:10px;font-size:10.5px;color:#6C6862}.tl .on{color:#CFB185}
+.sp{display:inline-block;vertical-align:middle;margin-left:6px}
+.tile{border:1px solid rgba(239,233,223,.1);border-radius:10px;padding:9px 10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+</style>
+</helmet>
+<div class="row3">
+
+<!-- CO 1: Ivory standard -->
+<div class="ph">
+<div class="mut">‹ Back</div>
+<div class="ser" style="font-size:26px;margin-top:4px">Evans Services</div>
+<div class="mut">Café · London · Ltd · <span class="gain">● Healthy</span> · run by you</div>
+<div class="tabs"><span class="on">Overview</span><span>Team</span><span>Finances</span><span>Operations</span><span>Marketing</span><span>Customers</span><div class="fade">›</div></div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px"><div><div class="cap">Profit · 12 months</div><div class="ser" style="font-size:36px;font-variant-numeric:tabular-nums">£1,125</div></div><div class="mut" style="text-align:right">Margin 3.6%<br>Revenue £31k <span class="gain">+9%</span></div></div>
+<svg width="346" height="62" viewBox="0 0 346 62" style="margin:6px 0"><polyline points="0,48 40,40 80,28 120,26 160,30 200,34 240,36 280,38 346,40" fill="none" stroke="#CFB185" stroke-width="1.5"/><polyline points="0,56 60,52 120,50 180,52 240,50 346,48" fill="none" stroke="#86C79D" stroke-width="1.5"/></svg>
+<div class="kf"><div><span class="fa">Cash</span><b>£258k</b></div><div><span class="fa">Costs a week</span><b>£1,422</b></div><div><span class="fa">Debt</span><b class="loss">£2,153</b></div><div><span class="fa">Value</span><b>£297k</b></div></div>
+<div class="cap" style="margin-top:14px">What is going on</div>
+<div class="li"><span>Competitors take about 35% of your customers<small>Marketing may help</small></span><span class="pill">Marketing ›</span></div>
+<div class="li"><span>6 paperwork items missing; a fine is possible</span><span class="pill">Team ›</span></div>
+<div class="cap" style="margin-top:14px">Last week</div>
+<div class="br"><span>Capacity used</span><div class="bar"><i style="width:33%"></i></div><span>33%</span></div>
+<div class="br"><span>Demand met</span><div class="bar"><i style="width:100%;background:#86C79D"></i></div><span>100%</span></div>
+<div class="tl"><span class="on">Company</span><span>Team</span><span>Group</span><span>Projects</span><span>Inbox</span></div>
+</div>
+
+<!-- CO 2: Dense grid -->
+<div class="ph">
+<div class="mut">‹ Back · London</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span class="ser" style="font-size:24px">Evans Services</span><span class="pill">Open ▾</span></div>
+<div class="tabs"><span class="on">Overview</span><span>Team</span><span>Finances</span><span>Operations</span><span>More ▾</span></div>
+<div class="g3" style="margin-top:12px">
+<div class="tile"><span class="fa">Profit 12m</span><b class="ser" style="display:block;font-size:19px">£1,125</b><svg class="sp" width="60" height="14" style="margin:0"><polyline points="0,10 15,6 30,8 45,4 60,5" fill="none" stroke="#86C79D"/></svg></div>
+<div class="tile"><span class="fa">Revenue 12m</span><b class="ser" style="display:block;font-size:19px">£31k</b><span class="gain" style="font-size:11px">▲ 9%</span></div>
+<div class="tile"><span class="fa">Cash</span><b class="ser" style="display:block;font-size:19px">£258k</b><span class="fa">181 wks of costs</span></div>
+<div class="tile"><span class="fa">Margin</span><b class="ser" style="display:block;font-size:19px">3.6%</b></div>
+<div class="tile"><span class="fa">Rating</span><b class="ser" style="display:block;font-size:19px">3.5 / 5</b></div>
+<div class="tile"><span class="fa">Staff</span><b class="ser" style="display:block;font-size:19px">1</b><span class="fa">£2,765 / mo</span></div></div>
+<div class="cap" style="margin-top:14px;display:flex;justify-content:space-between"><span>Needs you here</span><span class="mut" style="text-transform:none;letter-spacing:0">2</span></div>
+<div class="li"><span><span class="warn">▲</span> Paperwork missing (6)<small>inspection can fine you</small></span><span class="chev"></span></div>
+<div class="li"><span><span class="warn">▲</span> Capacity only 33% used<small>demand is the limit, not space</small></span><span class="chev"></span></div>
+<div class="cap" style="margin-top:14px">Run by</div>
+<div class="li"><span>You · 40 h a week<small>a manager could take over day to day</small></span><span class="pill">Hire manager</span></div>
+<div class="cap" style="margin-top:14px">Shortcuts</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><span class="pill">Suppliers</span><span class="pill">Payroll</span><span class="pill">Campaign</span><span class="pill">Insurance</span></div>
+<div class="tl"><span class="on">Company</span><span>Team</span><span>Group</span><span>Projects</span><span>Inbox</span></div>
+</div>
+
+<!-- CO 3: Manager's notes -->
+<div class="ph">
+<div class="mut">‹ Back</div>
+<div class="ser" style="font-size:26px;margin-top:4px">Evans Services</div>
+<div class="mut">Café · London · <span class="gain">Healthy</span></div>
+<div class="hr"></div>
+<div class="mut">Profit, last 12 months</div>
+<div class="ser" style="font-size:38px;font-variant-numeric:tabular-nums">£1,125</div>
+<div class="mut">Revenue <b style="color:#EFE9DF;font-weight:500">£31k</b> · Margin <b style="color:#EFE9DF;font-weight:500">3.6%</b> · Cash <b style="color:#EFE9DF;font-weight:500">£258k</b></div>
+<div class="ser" style="font-size:20px;margin:16px 0 4px">Notes from your team</div>
+<div class="li" style="display:block;line-height:1.4"><span class="warn">i.</span> Only a third of our capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring. <span class="cap" style="margin-left:4px">Marketing ›</span></div>
+<div class="li" style="display:block;line-height:1.4"><span class="warn">ii.</span> Six paperwork items for staff are missing; an inspection can fine you. <span class="cap" style="margin-left:4px">Team ›</span></div>
+<div class="li" style="display:block;line-height:1.4"><span class="gain">iii.</span> Revenue is up 9% on the previous three months. <span class="cap" style="margin-left:4px">Finances ›</span></div>
+<div class="ser" style="font-size:20px;margin:16px 0 4px">This week</div>
+<div class="br"><span>Served</span><div class="bar"><i style="width:33%"></i></div><span>198</span></div>
+<div class="br"><span>Awareness</span><div class="bar"><i style="width:12%"></i></div><span>12%</span></div>
+<div class="br"><span>Reputation</span><div class="bar"><i style="width:49%"></i></div><span>49</span></div>
+<div class="li" style="margin-top:8px"><span>Sections</span><span class="mut">Team · Finances · Operations · Marketing · Customers · Market · Setup</span></div>
+<div class="tl"><span class="on">Company</span><span>Team</span><span>Group</span><span>Projects</span><span>Inbox</span></div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1290,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

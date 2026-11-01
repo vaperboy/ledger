@@ -1,0 +1,804 @@
+{
+ "_doc": "Equipment brands: maker name parts per product category (original engine/suppliers/makers.js), the rules that map an equipment name to a category, class price factors and model words (vendors.js, providers.js), software plans and used-market wording (realistic_buying.js).",
+ "classNames": [
+  "Basic",
+  "Standard",
+  "Premium"
+ ],
+ "classPrice": [
+  0.68,
+  1,
+  1.36
+ ],
+ "modelWords": [
+  "Classic",
+  "Pro",
+  "Compact",
+  "Max",
+  "Core",
+  "Prime",
+  "Flex",
+  "One",
+  "Edge",
+  "Lite",
+  "Ultra",
+  "Smart"
+ ],
+ "modelLetters": [
+  "S",
+  "X",
+  "K",
+  "M",
+  "R"
+ ],
+ "vehicleModelWords": [
+  "Trek",
+  "Nova",
+  "Vista",
+  "Rapid",
+  "Terra"
+ ],
+ "makers": {
+  "pay": {
+   "stems": [
+    "Pay",
+    "Term",
+    "Tap",
+    "Cash",
+    "Vero",
+    "Kasse",
+    "Swipe",
+    "Merit"
+   ],
+   "suffixes": [
+    "Payment Systems",
+    "Terminals",
+    "Retail Systems",
+    "Solutions",
+    "Pay"
+   ],
+   "origins": [
+    "SE",
+    "NL",
+    "US",
+    "KR",
+    "DE",
+    "UK"
+   ]
+  },
+  "it": {
+   "stems": [
+    "Nex",
+    "Tek",
+    "Core",
+    "Volt",
+    "Pixel",
+    "Logic",
+    "Byte",
+    "Omni"
+   ],
+   "suffixes": [
+    "Computers",
+    "Electronics",
+    "Digital",
+    "Devices",
+    "Technologies"
+   ],
+   "origins": [
+    "US",
+    "KR",
+    "JP",
+    "DE",
+    "NL",
+    "UK"
+   ]
+  },
+  "soft": {
+   "stems": [
+    "Cloud",
+    "Flow",
+    "Data",
+    "Logi",
+    "Sync",
+    "Insight",
+    "Nimbus",
+    "Craft"
+   ],
+   "suffixes": [
+    "Software",
+    "Systems",
+    "Labs",
+    "Digital",
+    "Cloud"
+   ],
+   "origins": [
+    "US",
+    "UK",
+    "NL",
+    "SE",
+    "DE",
+    "CA"
+   ]
+  },
+  "photo": {
+   "stems": [
+    "Lumen",
+    "Optic",
+    "Focus",
+    "Vista",
+    "Aperture",
+    "Shutter",
+    "Clear",
+    "Frame"
+   ],
+   "suffixes": [
+    "Optics",
+    "Imaging",
+    "Camera Works",
+    "Photonics",
+    "Visual"
+   ],
+   "origins": [
+    "JP",
+    "DE",
+    "KR",
+    "US",
+    "SE"
+   ]
+  },
+  "secur": {
+   "stems": [
+    "Guard",
+    "Sentry",
+    "Vigil",
+    "Aegis",
+    "Watch",
+    "Safe",
+    "Argus",
+    "Shield"
+   ],
+   "suffixes": [
+    "Security",
+    "Surveillance",
+    "Protection Systems",
+    "Safety Technology",
+    "Alarm"
+   ],
+   "origins": [
+    "SE",
+    "DE",
+    "JP",
+    "US",
+    "UK",
+    "NL"
+   ]
+  },
+  "food": {
+   "stems": [
+    "Gastro",
+    "Cook",
+    "Therm",
+    "Chef",
+    "Fornax",
+    "Brew",
+    "Kitchen",
+    "Savor"
+   ],
+   "suffixes": [
+    "Kitchen Systems",
+    "Foodservice Equipment",
+    "Catering Technology",
+    "Gastro",
+    "Professional Kitchens"
+   ],
+   "origins": [
+    "DE",
+    "FR",
+    "ES",
+    "NL",
+    "JP",
+    "US"
+   ]
+  },
+  "refrig": {
+   "stems": [
+    "Frost",
+    "Cryo",
+    "Polar",
+    "Glacier",
+    "Kühl",
+    "Chill",
+    "Nordic",
+    "Arctic"
+   ],
+   "suffixes": [
+    "Refrigeration",
+    "Cooling Systems",
+    "Cold Chain",
+    "Cooling",
+    "Climate Technology"
+   ],
+   "origins": [
+    "DE",
+    "ES",
+    "NL",
+    "JP",
+    "US",
+    "NO"
+   ]
+  },
+  "furn": {
+   "stems": [
+    "Form",
+    "Nest",
+    "Oak",
+    "Atelier",
+    "Studio",
+    "Habit",
+    "Linea",
+    "Haven"
+   ],
+   "suffixes": [
+    "Furniture",
+    "Interiors",
+    "Contract Furniture",
+    "Fit-out",
+    "Design"
+   ],
+   "origins": [
+    "SE",
+    "NO",
+    "PL",
+    "DE",
+    "ES",
+    "NL"
+   ]
+  },
+  "tools": {
+   "stems": [
+    "Forge",
+    "Torque",
+    "Grip",
+    "Bolt",
+    "Anvil",
+    "Drive",
+    "Strike",
+    "Precise"
+   ],
+   "suffixes": [
+    "Tools",
+    "Power Tools",
+    "Tool Works",
+    "Instruments",
+    "Hardware"
+   ],
+   "origins": [
+    "DE",
+    "SE",
+    "JP",
+    "US",
+    "PL",
+    "KR"
+   ]
+  },
+  "machine": {
+   "stems": [
+    "Mach",
+    "Titan",
+    "Kraft",
+    "Dyna",
+    "Prime",
+    "Hydro",
+    "Robo",
+    "Stahl"
+   ],
+   "suffixes": [
+    "Machinery",
+    "Industrial",
+    "Engineering",
+    "Machine Works",
+    "Automation"
+   ],
+   "origins": [
+    "DE",
+    "JP",
+    "SE",
+    "US",
+    "KR",
+    "PL"
+   ]
+  },
+  "clean": {
+   "stems": [
+    "Pure",
+    "Spark",
+    "Aqua",
+    "Fresh",
+    "Rein",
+    "Sweep",
+    "Clean",
+    "Shine"
+   ],
+   "suffixes": [
+    "Cleaning Systems",
+    "Hygiene",
+    "Cleaning Machines",
+    "Care Products",
+    "Clean Technology"
+   ],
+   "origins": [
+    "DE",
+    "SE",
+    "US",
+    "NL",
+    "UK"
+   ]
+  },
+  "fit": {
+   "stems": [
+    "Power",
+    "Iron",
+    "Flex",
+    "Motion",
+    "Stride",
+    "Peak",
+    "Vital",
+    "Athlete"
+   ],
+   "suffixes": [
+    "Fitness",
+    "Sports Equipment",
+    "Wellness",
+    "Training Systems",
+    "Active"
+   ],
+   "origins": [
+    "US",
+    "DE",
+    "UK",
+    "SE",
+    "KR"
+   ]
+  },
+  "med": {
+   "stems": [
+    "Medi",
+    "Vita",
+    "Thera",
+    "Physio",
+    "Cura",
+    "Salus",
+    "Clinic",
+    "Pulse"
+   ],
+   "suffixes": [
+    "Medical",
+    "Healthcare",
+    "Therapy Systems",
+    "Clinical Equipment",
+    "Medtech"
+   ],
+   "origins": [
+    "DE",
+    "SE",
+    "US",
+    "JP",
+    "NL",
+    "KR"
+   ]
+  },
+  "av": {
+   "stems": [
+    "Sonic",
+    "Lume",
+    "Arena",
+    "Echo",
+    "Vivid",
+    "Stage",
+    "Beam",
+    "Pulse"
+   ],
+   "suffixes": [
+    "Audio Visual",
+    "Entertainment Systems",
+    "Sound and Light",
+    "Stage Technology",
+    "Gaming Systems"
+   ],
+   "origins": [
+    "US",
+    "DE",
+    "UK",
+    "JP",
+    "NL",
+    "KR"
+   ]
+  },
+  "energy": {
+   "stems": [
+    "Volt",
+    "Ampere",
+    "Terra",
+    "Wind",
+    "Helio",
+    "Grid",
+    "Watt",
+    "Fluxo"
+   ],
+   "suffixes": [
+    "Energy",
+    "Power Systems",
+    "Electric",
+    "Renewables",
+    "Energy Technology"
+   ],
+   "origins": [
+    "DE",
+    "ES",
+    "NO",
+    "US",
+    "SE",
+    "JP"
+   ]
+  },
+  "marine": {
+   "stems": [
+    "Mar",
+    "Tide",
+    "Anchor",
+    "Hav",
+    "Wave",
+    "Aqua",
+    "Fjord",
+    "Keel"
+   ],
+   "suffixes": [
+    "Marine",
+    "Offshore",
+    "Marine Technology",
+    "Shipyard Supply",
+    "Aquaculture Systems"
+   ],
+   "origins": [
+    "NO",
+    "NL",
+    "DE",
+    "JP",
+    "KR",
+    "US"
+   ]
+  },
+  "serv": {
+   "stems": [
+    "Terra",
+    "Deep",
+    "Bridge",
+    "Core",
+    "Summit",
+    "Strata",
+    "Harbour",
+    "Vector"
+   ],
+   "suffixes": [
+    "Services",
+    "Engineering Services",
+    "Contracting",
+    "Group",
+    "Solutions"
+   ],
+   "origins": [
+    "NO",
+    "US",
+    "UK",
+    "NL",
+    "BR",
+    "DE"
+   ]
+  },
+  "general": {
+   "stems": [
+    "Prime",
+    "Alpha",
+    "Nova",
+    "Delta",
+    "Meridian",
+    "Sterling",
+    "Union",
+    "Pioneer"
+   ],
+   "suffixes": [
+    "Industries",
+    "Group",
+    "Works",
+    "Supply",
+    "Manufacturing"
+   ],
+   "origins": [
+    "DE",
+    "US",
+    "SE",
+    "JP",
+    "UK",
+    "NL",
+    "PL"
+   ]
+  },
+  "auto": {
+   "stems": [
+    "Veloce",
+    "Aero",
+    "Motiv",
+    "Terra",
+    "Strada",
+    "Vista",
+    "Nova",
+    "Kinetic"
+   ],
+   "suffixes": [
+    "Motors",
+    "Automotive",
+    "Auto",
+    "Motor Works",
+    "Mobility"
+   ],
+   "origins": [
+    "DE",
+    "FR",
+    "JP",
+    "KR",
+    "SE",
+    "US",
+    "ES",
+    "PL"
+   ]
+  },
+  "truck": {
+   "stems": [
+    "Titan",
+    "Haul",
+    "Frakt",
+    "Road",
+    "Vector",
+    "Mack",
+    "Stahl",
+    "Atlas"
+   ],
+   "suffixes": [
+    "Trucks",
+    "Commercial Vehicles",
+    "Heavy Vehicles",
+    "Bus and Coach",
+    "Truck Works"
+   ],
+   "origins": [
+    "SE",
+    "DE",
+    "NL",
+    "JP",
+    "US",
+    "BR"
+   ]
+  },
+  "cycle": {
+   "stems": [
+    "Pedal",
+    "Volt",
+    "Urban",
+    "Glide",
+    "Cargo",
+    "Swift",
+    "Zip",
+    "Roll"
+   ],
+   "suffixes": [
+    "Cycles",
+    "E-Mobility",
+    "Bikes",
+    "Mobility",
+    "Scooters"
+   ],
+   "origins": [
+    "NL",
+    "DE",
+    "JP",
+    "KR",
+    "ES",
+    "SE"
+   ]
+  },
+  "air": {
+   "stems": [
+    "Aero",
+    "Sky",
+    "Altus",
+    "Cirrus",
+    "Vento",
+    "Zephyr",
+    "Stratos",
+    "Aviator"
+   ],
+   "suffixes": [
+    "Aerospace",
+    "Aircraft",
+    "Aviation",
+    "Aeronautics",
+    "Air Works"
+   ],
+   "origins": [
+    "FR",
+    "CA",
+    "BR",
+    "US",
+    "DE",
+    "ES"
+   ]
+  }
+ },
+ "makerRules": [
+  [
+   "pos\\b|pos,|till|card terminal|self-checkout|payment|cage and chip|ticketing",
+   "pay"
+  ],
+  [
+   "laptop|workstation|phone|screens|tablet|plotter|scanner|label",
+   "it"
+  ],
+  [
+   "software|licen|cloud|platform|crm|erp|portal|integration|analytics|journal|booking|planning|ats\\b|dms|scada|bim|case-management|claims|banking|system and|management system|monitoring and control|policy|dealer management|webshop|job and|data",
+   "soft"
+  ],
+  [
+   "camera body|lens|drone|backdrops|photo|3d tour|studio",
+   "photo"
+  ],
+  [
+   "cctv|surveillance|alarm|eas|tags|security|gates, cameras|cameras and climate|id scanners",
+   "secur"
+  ],
+  [
+   "cold|freezer|chiller|fridge|cooler|refrigerat",
+   "refrig"
+  ],
+  [
+   "kitchen|grill|fryer|oven|dishwash|espresso|grinder|coffee|brew|proofer|mixer|dough|glassware|bar |wine|fermentation|bottling|taproom|cold room|breakfast|bakery",
+   "food"
+  ],
+  [
+   "furniture|chairs|desks|tables|interior|fit-out|shelving|racks|counter|lockers|display|mannequin|fixtures|beds|lobby|showroom|reception|vip|classroom|kennels|play zones|stations|basins|benches|barn|shed|hangar|archive|signs",
+   "furn"
+  ],
+  [
+   "vacuum|scrub|laundry|pressure|steam|polisher|ceramic|dosing|uniform|cleaning",
+   "clean"
+  ],
+  [
+   "shockwave|ultrasound|treatment|patient|rehab",
+   "med"
+  ],
+  [
+   "cardio|strength|exercise|sauna|wellness|grooming",
+   "fit"
+  ],
+  [
+   "sound|light|led|stage|truss|rigging|gaming|slot|attractions|arcade",
+   "av"
+  ],
+  [
+   "turbine|substation|generator|ev charger|charging|diagnostics|gas system|wind",
+   "energy"
+  ],
+  [
+   "boat|barge|sea pens|underwater|lice|moorings|navigation|port and crane",
+   "marine"
+  ],
+  [
+   "contract|agreement|seismic|rig and|platform share|roads|site works|vault|branch|crew|flight|fleet|tachograph|yard",
+   "serv"
+  ],
+  [
+   "tool|ladder|scaffold|formwork|pipe|drain|measuring|instrument|test|panel saw|finishing|lab\\b|lift platform|power",
+   "tools"
+  ],
+  [
+   "cnc|robot|forklift|crane|tractor|harvester|trailer|compressor|lifts|machining|lift and|dryer|sorting|automation",
+   "machine"
+  ]
+ ],
+ "vehicleMakerRules": [
+  [
+   "^(van|ev_van|pickup|car|taxi)",
+   "auto"
+  ],
+  [
+   "^(minibus|bus|truck)",
+   "truck"
+  ],
+  [
+   "^(bike|scooter)",
+   "cycle"
+  ],
+  [
+   "^(ship|ferry)",
+   "marine"
+  ],
+  [
+   "^plane",
+   "air"
+  ],
+  [
+   "^(excav|crane)",
+   "machine"
+  ],
+  [
+   "^foodtruck",
+   "truck"
+  ]
+ ],
+ "sellers": [
+  "Private seller",
+  "Used-equipment dealer",
+  "Online marketplace",
+  "Closing-down sale",
+  "Auction house"
+ ],
+ "usedSaysDressed": [
+  "Freshly cleaned and serviced",
+  "Looks almost new",
+  "Hardly used, we are closing down"
+ ],
+ "usedSaysDressedVehicle": [
+  "Just serviced, looks great",
+  "One careful owner",
+  "Fresh polish and new mats"
+ ],
+ "wear": [
+  [
+   0.93,
+   "Like new"
+  ],
+  [
+   0.8,
+   "Minimal wear"
+  ],
+  [
+   0.65,
+   "Light wear"
+  ],
+  [
+   0.48,
+   "Well worn"
+  ],
+  [
+   0,
+   "Heavily worn"
+  ]
+ ],
+ "plans": [
+  {
+   "name": "Basic",
+   "users": 3,
+   "fee": 0.55,
+   "perf": 0.97
+  },
+  {
+   "name": "Team",
+   "users": 15,
+   "fee": 1,
+   "perf": 1
+  },
+  {
+   "name": "Business",
+   "users": 1000000000,
+   "fee": 1.9,
+   "perf": 1.05
+  }
+ ],
+ "subscriptionPattern": "cloud|subscription|crm|applicant|tracking|platform|portal|research|\\bdata\\b|terminals and data|\\bapp\\b|dispatch|booking and student|ticketing|payroll|journal|listing|routing|analytics|\\bcad\\b|\\bbim\\b|seismic",
+ "subscriptionOverride": {
+  "power:scada": false,
+  "trucking:tms": true,
+  "staffing:ats": true,
+  "airline:ops": false,
+  "fund:risk": false
+ }
+}

@@ -1,0 +1,73 @@
+{
+  "name": "Ledger",
+  "identifier": "com.example.ledger.source",
+  "subtitle": "Ledger business simulation builds",
+  "description": "Unsigned builds of the Ledger business simulation. AltStore signs them with your own Apple ID. The list is filled in by the IPA workflow after each successful build.",
+  "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "tintColor": "#CFB185",
+  "website": "https://github.com/vaperboy/ledger",
+  "news": [],
+  "apps": [
+    {
+      "name": "Ledger",
+      "bundleIdentifier": "com.example.ledger",
+      "developerName": "Ledger",
+      "subtitle": "Run real businesses",
+      "localizedDescription": "Ledger: a business-management simulation.",
+      "tintColor": "#CFB185",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "1.0.9",
+          "buildVersion": "9",
+          "date": "2026-11-01T13:51:57Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v9/Ledger-unsigned.ipa",
+          "size": 25280863,
+          "minOSVersion": "17.0",
+          "localizedDescription": "What's new\n- Two-page hiring for every hire: contract terms (working percentage, seasonal/temporary, car, promises), then salary (your offer, their ask once they say it, market pay).\n- Promises under Company > Team > Promises, with due dates and consequences.\n- Contract changes show the cost before and after; Reward menu on executives, office staff and the analyst.\n- Hidden scores replaced by words (skill, quit risk, press image, manager scorecard).\n\nMissing / coming next\n- Startups as real companies, share counts, safer business creation (in progress).\n- Home shortcuts, report sheets after day/week/month/year, reward popups, swipe-back (in progress).\n- Typed prices, suppliers in Accounting, chain and franchise application steps.\n- Top Team tab still has two tabs that do the same thing.\n- Not yet hand-tested on a phone beyond what you report."
+        },
+        {
+          "version": "1.0.8",
+          "buildVersion": "8",
+          "date": "2026-11-01T09:30:11Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v8/Ledger-unsigned.ipa",
+          "size": 24941937,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v8 from dc57c56"
+        },
+        {
+          "version": "1.0.7",
+          "buildVersion": "7",
+          "date": "2026-11-01T01:39:51Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v7/Ledger-unsigned.ipa",
+          "size": 24993611,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v7 from 2ae67d6"
+        },
+        {
+          "version": "1.0.6",
+          "buildVersion": "6",
+          "date": "2026-10-31T20:37:48Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v6/Ledger-unsigned.ipa",
+          "size": 24065740,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v6 from 8e73e39"
+        },
+        {
+          "version": "1.0.5",
+          "buildVersion": "5",
+          "date": "2026-10-31T20:09:55Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v5/Ledger-unsigned.ipa",
+          "size": 24065686,
+          "minOSVersion": "17.0",
+          "localizedDescription": "Build v5 from f16d01b"
+        }
+      ],
+      "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "version": "1.0.9",
+      "versionDate": "2026-11-01T13:51:57Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v9/Ledger-unsigned.ipa",
+      "size": 25280863
+    }
+  ]
+}

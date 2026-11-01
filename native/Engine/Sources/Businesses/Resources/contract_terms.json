@@ -1,0 +1,6 @@
+{
+  "about": "Fixed-term employment contracts (FixedTerm.swift). Game design values, not from a source. `termWeeks` are the lengths a fixed term can be agreed or renewed for. `reviewWeeks` is how long before the end date the owner is asked whether to renew; a country can ask for more with `fixedTermNoticeWeeks` in its labour data (none does yet), and cap the total time on fixed terms with `fixedTermMaxWeeks` / `fixedTermMaxRenewals` (none does yet; at the cap the owner must decide and no answer makes the contract permanent). `securityLimit`: someone with a need for security above this does not take a fixed-term job in place of a permanent one. At the end date the job simply ends with nothing owed unless the country's labour data lists \"expiry\" among its `noticeReasons` or `severanceReasons` (none does yet, see docs/KNOWN_GAPS.md).",
+  "termWeeks": [26, 52, 104],
+  "reviewWeeks": 4,
+  "securityLimit": 0.65
+}

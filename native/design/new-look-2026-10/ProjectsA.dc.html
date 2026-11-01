@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Projects A, active list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#D6B889;text-decoration:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0F1011; color: #F1EBDD; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+  <div style="padding: 54px 18px 0 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #3A3B3D; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D6B889" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-family: Newsreader, Georgia, serif; font-size: 28px; line-height: 1.1">Projects</span><span style="font-size: 12.5px; color: #A19B8F">3 running · £184k committed</span></div>
+      <a href="#" style="font-size: 12px; font-weight: 500; border: 1px solid #3A3B3D; border-radius: 12px; padding: 4px 10px">New project</a>
+    </div>
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #2B2C2E; font-size: 13.5px; color: #8A857C">
+      <span style="padding-bottom: 9px; border-bottom: 2px solid #D6B889; color: #F1EBDD">Running 3</span><span style="padding-bottom: 9px">Bids and offers</span><span style="padding-bottom: 9px">Finished</span><span style="padding-bottom: 9px">Ventures</span>
+    </div>
+
+    <sc-for list="{{projects}}" as="p" hint-placeholder-count="3">
+      <a href="#" style="display: flex; flex-direction: column; gap: 9px; background: #151617; border: 1px solid #2B2C2E; border-radius: 16px; padding: 12px 14px; color: inherit">
+        <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; font-weight: 500">{{p.name}}</span><span style="font-size: 12px; color: #8A857C">{{p.company}}</span></span><span style="font-size: 11.5px; color: {{p.statusColor}}; border: 1px solid #3A3B3D; border-radius: 8px; padding: 2px 8px">{{p.status}}</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 5px; background: #26272A; border-radius: 3px"><span style="display: block; height: 5px; border-radius: 3px; background: #D6B889; width: {{p.progress}}"></span></span><span style="display: flex; justify-content: space-between; font-size: 11.5px; color: #8A857C"><span>{{p.done}}</span><span>{{p.next}}</span></span></div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #242527; padding-top: 8px; font-size: 11px; color: #8A857C">
+          <span>Value<br><span style="font-size: 13.5px; color: #F1EBDD">{{p.value}}</span></span><span style="border-left: 1px solid #242527; padding-left: 10px">Costs so far<br><span style="font-size: 13.5px; color: #F1EBDD">{{p.cost}}</span></span><span style="border-left: 1px solid #242527; padding-left: 10px">Due<br><span style="font-size: 13.5px; color: #F1EBDD">{{p.due}}</span></span>
+        </div>
+      </a>
+    </sc-for>
+  </div>
+
+  <nav style="position: absolute; left: 14px; right: 14px; bottom: 16px; height: 66px; background: #141516; border: 1px solid #2B2C2E; border-radius: 33px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"></path></svg>Home</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3 20 C3 15 15 15 15 20 M15 15 C19 14.5 21.5 16.5 21.5 20"></path></svg>Team</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 L21 8 L12 13 L3 8 Z M3 12 L12 17 L21 12 M3 16 L12 21 L21 16"></path></svg>Group</span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(214,184,137,0.14); border-radius: 26px; padding: 8px 0; color: #D6B889; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 4 L20 10 L17 13 L11 7 Z M12 9 L4 18 L6 20 L15 12"></path></svg>Projects</span>
+    <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #A19B8F; font-size: 10.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M10.5 18.5 H13.5"></path></svg>Phone<span style="position: absolute; top: -4px; right: 14px; min-width: 16px; height: 16px; border-radius: 8px; background: #E5584B; color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      projects: [
+        { name: 'Riverside office fit-out', company: 'Thamesford Partners · construction job', status: 'On track', statusColor: '#7FC79B', progress: '62%', done: '3 of 5 milestones', next: 'Next: inspection 12 Feb', value: '£96k', cost: '£51k', due: '30 Mar' },
+        { name: 'Unit 4 refurbishment', company: 'Thamesford Partners · property project', status: 'Late 1 wk', statusColor: '#E0B064', progress: '38%', done: '2 of 6 milestones', next: 'Next: electrics 9 Feb', value: '£64k', cost: '£33k', due: '14 Apr' },
+        { name: 'Autumn menu launch', company: 'Evans Services · internal project', status: 'Planning', statusColor: '#A19B8F', progress: '10%', done: '0 of 3 milestones', next: 'Starts 16 Feb', value: '£24k', cost: '£1.2k', due: '31 May' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
