@@ -189,11 +189,11 @@ public struct SupplierRecord: Equatable, Sendable, Identifiable {
 // MARK: Documents
 
 /// `insurance` and `applications` are records of their own: the policies the company holds, and the chain, franchise and brand applications with their status.
-public enum DocumentGroup: String, Sendable { case company, tax, contracts, insurance, applications }
+public enum AccountingDocumentGroup: String, Sendable { case company, tax, contracts, insurance, applications }
 
 public struct AccountingDocument: Equatable, Sendable, Identifiable {
     public var id: String
-    public var group: DocumentGroup
+    public var group: AccountingDocumentGroup
     /// registration, legalForm, ownership, licence, filing, employment, supplier, customer, financing, chain
     public var kind: String
     public var title: String
@@ -476,10 +476,10 @@ public extension GameEngine {
 
     // MARK: Documents
 
-    func companyDocuments(companyID: Int, group: DocumentGroup? = nil, user: String? = nil) -> [AccountingDocument]? {
+    func companyDocuments(companyID: Int, group: AccountingDocumentGroup? = nil, user: String? = nil) -> [AccountingDocument]? {
         guard let co = state.company(companyID), canAccess(.documents, companyID: companyID, user: user), let country = data.countries[co.countryCode] else { return nil }
         var out: [AccountingDocument] = []
-        func add(_ g: DocumentGroup, _ kind: String, _ id: String, _ title: String, _ detail: String, _ status: String, week: Int? = nil, amount: Double? = nil) {
+        func add(_ g: AccountingDocumentGroup, _ kind: String, _ id: String, _ title: String, _ detail: String, _ status: String, week: Int? = nil, amount: Double? = nil) {
             out.append(AccountingDocument(id: id, group: g, kind: kind, title: title, detail: detail, status: status, dateText: week.map { GameCalendar.dateString(week: $0) }, amount: amount))
         }
         let forms = country.companyForms

@@ -38,7 +38,7 @@ enum AcctInvoiceTab: String, CaseIterable, Hashable { case invoices = "Invoices"
 enum AcctInvoiceFilter: String, CaseIterable, Hashable { case all = "All", draft = "Draft", sent = "Sent", paid = "Paid", overdue = "Overdue" }
 enum AcctDocTab: String, CaseIterable, Hashable {
     case company = "Company", tax = "Tax", contracts = "Contracts", insurance = "Insurance", applications = "Applications"
-    var group: DocumentGroup {
+    var group: AccountingDocumentGroup {
         switch self {
         case .company: return .company
         case .tax: return .tax
