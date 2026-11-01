@@ -85,11 +85,25 @@ struct ConfirmPopup: View {
         if !effect.isEmpty {
             out.append(ConfirmLine(id: out.count, label: "Effect", text: effect, risky: false))
         }
-        let risk: String = action.risk.isEmpty ? (action.destructive ? "This cannot be undone." : "") : action.risk
-        if !risk.isEmpty {
-            out.append(ConfirmLine(id: out.count, label: "Risk", text: risk, risky: true))
-        }
         return out
+    }
+
+    /// What can go wrong, shown as the inline message under the rows.
+    private var riskText: String {
+        if !action.risk.isEmpty { return action.risk }
+        return action.destructive ? "This cannot be undone." : ""
+    }
+
+    private var tone: PopupFooter.Tone {
+        if action.destructive { return .destructive }
+        return action.amount != nil ? .expensive : .normal
+    }
+
+    /// An expensive action carries its amount in the label, unless the label already says it.
+    private var actionLabel: String {
+        guard let amount = action.amount, let currency = action.currency, amount > 0, !action.destructive else { return action.button }
+        let money: String = currency.tidyShort(amount)
+        return action.button.contains(money) ? action.button : action.button + " · " + money
     }
 
     var body: some View {
@@ -97,27 +111,15 @@ struct ConfirmPopup: View {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(lines) { line in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(line.label).capsLabel(line.risky ? P.loss : nil)
+                        Text(line.label).capsLabel()
                         Text(line.text)
                             .font(.system(size: 14)).foregroundStyle(P.ink)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                buttons
+                if !riskText.isEmpty { InlineMessage(text: riskText, isError: action.destructive) }
+                PopupFooter(action: actionLabel, tone: tone, onCancel: onCancel, onAction: onConfirm)
             }
         }
-    }
-
-    private var buttons: some View {
-        HStack(spacing: 10) {
-            Button("Cancel") { Haptics.tap(); onCancel() }
-                .buttonStyle(GreyOutlineButtonStyle())
-                .accessibilityIdentifier("confirm-cancel")
-            Button(action.button) { Haptics.tap(); onConfirm() }
-                .buttonStyle(QuietButtonStyle(tint: action.destructive ? P.loss : nil))
-                .accessibilityIdentifier("confirm-go")
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.top, 4)
     }
 }

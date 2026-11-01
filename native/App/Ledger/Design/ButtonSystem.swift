@@ -1,0 +1,142 @@
+import SwiftUI
+
+// The game's button and alert system (owner mock-up "Private banking UI design system", dark ledger look). Phone sizes: compact
+// buttons that hug their label, never wide-format; the Cancel | Apply footer is the only place two actions share a row.
+//   Basic / secondary : `PlainTextButtonStyle` (Cancel, Decline) and the existing `GreyOutlineButtonStyle` (Back, View documents).
+//   Important         : `ImportantButtonStyle`, a gold-filled button (Verify, Authorize, Execute).
+//   Expensive         : `FoilButtonStyle`, a gold-foil outline with the amount in the label ("Acquire asset - 12,500,000").
+//   Popup footer      : `PopupFooter` (Cancel | Apply). Alerts: `AlertBanner`.
+
+private let goldInk = Color(red: 0.09, green: 0.075, blue: 0.055)
+
+/// Cancel, Decline: text only, no box.
+struct PlainTextButtonStyle: ButtonStyle {
+    @Environment(\.outsidePalette) private var P
+    var tint: Color? = nil
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(tint ?? P.inkSoft)
+            .padding(.horizontal, 14).frame(minHeight: 40)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+/// An important action: a gold-filled button that hugs its label (compact, not wide).
+struct ImportantButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .lineLimit(1)
+            .foregroundStyle(goldInk)
+            .padding(.horizontal, 18).frame(minHeight: 40)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+/// An expensive action: a gold-foil outline with a faint gold wash. Put the amount in the label.
+struct FoilButtonStyle: ButtonStyle {
+    var tint: Color? = nil
+    func makeBody(configuration: Configuration) -> some View {
+        let c: Color = tint ?? Theme.gold
+        return configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .lineLimit(1).minimumScaleFactor(0.85)
+            .foregroundStyle(c)
+            .padding(.horizontal, 16).frame(minHeight: 40)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(c.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(c.opacity(0.85), lineWidth: 1.2))
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
+/// The footer of a popup card: Cancel on the left, the action on the right, a hairline between them.
+struct PopupFooter: View {
+    @Environment(\.outsidePalette) private var P
+    var cancel = "Cancel"
+    var action: String
+    /// Red for an irreversible action, gold foil for a spend.
+    var tone: Tone = .normal
+    var onCancel: () -> Void
+    var onAction: () -> Void
+
+    enum Tone { case normal, expensive, destructive }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(P.divider).frame(height: 1)
+            HStack(spacing: 0) {
+                Button(cancel) { Haptics.tap(); onCancel() }
+                    .buttonStyle(PlainTextButtonStyle())
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("confirm-cancel")
+                Rectangle().fill(P.divider).frame(width: 1, height: 28)
+                actionButton.frame(maxWidth: .infinity)
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder private var actionButton: some View {
+        let go: () -> Void = { Haptics.tap(); onAction() }
+        switch tone {
+        case .normal:
+            Button(action, action: go).buttonStyle(PlainTextButtonStyle(tint: P.accent)).accessibilityIdentifier("confirm-go")
+        case .expensive:
+            Button(action, action: go).buttonStyle(FoilButtonStyle()).accessibilityIdentifier("confirm-go")
+        case .destructive:
+            Button(action, action: go).buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier("confirm-go")
+        }
+    }
+}
+
+/// An inline validation or risk message inside a popup or a page: a small mark and a line in the warning colour.
+struct InlineMessage: View {
+    @Environment(\.outsidePalette) private var P
+    var text: String
+    var isError = true
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            GlyphView(glyph: Glyph.warning, size: 13, weight: 1.6, tint: isError ? P.loss : P.caution).padding(.top, 1)
+            Text(text).font(.system(size: 12.5)).foregroundStyle(isError ? P.loss : P.caution).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// An alert banner: an error (red edge, a title, a message, up to two small actions) or a quiet system alert.
+struct AlertBanner: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String
+    var message: String
+    var isError = true
+    var actionTitle: String? = nil
+    var onAction: () -> Void = {}
+    var onClose: () -> Void
+
+    var body: some View {
+        let edge: Color = isError ? P.loss : P.lineStrong
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                if isError { GlyphView(glyph: Glyph.warning, size: 16, weight: 1.6, tint: P.loss).padding(.top, 1) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title.uppercased()).font(.system(size: 11.5, weight: .semibold)).tracking(0.6).foregroundStyle(isError ? P.loss : P.inkSoft)
+                    Text(message).font(.system(size: 13)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                if let actionTitle { Button(actionTitle) { onAction() }.buttonStyle(QuietButtonStyle()) }
+                Button("Close") { onClose() }.buttonStyle(GreyOutlineButtonStyle())
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(isError ? P.loss.opacity(0.08) : P.cardDeep))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(edge.opacity(isError ? 0.7 : 1), lineWidth: 1))
+    }
+}
