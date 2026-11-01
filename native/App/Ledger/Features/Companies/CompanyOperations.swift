@@ -47,6 +47,7 @@ struct CompanyOperations: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            CompanyPerformance(engine: engine, company: company)
             settingsTable
             notes
             CompanyOtherSections(engine: engine, company: company)

@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// Stats > Performance: how much of its capacity the company uses, what it earns a week and how demand compares with what it can serve,
+/// Top of Manage: how much of its capacity the company uses, what it earns a week and how demand compares with what it can serve,
 /// week by week. (Revenue and profit by month and last week's picture are on the Overview.) Read from `operationsFigures`.
 struct CompanyPerformance: View {
     @EnvironmentObject var store: GameStore

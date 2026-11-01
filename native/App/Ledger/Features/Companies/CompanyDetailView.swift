@@ -43,7 +43,7 @@ enum CompanyTab: String, CaseIterable, Hashable {
 }
 
 /// The parts of Stats: the finance summary and its pages, how the company performs, and its customers.
-enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", performance = "Performance", customers = "Customers" }
+enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", customers = "Customers" }
 
 /// The parts of Sales: the sales table, and Projects for the companies that take projects (project businesses) only.
 enum SalesPart: String, CaseIterable, Hashable { case sales = "Sales", projects = "Projects" }
@@ -123,14 +123,14 @@ struct CompanyDetailView: View {
             salesContent(co, e)
         case .stats:
             // A holding company sells to no one: no Customers part.
-            let parts: [StatsPart] = co.type == "hold" ? [.finances, .performance] : StatsPart.allCases
-            SegmentedPill(items: parts, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
+            let parts: [StatsPart] = co.type == "hold" ? [.finances] : StatsPart.allCases
+            if parts.count > 1 {
+                SegmentedPill(items: parts, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
+            }
             switch statsPart {
             case .finances:
                 CompanyMoney(engine: e, company: co, part: $moneyPart)
                 CompanyMorePages(engine: e, company: co, pages: [.book])
-            case .performance:
-                CompanyPerformance(engine: e, company: co)
             case .customers:
                 CompanyCustomers(engine: e, company: co)
             }

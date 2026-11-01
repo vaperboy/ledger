@@ -233,6 +233,8 @@ struct ReviewsApp: View {
                     Text(String(format: "%.1f / 5", row.rating)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                 }
                 if open, let rid = row.rivalID, let d = e.rivalDetail(companyID: co.id, rivalID: rid) {
+                    CardLine()
+                    Text("Typical comments").capsLabel(Theme.ivoryFaint)
                     ForEach(d.reviews) { (line: ReviewLine) in
                         CardLine()
                         reviewCard(line)

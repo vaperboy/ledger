@@ -50,7 +50,6 @@ final class CompanyStatsTourTests: CompanyBatchTourCase {
         app.swipeUp(); sleep(1)
         shot("94-stats-finances-lower")
         app.swipeDown(); app.swipeDown(); sleep(1)
-        if tapID("stats-part-performance") { shot("95-stats-performance") }
         if tapID("stats-part-customers") {
             shot("96-stats-customers")
             app.swipeUp(); sleep(1)
