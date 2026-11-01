@@ -12,7 +12,8 @@ struct CompanyRouteDestination: View {
             case .companyAt(let id, let sec): CompanyPage(companyID: id, section: sec, part: nil)
             case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part)
             case .newCompany: NewCompanyView()
-            case .market: MarketView()
+            // Normally the store opens the Phone's Market app instead of pushing this route (`GameStore.push`); this is the same app.
+            case .market: MarketApp()
             }
         }
         // A fresh view per route: a link that changes the part of a screen already on the stack must not keep that screen's old state.
@@ -38,7 +39,7 @@ struct CompanyPage: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             if let tab = CompanyDetailView.tab(for: section, co, e) {
-                CompanyDetailView(companyID: companyID, initial: tab, part: part)
+                CompanyDetailView(companyID: companyID, initial: tab, part: part ?? (section == .customers ? StatsPart.customers.rawValue : nil))
             } else if CompanyDetailView.availableSections(co, e).contains(section) {
                 CompanySectionScreen(companyID: companyID, section: section)
             } else {

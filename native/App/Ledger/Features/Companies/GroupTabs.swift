@@ -624,7 +624,7 @@ struct GroupDealsTab: View {
                 if open.isEmpty {
                     Text("Open a company to look at rivals you could buy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                 } else {
-                    NavigationLink(value: CompanyRoute.market) {
+                    Button { Haptics.tap(); store.openMarket() } label: {
                         CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
                     }.buttonStyle(.plain)
                 }
@@ -679,8 +679,8 @@ struct GroupMoreTab: View {
                 BoardsGroupSection(engine: engine) { store.openApp(.bank) }
             case .rivals:
                 if live.contains(where: { $0.status == .open }) {
-                    NavigationLink(value: CompanyRoute.market) {
-                        CardRow(glyph: Glyph.market, title: "Market, reviews and rivals", subtitle: "Rival groups and how your trades compare.")
+                    Button { Haptics.tap(); store.openMarket() } label: {
+                        CardRow(glyph: Glyph.market, title: "Market and rivals", subtitle: "Rival groups and how your trades compare.")
                     }.buttonStyle(.plain)
                 } else {
                     Text("Open a company to see the market and rival groups.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)

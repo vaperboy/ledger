@@ -8,8 +8,8 @@ import Simulation
 /// Where Operations is: `setup` is the page itself; the others are the full-screen pages a row of its settings table opens
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
-    case setup = "Operations", sell = "How you sell", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
-    case equipment = "Equipment", insurance = "Insurance and advisers", workplace = "Where you work"
+    case setup = "Operations", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
+    case equipment = "Equipment", insurance = "Insurance and advisers", workplace = "Where you work", develop = "Develop"
 }
 
 extension Glyph {
@@ -30,12 +30,9 @@ enum OpsWords {
     }
 }
 
-/// Which of the two Company screens this table is: Operations (how the place runs) or Sales & Market (what is sold, at what price, to whom).
-enum OpsMode { case operations, sales }
-
 /// A small setting changed in a sheet.
 enum OpsSheet: String, Identifiable {
-    case price, hours, upkeep
+    case hours, upkeep
     var id: String { rawValue }
 }
 
@@ -46,95 +43,17 @@ struct CompanyOperations: View {
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
-    var mode: OpsMode = .operations
     @State private var sheet: OpsSheet?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if mode == .operations {
-                topCards
-                demandChart
-                settingsTable
-                notes
-                CompanyOtherSections(engine: engine, company: company)
-            } else {
-                salesTable
-            }
+            settingsTable
+            notes
+            CompanyOtherSections(engine: engine, company: company)
         }
         .sheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
-        }
-    }
-
-    // MARK: Key figures above
-
-    private var marketingSpend: Double {
-        company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
-    }
-
-    private var figures: OperationsFigures? { engine.operationsFigures(companyID: company.id) }
-
-    private var topCards: some View {
-        let f: OperationsFigures? = figures
-        return HStack(alignment: .top, spacing: 10) {
-            capacityCard(f).frame(maxWidth: .infinity)
-            profitCard(f).frame(maxWidth: .infinity)
-        }
-    }
-
-    private func capacityCard(_ f: OperationsFigures?) -> some View {
-        let use: Double? = f?.capacityUse
-        let big: String = use.map { "\(Int(($0 * 100).rounded()))%" } ?? "–"
-        let sub: String = use == nil ? "No trading week yet" : (f?.demandIsLimit == true ? "Demand is the limit" : "Capacity is the limit")
-        return Card(padding: 12, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Capacity used").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
-                Text(big).font(.hero(32)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.caution).lineLimit(2)
-            }
-        }
-    }
-
-    private func profitCard(_ f: OperationsFigures?) -> some View {
-        let profit: Double? = f?.profitPerWeek
-        let big: String = profit.map { ($0 < 0 ? "−" : "") + store.short(abs($0), in: company) } ?? "–"
-        return Card(padding: 12, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Profit a week").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
-                Text(big).font(.hero(32)).foregroundStyle((profit ?? 0) < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                profitChange(f)
-            }
-        }
-    }
-
-    @ViewBuilder private func profitChange(_ f: OperationsFigures?) -> some View {
-        if let d = f?.profitChangePerWeek {
-            let up: Bool = d >= 0
-            Text((up ? "▲ +" : "▼ −") + store.short(abs(d), in: company) + " vs last month")
-                .font(.system(size: 11.5)).foregroundStyle(up ? Theme.gain : Theme.loss).lineLimit(2)
-        } else {
-            Text("No month to compare yet").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-        }
-    }
-
-    // MARK: Demand against capacity
-
-    private var demandChart: some View {
-        let weeks: [OperationsFigures.Week] = figures?.weeks ?? []
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("DEMAND AGAINST CAPACITY").capsLabel()
-                    Spacer(minLength: 8)
-                    Text("last 8 weeks").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                }
-                if weeks.isEmpty {
-                    Text("Shows after the first trading week.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 20)
-                } else {
-                    DemandCapacityChart(weeks: weeks)
-                }
-            }
         }
     }
 
@@ -145,25 +64,6 @@ struct CompanyOperations: View {
             smallRows
             bigRows
         }
-    }
-
-    /// Sales & Market: the price, how the company sells, its marketing, its customers and its market position.
-    private var salesTable: some View {
-        OverviewSettingsCard(heading: "Sales and market") {
-            salesRows
-        }
-    }
-
-    @ViewBuilder private var salesRows: some View {
-        let cur: Currency = engine.currency(for: company)
-        SettingsTableRow(title: "Price", note: company.flag("inflHold") ? "Cheaper brings more customers; prices held against inflation" : "Cheaper brings more customers; can be held against inflation", value: OpsWords.price(company.priceLevel), opens: .sheet,
-                         glyph: Glyph.opsPrice, change: String(format: "%+.1f", company.priceLevel), changeTint: Theme.ivoryFaint) { sheet = .price }
-        if let trade = engine.tradeInfo(companyID: company.id), !trade.knobs.isEmpty {
-            SettingsTableRow(title: "How you sell", note: "Concept and add-ons", value: sellSummary(trade), glyph: Glyph.opsRoute) { part = .sell }
-        }
-        SettingsTableRow(title: "Marketing", note: "Campaigns, ways to sell", value: marketingSpend > 0 ? cur.tidyShort(marketingSpend) + " a week" : "No campaigns", glyph: Glyph.opsMega) { part = .marketing }
-        SettingsTableRow(title: "Customers", note: "Who buys, satisfaction, contracts", value: "", glyph: Glyph.team) { store.openCompany(company.id, section: .customers) }
-        SettingsTableRow(title: "Market", note: "Position, pricing against rivals", value: "", glyph: Glyph.market) { store.openCompany(company.id, section: .market) }
     }
 
     @ViewBuilder private var smallRows: some View {
@@ -208,16 +108,6 @@ struct CompanyOperations: View {
         let total: Int = o?.policies.count ?? 0
         SettingsTableRow(title: "Insurance and advisers", note: "Policies, insurer, law firm, accountant",
                          value: count == 0 ? "Not insured" : "\(count) of \(total) policies", valueTint: count == 0 ? Theme.caution : Theme.ivory, glyph: Glyph.opsShield) { part = .insurance }
-    }
-
-    /// The company's current choice for each of its "how you sell" knobs, in one line.
-    private func sellSummary(_ trade: Trade) -> String {
-        let names: [String] = trade.knobs.compactMap { (knob: Knob) -> String? in
-            let v: JSONValue = company.value("knob")[knob.id]
-            let i: Int = v.isNull ? knob.defaultIndex : v.int
-            return knob.options.indices.contains(i) ? knob.options[i].name : nil
-        }
-        return names.isEmpty ? "Set" : names.joined(separator: ", ")
     }
 
     // MARK: Below: paperwork and what needs you

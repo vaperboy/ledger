@@ -176,16 +176,6 @@ extension GameStore {
             jump(to: .team)
         }
     }
-
-    /// Market: Group > Market, reviews and rivals when a company is open (that page exists then), else the World app.
-    func openMarket() {
-        let hasOpen = engine?.state.companies.contains { $0.type != "hold" && $0.status == .open } ?? false
-        if hasOpen {
-            open(.market, on: .group)
-        } else {
-            openApp(.world)
-        }
-    }
 }
 
 // MARK: Profit and due

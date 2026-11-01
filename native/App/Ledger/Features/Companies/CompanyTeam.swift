@@ -10,8 +10,8 @@ enum TeamPage: String, Hashable, Identifiable {
     var id: String { rawValue }
 }
 
-/// One company's Team tab on ONE page: key figures above, a table of settings (management, goals, perks and labour rules, hiring), and
-/// the pay run, delegation note and rosters below.
+/// One company's Team tab on ONE page: compact key figures above, a table of settings (management, goals, perks and labour rules, hiring),
+/// and a plain line about who runs the team and the rosters below. Payroll is in Accounting and the Bank, not here.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -24,29 +24,22 @@ struct CompanyTeam: View {
         if let boss = chain.first {
             let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
             let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-            note("\(boss.name), \(title), runs the team day to day and \(lvl). Anything you change here overrides them; problems they cannot solve reach you in Team.", tint: Theme.ivoryMuted, medium: false)
-        } else if company.status == .open {
-            let owner: Bool = company.ownerHours > 0
-            note(owner ? "You run this team yourself. A manager takes the day-to-day off you once the company is big enough to need one." : "No one runs this team: you do not work here and there is no manager.",
-                 tint: owner ? Theme.ivoryMuted : Theme.caution, medium: !owner)
+            line("\(boss.name), \(title), runs the team day to day and \(lvl).", tint: Theme.ivoryMuted, medium: false)
+        } else if company.status == .open && company.ownerHours <= 0 {
+            line("No one runs this team: you do not work here and there is no manager.", tint: Theme.caution, medium: true)
         }
     }
 
-    private func note(_ text: String, tint: Color, medium: Bool) -> some View {
-        Card(padding: 12, radius: Theme.Radius.row) {
-            HStack(alignment: .top, spacing: 10) {
-                GlyphView(glyph: Glyph.person, size: 16, weight: 1.5, tint: tint)
-                Text(text).font(.system(size: 12.5, weight: medium ? .medium : .regular)).foregroundStyle(tint)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+    /// One plain line of text (not a card).
+    private func line(_ text: String, tint: Color, medium: Bool) -> some View {
+        Text(text).font(.system(size: 12, weight: medium ? .medium : .regular)).foregroundStyle(tint)
+            .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
     }
 
     var body: some View {
         VStack(spacing: Theme.Space.l) {
             keyFigures
             settingsTable
-            CompanyPayrollRun(engine: engine, company: company)
             delegation
             CompanyTeamRoster(engine: engine, company: company)
             CompanyStaffRoster(engine: engine, company: company)

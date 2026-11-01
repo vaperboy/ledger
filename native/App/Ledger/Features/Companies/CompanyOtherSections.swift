@@ -4,9 +4,9 @@ import Countries
 import Businesses
 import Simulation
 
-/// Two small sections of a company that belong to no bigger screen, placed at the end of Operations. Each has its own treatment:
-/// customer complaints are a mailbag (a quote and three ways to answer, each with what it costs), development is a project catalogue
-/// with a progress bar for the one running. (Giving up premises and changing the accountant moved to Workplace and Insurance and advisers.)
+/// Customer complaints, placed at the end of Operations: a mailbag (a quote and three ways to answer, each with what it costs).
+/// Development moved to Sales (`CompanyDevelopment`), named for the trade; giving up premises and changing the accountant moved to
+/// Workplace and Insurance and advisers.
 struct CompanyOtherSections: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -23,7 +23,6 @@ struct CompanyOtherSections: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             complaints
-            development
         }
     }
 
@@ -92,110 +91,6 @@ struct CompanyOtherSections: View {
         case (.sorry, true?): store.show("They accepted the apology.", tone: "good")
         case (.sorry, _): store.show("They are still unhappy.", tone: "warn")
         default: store.show("Ignored. Expect a bad review.", tone: "warn")
-        }
-    }
-
-    // MARK: Development, a project catalogue
-
-    private static func kindGlyph(_ kind: String) -> String {
-        switch kind {
-        case "dem": return Glyph.market
-        case "tick": return Glyph.stats
-        case "cogs": return Glyph.settings
-        default: return Glyph.home
-        }
-    }
-
-    @ViewBuilder private var development: some View {
-        let list = engine.developmentProjects(companyID: company.id)
-        if !list.isEmpty, company.status == .open {
-            let cur = engine.currency(for: company)
-            let run = Development.running(company)
-            TeamGroup(title: "Develop something new", trailing: {
-                if let run { Text("\(max(0, run.weeksLeft - engine.state.week).weeksText) to go").font(.system(size: 11)).foregroundStyle(Theme.caution) }
-                else { Text("one at a time").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
-            }) {
-                if let run, let p = list.first(where: { $0.project.id == run.project }) {
-                    runningCard(p.project, run: run, cur: cur)
-                } else {
-                    ForEach(list, id: \.project.id) { x in projectCard(x.project, cost: x.cost, cur: cur) }
-                }
-                finishedCard
-            }
-        }
-    }
-
-    private func runningCard(_ p: Development.Project, run: (project: String, weeksLeft: Int, cost: Double), cur: Currency) -> some View {
-        let left: Int = max(0, run.weeksLeft - engine.state.week)
-        let fraction: Double = p.weeks > 0 ? min(1, max(0, 1 - Double(left) / Double(p.weeks))) : 1
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    IconCircle(glyph: Self.kindGlyph(p.kind))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(p.text).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                RateBar(label: "Progress", fraction: fraction)
-                StatStrip(cells: [
-                    .init(label: "Spent", value: cur.tidyShort(run.cost)),
-                    .init(label: "To go", value: left.weeksText, tint: Theme.caution),
-                ])
-                Text("The team's skill and your quality decide how well it works.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }
-        }
-    }
-
-    private func projectCard(_ p: Development.Project, cost: Double, cur: Currency) -> some View {
-        Card(padding: 14, radius: Theme.Radius.card) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    IconCircle(glyph: Self.kindGlyph(p.kind))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(p.text).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                StatStrip(cells: [
-                    .init(label: "Takes", value: p.weeks.weeksText),
-                    .init(label: "Costs", value: cur.tidyShort(cost)),
-                ])
-                HStack {
-                    Text("Paid now; the result is not guaranteed.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    Spacer(minLength: 8)
-                    QuietButton(title: "Start") { start(p) }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private var finishedCard: some View {
-        let live: [JSONValue] = Development.finished(company)
-        if !live.isEmpty {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Working now").capsLabel(Theme.ivoryFaint)
-                    ForEach(Array(live.enumerated()), id: \.offset) { n, d in
-                        if n > 0 { CardLine() }
-                        HStack {
-                            GlyphView(glyph: Glyph.check, size: 14, weight: 1.8, tint: Theme.gain)
-                            Text(d["n"].string).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                            Spacer(minLength: 8)
-                            Text("\(Int((d["mag"].double * 100).rounded()))%").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.gain)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func start(_ p: Development.Project) {
-        switch store.act({ $0.startDevelopment(companyID: company.id, project: p.id) }) {
-        case .ok?: Haptics.success(); store.show("Development started.", tone: "good")
-        case .notEnoughCash?: store.show("Not enough cash in the company.", tone: "warn")
-        case .busy?: store.show("One project at a time.", tone: "warn")
-        default: store.show("Not possible right now.", tone: "warn")
         }
     }
 }

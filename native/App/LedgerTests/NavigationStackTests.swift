@@ -18,8 +18,8 @@ final class NavigationStackTests: XCTestCase {
     }
 
     func testAPageOfItsOwnIsPushedOnTopOfTheCompanyAndALinkToTheCompanyGoesBack() {
-        let old: [CompanyRoute] = [.company(1), .companyAt(1, .customers)]
-        XCTAssertEqual(GameStore.collapse([.company(1)], pushing: .companyAt(1, .customers)), old)
+        let old: [CompanyRoute] = [.company(1), .companyAt(1, .marketing)]
+        XCTAssertEqual(GameStore.collapse([.company(1)], pushing: .companyAt(1, .marketing)), old)
         XCTAssertEqual(GameStore.collapse(old, pushing: .companyAt(1, .operations)), [.companyAt(1, .operations)])
     }
 
@@ -76,10 +76,23 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertNil(store.returnTab)
     }
 
+    func testMarketRouteOpensThePhoneMarketAppWithTheCompanyChosen() {
+        let store = GameStore()
+        store.push(.market, on: .group)
+        XCTAssertTrue(store.path(for: .group).isEmpty, "the Market route is never stacked on a tab")
+        XCTAssertEqual(store.tab, .phone)
+        XCTAssertEqual(store.phonePath, [.app(.market)])
+        XCTAssertEqual(store.takeMarketRequest(), 0, "no company chosen: all markets")
+        store.openCompany(7, section: .market)
+        XCTAssertEqual(store.phonePath, [.app(.market)], "already open: not stacked twice")
+        XCTAssertEqual(store.takeMarketRequest(), 7)
+        XCTAssertNil(store.takeMarketRequest(), "a request is taken once")
+    }
+
     func testChoosingTheOpenTabPopsItToItsRoot() {
         let store = GameStore()
         store.push(.company(1), on: .company)
-        store.push(.companyAt(1, .customers), on: .company)
+        store.push(.companyAt(1, .marketing), on: .company)
         XCTAssertEqual(store.depth(.company), 2)
         let token = store.rootToken(.company)
         store.selectTab(.company)
@@ -90,7 +103,7 @@ final class NavigationStackTests: XCTestCase {
     func testSectionsOfOneCompanyShareAKeyAndPagesOfTheirOwnDoNot() {
         XCTAssertEqual(CompanyRoute.companyAt(1, .finances).key, CompanyRoute.companyPart(1, .finances, "Statements").key)
         XCTAssertEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
-        XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .customers).key)
+        XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .marketing).key)
         XCTAssertEqual(CompanyRoute.make(1, .properties, nil), .companyPart(1, .operations, "Premises"))
     }
 }

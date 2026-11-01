@@ -45,6 +45,7 @@ struct CompanyCoverageScreen: View {
                         .init(label: "Advisers", value: cur.tidyShort(o.lawMonthly + (o.accountant?.monthlyFee ?? 0)), sub: "a month in fees")
                     ])
                     policies(e, co, o, cur)
+                    CompanySecurityCard(engine: e, company: co)
                     providers(e, co, o, .insurer, "Insurer", cur, empty: "No insurer yet. Policies cannot be switched on without one.")
                     providers(e, co, o, .law, "Law firm", cur, empty: "No law firm on retainer. Legal matters are handled at full cost.")
                     providers(e, co, o, .accountant, "Accountant", cur, empty: "No accountant chosen.")
