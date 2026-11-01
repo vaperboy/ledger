@@ -310,16 +310,23 @@ public enum Payday {
         var co = s.companies[i]
         var cfg = config(co, today: t)
         guard cfg.lateSince != nil, cfg.lateWhy == "cash" else { return }
-        let p = min(cfg.lateOwed, co.payables["wages"] ?? 0, max(0, co.cash))
-        if p < 1 { return }
-        AccountingLedger.note(category: "wages", label: "Back pay to staff")
-        Ledger.moveRaw(&s, .company(co.id), -p)
-        co = s.companies[i]
-        co.payables["wages"] = (co.payables["wages"] ?? 0) - p
-        co.addTransaction(week: s.week, amount: -jsRound(p), label: "Back pay to staff")
-        cfg.lateOwed -= p
-        if cfg.lateOwed < 1 {
-            cfg.lateSince = nil; cfg.lateWhy = ""; co.wageShortfall = 0
+        let wagesOwed = co.payables["wages"] ?? 0
+        let p = min(cfg.lateOwed, wagesOwed, max(0, co.cash))
+        // Wages still owed and no cash to pay them: the payroll really is late, nothing changes.
+        if p < 1 && wagesOwed >= 1 { return }
+        if p >= 1 {
+            AccountingLedger.note(category: "wages", label: "Back pay to staff")
+            Ledger.moveRaw(&s, .company(co.id), -p)
+            co = s.companies[i]
+            co.payables["wages"] = (co.payables["wages"] ?? 0) - p
+            co.addTransaction(week: s.week, amount: -jsRound(p), label: "Back pay to staff")
+            cfg.lateOwed -= p
+        }
+        // Late is a statement about wages owed: once none is owed (paid back, or settled another way) the lateness ends, and the new state is kept.
+        let stillOwed = co.payables["wages"] ?? 0
+        if cfg.lateOwed < 1 || stillOwed < 1 {
+            cfg.lateSince = nil; cfg.lateWhy = ""; cfg.lateOwed = 0; co.wageShortfall = 0
+            co.set("pr29", cfg.json)
             s.companies[i] = co
             if let pend = co.value("ownPend") as JSONValue?, !pend.isNull {
                 payOwner(&s, companyIndex: i, salary: pend["sal"].double, tax: pend["tax"].double)
@@ -487,6 +494,8 @@ public enum Payday {
         let mi = monthNumber(t)
         var paidToday: [(String, Double)] = []
         var needApproval: [(Int, Double, Int)] = []   // company index, estimate, payday
+        // Court judgments left unpaid are settled from cash left after the wages owed (see `LegalDebts`).
+        for i in s.companies.indices where s.companies[i].status.isLive { LegalDebts.settle(&s, companyIndex: i) }
         for i in s.companies.indices where s.companies[i].status.isLive {
             guard let bd = data.catalog[s.companies[i].type] else { continue }
             var cfg = config(s.companies[i], today: t)

@@ -390,7 +390,7 @@ private struct LoanAmountPanel: View {
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-loan-chip-" + title.lowercased())
     }
 }
@@ -480,7 +480,7 @@ private struct LoanStepPapers: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(agreed ? .isSelected : [])
     }
 
@@ -598,7 +598,7 @@ private struct LoanStepSummary: View {
                 Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").font(.system(size: 13.5)).foregroundStyle(P.accent).underline()
                 Spacer()
             }.contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
         if showSchedule { schedule }
     }
 

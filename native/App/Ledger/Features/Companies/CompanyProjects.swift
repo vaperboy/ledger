@@ -127,8 +127,6 @@ private struct JobList: View {
                     }.buttonStyle(TinyButtonStyle())
                 }
             }) {
-                Text("Buyers publish work, firms bid, and the best score wins: price against quality in the buyer's own weights. Writing a bid costs money even when you lose.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 if board.tenders.isEmpty {
                     Card(padding: 12, radius: Theme.Radius.row) {
                         Text("Nothing is open for tender right now. New ones come every few weeks.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
@@ -182,7 +180,7 @@ private struct JobList: View {
                     MoreChevron()
                 }
                 .contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if openTender == t.id { tenderSheet(t) }
         }
     }
@@ -204,7 +202,6 @@ private struct JobList: View {
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
                 }.tint(Theme.gold)
-                Text("Lower prices win more often on price-heavy tenders, but you deliver at that price.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 Button("Send the bid") {
                     let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: prices[priceIndex], higherQuality: higherQuality) }
                     switch r {
@@ -257,7 +254,6 @@ private struct DevelopmentList: View {
                 VStack(spacing: 10) {
                     ForEach(active, id: \.id) { (p: ProjectBoard.DevelopmentRow) in projectRow(p) }
                 }
-                Text("Zoning can be rejected or delayed. Building costs overrun. Sales depend on the housing market.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             }
             if !board.finishedDevelopments.isEmpty {
                 MoreBlock("Finished", card: false) {

@@ -114,25 +114,36 @@ struct InboxView: View {
 
     // MARK: Answering
 
+    /// A routine answer is sent at once. Only a consequential one (it spends money, or cannot be undone; the engine decides, see
+    /// `DecisionConfirm`) is confirmed, with what it costs, and a small spend under the player's own "how much I decide" size is not asked.
     private func ask(_ message: Message, _ index: Int) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
         let label = e.displayText(opt["l"].string, companyID: message.companyID)
-        // Payroll approvals are routine: answered at once. Every other decision is confirmed with what it does.
-        if message.actionID.hasPrefix("pay29") { answer(message, index, label); return }
+        let need: DecisionConfirmation = DecisionConfirm.confirmation(for: message, option: index)
+        guard need.needsQuestion else { answer(message, index, label); return }
         var lines: [String] = []
         let d = e.displayText(opt["d"].string, companyID: message.companyID)
         if !d.isEmpty { lines.append(d) }
         lines += MessageCard.preview(e, message, opt)
         if index == 0 || message.options.count == 1 { lines += e.messageFacts(message) }
-        let where_ = message.companyID != 0 ? (e.state.company(message.companyID)?.name ?? "") : ""
-        pending = PendingAction(title: label + (where_.isEmpty ? "" : " · " + where_),
-                                message: lines.isEmpty ? e.displayText(message.title, companyID: message.companyID) : lines.joined(separator: "\n"),
-                                button: label) { answer(message, index, label) }
+        let company: Company? = message.companyID != 0 ? e.state.company(message.companyID) : nil
+        let where_: String = company?.name ?? ""
+        let fallback: String = e.displayText(message.title, companyID: message.companyID)
+        let title: String = label + (where_.isEmpty ? "" : " · " + where_)
+        let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
+        var action = PendingAction(title: title, message: body, button: label, destructive: need.irreversible) { answer(message, index, label) }
+        if !need.irreversible, let amount = need.amount, let company {
+            action.amount = amount
+            action.currency = e.currency(for: company)
+        }
+        pending = action
     }
 
+    /// Sends the answer. The detail sheet closes at once: the answer is on record and the list shows it as answered.
     private func answer(_ message: Message, _ index: Int, _ label: String) {
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
+        detailID = nil
         if ok { Haptics.success(); store.show("Answered: \(label)", tone: "good") }
         else { Haptics.warning(); store.show("That answer could not be applied: the message is no longer open.", tone: "warn") }
     }
@@ -143,6 +154,12 @@ struct InboxView: View {
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         detailID = id
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+    }
+
+    /// The confirmation belongs to the screen that asked: the list while the detail sheet is closed, the sheet while it is open.
+    /// One presenter at a time, so an answer is never confirmed twice.
+    private var listPending: Binding<PendingAction?> {
+        Binding<PendingAction?>(get: { detailID == nil ? pending : nil }, set: { newValue in if detailID == nil { pending = newValue } })
     }
 
     // MARK: Body
@@ -176,7 +193,7 @@ struct InboxView: View {
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
         .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
-        .confirmAction($pending)
+        .confirmAction(listPending)
         .ledgerBackground()
         .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
         .environment(\.outsidePalette, P)
@@ -250,7 +267,7 @@ struct InboxView: View {
                                 .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
                                 .contentShape(Circle())
                         }
-                        .buttonStyle(.plain).accessibilityLabel("Close message")
+                        .buttonStyle(PressableStyle()).accessibilityLabel("Close message")
                     }
                     MessageCard(message: m, week: e.state.week, full: true, ask: ask)
                 }
@@ -271,7 +288,7 @@ struct InboxView: View {
             GlyphView(glyph: Glyph.search, size: 16, weight: 1.8, tint: P.inkFaint)
             TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(P.ink).autocorrectionDisabled()
             if !query.isEmpty {
-                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: P.inkFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Clear search")
+                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: P.inkFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 12).frame(minHeight: 36)
@@ -316,7 +333,7 @@ struct InboxView: View {
             if let id = b.companyID {
                 Button { store.openCompany(id) } label: {
                     LinkLabel(text: "Open")
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
         .padding(.top, Theme.Space.s)
@@ -327,7 +344,7 @@ struct InboxView: View {
         return HStack {
             Text("Only " + name).font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
             Spacer()
-            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).buttonStyle(.plain).frame(minHeight: 36)
+            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).buttonStyle(PressableStyle()).frame(minHeight: 36)
         }
     }
 
@@ -437,7 +454,7 @@ struct MessageCard: View {
                 let sec = Self.section(for: message)
                 Button { store.openCompany(co.id, section: sec) } label: {
                     LinkLabel(text: "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-                }.buttonStyle(.plain).accessibilityIdentifier("open-company-link")
+                }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
@@ -489,7 +506,7 @@ struct MessageCard: View {
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
                         .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
                         .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }

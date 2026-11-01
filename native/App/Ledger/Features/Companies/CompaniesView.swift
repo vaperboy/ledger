@@ -85,7 +85,7 @@ struct CompaniesView: View {
                                 } else {
                                     VStack(spacing: 5) {
                                         ForEach(rows, id: \.co.id) { r in
-                                            NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(.plain)
+                                            NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(PressableStyle())
                                         }
                                     }
                                 }
@@ -101,11 +101,30 @@ struct CompaniesView: View {
                 }
             }
             .ledgerBackground()
+            .overlay { celebration }
+            .sheet(item: reportBinding) { item in
+                ReportDigestSheet(digest: item.digest)
+            }
+            .onAppear { store.refreshPending() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .returnBar(for: .company)
+        }
+    }
+
+    /// The report sheet: set by the store after a day closes a period. Dismissing it by any route marks the report read.
+    private var reportBinding: Binding<ReportSheetItem?> {
+        Binding<ReportSheetItem?>(get: { store.reportSheet.map { ReportSheetItem(digest: $0) } }, set: { newValue in if newValue == nil { store.dismissReportSheet() } })
+    }
+
+    /// The reward popup, once the report sheet (if any) has been read.
+    @ViewBuilder private var celebration: some View {
+        if store.ambitionPrompt {
+            AmbitionPrompt().transition(.opacity)
+        } else if store.reportSheet == nil, let first = store.celebrationQueue.first {
+            CelebrationPopup(item: first).id(first.id).transition(.opacity)
         }
     }
 
@@ -125,7 +144,7 @@ struct CompaniesView: View {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                 TextField("Name, city or trade", text: $query).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
-                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(.plain) }
+                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(PressableStyle()) }
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
@@ -187,7 +206,7 @@ struct CompanyTable: View {
                                 }
                                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
                             }.contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                         .accessibilityHint("Opens the company")
                         HealthChip(label: r.h.label)
                         num(store.short(r.h.revenueTTM, in: r.co))
@@ -263,11 +282,13 @@ struct CompanyRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
-                Text(store.short(h.value, in: co)).font(.system(size: 13, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text((h.profitTTM < 0 ? "−" : "") + store.short(abs(h.profitTTM), in: co) + " / yr").font(.system(size: 11).monospacedDigit())
+                Text((h.profitTTM < 0 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co) + " / yr")
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
                     .foregroundStyle(h.profitTTM < -0.5 ? Theme.loss : h.profitTTM > 0.5 ? Theme.gain : Theme.ivoryMuted)
+                Text("cash " + store.short(co.cash, in: co)).font(.system(size: 11).monospacedDigit()).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivoryFaint)
             }
             .lineLimit(1)
+            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.ivoryDim)
         }
         .padding(.horizontal, 12).padding(.vertical, 7)
         .background(shape.fill(Theme.surface))

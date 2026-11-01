@@ -723,7 +723,6 @@ public enum StrategicDecisions {
         let options = def.opts.map { JSONValue.option($0.label, $0.detail) }
         s.addMessage(kind: "ask", from: from, title: title, body: body, companyID: cid, tone: def.tone, status: "open", options: options,
                      action: action, data: .object(["id": .string(def.id), "co": num(Double(co.id)), "d": d]), expiresWeek: s.week + def.exp)
-        s.note("Decision needed: \(title)", tone: def.tone, companyID: cid)
         return true
     }
 

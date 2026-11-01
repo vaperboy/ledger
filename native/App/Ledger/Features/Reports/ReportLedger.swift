@@ -106,7 +106,7 @@ struct ReportMovements: View {
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .disabled(engine.state.company(m.companyID) == nil)
         .accessibilityHint("Opens the company's finances")
     }
@@ -152,7 +152,7 @@ struct ReportBills: View {
                                 }
                                 .padding(.vertical, 8).contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressableStyle())
                             .disabled(u.companyID == 0 || engine.state.company(u.companyID) == nil)
                         }
                     }
@@ -179,8 +179,6 @@ struct ReportBills: View {
                     }
                 }
             }
-            Text("Payroll that needs your approval arrives in the Inbox. Each line is in its company's own currency.")
-                .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

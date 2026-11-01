@@ -10,6 +10,7 @@ struct OutsideScreen: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationBarBackButtonHidden(true)
+            .swipeBackEnabled()
             .toolbar(.hidden, for: .navigationBar)
             .ledgerBackground()
             .environment(\.outsidePalette, palette)

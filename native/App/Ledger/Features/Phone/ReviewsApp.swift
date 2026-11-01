@@ -227,7 +227,7 @@ struct ReviewsApp: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .disabled(row.rivalID == nil)
                 if shown {
                     Text(String(format: "%.1f / 5", row.rating)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)

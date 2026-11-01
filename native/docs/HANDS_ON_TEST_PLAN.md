@@ -498,3 +498,24 @@ Setup for the board rows: a limited company with a co-owner (sell a small share 
 | S4-19 | Cancel a project | A running project > Cancel the project | The question states the refund (the unspent part of the cost); the cash comes back, the project is gone, nothing else changes; save and reload keeps a running project | NOT TESTED |
 | S4-20 | Buy a rival | Market > a rival > Buy > Its own company | The sheet explains staff, equipment and customers transfer, shows integration costs (retention bonuses and about 4% of the price) and cash left; after buying, the company has the rival's people and equipment (not bought twice) and demand dips for about ten weeks | NOT TESTED |
 | S4-21 | Football club purchase | Football > buy a club | The question shows the price, the club's cash, the debt taken over with its monthly payment, and what is left; the purchase can use savings | NOT TESTED |
+
+## Stage 7 and 8 (Home, Inbox, Reports, Goals, Next day, motion)
+
+| ID | What | Steps | Expected | Status |
+|---|---|---|---|---|
+| S78-01 | Home command centre | Open Home with two companies | Date and country, net worth hero with 4 figures (Personal cash, Invested, Companies, Debt), shortcut boxes, at most 3 priorities with a "Decide" pill and "See all N in Inbox", companies list, Next day bar; fits one screen with two companies | NOT TESTED |
+| S78-02 | Configurable shortcuts | Long-press a Home box > Edit shortcuts; pick four; Done; restart the app | The boxes change and are the same after a restart; picking a fifth is blocked | NOT TESTED |
+| S78-03 | Inbox answers | Answer a routine decision, a costly one, a sale or settlement | Routine answer is sent at once with no second question and the sheet closes; a costly one asks once with the cost (and not at all under your "how much I decide" size); a sale or court settlement always asks once | NOT TESTED |
+| S78-04 | Badges | Answer a decision | Inbox app bubble, Phone tab bubble and the Decisions tab count drop together | NOT TESTED |
+| S78-05 | Report sheet | Press Next day until a week ends, then a month | A sheet with real figures appears; Next day is disabled until you tap Continue; the month-end shows one sheet, not a week and a month | NOT TESTED |
+| S78-06 | Daily chip | Press Next day on an ordinary day | "Day n of 7" and the real net worth change beside the week bar, no layout jump | NOT TESTED |
+| S78-07 | Next day state | Press Next day twice quickly | One day runs; the button shows a spinner and "Running" and ignores the second tap | NOT TESTED |
+| S78-08 | Reward popup | Earn a first step or milestone, press Next day | A popup with the real reward and a light haptic; several queue one after another; with Reduce Motion on there is no scale animation | NOT TESTED |
+| S78-09 | Swipe back | Open a company, a Phone app and a company section; swipe from the left edge | Goes back one screen each time, including screens with the round back button | NOT TESTED |
+| S78-10 | Swipe between segments | Company screen, Team, Group, Reports, Accounting payroll: swipe left and right on the content | The next or previous segment opens; vertical scrolling is not disturbed; swipes starting at the left edge go back instead | NOT TESTED |
+| S78-11 | Pressed feedback | Press and hold rows, cards, chips | The row dims while pressed, everywhere | NOT TESTED |
+| S78-12 | Ambition at setup | New game > Ambition > Family dynasty > Begin; open Phone > Goals | The dynasty path is active with its milestones; "Decide later" leaves it unset | NOT TESTED |
+| S78-13 | Optional missions | Goals > Turn daily missions off | No daily mission, no mission popup; turning it on brings it back | NOT TESTED |
+| S78-14 | Payroll alert timing | Manual-payroll company, days before pay day; then pay day without approving | No Bank/Accounting alert before pay day (the Inbox asks for approval); on pay day unapproved or late wages alert; after back pay the alert goes | NOT TESTED |
+| S78-15 | Lost case with short cash | Lose a lawsuit at a company with little cash | Wages stay covered; Finances shows "Court judgments to pay" until cash allows; no stale salary alert | NOT TESTED |
+| S78-16 | Overviews on one screen | Company Overview, Finance, Operations, Group Overview on a standard iPhone | Each fits one screen where the content allows (verdict line only when the company is not healthy; two decisions shown) | NOT TESTED |

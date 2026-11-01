@@ -266,7 +266,7 @@ struct HireTermsPage: View {
                             Spacer(minLength: 6)
                             Text("in \(HireWords.weeksText(d.dueInWeeks))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                             Button { model.draft.promises.remove(at: i) } label: { Image(systemName: "xmark.circle").foregroundStyle(Theme.ivoryFaint) }
-                                .buttonStyle(.plain).accessibilityLabel("Remove this promise")
+                                .buttonStyle(PressableStyle()).accessibilityLabel("Remove this promise")
                         }
                     }
                     PromiseMaker(options: opts, current: model.draft.percent) { model.draft.promises.append($0) }
@@ -306,7 +306,7 @@ struct HireTermsPage: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(problem == nil ? Theme.gold : Theme.border, lineWidth: 1))
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .disabled(problem != nil)
             .accessibilityIdentifier("hire-next")
         }

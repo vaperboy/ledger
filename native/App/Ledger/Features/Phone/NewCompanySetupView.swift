@@ -74,7 +74,7 @@ struct NewCompanySetupView: View {
                     if !brands.isEmpty {
                         NavigationLink { TradeDetailView(tradeID: t.id) } label: {
                             CardRow(glyph: Glyph.market, title: "Under a franchise brand instead", subtitle: "\(brands.count) \(brands.count == 1 ? "brand is" : "brands are") looking for operators in this trade")
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)

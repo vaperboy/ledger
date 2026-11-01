@@ -143,6 +143,7 @@ public enum Trophies {
                 if let t = all.first(where: { $0.id == id }) {
                     s.addMessage(from: "Trophy wall", title: t.name, body: rec[id]["t"].string, tone: "good")
                     s.note("Trophy: \(t.name)", tone: "good")
+                    Celebrations.add(&s, kind: "trophy", title: t.name, detail: rec[id]["t"].string)
                 }
             }
         }

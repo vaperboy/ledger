@@ -70,11 +70,18 @@ struct CompanyOverview: View {
                     }
                 }.padding(.top, 2)
                 Text("Cash \(cashSub)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).padding(.top, 2)
-                Text(verdict(co, h)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                if showVerdict(co, h) { Text(verdict(co, h)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 6) }
                 StatStrip(cells: first).padding(.top, 12)
                 StatStrip(cells: second).padding(.top, 10)
             }
         }
+    }
+
+    /// The verdict sentence is shown when it adds something: a company that is not trading, short of cash, or not doing well. A healthy
+    /// company's figures already say so, and the line would only push the overview past one screen.
+    private func showVerdict(_ co: Company, _ h: CompanyHealth) -> Bool {
+        if co.status != .open || co.cash < 0 { return true }
+        return h.label == "Tight" || h.label == "Struggling" || (h.runwayWeeks.map { $0 < 8 } ?? false)
     }
 
     private func verdict(_ co: Company, _ h: CompanyHealth) -> String {
@@ -112,12 +119,12 @@ struct CompanyOverview: View {
                     Spacer(minLength: 8)
                     if !asks.isEmpty { Text(asks.count.countText("decision")).font(.system(size: 11)).foregroundStyle(Theme.caution) }
                 }
-                ForEach(Array(asks.prefix(3).enumerated()), id: \.element.id) { _, m in
+                ForEach(Array(asks.prefix(2).enumerated()), id: \.element.id) { _, m in
                     warning(glyph: Glyph.inbox, tint: Theme.caution, title: m.title, sub: m.from.isEmpty ? "Waiting for your answer" : "From \(m.from)", action: "Decide") {
                         store.openMessage(m.id)
                     }
                 }
-                if asks.count > 3 { Text("and \(asks.count - 3) more in Inbox").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                if asks.count > 2 { Text("and \(asks.count - 2) more in Inbox").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
                 if setupLeft > 0 { warning(glyph: Glyph.reports, tint: Theme.caution, title: "\(setupLeft.countText("thing")) left before opening", sub: "Documents, premises, equipment, stock", action: "Setup") { go(.setup) } }
                 if co.status == .closed { warning(glyph: Glyph.settings, tint: Theme.caution, title: "Closed", sub: "Reopen it or close down for good", action: "Settings") { goMoney(.settings) } }
                 if behind { warning(glyph: Glyph.warning, tint: Theme.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Finances") { goMoney(.summary) } }
@@ -267,11 +274,11 @@ struct CompanySetupSection: View {
         } else {
             switch target {
             case .equipment(let premises):
-                NavigationLink { CompanyEquipmentScreen(companyID: company.id, opensOnPremises: premises) } label: { content }.buttonStyle(.plain)
+                NavigationLink { CompanyEquipmentScreen(companyID: company.id, opensOnPremises: premises) } label: { content }.buttonStyle(PressableStyle())
             case .money:
-                Button { moneyPart = .owners; section = .finances; Haptics.choose() } label: { content }.buttonStyle(.plain)
+                Button { moneyPart = .owners; section = .finances; Haptics.choose() } label: { content }.buttonStyle(PressableStyle())
             case .section(let s):
-                Button { if CompanyDetailView.availableSections(company, engine).contains(s) { section = s; Haptics.choose() } } label: { content }.buttonStyle(.plain)
+                Button { if CompanyDetailView.availableSections(company, engine).contains(s) { section = s; Haptics.choose() } } label: { content }.buttonStyle(PressableStyle())
             case .none:
                 content
             }

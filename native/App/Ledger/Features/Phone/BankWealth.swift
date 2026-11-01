@@ -74,7 +74,7 @@ struct BankWealthCard: View {
             }
             .frame(minHeight: 40).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-wealth-toggle")
     }
 

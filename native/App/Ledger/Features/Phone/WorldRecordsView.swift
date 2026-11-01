@@ -162,7 +162,7 @@ struct WorldRecordsView: View {
             }
             Button { store.openCompany(chosen.id) } label: {
                 LinkLabel(text: "Open \(chosen.name)")
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -181,7 +181,7 @@ struct WorldRecordsView: View {
                                     title: e.displayText(m.title, companyID: m.companyID),
                                     subtitle: m.expiresWeek.map { w in let left = w - e.state.week; return left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week" } ?? "No deadline",
                                     chevron: true)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
             }

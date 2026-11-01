@@ -213,7 +213,7 @@ struct CandidateHireRow<Extra: View>: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("hire-talk-terms")
         }
         .padding(.vertical, 8)

@@ -131,7 +131,7 @@ struct BankBillsTab: View {
                         Spacer()
                         Image(systemName: showRules ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(P.accent)
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 if showRules {
                     ForEach(Array(o.rules.enumerated()), id: \.element.id) { n, r in FlatRow(label: r.label, value: r.value, rule: true) }
                     Text(o.basis).font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)

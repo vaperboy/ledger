@@ -119,7 +119,7 @@ struct HeadOfficeSection: View {
         } label: {
             CardRow(glyph: Glyph.home, title: "Set up a group office (optional)", subtitle: setUpText(cheapestPaid: paid), value: "Set up")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 
     private func setUpText(cheapestPaid: Double?) -> String {
@@ -386,7 +386,7 @@ struct HeadOfficeSection: View {
         return HStack(spacing: 10) {
             NavigationLink(value: CompanyRoute.companyAt(co.id, .staff)) {
                 RowLine(glyph: Glyph.calendar, tint: Theme.caution, title: co.name, subtitle: "\(who) · last met \(engine.weeksSinceMeeting(companyID: co.id)) weeks ago", chevron: true)
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             Button("Meet") { meetForProposals(co) }.buttonStyle(TinyButtonStyle())
         }
     }

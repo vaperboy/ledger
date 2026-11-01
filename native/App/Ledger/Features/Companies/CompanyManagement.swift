@@ -189,7 +189,7 @@ private struct OrgStripRow: View {
 
     @ViewBuilder private func cardOrButton(_ vacant: Bool) -> some View {
         if let open {
-            Button { Haptics.tap(); open() } label: { card(vacant, tappable: true) }.buttonStyle(.plain)
+            Button { Haptics.tap(); open() } label: { card(vacant, tappable: true) }.buttonStyle(PressableStyle())
         } else {
             card(vacant, tappable: false)
         }
@@ -306,8 +306,6 @@ struct ManagerSheet: View {
                 }
                 if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                 Text("How well they do shows in the scorecard and in the results of the business.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Text("The scorecard weighs margin, reputation, quality, mistakes, paperwork and targets met. Targets and their bonus are set under Targets and budget.")
-                    .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -324,8 +322,6 @@ struct ManagerSheet: View {
                     limitRow("Pay and promotions a month", auth["hire"].double, [0, 3000, 8000, 15000, 30000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, pay: v) }, "Pay and promotions limit: \(cur.tidyShort(v)) a month.") }
                     limitRow("Purchases and hires up to", auth["buy"].double, [10000, 25000, 50000, 100000, 250000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, buy: v) }, "Purchases and hires limit: \(cur.tidyShort(v)).") }
                     limitRow("Advertising a week", auth["ad"].double, [0, 1500, 3000, 7000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, ad: v) }, "Advertising limit: \(cur.tidyShort(v)) a week.") }
-                    Text("Above these limits a request comes to you (or to the boss above them first) and shows in Team as a decision.")
-                        .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -363,7 +359,7 @@ struct ManagerSheet: View {
                                 Spacer(minLength: 8)
                                 handoverSwitch(managerHas: d.manager)
                             }.padding(.vertical, 8).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
             }
@@ -601,7 +597,7 @@ struct AssistantSheet: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 

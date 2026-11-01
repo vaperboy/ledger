@@ -71,7 +71,7 @@ struct ChainView: View {
                         IconCircle(glyph: Glyph.achievements, size: 34)
                         BoardLinkRow(engine: e, key: key)
                     }
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
         }
     }
@@ -147,7 +147,7 @@ struct ChainAttention: View {
                 if boardItems > 0 {
                     NavigationLink { BoardView(key: "ch:\(summary.id)") } label: {
                         CardRow(glyph: Glyph.achievements, title: "The board has \(boardItems) \(boardItems == 1 ? "item" : "items") to decide", subtitle: "Approve or decline at the board.", badge: boardItems)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 if applicants > 0 {
                     line("\(applicants) franchise \(applicants == 1 ? "applicant is" : "applicants are") waiting", "Talk to them under Franchise your concept below.", glyph: Glyph.hire, tint: Theme.gain)
@@ -188,7 +188,7 @@ struct ChainAttention: View {
                         MoreChevron()
                     }
                     .contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
                 Button("Group loan \(currency.tidyShort(need))") {
                     pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
                                             message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
@@ -291,7 +291,7 @@ struct ChainStoreComparison: View {
                             }
                             MoreChevron()
                         }.contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
                 RateBar(label: s.profit < 0 ? "Loss vs best" : "Profit vs best", fraction: profitShare(s), tint: s.profit < 0 ? Theme.loss : Theme.gold)
                 HStack {
@@ -530,7 +530,6 @@ struct ChainJoin: View {
                             }
                         }
                     }
-                    Text("A store that joins follows the chain's rules from then on; renamed, it carries the chain's name and awareness.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
                 }
             }
         }

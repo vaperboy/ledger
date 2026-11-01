@@ -70,7 +70,7 @@ struct LuxuryItemSheet: View {
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? P.accentSelected : P.card))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? P.accent : P.line, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("luxury-settle-" + (s == .cash ? "cash" : "financed"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
@@ -113,7 +113,7 @@ struct LuxuryItemSheet: View {
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(short ? P.card : P.accent))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .disabled(short)
             .accessibilityIdentifier("luxury-confirm")
         }
@@ -167,7 +167,7 @@ struct LuxuryItemHead: View {
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(Capsule().fill(Color.black.opacity(0.55)))
                 }
-                .buttonStyle(.plain).padding(12)
+                .buttonStyle(PressableStyle()).padding(12)
                 .accessibilityIdentifier("luxury-sheet-close")
             }
     }

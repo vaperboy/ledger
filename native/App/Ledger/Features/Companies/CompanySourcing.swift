@@ -81,8 +81,6 @@ struct CompanySourcing: View {
                     if inside { Chip(text: "Own supplier", tint: Theme.gain) }
                     GlyphView(glyph: Glyph.suppliers, size: 18, weight: 1.6)
                 }
-                Text("Who provides what this company uses. Open an input to compare providers: outside suppliers, your own companies and your business customers. Knowing a supplier well, buying from them for a long time, brings better prices.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 if let agreement { Text(agreement).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
                 StatStrip(cells: cells)
             }
@@ -135,7 +133,7 @@ struct CompanySourcing: View {
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(isOpen ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
                 .contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
             if isOpen { comparison(input, cur: cur) }
         }
     }
@@ -314,7 +312,7 @@ struct CompanySourcing: View {
             let tint: Color = l.lastShare < 0.9 ? Theme.loss : Theme.ivory
             NavigationLink(value: CompanyRoute.companyAt(b.id, .operations)) {
                 TableRow(columns: columns, title: b.name, note: "\(k.name) · \(IntercompanySupply.modeName(l.mode))", values: [delivered, year], valueTints: [tint, Theme.ivory])
-            }.buttonStyle(.plain)
+            }.buttonStyle(PressableStyle())
         }
     }
 
@@ -397,7 +395,7 @@ struct CompanySourcing: View {
                         }
                         Text(t.blocked ?? t.detail).font(.system(size: 11)).foregroundStyle(t.blocked != nil ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableStyle())
             }
             Text("Buying on credit is a debt: it falls due on its date, shows under what falls due, and if the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
                 .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)

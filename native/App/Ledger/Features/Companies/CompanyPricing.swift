@@ -277,7 +277,6 @@ private struct DiscountCard: View {
             if info.raisedWeeksAgo > 0 {
                 Text("You raised prices \(info.raisedWeeksAgo) wk ago. A sale measured against that price can be fined as misleading.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             }
-            Text("Every sale is cheaper while it runs, so margin falls. It brings more customers, not a promise of more profit. You can end it early.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
             Button("Start \(discount)% off for \(weeks) wk") { start() }.buttonStyle(TinyButtonStyle())
         }
     }

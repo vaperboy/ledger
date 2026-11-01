@@ -55,7 +55,7 @@ struct LuxuryShowroom: View {
                 .background(Capsule().fill(on ? P.accent : P.card))
                 .overlay(Capsule().strokeBorder(on ? Color.clear : P.line, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -72,7 +72,7 @@ struct LuxuryShowroom: View {
                     .padding(.horizontal, 10).padding(.vertical, 7)
                     .overlay(Capsule().strokeBorder(P.lineStrong, lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityLabel("Sort")
             .accessibilityValue(highFirst ? "Price high to low" : "Price low to high")
         }
@@ -132,7 +132,7 @@ struct LuxuryHero: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityIdentifier("luxury-hero")
         .accessibilityLabel(item.name + ", flagship")
     }
@@ -161,7 +161,7 @@ struct LuxuryCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(item.name + (owned ? ", owned" : ""))
     }
 

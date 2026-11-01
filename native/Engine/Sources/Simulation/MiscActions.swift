@@ -327,6 +327,24 @@ public extension GameEngine {
         update { s, d, _ in r = PlayerGoals.claimDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
         return r
     }
+    /// True when the player turned the daily mission off (it is optional).
+    var dailyGoalsOff: Bool { PlayerGoals.dailyGoalsOff(state) }
+    mutating func setDailyGoalsOff(_ off: Bool) { update { s, _, _ in PlayerGoals.setDailyGoalsOff(&s, off) } }
+    /// Queues the "mission done" celebration once per day. Called by the app after a day has run.
+    @discardableResult mutating func celebrateDailyGoal(now: Date = Date()) -> Bool {
+        var r = false
+        let cur = homeCurrency
+        update { s, d, _ in r = PlayerGoals.announceDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
+        return r
+    }
+    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished first steps, the daily mission).
+    var pendingCelebrations: [Celebration] { Celebrations.pending(state) }
+    /// The player has seen them: hands the queue over and clears it.
+    mutating func takeCelebrations() -> [Celebration] {
+        var r: [Celebration] = []
+        update { s, _, _ in r = Celebrations.take(&s) }
+        return r
+    }
     var firstStepRewards: [PlayerGoals.FirstStep]? { PlayerGoals.firstSteps(state) }
     var firstStepRewardsHidden: Bool { PlayerGoals.firstStepsHidden(state) }
     mutating func claimFirstStep(id: String) -> String? {

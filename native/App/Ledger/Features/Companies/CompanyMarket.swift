@@ -89,7 +89,7 @@ struct CompanyMarket: View {
                 }
                 .contentShape(Rectangle())
             }
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressableStyle())
     }
 
     @ViewBuilder private func shareChart(_ history: [Double]) -> some View {
@@ -313,7 +313,6 @@ struct RivalSheet: View {
                         Button("Match their price") { answerCut(.match) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-                        Text("Doing nothing is also a choice: you lose some customers until the cut ends. You can also buy them out below.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             } else if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), let answer = cut.answered {
@@ -454,7 +453,7 @@ struct PriceWarSheet: View {
                                             Text(r.sizeWord).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                                             GlyphView(glyph: chosen?.id == r.id ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: chosen?.id == r.id ? Theme.gold : Theme.ivoryFaint)
                                         }.padding(.vertical, 9).contentShape(Rectangle())
-                                    }.buttonStyle(.plain)
+                                    }.buttonStyle(PressableStyle())
                                 }
                             }
                         }
@@ -534,7 +533,7 @@ struct MarketView: View {
                             Text(r.shareText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
                             MoreChevron()
                         }.padding(.vertical, 9).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }
@@ -569,7 +568,7 @@ struct MarketView: View {
                         let mine = e.rivalsOfGroup(g.id)
                         NavigationLink { RivalGroupProfileView(groupID: g.id) } label: {
                             HStack(spacing: 4) { Text("Open profile").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold); MoreChevron() }.contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(PressableStyle())
                         if !mine.isEmpty { Text("In your markets: " + mine.map { $0.rival.name }.joined(separator: ", ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
                         ForEach(Array(g.moves.prefix(3).enumerated()), id: \.offset) { _, m in
                             Text("Week \(m.week): \(m.text)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
