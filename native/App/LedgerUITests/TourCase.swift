@@ -36,6 +36,10 @@ class TourCase: XCTestCase {
     /// Waits for the Home summary; on a slow runner this is the only long wait of a test.
     @discardableResult
     func waitForHome(_ seconds: TimeInterval = 20) -> Bool {
-        app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: seconds) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 2)
+        let found = app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: seconds) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 2)
+        // The ambition popup at the start of a game covers Home until it is answered.
+        let later = app.buttons["ambition-later"].firstMatch
+        if later.waitForExistence(timeout: 2) { later.tap(); sleep(1) }
+        return found
     }
 }
