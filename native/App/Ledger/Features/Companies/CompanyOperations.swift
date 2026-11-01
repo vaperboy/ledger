@@ -9,7 +9,7 @@ import Simulation
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
-    case equipment = "Equipment", insurance = "Insurance and advisers", workplace = "Where you work", develop = "Develop"
+    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop"
 }
 
 extension Glyph {
@@ -75,13 +75,10 @@ struct CompanyOperations: View {
 
     @ViewBuilder private var bigRows: some View {
         premisesRow
-        if engine.isHomeTrade(companyID: company.id), company.status.isLive {
-            SettingsTableRow(title: "Where you work", note: "Home, workshop or office", value: engine.isWorkingFromHome(companyID: company.id) ? "At home" : "Own place", glyph: Glyph.building) { part = .workplace }
-        }
         if CompanySourcing.isAvailable(engine: engine, company: company) {
             SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
         }
-        SettingsTableRow(title: "Equipment and fleet", note: "Brands, buy, lease, subscribe", value: "Manage", glyph: Glyph.opsBox) { part = .equipment }
+        SettingsTableRow(title: "Equipment and fleet", note: "What you own; buy in TechPro Store", value: "Manage", glyph: Glyph.opsBox) { part = .equipment }
         coverageRow
     }
 
@@ -91,7 +88,7 @@ struct CompanyOperations: View {
             SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")", glyph: Glyph.opsPin) { part = .premises }
         } else {
             let place: String = engine.isWorkingFromHome(companyID: company.id) ? "At home" : company.value("prem")["owned"].bool ? "Owned" : "Rented"
-            SettingsTableRow(title: "Premises", note: "Rent, buy or work from home", value: place, glyph: Glyph.opsPin, thumb: premisesThumb) { part = .premises }
+            SettingsTableRow(title: "Premises", note: "Rent or buy in AirStay, or work from home", value: place, glyph: Glyph.opsPin, thumb: premisesThumb) { store.openAirStay(companyID: company.id) }
         }
     }
 
@@ -107,8 +104,8 @@ struct CompanyOperations: View {
         let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
         let count: Int = o?.activeCount ?? 0
         let total: Int = o?.policies.count ?? 0
-        SettingsTableRow(title: "Insurance and advisers", note: "Policies, insurer, law firm, accountant",
-                         value: count == 0 ? "Not insured" : "\(count) of \(total) policies", valueTint: count == 0 ? Theme.caution : Theme.ivory, glyph: Glyph.opsShield) { part = .insurance }
+        SettingsTableRow(title: "Insurance and advisers", note: "In Atlas Insurance: policies, insurer, law firm, accountant",
+                         value: count == 0 ? "Not insured" : "\(count) of \(total) policies", valueTint: count == 0 ? Theme.caution : Theme.ivory, glyph: Glyph.opsShield) { store.openAtlas(companyID: company.id) }
     }
 
     // MARK: Below: paperwork and what needs you
@@ -125,8 +122,8 @@ struct CompanyOperations: View {
         if let first = paper.first {
             note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
         }
-        if uninsured { note("Not insured. A bad week has nothing behind it: pick an insurer, then the policies you want.", action: "Cover") { part = .insurance } }
-        if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { part = .workplace } }
+        if uninsured { note("Not insured. A bad week has nothing behind it: pick an insurer, then the policies you want.", action: "Cover") { store.openAtlas(companyID: company.id) } }
+        if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
     }
 
     private func note(_ text: String, action: String, tap: @escaping () -> Void) -> some View {

@@ -108,6 +108,50 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0x7DB89A), accent2: Color(hex: 0x7FA6C4), onAccent: Color(hex: 0x0A1214),
         gain: Color(hex: 0x84C7A3), loss: Color(hex: 0xE59A88), caution: Color(hex: 0xDDB872))
 
+    /// AirStay: a travel marketplace. Warm white pages, a coral-red band, small red accents. Light on purpose (it imitates a listings app).
+    static let airStay = OutsidePalette(
+        ground: Color(hex: 0xF7F4F1), ground2: Color(hex: 0xEDE7E2), card: Color(hex: 0xFFFFFF), cardDeep: Color(hex: 0xF1ECE8),
+        line: Color(hex: 0xE3DCD6), lineStrong: Color(hex: 0xB9AEA6), divider: Color(hex: 0xEBE5E0), hairline: Color(hex: 0xEBE5E0),
+        ink: Color(hex: 0x241F1E), inkSoft: Color(hex: 0x56504C), inkFaint: Color(hex: 0x6D6661), inkDim: Color(hex: 0x8B837D),
+        accent: Color(hex: 0xD2384A), accent2: Color(hex: 0xA82A3A), onAccent: Color(hex: 0xFFFFFF),
+        gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xB3261E), caution: Color(hex: 0x8F6410), isLight: true)
+
+    /// TechPro Store: an online shop in deep green with an orange offer colour. Light pages.
+    static let techPro = OutsidePalette(
+        ground: Color(hex: 0xF2F6F3), ground2: Color(hex: 0xE5ECE7), card: Color(hex: 0xFFFFFF), cardDeep: Color(hex: 0xE9F0EB),
+        line: Color(hex: 0xD8E2DB), lineStrong: Color(hex: 0xA3B5A9), divider: Color(hex: 0xE1E9E3), hairline: Color(hex: 0xE1E9E3),
+        ink: Color(hex: 0x16241C), inkSoft: Color(hex: 0x42524A), inkFaint: Color(hex: 0x5C6B63), inkDim: Color(hex: 0x82908A),
+        accent: Color(hex: 0x1E6B45), accent2: Color(hex: 0xC9811F), onAccent: Color(hex: 0xFFFFFF),
+        gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xB3261E), caution: Color(hex: 0x8F6410), isLight: true)
+
+    /// Atlas Insurance: an insurer in navy and blue. Light pages.
+    static let atlas = OutsidePalette(
+        ground: Color(hex: 0xF1F4F9), ground2: Color(hex: 0xE3E9F2), card: Color(hex: 0xFFFFFF), cardDeep: Color(hex: 0xE8EEF7),
+        line: Color(hex: 0xD6DEEA), lineStrong: Color(hex: 0xA2B0C4), divider: Color(hex: 0xE0E6F0), hairline: Color(hex: 0xE0E6F0),
+        ink: Color(hex: 0x15213A), inkSoft: Color(hex: 0x40506B), inkFaint: Color(hex: 0x586783), inkDim: Color(hex: 0x7F8CA3),
+        accent: Color(hex: 0x1F4B8F), accent2: Color(hex: 0x2F78C8), onAccent: Color(hex: 0xFFFFFF),
+        gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xB3261E), caution: Color(hex: 0x8F6410), isLight: true)
+
+    /// The launch splashes of the three apps: the brand colour, white text.
+    static let airStaySplash = OutsidePalette(
+        ground: Color(hex: 0xD2384A), ground2: Color(hex: 0x8E1F2D), card: Color(hex: 0xDD5262), cardDeep: Color(hex: 0xB62D3D),
+        line: Color(hex: 0xE88A95), lineStrong: Color(hex: 0xF3B8BF), divider: Color(hex: 0xE88A95), hairline: Color(hex: 0xE88A95),
+        ink: Color(hex: 0xFFFFFF), inkSoft: Color(hex: 0xFBE3E6), inkFaint: Color(hex: 0xF6CDD2), inkDim: Color(hex: 0xF0B5BC),
+        accent: Color(hex: 0xFFFFFF), accent2: Color(hex: 0xFFFFFF), onAccent: Color(hex: 0xD2384A),
+        gain: Color(hex: 0xFFFFFF), loss: Color(hex: 0xFFFFFF), caution: Color(hex: 0xFFFFFF))
+    static let techProSplash = OutsidePalette(
+        ground: Color(hex: 0x1E6B45), ground2: Color(hex: 0x0F3D27), card: Color(hex: 0x2A7D55), cardDeep: Color(hex: 0x175738),
+        line: Color(hex: 0x5BA27F), lineStrong: Color(hex: 0x9CCDB3), divider: Color(hex: 0x5BA27F), hairline: Color(hex: 0x5BA27F),
+        ink: Color(hex: 0xFFFFFF), inkSoft: Color(hex: 0xE0F0E7), inkFaint: Color(hex: 0xC4DFD0), inkDim: Color(hex: 0xA6CDB8),
+        accent: Color(hex: 0xFFFFFF), accent2: Color(hex: 0xFFFFFF), onAccent: Color(hex: 0x1E6B45),
+        gain: Color(hex: 0xFFFFFF), loss: Color(hex: 0xFFFFFF), caution: Color(hex: 0xFFFFFF))
+    static let atlasSplash = OutsidePalette(
+        ground: Color(hex: 0x1F4B8F), ground2: Color(hex: 0x0F2850), card: Color(hex: 0x2D5CA3), cardDeep: Color(hex: 0x193F78),
+        line: Color(hex: 0x6C93CC), lineStrong: Color(hex: 0xA4BFE6), divider: Color(hex: 0x6C93CC), hairline: Color(hex: 0x6C93CC),
+        ink: Color(hex: 0xFFFFFF), inkSoft: Color(hex: 0xE0EAF8), inkFaint: Color(hex: 0xC4D5EE), inkDim: Color(hex: 0xA6BDDF),
+        accent: Color(hex: 0xFFFFFF), accent2: Color(hex: 0xFFFFFF), onAccent: Color(hex: 0x1F4B8F),
+        gain: Color(hex: 0xFFFFFF), loss: Color(hex: 0xFFFFFF), caution: Color(hex: 0xFFFFFF))
+
     /// Weather: blues. Deep dusk-blue ground, pale-blue cards, white text; the accent follows the condition
     /// (`kind` is a `WeatherEvents` kind: sun, mixed, rain, snow, heat, cold, storm).
     static func weather(kind: String) -> OutsidePalette {
@@ -157,6 +201,19 @@ extension PhoneApp {
         case .accounting: return .forest
         case .inbox: return .inbox
         case .stats, .goals, .reports, .market, .reviews, .achievements, .settings: return nil
+        case .airStay: return .airStay
+        case .techPro: return .techPro
+        case .atlas: return .atlas
+        }
+    }
+
+    /// The palette of the app's launch splash: the brand colour for the three shopping and insurance apps (their pages are light), the app's own palette for the rest.
+    func splashPalette(ownBankIsMain: Bool) -> OutsidePalette? {
+        switch self {
+        case .airStay: return .airStaySplash
+        case .techPro: return .techProSplash
+        case .atlas: return .atlasSplash
+        default: return outsidePalette(ownBankIsMain: ownBankIsMain)
         }
     }
 }

@@ -257,15 +257,14 @@ struct AppIconTile: View {
     /// A muted colour for inside the icon (Phone apps). Nil keeps the plain champagne icon.
     var tint: Color? = nil
 
+    /// The icon mood board (1 Nov 2026): a flat dark squircle with a thin outline, and a flat, desaturated outline glyph in the app's own tint.
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon, style: .continuous)
-        let top = Color(hex: 0x232427)
-        let bottom = Color(hex: 0x181A1C)
-        GlyphView(glyph: glyph, size: size * 0.45, weight: 1.4, tint: tint ?? Theme.gold)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon * size / 62, style: .continuous)
+        GlyphView(glyph: glyph, size: size * 0.45, weight: 1.5, tint: tint ?? Theme.gold)
             .frame(width: size, height: size)
-            .background(shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)))
-            .background(shape.fill((tint ?? Color.clear).opacity(0.16)))
-            .overlay(shape.strokeBorder(Color(hex: 0x333437), lineWidth: 1))
+            .background(shape.fill(Color(hex: 0x17181A)))
+            .background(shape.fill((tint ?? Color.clear).opacity(0.07)))
+            .overlay(shape.strokeBorder(Color(hex: 0x303134), lineWidth: 1))
     }
 }
 

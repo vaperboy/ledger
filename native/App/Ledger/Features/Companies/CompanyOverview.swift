@@ -274,7 +274,9 @@ struct CompanySetupSection: View {
         } else {
             switch target {
             case .equipment(let premises):
-                NavigationLink { CompanyEquipmentScreen(companyID: company.id, opensOnPremises: premises) } label: { content }.buttonStyle(PressableStyle())
+                Button {
+                    if premises { store.openAirStay(companyID: company.id) } else { store.openTechPro(companyID: company.id) }
+                } label: { content }.buttonStyle(PressableStyle())
             case .money:
                 Button { moneyPart = .owners; section = .finances; Haptics.choose() } label: { content }.buttonStyle(PressableStyle())
             case .section(let s):

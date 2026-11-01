@@ -526,6 +526,10 @@ public extension GameEngine {
             add(.contracts, "financing", "loan\(l.id)", "\(l.name) \(l.number)", "\(l.lender), \(l.termMonths) months at \(String(format: "%.2f", l.yearlyRate * 100))%" + (l.personallyGuaranteed ? ", personally guaranteed" : ""),
                 "Balance outstanding", week: l.startWeek, amount: l.balance)
         }
+        // Receipts filed with this company: store orders, leases and insurance policies bought through the Phone apps.
+        for r in Receipts.rows(co) {
+            add(.contracts, "receipt", "rcpt-" + r.number, r.title, r.detail + " \u{00B7} " + r.number, "Paid", week: r.week, amount: r.amount)
+        }
         if !co.value("chain").isNull { add(.contracts, "chain", "chain", "Chain membership", "Store of a chain", "Active") }
         if co.value("fr")["on"].bool { add(.contracts, "chain", "franchise", "Franchise", "Franchise agreements held by this company", "Active") }
         // Insurance: the policies the company holds now, from the coverage read model (the same data as Manage > Insurance and advisers).
@@ -533,7 +537,8 @@ public extension GameEngine {
             let cur = currency(for: co)
             for p in cover.policies where p.isOn {
                 let who: String = cover.insurer.map { $0.name + " \u{00B7} " } ?? ""
-                add(.insurance, "insurance", "ins-" + p.id, p.name, who + cur.short(p.weeklyPremium) + " a week", "In force", amount: p.weeklyPremium)
+                let number: String = Advisers.policyRecord(co, product: p.id).map { " \u{00B7} " + $0.number } ?? ""
+                add(.insurance, "insurance", "ins-" + p.id, p.name, who + cur.short(p.weeklyPremium) + " a week" + number, "In force", amount: p.weeklyPremium)
             }
         }
         // Applications: the company's own chain and franchise paperwork (waiting, approved), and your applications to join a franchise brand.

@@ -138,6 +138,19 @@ final class NavigationBackTests: TourCase {
         XCTAssertFalse(app.textFields["Search messages"].isHittable, "the Inbox must not stay open")
     }
 
+    /// The three shopping and insurance apps (AirStay, TechPro Store, Atlas Insurance) open from the grid and the round back button returns to it.
+    func testShoppingAndInsuranceAppsOpenAndGoBack() throws {
+        open("Phone")
+        for name in ["AirStay", "TechPro Store", "Atlas Insurance"] {
+            let icon = app.buttons["phone-app-\(name)"]
+            XCTAssertTrue(icon.waitForExistence(timeout: 3), "\(name) is an app on the Phone")
+            icon.tap()
+            XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 5), "\(name) should have a Back button")
+            XCTAssertTrue(tapRoundBack(), "\(name): Back should leave the app")
+            XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "Back from \(name) should show the app grid")
+        }
+    }
+
     /// A link that crosses tabs (Home to the Bank app on the Phone tab): Back returns to Home, and the Phone tab keeps no Bank screen.
     func testBackFromACrossTabLinkReturnsToTheOriginAndLeavesNothingBehind() throws {
         open("Home")
