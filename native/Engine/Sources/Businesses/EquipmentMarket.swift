@@ -347,7 +347,9 @@ public enum EquipmentMarket {
         let unit = price(e, company: co, w, factor: f)
         return book["plans"].array.enumerated().map { (i, p) in
             let fee = max(w.currency(co).scaledPrice(90), (unit / max(1, e.lifeYears) / 12 * p["fee"].double / 10).rounded() * 10)
-            return Plan(index: i, name: p["name"].string, maxUsers: p["users"].int, monthlyFee: fee, performance: p["perf"].double, recommended: i == rec)
+            // No sales on subscriptions; only the biggest plan carries a standing volume discount (owner decision, 2 Nov).
+            let volume = i == 2 ? 0.92 : 1.0
+            return Plan(index: i, name: p["name"].string, maxUsers: p["users"].int, monthlyFee: w.currency(co).tidy(fee * volume), performance: p["perf"].double, recommended: i == rec)
         }
     }
 

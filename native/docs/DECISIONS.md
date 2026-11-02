@@ -94,3 +94,5 @@ Atlas: policies can be removed (cancelled); never linked to a company tab.
 TechPro: show ALL items; website-like with sort by price up/down; discounts follow real-life logic: biggest discounts sometimes, small discounts regularly, Black Friday nearly everything heavily discounted (game calendar).
 AirStay: each listing keeps its own picture locked to the location (no same picture for all small offices), realistic-sounding location names.
 Layout bug: some screens move loosely side to side and up and down when content fits the screen; they must not scroll/bounce when not scrollable.
+
+- (2 Nov) Owner hours may go under 40: they follow demand in 5 h steps (floor 5). Subscriptions get no sales, only a standing 8% volume discount on the biggest plan; used items never carry a sale.

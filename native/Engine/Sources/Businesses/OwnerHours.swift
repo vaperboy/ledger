@@ -11,8 +11,8 @@ public enum OwnerHours {
     public static let weeklyCap = 80.0
     /// Burn-out (tiredness building up) starts above this many hours a week.
     public static let burnoutFrom = 65.0
-    /// The least a working owner puts in: a full week. Demand can raise it to 80; stepping out ("Works here" off) is how the player works less.
-    public static let floor = 40.0
+    /// The least a working owner puts in (owner decision, 2 Nov): a small company needs fewer than 40 hours, so the hours follow demand in 5 h steps up to 80.
+    public static let floor = 5.0
 
     /// True when the player works in this company: a company they run themselves (no manager, not a holding) and have not stepped out of.
     public static func works(_ co: Company) -> Bool { co.managerID == nil && co.type != "hold" && !co.flag("ownOut") }

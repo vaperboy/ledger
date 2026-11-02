@@ -8,6 +8,8 @@
 - AirStay: each listing has its own name and picture
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
+- Owner hours follow demand and can go under 40 a week
+- Subscriptions: no sales, only a volume discount on the biggest plan; used items never have discounts
 - TechPro: your own delivery company charges a delivery fee, booked as its revenue
 
 # Missing / coming next

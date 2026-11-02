@@ -55,7 +55,7 @@ public extension GameEngine {
             if works {
                 s.companies[i].raw["ownOut"] = nil
                 let room = max(0, OwnerHours.weeklyCap - CapacityModel.ownerHoursCommitted(s, except: companyID))
-                s.companies[i].ownerHours = min(OwnerHours.floor, room)
+                s.companies[i].ownerHours = min(40, room)
             } else {
                 s.companies[i].set("ownOut", true)
                 s.companies[i].ownerHours = 0
