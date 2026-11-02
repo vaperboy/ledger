@@ -8,6 +8,7 @@
 - AirStay: each listing has its own name and picture
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
+- TechPro: every item in the game is for sale to any company; "My items" shows what a company owns in the store's look
 - Owner hours follow demand and can go under 40 a week
 - Subscriptions: no sales, only a volume discount on the biggest plan; used items never have discounts
 - TechPro: your own delivery company charges a delivery fee, booked as its revenue

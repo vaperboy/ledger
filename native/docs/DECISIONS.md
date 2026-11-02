@@ -96,3 +96,4 @@ AirStay: each listing keeps its own picture locked to the location (no same pict
 Layout bug: some screens move loosely side to side and up and down when content fits the screen; they must not scroll/bounce when not scrollable.
 
 - (2 Nov) Owner hours may go under 40: they follow demand in 5 h steps (floor 5). Subscriptions get no sales, only a standing 8% volume discount on the biggest plan; used items never carry a sale.
+- (2 Nov) TechPro lists EVERY item in the game (all trades), buyable by any company. Owned items are rebuilt inside TechPro as a "My items" shelf (condition, warranty, sell/replace), replacing the old Equipment screen.

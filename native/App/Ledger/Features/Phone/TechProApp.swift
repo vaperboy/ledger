@@ -58,7 +58,7 @@ struct TechProApp: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
 
-    private enum Step: Equatable { case store, category, product, basket, checkout, payment, placed, orders }
+    private enum Step: Equatable { case store, category, product, basket, checkout, payment, placed, orders, owned }
 
     @State private var step: Step = .store
     @State private var companyID = 0
@@ -128,6 +128,7 @@ struct TechProApp: View {
                 case .payment: paymentView(e, co)
                 case .placed: placedView(e, co)
                 case .orders: ordersView(e, co)
+                case .owned: TechProOwnedView(companyID: co.id) { (id: String) in showItem(id) }
                 }
             } else {
                 emptyView
@@ -155,6 +156,7 @@ struct TechProApp: View {
         case .payment: step = .checkout
         case .placed: step = .store
         case .orders: step = .store
+        case .owned: step = .store
         }
     }
 
@@ -394,16 +396,7 @@ struct TechProApp: View {
         VStack(spacing: 8) {
             linkRow(Glyph.hardware, "All items", "Everything the store sells \(co.name), sorted by price") { shelf = .all; sort = .low; step = .category }
             linkRow(Glyph.list, "My orders", "Placed orders and when they arrive") { step = .orders }
-            NavigationLink {
-                // The old equipment screen keeps the game's own look.
-                CompanyEquipmentScreen(companyID: co.id)
-                    .environment(\.outsidePalette, OutsidePalette.game)
-                    .preferredColorScheme(.dark)
-            } label: {
-                linkLabel(Glyph.opsBox, "What \(co.name) owns", "Units, condition, service, selling, fleet and software")
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("tp-owned")
+            linkRow(Glyph.opsBox, "My items", "What \(co.name) owns: units, condition, service, selling, fleet and software") { step = .owned }
         }
     }
 

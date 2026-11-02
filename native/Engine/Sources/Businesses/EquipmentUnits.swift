@@ -11,7 +11,45 @@ import Finance
 /// standard purchase (quick setup) have reliability 1 and class 1.
 public enum EquipmentUnits {
     public static func kind(tradeID: String, equipmentID: String, tables: TradeTables) -> String {
-        tables.raw["EQ_KINDS"][tradeID][equipmentID].string.isEmpty ? "mach" : tables.raw["EQ_KINDS"][tradeID][equipmentID].string
+        let own = tables.raw["EQ_KINDS"][tradeID][equipmentID].string
+        return own.isEmpty ? (foreign.kind(equipmentID, tables) ?? "mach") : own
+    }
+
+    /// Every item of every trade, for the TechPro Store (owner decision, 2 Nov): any company can buy any item. Items of other trades
+    /// are bought and owned but do nothing for the business (no capacity, quality or requirement), so their flags and standard count are stripped.
+    static let foreign = ForeignItems()
+
+    final class ForeignItems: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [EquipmentSpec]?
+        private var kinds: [String: String]?
+
+        func kind(_ id: String, _ tables: TradeTables) -> String? {
+            lock.lock(); defer { lock.unlock() }
+            if kinds == nil {
+                var k: [String: String] = [:]
+                for (_, eq) in tables.raw["EQ_KINDS"].object.sorted(by: { $0.key < $1.key }) {
+                    for (eid, v) in eq.object.sorted(by: { $0.key < $1.key }) where k[eid] == nil && !v.string.isEmpty { k[eid] = v.string }
+                }
+                kinds = k
+            }
+            return kinds?[id]
+        }
+
+        func others(_ catalog: TradeCatalog) -> [EquipmentSpec] {
+            lock.lock(); defer { lock.unlock() }
+            if let items { return items }
+            var seen = Set<String>(), out: [EquipmentSpec] = []
+            for t in catalog.all {
+                for var e in t.equipment where !seen.contains(e.id) {
+                    seen.insert(e.id)
+                    e.flags = e.flags.filter { $0 == "u" }; e.standardCount = 0; e.personalRule = nil
+                    out.append(e)
+                }
+            }
+            items = out
+            return out
+        }
     }
 
     static func gameYear(_ week: Int) -> Int { GameCalendar.year(week: week) }

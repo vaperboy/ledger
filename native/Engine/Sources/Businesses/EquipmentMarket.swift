@@ -257,7 +257,9 @@ public enum EquipmentMarket {
     }
 
     static func ctx(_ s: GameState, _ co: Company, data: GameData) -> Ctx? {
-        guard let bd = data.catalog[co.type] else { return nil }
+        guard var bd = data.catalog[co.type] else { return nil }
+        let mine = Set(bd.equipment.map { $0.id })
+        bd.equipment += EquipmentUnits.foreign.others(data.catalog).filter { !mine.contains($0.id) }
         return Ctx(bd: bd, co: co, w: World(state: s, data: data), seed: s.seed, countries: data.countries, tables: data.catalog.tables, brands: brandCount(co, state: s))
     }
 
