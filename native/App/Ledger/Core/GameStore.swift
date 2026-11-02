@@ -295,7 +295,7 @@ final class GameStore: ObservableObject {
     /// A buzz when something needs the player; the words are in the daily popup (and the Inbox), not in a banner.
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.status == "open" || $0.tone == "bad" }) { Haptics.warning() }
-        let alerts: [Message] = fresh.filter { $0.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == $0.id }) }
+        let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
         if !alerts.isEmpty { Haptics.failure(); redAlerts.append(contentsOf: alerts) }
     }
 
