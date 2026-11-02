@@ -35,6 +35,7 @@ struct TechProProduct: View {
     @State private var quantity = 0
     @State private var finance = false
     @State private var pendingOwn: PendingAction?
+    @State private var ownQty = 1
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID),
@@ -48,7 +49,7 @@ struct TechProProduct: View {
     private func content(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need) -> some View {
         let cur: Currency = e.currency(for: co)
         let one: Bool = need.kind == "soft" || need.kind == "svc"
-        let own: Bool = offerKey == "u" || offerKey == "own"
+        let own: Bool = offerKey == "u" || offerKey == "own" || offerKey == "co"
         let modes: [Mode] = [.new] + (need.canLease && !own ? [Mode.lease] : [])
         let current: Mode = modes.contains(mode) ? mode : .new
         return ShopScroll {
@@ -69,6 +70,7 @@ struct TechProProduct: View {
     private func title(_ e: GameEngine, _ need: EquipmentMarket.Need) -> String {
         if offerKey == "u" { return "Used " + need.name }
         if offerKey == "own" { return "From your own companies" }
+        if offerKey == "co" { return "Your companies" }
         if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) { return o.name }
         if offerKey.hasPrefix("n"), let o = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.Offer) -> Bool in String(x.index) == offerRest }) { return o.name }
         return need.name
@@ -87,6 +89,8 @@ struct TechProProduct: View {
             used(e, co, need, cur)
         } else if offerKey == "own" {
             ownSoftware(e, need, cur)
+        } else if offerKey == "co" {
+            companyListings(e, cur)
         } else if offerKey.hasPrefix("v") {
             vehicleOption(e, need, current, cur)
         } else if let o = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.Offer) -> Bool in String(x.index) == offerRest }) {
@@ -307,6 +311,35 @@ struct TechProProduct: View {
         }
     }
 
+    // MARK: Items your other companies sell
+
+    @ViewBuilder private func companyListings(_ e: GameEngine, _ cur: Currency) -> some View {
+        let list: [OwnListing] = e.ownCompanyListings(forBuyer: companyID).filter { (l: OwnListing) -> Bool in l.equipmentID == equipmentID }
+        VStack(alignment: .leading, spacing: 8) {
+            ShopHeading(text: "Sold by your companies", trailing: "\(list.count)")
+            Text("You pay the selling company; the profit is its, so it stays in your group.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+            if list.isEmpty { Text("None of your companies offers this now.").font(.system(size: 14)).foregroundStyle(P.inkSoft) }
+            ForEach(list) { (l: OwnListing) -> CompanyListingRow in CompanyListingRow(listing: l, cur: cur, qty: ownQty) { confirmBuy(l, cur) } }
+            HStack(spacing: 12) {
+                Button("\u{2212}") { ownQty = max(1, ownQty - 1) }.buttonStyle(QuietButtonStyle())
+                Text("Quantity \(ownQty)").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.ink)
+                Button("+") { ownQty = min(99, ownQty + 1) }.buttonStyle(QuietButtonStyle())
+            }
+        }
+    }
+
+    private func confirmBuy(_ l: OwnListing, _ cur: Currency) {
+        let buyer: Int = companyID
+        let q: Int = ownQty
+        let total: Double = l.price * Double(q)
+        let message: String = "\(l.itemName) from \(l.sellerName), \(q) for \(cur.tidyDisplay(total)). The money and the profit go to \(l.sellerName)."
+        pendingOwn = PendingAction(title: "Buy from \(l.sellerName)?", message: message, button: "Buy", amount: total, currency: cur) {
+            let r = store.act { $0.buyFromOwnCompany(buyer: buyer, seller: l.sellerID, itemID: l.itemID, quantity: q) }
+            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+            else { Haptics.success(); store.show("Bought \(l.itemName) from \(l.sellerName).", tone: "good") }
+        }
+    }
+
     // MARK: Your own software
 
     /// A product one of your own companies builds that does this job: the buyer pays the producer its internal price (set where the product is managed).
@@ -505,6 +538,29 @@ struct TechProProduct: View {
                 if !lease { payChoice() }
                 ShopFact(label: label, value: value, strong: true)
                 addButton(e, line, lease ? "Add lease to basket" : "Add to basket")
+            }
+        }
+    }
+}
+
+/// One item a sister company sells to this one: the item, who sells it and the price a unit.
+private struct CompanyListingRow: View {
+    @Environment(\.outsidePalette) private var P
+    var listing: OwnListing
+    var cur: Currency
+    var qty: Int
+    var buy: () -> Void
+
+    var body: some View {
+        Card(padding: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(listing.itemName).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
+                    Text("Sold by \(listing.sellerName)").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                }
+                Spacer(minLength: 8)
+                Text(cur.tidyShort(listing.price)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+                Button("Buy") { buy() }.buttonStyle(QuietButtonStyle())
             }
         }
     }

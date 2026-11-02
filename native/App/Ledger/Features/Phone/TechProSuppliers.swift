@@ -167,6 +167,12 @@ struct TechProSuppliers: View {
                                sub: own.count == 1 ? "1 product" : "\(own.count) products", rating: 5))
             }
         }
+        let mine: [OwnListing] = e.ownCompanyListings(forBuyer: companyID).filter { (l: OwnListing) -> Bool in l.equipmentID == equipmentID }
+        if !mine.isEmpty {
+            let low: Double = mine.map { (l: OwnListing) -> Double in l.price }.min() ?? 0
+            out.append(Row(key: "co", title: "Your companies", photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low), deal: 0,
+                           sub: mine.count == 1 ? "1 item, profit stays in the group" : "\(mine.count) items, profit stays in the group", rating: 5))
+        }
         return out
     }
 }

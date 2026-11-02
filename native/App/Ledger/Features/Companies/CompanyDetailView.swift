@@ -208,7 +208,7 @@ struct CompanyDetailView: View {
     /// A page that is its own pushed screen, not a section of the bar.
     static func isLeaf(_ s: CompanySection) -> Bool {
         switch s {
-        case .marketing, .pricing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
+        case .marketing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
         default: return false
         }
     }
@@ -222,7 +222,7 @@ struct CompanyDetailView: View {
         case .staff, .holding: return (a.contains(.staff) || a.contains(.holding)) ? .team : .overview
         case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
         case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
-        case .salesMarket, .projects: return a.contains(.operations) ? .sales : .overview
+        case .salesMarket, .projects, .pricing: return a.contains(.operations) ? .sales : .overview
         case .finances, .customers: return .stats
         default: return nil
         }

@@ -11,19 +11,27 @@ import Simulation
 struct HowYouSellSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
+    /// True when the choices sit inside another popup (the item popup of Sales): no sheet of its own.
+    var embedded = false
     @State private var pending: PendingAction?
 
     var body: some View {
-        PeopleSheet(title: "How you sell") {
-            if let e = store.engine, let co = e.state.company(companyID) {
-                content(e, co)
-            } else {
-                Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-            }
+        if embedded {
+            VStack(alignment: .leading, spacing: Theme.Space.l) { inner }.confirmAction($pending)
+        } else {
+            PeopleSheet(title: "How you sell") { inner }
+                .confirmAction($pending)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
-        .confirmAction($pending)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder private var inner: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            content(e, co)
+        } else {
+            Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+        }
     }
 
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
