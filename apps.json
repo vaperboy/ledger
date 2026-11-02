@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.11",
+          "buildVersion": "11",
+          "date": "2026-11-02T00:03:23Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v11/Ledger-unsigned.ipa",
+          "size": 26538633,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- One in-game \"Are you sure\" popup replaces every iOS dialog; only big spends and irreversible actions ask\n- New button and popup style (gold, foil, Cancel | Apply)\n- Phone apps: AirStay (rent places), TechPro Store (equipment + software, basket, delivery days), Atlas Insurance\n- Perks popup for all workers; Rules under Stats; Stats and Manage cleanups\n- Stage 4: real share counts, budgeted company creation, startups as real companies, buying a rival moves staff and equipment\n\n# Missing / coming next\n- Own delivery company fee, typed prices per trade, chain/franchise application steps\n- Not yet compiled-tested on device: expect rough edges in the new apps"
+        },
+        {
           "version": "1.0.10",
           "buildVersion": "10",
           "date": "2026-11-01T18:53:08Z",
@@ -73,10 +82,10 @@
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.10",
-      "versionDate": "2026-11-01T18:53:08Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v10/Ledger-unsigned.ipa",
-      "size": 25387284
+      "version": "1.0.11",
+      "versionDate": "2026-11-02T00:03:23Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v11/Ledger-unsigned.ipa",
+      "size": 26538633
     }
   ]
 }
