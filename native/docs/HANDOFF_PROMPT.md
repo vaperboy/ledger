@@ -30,3 +30,12 @@ Popup only for spends above "Ask before spending" (default step 2) and irreversi
 4. Stage 9 release cleanup: exclude the 5 art sheets from the release build, disable `main.yml`/`yesmain.yml` (keep the files); any deletion needs owner approval.
 5. Stage 10 regression: full engine suite, hands-on test plan rows (NOT TESTED), open audits (balance audit, calculations parts 2-4, wage-share, shipping guard, 22% auto-hire volume drop).
 6. Unanswered owner questions: top-level Team tab duplicate tabs (Overview and Delegation); deletion of unused `BoardsGroupSection`; ambition as an Overview mission link.
+
+## Motion (Design/Motion.swift, Design/MotionFinance.swift)
+| Helper | Use |
+|---|---|
+| `.moneyFlash(v)` / `Motion.count` | figures roll 350-450 ms, green up / red down |
+| `.profitGlow(v)` | green sweep 0.8 s when a profit figure rises |
+| `.drawsItself()` | chart reveals left to right once (700 ms) |
+| `Motion.fill`, `.goldPulse`, `.staggerReveal(i)`, `.rowArrival()` | bars/rings, unlock pulse, 40 ms section stagger, row insert |
+| `store.paymentNotice`, `store.flyChip(label, amount:)`, `store.homeEvents`, `store.lastDayChanges` | state read by `MotionOverlay` and `HomeTimeline` |

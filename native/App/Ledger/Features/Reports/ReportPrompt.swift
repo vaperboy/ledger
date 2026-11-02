@@ -149,7 +149,7 @@ struct CelebrationPopup: View {
 
     private var card: some View {
         VStack(spacing: 10) {
-            IconCircle(glyph: Glyph.achievements, size: 56, tint: Theme.gold)
+            GoldRingMark(glyph: Glyph.achievements, size: 64)
             Text(kindLabel).capsLabel()
             Text(item.title).font(.serifTitle(22)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             if !item.detail.isEmpty {

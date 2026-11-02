@@ -237,6 +237,7 @@ struct LoanDetailSheet: View {
 /// The ivory block at the top of the loan: what is left to pay, how much is repaid, in the colours of the Banking mockup.
 private struct LoanSummaryPanel: View {
     @Environment(\.outsidePalette) private var P
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var rec: LoanRecord
     var cur: Currency
 
@@ -244,12 +245,13 @@ private struct LoanSummaryPanel: View {
         let repaid: Double = rec.principal > 0 ? max(0, min(1, 1 - rec.balance / rec.principal)) : 0
         VStack(alignment: .leading, spacing: 8) {
             Text(rec.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(P.inkSoft)
-            Text(cur.tidyDisplay(rec.balance)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+            Text(cur.tidyDisplay(rec.balance)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(rec.balance)
             Text("left to pay of " + cur.tidyDisplay(rec.principal)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(P.lineStrong.opacity(0.35))
                     Capsule().fill(P.accent).frame(width: geo.size.width * repaid)
+                        .animation(Motion.fill(reduceMotion), value: repaid)
                 }
             }
             .frame(height: 6)

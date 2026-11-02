@@ -66,6 +66,37 @@ struct Toast: Identifiable, Equatable {
     var rows: [String] = []
 }
 
+/// What one day changed, from before/after snapshots of the engine state (no engine code): feeds the animation layer.
+struct DayChanges: Equatable {
+    var netWorth: Double = 0
+    var cash: Double = 0
+    var revenue: Double = 0
+    /// Change of all loan balances (negative = repaid).
+    var debt: Double = 0
+}
+
+/// A small payment notice that slides in at the top of the app shell and leaves by itself.
+struct PaymentNotice: Equatable, Identifiable {
+    let id = UUID()
+    var amount: Double
+    var from: String
+}
+
+/// One line of Home's important-events timeline (kept in memory for the session, newest first).
+struct HomeEvent: Equatable, Identifiable {
+    let id = UUID()
+    var glyph: String
+    var text: String
+    var day: String
+}
+
+/// An amount chip that travels once (dividend received, transfer made).
+struct TransferChip: Equatable, Identifiable {
+    let id = UUID()
+    var label: String
+    var amount: Double
+}
+
 /// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
 @MainActor
 final class GameStore: ObservableObject {
@@ -90,6 +121,21 @@ final class GameStore: ObservableObject {
     @Published private(set) var celebrationQueue: [Celebration] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
     @Published private(set) var dayChip: DayChip?
+    /// What the last day changed (net worth, cash, revenue, debt), for the animation layer.
+    @Published private(set) var lastDayChanges = DayChanges()
+    /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
+    @Published private(set) var paymentNotice: PaymentNotice?
+    func dismissPaymentNotice() { paymentNotice = nil }
+    /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
+    @Published private(set) var homeEvents: [HomeEvent] = []
+    private func logEvents(_ items: [HomeEvent]) {
+        guard !items.isEmpty else { return }
+        homeEvents = Array((items + homeEvents).prefix(12))
+    }
+    /// A chip that flies from a company to the personal account (a view calls `flyChip` after a dividend is paid out).
+    @Published private(set) var transferChip: TransferChip?
+    func flyChip(_ label: String, amount: Double) { transferChip = TransferChip(label: label, amount: amount) }
+    func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
     /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
@@ -212,6 +258,7 @@ final class GameStore: ObservableObject {
         guard var e = engine else { return }
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
+        let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         let out = e.nextDay()
         if !out.gameOver { e.celebrateDailyGoal() }
         let celebrations: [Celebration] = e.takeCelebrations()
@@ -228,6 +275,18 @@ final class GameStore: ObservableObject {
             daily.netWorthChange = nwAfter - nwBefore
             daily.cashChange = cashAfter - cashBefore
         }
+        let debtAfter: Double = e.state.loans.reduce(0) { $0 + $1.balance }
+        lastDayChanges = DayChanges(netWorth: daily.netWorthChange ?? 0, cash: daily.cashChange ?? 0, revenue: daily.revenue, debt: debtAfter - debtBefore)
+        // A major payment (the day's takings above 1.5 percent of net worth): one small notice per day, never blocking.
+        if let nwNow = e.dayHistory.netWorth.last, daily.revenue > 0, daily.revenue >= max(1, nwNow) * 0.015, !out.gameOver {
+            paymentNotice = PaymentNotice(amount: daily.revenue, from: daily.bestCompany ?? "Customers")
+        }
+        var logged: [HomeEvent] = []
+        if let n = paymentNotice, n.amount == daily.revenue { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
+        if lastDayChanges.debt < -0.5 { logged.append(HomeEvent(glyph: Glyph.bank, text: "Loans repaid by \(short(-lastDayChanges.debt))", day: daily.dateLabel)) }
+        for line in daily.wentWell.prefix(2) { logged.append(HomeEvent(glyph: Glyph.check, text: line.tidyMoney, day: daily.dateLabel)) }
+        for c in celebrations.prefix(2) { logged.append(HomeEvent(glyph: Glyph.achievements, text: c.title, day: daily.dateLabel)) }
+        logEvents(logged)
         // Every ordinary day has a report, quiet or busy; only Continue closes it.
         dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
@@ -348,6 +407,15 @@ final class GameStore: ObservableObject {
     func tell(_ title: String, _ text: String, tone: String = "n") {
         let t = Toast(title: title, text: text.tidyText, tone: tone)
         if notices.last?.text == t.text && notices.last?.title == t.title { return }
+        notices.append(t)
+    }
+
+    /// A luxury purchase is confirmed on a gold-edged reveal card (see `GoldReveal`).
+    func tellLuxury(name: String, price: String) {
+        var t = Toast(title: name, text: "", tone: "good")
+        t.style = "luxury"
+        t.subtitle = "Now in your vault"
+        t.rows = [price]
         notices.append(t)
     }
 

@@ -421,6 +421,9 @@ struct StatStrip: View {
         var label: String
         var value: String
         var tint: Color = Theme.ivory
+        /// The number behind `value`: it rolls (and the profit glow runs when `glow`) as the number changes.
+        var live: Double? = nil
+        var glow: Bool = false
     }
     var cells: [Cell]
     /// A hairline above the strip, for use as the footer of a card.
@@ -435,7 +438,7 @@ struct StatStrip: View {
                     VStack(spacing: 2) {
                         Text(c.label).font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
                         Text(c.value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(c.tint.inPalette(P))
-                            .lineLimit(1).minimumScaleFactor(0.7)
+                            .lineLimit(1).minimumScaleFactor(0.7).moneyFlash(c.live ?? 0).profitGlow(c.glow ? (c.live ?? 0) : 0)
                     }
                     .frame(maxWidth: .infinity)
                     .accessibilityElement(children: .combine)

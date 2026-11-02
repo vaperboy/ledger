@@ -107,6 +107,7 @@ struct AcctTransactions: View {
                         if n > 0 { AcctDivider() }
                         row(t, fmt)
                     }
+                    .transition(.opacity)
                 }
                 if page.entries.count > shown.count {
                     AcctDivider()
@@ -121,6 +122,7 @@ struct AcctTransactions: View {
                     .accessibilityIdentifier("acct-tx-more")
                 }
             }
+            .animation(.easeInOut(duration: 0.25), value: shown.map { $0.id })
         }
     }
 

@@ -26,6 +26,7 @@ struct HomeSummary: View {
                 HomeShortcutRow()
                 TopPriorities(engine: e)
             }
+            HomeTimeline()
         }
     }
 

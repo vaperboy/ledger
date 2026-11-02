@@ -142,7 +142,7 @@ struct LuxuryItemSheet: View {
 
     private func done(_ it: Luxury.Item) {
         Haptics.success()
-        store.show("\(it.name) is now in your vault.", tone: "good")
+        store.tellLuxury(name: it.name, price: store.money(it.price))
         onBought()
     }
 }

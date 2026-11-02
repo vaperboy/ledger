@@ -32,7 +32,28 @@ struct NoticePopup: View {
     }
 
     var body: some View {
-        if notice.style == "answered" { answered } else { plain }
+        if notice.style == "answered" { answered } else if notice.style == "luxury" { luxury } else { plain }
+    }
+
+    /// A high-value purchase: a gold-edged card whose edge draws round while it fades in.
+    private var luxury: some View {
+        GamePopup(title: "Acquired", showsClose: false, onClose: { store.dismissNotice() }) {
+            VStack(spacing: 12) {
+                GoldReveal {
+                    VStack(spacing: 6) {
+                        GoldRingMark(glyph: Glyph.achievements, size: 52)
+                        Text(notice.title).font(.serifTitle(21)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        Text(notice.subtitle).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        if let price = notice.rows.first { Text(price.tidyMoney).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold) }
+                    }
+                }
+                HStack {
+                    Spacer(minLength: 0)
+                    Button("OK") { Haptics.tap(); store.dismissNotice() }
+                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("notice-ok")
+                }
+            }
+        }
     }
 
     /// The result of an answered decision: a check, what was chosen, which company, and every change it made.

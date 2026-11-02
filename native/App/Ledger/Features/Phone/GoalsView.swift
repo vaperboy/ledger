@@ -171,6 +171,7 @@ struct GoalRing: View {
     var done: Bool
     var size: CGFloat = 38
     var label: String = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let width: CGFloat = max(2.5, size * 0.09)
@@ -180,6 +181,7 @@ struct GoalRing: View {
             Circle().trim(from: 0, to: arc)
                 .stroke(done ? Theme.gain : Theme.gold, style: StrokeStyle(lineWidth: width, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .animation(Motion.fill(reduceMotion), value: arc)
             if done {
                 GlyphView(glyph: Glyph.check, size: size * 0.42, weight: 2, tint: Theme.gain)
             } else if !label.isEmpty {
@@ -187,6 +189,7 @@ struct GoalRing: View {
             }
         }
         .frame(width: size, height: size)
+        .goldPulse(done)
         .accessibilityLabel(done ? "Done" : "\(Int((arc * 100).rounded())) percent")
     }
 }

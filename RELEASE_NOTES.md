@@ -1,4 +1,5 @@
 # What's new
+- Animations: figures count up, profit glows green, big payments slide in, loans visibly shrink, charts draw themselves, goals fill and unlock in gold, luxury purchases get a gold card, milestones use a clean gold ring, Home lists recent important events
 - Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places
 - Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects
 - Bank: the balance card and its buttons are only on the Account tab; screens no longer wiggle sideways in Group, Projects and Bank; full-page popups fade and scale in

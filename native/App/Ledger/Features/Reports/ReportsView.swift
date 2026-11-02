@@ -89,11 +89,11 @@ struct ReportsContent: View {
 
     private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            hero(r)
-            ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format)
-            story(r)
-            linesTable(r)
-            moreTable(r)
+            hero(r).staggerReveal(0)
+            ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format).staggerReveal(1)
+            story(r).staggerReveal(2)
+            linesTable(r).staggerReveal(3)
+            moreTable(r).staggerReveal(4)
         }
     }
 

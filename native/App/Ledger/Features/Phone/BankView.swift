@@ -106,7 +106,7 @@ struct BankPersonalLoans: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(cur.tidyShort(l.balance)).font(.system(size: 14).monospacedDigit()).foregroundStyle(P.ink)
+                Text(cur.tidyShort(l.balance)).font(.system(size: 14).monospacedDigit()).foregroundStyle(P.ink).moneyFlash(l.balance)
                 Text("left to pay").font(.caption2).foregroundStyle(P.inkFaint)
             }
             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(P.inkFaint)

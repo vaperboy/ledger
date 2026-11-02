@@ -50,9 +50,9 @@ struct CompanyOverview: View {
         let cashSub: String = h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : String(format: "%.0f weeks of costs", h.weeksOfCash)
         let margin: String = h.marginTTM.map { String(format: "%.1f%%", $0 * 100) } ?? "–"
         let first: [StatStrip.Cell] = [
-            .init(label: "Profit 12 mo", value: (loss ? "−" : "") + store.short(abs(h.profitTTM), in: co), tint: loss ? Theme.loss : Theme.ivory),
+            .init(label: "Profit 12 mo", value: (loss ? "−" : "") + store.short(abs(h.profitTTM), in: co), tint: loss ? Theme.loss : Theme.ivory, live: h.profitTTM, glow: true),
             .init(label: "Margin", value: margin),
-            .init(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co)),
+            .init(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co), live: h.revenueTTM),
         ]
         let second: [StatStrip.Cell] = [
             .init(label: "Costs a week", value: store.short(h.weeklyCost, in: co)),

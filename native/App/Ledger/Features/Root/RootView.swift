@@ -16,6 +16,7 @@ struct RootView: View {
             } else { StartView() }
         }
         .overlay { PopupLayer() }
+        .overlay { MotionOverlay() }
         // Every scroll view and list in the app only bounces when its content is taller (or wider) than the screen: a page that fits stays still.
         .scrollBounceBehavior(.basedOnSize, axes: [.vertical, .horizontal])
         .transaction { t in if reduceMotion { t.animation = nil } }

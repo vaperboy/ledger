@@ -214,7 +214,7 @@ struct InboxView: View {
             ForEach(cut.blocks) { (b: Block) in
                 if !b.title.isEmpty { header(b).mailRowStyle() }
                 ForEach(b.messages) { (m: Message) in
-                    mailRow(m, week: week)
+                    mailRow(m, week: week).transition(.opacity)
                 }
             }
             if cut.hidden > 0 {
@@ -225,6 +225,7 @@ struct InboxView: View {
         .listStyle(.plain).scrollBounceBehavior(.basedOnSize)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
+        .animation(.easeOut(duration: 0.25), value: list.count)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
     }
 

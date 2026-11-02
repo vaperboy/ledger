@@ -38,8 +38,8 @@ struct StatsView: View {
         let ofBest: String = best > 0 ? String(format: "%.0f%% of your best", max(0, nw.total) / best * 100) : "No best yet"
         let columns: [GridItem] = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         return LazyVGrid(columns: columns, spacing: 10) {
-            StatsTile(glyph: Glyph.richList, label: "Best net worth", value: store.short(best), sub: "Highest so far")
-            StatsTile(glyph: Glyph.stats, label: "Net worth now", value: store.short(nw.total), sub: ofBest, tint: nw.total < 0 ? Theme.loss : Theme.ivory)
+            StatsTile(glyph: Glyph.richList, label: "Best net worth", value: store.short(best), sub: "Highest so far", live: best)
+            StatsTile(glyph: Glyph.stats, label: "Net worth now", value: store.short(nw.total), sub: ofBest, tint: nw.total < 0 ? Theme.loss : Theme.ivory, live: nw.total)
             StatsTile(glyph: Glyph.ovCalendar, label: "Weeks played", value: "\(s.week)", sub: "Since you started")
             StatsTile(glyph: Glyph.building, label: "Companies sold", value: "\(s.stats.companiesSold)", sub: s.stats.bankruptcies > 0 ? "\(s.stats.bankruptcies) bankruptcies" : "No bankruptcies")
         }
@@ -248,13 +248,14 @@ struct StatsTile: View {
     var sub: String = ""
     var tint: Color = Theme.ivory
     var compact = false
+    var live: Double? = nil
 
     var body: some View {
         Card(padding: 12, radius: Theme.Radius.card) {
             VStack(alignment: .leading, spacing: 6) {
                 IconCircle(glyph: glyph, size: compact ? 28 : 32)
                 Text(label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
-                Text(value.tidyText).font(.hero(compact ? 20 : 24)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
+                Text(value.tidyText).font(.hero(compact ? 20 : 24)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0).profitGlow(live ?? 0)
                 if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).lineLimit(2) }
             }
         }
