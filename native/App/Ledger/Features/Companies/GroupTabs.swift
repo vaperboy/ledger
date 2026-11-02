@@ -665,7 +665,9 @@ struct GroupMoreTab: View {
             case .chains: GroupStructureOverview(engine: engine, parts: [.chains])
             case .franchises: GroupStructureOverview(engine: engine, parts: [.franchises])
             case .standAlone: GroupStructureOverview(engine: engine, parts: [.standAlone])
-            case .dividends: GroupStructureOverview(engine: engine, parts: [.dividends])
+            case .dividends:
+                GroupDividendsPage(engine: engine)
+                GroupStructureOverview(engine: engine, parts: [.dividends])
             case .office:
                 if !live.isEmpty { HeadOfficeSection(engine: engine) } else { Text("Start a company first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
             case .posts:
