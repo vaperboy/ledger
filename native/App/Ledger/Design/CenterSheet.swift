@@ -7,6 +7,12 @@ private struct CenterSheetLockKey: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
+/// The measured height of the popup content, so the card can size to it.
+private struct CenterSheetHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// Makes the presented controller's views transparent, so the dimmed backdrop of the popup shows the screen below.
 private struct ClearCoverBackground: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView { ClearProbe() }
@@ -27,7 +33,9 @@ private struct ClearCoverBackground: UIViewRepresentable {
 }
 
 /// The centred popup card: dimmed backdrop, rounded themed card (max 560 wide, max 80% of the screen high), a small x at the top right.
-/// Arrives with a fade and a 0.95 to 1 scale; no slide. The content scrolls inside the card when it brings its own scroll view.
+/// The card is as high as its content, up to 80% of the screen; taller content scrolls inside it. Content that fills the space by itself
+/// (its own ScrollView or NavigationStack, measured as almost no height) gets the full maximum height and keeps its own scrolling.
+/// Arrives with a fade and a 0.95 to 1 scale; no slide.
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -35,6 +43,8 @@ struct CenterSheetFrame<Content: View>: View {
     @ViewBuilder var content: () -> Content
     @State private var shown = false
     @State private var locked = false
+    @State private var contentHeight: CGFloat = 0
+    @State private var greedy = false
 
     var body: some View {
         GeometryReader { geo in
@@ -43,7 +53,7 @@ struct CenterSheetFrame<Content: View>: View {
                     .contentShape(Rectangle())
                     .onTapGesture { if !locked { onClose() } }
                     .accessibilityIdentifier("popup-backdrop")
-                card
+                card(maxHeight: geo.size.height * 0.8)
                     .frame(maxWidth: 560)
                     .frame(maxHeight: geo.size.height * 0.8)
                     .padding(.horizontal, 22)
@@ -59,7 +69,7 @@ struct CenterSheetFrame<Content: View>: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    private var card: some View {
+    private func card(maxHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Spacer(minLength: 0)
@@ -72,12 +82,37 @@ struct CenterSheetFrame<Content: View>: View {
                 .buttonStyle(PressableStyle()).accessibilityLabel("Close").accessibilityIdentifier("popup-close")
             }
             .padding(.top, 10).padding(.trailing, 10).padding(.bottom, 2)
-            content()
-                .frame(maxWidth: .infinity)
+            scrollArea(maxHeight: maxHeight)
         }
         .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+    }
+}
+
+extension CenterSheetFrame {
+    /// The content in a vertical scroll view that is as high as the content (header excluded) and no higher than the card allows.
+    fileprivate func scrollArea(maxHeight: CGFloat) -> some View {
+        let room: CGFloat = max(120, maxHeight - 48)
+        let measured: CGFloat = contentHeight
+        let fit: CGFloat = (greedy || measured <= 0) ? room : min(measured, room)
+        let forced: CGFloat? = greedy ? room : nil
+        return ScrollView(.vertical) {
+            content()
+                .frame(maxWidth: .infinity)
+                .frame(height: forced)
+                .background(
+                    GeometryReader { (g: GeometryProxy) in
+                        Color.clear.preference(key: CenterSheetHeightKey.self, value: g.size.height)
+                    }
+                )
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: fit)
+        .onPreferenceChange(CenterSheetHeightKey.self) { (h: CGFloat) in
+            contentHeight = h
+            if h > 0 && h < 60 { greedy = true }
+        }
     }
 }
 
