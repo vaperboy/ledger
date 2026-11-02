@@ -10,8 +10,6 @@ struct MarketingSheet: View {
     let companyID: Int
     /// Budget being dragged, per channel; absent = the running budget.
     @State private var draft: [String: Double] = [:]
-    /// Channel whose note is open (the small i button).
-    @State private var noteFor: String?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -26,31 +24,40 @@ struct MarketingSheet: View {
         let mkt: JSONValue = co.value("mkt")
         let channels: [MarketingChannel] = e.marketingChannels(companyID: companyID)
         let total: Double = channels.reduce(0) { $0 + spend($1, mkt: mkt) }
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Marketing").font(.headline).foregroundStyle(Theme.ivory)
-                Spacer()
-                Text(total > 0 ? "Total " + cur.tidyDisplay(total) + " a week" : "No campaigns").font(.subheadline.weight(.semibold)).foregroundStyle(total > 0 ? Theme.gold : Theme.ivoryMuted)
-            }
+        let active: Int = channels.filter { spend($0, mkt: mkt) > 0 }.count
+        return VStack(alignment: .leading, spacing: 8) {
+            header(active: active, total: total, cur: cur)
             if channels.isEmpty {
                 Text("No marketing channels are open yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            } else if channels.count > 8 {
+                ScrollView { channelList(e, channels, cur: cur, mkt: mkt) }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(maxHeight: 520)
             } else {
-                if channels.count > 8 {
-                    ScrollView { channelList(e, channels, cur: cur, mkt: mkt) }
-                        .scrollBounceBehavior(.basedOnSize)
-                } else {
-                    channelList(e, channels, cur: cur, mkt: mkt)
-                }
+                channelList(e, channels, cur: cur, mkt: mkt)
             }
         }
-        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 14)
+        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .ledgerBackground()
     }
 
+    /// "Marketing", how many campaigns run and the total weekly budget; the popup's x sits at the right of this row.
+    private func header(active: Int, total: Double, cur: Currency) -> some View {
+        let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
+        return VStack(alignment: .leading, spacing: 1) {
+            Text("Marketing").font(.serifTitle(20)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+            Text(sub).font(.system(size: 12.5, weight: .medium)).foregroundStyle(active > 0 ? Theme.gold : Theme.ivoryMuted)
+        }
+        .padding(.trailing, 44)
+    }
+
     private func channelList(_ e: GameEngine, _ channels: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {
-        VStack(spacing: 6) {
-            ForEach(channels, id: \.id) { (ch: MarketingChannel) in row(e, ch, cur: cur, mkt: mkt) }
+        VStack(spacing: 0) {
+            ForEach(Array(channels.enumerated()), id: \.element.id) { (n: Int, ch: MarketingChannel) in
+                if n > 0 { Hairline() }
+                row(e, ch, cur: cur, mkt: mkt)
+            }
         }
     }
 
@@ -71,34 +78,29 @@ struct MarketingSheet: View {
         let reason: String? = plan?.runByChain == true ? "Run by the chain." : blockedText
         let on = Binding<Bool>(get: { value > 0 }, set: { (v: Bool) in commit(ch, v ? first : 0) })
         let amount = Binding<Double>(get: { value }, set: { (v: Double) in draft[ch.id] = v })
-        return Card(padding: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(ch.name).font(.bodyText.weight(.semibold)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
-                    Button { noteFor = (noteFor == ch.id) ? nil : ch.id } label: {
-                        Text("i").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ivoryMuted)
-                            .frame(width: 20, height: 20).overlay(Circle().strokeBorder(Theme.ivoryMuted, lineWidth: 1))
-                    }
-                    .buttonStyle(PressableStyle()).accessibilityLabel("About " + ch.name)
-                    Spacer(minLength: 4)
-                    if reason == nil {
-                        Text(cur.tidyDisplay(value) + " a week").font(.caption.weight(.semibold)).foregroundStyle(value > 0 ? Theme.gold : Theme.ivoryMuted).lineLimit(1)
-                    }
-                    Toggle("", isOn: on).labelsHidden().disabled(reason != nil)
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 4) {
+                Text(ch.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                    .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
+                InfoPopoverButton(title: ch.name, text: ch.note.tidyMoney)
+                Spacer(minLength: 4)
+                if reason == nil {
+                    Text(cur.tidyDisplay(value) + " a week").font(.system(size: 12.5, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(value > 0 ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
                 }
-                if noteFor == ch.id {
-                    Text(ch.note.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                }
-                if let why = reason {
-                    Text(why).font(.caption2).foregroundStyle(Theme.caution)
-                } else {
-                    Slider(value: amount, in: 0...top, onEditingChanged: { (editing: Bool) in
-                        if !editing { commit(ch, draft[ch.id] ?? value) }
-                    })
-                    .tint(Theme.gold)
-                }
+                LedgerSwitch(isOn: on).hitHeight(28).disabled(reason != nil)
+            }
+            .frame(minHeight: 28)
+            if let why = reason {
+                Text(why).font(.caption2).foregroundStyle(Theme.caution).padding(.bottom, 6)
+            } else {
+                LedgerSlider(value: amount, in: 0...top, onEditingChanged: { (editing: Bool) in
+                    if !editing { commit(ch, draft[ch.id] ?? value) }
+                })
+                .hitHeight(30)
             }
         }
+        .padding(.vertical, 2)
     }
 
     /// Applies the budget (0 stops it); a refusal (lock, chain) is shown and the slider snaps back.

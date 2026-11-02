@@ -27,7 +27,14 @@ struct LedgerSlider: View {
 
     private var span: Double { max(range.upperBound - range.lowerBound, 0.000001) }
     private let thumb: CGFloat = 20
-    private let hit: CGFloat = 44
+    private var hit: CGFloat = 44
+
+    /// A shorter touch area for dense rows (still at least 30pt high); the default is 44pt.
+    func hitHeight(_ h: CGFloat) -> LedgerSlider {
+        var c: LedgerSlider = self
+        c.hit = max(30, h)
+        return c
+    }
 
     private func fraction(_ v: Double) -> CGFloat {
         let f: Double = (v - range.lowerBound) / span
@@ -121,6 +128,16 @@ struct LedgerSwitch: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var rowHeight: CGFloat = 44
+
+    init(isOn: Binding<Bool>) { self._isOn = isOn }
+
+    /// A shorter touch area for dense rows.
+    func hitHeight(_ h: CGFloat) -> LedgerSwitch {
+        var c: LedgerSwitch = self
+        c.rowHeight = max(28, h)
+        return c
+    }
 
     var body: some View {
         Button {
@@ -132,7 +149,7 @@ struct LedgerSwitch: View {
                 Circle().fill(isOn ? P.card : P.inkSoft).frame(width: 17, height: 17).padding(.horizontal, 3)
             }
             .frame(width: 38, height: 23)
-            .frame(minWidth: 44, minHeight: 44)
+            .frame(minWidth: 44, minHeight: rowHeight)
             .contentShape(Rectangle())
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: isOn)
         }
