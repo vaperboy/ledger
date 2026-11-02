@@ -1,4 +1,5 @@
 # What's new
+- Adding a product or service opens a popup with choices named for your company, their development time and cost; profit and market change unlock once you hire a market advisor, a new role
 - Popups open in the middle of the screen in the report style instead of rising from the bottom; Marketing is a compact popup that fits without scrolling; the new menu item row is gone from Sales
 - Animations: team hires, promotions, manager and board seats, group connections and acquisitions, new stores, project progress, market charts, loan debt, goals, luxury purchases, a Home events timeline and a cleaner milestone celebration
 - Animations: figures count up, profit glows green, big payments slide in, loans visibly shrink, charts draw themselves, goals fill and unlock in gold, luxury purchases get a gold card, milestones use a clean gold ring, Home lists recent important events
