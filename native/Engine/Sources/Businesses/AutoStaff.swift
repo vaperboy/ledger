@@ -22,7 +22,7 @@ public enum AutoStaff {
                 if idx == 0 && bd.ownerFTE >= 1 && co.managerID == nil && co.ownerHours >= 20 { target = max(0, target - 1) }
                 // the manager's one rule: a free place, an empty post, or a leaver and the demand (ManagerHiring)
                 guard ManagerHiring.verdict(s, companyID: co.id, role: st.role, target: target, data: data).allowed else { continue }
-                if let r = ManagerHiring.hire(&s, companyID: co.id, role: st.role, target: target, data: data) {
+                if let r = ManagerHiring.fill(&s, companyID: co.id, role: st.role, target: target, data: data) {
                     let roleName = data.catalog.tables.roles[st.role]?.name ?? st.role
                     s.note("\(co.name): \(r.person.name) hired as \(roleName.lowercased()) by the manager\(ManagerHiring.earlyNote(r.verdict)).", tone: "n", companyID: co.id)
                 }

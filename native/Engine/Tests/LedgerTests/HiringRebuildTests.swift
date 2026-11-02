@@ -283,7 +283,7 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertFalse(e.setDuty(companyID: id, employeeID: pid, duty: "notARole"))
         XCTAssertTrue(e.setDuty(companyID: id, employeeID: pid, duty: "guard"))
         XCTAssertEqual(e.workerProfile(companyID: id, employeeID: pid)?.duty, "guard")
-        XCTAssertEqual(RoleEffects.shrinkFactor(e.state.company(id)!), 0.70)
+        XCTAssertEqual(RoleEffects.shrinkFactor(e.state.company(id)!), RoleEffects.guardLossFactor)
         XCTAssertEqual(RoleEffects.theftGrowthFactor(e.state.company(id)!), 0.5)
         XCTAssertTrue(e.recommendedRoles(companyID: id).first { $0.id == "guard" }?.filled ?? false)
         // the same week, with and without the guard: the one with the guard keeps more of the sales

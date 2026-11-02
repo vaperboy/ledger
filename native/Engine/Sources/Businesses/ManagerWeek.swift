@@ -156,7 +156,7 @@ extension ManagerModel {
                 return
             }
             var f = fl; f["rep22"] = .number(Double(s.week)); s.companies[ci].set("flags", f)
-            if let h = ManagerHiring.hire(&s, companyID: co.id, role: role, target: want.int, data: data) {
+            if let h = ManagerHiring.fill(&s, companyID: co.id, role: role, target: want.int, data: data) {
                 s.note("\(mgr.name) hired \(h.person.name) (\(r.name.lowercased())) at \(co.name): \(h.verdict == .replace ? "the post was empty" : "hired early" + ManagerHiring.earlyNote(h.verdict)).", tone: "n", companyID: co.id)
             }
             return

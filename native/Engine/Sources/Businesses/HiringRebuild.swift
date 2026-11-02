@@ -245,28 +245,28 @@ public struct RoleOption: Equatable, Sendable, Identifiable {
 
 public enum RoleEffects {
     /// Security guard: shop and venue losses (the trade's shrink) are this share of what they would be; staff theft grows half as fast.
-    public static let guardLossFactor = 0.70
+    public static let guardLossFactor = 0.55
     /// Marketing responsible: campaigns gain this much more awareness; more while the owner works somewhere else (fewer than `ownerAwayHours` here).
-    public static let marketingGain = 0.08
-    public static let marketingGainOwnerAway = 0.18
+    public static let marketingGain = 0.15
+    public static let marketingGainOwnerAway = 0.30
     public static let ownerAwayHours = 20.0
     /// Developer: development projects take this share of the weeks (rounded up).
     public static let developerWeeksFactor = 0.75
     /// Accountant and cleaner: less chance an inspection finds something (probability points).
-    public static let accountantInspection = 0.05
-    public static let cleanerInspection = 0.04
+    public static let accountantInspection = 0.10
+    public static let cleanerInspection = 0.08
     /// Receptionist: more awareness from the front door.
-    public static let receptionistGain = 0.04
+    public static let receptionistGain = 0.08
 
     struct Extra { var id: String; var effect: String }
     static let table: [String: Extra] = [
-        "guard": Extra(id: "guard", effect: "Cuts losses from theft and shrinkage by 30 percent."),
-        "marketer": Extra(id: "marketer", effect: "Campaigns reach 8 percent more people, 18 percent while you work somewhere else."),
+        "guard": Extra(id: "guard", effect: "Cuts losses from theft and shrinkage by 45 percent."),
+        "marketer": Extra(id: "marketer", effect: "Campaigns reach 15 percent more people, 30 percent while you work somewhere else."),
         "advisor": Extra(id: "advisor", effect: "Shows what a new product or service would do to profit and market share."),
         "dev": Extra(id: "dev", effect: "Development projects take a quarter less time."),
-        "acct": Extra(id: "acct", effect: "Inspections find fewer faults (5 points lower chance)."),
-        "cleaner": Extra(id: "cleaner", effect: "Inspections find fewer faults (4 points lower chance)."),
-        "recept": Extra(id: "recept", effect: "The front door brings 4 percent more awareness."),
+        "acct": Extra(id: "acct", effect: "Inspections find fewer faults (10 points lower chance)."),
+        "cleaner": Extra(id: "cleaner", effect: "Inspections find fewer faults (8 points lower chance)."),
+        "recept": Extra(id: "recept", effect: "The front door brings 8 percent more awareness."),
     ]
 
     /// Recommended extra roles per kind of trade (by trade family; a developer only where there is something to develop).

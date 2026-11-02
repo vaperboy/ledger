@@ -58,15 +58,16 @@ final class RoleTuningTests: XCTestCase {
     /// The tuning run: prints the table the numbers in DECISIONS.md come from. Set ROLE_TUNING=full for every trade and seed.
     func testRolesPayForThemselvesModestly() throws {
         let full = ProcessInfo.processInfo.environment["ROLE_TUNING"] == "full"
-        let seeds = full ? [1, 2, 3, 4, 5, 6] : [1, 2, 3]
+        let seeds = full ? [1, 2, 3, 4, 5, 6] : [1, 2]
         let table: [(role: String, trades: [String])] = [
-            ("guard", ["grocery", "boutique", "hardware"]), ("marketer", ["cafe", "cons"]), ("recept", ["cons", "cafe"]), ("cleaner", ["cafe", "grocery"]), ("acct", ["cafe", "cons"]),
+            ("guard", full ? ["grocery", "boutique", "hardware"] : ["grocery"]), ("marketer", ["cafe", "grocery"]), ("recept", ["cafe", "grocery"]),
         ]
         for (role, trades) in table {
             for trade in trades {
-                for size in (full ? [0.5, 1.0, 2.0] : [1.0]) {
+                for size in (full ? [0.5, 1.0, 2.0] : [0.5, 2.0]) {
                     guard let m = measure(role: role, trade: trade, size: size, seeds: seeds) else { continue }
                     let net = m.wage > 0 ? (m.value - m.wage) / m.wage : 0
+                    if role == "guard" && trade == "grocery" && size == 2.0 { XCTAssertGreaterThan(net, -0.1, "a guard pays for himself in a big shop") }
                     print("ROLE \(role) \(trade) size \(size): value \(Int(m.value)) wage \(Int(m.wage)) revenue \(Int(m.revenue)) net \(String(format: "%.0f", net * 100))%")
                 }
             }

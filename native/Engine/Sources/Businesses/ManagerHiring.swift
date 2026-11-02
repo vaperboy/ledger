@@ -51,14 +51,14 @@ public enum ManagerHiring {
         if heads.count < target { return .replace }
         let leavers = heads.compactMap { m in leaverReason(s, co, m, data: data).map { (m, $0) } }
         guard let first = leavers.first else { return .no("The team for this role is complete.") }
-        guard heads.count - leavers.count < target else { return .no("The team for this role is complete without the leavers.") }
+        guard heads.count - leavers.count < target, heads.count < target + 1 else { return .no("The team for this role is complete without the leavers.") }
         guard demandLimited(co) else { return .no("There is not enough work to hire before \(s.people[first.0.id]?.name ?? "the leaver") goes.") }
         return .early("\(s.people[first.0.id]?.name ?? "A colleague") \(first.1)")
     }
 
     /// The one door for a manager's hire: checks the rule, weighs the candidates with the manager's skill, hires. Nil when the rule says no or nobody came to terms.
     @discardableResult
-    static func hire(_ s: inout GameState, companyID: Int, role: String, target: Int, candidates given: [Person]? = nil, data: GameData) -> (person: Person, verdict: Verdict)? {
+    static func fill(_ s: inout GameState, companyID: Int, role: String, target: Int, candidates given: [Person]? = nil, data: GameData) -> (person: Person, verdict: Verdict)? {
         let v = verdict(s, companyID: companyID, role: role, target: target, data: data)
         guard v.allowed, let ci = s.companyIndex(companyID) else { return nil }
         let cands = given ?? Hiring.search(role: role, company: s.companies[ci], mode: .network, faces: false, state: &s, data: data)
