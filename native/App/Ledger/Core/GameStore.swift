@@ -283,13 +283,12 @@ final class GameStore: ObservableObject {
         }
         let debtAfter: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         lastDayChanges = DayChanges(netWorth: daily.netWorthChange ?? 0, cash: daily.cashChange ?? 0, revenue: daily.revenue, debt: debtAfter - debtBefore)
-        // A major payment (the day's takings above 1.5 percent of net worth): one small notice per day, never blocking.
+        // A major payment (the day's takings above 1.5 percent of net worth) is logged for Home only; it never raises a banner.
         var todaysPayment: PaymentNotice?
         if !out.gameOver, let p = bigPayment(e) {
             let notice = PaymentNotice(amount: p.amount, from: p.from)
             todaysPayment = notice
             paymentNotice = notice
-            banner("Payment received", body: "+" + short(p.amount, in: p.company) + " \u{00B7} " + p.from, glyph: Glyph.ovCoin)
         }
         if !out.gameOver { postMarketBanners(e, after: seenBefore) }
         marketSeen = e.marketEvents(limit: 1).first?.id ?? seenBefore
