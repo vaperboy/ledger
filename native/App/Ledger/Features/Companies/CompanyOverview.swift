@@ -63,7 +63,7 @@ struct CompanyOverview: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Cash").capsLabel()
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.money(co.cash, in: co)).font(.hero(36)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.money(co.cash, in: co)).font(.hero(36)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(co.cash)
                     Spacer(minLength: 8)
                     if let g = h.revenueGrowth {
                         Text(String(format: "Revenue %+.0f%% vs 3 mo", g * 100)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.change(g))

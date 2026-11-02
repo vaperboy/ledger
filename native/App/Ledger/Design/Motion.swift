@@ -146,3 +146,85 @@ extension View {
         modifier(SwipeBetweenSegments(items: items, selection: selection))
     }
 }
+
+// MARK: Counting numbers
+
+/// A money figure that rolls to its new value and flashes `Theme.gain` (rose) or `Theme.loss` (fell) for about 1.2 s, then settles
+/// back to its own colour. The first appearance never flashes. Reduce Motion: no roll, only the colour flash.
+struct MoneyFlash: ViewModifier {
+    var value: Double
+    @State private var flash: Int = 0          // 1 rose, -1 fell, 0 idle
+    @State private var token: Int = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        let tint: Color = flash > 0 ? Theme.gain : Theme.loss
+        content
+            .contentTransition(reduceMotion ? .identity : .numericText(value: value))
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.45), value: value)
+            .overlay(Rectangle().fill(tint).opacity(flash == 0 ? 0 : 1).blendMode(.sourceAtop))
+            .compositingGroup()
+            .animation(.easeOut(duration: 0.6), value: flash)
+            .onChange(of: value) { old, new in
+                guard new != old else { return }
+                flash = new > old ? 1 : -1
+                token += 1
+                let mine: Int = token
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    if mine == token { flash = 0 }
+                }
+            }
+    }
+}
+
+/// A text figure that rolls and flashes when its value changes (see `MoneyFlash`).
+struct LiveFigure: View {
+    var value: Double
+    var text: String
+    var body: some View {
+        Text(text).monospacedDigit().moneyFlash(value)
+    }
+}
+
+extension View {
+    /// Rolls the figure and flashes it green (up) or red (down) when `value` changes.
+    func moneyFlash(_ value: Double) -> some View { modifier(MoneyFlash(value: value)) }
+}
+
+// MARK: Segment transition
+
+/// Content below a tab row: cross-fade, and the new content slides in a few points from the swipe direction. `order` is the tab order
+/// (decides the direction). The content gets a new identity per segment, so use it only where the segments hold no state of their own.
+struct SegmentTransition<T: Hashable>: ViewModifier {
+    var selection: T
+    var order: [T]
+    @State private var last: T?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var forward: Bool {
+        guard let last, let a = order.firstIndex(of: last), let b = order.firstIndex(of: selection) else { return true }
+        return b >= a
+    }
+
+    func body(content: Content) -> some View {
+        let dx: CGFloat = forward ? 28 : -28
+        let slide: AnyTransition = reduceMotion ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(x: dx, y: 0)), removal: .opacity)
+        ZStack(alignment: .top) {
+            content
+                .id(selection)
+                .transition(slide)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .animation(Motion.standard(reduceMotion), value: selection)
+        .onChange(of: selection) { _, new in last = new }
+        .onAppear { if last == nil { last = selection } }
+    }
+}
+
+extension View {
+    /// Cross-fade plus a small slide in the swipe direction when `selection` changes (see `SegmentTransition`).
+    func segmentTransition<T: Hashable>(_ selection: T, order: [T]) -> some View {
+        modifier(SegmentTransition(selection: selection, order: order))
+    }
+}

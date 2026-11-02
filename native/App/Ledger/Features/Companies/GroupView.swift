@@ -24,6 +24,7 @@ struct GroupView: View {
                 if let e = store.engine {
                     ScrollView {
                         content(e)
+                            .segmentTransition(tab, order: GroupTab.allCases)
                             .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 40)
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     }

@@ -40,12 +40,15 @@ struct TeamView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             header(o, e)
                             tabBar
-                            switch tab {
-                            case .overview: overview(o, e, alerts)
-                            case .people: people(o, e)
-                            case .authority: delegation(o, e, alerts)
-                            case .vacancies: vacancies(o)
+                            VStack(alignment: .leading, spacing: 12) {
+                                switch tab {
+                                case .overview: overview(o, e, alerts)
+                                case .people: people(o, e)
+                                case .authority: delegation(o, e, alerts)
+                                case .vacancies: vacancies(o)
+                                }
                             }
+                            .segmentTransition(tab, order: Tab.allCases)
                         }
                         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                         .frame(maxWidth: 900).frame(maxWidth: .infinity)
@@ -82,7 +85,7 @@ struct TeamView: View {
             IconCircle(glyph: Glyph.team, size: 44)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Team").font(.serifTitle(28)).foregroundStyle(Theme.ivory)
-                Text(subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                Text(subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2).moneyFlash(Double(wages))
             }
             .accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)

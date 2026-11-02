@@ -185,8 +185,8 @@ struct GroupOverviewTab: View {
         let value = changeText(DayHistory.change(engine.dayHistory.companies, days: days), suffix: " in \(period.title)")
         let cash = changeText(engine.groupCashChange(days: days), suffix: " in \(period.title)")
         return HStack(alignment: .top, spacing: 10) {
-            OverviewFigureCard(label: "Value of holdings", value: store.short(engine.netWorth.companies), note: value.text, noteTint: value.tint)
-            OverviewFigureCard(label: "Group cash", value: store.short(engine.groupCash), note: cash.text, noteTint: cash.tint)
+            OverviewFigureCard(label: "Value of holdings", value: store.short(engine.netWorth.companies), live: engine.netWorth.companies, note: value.text, noteTint: value.tint)
+            OverviewFigureCard(label: "Group cash", value: store.short(engine.groupCash), live: engine.groupCash, note: cash.text, noteTint: cash.tint)
         }
     }
 
