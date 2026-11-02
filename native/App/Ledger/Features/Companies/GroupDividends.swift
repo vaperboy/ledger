@@ -94,6 +94,7 @@ struct GroupDividendsPage: View {
         pending = PendingAction(title: "Collect about \(cur.tidyShort(amount)) for \(h.name)?", message: "Each company under it pays \(share == 1 ? "all it can" : "\(Int(share * 100))% of what it can") from retained profit.", button: "Collect", amount: amount, currency: cur) {
             let r: (total: Double, companies: Int) = store.act { $0.collectForHolding(holdingID: h.id, share: share) } ?? (total: 0, companies: 0)
             store.show(r.total > 0 ? "Collected \(cur.tidyShort(r.total)) from \(r.companies)." : "Nothing could be collected.", tone: r.total > 0 ? "good" : "warn")
+            if r.total > 0 { store.flyChip("Dividends", amount: r.total) }
         }
     }
 }
