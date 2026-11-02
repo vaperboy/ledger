@@ -206,6 +206,8 @@ final class VehiclesTravelTests: XCTestCase {
     func testASalesRepCanUseTheirOwnCarAndMileageFollowsTheCountryRateOtherwiseTheFlatFigure() throws {
         for (code, rate) in [("UK", 0.55 / 1.609344), ("DE", Double?.none)] as [(String, Double?)] {
             var (e, id) = try startedCompany("staffing", country: code, fund: 8_000_000)
+            // an office holds a limited number of people now (hiring rebuild): this test hires two, so the place is a big one
+            e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
             var rep = 0, hr = 0
             e.update { s, d, _ in
                 rep = Hiring.generateCandidate(role: "sales", company: s.company(id), tier: "mid", state: &s, data: d).id

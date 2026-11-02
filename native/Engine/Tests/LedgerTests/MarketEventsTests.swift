@@ -40,10 +40,14 @@ final class MarketEventsTests: XCTestCase {
         e.update { s, data, _ in
             var mv = s.rest["mev"] ?? .object([:]); mv["seen"]["eco"] = .null; s.rest["mev"] = mv
             MarketEvents.weekly(&s, data: data)           // remembers the level
+        }
+        let supplierBefore: Int = e.marketEvents(limit: 100).filter { $0.kind == .supplierPriceChange }.count
+        e.update { s, data, _ in
             s.economy.materials *= 1.02
             MarketEvents.weekly(&s, data: data)
         }
-        XCTAssertFalse(kinds(e).contains(.supplierPriceChange))
+        let supplierAfter: Int = e.marketEvents(limit: 100).filter { $0.kind == .supplierPriceChange }.count
+        XCTAssertEqual(supplierAfter, supplierBefore, "a 2% move is not announced")
         let before = e.marketEvents(limit: 100).count
         e.update { s, data, _ in s.economy.materials *= 1.05; MarketEvents.weekly(&s, data: data) }
         let ev = e.marketEvents(limit: 100)
