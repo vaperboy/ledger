@@ -43,6 +43,8 @@ struct CompaniesView: View {
     /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
     @State private var query = ""
     @State private var chainFilter = "all"
+    /// The measured height of Home's fixed top block (date, net worth, shortcuts, priorities); the estimate holds until the first pass.
+    @State private var topHeight: CGFloat = 330
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
@@ -50,53 +52,8 @@ struct CompaniesView: View {
                 if let e = store.engine {
                     let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
                     let rows = cos.filter(matches).map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
-                    let chains = e.chainSummaries
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HomeSummary(engine: e) { store.push(.newCompany, on: .company) }
-                            if cos.isEmpty {
-                                Card(padding: 12, radius: Theme.Radius.card) {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("No companies yet").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                                        Text("Pick a trade, see the full start-up cost, then decide.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                                        QuietButton(title: "Choose a trade") { store.push(.newCompany, on: .company) }
-                                    }
-                                }
-                            } else {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Companies").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
-                                    Spacer()
-                                    Menu {
-                                        Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                                    } label: {
-                                        Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                                    }
-                                }
-                                .padding(.top, 2)
-                                if cos.count >= 8 { filterBar(chains) }
-                                if rows.isEmpty {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("No company matches.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                                        Button("Clear the search and filter") { query = ""; chainFilter = "all" }.buttonStyle(QuietButtonStyle())
-                                    }.padding(.vertical, 8)
-                                }
-                                if sizeClass == .regular {
-                                    CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
-                                } else {
-                                    VStack(spacing: 5) {
-                                        ForEach(rows, id: \.co.id) { r in
-                                            NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }.buttonStyle(PressableStyle())
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 18).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
-                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
-                    }
+                    homeScreen(e, cos: cos, rows: rows)
                     .id(store.rootToken(.company))
-                    .scrollIndicators(.hidden).noSidewaysDrag()
-                    .scrollBounceBehavior(.basedOnSize)
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
             }
@@ -108,6 +65,95 @@ struct CompaniesView: View {
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .returnBar(for: .company)
+        }
+    }
+
+    // MARK: The locked Home screen
+
+    private static let rowHeight: CGFloat = 46
+    private static let moreHeight: CGFloat = 34
+
+    /// How many company rows fit in `avail` points under the "Companies" title (at least 2 when more exist), and whether the
+    /// final "All N companies in Group" row is needed; `used` is the height the block takes.
+    static func companyFit(avail: CGFloat, count: Int, head: CGFloat, pitch: CGFloat) -> (shown: Int, more: Bool, used: CGFloat) {
+        let room: CGFloat = avail - head + 5
+        let all: Int = Int((room / pitch).rounded(.down))
+        if count <= max(2, all) { return (count, false, head + CGFloat(count) * pitch - 5) }
+        let shown: Int = min(count, max(2, Int(((room - moreHeight - 5) / pitch).rounded(.down))))
+        return (shown, true, head + CGFloat(shown) * pitch - 5 + 5 + moreHeight)
+    }
+
+    /// One locked screen: nothing scrolls. The top block has its natural height; the companies take what they can use of the rest
+    /// (most important first, then the Group link), and "Recent" sits at the bottom with only the space that is left.
+    @ViewBuilder private func homeScreen(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)]) -> some View {
+        let regular: Bool = sizeClass == .regular
+        GeometryReader { (geo: GeometryProxy) in
+            let total: CGFloat = geo.size.height - 12
+            let head: CGFloat = regular ? 66 : 27
+            let pitch: CGFloat = regular ? 52 : Self.rowHeight + 5
+            let minCompanies: CGFloat = cos.isEmpty ? 120 : head + CGFloat(min(2, cos.count)) * pitch - 5
+            let priorities: Int = max(1, min(3, Int(((total - 290 - 36 - 32 - 8 - minCompanies - 8) / 38).rounded(.down))))
+            let mid: CGFloat = max(0, total - topHeight - 8)
+            let fit = Self.companyFit(avail: mid, count: rows.count, head: head, pitch: pitch)
+            let used: CGFloat = cos.isEmpty ? 120 : fit.used
+            let recent: Int = max(0, min(6, Int(((mid - used - 8 - HomeTimeline.titleHeight) / HomeTimeline.rowHeight).rounded(.down))))
+            VStack(alignment: .leading, spacing: 8) {
+                HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }, maxPriorities: priorities)
+                    .background(GeometryReader { (g: GeometryProxy) in Color.clear.preference(key: HomeTopHeightKey.self, value: g.size.height) })
+                companiesBlock(e, cos: cos, rows: rows, shown: fit.shown, more: fit.more)
+                Spacer(minLength: 0)
+                HomeTimeline(maxRows: recent)
+            }
+            .onPreferenceChange(HomeTopHeightKey.self) { topHeight = $0 }
+            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 4)
+            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+            .frame(height: geo.size.height, alignment: .top)
+            .clipped()
+        }
+    }
+
+    @ViewBuilder private func companiesBlock(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)], shown: Int, more: Bool) -> some View {
+        if cos.isEmpty {
+            Card(padding: 12, radius: Theme.Radius.card) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No companies yet").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text("Pick a trade, see the full start-up cost, then decide.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    QuietButton(title: "Choose a trade") { store.push(.newCompany, on: .company) }
+                }
+            }
+        } else {
+            let list: [(co: Company, h: CompanyHealth)] = Array(rows.prefix(shown))
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Companies").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
+                    Spacer()
+                    Menu {
+                        Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                    } label: {
+                        Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    }
+                }
+                .frame(height: 22)
+                if sizeClass == .regular {
+                    CompanyTable(engine: e, rows: list) { store.push(.company($0), on: .company) }
+                } else {
+                    ForEach(list, id: \.co.id) { r in
+                        NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
+                            .buttonStyle(PressableStyle())
+                            .frame(height: Self.rowHeight)
+                    }
+                }
+                if more {
+                    Button { Haptics.tap(); store.selectTab(.group) } label: {
+                        HStack {
+                            Spacer()
+                            Text("All \(rows.count) companies in Group ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
+                        }
+                        .frame(height: Self.moreHeight).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-group")
+                }
+            }
         }
     }
 
@@ -303,4 +349,10 @@ enum RunBy {
         if let b = e.decisionChain(companyID: co.id).first { return b.name }
         return OwnerHours.works(co) ? "You" : (co.status == .open ? "No one" : "–")
     }
+}
+
+/// Carries the measured height of Home's fixed top block up to the screen that lays the rest out.
+struct HomeTopHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

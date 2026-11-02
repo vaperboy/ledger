@@ -11,6 +11,7 @@ struct HomeSummary: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var onNewCompany: () -> Void
+    var maxPriorities: Int = 3
 
     var body: some View {
         let e = engine
@@ -19,14 +20,13 @@ struct HomeSummary: View {
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {
                     NetWorthCard(engine: e)
-                    VStack(spacing: 8) { HomeShortcutRow(); TopPriorities(engine: e) }
+                    VStack(spacing: 8) { HomeShortcutRow(); TopPriorities(engine: e, limit: maxPriorities) }
                 }
             } else {
                 NetWorthCard(engine: e)
                 HomeShortcutRow()
-                TopPriorities(engine: e)
+                TopPriorities(engine: e, limit: maxPriorities)
             }
-            HomeTimeline()
         }
     }
 
@@ -60,10 +60,12 @@ struct NetWorthCard: View {
                     PeriodPicker(days: $days)
                 }
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.money(nw.total))
-                        .font(.hero(34)).foregroundStyle(nw.total < 0 ? Theme.loss : Theme.ivory)
-                        .minimumScaleFactor(0.55).lineLimit(1)
-                        .moneyFlash(nw.total)
+                    HeldValue(live: nw.total) { (v: Double) in
+                        Text(store.money(v))
+                            .font(.hero(34)).foregroundStyle(v < 0 ? Theme.loss : Theme.ivory)
+                            .minimumScaleFactor(0.55).lineLimit(1)
+                            .moneyFlash(v)
+                    }
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 0) {
                         changeText(week, "week")
@@ -73,13 +75,13 @@ struct NetWorthCard: View {
                 }
                 NetWorthChart(engine: engine, days: days, height: 30)
                 HStack(spacing: 0) {
-                    box("Personal cash", store.short(wealth.liquid), Theme.ivory, live: wealth.liquid)
+                    box("Personal cash", wealth.liquid) { store.short($0) }
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Invested", store.short(otherAssets), Theme.ivory, live: otherAssets)
+                    box("Invested", otherAssets) { store.short($0) }
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Companies", store.short(wealth.estimatedCompanyEquity), Theme.ivory, live: wealth.estimatedCompanyEquity)
+                    box("Companies", wealth.estimatedCompanyEquity) { store.short($0) }
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Debt", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory, live: -owed)
+                    box("Debt", owed, loss: true) { $0 > 0.5 ? "−" + store.short($0) : store.short(0) }
                 }
                 .padding(.top, 7).overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
                 .fixedSize(horizontal: false, vertical: true)
@@ -89,11 +91,15 @@ struct NetWorthCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func box(_ label: String, _ value: String, _ tint: Color, live: Double? = nil) -> some View {
+    private func box(_ label: String, _ live: Double, loss: Bool = false, _ text: @escaping (Double) -> String) -> some View {
         VStack(spacing: 0) {
             Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
-            Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
-                .moneyFlash(live ?? 0)
+            HeldValue(live: loss ? -live : live) { (v: Double) in
+                let amount: Double = loss ? -v : v
+                Text(text(amount)).font(.system(size: 13.5, weight: .medium).monospacedDigit())
+                    .foregroundStyle(loss && amount > 0.5 ? Theme.loss : Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+                    .moneyFlash(v)
+            }
         }.frame(maxWidth: .infinity)
     }
 
@@ -185,10 +191,11 @@ extension GameStore {
 struct TopPriorities: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    var limit: Int = 3
 
     var body: some View {
         let list: [Suggestion] = engine.suggestions(limit: 8).filter { $0.tone != .neutral }
-        let shown: [Suggestion] = Array(list.prefix(3))
+        let shown: [Suggestion] = Array(list.prefix(limit))
         let waiting: Int = store.openDecisionCount
         Card(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
