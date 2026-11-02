@@ -27,6 +27,8 @@ struct TeamView: View {
     @State private var query = ""
     @State private var filter: PeopleFilter = .all
     @State private var showAllScores = false
+    /// The "Who decides what" popup that is open.
+    @State private var decide: DecideRef?
     /// The "Need you" tile was tapped: the Overview shows only the owner's list (the one the tile counts), in full.
     @State private var needYouOnly = false
 
@@ -63,6 +65,9 @@ struct TeamView: View {
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .returnBar(for: .team)
+            .sheet(item: $decide) { (d: DecideRef) -> AnyView in
+                AnyView(DecidesSheet(companyID: d.companyID, kind: d.kind).environmentObject(store))
+            }
             // Choosing Team again: back to the Overview, search and filter cleared.
             .onChange(of: store.rootToken(.team)) { _, _ in tab = .overview; query = ""; filter = .all; needYouOnly = false; showAllScores = false }
         }
@@ -438,23 +443,19 @@ struct TeamView: View {
             value: l.delegated ? "\(l.managedBy)\(l.managerLeaving ? " (leaving)" : "")" : "You",
             note: l.delegated ? (l.managerTitle ?? "manager").lowercased() : "appoint a manager",
             noteTint: l.delegated ? Theme.ivoryFaint : Theme.caution,
-            action: { path.append(.companyAt(id, .staff)) })
+            action: { decide = DecideRef(companyID: id, kind: .runs) })
         let payroll = OverviewRowData(
             id: "pay\(id)", glyph: Glyph.ovCoin, title: "Payroll",
             value: byRule ? "\(l.managedBy), by their rule" : "You, every month",
             note: nobodyPays ? "no accountant" : byRule ? "rule set" : "your call",
             noteTint: nobodyPays ? Theme.caution : Theme.ivoryFaint,
-            action: { path.append(.companyAt(id, .finances)) })
-        var spending = OverviewRowData(
+            action: { decide = DecideRef(companyID: id, kind: .payroll) })
+        let spending = OverviewRowData(
             id: "spend\(id)", glyph: Glyph.ovShield, title: "Spending", value: spend, note: "set limit", noteTint: Theme.gold,
-            action: { path.append(.companyAt(id, .staff)) })
-        if hasMgr {
-            let words = ["Asks you first", "Decides within your limits", "Decides on their own"]
-            spending.menu = words.enumerated().map { v, word in OverviewMenuItem(title: word, action: { setAuthority(l, v) }) }
-        }
+            action: { decide = DecideRef(companyID: id, kind: .spending) })
         let hiring = OverviewRowData(
             id: "hire\(id)", glyph: Glyph.person, title: "Hiring", value: hire, note: hasMgr ? "change" : "delegate", noteTint: Theme.gold,
-            action: { path.append(.companyAt(id, .staff)) })
+            action: { decide = DecideRef(companyID: id, kind: .hiring) })
         return [runs, payroll, hiring, spending]
     }
 
