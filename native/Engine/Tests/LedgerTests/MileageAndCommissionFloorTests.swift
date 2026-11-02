@@ -20,6 +20,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.status, .open, "\(code) opens")
         // The owner's hours follow demand now, which shifts the random draws these pay tests were tuned on: a hired manager keeps the old baseline.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].managerID = 0 } }
+        // an office holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
+        e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)
     }
 
