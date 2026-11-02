@@ -187,6 +187,7 @@ struct InboxView: View {
                 }
             }
         }
+        .swipeBetween(Tab.allCases, selection: $tab)
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: Theme.Space.xs) {
                 searchField

@@ -39,6 +39,7 @@ struct BankAccountScreen: View {
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
+            .swipeBetween(tabs, selection: $tab)
             .sheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind).presentationDetents([.medium, .large]) }
             .sheet(isPresented: $paying) { BankPaySheet(account: id).presentationDetents([.medium, .large]) }
             .sheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id).presentationDetents([.large]) }
