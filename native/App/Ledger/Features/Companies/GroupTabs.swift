@@ -155,9 +155,21 @@ struct GroupOverviewTab: View {
             // One phone screen: top issues (three), the two key figures, the three biggest companies, the structure counts.
             // The dividend log and this year's money moved behind their links (company Finances, Bank).
             GroupAttention(engine: engine, limit: 3)
+            dividendsLink
             figures
             companiesTable(live)
             tiles(live)
+        }
+    }
+
+    /// A way into the dividend desk when some company can pay something: dividends are never automatic, so this is where they are decided.
+    @ViewBuilder private var dividendsLink: some View {
+        let rows: [DividendRow] = engine.dividendRows().filter { $0.payable > 0 }
+        if !rows.isEmpty {
+            let total: Double = rows.reduce(0) { $0 + $1.payable }
+            Button { Haptics.tap(); openMore(.dividends) } label: {
+                CardRow(glyph: Glyph.reports, title: "Dividends you can collect", subtitle: "\(rows.count) \(rows.count == 1 ? "company" : "companies") \u{00B7} up to \(store.short(total))")
+            }.buttonStyle(PressableStyle())
         }
     }
 
