@@ -1,4 +1,5 @@
 # What's new
+- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still
 - Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list
 - Manage > Licences: apply for the licences that new things to sell need
 - A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens
