@@ -23,8 +23,8 @@ public extension Failure {
             }
             guard let weeks = left else { continue }
             let last = c.int("warnW")
-            if last != 0 && s.week - last < 4 { continue }
-            s.companies[i].set("warnW", s.week)
+            if last != 0 && s.week + 1 - last < 4 { continue }   // stored as week + 1 so that week 0 counts
+            s.companies[i].set("warnW", s.week + 1)
             let when = weeks <= 1 ? "this week or next" : "in about \(weeks) weeks"
             let id = s.addMessage(from: "Creditors", title: "\(c.name) is about to be sold",
                                   body: "Unless something changes, its creditors will force a sale \(when): \(why). Put money in, cut costs or talk to the bank now.",
