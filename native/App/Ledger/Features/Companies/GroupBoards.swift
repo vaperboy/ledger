@@ -289,7 +289,7 @@ struct BoardView: View {
                         Button(r.title) {
                             let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
                             if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
-                        }.buttonStyle(TinyButtonStyle()).fixedSize()
+                        }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
                     }
                 }
             }

@@ -121,9 +121,6 @@ struct AcctTransactions: View {
                     .accessibilityIdentifier("acct-tx-more")
                 }
             }
-            if let from = page.ledgerFromWeek, from > 0, m.txRange == .all {
-                Text("The full ledger began in week \(from + 1). Earlier rows come from the old transaction list.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
-            }
         }
     }
 

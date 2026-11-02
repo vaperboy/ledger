@@ -14,8 +14,6 @@ struct GroupDividendsPage: View {
         let rows: [DividendRow] = engine.dividendRows()
         let holdings: [Company] = engine.holdingCompanies.filter { (h: Company) -> Bool in rows.contains { (r: DividendRow) -> Bool in r.holdingID == h.id } }
         VStack(alignment: .leading, spacing: 12) {
-            Text("Dividends are never paid by themselves. Choose whether, when and how much. A holding collects from the companies under it.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             if rows.isEmpty {
                 Text("No company has retained profit to pay out yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             }

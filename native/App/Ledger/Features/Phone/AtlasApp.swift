@@ -108,16 +108,14 @@ struct AtlasApp: View {
     private var hero: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         return ZStack(alignment: .bottomLeading) {
-            ShopPhoto(name: "airstay-office-3", glyph: Glyph.building, height: 190, cornerRadius: 16)
+            ShopPhoto(name: "airstay-office-3", glyph: Glyph.building, height: 120, cornerRadius: 16)
             shape.fill(LinearGradient(colors: [P.accent.opacity(0.92), P.accent.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
             VStack(alignment: .leading, spacing: 6) {
                 Text("Protect what you\u{2019}ve built").font(.system(size: 26, weight: .bold)).foregroundStyle(Color.white)
-                Text("Cover for your businesses and what they own.").font(.system(size: 14)).foregroundStyle(Color.white.opacity(0.92))
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(16).frame(maxWidth: 260, alignment: .leading)
         }
-        .frame(height: 190)
+        .frame(height: 120)
         .clipShape(shape)
     }
 

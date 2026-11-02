@@ -217,7 +217,6 @@ struct NewsView: View {
         let pages = e.frontPages
         VStack(alignment: .leading, spacing: 4) {
             Text(e.paperName).font(.serifTitle(24)).foregroundStyle(P.ink)
-            Text("The local business paper. A front page every week; interviews arrive in your inbox.").font(.system(size: 12)).foregroundStyle(P.inkSoft)
         }
         CardSection(title: "How the paper sees you", trailing: { Text(e.publicImageWord).font(.system(size: 12)).foregroundStyle(P.accent) }) {
             VStack(spacing: 0) {

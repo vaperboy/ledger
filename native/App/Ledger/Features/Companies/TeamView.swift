@@ -363,10 +363,6 @@ struct TeamView: View {
         }
         handledForYou(e)
         decidesTables(o, e, alerts, limit: nil)
-        if !o.companies.isEmpty {
-            Text("Every decision has a level. The lowest rank present that can take it does; only what is above your highest rank comes to you.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryDim).fixedSize(horizontal: false, vertical: true)
-        }
         performance(o, e)
     }
 

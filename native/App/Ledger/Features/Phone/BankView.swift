@@ -87,9 +87,6 @@ struct BankPersonalLoans: View {
                     if n > 0 { Hairline() }
                     Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(PressableStyle())
                 }
-                if !loans.isEmpty {
-                    Text("Tap a loan for its schedule, this month's instalment, early repayment and, if you guaranteed it, the guarantee. Early repayment has no fee and cuts the interest still to come.").font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 6)
-                }
             }
         }
     }
@@ -151,7 +148,6 @@ struct RepayPersonalLoanSheet: View {
                             .init(label: "Left after", value: cur.tidyShort(max(0, l.balance - pay))),
                             .init(label: "Available", value: cur.tidyShort(available), tint: available < pay ? P.loss : P.ink, sub: l.companyID == 0 ? "cash and savings" : "company cash"),
                         ])
-                        Text("The monthly payment stays the same, so the loan ends sooner; paying it all closes it.").font(.caption2).foregroundStyle(P.inkFaint)
                         Button(pay > 0 ? "Pay back \(cur.tidyShort(pay))" : "Choose an amount") {
                             if store.act({ $0.repayLoan(id: loanID, amount: pay) }) == true {
                                 Haptics.success()

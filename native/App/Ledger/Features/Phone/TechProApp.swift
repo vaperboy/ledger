@@ -289,7 +289,6 @@ struct TechProApp: View {
                 .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 16)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Equip your business for success").font(.system(size: 22, weight: .bold)).foregroundStyle(Color.white).fixedSize(horizontal: false, vertical: true)
-                Text("Tools, software and more, all in one place.").font(.system(size: 14)).foregroundStyle(Color.white.opacity(0.9))
                 Button {
                     Haptics.tap()
                     shelf = .all
@@ -304,7 +303,7 @@ struct TechProApp: View {
             }
             .padding(16).frame(maxWidth: 250, alignment: .leading)
         }
-        .frame(minHeight: 150)
+        .frame(minHeight: 120)
     }
 
     private func categoryRow(_ needs: [EquipmentMarket.Need]) -> some View {
@@ -356,8 +355,6 @@ struct TechProApp: View {
         let top: [EquipmentMarket.Need] = Array(needs.sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in rank(a) < rank(b) }.prefix(4))
         VStack(alignment: .leading, spacing: 10) {
             ShopHeading(text: "What \(e.tradeName(co).lowercased()) businesses need", trailing: "\(needs.count)")
-            Text("Missing and short items come first. Tap one to see the brands, used offers and plans.")
-                .font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
             }

@@ -47,7 +47,6 @@ struct BankSavingsAndDeposits: View {
         let rate: String = Currency.percent(PersonalFinance.savingsRate(e.state), decimals: 2)
         return BankCard(title: "Savings", trailing: cur.tidyDisplay(e.state.savings) + " · " + rate) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Earns interest and can be moved back any day. Loan repayments draw on it when the current account is short.").font(.caption2).foregroundStyle(P.inkFaint)
                 AmountField(title: "Amount", currency: cur, amount: $amount)
                 HStack {
                     Button(amount > 0 ? "Save \(cur.tidyShort(amount))" : "Save") { move(amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.cash)

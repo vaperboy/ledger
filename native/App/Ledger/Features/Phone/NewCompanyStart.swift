@@ -129,7 +129,6 @@ struct TradeDetailView: View {
             if t.maxSize > t.minSize {
                 CardLine()
                 Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.system(size: 14)).foregroundStyle(Theme.ivory) }
-                Text("A bigger company needs more equipment, people and space, and costs more to start.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             CardLine()
             TextField("Company name (optional)", text: $name).textFieldStyle(.plain).font(.system(size: 14.5)).padding(.vertical, 6)

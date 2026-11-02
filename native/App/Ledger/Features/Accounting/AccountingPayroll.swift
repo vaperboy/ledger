@@ -144,7 +144,6 @@ struct AcctPayroll: View {
                         }
                     }
                 }
-                Text("Total employer cost per month: gross pay plus employer taxes and contributions, insurance and paid-leave cover.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
             }
         } else {
             AcctLocked(section: "Payroll")
@@ -173,7 +172,6 @@ struct AcctPayroll: View {
                         }
                     }
                 }
-                Text("This month. Hours come from the weekly simulation; sick weeks and the off-season are not counted as worked.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
             }
         } else {
             AcctLocked(section: "Timesheets")

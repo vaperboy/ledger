@@ -100,8 +100,6 @@ struct BankReservesCard: View {
                 FlatRow(label: "Payroll", value: fmt.short(reserves.payroll), sub: "wages owed and building up", rule: false)
                 FlatRow(label: "Tax", value: fmt.short(reserves.tax), sub: "tax and VAT owed")
                 FlatRow(label: "Free to use", value: fmt.short(reserves.free), sub: "cash after the two reserves", tint: reserves.free < 0 ? P.loss : nil)
-                Text("These are not separate accounts: they show what part of the company's cash is already spoken for.").font(.system(size: 11)).foregroundStyle(P.inkFaint)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
         }
     }

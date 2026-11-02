@@ -146,7 +146,7 @@ struct AirStayApp: View {
 
     private var hero: some View {
         ZStack(alignment: .bottomLeading) {
-            ShopPhoto(name: "airstay-office-2", glyph: Glyph.building, height: 170, cornerRadius: 16)
+            ShopPhoto(name: "airstay-office-2", glyph: Glyph.building, height: 120, cornerRadius: 16)
             LinearGradient(colors: [Color.clear, Color.black.opacity(0.62)], startPoint: .top, endPoint: .bottom)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .allowsHitTesting(false)
@@ -155,7 +155,7 @@ struct AirStayApp: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(14)
         }
-        .frame(height: 170)
+        .frame(height: 120)
     }
 
     private var searchField: some View {
@@ -195,8 +195,6 @@ struct AirStayApp: View {
                         .accessibilityIdentifier("stay-chip-\(c.rawValue)")
                 }
             }
-            Text(category.title + (category == .retail ? ": larger shop units, workshops, warehouses and yards" : ""))
-                .font(.system(size: 12)).foregroundStyle(P.inkFaint)
         }
     }
 
