@@ -69,6 +69,7 @@ struct CenterSheetFrame<Content: View>: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
+        .toggleStyle(LedgerToggleStyle())
         .background(ClearCoverBackground())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetFillKey.self) { fills = $0 }

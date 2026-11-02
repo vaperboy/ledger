@@ -135,7 +135,7 @@ struct SettingsView: View {
             IconCircle(glyph: glyph, size: 32)
             titleBlock(title, detail)
             Spacer(minLength: 8)
-            Toggle("", isOn: isOn).labelsHidden().tint(Theme.gold)
+            LedgerSwitch(isOn: isOn)
         }
         .padding(.vertical, 9).frame(minHeight: 52)
         .accessibilityElement(children: .combine)

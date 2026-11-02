@@ -316,7 +316,7 @@ struct CompanyPerksPopup: View {
                     Text(costLine + " · " + fewer(p) + " people leave").font(.system(size: 11.5)).foregroundStyle(on ? P.gain : P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
-                Toggle(p.name, isOn: binding).labelsHidden().tint(P.accent)
+                LedgerSwitch(isOn: binding)
                     .accessibilityIdentifier("perk-" + p.id)
             }
             if p.id == "car" && on {

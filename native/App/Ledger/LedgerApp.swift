@@ -37,6 +37,7 @@ struct LedgerApp: App {
                 .environmentObject(store)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
+                .toggleStyle(LedgerToggleStyle())
         }
     }
 }

@@ -309,7 +309,7 @@ struct HireOnePage: View {
         return HStack(spacing: 8) {
             Button { model.offer = max(low, shown - step); model.offerSet = true } label: { Image(systemName: "minus.circle").foregroundStyle(Theme.ivoryMuted) }
                 .buttonStyle(PressableStyle()).accessibilityLabel("Offer less")
-            Slider(value: binding, in: low...high).tint(Theme.gold)
+            LedgerSlider(value: binding, in: low...high).tint(Theme.gold)
             Button { model.offer = shown + step; model.offerSet = true } label: { Image(systemName: "plus.circle").foregroundStyle(Theme.ivoryMuted) }
                 .buttonStyle(PressableStyle()).accessibilityLabel("Offer more")
         }

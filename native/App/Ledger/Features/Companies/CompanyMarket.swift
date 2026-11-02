@@ -365,7 +365,7 @@ struct RivalSheet: View {
                     let value = e.rivalValue(companyID: companyID, rivalID: rivalID)
                     Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
                     HStack {
-                        Slider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
+                        LedgerSlider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
                         Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
                     }
                     Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

@@ -313,7 +313,7 @@ private struct LoanStepChoose: View {
                 Text("REPAYMENT PERIOD (MONTHS)").capsLabel()
                 HStack(spacing: 14) {
                     VStack(spacing: 2) {
-                        Slider(value: value, in: lo...hi, step: 1).tint(P.accent)
+                        LedgerSlider(value: value, in: lo...hi, step: 1).tint(P.accent)
                         HStack {
                             Text("\(q.minTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
                             Spacer()
@@ -365,7 +365,7 @@ private struct LoanAmountPanel: View {
             Text(cur.tidyDisplay(amount)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityIdentifier("bank-loan-amount")
             if maximum > minimum {
-                Slider(value: slider, in: minimum...maximum).tint(P.accent)
+                LedgerSlider(value: slider, in: minimum...maximum).tint(P.accent)
                     .accessibilityIdentifier("bank-loan-slider")
                 HStack {
                     Text(cur.tidyShort(minimum)).font(.system(size: 11)).foregroundStyle(P.inkFaint)

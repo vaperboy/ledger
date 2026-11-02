@@ -231,7 +231,7 @@ private struct SellToggleRow: View {
                 if !cost.isEmpty { Text(cost.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
-            Toggle("", isOn: $isOn).labelsHidden().tint(Theme.gold).disabled(disabled)
+            LedgerSwitch(isOn: $isOn).disabled(disabled)
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -363,7 +363,7 @@ struct ChainRulesSection: View {
         })
         return VStack(alignment: .leading, spacing: 4) {
             HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(current)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
-            Slider(value: binding, in: -3...3, step: 0.5) { editing in
+            LedgerSlider(value: binding, in: -3...3, step: 0.5) { editing in
                 if !editing { store.saved("chain price rule.") }
             }
         }

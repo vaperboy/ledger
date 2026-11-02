@@ -56,7 +56,7 @@ struct SalesItemSheet: View {
                 Text(exact(price, cur)).font(.system(size: 20, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gold)
             }
             if hi > lo {
-                Slider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
+                LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
                     if !editing { commitPrice(draftPrice ?? it.price) }
                 })
                 .tint(Theme.gold)
