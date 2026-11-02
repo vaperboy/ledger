@@ -363,12 +363,47 @@ struct TeamView: View {
         if o.companies.isEmpty {
             Text("No companies yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
         }
+        handledForYou(e)
         decidesTables(o, e, alerts, limit: nil)
         if !o.companies.isEmpty {
-            Text("A manager or accountant approves routine payroll and spending up to the limit you set. Anything bigger always comes to you.")
+            Text("Every decision has a level. The lowest rank present that can take it does; only what is above your highest rank comes to you.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryDim).fixedSize(horizontal: false, vertical: true)
         }
         performance(o, e)
+    }
+
+    /// Who takes the routine work in each company. It follows who is hired: nothing here is a setting.
+    @ViewBuilder private func handledForYou(_ e: GameEngine) -> some View {
+        let lines: [DelegationLine] = e.delegationLines()
+        if !lines.isEmpty {
+            let limit: (limit: Double, rate: Double) = e.delegatedSpendLimit()
+            sectionLabel("Handled for you")
+            ForEach(lines) { (l: DelegationLine) in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(l.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                        Spacer(minLength: 8)
+                        Text("Highest rank: " + l.top).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    }
+                    delegationRow("Routine payroll", l.payroll)
+                    delegationRow("Replacing people who leave", l.rehire)
+                    delegationRow("Routine complaints", l.complaints)
+                }
+                .padding(14).teamCard()
+            }
+            Text(limit.limit > 0
+                 ? "Managers spend up to about \(store.short(limit.limit)) without asking you; it grows with your net worth. Companies without a manager always ask."
+                 : "Hire a manager and routine decisions stop coming to you. Until then every spend and approval is yours.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryDim).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func delegationRow(_ label: String, _ who: String) -> some View {
+        HStack {
+            Text(label).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Spacer(minLength: 8)
+            Text(who).font(.system(size: 13, weight: .medium)).foregroundStyle(who.hasPrefix("You") ? Theme.caution : Theme.ivory)
+        }
     }
 
     /// One "Who decides what" table per company, the ones that need you most first. On Overview only `limit` of them show, with a link to all.

@@ -79,7 +79,7 @@ final class LifeStoriesTests: XCTestCase {
         // funded first, cheapest first
         XCTAssertEqual(rows.prefix(funded.count).map { $0.tradeID }, funded.map { $0.tradeID })
         XCTAssertEqual(funded.compactMap { $0.cost }, funded.compactMap { $0.cost }.sorted())
-        for r in funded { XCTAssertLessThanOrEqual(r.cost ?? .infinity, Payments.liquid(e.state)); XCTAssertEqual(r.shortfall, 0) }
+        for r in funded { XCTAssertLessThanOrEqual(r.minimum ?? .infinity, Payments.liquid(e.state)); XCTAssertEqual(r.shortfall, 0) }
         // cost and shortfall are the engine's estimate, not a made-up number
         let r = try XCTUnwrap(rows.first { !$0.isFunded && $0.blocked == nil })
         let t = try XCTUnwrap(e.data.catalog[r.tradeID])
@@ -88,7 +88,8 @@ final class LifeStoriesTests: XCTestCase {
         let est = try XCTUnwrap(CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: t.needsLimitedCompany ? .limited : .soleTrader,
                                                       size: CompanySetup.recommendedSize(t, city: city), state: probe, data: e.data))
         XCTAssertEqual(r.cost, est.total)
-        XCTAssertEqual(r.shortfall, est.total - Payments.liquid(e.state), accuracy: 0.01)
+        let least = est.documents + est.premises + est.property + est.wait + est.registration + est.shareCapital + est.abroad
+        XCTAssertEqual(r.shortfall, max(0, least - Payments.liquid(e.state)), accuracy: 0.01)
         // and nothing is refused: an unaffordable trade can still be registered
         var e2 = e
         let res = e2.startCompany(tradeID: r.tradeID, cityID: city.id, form: t.needsLimitedCompany ? .limited : .soleTrader, fundWith: 0)

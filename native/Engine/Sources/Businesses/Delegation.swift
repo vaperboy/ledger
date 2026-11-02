@@ -49,6 +49,16 @@ public enum Delegation {
         return level <= top.rawValue ? Rank(rawValue: max(level, 1)) ?? .owner : .owner
     }
 
+    /// How serious a message is, 1 (routine) to 5 (only the owner can take it). Read-only news is routine; payroll is routine; people matters are a
+    /// manager's; bad news is a CEO's; anything else that asks for a decision is a director's. A message that reached the owner is shown at the level
+    /// where nobody below could take it.
+    public static func level(of m: Message) -> Int {
+        if m.kind != "ask" || m.status != "open" { return m.tone == "bad" ? 3 : 1 }
+        if m.actionID.hasPrefix("pay29") { return 1 }
+        if m.actionID == "staffx" || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { return 2 }
+        return m.tone == "bad" ? 4 : 3
+    }
+
     /// The share of the owner's net worth a manager may spend on one thing without asking.
     public static let spendShareOfNetWorth = 0.005
 
