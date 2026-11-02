@@ -58,7 +58,7 @@ struct TechProApp: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
 
-    private enum Step: Equatable { case store, category, product, basket, checkout, payment, placed, orders }
+    private enum Step: Equatable { case store, category, suppliers, product, basket, checkout, payment, placed, orders, owned }
 
     @State private var step: Step = .store
     @State private var companyID = 0
@@ -67,6 +67,8 @@ struct TechProApp: View {
     @State private var sort: PriceSort = .needs
     @State private var query = ""
     @State private var itemID = ""
+    @State private var offerKey = ""
+    @State private var groupFrom: Step = .store
     @State private var basket: [StoreOrders.Line] = []
     @State private var delivery: StoreOrders.Delivery = .standard
     @State private var receiptID = 0
@@ -85,12 +87,40 @@ struct TechProApp: View {
             .confirmAction($pending)
             .outsideScreen(P)
             .swipeBackEnabled(canStep: { step != .store }, step: { back() })
-            .safeAreaInset(edge: .top, spacing: 0) { band }
+            .safeAreaInset(edge: .top, spacing: 0) { VStack(spacing: 0) { band; if showsTabs { tabBar } } }
             .onAppear { start() }
             .onChange(of: store.appRequest) { _, _ in take() }
     }
 
     // MARK: Chrome
+
+    /// The four tabs under the band: the store front, every product in one list, what the company owns and its orders.
+    private var showsTabs: Bool { step == .store || step == .category || step == .owned || step == .orders }
+
+    private var tabBar: some View {
+        HStack(spacing: 6) {
+            tabButton("Store", on: step == .store) { step = .store }
+            tabButton("Products", on: step == .category) { shelf = .all; step = .category }
+            tabButton("My items", on: step == .owned) { step = .owned }
+            tabButton("My orders", on: step == .orders) { step = .orders }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 8).background(P.ground)
+    }
+
+    private func tabButton(_ title: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.choose()
+            action()
+        } label: {
+            Text(title).font(.system(size: 13.5, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                .foregroundStyle(on ? P.onAccent : P.ink)
+                .frame(maxWidth: .infinity, minHeight: 38)
+                .background(Capsule().fill(on ? P.accent : P.card))
+                .overlay(Capsule().strokeBorder(on ? P.accent : P.line, lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("tp-tab-\(title)")
+    }
 
     private var band: some View {
         ShopBand(title: "TechPro Store", glyph: Glyph.techPro, color: P.accent, onBack: { back() }, backLabel: step == .store ? "Back to Phone" : "Back") {
@@ -122,12 +152,14 @@ struct TechProApp: View {
                 switch step {
                 case .store: storeView(e, co)
                 case .category: categoryView(e, co)
+                case .suppliers: suppliersView(co)
                 case .product: productView(e, co)
                 case .basket: basketView(e, co)
                 case .checkout: checkoutView(e, co)
                 case .payment: paymentView(e, co)
                 case .placed: placedView(e, co)
                 case .orders: ordersView(e, co)
+                case .owned: TechProOwnedView(companyID: co.id) { (id: String) in showItem(id) }
                 }
             } else {
                 emptyView
@@ -149,12 +181,14 @@ struct TechProApp: View {
         switch step {
         case .store: dismiss()
         case .category: step = .store
-        case .product: step = .category
+        case .suppliers: step = groupFrom
+        case .product: step = .suppliers
         case .basket: step = .store
         case .checkout: step = .basket
         case .payment: step = .checkout
         case .placed: step = .store
         case .orders: step = .store
+        case .owned: step = .store
         }
     }
 
@@ -162,11 +196,11 @@ struct TechProApp: View {
 
     /// The companies that buy equipment: live ones with something to buy.
     private func shoppers(_ e: GameEngine) -> [Company] {
-        e.state.companies.filter { (c: Company) -> Bool in c.status.isLive && !e.equipmentNeeds(companyID: c.id).isEmpty }
+        e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
     }
 
     private func current(_ e: GameEngine) -> Company? {
-        if let c = e.state.company(companyID), c.status.isLive, !e.equipmentNeeds(companyID: c.id).isEmpty { return c }
+        if let c = e.state.company(companyID), c.status.isLive { return c }
         return shoppers(e).first
     }
 
@@ -185,7 +219,8 @@ struct TechProApp: View {
             step = .store
         } else {
             itemID = r.equipmentID
-            step = .product
+            groupFrom = .store
+            step = .suppliers
         }
     }
 
@@ -218,7 +253,6 @@ struct TechProApp: View {
                 categoryRow(needs)
                 dealsStrip(e, co, needs)
                 popular(e, co, needs)
-                ordersLinks(e, co)
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
         }
@@ -260,7 +294,6 @@ struct TechProApp: View {
                 .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 16)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Equip your business for success").font(.system(size: 22, weight: .bold)).foregroundStyle(Color.white).fixedSize(horizontal: false, vertical: true)
-                Text("Tools, software and more, all in one place.").font(.system(size: 14)).foregroundStyle(Color.white.opacity(0.9))
                 Button {
                     Haptics.tap()
                     shelf = .all
@@ -275,7 +308,7 @@ struct TechProApp: View {
             }
             .padding(16).frame(maxWidth: 250, alignment: .leading)
         }
-        .frame(minHeight: 150)
+        .frame(minHeight: 120)
     }
 
     private func categoryRow(_ needs: [EquipmentMarket.Need]) -> some View {
@@ -327,11 +360,12 @@ struct TechProApp: View {
         let top: [EquipmentMarket.Need] = Array(needs.sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in rank(a) < rank(b) }.prefix(4))
         VStack(alignment: .leading, spacing: 10) {
             ShopHeading(text: "What \(e.tradeName(co).lowercased()) businesses need", trailing: "\(needs.count)")
-            Text("Missing and short items come first. Tap one to see the brands, used offers and plans.")
-                .font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
             }
+            Button("See all \(needs.count) product groups") { shelf = .all; sort = .needs; step = .category }
+                .buttonStyle(QuietButtonStyle())
+                .accessibilityIdentifier("tp-see-all")
         }
     }
 
@@ -341,26 +375,15 @@ struct TechProApp: View {
     }
 
     private func tile(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
-        let st = status(n)
         let from: String = n.subscription ? "from " + money(n.fromPrice / max(1, n.lifeYears) / 12) + "/mo" : "from " + money(n.fromPrice)
+        let have: Double = n.have + n.leased
+        let label: String = have <= 0 ? "Buy" : (n.need > 0 && have < n.need ? "Upgrade" : "Owned")
         return Button {
             Haptics.tap()
             showItem(n.equipmentID)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                ShopPhoto(name: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, height: 84)
-                Text(n.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(n.dealPercent > 0 ? P.loss : P.inkSoft)
-                    if n.dealPercent > 0 { Text("-\(n.dealPercent)%").font(.system(size: 11.5, weight: .bold)).foregroundStyle(P.loss) }
-                }
-                Text(st.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(st.tint)
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-            .contentShape(Rectangle())
+            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
+                     label: label, tint: status(n).tint)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-tile-\(n.equipmentID)")
@@ -368,7 +391,8 @@ struct TechProApp: View {
 
     private func showItem(_ equipmentID: String) {
         itemID = equipmentID
-        step = .product
+        groupFrom = step == .category || step == .owned ? step : .store
+        step = .suppliers
     }
 
     /// The best discounts of the week, with the headline when it is a big sale day.
@@ -394,16 +418,7 @@ struct TechProApp: View {
         VStack(spacing: 8) {
             linkRow(Glyph.hardware, "All items", "Everything the store sells \(co.name), sorted by price") { shelf = .all; sort = .low; step = .category }
             linkRow(Glyph.list, "My orders", "Placed orders and when they arrive") { step = .orders }
-            NavigationLink {
-                // The old equipment screen keeps the game's own look.
-                CompanyEquipmentScreen(companyID: co.id)
-                    .environment(\.outsidePalette, OutsidePalette.game)
-                    .preferredColorScheme(.dark)
-            } label: {
-                linkLabel(Glyph.opsBox, "What \(co.name) owns", "Units, condition, service, selling, fleet and software")
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("tp-owned")
+            linkRow(Glyph.opsBox, "My items", "What \(co.name) owns: units, condition, service, selling, fleet and software") { step = .owned }
         }
     }
 
@@ -466,7 +481,9 @@ struct TechProApp: View {
                 if needs.isEmpty {
                     Text("Nothing here matches.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
                 }
-                ForEach(needs) { (n: EquipmentMarket.Need) in needRow(e, co, n) }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(needs) { (n: EquipmentMarket.Need) in tile(e, co, n) }
+                }
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
         }
@@ -497,10 +514,12 @@ struct TechProApp: View {
     }
 
     private var sortChips: some View {
-        HStack(spacing: 6) {
-            ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
-                ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
-                    .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
+                    ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
+                        .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+                }
             }
         }
     }
@@ -549,9 +568,17 @@ struct TechProApp: View {
 
     // MARK: An item
 
+    private func suppliersView(_ co: Company) -> some View {
+        TechProSuppliers(companyID: co.id, equipmentID: itemID) { (key: String) in
+            offerKey = key
+            step = .product
+        }
+        .id(itemID + String(co.id))
+    }
+
     private func productView(_ e: GameEngine, _ co: Company) -> some View {
-        TechProProduct(companyID: co.id, equipmentID: itemID) { (line: StoreOrders.Line) in addToBasket(line) }
-            .id(itemID + String(co.id))
+        TechProProduct(companyID: co.id, equipmentID: itemID, offerKey: offerKey) { (line: StoreOrders.Line) in addToBasket(line) }
+            .id(itemID + offerKey + String(co.id))
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !basket.isEmpty {
                     ShopActionBar(left: {
@@ -725,7 +752,7 @@ struct TechProApp: View {
                 ShopChoiceRow(title: "Digital delivery", subtitle: "Licences and plans arrive at once.", trailing: "Free", selected: true) { }
             } else {
                 if let own, let name = ship.ownCompanyName {
-                    ShopChoiceRow(title: "Own delivery (\(name))", subtitle: "Your own company delivers \u{00B7} arrives \(own.deliveryText)", trailing: "Free",
+                    ShopChoiceRow(title: "Own delivery (\(name))", subtitle: "Your own company delivers \u{00B7} arrives \(own.deliveryText)", trailing: own.shipping == 0 ? "Free" : money(own.shipping),
                                   selected: delivery == .own, identifier: "tp-delivery-own") { delivery = .own }
                 }
                 if let std {

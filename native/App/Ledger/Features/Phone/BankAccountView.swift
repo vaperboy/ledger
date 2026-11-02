@@ -30,15 +30,19 @@ struct BankAccountScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let a = d.alert { alertBanner(a, fmt) }
                     tabRow(d)
-                    balanceCard(d, fmt)
-                    tiles(d)
-                    content(e, d, fmt)
+                    if tab == .account {
+                        balanceCard(d, fmt)
+                        tiles(d)
+                    }
+                    content(e, d, fmt).segmentTransition(tab, order: tabs)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+            .noSidewaysDrag()
             .scrollDismissesKeyboard(.interactively)
+            .swipeBetween(tabs, selection: $tab)
             .sheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind).presentationDetents([.medium, .large]) }
             .sheet(isPresented: $paying) { BankPaySheet(account: id).presentationDetents([.medium, .large]) }
             .sheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id).presentationDetents([.large]) }
@@ -109,7 +113,7 @@ struct BankAccountScreen: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(label).font(.system(size: 12)).foregroundStyle(P.accent)
-                        Text(fmt.full(d.balance)).font(.hero(34)).foregroundStyle(tint).minimumScaleFactor(0.55).lineLimit(1)
+                        Text(fmt.full(d.balance)).font(.hero(34)).foregroundStyle(tint).minimumScaleFactor(0.55).lineLimit(1).moneyFlash(d.balance)
                     }
                     Spacer(minLength: 8)
                     if let m = d.monthChange, abs(m) >= 0.5 {

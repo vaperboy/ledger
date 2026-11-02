@@ -70,7 +70,11 @@ struct CompanyDetailView: View {
     }
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
+        if let e = store.engine, let co = e.state.company(companyID), co.status == .setup {
+            // Setting up: one fixed screen with what is missing and the two apps that fix it. Stats and tabs come when it opens.
+            CompanySetupScreen(engine: e, company: co)
+                .appScreen(title: "Setup", subtitle: co.name) { StatusChip(company: co) }
+        } else if let e = store.engine, let co = e.state.company(companyID) {
             let form: String = co.form == .limited ? "Ltd" : "Sole trader"
             let tabs: [CompanyTab] = Self.tabs(co, e)
             let current: CompanyTab = tabs.contains(segment) ? segment : .overview
@@ -107,9 +111,6 @@ struct CompanyDetailView: View {
         let a: [CompanySection] = Self.availableSections(co, e)
         switch tab {
         case .overview:
-            if co.status == .setup {
-                CompanySetupSection(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
-            }
             CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
@@ -207,7 +208,7 @@ struct CompanyDetailView: View {
     /// A page that is its own pushed screen, not a section of the bar.
     static func isLeaf(_ s: CompanySection) -> Bool {
         switch s {
-        case .marketing, .pricing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
+        case .marketing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
         default: return false
         }
     }
@@ -221,7 +222,7 @@ struct CompanyDetailView: View {
         case .staff, .holding: return (a.contains(.staff) || a.contains(.holding)) ? .team : .overview
         case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
         case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
-        case .salesMarket, .projects: return a.contains(.operations) ? .sales : .overview
+        case .salesMarket, .projects, .pricing: return a.contains(.operations) ? .sales : .overview
         case .finances, .customers: return .stats
         default: return nil
         }

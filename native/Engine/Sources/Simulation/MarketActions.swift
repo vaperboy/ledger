@@ -30,11 +30,19 @@ public extension GameEngine {
 
     // MARK: Equipment market
 
-    func equipmentNeeds(companyID: Int) -> [EquipmentMarket.Need] { EquipmentMarket.needs(state, companyID: companyID, data: data) }
+    func equipmentNeeds(companyID: Int) -> [EquipmentMarket.Need] {
+        guard let co = state.company(companyID) else { return [] }
+        let eq: Double = co.value("eq").object.values.reduce(0) { $0 + $1["n"].double }
+        let key = "\(companyID)|\(state.week)|\(state.day)|\(co.cash)|\(eq)|\(co.value("veh").array.count)|\(co.value("lease").object.count)|\(co.value("units").object.count)|\(co.value("sub").object.count)|\(co.value("sw").object.count)"
+        if let hit = needsMemo.get(companyID, key) { return hit }
+        let list = EquipmentMarket.needs(state, companyID: companyID, data: data)
+        needsMemo.set(companyID, key, list)
+        return list
+    }
     func equipmentOffers(companyID: Int, equipmentID: String) -> [EquipmentMarket.Offer] { EquipmentMarket.offers(state, companyID: companyID, equipmentID: equipmentID, data: data) }
     func vehicleOffers(companyID: Int, equipmentID: String) -> [EquipmentMarket.VehicleOffer] { EquipmentMarket.vehicleOffers(state, companyID: companyID, equipmentID: equipmentID, data: data) }
     func usedListings(companyID: Int, equipmentID: String) -> [EquipmentMarket.UsedOffer] {
-        let veh = state.company(companyID).flatMap { data.catalog[$0.type] }?.equipment.first { $0.id == equipmentID }?.vehicleModels != nil
+        let veh = state.company(companyID).flatMap { data.catalog[$0.type] }?.allEquipment.first { $0.id == equipmentID }?.vehicleModels != nil
         return veh ? EquipmentMarket.usedVehicles(state, companyID: companyID, equipmentID: equipmentID, data: data)
                    : EquipmentMarket.usedEquipment(state, companyID: companyID, equipmentID: equipmentID, data: data)
     }
@@ -45,7 +53,7 @@ public extension GameEngine {
 
     /// Price of one item of the offer, today (a vehicle: of the make and model).
     func equipmentPrice(companyID: Int, equipmentID: String, factor: Double, vendorID: String? = nil) -> Double {
-        guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == equipmentID }) else { return 0 }
+        guard let co = state.company(companyID), let e = data.catalog[co.type]?.allEquipment.first(where: { $0.id == equipmentID }) else { return 0 }
         return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor, vendor: vendorID, dealWeek: state.week)
     }
     func vehiclePrice(modelID: String, factor: Double) -> Double {
@@ -59,15 +67,15 @@ public extension GameEngine {
         data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehicleDealFor(model: $0.name, factor: factor, week: state.week, seed: state.seed) } ?? StoreDeals.none
     }
     func subscriptionPlans(companyID: Int, equipmentID: String, offer: EquipmentMarket.Offer) -> [EquipmentMarket.Plan] {
-        guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == equipmentID }) else { return [] }
+        guard let co = state.company(companyID), let e = data.catalog[co.type]?.allEquipment.first(where: { $0.id == equipmentID }) else { return [] }
         return EquipmentMarket.plans(e, company: co, World(state: state, data: data), factor: offer.priceFactor)
     }
     func softwareMode(companyID: Int, equipmentID: String) -> EquipmentMarket.SoftwareMode {
-        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.equipment.first(where: { $0.id == equipmentID }) else { return .once }
+        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.allEquipment.first(where: { $0.id == equipmentID }) else { return .once }
         return EquipmentMarket.softwareMode(e, tradeID: bd.id, company: co, World(state: state, data: data))
     }
     func canFinance(companyID: Int, equipmentID: String, total: Double) -> Bool {
-        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.equipment.first(where: { $0.id == equipmentID }) else { return false }
+        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.allEquipment.first(where: { $0.id == equipmentID }) else { return false }
         return EquipmentMarket.canFinance(e, tradeID: bd.id, total: total, company: co, World(state: state, data: data), tables: data.catalog.tables)
     }
 

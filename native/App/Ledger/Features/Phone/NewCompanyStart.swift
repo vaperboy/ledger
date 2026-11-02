@@ -129,7 +129,6 @@ struct TradeDetailView: View {
             if t.maxSize > t.minSize {
                 CardLine()
                 Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.system(size: 14)).foregroundStyle(Theme.ivory) }
-                Text("A bigger company needs more equipment, people and space, and costs more to start.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             CardLine()
             TextField("Company name (optional)", text: $name).textFieldStyle(.plain).font(.system(size: 14.5)).padding(.vertical, 6)
@@ -222,7 +221,7 @@ struct TradeDetailView: View {
                 return ((plan.pick?.buy ?? false) ? "Buying " : "Renting ") + (o?.name ?? "a place") + "."
             }
         }()
-        let msg = "The company needs \(cur.tidyShort(plan.neededNow)): \(cur.tidyShort(plan.mandatoryTotal)) that must be paid, \(cur.tidyShort(plan.optionalTotal)) of optional extras you chose and \(cur.tidyShort(plan.workingCapital)) of working capital. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep \(cur.tidyShort(plan.accountsAfter)) (your reserve is \(cur.tidyShort(plan.personalReserve))). \(place) " +
+        let msg = "Needed now: \(cur.tidyShort(plan.neededNow)) (recommended investment \(cur.tidyShort(plan.recommendedInvestment)); nothing is bought or hired for you, you equip and staff it yourself). Of that \(cur.tidyShort(plan.mandatoryTotal)) that must be paid, \(cur.tidyShort(plan.optionalTotal)) of optional extras you chose and \(cur.tidyShort(plan.workingCapital)) of working capital. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep \(cur.tidyShort(plan.accountsAfter)) (your reserve is \(cur.tidyShort(plan.personalReserve))). \(place) " +
             (plan.shortfall > 0 ? "The company is \(cur.tidyShort(plan.shortfall)) short of that scope, so set-up skips what the cash cannot carry and opening waits for money. " : "") +
             (form == .limited ? "A limited company protects your personal assets." : "As a sole trader you are personally liable for its debts.") + " Risk: it earns nothing until it is set up and open."
         let pick = plan.pick

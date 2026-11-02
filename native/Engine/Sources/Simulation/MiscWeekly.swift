@@ -18,6 +18,7 @@ enum MiscWeekly {
         StaffExpenses.weekly(&s, data: data)
         FixedTerm.weekly(&s, data: data)
         StaffPromises.weekly(&s, data: data)
+        PromiseReminders.weekly(&s, data: data)
         Giving.weekly(&s, data: data)
         Ambitions.weekly(&s, data: data)
         PlayerGoals.announceFirstSteps(&s)
@@ -30,5 +31,6 @@ enum MiscWeekly {
     /// Original: `regulationMonth` and the other month-end steps of these systems.
     static func monthly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         Suppliers.monthly(&s)
+        Agency.monthly(&s, data: data)
     }
 }

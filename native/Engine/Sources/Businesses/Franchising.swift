@@ -51,16 +51,16 @@ public enum Franchising {
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
         let ch = Chains.chain(s, of: co)
         let L = ch.map { Chains.stores(s, $0) } ?? []
-        let open1y = L.filter { $0.status == .open && s.week - ($0.openedWeek ?? s.week) >= 52 }.count
-        let age = ch.map { s.week - $0["w0"].int } ?? 0
+        let open3 = L.filter { $0.status == .open }.count
         let prof = L.reduce(0.0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit } }
         let rep = L.isEmpty ? 0 : L.reduce(0.0) { $0 + $1.reputation } / Double(L.count)
         let boss = ch.map { Chains.hasChainBoss(s, $0, stores: L) } ?? false
-        func months(_ w: Int) -> Int { Int((Double(max(0, w)) / 4.33).rounded(.up)) }
+        let monthly = L.reduce(0.0) { $0 + (($1.monthlyHistory.last?.revenue) ?? 0) }
+        let cashOK = monthly > 0 && Payments.liquid(s) >= monthly
         return [
             Requirement(title: "A registered chain", ok: ch != nil, detail: ch?["name"].string ?? "Register the first store as a chain first"),
-            Requirement(title: "Three stores open for a year", ok: open1y >= 3, detail: "\(open1y) of 3"),
-            Requirement(title: "Three years as a chain", ok: age >= 156, detail: age >= 156 ? "Yes" : "\(months(156 - age)) months to go"),
+            Requirement(title: "Three stores open", ok: open3 >= 3, detail: "\(open3) of 3"),
+            Requirement(title: "Cash to set up the franchise", ok: cashOK, detail: cashOK ? "Enough cash in hand" : "Keep about a month of the chain's sales in cash"),
             Requirement(title: "The chain made money last year", ok: prof > 0, detail: prof > 0 ? "Yes" : "Not yet"),
             Requirement(title: "Customers like the chain", ok: rep >= 60, detail: L.isEmpty ? "-" : "reputation \(Int(rep))"),
             Requirement(title: "Someone to look after franchisees", ok: boss, detail: boss ? "Your chain team does" : "Hire a chain manager, or have a manager in every store"),

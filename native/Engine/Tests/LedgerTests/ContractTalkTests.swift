@@ -15,6 +15,9 @@ final class ContractTalkTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }   // these talk tests were tuned with the owner at a full week
+        // an office holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
+        e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)
     }
 
@@ -429,8 +432,10 @@ final class ContractTalkTests: XCTestCase {
         let pid = hire(&e, id)
         ask(&e, id, pid, .payRise)
         XCTAssertNotNil(e.contractTalk(personID: pid))
+        let asked = e.state.week
         for _ in 0..<((Negotiation.memoryWeeks + 2) * 7) { e.nextDay() }
-        XCTAssertNil(e.contractTalk(personID: pid))
+        // The first request is forgotten; a person who is still short of pay may ask again later, which is a new request, not the old one.
+        if let again = e.contractTalk(personID: pid) { XCTAssertGreaterThan(again.week, asked, "the old request is gone") }
         XCTAssertEqual(member(e, id, pid)?.int("denied") ?? 0, 0)
     }
 

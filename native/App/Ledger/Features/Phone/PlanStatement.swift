@@ -44,7 +44,7 @@ struct PlanStatement: View {
             group("Fees", [.fee])
             group("Optional, chosen by you", [.optional])
             group("Working capital (stays in the company)", [.workingCapital])
-            TableRow(columns: Self.columns, title: "The company needs", note: "With a 15% margin: \(cur.tidyShort(plan.neededNow * 1.15))", values: [cur.tidyShort(plan.neededNow)], selected: true)
+            TableRow(columns: Self.columns, title: "Needed now", note: "Recommended investment: \(cur.tidyShort(plan.recommendedInvestment)). Nothing is bought or hired for you.", values: [cur.tidyShort(plan.neededNow)], selected: true)
             if plan.estimate.shareCapital > 0 {
                 TableRow(columns: Self.columns, title: "Share capital", note: "From your account; stays in the company.", values: [cur.tidyShort(plan.estimate.shareCapital)])
             }

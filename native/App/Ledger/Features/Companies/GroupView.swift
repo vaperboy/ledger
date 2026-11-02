@@ -9,7 +9,6 @@ import Simulation
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
     @State private var tab: GroupTab = .overview
-    @State private var more: GroupMorePage = .office
     @State private var part: GroupStructurePart = .ownership
     @State private var showGiving = false
     @State private var showNewHolding = false
@@ -20,16 +19,17 @@ struct GroupView: View {
                 ReturnLine(tab: .group)
                 header
                     .padding(.horizontal, 18).padding(.top, 6)
-                GroupTabBar(tab: $tab, more: $more, badges: badges)
+                GroupTabBar(tab: $tab, badges: badges)
                     .padding(.horizontal, 18).padding(.top, 12)
                 if let e = store.engine {
                     ScrollView {
                         content(e)
+                            .segmentTransition(tab, order: GroupTab.allCases)
                             .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 40)
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     }
                     .id(store.rootToken(.group))
-                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+                    .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
                     .swipeBetween(GroupTab.allCases, selection: $tab)
                 }
             }
@@ -56,7 +56,8 @@ struct GroupView: View {
         case .structure: return part.sub
         case .board: return "Board, owners and decisions"
         case .deals: return "Franchise offers, acquisitions and group deals"
-        case .more: return more.sub
+        case .money: return "Dividends, group tax and giving"
+        case .more: return "Office, posts, stand-alone companies and the market"
         }
     }
 
@@ -81,7 +82,8 @@ struct GroupView: View {
         case .holdings: part = .holdings; tab = .structure
         case .chains, .franchises: part = .chains; tab = .structure
         case .boards: tab = .board
-        default: more = page; tab = .more
+        case .dividends, .giving: tab = .money
+        default: tab = .more
         }
     }
 
@@ -91,7 +93,8 @@ struct GroupView: View {
         case .structure: GroupStructureTab(engine: e, part: $part, openMore: open)
         case .board: GroupBoardTab(engine: e, openMore: open)
         case .deals: GroupDealsTab(engine: e, openMore: open)
-        case .more: GroupMoreTab(engine: e, page: more, pick: { more = $0 }, showGiving: { showGiving = true })
+        case .money: GroupMoneyTab(engine: e, showGiving: { showGiving = true })
+        case .more: GroupMoreTab(engine: e)
         }
     }
 }

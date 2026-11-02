@@ -18,6 +18,8 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         XCTAssertEqual(e.state.company(id)?.status, .open, "\(code) opens")
+        // The owner's hours follow demand now, which shifts the random draws these pay tests were tuned on: a hired manager keeps the old baseline.
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].managerID = 0 } }
         return (e, id)
     }
 

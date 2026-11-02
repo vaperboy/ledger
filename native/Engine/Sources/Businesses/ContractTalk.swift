@@ -1051,5 +1051,11 @@ public enum ContractTalk {
                 }
             }
         }
+        // A person who has left keeps no open request: it is forgotten with the same delay (nobody is there to answer it).
+        for id in s.people.keys.sorted() {
+            guard let n = s.people[id], n.employerID == 0, let talk = talk(of: n), talk.delayUntil == 0,
+                  s.week - max(talk.week, talk.neg.week) > Negotiation.memoryWeeks else { continue }
+            close(&s, personID: id)
+        }
     }
 }

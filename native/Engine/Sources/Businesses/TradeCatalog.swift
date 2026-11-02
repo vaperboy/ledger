@@ -12,8 +12,22 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
         var map: [String: Trade] = [:]
         for (k, v) in tradesJSON["trades"].object { map[k] = Trade(json: v) }
         for k in map.keys where !(map[k]!.hasStoredCalibration) { TradeCatalog.calibrate(&map[k]!, tables: tables) }
+        let menu: [String] = tradesJSON["order"].array.map { $0.string }
+        // The TechPro Store sells every item of every trade to any company (owner decision, 2 Nov). Each trade's list gets the items of the other
+        // trades, inert for the business itself (no capacity, quality or opening requirement: flags and standard count stripped). Done once, after
+        // calibration, in the catalogue itself, so every place that looks an item up by id (selling, servicing, wear, My items) finds it.
+        var seen = Set<String>(), foreign: [EquipmentSpec] = []
+        for id in menu { for var e in (map[id]?.equipment ?? []) where !seen.contains(e.id) {
+            seen.insert(e.id)
+            e.flags = e.flags.filter { $0 == "u" }; e.standardCount = 0; e.personalRule = nil
+            foreign.append(e)
+        } }
+        for k in map.keys.sorted() {
+            let mine = Set(map[k]!.equipment.map { $0.id })
+            map[k]!.foreignItems = foreign.filter { !mine.contains($0.id) }
+        }
         trades = map
-        order = tradesJSON["order"].array.map { $0.string }
+        order = menu
     }
 
     public static func bundled() throws -> TradeCatalog {

@@ -135,10 +135,10 @@ struct ReportsContent: View {
         let worthNote = "Change " + f.signed(worthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? "")
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
-                OverviewFigureCard(label: "Profit after tax", value: f.short(net),
+                OverviewFigureCard(label: "Profit after tax", value: f.short(net), live: net,
                                    note: r.previous.map { "\(profitChange.text) vs \($0.title)" } ?? "Nothing earlier to compare with.",
                                    noteTint: profitChange.tint)
-                OverviewFigureCard(label: companyID == nil ? "Net worth" : "Your share's value", value: f.short(r.netWorthEnd.total),
+                OverviewFigureCard(label: companyID == nil ? "Net worth" : "Your share's value", value: f.short(r.netWorthEnd.total), live: r.netWorthEnd.total,
                                    note: worthNote, noteTint: Theme.change(worthChange))
             }
             if let p = worthPrev, r.previous != nil {

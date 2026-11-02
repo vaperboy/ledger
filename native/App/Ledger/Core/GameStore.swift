@@ -60,6 +60,10 @@ struct Toast: Identifiable, Equatable {
     var title: String = ""
     var text: String
     var tone: String
+    /// "answered": the result card for an answered decision (what was chosen, where, and what changed).
+    var style = ""
+    var subtitle = ""
+    var rows: [String] = []
 }
 
 /// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
@@ -68,6 +72,9 @@ final class GameStore: ObservableObject {
     @Published private(set) var engine: GameEngine?
     /// Notices waiting to be read, oldest first. The first one is on screen as a popup; reading it shows the next.
     @Published private(set) var notices: [Toast] = []
+    /// Red alerts (a company about to be force-sold): a see-through red popup, shown before anything else, closed only by its button.
+    @Published private(set) var redAlerts: [Message] = []
+    func dismissRedAlert() { if !redAlerts.isEmpty { redAlerts.removeFirst() } }
     var toast: Toast? { notices.first }
     /// The open decision (an Inbox message id) being answered in a popup on the main screen, or nil.
     @Published var decisionPopup: Int?
@@ -115,6 +122,7 @@ final class GameStore: ObservableObject {
         saves = try? SaveStore(directory: base)
         if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board")) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
+        ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
     }
 
     var hasGame: Bool { engine != nil }
@@ -215,8 +223,13 @@ final class GameStore: ObservableObject {
         if out.gameOver { Haptics.failure() }
         celebrationQueue.append(contentsOf: celebrations)
         reportSheet = digest
-        let daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
-        dailySheet = (digest == nil && !out.gameOver && !daily.isEmpty) ? daily : nil
+        var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
+        if let nwBefore, let nwAfter = e.dayHistory.netWorth.last, let cashBefore, let cashAfter = e.dayHistory.cash.last {
+            daily.netWorthChange = nwAfter - nwBefore
+            daily.cashChange = cashAfter - cashBefore
+        }
+        // Every ordinary day has a report, quiet or busy; only Continue closes it.
+        dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
             dayChip = DayChip(id: UUID(), day: e.state.day + 1, netWorthChange: nwAfter - nwBefore, cashChange: cashAfter - (cashBefore ?? cashAfter))
@@ -282,6 +295,8 @@ final class GameStore: ObservableObject {
     /// A buzz when something needs the player; the words are in the daily popup (and the Inbox), not in a banner.
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.status == "open" || $0.tone == "bad" }) { Haptics.warning() }
+        let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
+        if !alerts.isEmpty { Haptics.failure(); redAlerts.append(contentsOf: alerts) }
     }
 
     // MARK: Acting
@@ -337,10 +352,18 @@ final class GameStore: ObservableObject {
     }
 
     /// An answer to an open decision has an effect at once, so it is told at once, in a popup (what was chosen and what it does).
-    func announceAnswer(label: String, effects: [String], ok: Bool) {
+    func announceAnswer(label: String, effects: [String], ok: Bool, messageTitle: String = "", companyID: Int = 0) {
         guard ok else { Haptics.warning(); tell("Not applied", "That answer could not be applied: the message is no longer open.", tone: "warn"); return }
         Haptics.success()
-        tell("Answered: " + label, effects.joined(separator: "\n"), tone: "good")
+        var rows: [String] = effects
+        var who = ""
+        if companyID != 0, let e = engine, let co = e.state.company(companyID) {
+            who = co.name
+            rows.append("\(co.name) now has \(short(co.cash, in: co)) in its account")
+        }
+        let t = Toast(title: label, text: effects.joined(separator: "\n"), tone: "good", style: "answered", subtitle: ([messageTitle, who].filter { !$0.isEmpty }).joined(separator: " \u{00B7} "), rows: rows)
+        if notices.last?.title == t.title && notices.last?.subtitle == t.subtitle { return }
+        notices.append(t)
     }
 
     /// The popup on screen has been read: the next notice (if any) shows.
@@ -590,7 +613,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; notices = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {

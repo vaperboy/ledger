@@ -50,7 +50,7 @@ public enum Satisfaction {
                 let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: s.random.chance(0.55 + sk * 0.4), data: data)
                 var l = s.companies[i].value("compl").array; l[k]["by"] = "asst"; s.companies[i].set("compl", .array(l))
-            } else if s.policy.autoComplaints && c["sev"].int <= 2 {
+            } else if Delegation.staffAnswerComplaints(s, s.companies[i]) && c["sev"].int <= 2 {
                 // The owner's standing instruction: staff deal with routine complaints the way a sensible manager would.
                 let refund = managerRefunds(&s, i, bd, severity: c["sev"].int, data: data)
                 resolve(&s, i, bd, complaintAt: k, refund ? .refund : .sorry, good: s.random.chance(0.75), data: data)

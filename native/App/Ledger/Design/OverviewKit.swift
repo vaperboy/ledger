@@ -45,12 +45,14 @@ struct OverviewFigureCard: View {
     var value: String
     var note: String = ""
     var noteTint: Color = Theme.ivoryMuted
+    /// The number behind `value`: when it changes the figure rolls and flashes green or red. nil keeps the figure still.
+    var live: Double? = nil
 
     var body: some View {
         Card(padding: 14, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.gold).lineLimit(1)
-                Text(value).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
+                Text(value).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
                 Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(noteTint).lineLimit(2)
             }
         }

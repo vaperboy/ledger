@@ -16,6 +16,9 @@ public enum CompanySetup {
         /// Footfall / location quality (1 = standard)
         public var location: Double
         public var landlord: String
+        public init(index: Int, name: String, squareMetres: Double, rentFactor: Double, location: Double, landlord: String) {
+            self.index = index; self.name = name; self.squareMetres = squareMetres; self.rentFactor = rentFactor; self.location = location; self.landlord = landlord
+        }
     }
 
     public enum StartError: Error, Equatable { case banned(String), notEnoughCash, notAllowedHere, notYetAvailable }
@@ -460,6 +463,11 @@ public enum CompanySetup {
         /// A business that was bought brings its equipment and people with it: set-up neither buys the equipment nor hires the team.
         public var equipmentInPlace = false
         public var teamInPlace = false
+        /// Apply for the documents, rent a standard place and buy the first property by itself. The player's own start sets all three to false:
+        /// they fill in and sign the documents and choose the place themselves (owner decision, 2 Nov).
+        public var applyDocuments = true
+        public var autoPremises = true
+        public var buyProperty = true
         public init(team: Team = .standard, optionalEquipment: Bool = true, payrollMonthsReserve: Double? = nil, equipmentInPlace: Bool = false, teamInPlace: Bool = false) {
             self.team = team; self.optionalEquipment = optionalEquipment; self.payrollMonthsReserve = payrollMonthsReserve
             self.equipmentInPlace = equipmentInPlace; self.teamInPlace = teamInPlace
@@ -499,13 +507,13 @@ public enum CompanySetup {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] else { return SetupReport(log: ["unknown company"]) }
         var rep = SetupReport()
         let w = World(state: s, data: data)
-        for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" {
+        for d in Documents.needed(s.companies[i], bd, w) where d != "vat_not_applicable" && options.applyDocuments {
             let st = s.companies[i].value("docs")[d]["st"].string
             if st == "ok" || st == "applied" { continue }
             let r = Documents.apply(d, companyID: companyID, state: &s, data: data)
             if r != .ok && r != .alreadyHeld { rep.log.append("document \(d): \(r)") }
         }
-        if let kind = bd.premisesKind, kind != "none", kind != "home", s.companies[i].value("prem").isNull {
+        if options.autoPremises, let kind = bd.premisesKind, kind != "none", kind != "home", s.companies[i].value("prem").isNull {
             let ls = listings(for: s.companies[i], bd, World(state: s, data: data))
             if ls.count > 2 {
                 let r = setPremises(&s, companyID: companyID, listing: ls[2], data: data)
@@ -531,7 +539,7 @@ public enum CompanySetup {
             while !ok && qq > 1 { qq = max(1, (qq / 2).rounded(.down)); ok = buyEquipment(&s, companyID: companyID, equipmentID: e.id, quantity: qq, data: data, preferFinancing: true) }
             if !ok { rep.log.append("equipment \(e.id): not enough cash") }
         }
-        RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &rep.log)
+        if options.buyProperty { RentalFinance.buyFirstProperty(&s, companyID: companyID, data: data, log: &rep.log) }
         if !bd.hasTrait("noStaff") && bd.family != "rent" && !options.teamInPlace {
             hireStandardTeam(&s, companyID: companyID, bd: bd, data: data, faithfulHiring: faithfulHiring, options: options, report: &rep)
         }

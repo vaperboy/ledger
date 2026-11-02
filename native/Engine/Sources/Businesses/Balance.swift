@@ -20,6 +20,9 @@ public struct Balance: Sendable {
     /// Price multipliers for the seven price levels (-3 ... +3) and their names. Original: `PRICE_PM`.
     public var priceMultipliers: [Double]
     public var priceNames: [String]
+    /// The range a trade's prices can move in, as multipliers of the going price (data, one entry per trade; a balance task). A trade without
+    /// an entry uses the whole scale. The seven levels' own scale is the outer limit.
+    public var priceRangeByTrade: [String: [Double]]
     /// Share of customers who are tourists, by trade. Original: `TOUR_T`.
     public var tourismShareByTrade: [String: Double]
     /// Twelve monthly tourism multipliers by country. Original: `WX56.TS`.
@@ -63,6 +66,7 @@ public struct Balance: Sendable {
         targetMargins = j["targetMargins"].object.mapValues { $0.double }
         priceMultipliers = j["priceLevels"]["multipliers"].array.map { $0.double }
         priceNames = j["priceLevels"]["names"].array.map { $0.string }
+        priceRangeByTrade = j["priceLevels"]["ranges"].object.mapValues { $0.array.map { $0.double } }
         tourismShareByTrade = j["tourism"]["tradeShare"].object.mapValues { $0.double }
         func fit(_ v: JSONValue) -> [String: [String: Double]] { v.object.mapValues { $0.object.mapValues { $0.double } } }
         tradeCountryFit = (fit(j["tradeCountryFit"]["demand"]), fit(j["tradeCountryFit"]["price"]))
@@ -86,6 +90,13 @@ public struct Balance: Sendable {
         let i = min(5, Int((L + 3).rounded(.down)))
         let f = L + 3 - Double(i)
         return priceMultipliers[i] + (priceMultipliers[i + 1] - priceMultipliers[i]) * f
+    }
+
+    /// The lowest and highest price multiplier a trade may set: its own range, inside the scale of the seven levels.
+    public func priceBounds(tradeID: String) -> (low: Double, high: Double) {
+        let lo = priceMultipliers[0], hi = priceMultipliers[6]
+        guard let r = priceRangeByTrade[tradeID], r.count == 2 else { return (lo, hi) }
+        return (max(lo, r[0]), min(hi, r[1]))
     }
 
     /// The inverse of `priceMultiplier`. Original: `lvlOf`.

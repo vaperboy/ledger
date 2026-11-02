@@ -9,6 +9,8 @@ import Finance
 /// A candidate has a *true* skill and a *claimed* skill: some exaggerate. Checking references or a trial week
 /// reveals more. People ask for pay by their skill, age and the local market.
 public enum Hiring {
+    /// `network` is DEPRECATED for the player (Nov 2026): the Hiring screen offers `ads` (job ad: `JobAds`) and `agency` (`Agency`). It stays for old saves and
+    /// the automatic hirers (managers, auto-staffing, start-ups) that search without a fee.
     public enum SearchMode: Sendable { case ads, network, agency }
 
     /// Age groups only decide who turns up (age, skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
@@ -331,6 +333,7 @@ public enum Hiring {
         for x in terms.expenseItems where StaffExpenses.item(x) != nil { var ex = m.value("ex"); if ex.isNull { ex = .object([:]) }; ex[x] = 1; m.set("ex", ex) }
         ContractHistory.append(&m, week: s.week, kind: "hired", text: "Hired: " + EmploymentContract.typeLabels(m).joined(separator: ", ").lowercased() + ", \(ContractHistory.fmt(EmploymentContract.percent(m))) percent of a full week.")
         onboardByManager(&m, company: s.companies[ci], state: &s)
+        Agency.markHire(&m, person: n, week: s.week)
         var staff = s.companies[ci].staff
         staff.append(m)
         s.companies[ci].staff = staff

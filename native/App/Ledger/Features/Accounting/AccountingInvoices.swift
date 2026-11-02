@@ -204,7 +204,6 @@ struct AcctInvoiceDetail: View {
         } else if inv.kind == .supplier && inv.canPayNow {
             if canPay {
                 AcctPrimaryButton(title: "Pay now", identifier: "acct-invoice-pay") { confirmPay(co, inv, fmt) }
-                Text("Paid from \(co.name) through the Bank. The ledger and the supplier record are updated.").font(.system(size: 12)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
             } else {
                 AcctNotice(glyph: Glyph.lock, title: "Paying needs full bookkeeping access")
             }

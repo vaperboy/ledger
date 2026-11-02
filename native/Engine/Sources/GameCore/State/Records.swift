@@ -129,5 +129,9 @@ public struct Message: JSONRecord, Identifiable {
     /// The week the offer expires, if it does.
     public var expiresWeek: Int? { get { value("exp").isNull ? nil : int("exp") } set { raw["exp"] = newValue.map { .number(Double($0)) } ?? .null } }
     public var actionID: String { get { str("act") } set { set("act", newValue) } }
+    /// A red alert (a company about to be force-sold): the app shows it as a see-through red popup that only its button closes.
+    /// Who handled it when a hired rank took the decision for the owner ("Mia, manager"); empty when the owner answered or it is still open.
+    public var handledBy: String { get { str("by") } set { set("by", newValue) } }
+    public var isAlert: Bool { get { flag("alert") } set { set("alert", newValue) } }
     public var options: [JSONValue] { value("opts").array }
 }

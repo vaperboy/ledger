@@ -63,7 +63,7 @@ struct CompanyOverview: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Cash").capsLabel()
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.money(co.cash, in: co)).font(.hero(36)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.money(co.cash, in: co)).font(.hero(36)).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivory).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(co.cash)
                     Spacer(minLength: 8)
                     if let g = h.revenueGrowth {
                         Text(String(format: "Revenue %+.0f%% vs 3 mo", g * 100)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.change(g))
@@ -209,122 +209,6 @@ struct CompanyOverview: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: Setup
-
-/// The opening checklist. Each open item leads to where it is done: premises and equipment to the equipment screen, cash for stock to
-/// moving money in, properties and products to the family's own section. Documents have no single-document action in the engine:
-/// they are applied for by "Fill in what is missing".
-struct CompanySetupSection: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @Binding var section: CompanySection
-    @Binding var moneyPart: CompanyMoneyPart
-    @State private var pending: PendingAction?
-
-    var body: some View {
-        let items = engine.openingChecklist(companyID: company.id)
-        let left = items.filter { !$0.isDone }
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection(title: "Before opening", trailing: {
-                Text(left.isEmpty ? "ready" : "\(items.count - left.count) of \(items.count) done").font(.system(size: 11.5)).foregroundStyle(left.isEmpty ? Theme.gain : Theme.ivoryFaint)
-            }) {
-                VStack(spacing: 0) {
-                    if items.isEmpty { Text("Nothing left to do.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, alignment: .leading) }
-                    ForEach(Array((left + items.filter { $0.isDone }).enumerated()), id: \.element.id) { n, it in
-                        if n > 0 { Hairline() }
-                        checklistRow(it)
-                    }
-                }
-            }
-            EquipmentEntryRow(company: company)
-            if company.status == .setup {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Button("Fill in what is missing…") { confirmQuickSetup() }.buttonStyle(QuietButtonStyle())
-                    Button("Open for business") { open() }.buttonStyle(QuietButtonStyle()).disabled(!left.isEmpty && !left.allSatisfy { $0.id == "stockcash" })
-                    if !left.isEmpty { Text("Opens by itself once every item is done and the paperwork is approved.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
-                }
-            }
-        }
-        .confirmAction($pending)
-    }
-
-    @ViewBuilder private func checklistRow(_ it: OpeningChecklist.Item) -> some View {
-        let target = destination(it)
-        let content = HStack(alignment: .center, spacing: 10) {
-            Image(systemName: it.isDone ? "checkmark.circle.fill" : "circle").foregroundStyle(it.isDone ? Theme.gain : Theme.ivoryFaint)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(it.title.tidyMoney).font(.system(size: 13.5, weight: it.isDone ? .regular : .medium)).foregroundStyle(it.isDone ? Theme.ivoryMuted : Theme.ivory)
-                if !it.detail.isEmpty { Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
-            }
-            Spacer(minLength: 6)
-            if !it.isDone {
-                switch target {
-                case .none: Text(it.id.hasPrefix("doc:") ? "with Fill in" : "").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                default: Text(actionLabel(target)).font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize()
-                }
-            }
-        }.padding(.vertical, 9).contentShape(Rectangle())
-        if it.isDone {
-            content
-        } else {
-            switch target {
-            case .equipment(let premises):
-                Button {
-                    if premises { store.openAirStay(companyID: company.id) } else { store.openTechPro(companyID: company.id) }
-                } label: { content }.buttonStyle(PressableStyle())
-            case .money:
-                Button { moneyPart = .owners; section = .finances; Haptics.choose() } label: { content }.buttonStyle(PressableStyle())
-            case .section(let s):
-                Button { if CompanyDetailView.availableSections(company, engine).contains(s) { section = s; Haptics.choose() } } label: { content }.buttonStyle(PressableStyle())
-            case .none:
-                content
-            }
-        }
-    }
-
-    private enum Target { case equipment(premises: Bool), money, section(CompanySection), none }
-
-    private func destination(_ it: OpeningChecklist.Item) -> Target {
-        switch it.id {
-        case "prem": return .equipment(premises: true)
-        case "mw": return .equipment(premises: false)
-        case "stockcash", "cash": return .money
-        case "prop": return .section(.properties)
-        case "prod", "ver": return .section(.book)
-        default: return it.id.hasPrefix("eq:") ? .equipment(premises: false) : .none
-        }
-    }
-
-    private func actionLabel(_ t: Target) -> String {
-        switch t {
-        case .equipment(let p): return p ? "Choose →" : "Buy →"
-        case .money: return "Put money in →"
-        case .section(let s): return "\(s.rawValue) →"
-        case .none: return ""
-        }
-    }
-
-    private func confirmQuickSetup() {
-        pending = PendingAction(title: "Fill in what is missing?", message: "Applies for every document, rents a standard place, buys the equipment the trade cannot open without and hires the core team, only as far as the company's own cash carries it (two months of wages kept). Anything it leaves out is listed with its cost. It opens by itself once the paperwork is approved.", button: "Fill in", alwaysAsk: true) {
-            let report = store.act { $0.quickSetupWithinBudget(companyID: company.id) }
-            let failed: [String] = report?.log ?? []
-            let left: [String] = (report?.skipped ?? []).map { $0.title }
-            if failed.isEmpty && left.isEmpty { Haptics.success(); store.show("Done: documents applied for, premises, equipment and team in place.", tone: "good") }
-            else if failed.isEmpty { Haptics.warning(); store.show("Done as far as the cash goes. Left for you to decide: \(left.prefix(3).joined(separator: ", "))\(left.count > 3 ? "…" : "")", tone: "warn") }
-            else { Haptics.warning(); store.show("Partly done. Not possible: \(failed.prefix(3).joined(separator: "; "))\(failed.count > 3 ? "…" : "")", tone: "warn") }
-        }
-    }
-
-    private func open() {
-        switch store.act({ $0.openCompany(companyID: company.id) }) {
-        case .ok?: Haptics.success(); store.show("\(company.name) is open.", tone: "good"); section = .overview
-        case .needsStockCash(let need)?: Haptics.warning(); store.show("Needs \(store.money(need, in: company)) in the company for opening stock.", tone: "warn")
-        default: Haptics.warning(); store.show("Something is still missing.", tone: "warn")
         }
     }
 }

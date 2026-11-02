@@ -4,70 +4,95 @@ import Countries
 import Businesses
 import Simulation
 
-/// Sales & Market of one company, on ONE page: a table with one row per decision. Pricing opens the one Pricing screen; How you sell is a
-/// popup (its choices and what they cost); Marketing opens its campaigns; "New menu item" (named for the trade) only for trades that
-/// have development written for them. Customers are in Stats, the Market is a Phone app, and Projects are a part of this section only
-/// for project businesses (`CompanyDetailView`).
+/// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
+/// that is from the market. Tapping an item opens its price popup (`SalesItemSheet`). Marketing is a popup (`MarketingSheet`); a trade that
+/// can develop new things also has that row (a timed project, not a new item). Customers are in Stats, the Market is a Phone app, and Projects
+/// are a part of this section only for project businesses (`CompanyDetailView`). There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
-    @State private var showSell = false
+    @State private var showMarketing = false
+    @State private var picked: SalesItemPick?
+
+    /// A tapped item, for the popup.
+    private struct SalesItemPick: Identifiable { var id: String }
 
     var body: some View {
-        OverviewSettingsCard(heading: "Sales and market") {
-            pricingRow
-            sellRow
-            marketingRow
-            developRow
+        let items: [SalesItem] = engine.salesItems(companyID: company.id)
+        let service: Bool = !items.isEmpty && items.allSatisfy { (i: SalesItem) -> Bool in i.isService }
+        return VStack(spacing: Theme.Space.m) {
+            itemsCard(items, service: service)
+            OverviewSettingsCard(heading: "Marketing and more") {
+                marketingRow
+                developRow
+            }
         }
-        .sheet(isPresented: $showSell) { HowYouSellSheet(companyID: company.id) }
+        .sheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
+        .sheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
         }
     }
 
-    // MARK: Pricing
+    // MARK: Your products / services
 
-    private var pricingRow: some View {
-        let moves: PriceMovesInfo? = engine.priceMoves(company)
-        let against: Double = moves?.againstMarket ?? 0
-        let value: String = moves == nil ? "Not selling yet" : (abs(against) < 0.005 ? "At the market" : Currency.percent(against, decimals: 0) + (against > 0 ? " above" : " below"))
-        return SettingsTableRow(title: "Pricing", value: value, glyph: Glyph.opsPrice) {
-            store.openCompany(company.id, section: .pricing)
+    private func itemsCard(_ items: [SalesItem], service: Bool) -> some View {
+        let cur: Currency = engine.currency(for: company)
+        let noun: String = service ? "service" : "product"
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text((service ? "Your services" : "Your products").uppercased()).capsLabel()
+                    Spacer()
+                    if company.status == .open {
+                        Button { addItem(service: service) } label: {
+                            Text("Add \(noun)").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
+                        }
+                        .buttonStyle(PressableStyle())
+                        .accessibilityIdentifier("sales-add-item")
+                    }
+                }
+                if items.isEmpty {
+                    Text("Nothing is on sale yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                }
+                VStack(spacing: 0) {
+                    ForEach(items) { (it: SalesItem) -> SettingsTableRow in row(it, cur) }
+                }
+            }
         }
     }
 
-    // MARK: How you sell (a popup)
-
-    @ViewBuilder private var sellRow: some View {
-        let trade: Trade? = engine.tradeInfo(companyID: company.id)
-        let hasKnobs: Bool = !(trade?.knobs.isEmpty ?? true)
-        let hasWays: Bool = engine.waysToSell(companyID: company.id).contains { $0.canSwitch }
-        if hasKnobs || hasWays {
-            SettingsTableRow(title: "How you sell", value: sellSummary(trade), opens: .sheet, glyph: Glyph.opsRoute) { showSell = true }
-                .accessibilityIdentifier("sales-how-you-sell")
-        }
+    private func row(_ it: SalesItem, _ cur: Currency) -> SettingsTableRow {
+        let share: Double = it.marketPrice > 0 ? it.price / it.marketPrice - 1 : 0
+        let change: String = abs(share) < 0.005 ? "At market" : String(format: "%+.0f%%", share * 100) + " vs market"
+        let tint: Color = abs(share) < 0.005 ? Theme.ivoryMuted : (share > 0 ? Theme.gain : Theme.loss)
+        return SettingsTableRow(title: it.name, note: status(it), value: cur.tidyDisplay(it.price),
+                                glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox, change: change, changeTint: tint) { picked = SalesItemPick(id: it.id) }
     }
 
-    /// The company's current choice for each of its "how you sell" knobs, in one line.
-    private func sellSummary(_ trade: Trade?) -> String {
-        guard let trade else { return "Set" }
-        let names: [String] = trade.knobs.compactMap { (knob: Knob) -> String? in
-            let v: JSONValue = company.value("knob")[knob.id]
-            let i: Int = v.isNull ? knob.defaultIndex : v.int
-            return knob.options.indices.contains(i) ? knob.options[i].name : nil
-        }
-        return names.isEmpty ? "Set" : names.joined(separator: ", ")
+    /// One line from the item's demand against the market price, and a running discount.
+    private func status(_ it: SalesItem) -> String {
+        let d: Double = it.demandChange
+        let word: String = d >= 0.15 ? "High demand" : d >= 0.03 ? "Good demand" : d > -0.03 ? "Steady demand" : d > -0.15 ? "Soft demand" : "Low demand"
+        return it.discountPercent > 0 ? word + ", \(Int(it.discountPercent))% off for \(it.discountWeeksLeft.weeksText)" : word
     }
 
-    // MARK: Marketing
+    private func addItem(service: Bool) {
+        let id: Int = company.id
+        let name: String = engine.suggestedItemName(companyID: id, isService: service)
+        let r = store.act { $0.addSalesItem(companyID: id, name: name, isService: service) }
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else { Haptics.success(); store.show("Added \(name).", tone: "good") }
+    }
+
+    // MARK: Marketing (a popup)
 
     private var marketingRow: some View {
         let cur: Currency = engine.currency(for: company)
         let spend: Double = company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
-        return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", glyph: Glyph.opsMega) { part = .marketing }
+        return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", opens: .sheet, glyph: Glyph.opsMega) { showMarketing = true }
     }
 
     // MARK: Development, named for the trade

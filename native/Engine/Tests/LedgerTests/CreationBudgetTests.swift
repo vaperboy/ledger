@@ -59,16 +59,10 @@ final class CreationBudgetTests: XCTestCase {
         guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, form: .soleTrader, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let bd = try XCTUnwrap(e.data.catalog["cons"])
-        let optional = bd.equipment.filter { !$0.isRequired && $0.standardCount > 0 }
-        XCTAssertFalse(optional.isEmpty, "the consultant has optional standard items")
-        XCTAssertEqual(out.skipped.filter { $0.kind != .staff }.count, optional.count, "each left-out item is reported with its price")
-        XCTAssertTrue(out.skipped.allSatisfy { $0.cost > 0 })
-        for o in optional { XCTAssertEqual(co.value("eq")[o.id]["n"].double, 0, "\(o.id) was not bought") }
+        XCTAssertTrue(co.staff.isEmpty, "nothing is hired for the player (owner decision, 2 Nov)")
+        for item in bd.equipment { XCTAssertEqual(co.value("eq")[item.id]["n"].double, 0, "\(item.id) was not bought") }
+        XCTAssertTrue(out.skipped.isEmpty, "nothing is bought or hired, so nothing is left out")
         XCTAssertEqual(OpeningChecklist.openingStockShare(co), 0)
-        // choosing it buys it
-        guard case .success(let out2) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, form: .soleTrader, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany * 3,
-                                                                       choices: SetupChoices(stock: .full, optionalEquipment: true, team: .standard)) else { return XCTFail("start 2") }
-        XCTAssertTrue(out2.skipped.filter { $0.kind != .staff }.isEmpty)
     }
 
     func testOpeningStockFollowsTheChosenShare() throws {
@@ -80,6 +74,7 @@ final class CreationBudgetTests: XCTestCase {
             let id = out.companyID
             e.update { s, d, _ in
                 guard let i = s.companyIndex(id) else { return }
+                _ = CompanySetup.quickSetup(&s, companyID: id, data: d)   // the player equips it; here the test does so
                 for k in s.companies[i].value("docs").object.keys { var docs = s.companies[i].value("docs"); docs[k]["st"] = "ok"; s.companies[i].set("docs", docs) }
                 _ = OpeningChecklist.open(&s, companyIndex: i, data: d)
                 paid[choice] = s.companies[i].inventory
@@ -100,7 +95,7 @@ final class CreationBudgetTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
         XCTAssertLessThanOrEqual(payroll * 2, max(co.cash + payroll * 2, 1) * 1.0 + 1)
-        XCTAssertTrue(out.skipped.contains { $0.kind == .staff }, "the staff the cash cannot carry is listed, not hired")
+        XCTAssertTrue(co.staff.isEmpty, "nobody is hired for the player")
         // the legacy automatic start on the same money hires without looking
         var legacy = try game(extra: 200_000_000)
         guard case .success(let lid) = legacy.startCompany(tradeID: "restaurant", cityID: city, form: .limited, size: 1, fundWith: 2_500_000) else { return XCTFail("start legacy") }

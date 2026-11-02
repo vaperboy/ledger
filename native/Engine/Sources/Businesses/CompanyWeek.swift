@@ -166,7 +166,7 @@ public enum CompanyWeek {
         }
         if let perish = bd.trait("perish") { cogs += rev * perish * (1 + max(0, 0.85 - util) * 2.2) * (co.managerID != nil ? 1.2 - 0.5 * managerQ : 1) }
         if let shrink = bd.trait("shrink") {
-            cogs += rev * shrink * (co.value("flags")["secure"].bool ? 0.5 : 1) * (1 + co.value("flags")["shrinkUp"].double)
+            cogs += rev * shrink * (co.value("flags")["secure"].bool ? 0.5 : 1) * RoleEffects.shrinkFactor(co) * (1 + co.value("flags")["shrinkUp"].double)
         }
         if let ota = bd.trait("ota") { cogs += rev * ota * Knobs.effect(co, bd, "ota", w) }
         if bd.hasTrait("excise") { cogs += units * 8.5 * w.country(co).costIndex * w.inflationIndex }

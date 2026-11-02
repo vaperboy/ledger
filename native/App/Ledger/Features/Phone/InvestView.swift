@@ -28,7 +28,7 @@ struct InvestContent: View {
                 FundManagerCard(engine: e)
                 VenturesLinkRow(engine: e)
             }
-            .fullScreenCover(item: $selected) { q in BankAssetScreen(quote: q) }
+            .fullScreenCover(item: $selected) { q in BankAssetScreen(quote: q).pageArrive() }
         }
     }
 

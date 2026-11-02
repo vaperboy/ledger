@@ -114,7 +114,7 @@ struct ProjectTimelineDetail: View {
                 }.padding(Theme.Space.margin).frame(maxWidth: .infinity)
             }
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).noSidewaysDrag()
         .appScreen(title: found.map { $0.1.title.tidyMoney } ?? "Project",
                    subtitle: found.map { "\($0.1.companyName) · \(kindWord($0.1.kind)) · \($0.1.subtitle)" } ?? "", tab: .projects)
     }

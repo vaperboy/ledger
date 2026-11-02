@@ -9,7 +9,7 @@ import Simulation
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
-    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop"
+    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop", licences = "Licences"
 }
 
 extension Glyph {
@@ -73,6 +73,11 @@ struct CompanyOperations: View {
     }
 
     @ViewBuilder private var bigRows: some View {
+        let licences: [LicenceLine] = engine.licences(companyID: company.id)
+        if !licences.isEmpty {
+            let held: Int = licences.filter { $0.form.status == "ok" }.count
+            SettingsTableRow(title: "Licences", note: "Add new things to sell; apply and wait for the answer", value: "\(held) of \(licences.count) held", glyph: Glyph.reports) { part = .licences }
+        }
         premisesRow
         if CompanySourcing.isAvailable(engine: engine, company: company) {
             SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
@@ -101,7 +106,7 @@ struct CompanyOperations: View {
         if let first = paper.first {
             note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
         }
-        if uninsured { note("Not insured. A bad week has nothing behind it: pick an insurer, then the policies you want.", action: "Cover") { store.openAtlas(companyID: company.id) } }
+        if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
         if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
     }
 

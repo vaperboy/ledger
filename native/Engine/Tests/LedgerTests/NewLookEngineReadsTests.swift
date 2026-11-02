@@ -128,7 +128,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         var e = try game()
         let id = try cafe(&e)
         let options = e.hiringSearchOptions()
-        XCTAssertEqual(options.map(\.mode), [.ads, .network, .agency])
+        XCTAssertEqual(options.map(\.mode), [.ads, .agency])   // the network option is gone for the player (hiring rebuild, Nov 2026)
         XCTAssertTrue(options.allSatisfy { $0.fee == 0 }, "searching costs nothing in the game today")
         let cashBefore = e.state.company(id)!.cash
         let found = e.searchWorkers(companyID: id, role: "barista", mode: .ads)

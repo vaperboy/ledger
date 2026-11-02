@@ -56,6 +56,7 @@ struct FranchisorCard: View {
     @State private var support = 0
     @State private var masterCountry = ""
     @State private var pending: PendingAction?
+    @State private var signing = false
     @State private var ftab: FranchiseTab?
 
     var body: some View {
@@ -111,13 +112,21 @@ struct FranchisorCard: View {
                 Text("Franchise documents: about \(doc.weeksLeft) \(doc.weeksLeft == 1 ? "week" : "weeks") left. A lawyer writes the agreement and the disclosure document.").font(.caption).foregroundStyle(Theme.caution).padding(.top, 10)
             } else if doc.status != "ok" {
                 Button("Apply for franchise documents · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")))") {
-                    switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "fran") }) {
-                    case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                    case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                    default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
-                    }
+                    signing = true
                 }.buttonStyle(TinyButtonStyle()).padding(.top, 10)
+                .sheet(isPresented: $signing) {
+                    PaperSignSheet(title: "Franchise documents", to: "The franchise register", note: "A lawyer writes the franchise agreement and the disclosure document for \(company.name). They are reviewed before you can sell units.",
+                                   fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")), wait: "after a review of some weeks", button: "Sign and send",
+                                   onSend: {
+                        switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "fran") }) {
+                        case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
+                        case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
+                        default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
+                        }
+                    }, onClose: { signing = false })
+                    .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
+                }
             } else {
                 launchForm(cur)
             }

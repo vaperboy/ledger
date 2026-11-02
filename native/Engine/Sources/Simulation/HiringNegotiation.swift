@@ -251,6 +251,7 @@ public extension GameEngine {
                             profitBonus: Double = 0) -> HireOutcome {
         guard let n0 = state.people[personID], let ctx = postContext(post, companyID: companyID, chainID: chainID) else { return .refused }
         if n0.employerID != 0 { return .taken }
+        if case .worker = post, let id = companyID, let co = state.company(id), let why = Workplaces.hireBlock(co, data: data) { return .termsRefused(why) }
         if let why = hireTermsProblem(post: post, companyID: companyID, personID: personID, terms: terms) { return .termsRefused(why) }
         let tf = hireTalkFactor(post, person: n0, terms: terms, ctx: ctx)
         let sig = Hiring.termsSignature(terms)

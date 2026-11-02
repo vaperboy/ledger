@@ -123,7 +123,7 @@ public enum Lawsuits {
         let cur = World(state: s, data: data).currency(co)
         let id = co.id
         if choice == 0 {
-            Incidents.loss(&s, companyID: id, amount: d["settle"].double, category: "liab", label: "Settlement: \(d["who"].string)", data: data)
+            Incidents.loss(&s, companyID: id, amount: d["settle"].double, category: "liab", label: "Settlement: \(d["who"].string)", data: data, wagesFirst: true)
             return ("Settled for \(cur.display(d["settle"].double)).", true)
         }
         Payments.companyPays(&s, companyID: id, amount: d["fee"].double, category: "oth", label: "Lawyer fees")

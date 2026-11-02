@@ -20,7 +20,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 feelGroup
-                decideGroup
                 savingGroup
                 gameGroup
             }
@@ -73,7 +72,7 @@ struct SettingsView: View {
     }
 
     private var savingGroup: some View {
-        group("Saving", footer: "The game saves itself every day, and keeps a backup every month. Imports keep your original file untouched.") {
+        group("Saving", footer: "Saved daily, with a monthly backup.") {
             Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: {
                 plainRow(Glyph.save, "Save now", chevron: true)
             }.buttonStyle(PressableStyle())

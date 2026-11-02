@@ -468,7 +468,6 @@ private struct BackedStartups: View {
                             }
                         }.padding(.vertical, 8)
                     }
-                    Text("The smallest cheque is \(cur.tidyShort(minimum)). Twenty percent or more brings a board seat, where you can help the team.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
                 }
             }
         }

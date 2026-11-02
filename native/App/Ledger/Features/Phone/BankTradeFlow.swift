@@ -63,10 +63,10 @@ struct BankAssetScreen: View {
                     .padding(.horizontal, 18).padding(.bottom, 40)
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.hidden).noSidewaysDrag()
             }
             .ledgerBackground()
-            .fullScreenCover(item: $side) { s in BankTradeFlow(quote: live, side: s) }
+            .fullScreenCover(item: $side) { s in BankTradeFlow(quote: live, side: s).pageArrive() }
         }
     }
 
@@ -125,7 +125,7 @@ struct BankTradeFlow: View {
                         .padding(.horizontal, 18).padding(.bottom, 40)
                         .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.hidden).noSidewaysDrag()
                 .scrollDismissesKeyboard(.interactively)
             }
             .ledgerBackground()

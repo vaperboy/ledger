@@ -1,15 +1,36 @@
 # What's new
-- Notifications: top banner removed; important info and decisions are popups
-- Daily short report popup; weekly, monthly and yearly reports are popups
-- Goals and missions: "Claim reward" button with reaction
-- Swipe back steps back one screen inside TechPro, AirStay and Atlas
-- TechPro: every item, sort by price, calendar sales including Black Friday
-- Atlas: cancel a policy in the app
-- AirStay: each listing has its own name and picture
-- Hours adjust automatically; burnout from 65 h; "Works here" box in Management
-- Manage: Equipment, Premises and Insurance rows moved to their apps
+- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects
+- Bank: the balance card and its buttons are only on the Account tab; screens no longer wiggle sideways in Group, Projects and Bank; full-page popups fade and scale in
+- Sales lists your own products and services (named for your company): tap one for a price slider with live, unrounded numbers, per-item discounts and how it is sold; lower prices raise demand; add a new product or service; Marketing is a popup; Pricing and How you sell are gone. Items can be listed for your other companies in TechPro, with the profit going to the selling company
+- Net-worth milestones (100k, 250k, 500k, 1M and on) and profit-streak awards (4, 8, 13, 26, 52 weeks) pop up as celebrations
+- TechPro store is a grid of product groups; opening one shows its suppliers as boxes, and every product has its own page
+- Money figures count up and flash green when they rise and red when they fall (home, group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
+- Swiping between tabs needs a longer, clearly sideways drag, so it no longer triggers by accident
+- Swipe sideways to change the tab in your Inbox and in a bank account
+- New game: you can pick an ambition at the start, or decide later; chains and franchises now need real things (profit, cash, reputation, open stores, documents) instead of waiting years; a settled lawsuit can no longer leave wages unpaid
+- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from
+- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed
+- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone
+- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas
+- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled
+- Team: Overview and a new Authority tab no longer repeat each other; Ventures lives in the Phone app and is linked from Group > Deals; Projects has four tabs
+- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth
+- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still
+- Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list
+- Manage > Licences: apply for the licences that new things to sell need
+- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens
+- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it
+- A company about to be force-sold now shows a see-through red alert first
+- Answered decisions show a result card: what you chose, which company, and what changed
+- Loans: banks also lend against what a business is worth, not only its profit
+- Settings: "How much I decide" removed. Payroll, replacing leavers and complaints follow who you hired; managers' spending limit grows with your net worth
+- Group > Dividends: dividends are never automatic; pay a share or let a holding collect
+- Team > Delegation: shows who handles payroll, hiring and complaints in each company; Inbox decisions show a level
+- TechPro: every item for sale to any company; tabs Store, Products, My items (with what is missing) and My orders
+- Starting a company buys and hires nothing; the start-up screen shows a recommended investment and takes only what is needed
+- Pricing: type the price per unit or hour; shops set a markup percent
+- Owner hours can go under 40; subscriptions have no sales (only a discount on the biggest plan); your own delivery company charges a fee
 
-# Missing / coming next
-- Own delivery company fee, typed prices per trade, chain and franchise steps
+# Coming next
+- Group, Team and Projects layouts, Inbox and Reports redesign
 - More photos for vehicles, premises and equipment
-- Not yet tested on device: expect rough edges

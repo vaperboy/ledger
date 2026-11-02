@@ -9,6 +9,8 @@ struct GamePopup<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var title: String
     var showsClose = true
+    /// False: only the popup's own button closes it (the daily report, so a player cannot tap through it).
+    var dismissOnBackdrop = true
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
     @State private var shown = false
@@ -17,7 +19,7 @@ struct GamePopup<Content: View>: View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
                 .contentShape(Rectangle())
-                .onTapGesture { onClose() }
+                .onTapGesture { if dismissOnBackdrop { onClose() } }
                 .accessibilityIdentifier("popup-backdrop")
             card
                 .padding(.horizontal, 22)

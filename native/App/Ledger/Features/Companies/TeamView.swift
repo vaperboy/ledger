@@ -17,7 +17,7 @@ import Simulation
 /// Every row opens the record on this tab's own navigation stack, so Back returns here. Pay, promotion and letting go stay in the company's
 /// Team section (one home); chain and group posts stay in Group and the chain's section.
 struct TeamView: View {
-    enum Tab: String, CaseIterable, Identifiable { case overview = "Overview", people = "People", delegation = "Delegation", vacancies = "Vacancies"; var id: String { rawValue } }
+    enum Tab: String, CaseIterable, Identifiable { case overview = "Overview", people = "People", authority = "Authority", vacancies = "Vacancies"; var id: String { rawValue } }
     enum PeopleFilter: String, CaseIterable, Identifiable { case all = "All", managers = "Managers", staff = "Staff", attention = "Needs attention"; var id: String { rawValue } }
 
     @EnvironmentObject var store: GameStore
@@ -40,12 +40,15 @@ struct TeamView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             header(o, e)
                             tabBar
-                            switch tab {
-                            case .overview: overview(o, e, alerts)
-                            case .people: people(o, e)
-                            case .delegation: delegation(o, e, alerts)
-                            case .vacancies: vacancies(o)
+                            VStack(alignment: .leading, spacing: 12) {
+                                switch tab {
+                                case .overview: overview(o, e, alerts)
+                                case .people: people(o, e)
+                                case .authority: delegation(o, e, alerts)
+                                case .vacancies: vacancies(o)
+                                }
                             }
+                            .segmentTransition(tab, order: Tab.allCases)
                         }
                         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                         .frame(maxWidth: 900).frame(maxWidth: .infinity)
@@ -75,14 +78,14 @@ struct TeamView: View {
         case .overview:
             subtitle = o.companies.isEmpty ? "No companies yet." : "\(staff.peopleText) in \(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(store.short(wages)) a month in wages"
         case .people: subtitle = "Everyone who works for you"
-        case .delegation: subtitle = "Who decides what"
+        case .authority: subtitle = "Who manages whom and who handles what"
         case .vacancies: subtitle = o.vacancies.isEmpty ? "No open posts" : "\(o.vacancies.count) open \(o.vacancies.count == 1 ? "post" : "posts")"
         }
         return HStack(spacing: 12) {
             IconCircle(glyph: Glyph.team, size: 44)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Team").font(.serifTitle(28)).foregroundStyle(Theme.ivory)
-                Text(subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                Text(subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2).moneyFlash(Double(wages))
             }
             .accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
@@ -149,7 +152,6 @@ struct TeamView: View {
             needYouList(o, e, alerts)
         } else {
             payrollNotes(alerts)
-            decidesTables(o, e, alerts, limit: 3)
             peopleTiles(o, e, alerts)
             activityList(o, e, alerts)
         }
@@ -341,7 +343,7 @@ struct TeamView: View {
     }
 
     private func badge(_ text: String) -> some View {
-        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).fixedSize()
+        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             .padding(.horizontal, 6).padding(.vertical, 1)
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }
@@ -359,16 +361,46 @@ struct TeamView: View {
     // MARK: Delegation (TeamC)
 
     @ViewBuilder private func delegation(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        payrollNotes(alerts)
         if o.companies.isEmpty {
             Text("No companies yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
         }
+        handledForYou(e)
         decidesTables(o, e, alerts, limit: nil)
-        if !o.companies.isEmpty {
-            Text("A manager or accountant approves routine payroll and spending up to the limit you set. Anything bigger always comes to you.")
+        performance(o, e)
+    }
+
+    /// Who takes the routine work in each company. It follows who is hired: nothing here is a setting.
+    @ViewBuilder private func handledForYou(_ e: GameEngine) -> some View {
+        let lines: [DelegationLine] = e.delegationLines()
+        if !lines.isEmpty {
+            let limit: (limit: Double, rate: Double) = e.delegatedSpendLimit()
+            sectionLabel("Handled for you")
+            ForEach(lines) { (l: DelegationLine) in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(l.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                        Spacer(minLength: 8)
+                        Text("Highest rank: " + l.top).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    }
+                    delegationRow("Routine payroll", l.payroll)
+                    delegationRow("Replacing people who leave", l.rehire)
+                    delegationRow("Routine complaints", l.complaints)
+                }
+                .padding(14).teamCard()
+            }
+            Text(limit.limit > 0
+                 ? "Managers spend up to about \(store.short(limit.limit)) without asking you; it grows with your net worth. Companies without a manager always ask."
+                 : "Hire a manager and routine decisions stop coming to you. Until then every spend and approval is yours.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryDim).fixedSize(horizontal: false, vertical: true)
         }
-        performance(o, e)
+    }
+
+    private func delegationRow(_ label: String, _ who: String) -> some View {
+        HStack {
+            Text(label).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Spacer(minLength: 8)
+            Text(who).font(.system(size: 13, weight: .medium)).foregroundStyle(who.hasPrefix("You") ? Theme.caution : Theme.ivory)
+        }
     }
 
     /// One "Who decides what" table per company, the ones that need you most first. On Overview only `limit` of them show, with a link to all.
@@ -381,7 +413,7 @@ struct TeamView: View {
             }
         }
         if let limit, lines.count > limit {
-            Button { Haptics.tap(); tab = .delegation } label: {
+            Button { Haptics.tap(); tab = .authority } label: {
                 Text("All \(lines.count) companies ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
             }.buttonStyle(PressableStyle())
         }

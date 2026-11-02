@@ -142,7 +142,7 @@ public enum StoreOrders {
 
     private static func price(_ s: GameState, companyID: Int, line: Line, data: GameData) -> Priced? {
         guard let co = s.company(companyID), let c = EquipmentMarket.ctx(s, co, data: data),
-              let e = c.bd.equipment.first(where: { $0.id == line.equipmentID }) else { return nil }
+              let e = c.bd.allEquipment.first(where: { $0.id == line.equipmentID }) else { return nil }
         let k = EquipmentMarket.kind(e, tradeID: c.bd.id, tables: c.tables)
         let cur = c.w.currency(co)
         switch line.kind {
@@ -191,7 +191,7 @@ public enum StoreOrders {
     }
 
     private static func usedStillListed(_ s: GameState, companyID: Int, equipmentID: String, listing: EquipmentMarket.UsedOffer, data: GameData) -> Bool {
-        let vehicle = s.company(companyID).flatMap { data.catalog[$0.type] }?.equipment.first { $0.id == equipmentID }?.vehicleModels != nil
+        let vehicle = s.company(companyID).flatMap { data.catalog[$0.type] }?.allEquipment.first { $0.id == equipmentID }?.vehicleModels != nil
         let list: [EquipmentMarket.UsedOffer] = vehicle
             ? EquipmentMarket.usedVehicles(s, companyID: companyID, equipmentID: equipmentID, data: data)
             : EquipmentMarket.usedEquipment(s, companyID: companyID, equipmentID: equipmentID, data: data)
@@ -234,9 +234,11 @@ public enum StoreOrders {
             }
         }
         var shipping = 0.0
-        if physicalGoods > 0 && delivery != .own {
+        if physicalGoods > 0 {
             let minimumFee = delivery == .express ? cur.scaledPrice(70) : cur.scaledPrice(25)
             shipping = cur.tidy(max(minimumFee, shipPercent))
+            // Your own delivery company charges a fee (revenue for it) a little under the open market, and none to itself.
+            if delivery == .own { shipping = ownCarrier(s, data: data)?.id == companyID ? 0 : cur.tidy(shipping * 0.7) }
         }
         let goods = out.reduce(0) { $0 + $1.goods }
         let now = out.reduce(0) { $0 + $1.chargeNow } + shipping
@@ -279,6 +281,9 @@ public enum StoreOrders {
         let goodsNow = q.lines.reduce(0) { $0 + $1.chargeNow }
         if goodsNow > 0 { Payments.companyPays(&s, companyID: companyID, amount: goodsNow, category: nil, label: "Order \(number)") }
         if q.shipping > 0 { Payments.companyPays(&s, companyID: companyID, amount: q.shipping, category: "oth", label: "Shipping: order \(number)") }
+        if q.shipping > 0, delivery == .own, let own = ownCarrier(s, data: data) {
+            Payments.companyReceives(&s, companyID: own.id, amount: q.shipping, category: "rev", label: "Delivery fee: order \(number)")
+        }
         let order: JSONValue = .object(["no": .string(number), "w": .number(Double(s.week)), "d": .number(Double(s.day)), "del": .string(delivery.rawValue), "car": .string(q.carrier),
                                         "goods": .number(q.goods), "ship": .number(q.shipping), "paid": .number(q.chargeNow), "rc": .number(Double(receiptCompanyID)),
                                         "eta": .number(Double(day0 + q.days)), "lines": .array(rows), "st": "transit", "dl": .bool(true)])

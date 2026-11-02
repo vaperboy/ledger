@@ -171,7 +171,6 @@ struct WorldRecordsView: View {
         if list.isEmpty {
             NoteCard(text: "No crisis is waiting. Warnings and decisions that need you quickly collect here.", glyph: Glyph.check)
         } else {
-            Text("\(list.count) waiting, soonest deadline first. Tap one to answer it in the Inbox.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
             Card(padding: 14) {
                 VStack(spacing: 0) {
                     ForEach(Array(list.enumerated()), id: \.element.id) { i, m in

@@ -19,6 +19,8 @@ public struct TradePickerRow: Identifiable, Equatable, Sendable {
     public var sector: String
     /// The exact start-up cost in this city at the recommended size; nil when the trade cannot be started here (`blocked` says why).
     public var startUpCost: Double?
+    /// The least that must be paid to start (papers, place, registration); `startUpCost` is the recommended investment.
+    public var minimumCost: Double? = nil
     /// How many customers the trade can expect in this city against an average place: High, Medium or Low.
     public var demand: DemandLevel
     /// People a typical company of this trade employs besides the owner, at the smallest size and at the size this city carries.
@@ -58,6 +60,11 @@ public struct MonthlyFixedCostEstimate: Equatable, Sendable {
 public extension GameEngine {
     /// The trade picker for a city (the player's home city and country unless given).
     func tradePickerRows(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
+        readMemo.value(stateStamp, "tradePickerRows|\(cityID ?? "-")|\(countryCode ?? "-")") { tradePickerRowsFresh(cityID: cityID, countryCode: countryCode) }
+    }
+
+    /// The same list worked out again from scratch (about 70 trades priced); `tradePickerRows` keeps it until the game state changes.
+    func tradePickerRowsFresh(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
         let code = countryCode ?? state.homeCountryCode
         let country = data.countries.resolve(code, orHome: state.homeCountryCode)
         let city = country.city(cityID ?? state.player.cityID) ?? country.cities[0]
@@ -65,7 +72,7 @@ public extension GameEngine {
         return TradeAffordability.rows(state: state, data: data, cityID: city.id, countryCode: country.code).compactMap { a in
             guard let bd = data.catalog[a.tradeID] else { return nil }
             let low = Self.employees(bd, size: bd.minSize), high = Self.employees(bd, size: CompanySetup.recommendedSize(bd, city: city))
-            return TradePickerRow(tradeID: bd.id, name: bd.name, sector: bd.category, startUpCost: a.cost,
+            return TradePickerRow(tradeID: bd.id, name: bd.name, sector: bd.category, startUpCost: a.cost, minimumCost: a.minimum,
                                   demand: CityMarket.demandLevel(trade: bd.id, country: country, city: city, tables: tables),
                                   staffMin: min(low, high), staffMax: max(low, high), blocked: a.blocked, isFunded: a.isFunded)
         }

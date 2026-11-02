@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import GameCore
 import Countries
 import SaveSystem
+import Businesses
 import Simulation
 import Finance
 
@@ -23,6 +24,7 @@ struct StartView: View {
     @State private var pending: PendingAction?
     @State private var story: LifeStory = .loan
     @State private var familyCityID = ""
+    @State private var ambition: String?   // nil: decide later (never required)
     @State private var previews: [LifeStory: StoryPreview] = [:]
     private let countries: [Country] = ((try? CountryBook.bundled().countries) ?? []).sorted { $0.name < $1.name }
 
@@ -48,7 +50,7 @@ struct StartView: View {
 
     private func begin() {
         let n = name.trimmingCharacters(in: .whitespaces)
-        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil) }
+        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil, ambition: ambition) }
     }
 
     var body: some View {
@@ -169,11 +171,22 @@ struct StartView: View {
                     .font(.system(size: 12)).foregroundStyle(Theme.loss)
             }
         }
-        if !countryCode.isEmpty { storyPicker }
+        if !countryCode.isEmpty { storyPicker; ambitionPicker }
         QuietButton(title: "Begin", fullWidth: true) { begin() }
             .disabled(countryCode.isEmpty).opacity(countryCode.isEmpty ? 0.4 : 1)
         if store.hasSavedGame {
             Text("Replaces your saved game; you will be asked first.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
+    }
+
+    /// The ambition is picked here, optionally: "Decide later" skips it with no penalty and it can be changed freely in the first weeks.
+    private var ambitionPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Your ambition (optional)").capsLabel().padding(.horizontal, 2)
+            ForEach(Ambitions.paths) { p in
+                ChoiceCard(title: p.name, subtitle: p.detail, selected: ambition == p.id) { ambition = p.id }
+            }
+            ChoiceCard(title: "Decide later", subtitle: "Nothing is lost. Missions and ambitions are optional.", selected: ambition == nil) { ambition = nil }
         }
     }
 

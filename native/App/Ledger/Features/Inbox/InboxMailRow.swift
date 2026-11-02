@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Simulation
+import Businesses
 
 extension Message {
     /// The sender's icon circle in the Inbox: payroll from the bank, people matters from a person, otherwise by urgency and tone.
@@ -39,6 +40,11 @@ struct InboxMailRow: View {
     var openDetail: () -> Void
 
     private var open: Bool { message.status == "open" }
+    /// "Level 3 \u{00B7} Director": how serious it is and who would take it, shown on a decision that reached the owner.
+    private var levelText: String {
+        let l: Int = store.engine?.severityLevel(of: message) ?? Delegation.level(of: message)
+        return "Level \(l) \u{00B7} " + (Delegation.Rank(rawValue: l)?.title ?? "You")
+    }
     private var unread: Bool { open || !message.isRead }
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
@@ -76,7 +82,13 @@ struct InboxMailRow: View {
             Text(text(message.title)).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
                 .foregroundStyle(unread ? P.ink : P.inkSoft).lineLimit(2).multilineTextAlignment(.leading)
             Text(text(message.body)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
-            if open { deadline }
+            if !message.handledBy.isEmpty {
+                Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.gain)
+            }
+            if open {
+                Text(levelText).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.caution)
+                deadline
+            }
         }
     }
 

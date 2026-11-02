@@ -361,7 +361,6 @@ struct HeadOfficeSection: View {
 
     @ViewBuilder private var analyst: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Sales trend, capacity, the weakest link and an outlook. A copy goes to the Inbox.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
             ForEach(Array(report.prefix(8).enumerated()), id: \.offset) { (n: Int, l: ManagerModel.AnalystLine) in
                 CardLine()
                 VStack(alignment: .leading, spacing: 2) {

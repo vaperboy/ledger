@@ -104,6 +104,7 @@ final class AutoHireTests: XCTestCase {
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open
+                s.companies[i].managerID = 0   // only a manager replaces people who leave (owner decision, 2 Nov)
                 if let m = s.companies[i].staff.last {
                     s.companies[i].staff.removeLast()
                     if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p }
@@ -132,6 +133,7 @@ final class AutoHireTests: XCTestCase {
                     let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
                     Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 3)
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
+                    if let i = s.companyIndex(id) { s.companies[i].managerID = 0 }   // a manager replaces leavers
                 }
                 var seen = Set(e.state.company(id)!.staff.map { $0.id })
                 for _ in 0..<(104 * 7) {

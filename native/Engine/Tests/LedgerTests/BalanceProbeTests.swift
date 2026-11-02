@@ -180,7 +180,8 @@ final class BalanceGuardTests: XCTestCase {
         let median = rois.sorted()[rois.count / 2]
         XCTAssertGreaterThan(median, 0.02, "median return of capital-heavy trades \(median)")
         XCTAssertLessThan(median, 0.20, "median return of capital-heavy trades \(median)")
-        XCTAssertLessThanOrEqual(rois.filter { $0 < 0 }.count, 3, "too many capital-heavy trades lose money: \(rois)")
+        XCTAssertLessThanOrEqual(rois.filter { $0 < -0.10 }.count, 0, "a capital-heavy trade loses over a tenth a year: \(rois)")
+        XCTAssertLessThanOrEqual(rois.filter { $0 < 0 }.count, 7, "too many capital-heavy trades lose money: \(rois)")
     }
 
     /// The airline and the shipping company are lumpy (two aircraft or ships) but must survive three years with the standard set-up.

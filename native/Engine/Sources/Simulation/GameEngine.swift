@@ -22,11 +22,17 @@ import Events
 ///                                5. companies that cannot pay are declared bankrupt
 ///                                6. net worth history, bank checks, game over
 public struct GameEngine {
-    public private(set) var state: GameState
+    public private(set) var state: GameState { didSet { stateStamp = ReadMemo.nextStamp() } }
+    /// Changes whenever `state` does (see `ReadMemo`).
+    var stateStamp: UInt64 = ReadMemo.nextStamp()
+    let readMemo = ReadMemo()
     public let data: GameData
     public let context: FinanceContext
     public let events: EventLibrary
     public let marketing: MarketingTables
+    /// The TechPro Store lists every item in the game for every company: working out all those prices is the slow part of a screen, so the
+    /// result is kept per company until the day, the company's cash or what it owns changes (a reference, shared by the copies of the engine).
+    let needsMemo = NeedsMemo()
 
     public init(state: GameState, data: GameData, events: EventLibrary, marketing: MarketingTables) {
         var state = state
@@ -139,6 +145,7 @@ public struct GameEngine {
         let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
             if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
+            if m.actionID == PromiseReminders.action { PromiseReminders.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
@@ -205,11 +212,15 @@ public struct GameEngine {
             completed = true
         }
         recordDay()
+        checkMilestones(weekClosed: completed)
+        routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }
 
     mutating func tradeAndPay(day: Int) {
+        JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
+        Agency.runDay(&state, data: data)
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)
@@ -350,6 +361,7 @@ public struct GameEngine {
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
         ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
+        Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         for i in state.companies.indices {
             let c = state.companies[i]
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {

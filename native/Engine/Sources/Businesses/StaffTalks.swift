@@ -50,6 +50,11 @@ public enum StaffTalks {
 
     // MARK: Answering
 
+    /// A raise given to keep a promise (the hiring rebuild's "Keep it now" on a promise reminder): the same final step as the contract talk's.
+    public static func keptPromiseRaise(_ s: inout GameState, companyIndex i: Int, staffID: Int, percent: Double, data: GameData) {
+        raise(&s, companyIndex: i, staffID: staffID, percent: percent, data: data)
+    }
+
     /// Give a raise. Original: `raiseStaff`.
     public static func raise(_ s: inout GameState, companyIndex i: Int, staffID: Int, percent: Double, data: GameData) {
         guard let k = s.companies[i].staff.firstIndex(where: { $0.id == staffID }), let n = s.people[staffID] else { return }

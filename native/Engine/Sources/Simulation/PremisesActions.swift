@@ -33,7 +33,7 @@ public extension GameEngine {
 
     /// Equipment each person needs: the rule and how many the company needs now (nil if the item is not tied to people).
     func personalEquipmentNeed(companyID: Int, equipmentID: String) -> (perText: String, needed: Double)? {
-        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.equipment.first(where: { $0.id == equipmentID }),
+        guard let co = state.company(companyID), let bd = data.catalog[co.type], let e = bd.allEquipment.first(where: { $0.id == equipmentID }),
               let rule = PersonalEquipment.rule(bd, e, tables: data.catalog.tables) else { return nil }
         return (PersonalEquipment.perText(rule, tables: data.catalog.tables), PersonalEquipment.needed(co, bd, e, tables: data.catalog.tables))
     }

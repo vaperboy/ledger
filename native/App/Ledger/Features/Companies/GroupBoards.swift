@@ -4,31 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// Group > Boards: every board that sits over a chain or a company, decisions first, each opening its own page. Owners, dividends and
-/// buy-backs stay in each company's Money; stakes in other groups and the big-meeting offer stay under Money, Invest. Logic: `ManagerModel` boards.
-struct BoardsGroupSection: View {
-    var engine: GameEngine
-    var openInvest: () -> Void
-
-    var body: some View {
-        let keys: [String] = engine.boardKeys.filter { engine.boardIsActive(key: $0) }
-        let waiting: [String: Int] = Dictionary(uniqueKeysWithValues: keys.map { ($0, engine.boardOpenDecisions(key: $0)) })
-        let ordered: [String] = keys.sorted { (waiting[$0] ?? 0, $0.hasPrefix("ch:") ? 1 : 0) > (waiting[$1] ?? 0, $1.hasPrefix("ch:") ? 1 : 0) }
-        let total: Int = waiting.values.reduce(0, +)
-        MoreBlock(title: "Boards", card: false, trailing: { RedBubble(count: total, size: .small) }) {
-            if keys.isEmpty {
-                NoteCard(text: "A board forms once you register a chain or somebody else owns part of a company.")
-            }
-            ForEach(ordered, id: \.self) { key in
-                NavigationLink { BoardView(key: key) } label: { BoardLinkRow(engine: engine, key: key) }.buttonStyle(PressableStyle())
-            }
-            Button(action: openInvest) {
-                CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
-            }.buttonStyle(PressableStyle())
-        }
-    }
-}
-
 /// One board as a row: whose board, seats, and what waits for a decision (a red count).
 struct BoardLinkRow: View {
     var engine: GameEngine
@@ -71,7 +46,7 @@ struct BoardView: View {
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .ledgerBackground()
             .appScreen(title: engine.boardName(key: key), subtitle: key.hasPrefix("ch:") ? "Board of the chain · \(companies.count) \(companies.count == 1 ? "store" : "stores")" : "Board of the company", tab: .group)
             .confirmAction($pending)
@@ -314,7 +289,7 @@ struct BoardView: View {
                         Button(r.title) {
                             let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
                             if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
-                        }.buttonStyle(TinyButtonStyle()).fixedSize()
+                        }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
                     }
                 }
             }
@@ -328,7 +303,7 @@ struct BoardView: View {
             Spacer(minLength: 8)
             Button("Seat · \(store.short(fee)) a month") {
                 pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seat(p, fee: fee) }
-            }.buttonStyle(TinyButtonStyle()).fixedSize()
+            }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 

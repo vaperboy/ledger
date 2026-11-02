@@ -56,6 +56,7 @@ struct FranchisesView: View {
 struct FranchiseBrandRow: View {
     @EnvironmentObject var store: GameStore
     var brand: FranchiseBrands.Brand
+    @State private var signing = false
 
     var body: some View {
         if let e = store.engine { row(e, brand, e.homeCurrency) }
@@ -93,13 +94,19 @@ struct FranchiseBrandRow: View {
             if st == "refused" { statusLine("They turned you down for now.", Theme.loss) }
             else if !sx.ok { statusLine(sx.why, Theme.ivoryFaint) }
             if sx.ok {
-                Button("Apply") {
-                    switch store.act({ $0.applyToFranchiseBrand(b.id) }) {
-                    case .ok?: Haptics.success(); store.show("Application sent. Expect an answer in a week or three.", tone: "good")
-                    case .closed(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                    default: break
+                Button("Apply") { signing = true }.buttonStyle(QuietButtonStyle())
+                    .sheet(isPresented: $signing) {
+                        PaperSignSheet(title: "Application to \(b.name)", to: b.name, note: "You apply to run a unit under this brand. The brand reviews you, then meets you to agree the terms.",
+                                       fee: "None to apply", wait: "in about a week or three", button: "Sign and apply",
+                                       onSend: {
+                            switch store.act({ $0.applyToFranchiseBrand(b.id) }) {
+                            case .ok?: Haptics.success(); store.show("Application sent. Expect an answer in a week or three.", tone: "good")
+                            case .closed(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                            default: break
+                            }
+                        }, onClose: { signing = false })
+                        .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
                     }
-                }.buttonStyle(QuietButtonStyle())
             }
         }
     }

@@ -164,22 +164,22 @@ final class FinanceOverviewTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Valuation.companyValue(co, state: e.state, trades: e.data.catalog), 0, "a limited company is never worth less than nothing")
     }
 
-    func testPayrollIsApprovedByPolicyWhenThereIsMoney() throws {
-        func asks(autoPayroll: Bool) throws -> Int {
+    func testPayrollIsApprovedByItselfOnlyWithAnAccountantOrAManager() throws {
+        func asks(accountant: Bool) throws -> Int {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
             e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-            var p = ManagementPolicy(); p.autoPayroll = autoPayroll; e.setPolicy(p)
-            guard case .success = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { XCTFail(); return 0 }
+            guard case .success(let cid) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { XCTFail(); return 0 }
+            e.update { s, d, _ in if accountant { CompanySetup.chooseAccountant(&s, companyID: cid, accountantID: nil, data: d) } }
             for _ in 0..<(16 * 7) { e.nextDay() }
             return e.state.inbox.filter { $0.actionID.hasPrefix("pay29") }.count
         }
-        XCTAssertEqual(try asks(autoPayroll: true), 0, "with the default policy nobody is asked about routine payroll the company can pay")
-        XCTAssertGreaterThan(try asks(autoPayroll: false), 0, "with the policy off the owner is asked")
+        XCTAssertEqual(try asks(accountant: true), 0, "with an accountant nobody is asked about routine payroll the company can pay")
+        XCTAssertGreaterThan(try asks(accountant: false), 0, "with nobody to do it the owner gets a reminder")
     }
 }
 
 final class AutoDividendTests: XCTestCase {
-    func testSurplusIsPaidOutOnlyWhenThePolicySaysSo() throws {
+    func testDividendsAreNeverAutomatic() throws {
         func paid(weeks: Double) throws -> Double {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
             e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
@@ -190,7 +190,7 @@ final class AutoDividendTests: XCTestCase {
             return e.state.company(id)?.distributed ?? 0
         }
         XCTAssertEqual(try paid(weeks: 0), 0, "never by default")
-        XCTAssertGreaterThan(try paid(weeks: 4), 0, "a company sitting on spare cash pays it out")
+        XCTAssertEqual(try paid(weeks: 4), 0, "dividends are never automatic, whatever an old save says")
     }
 }
 

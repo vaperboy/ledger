@@ -50,10 +50,10 @@ final class CompanyScreensTests: XCTestCase {
         guard case .success(let bought) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, form: .limited, size: 1, name: nil, pick: .init(listingIndex: 1, buy: true), fundWith: 200_000_000) else { return XCTFail("not started") }
         XCTAssertEqual(bought.premises, .ok)
         XCTAssertTrue(e.state.company(bought.companyID)!.value("prem")["owned"].bool)
-        // No pick behaves like the standard start: quick set-up rents a place.
+        // No pick: nothing is rented by itself (owner decision, 2 Nov); the player chooses the place in AirStay.
         guard case .success(let std) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, form: .limited, size: 1, name: nil, pick: nil, fundWith: 100_000_000) else { return XCTFail("not started") }
         XCTAssertNil(std.premises)
-        XCTAssertGreaterThan(e.state.company(std.companyID)!.value("prem")["m2"].double, 0)
+        XCTAssertTrue(e.state.company(std.companyID)!.value("prem").isNull)
     }
 
     func testInsuranceNeedsAnInsurerAndAdvisersCanBeHired() throws {
@@ -64,11 +64,12 @@ final class CompanyScreensTests: XCTestCase {
         XCTAssertNil(o.insurer)
         XCTAssertEqual(o.policies.count, 6)
         XCTAssertNotNil(o.accountant)
-        XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .needInsurer)
+        // Atlas Insurance takes every policy: no insurer has to be chosen first (owner decision, 2 Nov).
+        XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .done)
+        XCTAssertEqual(e.coverageOverview(companyID: id)?.insurer?.name, "Atlas Insurance")
         let insurers = e.adviserChoices(companyID: id, kind: .insurer)
         XCTAssertFalse(insurers.isEmpty)
         XCTAssertEqual(e.chooseAdviser(companyID: id, kind: .insurer, providerID: insurers[0].id), .done)
-        XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .done)
         o = e.coverageOverview(companyID: id)!
         XCTAssertEqual(o.insurer?.id, insurers[0].id)
         XCTAssertEqual(o.activeCount, 1)

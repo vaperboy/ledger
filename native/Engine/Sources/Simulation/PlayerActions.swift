@@ -55,7 +55,7 @@ public extension GameEngine {
             if works {
                 s.companies[i].raw["ownOut"] = nil
                 let room = max(0, OwnerHours.weeklyCap - CapacityModel.ownerHoursCommitted(s, except: companyID))
-                s.companies[i].ownerHours = min(OwnerHours.floor, room)
+                s.companies[i].ownerHours = min(40, room)
             } else {
                 s.companies[i].set("ownOut", true)
                 s.companies[i].ownerHours = 0
@@ -236,7 +236,8 @@ public extension GameEngine {
     }
 
     func loanOffer(kind: String, amount: Double, companyID: Int?) -> LoanOffer {
-        Banking.offer(kind: kind, amount: amount, company: companyID.flatMap { state.company($0) }, state: state, netWorth: netWorth.total, collateral: Luxury.collateral(state), context: context)
+        Banking.offer(kind: kind, amount: amount, company: companyID.flatMap { state.company($0) }, state: state, netWorth: netWorth.total, collateral: Luxury.collateral(state),
+                       companyValue: companyID.flatMap { state.company($0) }.map { Valuation.companyValue($0, state: state, trades: data.catalog) }, context: context)
     }
 
     mutating func repayLoan(id: Int, amount: Double) -> Bool {
