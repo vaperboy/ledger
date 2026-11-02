@@ -56,7 +56,7 @@ public enum Delegation {
     public static func level(of m: Message, netWorth nw: Double = 0) -> Int {
         let kind = m.value("data")["kind"].string
         var base: Int
-        if m.kind != "ask" || m.status != "open" { return m.tone == "bad" ? 3 : 1 }
+        if !(m.kind == "ask" || m.kind == "decision") || m.status != "open" { return m.tone == "bad" ? 3 : 1 }
         if m.actionID.hasPrefix("pay29") { return 1 }
         if m.actionID == "staffx" || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
         else if kind == "exit" { return 5 }

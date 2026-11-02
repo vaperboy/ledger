@@ -195,6 +195,7 @@ struct DailyReportPopup: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Daily report").capsLabel()
                 moneyLines
+                section("Handled for you", Array(digest.handled.prefix(3)), tint: Theme.gold)
                 section("Went well", wentWell, tint: Theme.gain)
                 section("Needs a look", digest.staffMessages, tint: Theme.caution)
                 if digest.decisionsOpen > 0 {

@@ -17,7 +17,7 @@ import Simulation
 /// Every row opens the record on this tab's own navigation stack, so Back returns here. Pay, promotion and letting go stay in the company's
 /// Team section (one home); chain and group posts stay in Group and the chain's section.
 struct TeamView: View {
-    enum Tab: String, CaseIterable, Identifiable { case overview = "Overview", people = "People", delegation = "Delegation", vacancies = "Vacancies"; var id: String { rawValue } }
+    enum Tab: String, CaseIterable, Identifiable { case overview = "Overview", people = "People", authority = "Authority", vacancies = "Vacancies"; var id: String { rawValue } }
     enum PeopleFilter: String, CaseIterable, Identifiable { case all = "All", managers = "Managers", staff = "Staff", attention = "Needs attention"; var id: String { rawValue } }
 
     @EnvironmentObject var store: GameStore
@@ -43,7 +43,7 @@ struct TeamView: View {
                             switch tab {
                             case .overview: overview(o, e, alerts)
                             case .people: people(o, e)
-                            case .delegation: delegation(o, e, alerts)
+                            case .authority: delegation(o, e, alerts)
                             case .vacancies: vacancies(o)
                             }
                         }
@@ -75,7 +75,7 @@ struct TeamView: View {
         case .overview:
             subtitle = o.companies.isEmpty ? "No companies yet." : "\(staff.peopleText) in \(o.companies.count) \(o.companies.count == 1 ? "company" : "companies") · \(store.short(wages)) a month in wages"
         case .people: subtitle = "Everyone who works for you"
-        case .delegation: subtitle = "Who decides what"
+        case .authority: subtitle = "Who manages whom and who handles what"
         case .vacancies: subtitle = o.vacancies.isEmpty ? "No open posts" : "\(o.vacancies.count) open \(o.vacancies.count == 1 ? "post" : "posts")"
         }
         return HStack(spacing: 12) {
@@ -149,7 +149,6 @@ struct TeamView: View {
             needYouList(o, e, alerts)
         } else {
             payrollNotes(alerts)
-            decidesTables(o, e, alerts, limit: 3)
             peopleTiles(o, e, alerts)
             activityList(o, e, alerts)
         }
@@ -359,7 +358,6 @@ struct TeamView: View {
     // MARK: Delegation (TeamC)
 
     @ViewBuilder private func delegation(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
-        payrollNotes(alerts)
         if o.companies.isEmpty {
             Text("No companies yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
         }
@@ -416,7 +414,7 @@ struct TeamView: View {
             }
         }
         if let limit, lines.count > limit {
-            Button { Haptics.tap(); tab = .delegation } label: {
+            Button { Haptics.tap(); tab = .authority } label: {
                 Text("All \(lines.count) companies ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
             }.buttonStyle(PressableStyle())
         }

@@ -96,9 +96,11 @@ public extension GameEngine {
         let good: [String] = fresh.filter { $0.tone == "good" }.map { $0.title }
         let asks: [String] = fresh.filter { $0.status == "open" }.map { $0.title }
         let bad: [String] = fresh.filter { $0.status != "open" && $0.tone == "bad" }.map { $0.title }
-        return DailyDigest(dateLabel: GameCalendar.dateString(week: state.week, dayOffset: state.day), sales: sales, revenue: revenue,
-                           bestCompany: live.count > 1 ? best?.name : nil, bestSales: best?.units ?? 0,
-                           wentWell: Array(good.prefix(2)), staffMessages: Array((asks + bad).prefix(3)), decisionsOpen: openDecisions.count)
+        var digest = DailyDigest(dateLabel: GameCalendar.dateString(week: state.week, dayOffset: state.day), sales: sales, revenue: revenue,
+                                 bestCompany: live.count > 1 ? best?.name : nil, bestSales: best?.units ?? 0,
+                                 wentWell: Array(good.prefix(2)), staffMessages: Array((asks + bad).prefix(3)), decisionsOpen: openDecisions.count)
+        digest.handled = fresh.filter { !$0.handledBy.isEmpty }.map { "\($0.handledBy): \($0.title)" }
+        return digest
     }
 }
 
@@ -119,5 +121,7 @@ public struct DailyDigest: Equatable, Sendable {
     /// What the day did to the owner's money: filled by the app from the day history (nil when there is no history yet).
     public var cashChange: Double? = nil
     public var netWorthChange: Double? = nil
+    /// Decisions a hired rank took for the owner today ("Mia, manager: Replace the oven?").
+    public var handled: [String] = []
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }

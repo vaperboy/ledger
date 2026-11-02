@@ -1,4 +1,6 @@
 # What's new
+- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled
+- Team: Overview and a new Authority tab no longer repeat each other; Ventures lives in the Phone app and is linked from Group > Deals; Projects has four tabs
 - Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth
 - Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still
 - Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list

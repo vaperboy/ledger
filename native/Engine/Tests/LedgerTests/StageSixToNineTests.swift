@@ -94,4 +94,30 @@ final class StageSixToNineTests: XCTestCase {
         for _ in 0..<(30 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
         XCTAssertEqual(e.state.company(id)?.distributed ?? 0, 0, "nothing is paid without an answer")
     }
+
+    func testAManagerTakesASmallDecisionAndTheOwnerKeepsTheRest() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 26)
+        let id = try open(&e, "webdev")
+        func post() -> [Message] {
+            e.update { s, _, _ in
+                s.addMessage(kind: "decision", from: "Staff", title: "Fix the printer?", body: "It broke.", companyID: id, tone: "n", status: "open",
+                             options: [.option("Fix it", "", effects: ["cash": -1000]), .option("Leave it", "", effects: [:])])
+            }
+            return e.state.inbox.filter { $0.status == "open" && $0.title == "Fix the printer?" }
+        }
+        // no manager: it stays with the owner
+        XCTAssertEqual(e.routeFreshDecisions(post()), 0)
+        XCTAssertFalse(e.openDecisions.isEmpty)
+        // with a manager and a small matter against a large net worth: the manager decides
+        e.update { s, _, _ in
+            Ledger.move(&s, .me, 900_000_000, why: "Test funds")
+            if let i = s.companyIndex(id) { s.companies[i].managerID = 0 }
+        }
+        let fresh = post()
+        XCTAssertEqual(e.routeFreshDecisions(fresh), 1)
+        let done = try XCTUnwrap(e.state.inbox.first { $0.id == fresh[0].id })
+        XCTAssertEqual(done.status, "done")
+        XCTAssertFalse(done.handledBy.isEmpty)
+        XCTAssertEqual(done.int("pick"), 1, "the manager takes the option that costs nothing")
+    }
 }

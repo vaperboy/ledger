@@ -7,7 +7,7 @@ import Simulation
 /// things to start), Finished, Ventures. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
 /// (see `ProjectsTabs.swift`). Every company's own Projects section stays reachable from the cards, tender details and the company list.
 struct ProjectsView: View {
-    enum Part: String, CaseIterable, Hashable { case running = "Running", timeline = "Timeline", bids = "Bids and offers", finished = "Finished", ventures = "Ventures" }
+    enum Part: String, CaseIterable, Hashable { case running = "Running", timeline = "Timeline", bids = "Bids and offers", finished = "Finished" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .running
 
@@ -24,13 +24,8 @@ struct ProjectsView: View {
                         switch part {
                         case .running: ProjectsRunningTab(engine: e, rows: rows, running: running)
                         case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
-                        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { part = .ventures })
+                        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { store.openApp(.ventures) })
                         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
-                        case .ventures:
-                            VenturesContent()
-                            Button { Haptics.tap(); store.openApp(.ventures) } label: {
-                                ProjectCardRow(title: "Open Ventures in Phone", sub: "The same startups, funds and stakes, as an app.")
-                            }.buttonStyle(PressableStyle())
                         }
                     }
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 40)

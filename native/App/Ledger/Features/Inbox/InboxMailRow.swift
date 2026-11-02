@@ -82,6 +82,9 @@ struct InboxMailRow: View {
             Text(text(message.title)).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
                 .foregroundStyle(unread ? P.ink : P.inkSoft).lineLimit(2).multilineTextAlignment(.leading)
             Text(text(message.body)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
+            if !message.handledBy.isEmpty {
+                Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.gain)
+            }
             if open {
                 Text(levelText).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.caution)
                 deadline

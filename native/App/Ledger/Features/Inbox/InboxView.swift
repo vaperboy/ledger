@@ -8,9 +8,10 @@ import Countries
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
 struct InboxView: View {
     private var P: OutsidePalette { .game }
-    enum Tab: String, CaseIterable, Hashable { case all = "All", decisions = "Decisions", risks = "Risks", updates = "Updates" }
+    /// Needs you: open decisions; Handled: what a hired rank decided for you; Risks: bad news; All: everything.
+    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", handled = "Handled", risks = "Risks", all = "All" }
     @EnvironmentObject var store: GameStore
-    @State private var tab: Tab = .all
+    @State private var tab: Tab = .decisions
     @State private var query = ""
     /// nil = every company; 0 = messages about the group or you personally
     @State private var companyFilter: Int? = nil
@@ -39,7 +40,7 @@ struct InboxView: View {
         case .all: return true
         case .decisions: return m.status == "open"
         case .risks: return m.tone == "bad"
-        case .updates: return m.status != "open" && m.tone != "bad"
+        case .handled: return !m.handledBy.isEmpty
         }
     }
 
@@ -357,7 +358,7 @@ struct InboxView: View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
-            : tab == .decisions ? "No decision is waiting for you." : "Nothing under \(tab.rawValue.lowercased())."
+            : tab == .decisions ? "Nothing needs you right now." : tab == .handled ? "Nothing has been handled for you yet." : "Nothing under \(tab.rawValue.lowercased())."
         return VStack(spacing: 8) {
             IconCircle(glyph: tab == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
             Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)

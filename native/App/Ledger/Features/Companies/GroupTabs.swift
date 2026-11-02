@@ -645,6 +645,9 @@ struct GroupDealsTab: View {
             VStack(alignment: .leading, spacing: 6) {
                 GroupCaps(text: "Group deals")
                 HostingSection(engine: engine)
+                Button { Haptics.tap(); store.openApp(.ventures) } label: {
+                    CardRow(glyph: Glyph.invest, title: "Ventures", subtitle: "Startups you founded, funds and stakes in other businesses (Phone app)")
+                }.buttonStyle(PressableStyle())
                 if !engine.knownSuppliers.isEmpty {
                     Button { Haptics.tap(); openMore(.office) } label: {
                         CardRow(glyph: Glyph.bank, title: "Supplier deals for the whole group", subtitle: "\(engine.knownSuppliers.count) known \(engine.knownSuppliers.count == 1 ? "supplier" : "suppliers") · under Group office")
@@ -690,7 +693,7 @@ struct GroupMoreTab: View {
                     Button { pick(.office) } label: { Text("Open Group office ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36) }.buttonStyle(PressableStyle())
                 }
             case .boards:
-                BoardsGroupSection(engine: engine) { store.openApp(.bank) }
+                GroupBoardTab(engine: engine, openMore: pick)
             case .rivals:
                 if live.contains(where: { $0.status == .open }) {
                     Button { Haptics.tap(); store.openMarket() } label: {
