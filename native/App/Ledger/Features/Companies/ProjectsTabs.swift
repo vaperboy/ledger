@@ -120,16 +120,11 @@ struct ProjectsRunningTab: View {
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
             }
             VStack(spacing: 4) {
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(hex: 0x26272A))
-                        Capsule().fill(Theme.gold).frame(width: g.size.width * frac)
-                    }
-                }.frame(height: 5)
+                OrgProgressBar(fraction: frac, milestones: done)
                 HStack {
-                    Text("\(done) of \(l.stages.count) milestones")
+                    Text("\(done) of \(l.stages.count) milestones").orgTextSwap(done).orgPulse(done)
                     Spacer(minLength: 8)
-                    Text(next).lineLimit(1)
+                    Text(next).lineLimit(1).orgTextSwap(next)
                 }.font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
             }
             ProjectFigures(items: [

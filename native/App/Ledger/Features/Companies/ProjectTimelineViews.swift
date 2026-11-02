@@ -61,7 +61,7 @@ struct ProjectStageDots: View {
                 }
             }
             if let cur = stages.first(where: { $0.state == .current }) {
-                Text(cur.name).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted).padding(.leading, 4)
+                Text(cur.name).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted).padding(.leading, 4).orgTextSwap(cur.name)
             } else if stages.allSatisfy({ $0.state == .done }) {
                 Text("Complete").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted).padding(.leading, 4)
             }

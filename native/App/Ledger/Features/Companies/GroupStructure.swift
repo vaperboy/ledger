@@ -95,6 +95,11 @@ struct GroupStructureOverview: View {
     @State private var openBrand: String?
     @State private var aloneQuery = ""
     @State private var aloneAll = false
+    // Animation stage: what just appeared in the structure.
+    @State private var freshCompanies: Set<Int> = []
+    @State private var freshHoldings: Set<Int> = []
+    @State private var freshChains: Set<Int> = []
+    @State private var completion: OrgCompletion?
 
     var body: some View {
         let live: [Company] = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
@@ -110,6 +115,25 @@ struct GroupStructureOverview: View {
             if parts.contains(.franchises) { franchiseSection(franchisors, franchised, chains: chains) }
             if parts.contains(.standAlone) { standAloneSection(alone) }
             if parts.contains(.dividends) { dividendsAndTax(live) }
+        }
+        .orgArrivals(live.map { $0.id }, fresh: $freshCompanies) { added, _ in announceAcquisitions(added) }
+        .orgArrivals(holdings.map { $0.id }, fresh: $freshHoldings)
+        .orgArrivals(chains.map { $0.id }, fresh: $freshChains)
+        .orgCompletion($completion)
+    }
+
+    /// A company that has just appeared and was bought from a rival (the engine marks it `flags.acq` with the week) gets the
+    /// completion card: gold ring, name and what came with it.
+    private func announceAcquisitions(_ added: Set<Int>) {
+        for id in added {
+            guard let c = engine.state.company(id) else { continue }
+            let f = c.value("flags")
+            guard !f["acq"].isNull, Double(engine.state.week) - f["acq"].double <= 1 else { continue }
+            let people: Int = Int(f["integPeople"].double)
+            let detail: String = people > 0 ? "\(engine.cityName(c)) \u{00B7} \(people) \(people == 1 ? "person joins" : "people join") you" : engine.cityName(c)
+            completion = OrgCompletion(title: "Acquisition completed", name: c.name, detail: detail)
+            Haptics.success()
+            return
         }
     }
 
@@ -201,6 +225,9 @@ struct GroupStructureOverview: View {
         return NavigationLink(value: CompanyRoute.company(co.id)) {
             CardRow(glyph: Glyph.home, title: co.name, subtitle: sub, value: store.short(h.profitTTM, in: co) + " / yr", valueTint: h.profitTTM < 0 ? Theme.loss : Theme.ivory)
         }.buttonStyle(PressableStyle())
+            .orgEdge(freshCompanies.contains(co.id) ? Theme.gold : nil)
+            .orgConnector(freshCompanies.contains(co.id))
+            .transition(AnyTransition.asymmetric(insertion: AnyTransition.move(edge: .top).combined(with: AnyTransition.opacity), removal: AnyTransition.move(edge: .top).combined(with: AnyTransition.opacity)))
     }
 
     /// Companies that belong to no chain, franchise or holding: key figures per company, opened in place (Back returns here).
@@ -239,6 +266,10 @@ struct GroupStructureOverview: View {
                         CardRow(glyph: Glyph.bank, title: h.name, subtitle: holdingSub(subs),
                                 value: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h))
                     }.buttonStyle(PressableStyle())
+                    .orgEdge(freshHoldings.contains(h.id) ? Theme.gold : nil)
+                    .orgConnector(freshHoldings.contains(h.id))
+                    .orgPulse(subs.map { $0.id })
+                    .transition(AnyTransition.orgRow)
                 }
                 if !holdings.isEmpty && !free.isEmpty {
                     footnote("\(free.count) limited \(free.count == 1 ? "company is" : "companies are") still owned by you directly. Put them under a holding on its page.")
@@ -271,6 +302,9 @@ struct GroupStructureOverview: View {
                     NavigationLink { ChainView(chainID: s.id) } label: {
                         CardRow(glyph: Glyph.group, title: s.name, subtitle: chainSub(s), value: engine.homeCurrency.tidyShort(s.profit) + " / mo", valueTint: s.profit < 0 ? Theme.loss : Theme.ivory)
                     }.buttonStyle(PressableStyle())
+                    .orgEdge(freshChains.contains(s.id) ? Theme.gold : nil)
+                    .orgConnector(freshChains.contains(s.id))
+                    .transition(AnyTransition.orgRow)
                 }
                 ForEach(loose) { g in
                     if let id = g.companyIDs.first {

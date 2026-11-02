@@ -230,6 +230,7 @@ struct ChainStoreComparison: View {
     @State private var query = ""
     @State private var showAll = false
     @State private var openRulesFor: Int?
+    @State private var freshStores: Set<Int> = []
 
     private let pageSize = 12
 
@@ -268,6 +269,7 @@ struct ChainStoreComparison: View {
                     QuietButton(title: "Show all \(all.count) stores") { showAll = true }
                 }
             }
+            .orgArrivals(summary.stores.map { $0.id }, fresh: $freshStores)
         }
     }
 
@@ -291,6 +293,7 @@ struct ChainStoreComparison: View {
         let line: String = "\(s.cityName) · \(status) · \(s.staff.peopleText)" + (s.ownRules > 0 ? " · own rules" : "")
         let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ivory
         let rulesTitle: String = openRulesFor == s.id ? "Hide rules" : "Own rules"
+        let isNew: Bool = freshStores.contains(s.id)
         EntityCard {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 10) {
@@ -318,6 +321,10 @@ struct ChainStoreComparison: View {
                 if openRulesFor == s.id { StoreRules(engine: engine, storeID: s.id) }
             }
         }
+        .orgEdge(isNew ? Theme.gold : nil)
+        .orgConnector(isNew)
+        .orgPin(isNew)
+        .transition(AnyTransition.orgRow)
     }
 }
 
