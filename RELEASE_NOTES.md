@@ -1,4 +1,5 @@
 # What's new
+- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens
 - Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it
 - A company about to be force-sold now shows a see-through red alert first
 - Answered decisions show a result card: what you chose, which company, and what changed

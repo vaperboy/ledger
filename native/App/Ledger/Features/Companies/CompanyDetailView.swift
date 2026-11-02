@@ -70,7 +70,11 @@ struct CompanyDetailView: View {
     }
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
+        if let e = store.engine, let co = e.state.company(companyID), co.status == .setup {
+            // Setting up: one fixed screen with what is missing and the two apps that fix it. Stats and tabs come when it opens.
+            CompanySetupScreen(engine: e, company: co)
+                .appScreen(title: "Setup", subtitle: co.name) { StatusChip(company: co) }
+        } else if let e = store.engine, let co = e.state.company(companyID) {
             let form: String = co.form == .limited ? "Ltd" : "Sole trader"
             let tabs: [CompanyTab] = Self.tabs(co, e)
             let current: CompanyTab = tabs.contains(segment) ? segment : .overview
