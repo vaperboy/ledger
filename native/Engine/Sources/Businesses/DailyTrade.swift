@@ -141,7 +141,7 @@ public enum DailyTrade {
                                   stockFactor: stockF, salesRoles: salesRoles, people: people, random: &s.random)
             co.set("dl", log.json)
             s.companies[i] = co
-            if result.cash != 0 { Payments.companyReceives(&s, companyID: co.id, amount: result.cash, category: nil, label: nil) }
+            if result.cash != 0 { Payments.companyReceives(&s, companyID: co.id, amount: result.cash, category: nil, label: nil); MarketEvents.notePayment(&s, companyID: co.id, amount: result.cash, from: "Customers") }
             if result.writeOff > 0 { Payments.companyPays(&s, companyID: co.id, amount: result.writeOff, category: "loss", label: nil) }
         }
     }
@@ -278,7 +278,7 @@ public enum DailyTrade {
                 for d in 0..<7 {
                     let r = tradeDay(&co, bd, &L, week: wk, day: d, demand: D, capacity: cap, price: price, vat: vat, stockFactor: sf,
                                      salesRoles: salesRoles, people: people, random: &s.random)
-                    if r.cash != 0 { s.companies[i] = co; Payments.companyReceives(&s, companyID: co.id, amount: r.cash, category: nil, label: nil); co = s.companies[i] }
+                    if r.cash != 0 { s.companies[i] = co; Payments.companyReceives(&s, companyID: co.id, amount: r.cash, category: nil, label: nil); MarketEvents.notePayment(&s, companyID: co.id, amount: r.cash, from: "Customers"); co = s.companies[i] }
                 }
             }
         }

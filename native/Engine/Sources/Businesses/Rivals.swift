@@ -326,6 +326,7 @@ public enum Rivals {
                 let end = week + 1 + Int(h.next() * 3)
                 r["camp16"] = .object(["pct": .number(Double(pct)), "end": .number(Double(end))])
                 notes.append(("\(name) runs \(pct)% off for \(end - week) week\(end - week > 1 ? "s" : "").", "bad"))
+                MarketEvents.log(&s, .competitorLaunch, title: "\(name) launches \(pct)% off", detail: "A new offer from a \(bd.name.lowercased()) rival in \(cityName).", companyID: co0.id, amount: Double(pct), tone: "bad")
             }
             // Marketing pushes
             if !r["mkt16"].isNull, Double(week) >= r["mkt16"].double { r["mkt16"] = .null; r["size"] = .number(jsRound(r["size"].double * 1.01 * 100) / 100) }
@@ -352,6 +353,7 @@ public enum Rivals {
             m["n"] = .number(m["n"].double + 1)
             if let ti = s.companyIndex(tgt.id) { PriceMoves.addModifier(&s, ti, key: "dem", multiplier: 0.92, weeks: 26) }
             let bn = riv[bigK]["name"].string
+            MarketEvents.log(&s, .competitorLaunch, title: "\(bn) opens a new store", detail: "Next to \(tgt.name) in \(cityName).", companyID: tgt.id, tone: "bad")
             s.addMessage(from: "Market", title: "\(bn) opens next to \(tgt.name)",
                          body: "\(bn) has opened a new site a few doors from \(tgt.name) in \(cityName). Expect fewer walk-ins for a while. You can answer with prices, marketing or a discount under Price moves.",
                          companyID: tgt.id, tone: "bad")

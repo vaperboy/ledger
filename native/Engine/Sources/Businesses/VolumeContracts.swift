@@ -230,6 +230,7 @@ public enum VolumeContracts {
             let weeks = termChoices[min(2, Int(h.next() * 3))]
             let pay = [0, 4, 8, 13][min(3, Int(h.next() * 4))]
             let t = Terms(name: way.name, customer: who, units: units, discount: discount, weeks: weeks, paymentWeeks: pay, reliability: reliability)
+            MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: units * tk * (1 - discount) * Double(weeks))
             if let m = manager {
                 // A manager takes it when there is room, the discount is modest and the customer is not shaky.
                 if discount <= 0.12 && (lw.isNull || util < 0.92) && reliability >= 0.6 { sign(&s, companyID: co.id, terms: t, signedBy: m) }

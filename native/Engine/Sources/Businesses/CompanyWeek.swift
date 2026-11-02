@@ -466,7 +466,7 @@ public enum CompanyWeek {
         co.receivables = remaining
         if lostNet > 0 { var b = co.books; b.add("loss", lostNet); co.books = b; co.vatBalance -= lostVAT }
         s.companies[i] = co
-        if received != 0 { Payments.companyReceives(&s, companyID: id, amount: received, category: "rev", label: "Customer invoices paid", bookInPnL: false) }
+        if received != 0 { Payments.companyReceives(&s, companyID: id, amount: received, category: "rev", label: "Customer invoices paid", bookInPnL: false); MarketEvents.notePayment(&s, companyID: id, amount: received, from: "Invoiced customers") }
         SupplyTerms.customersPaid(&s, companyIndex: i, paid: customersPaid, country: w0.country(co))
 
         CompanyCosts.wages(&s, companyIndex: i, bd, data: data)

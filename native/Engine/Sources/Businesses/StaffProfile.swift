@@ -166,6 +166,7 @@ public enum StaffProfile {
             var st = s.companies[i].staff; st[k].skillGain = clamp(st[k].skillGain + gain, -10, 70); st[k].set("crsN", st[k].int("crsN") + 1); s.companies[i].staff = st
             StaffPromises.noticeChange(&s, companyID: companyID)
             name = s.people[id]?.name ?? "A team member"
+            MarketEvents.log(&s, .recognition, title: "\(name) finished a course", detail: msg, companyID: companyID, tone: "good")
         } else {
             s.companies[i].ownerSkill = clamp(s.companies[i].ownerSkill + gain, 0, 100)
             name = s.player.name

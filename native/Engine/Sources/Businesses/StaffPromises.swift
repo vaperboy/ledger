@@ -347,6 +347,7 @@ public enum StaffPromises {
 
     static func kept(_ s: inout GameState, _ p: Promise, _ n: Person) {
         s.note("\(n.name) was promised \(p.kind.title.lowercased()) and got it.", tone: "good", companyID: p.companyID)
+        MarketEvents.log(&s, .recognition, title: "\(n.name): promise kept", detail: "\(p.kind.title) was promised and delivered.", companyID: p.companyID, tone: "good")
         if let ci = s.companyIndex(p.companyID) {
             if let k = s.companies[ci].staff.firstIndex(where: { $0.id == p.personID }) {
                 var st = s.companies[ci].staff

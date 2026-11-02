@@ -101,6 +101,7 @@ public enum GroupPeople {
         Payments.playerPays(&s, cost, label: "Course for \(n.name)")
         n.set("crsN", n.int("crsN") + 1)
         s.people[personID] = n
+        MarketEvents.log(&s, .recognition, title: "\(n.name) finished a course", detail: "Training paid for by you.", tone: "good")
         StaffPromises.noticeChange(&s, companyID: 0)
         return true
     }
