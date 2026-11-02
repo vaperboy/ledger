@@ -7,7 +7,7 @@ import Countries
 /// Decisions and news. Decisions come first, by how soon they expire; each shows what every choice does before you commit and
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
 struct InboxView: View {
-    private var P: OutsidePalette { .inbox }
+    private var P: OutsidePalette { .game }
     enum Tab: String, CaseIterable, Hashable { case all = "All", decisions = "Decisions", risks = "Risks", updates = "Updates" }
     @EnvironmentObject var store: GameStore
     @State private var tab: Tab = .all
@@ -146,10 +146,11 @@ struct InboxView: View {
 
     /// Sends the answer. The detail sheet closes at once: the answer is on record and the list shows it as answered.
     private func answer(_ message: Message, _ index: Int, _ label: String) {
+        var effects: [String] = []
+        if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         detailID = nil
-        if ok { Haptics.success(); store.show("Answered: \(label)", tone: "good") }
-        else { Haptics.warning(); store.show("That answer could not be applied: the message is no longer open.", tone: "warn") }
+        store.announceAnswer(label: label, effects: effects, ok: ok)
     }
 
     private func takeRequest(_ proxy: ScrollViewProxy) {
@@ -366,7 +367,7 @@ struct InboxView: View {
 }
 
 struct MessageCard: View {
-    private var P: OutsidePalette { .inbox }
+    private var P: OutsidePalette { .game }
     @EnvironmentObject var store: GameStore
     var message: Message
     var week: Int

@@ -1,43 +1,47 @@
 import SwiftUI
 import GameCore
+import Countries
 import Simulation
 
-/// The sheet that appears on Home when a week, a month or a year closes. It is read and dismissed with one tap before the next day
+/// The popup that appears on the main screen when a week, a month or a year closes. It is read and dismissed with one tap before the next day
 /// can run: a natural pause, real figures only, one sheet per closing (a year covers its month and week). "Open in Reports" goes to the detail.
 struct ReportDigestSheet: View {
     @EnvironmentObject var store: GameStore
     var digest: ReportDigest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    header
-                    figures
-                    list("Major changes", digest.changes, tint: Theme.ivory)
-                    list("Risks", digest.risks, tint: Theme.caution)
-                    decisions
+        GamePopup(title: digest.title, showsClose: false, onClose: { store.dismissReportSheet() }) {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewThatFits(in: .vertical) {
+                    sections
+                    ScrollView { sections }.scrollBounceBehavior(.basedOnSize)
                 }
-                .padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 12)
-            }
-            .scrollIndicators(.hidden)
-            VStack(spacing: 8) {
-                QuietButton(title: "Continue", fullWidth: true) { store.dismissReportSheet() }
-                    .accessibilityIdentifier("report-continue")
-                Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
-                    Text("Open in Reports ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36).contentShape(Rectangle())
+                .frame(maxHeight: 420)
+                VStack(spacing: 4) {
+                    QuietButton(title: "Continue", fullWidth: true) { store.dismissReportSheet() }
+                        .accessibilityIdentifier("report-continue")
+                    Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
+                        Text("Open in Reports ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
                 }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
             }
-            .padding(.horizontal, 18).padding(.bottom, 14)
         }
-        .background(Theme.page.ignoresSafeArea())
+    }
+
+    private var sections: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            header
+            figures
+            list("Major changes", digest.changes, tint: Theme.ivory)
+            list("Risks", digest.risks, tint: Theme.caution)
+            decisions
+        }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(digest.kind.title + " report").capsLabel()
-            Text(digest.title).font(.serifTitle(26)).foregroundStyle(Theme.ivory)
             Text(digest.range).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
         }
     }
@@ -110,6 +114,9 @@ struct CelebrationPopup: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var item: Celebration
     @State private var shown = false
+    /// Set once the reward has been claimed right here: what the player got. The card then shows a small celebration of its own.
+    @State private var claimedText: String?
+    @State private var burst = false
 
     var body: some View {
         ZStack {
@@ -138,13 +145,58 @@ struct CelebrationPopup: View {
             if !item.reward.isEmpty {
                 Text(item.reward).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            QuietButton(title: store.celebrationQueue.count > 1 ? "Next" : "Nice", fullWidth: true) { dismiss() }
+            claimArea
+            QuietButton(title: dismissTitle, fullWidth: true) { dismiss() }
                 .padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
         }
         .padding(20)
         .frame(maxWidth: 380)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
+    }
+
+    // MARK: Claiming in place
+
+    /// A finished goal or today's mission carries a reward that is claimed with one tap, here, not by going to Goals.
+    private var canClaim: Bool { claimedText == nil && (item.kind == "mission" || item.kind == "goal") }
+
+    private var dismissTitle: String {
+        if canClaim { return "Later" }
+        return store.celebrationQueue.count > 1 ? "Next" : "Nice"
+    }
+
+    @ViewBuilder private var claimArea: some View {
+        if let done = claimedText {
+            VStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 36)).foregroundStyle(Theme.gold)
+                    .scaleEffect(burst || reduceMotion ? 1 : 0.4)
+                    .symbolEffect(.bounce, value: burst)
+                Text(done).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            .transition(.scale.combined(with: .opacity))
+            .accessibilityElement(children: .combine)
+        } else if canClaim {
+            Button("Claim reward") { claim() }
+                .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("celebration-claim")
+        }
+    }
+
+    private func claim() {
+        var text: String?
+        if item.kind == "mission" {
+            let cur: Currency? = store.engine?.homeCurrency
+            if let r = store.act({ $0.claimDailyGoal() }) ?? nil { text = "Daily goal reward: " + (cur?.tidyShort(r) ?? "") + " is yours." }
+        } else if let step = (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed }) {
+            text = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil
+        }
+        if let text {
+            Haptics.success()
+            withAnimation(Motion.arrive(reduceMotion)) { claimedText = text.tidyText; burst = true }
+        } else {
+            Haptics.warning()
+            withAnimation(Motion.standard(reduceMotion)) { claimedText = "Already claimed." }
+        }
     }
 
     private var kindLabel: String {

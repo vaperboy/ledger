@@ -75,4 +75,46 @@ public extension GameEngine {
     /// The report sheet to show now, or nil: the one pending report the player has not yet dismissed (see `pendingReportPrompt`).
     /// A year covers the month and the week that closed with it, so only one sheet is ever offered for a day.
     func pendingReportDigest() -> ReportDigest? { pendingReportPrompt().map { reportDigest($0) } }
+
+    /// The digest of the day just played. `fresh` is the messages that arrived with it (`DayOutcome.newMessages`).
+    func dailyDigest(fresh: [Message]) -> DailyDigest {
+        var sales = 0
+        var revenue = 0.0
+        var best: (name: String, units: Int)?
+        let live = state.companies.filter { $0.status.isLive }
+        for co in live {
+            let log = co.value("dl")
+            guard !log["w"].isNull, log["w"].int == state.week else { continue }
+            let today = log["days"][String(state.day)]
+            guard !today.isNull else { continue }
+            let units = Int(today["u"].double.rounded())
+            guard units > 0 else { continue }
+            sales += units
+            revenue += today["r"].double
+            if best == nil || units > best!.units { best = (co.name, units) }
+        }
+        let good: [String] = fresh.filter { $0.tone == "good" }.map { $0.title }
+        let asks: [String] = fresh.filter { $0.status == "open" }.map { $0.title }
+        let bad: [String] = fresh.filter { $0.status != "open" && $0.tone == "bad" }.map { $0.title }
+        return DailyDigest(dateLabel: GameCalendar.dateString(week: state.week, dayOffset: state.day), sales: sales, revenue: revenue,
+                           bestCompany: live.count > 1 ? best?.name : nil, bestSales: best?.units ?? 0,
+                           wentWell: Array(good.prefix(2)), staffMessages: Array((asks + bad).prefix(3)), decisionsOpen: openDecisions.count)
+    }
+}
+
+/// The short popup shown after an ordinary day: what the day's trade did and which messages need a look. Real figures only:
+/// a line appears only when there is something behind it, and a day with nothing to say has `isEmpty == true`.
+public struct DailyDigest: Equatable, Sendable {
+    public var dateLabel: String
+    /// Customers served today across all open companies.
+    public var sales: Int
+    public var revenue: Double
+    public var bestCompany: String?
+    public var bestSales: Int
+    /// Good news from today's messages.
+    public var wentWell: [String]
+    /// Today's messages that need a look (asks and bad news), most important first.
+    public var staffMessages: [String]
+    public var decisionsOpen: Int
+    public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }

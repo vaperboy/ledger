@@ -216,7 +216,7 @@ struct TopPriorities: View {
     }
 
     private func row(_ item: Suggestion) -> some View {
-        Button { store.go(item.action) } label: {
+        Button { store.go(popup: item.action) } label: {
             HStack(spacing: 8) {
                 Circle().fill(tint(item.tone)).frame(width: 7, height: 7)
                 Text(item.title.tidyMoney).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)

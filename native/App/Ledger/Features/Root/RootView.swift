@@ -15,7 +15,9 @@ struct RootView: View {
                 if e.state.isGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }
         }
-        .overlay(alignment: .top) { ToastView() }
+        .overlay { PopupLayer() }
+        // Every scroll view and list in the app only bounces when its content is taller (or wider) than the screen: a page that fits stays still.
+        .scrollBounceBehavior(.basedOnSize)
         .transaction { t in if reduceMotion { t.animation = nil } }
         .overlay { errorPopup }
     }
@@ -129,23 +131,6 @@ struct TabContent: View {
         case .group: GroupView()
         case .projects: ProjectsView()
         case .phone: PhoneHome()
-        }
-    }
-}
-
-struct ToastView: View {
-    @EnvironmentObject var store: GameStore
-    var body: some View {
-        if let t = store.toast {
-            Text(t.text.tidyMoney)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.ivory)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .liquidGlassCapsule(tint: Theme.tone(t.tone).opacity(0.5))
-                .shadow(radius: 10)
-                .padding(.top, 8)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .onTapGesture { store.toast = nil }
         }
     }
 }

@@ -283,7 +283,7 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
         XCTAssertFalse(e.celebrateDailyGoal(now: day), "once per day")
         let c = try XCTUnwrap(e.pendingCelebrations.first { $0.kind == "mission" })
         XCTAssertTrue(c.reward.hasPrefix("Reward "))
-        XCTAssertTrue(c.reward.hasSuffix("claim it in Goals"))
+        XCTAssertFalse(c.reward.contains("claim it in Goals"), "the popup has its own Claim button")
     }
 
     // MARK: 7A Home shortcuts

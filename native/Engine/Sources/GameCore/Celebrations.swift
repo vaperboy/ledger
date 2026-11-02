@@ -9,7 +9,7 @@ public struct Celebration: Equatable, Sendable, Identifiable {
     public var kind: String
     public var title: String
     public var detail: String
-    /// What the player actually gets ("+25 legacy points", "A start-up grant: claim it in Goals"); empty when there is none.
+    /// What the player actually gets ("+25 legacy points", "A start-up grant"); empty when there is none.
     public var reward: String
     public var week: Int
 }

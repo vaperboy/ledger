@@ -23,7 +23,7 @@ extension View {
     /// A list row without the system chrome: page background, a hairline underneath, mail-width insets.
     func mailRowStyle() -> some View {
         self.listRowBackground(Color.clear)
-            .listRowSeparatorTint(OutsidePalette.inbox.hairline)
+            .listRowSeparatorTint(OutsidePalette.game.hairline)
             .listRowInsets(EdgeInsets(top: 0, leading: 18, bottom: 0, trailing: 18))
     }
 }
@@ -31,7 +31,7 @@ extension View {
 /// One message in the mail-style list: unread dot, sender icon circle, sender and time, subject, a two-line preview, and (for
 /// a decision) how long it waits. The company link is its own button so it works without opening the message.
 struct InboxMailRow: View {
-    private var P: OutsidePalette { .inbox }
+    private var P: OutsidePalette { .game }
     @EnvironmentObject var store: GameStore
     var message: Message
     var week: Int

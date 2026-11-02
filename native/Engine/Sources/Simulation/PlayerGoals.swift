@@ -98,7 +98,7 @@ public enum PlayerGoals {
         if d["said"].string == today { return false }
         d["said"] = .string(today)
         s.rest["dy59"] = d
-        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward) + ": claim it in Goals")
+        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward))
         return true
     }
 
@@ -110,7 +110,7 @@ public enum PlayerGoals {
         var changed = false
         for step in stepList where st["got"][step.id].isNull && said[step.id].isNull && stepDone(step.id, s) {
             said[step.id] = .number(Double(s.week))
-            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward + ": claim it in Goals")
+            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward)
             changed = true
         }
         if changed { st["said"] = said; s.rest["fs58"] = st }

@@ -54,8 +54,10 @@ enum AppRequest: Equatable {
     case atlas(companyID: Int)
 }
 
+/// One notice, told in the in-game popup (never a banner): a refusal, a warning or an outcome the player must see.
 struct Toast: Identifiable, Equatable {
     let id = UUID()
+    var title: String = ""
     var text: String
     var tone: String
 }
@@ -64,7 +66,11 @@ struct Toast: Identifiable, Equatable {
 @MainActor
 final class GameStore: ObservableObject {
     @Published private(set) var engine: GameEngine?
-    @Published var toast: Toast?
+    /// Notices waiting to be read, oldest first. The first one is on screen as a popup; reading it shows the next.
+    @Published private(set) var notices: [Toast] = []
+    var toast: Toast? { notices.first }
+    /// The open decision (an Inbox message id) being answered in a popup on the main screen, or nil.
+    @Published var decisionPopup: Int?
     @Published var errorText: String?
 
     // MARK: Day state (Next day, the report sheet, rewards)
@@ -77,6 +83,8 @@ final class GameStore: ObservableObject {
     @Published private(set) var celebrationQueue: [Celebration] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
     @Published private(set) var dayChip: DayChip?
+    /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
+    @Published private(set) var dailySheet: DailyDigest?
     /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
     @Published private(set) var ambitionPrompt = false
 
@@ -166,7 +174,7 @@ final class GameStore: ObservableObject {
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
     func importLegacy(text: String) {
         guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); show("Save imported. The original file is kept untouched.", tone: "good") }
+        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); tell("Save imported", "The original file is kept untouched.", tone: "good") }
         catch { errorText = "That save could not be imported. " + Self.describe(error) }
     }
 
@@ -207,6 +215,8 @@ final class GameStore: ObservableObject {
         if out.gameOver { Haptics.failure() }
         celebrationQueue.append(contentsOf: celebrations)
         reportSheet = digest
+        let daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
+        dailySheet = (digest == nil && !out.gameOver && !daily.isEmpty) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
             dayChip = DayChip(id: UUID(), day: e.state.day + 1, netWorthChange: nwAfter - nwBefore, cashChange: cashAfter - (cashBefore ?? cashAfter))
@@ -250,6 +260,8 @@ final class GameStore: ObservableObject {
         if openReports { openReport(ReportRef(kind: d.kind, id: d.reportID)) }
     }
 
+    func dismissDailySheet() { dailySheet = nil }
+
     /// The popup on screen has been seen: the next one (if any) shows.
     func dismissCelebration() {
         if !celebrationQueue.isEmpty { celebrationQueue.removeFirst() }
@@ -267,9 +279,9 @@ final class GameStore: ObservableObject {
         }
     }
 
+    /// A buzz when something needs the player; the words are in the daily popup (and the Inbox), not in a banner.
     private func report(_ fresh: [Message]) {
-        if let m = fresh.first(where: { $0.status == "open" }) { Haptics.warning(); show(m.title, tone: "warn") }
-        else if let m = fresh.first(where: { $0.tone == "bad" }) { Haptics.warning(); show(m.title, tone: "bad") }
+        if fresh.contains(where: { $0.status == "open" || $0.tone == "bad" }) { Haptics.warning() }
     }
 
     // MARK: Acting
@@ -310,13 +322,35 @@ final class GameStore: ObservableObject {
     /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
     func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
 
+    /// A result line from an action. There is no banner: a refusal or a warning (tone "warn" or "bad") is told in a popup because the
+    /// player must see why nothing happened; a plain confirmation ("Saved", "Hired") is already visible on the screen, so it just goes.
     func show(_ text: String, tone: String = "n") {
-        let t = Toast(text: text.tidyText, tone: tone)
-        toast = t
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_200_000_000)
-            if self?.toast?.id == t.id { self?.toast = nil }
-        }
+        guard tone == "warn" || tone == "bad" else { return }
+        tell("", text, tone: tone)
+    }
+
+    /// Important information, always told in the popup (an answer with an immediate effect, a result the player waits for).
+    func tell(_ title: String, _ text: String, tone: String = "n") {
+        let t = Toast(title: title, text: text.tidyText, tone: tone)
+        if notices.last?.text == t.text && notices.last?.title == t.title { return }
+        notices.append(t)
+    }
+
+    /// An answer to an open decision has an effect at once, so it is told at once, in a popup (what was chosen and what it does).
+    func announceAnswer(label: String, effects: [String], ok: Bool) {
+        guard ok else { Haptics.warning(); tell("Not applied", "That answer could not be applied: the message is no longer open.", tone: "warn"); return }
+        Haptics.success()
+        tell("Answered: " + label, effects.joined(separator: "\n"), tone: "good")
+    }
+
+    /// The popup on screen has been read: the next notice (if any) shows.
+    func dismissNotice() { if !notices.isEmpty { notices.removeFirst() } }
+
+    /// A top-priority row: a decision opens in a popup right here, anything else goes to its screen.
+    func go(popup action: Suggestion.Action) {
+        if case .openMessage(let id) = action, engine?.state.inbox.contains(where: { $0.id == id && $0.status == "open" }) == true {
+            Haptics.tap(); decisionPopup = id
+        } else { go(action) }
     }
 
     // MARK: Navigation
@@ -556,7 +590,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; notices = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {
