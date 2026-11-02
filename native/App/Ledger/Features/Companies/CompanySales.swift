@@ -26,7 +26,6 @@ struct CompanySales: View {
             itemsCard(items, service: service)
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
-                developRow
             }
         }
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
