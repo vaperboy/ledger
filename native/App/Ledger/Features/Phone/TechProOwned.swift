@@ -133,7 +133,7 @@ struct TechProOwnedView: View {
     // MARK: Actions
 
     private func ask(_ title: String, _ message: String, _ button: String, _ run: @escaping () -> Void) {
-        pending = PendingAction(title: title, message: message, button: button, destructive: true, action: run)
+        pending = PendingAction(title: title, message: message, button: button, destructive: true, run: run)
     }
 
     private func result(_ v: Double, _ none: String) {
