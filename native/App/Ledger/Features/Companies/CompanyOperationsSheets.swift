@@ -27,6 +27,7 @@ struct OpsPageDestination: View {
         case .suppliers: CompanySuppliersScreen(companyID: co.id)
         case .equipment: CompanyEquipmentScreen(companyID: co.id)
         case .insurance: CompanyCoverageScreen(companyID: co.id)
+        case .licences: SettingsPage(title: "Licences", subtitle: co.name) { CompanyLicences(engine: e, company: co) }
         }
     }
 

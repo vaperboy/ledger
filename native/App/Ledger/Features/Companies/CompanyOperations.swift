@@ -9,7 +9,7 @@ import Simulation
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
-    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop"
+    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop", licences = "Licences"
 }
 
 extension Glyph {
@@ -73,6 +73,11 @@ struct CompanyOperations: View {
     }
 
     @ViewBuilder private var bigRows: some View {
+        let licences: [LicenceLine] = engine.licences(companyID: company.id)
+        if !licences.isEmpty {
+            let held: Int = licences.filter { $0.form.status == "ok" }.count
+            SettingsTableRow(title: "Licences", note: "Add new things to sell; apply and wait for the answer", value: "\(held) of \(licences.count) held", glyph: Glyph.reports) { part = .licences }
+        }
         premisesRow
         if CompanySourcing.isAvailable(engine: engine, company: company) {
             SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }

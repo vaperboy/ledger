@@ -11,6 +11,7 @@ struct CompanySetupScreen: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    @State private var signing: String?
 
     var body: some View {
         let items: [OpeningChecklist.Item] = engine.openingChecklist(companyID: company.id)
@@ -40,6 +41,9 @@ struct CompanySetupScreen: View {
         }
         .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs)
         .frame(maxWidth: 1100, maxHeight: .infinity, alignment: .topLeading).frame(maxWidth: .infinity)
+        .sheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
+            if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
+        }
     }
 
     private var needsPlace: Bool {
@@ -47,7 +51,18 @@ struct CompanySetupScreen: View {
         return kind != "none"
     }
 
-    private func row(_ it: OpeningChecklist.Item) -> some View {
+    /// A document row opens its form (check the terms, draw a signature, send) unless it is already in or held.
+    @ViewBuilder private func row(_ it: OpeningChecklist.Item) -> some View {
+        let docID: String = it.id.hasPrefix("doc:") ? String(it.id.dropFirst(4)) : ""
+        let st: String = docID.isEmpty ? "" : (engine.state.company(company.id)?.value("docs")[docID]["st"].string ?? "")
+        if !docID.isEmpty && ["", "rejected", "lapsed"].contains(st) {
+            Button { Haptics.tap(); signing = docID } label: { rowBody(it, hint: st == "rejected" ? "Refused: apply again \u{203A}" : "Fill in \u{203A}") }.buttonStyle(PressableStyle())
+        } else {
+            rowBody(it, hint: docID.isEmpty ? "" : "Under review")
+        }
+    }
+
+    private func rowBody(_ it: OpeningChecklist.Item, hint: String) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: "circle").foregroundStyle(Theme.ivoryFaint)
             VStack(alignment: .leading, spacing: 1) {
@@ -55,7 +70,8 @@ struct CompanySetupScreen: View {
                 if !it.detail.isEmpty { Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
             }
             Spacer(minLength: 6)
-        }.padding(.vertical, 8)
+            if !hint.isEmpty { Text(hint).font(.system(size: 11.5)).foregroundStyle(hint.hasPrefix("Under") ? Theme.ivoryFaint : Theme.gold).fixedSize() }
+        }.padding(.vertical, 8).contentShape(Rectangle())
     }
 
     /// One app's card in its own palette: icon, name, what it is, and a button in the app's colour.

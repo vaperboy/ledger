@@ -38,6 +38,8 @@ public enum Documents {
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
         if co.form == .limited && !need.contains("accountant_agreement") { need.append("accountant_agreement") }
+        // VAT registration is always on the opening list (owner decision, 2 Nov): you do it once and forget it. Not for an exempt business.
+        if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
     }
 
@@ -89,7 +91,7 @@ public enum Documents {
         let w = World(state: s, data: data)
         guard let bd = w.trade(co), let dd = definition(id, country: w.country(co), tables: data.catalog.tables) else { return .alreadyHeld }
         let existing = co.value("docs")[id]["st"].string
-        if !existing.isEmpty && existing != "lapsed" { return .alreadyHeld }
+        if !existing.isEmpty && existing != "lapsed" && existing != "rejected" { return .alreadyHeld }
         if id == "accountant_agreement" && co.value("acc").isNull { return .pickAccountant }
         let fee = cost(id, company: co, bd, w)
         if fee > 0 && co.cash < fee { return .notEnoughCash }
@@ -101,6 +103,27 @@ public enum Documents {
         return .ok
     }
 
+    /// The player filled in the form and signed it. The authority reviews it and may refuse; a refusal is told with a reason and the player may
+    /// apply again at once (no cooldown: real authorities have none unless a rule says so), paying the fee again.
+    public static func applySigned(_ id: String, companyID: Int, state s: inout GameState, data: GameData) -> ApplyResult {
+        let r = apply(id, companyID: companyID, state: &s, data: data)
+        if r == .ok, let i = s.companyIndex(companyID) {
+            var docs = s.companies[i].value("docs")
+            docs[id]["signed"] = .bool(true)
+            s.companies[i].set("docs", docs)
+        }
+        return r
+    }
+
+    /// The chance a signed application is refused: small for routine registrations, larger for the heavier licences, and higher with a poor accountant.
+    static func refusalChance(_ id: String, company co: Company) -> Double {
+        let routine: Set<String> = ["registration", "vat", "accountant_agreement", "police", "privacy"]
+        let base = routine.contains(id) ? 0.04 : 0.10
+        return min(0.3, base + co.value("acc")["err"].double * 0.5)
+    }
+
+    static let refusalReasons = ["Some details did not match the register.", "A supporting paper was missing or unclear.", "The inspector asked for changes before approving.", "The form was signed but the address could not be checked."]
+
     /// Weekly: approvals arrive, renewals fall due. Original: `docsWeek`.
     public static func weekly(_ s: inout GameState, companyIndex i: Int, data: GameData) {
         let co = s.companies[i]
@@ -111,8 +134,15 @@ public enum Documents {
         for (id, d) in docs.object.sorted(by: { $0.key < $1.key }) {
             guard let dd = definition(id, country: w.country(co), tables: data.catalog.tables) else { continue }
             if d["st"].string == "applied" && Double(s.week) >= d["done"].double {
-                docs[id]["st"] = "ok"; docs[id]["ok"] = .number(Double(s.week))
-                notes.append(("\(dd.name) approved for \(co.name).", "good"))
+                var rr = HashedRandom("\(s.seed):docreview:\(co.id):\(id):\(d["w0"].int)")
+                if d["signed"].bool && rr.next() < refusalChance(id, company: co) {
+                    docs[id]["st"] = "rejected"; docs[id]["signed"] = .bool(false)
+                    let why = refusalReasons[Int(rr.next() * Double(refusalReasons.count)) % refusalReasons.count]
+                    notes.append(("\(dd.name) was refused for \(co.name). \(why) You can apply again at once; the fee is paid again.", "bad"))
+                } else {
+                    docs[id]["st"] = "ok"; docs[id]["ok"] = .number(Double(s.week))
+                    notes.append(("\(dd.name) approved for \(co.name).", "good"))
+                }
             } else if d["st"].string == "ok" && dd.renewalCost > 0 && Double(s.week) - d["ok"].double >= 52
                         && (Int(Double(s.week) - d["ok"].double) % 52 == 0 || d["due"].bool) {
                 // A renewal that cannot be paid on the day gets four weeks of grace before the licence lapses.

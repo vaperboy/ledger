@@ -43,3 +43,24 @@ final class DelegationRulesTests: XCTestCase {
         if none.creditBand != "E" { XCTAssertGreaterThan(worth.maximum, none.maximum, "worth counts, not only profit") }
     }
 }
+
+final class DocumentReviewTests: XCTestCase {
+    func testASignedApplicationIsReviewedAndARefusalCanBeReappliedAtOnce() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
+        e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 5_000_000, quickSetup: false) else { throw XCTSkip("no company") }
+        let form = try XCTUnwrap(e.documentForm(companyID: id, documentID: "registration"))
+        XCTAssertTrue(["", "ok", "applied"].contains(form.status))
+        // VAT is always on the opening list unless the business is exempt
+        let ids = e.openingChecklist(companyID: id).map { $0.id }
+        XCTAssertTrue(ids.contains("doc:vat") || e.state.company(id).map { Vat.isExempt($0, World(state: e.state, data: e.data)) } == true)
+        // force a refused state and reapply straight away
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            var docs = s.companies[i].value("docs"); docs["registration"] = .object(["st": "rejected"]); s.companies[i].set("docs", docs)
+        }
+        let r = e.applyForDocument(companyID: id, documentID: "registration")
+        XCTAssertEqual(r, .ok, "no cooldown after a refusal")
+        XCTAssertEqual(e.documentForm(companyID: id, documentID: "registration")?.status, "applied")
+    }
+}
