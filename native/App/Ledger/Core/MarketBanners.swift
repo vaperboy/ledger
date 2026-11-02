@@ -28,8 +28,13 @@ extension GameStore {
         }
     }
 
-    /// The worker a recognition event is about: the staff member whose name starts the title.
+    /// The worker a recognition event is about: its employee id, else the staff member whose name starts the title.
     private func workerFor(_ e: GameEngine, _ m: MarketEvent) -> WorkerPopupRef? {
+        if let wid = m.employeeID {
+            for co in e.state.companies where m.companyID == nil || m.companyID == co.id {
+                if co.staff.contains(where: { $0.id == wid }) { return WorkerPopupRef(id: wid, companyID: co.id) }
+            }
+        }
         for co in e.state.companies where m.companyID == nil || m.companyID == co.id {
             for s in co.staff {
                 guard let name = e.state.people[s.id]?.name, !name.isEmpty, m.title.hasPrefix(name) else { continue }

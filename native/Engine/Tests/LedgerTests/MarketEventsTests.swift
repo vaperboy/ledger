@@ -79,6 +79,17 @@ final class MarketEventsTests: XCTestCase {
         XCTAssertLessThan(lost?.amount ?? 0, -0.01)
     }
 
+    func testRecognitionCarriesEmployeeID() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
+        e.update { s, _, _ in
+            MarketEvents.log(&s, .recognition, title: "Anna: promise kept", detail: "x", tone: "good", employeeID: 42)
+            MarketEvents.log(&s, .majorContract, title: "c", detail: "x")
+        }
+        let ev = e.marketEvents(limit: 5)
+        XCTAssertNil(ev.first?.employeeID)
+        XCTAssertEqual(ev.last?.employeeID, 42)
+    }
+
     func testNewCountryLoggedOnceAfterBaseline() throws {
         var (e, id) = try engineWithCafe()
         e.update { s, data, _ in

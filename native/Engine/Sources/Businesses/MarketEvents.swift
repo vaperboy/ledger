@@ -16,6 +16,7 @@ public struct MarketEvent: Identifiable, Equatable, Sendable {
     public var companyID: Int?
     public var amount: Double?
     public var tone: String        // "good", "bad" or "n"
+    public var employeeID: Int? = nil   // the person a recognition event is about
 }
 
 public struct MarketTrend: Equatable, Sendable {
@@ -31,13 +32,14 @@ public enum MarketEvents {
     static func dayKey(_ s: GameState) -> Int { s.week * 7 + s.day }
 
     /// Append one entry (oldest dropped beyond the cap).
-    public static func log(_ s: inout GameState, _ kind: MarketEvent.Kind, title: String, detail: String, companyID: Int? = nil, amount: Double? = nil, tone: String = "n") {
+    public static func log(_ s: inout GameState, _ kind: MarketEvent.Kind, title: String, detail: String, companyID: Int? = nil, amount: Double? = nil, tone: String = "n", employeeID: Int? = nil) {
         var m = s.rest["mev"] ?? .object([:])
         let id = m["next"].int + 1
         var list = m["log"].array
         var e: [String: JSONValue] = ["i": .number(Double(id)), "d": .number(Double(dayKey(s))), "k": .string(kind.rawValue), "t": .string(title), "x": .string(detail), "tone": .string(tone)]
         if let c = companyID { e["c"] = .number(Double(c)) }
         if let a = amount { e["a"] = .number(a) }
+        if let w = employeeID { e["w"] = .number(Double(w)) }
         list.append(.object(e))
         if list.count > cap { list.removeFirst(list.count - cap) }
         m["log"] = .array(list)
@@ -51,7 +53,8 @@ public enum MarketEvents {
         return list.suffix(max(0, limit)).reversed().compactMap { e in
             guard let k = MarketEvent.Kind(rawValue: e["k"].string) else { return nil }
             return MarketEvent(id: e["i"].int, day: e["d"].int, kind: k, title: e["t"].string, detail: e["x"].string,
-                               companyID: e["c"].isNull ? nil : e["c"].int, amount: e["a"].isNull ? nil : e["a"].double, tone: e["tone"].string)
+                               companyID: e["c"].isNull ? nil : e["c"].int, amount: e["a"].isNull ? nil : e["a"].double, tone: e["tone"].string,
+                               employeeID: e["w"].isNull ? nil : e["w"].int)
         }
     }
 
@@ -183,7 +186,7 @@ public enum MarketEvents {
             for p in co.staff where p.hiredWeek > 0 && s.week > p.hiredWeek && (s.week - p.hiredWeek) % 52 == 0 {
                 let years = (s.week - p.hiredWeek) / 52
                 let name = s.people[p.id]?.name ?? "A team member"
-                log(&s, .recognition, title: "\(name): \(years) year\(years == 1 ? "" : "s") with \(co.name)", detail: "A work anniversary worth a thank-you.", companyID: co.id, tone: "good")
+                log(&s, .recognition, title: "\(name): \(years) year\(years == 1 ? "" : "s") with \(co.name)", detail: "A work anniversary worth a thank-you.", companyID: co.id, tone: "good", employeeID: p.id)
             }
         }
     }
