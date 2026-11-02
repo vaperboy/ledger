@@ -31,7 +31,8 @@ struct CompanyPricing: View {
                 if let war = info.war {
                     warCard(weeksLeft: war.weeksLeft, loss: war.loss, cur)
                 } else {
-                    PriceChangeCard(companyID: company.id, yourTicket: info.yourTicket, currency: cur, recentCut: info.recentCut)
+                    PriceChangeCard(companyID: company.id, yourTicket: info.yourTicket, currency: cur, recentCut: info.recentCut,
+                                    unit: engine.tradeInfo(companyID: company.id)?.unit ?? "sale", isStore: engine.tradeInfo(companyID: company.id)?.family == "retail")
                     DiscountCard(companyID: company.id, info: info, currency: cur)
                     if hasRivals { priceWarCard }
                 }
@@ -134,6 +135,10 @@ private struct PriceChangeCard: View {
     var yourTicket: Double
     var currency: Currency
     var recentCut: Double
+    var unit: String = "sale"
+    /// A shop sells many different things: it sets one percentage on all its items instead of one price (owner decision, 2 Nov).
+    var isStore = false
+    @State private var typed = ""
     @State private var change = 0.05
     @State private var forecast: ForecastLine?
 
@@ -146,7 +151,8 @@ private struct PriceChangeCard: View {
     var body: some View {
         let tiny: Bool = abs(change) < 0.005
         let label: String = tiny ? "Pick a change" : String(format: "Set %+.0f%% \u{00B7} %@", change * 100, currency.tidyShort(yourTicket * (1 + change)))
-        return PricingCard(glyph: Glyph.invest, title: "Change price") {
+        return PricingCard(glyph: Glyph.invest, title: isStore ? "Markup on all items" : "Change price") {
+            typedField
             HStack {
                 Slider(value: $change, in: -0.2...0.2, step: 0.01).tint(Theme.gold)
                 Text(String(format: "%+.0f%%", change * 100)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 48, alignment: .trailing)
@@ -162,6 +168,37 @@ private struct PriceChangeCard: View {
             if Task.isCancelled { return }
             guard let e = store.engine, let fc = e.priceForecast(companyID: companyID, byShare: change) else { forecast = nil; return }
             forecast = ForecastLine(customers: fc.text.customers, margin: fc.text.margin, byAnalyst: fc.text.byAnalyst)
+        }
+    }
+
+    /// Type the price you want per unit; the slider below is the same move in percent. The engine keeps it inside the market's range.
+    @ViewBuilder private var typedField: some View {
+        if !isStore, yourTicket > 0 {
+            HStack {
+                Text("Price per \(unit), now " + currency.tidyShort(yourTicket)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Spacer(minLength: 8)
+                TextField("New price", text: $typed).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    .font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Button("Set") { applyTyped() }.buttonStyle(TinyButtonStyle()).disabled(typedShare == nil)
+            }
+        }
+    }
+
+    private var typedShare: Double? {
+        let v: Double? = Double(typed.replacingOccurrences(of: ",", with: "."))
+        guard let p = v, p > 0, yourTicket > 0, abs(p / yourTicket - 1) >= 0.005 else { return nil }
+        return p / yourTicket - 1
+    }
+
+    private func applyTyped() {
+        guard let share = typedShare else { return }
+        if let real = store.act({ $0.changePrice(companyID: companyID, byShare: share) }) ?? nil {
+            Haptics.success()
+            store.show(String(format: "Prices %+.1f%%. The market keeps prices within its range.", real * 100), tone: "good")
+            typed = ""
+        } else {
+            Haptics.warning()
+            store.show("The price could not be changed.", tone: "warn")
         }
     }
 

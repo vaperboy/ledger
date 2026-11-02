@@ -97,3 +97,4 @@ Layout bug: some screens move loosely side to side and up and down when content 
 
 - (2 Nov) Owner hours may go under 40: they follow demand in 5 h steps (floor 5). Subscriptions get no sales, only a standing 8% volume discount on the biggest plan; used items never carry a sale.
 - (2 Nov) TechPro lists EVERY item in the game (all trades), buyable by any company. Owned items are rebuilt inside TechPro as a "My items" shelf (condition, warranty, sell/replace), replacing the old Equipment screen.
+- (2 Nov) Typed prices: single-product trades type a price per unit/hour (kept inside the market range by the engine); shops (retail family) set one markup percent on all items. Suppliers in Accounting and chain/franchise applications in Documents already exist.

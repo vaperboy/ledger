@@ -9,11 +9,12 @@
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
 - TechPro: every item in the game is for sale to any company; "My items" shows what a company owns in the store's look
+- Pricing: type the price per unit or hour; shops set a markup percent on all items
 - Owner hours follow demand and can go under 40 a week
 - Subscriptions: no sales, only a volume discount on the biggest plan; used items never have discounts
 - TechPro: your own delivery company charges a delivery fee, booked as its revenue
 
 # Missing / coming next
-- Typed prices per trade, chain and franchise steps
+- Chain and franchise steps
 - More photos for vehicles, premises and equipment
 - Not yet tested on device: expect rough edges
