@@ -1,4 +1,5 @@
 # What's new
+- Summary screens (Team, Group, Projects, Phone home, Goals, Bank account) fit one screen and do not scroll; long lists scroll only vertically; the screen behind a popup is locked
 - Switching main tabs slides sideways like a pager, a tab-bar tap always opens that tab's root, taps cannot pass through during a swipe, and each tab keeps its own place when you swipe between them
 - Suppliers are grouped and compact with a details popup and one payment-terms control; TechPro has a chip for every real item family and more sort options; report figures count up
 - Fix: popups no longer show up empty and are compact; Perks opens as a popup right on Team; no more notification for payments received; Marketing is one compact list; slimmer sliders and switches everywhere; tab rows no longer touch
