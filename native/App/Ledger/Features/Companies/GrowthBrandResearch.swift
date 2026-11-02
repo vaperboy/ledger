@@ -1,0 +1,268 @@
+import SwiftUI
+import GameCore
+import Countries
+import Businesses
+import Simulation
+
+/// Minimal screens for the 2 Nov 2026 systems, each inside an existing screen: a Growth block in the worker profile, one Brand line
+/// (Group overview, company Sales), and a Research row with its popup (company Sales, Market app).
+
+// MARK: - Growth (worker profile)
+
+struct WorkerGrowthSection: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var engine: GameEngine
+    var companyID: Int
+    var employeeID: Int
+    @State private var pending: PendingAction?
+    @State private var shown: Double = 0
+
+    var body: some View {
+        if let g = engine.growthPath(companyID: companyID, employeeID: employeeID), g.nextRole != nil {
+            card(g)
+        }
+    }
+
+    private func card(_ g: GrowthPath) -> some View {
+        let tint: Color = g.isReady ? Theme.gain : Theme.gold
+        return Card(padding: 12, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Growth").capsLabel()
+                    Spacer(minLength: 6)
+                    Text(g.currentRoleName + " \u{2192} " + g.nextRoleName).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                }
+                readinessBar(g, tint)
+                Text(missingLine(g)).font(.system(size: 11.5)).foregroundStyle(g.isReady ? Theme.gain : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                buttons(g)
+                successorRow(g)
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func readinessBar(_ g: GrowthPath, _ tint: Color) -> some View {
+        let target: Double = min(1, max(0, g.readiness))
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text("Readiness").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Spacer(minLength: 6)
+                Text(String(Int((target * 100).rounded())) + "%").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+            }
+            GeometryReader { (geo: GeometryProxy) -> AnyView in
+                AnyView(ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.hairline)
+                    Capsule().fill(tint).frame(width: geo.size.width * min(1, max(0, shown)))
+                })
+            }
+            .frame(height: 4)
+        }
+        .onAppear { fill(target) }
+        .onChange(of: target) { _, new in fill(new) }
+    }
+
+    private func fill(_ v: Double) {
+        if reduceMotion { shown = v } else { withAnimation(.easeOut(duration: 0.6)) { shown = v } }
+    }
+
+    private func missingLine(_ g: GrowthPath) -> String {
+        if g.isReady { return "Ready for the step up." }
+        guard let first = g.missing.first else { return "Not ready yet." }
+        let more: String = g.missing.count > 1 ? " (+\(g.missing.count - 1) more)" : ""
+        return "Missing: " + first + more
+    }
+
+    private func buttons(_ g: GrowthPath) -> some View {
+        WrapRow {
+            if let tid = g.suggestedTrainingID, let name = g.suggestedTraining {
+                TeamAction(title: "Train: " + name, tint: Theme.ivoryMuted) { askTraining(tid, name) }
+            }
+            TeamAction(title: "Promote", tint: g.isReady ? Theme.gold : Theme.ivoryFaint) { promote(g) }
+                .disabled(!g.isReady)
+        }
+    }
+
+    @ViewBuilder private func successorRow(_ g: GrowthPath) -> some View {
+        if let mgr = engine.state.company(companyID)?.managerID, mgr != employeeID {
+            HStack {
+                Text("Make successor").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+                Spacer(minLength: 6)
+                LedgerSwitch(isOn: Binding<Bool>(get: { g.isSuccessor }, set: { (on: Bool) in setSuccessor(mgr, on) })).hitHeight(28)
+            }
+        }
+    }
+
+    private func setSuccessor(_ manager: Int, _ on: Bool) {
+        let cid: Int = companyID
+        let eid: Int = employeeID
+        let ok: Bool = store.act { $0.setSuccessor(companyID: cid, employeeID: manager, successorID: on ? eid : nil) } ?? false
+        if ok { Haptics.success(); store.show(on ? "Named as the manager's successor." : "No longer the named successor.", tone: "n") }
+        else { Haptics.warning(); store.show("That cannot be set now.", tone: "warn") }
+    }
+
+    private func promote(_ g: GrowthPath) {
+        let cid: Int = companyID
+        let eid: Int = employeeID
+        let r: PromoteResult? = store.act { $0.promote(companyID: cid, employeeID: eid) }
+        switch r {
+        case .promoted(let text)?: Haptics.success(); store.show(text.isEmpty ? "Promoted." : text, tone: "good")
+        case .notReady(let why)?: Haptics.warning(); store.show(why.first ?? "Not ready yet.", tone: "warn")
+        case .blocked(let why)?: Haptics.warning(); store.show(why.isEmpty ? "That promotion is not possible now." : why, tone: "warn")
+        case nil: break
+        }
+    }
+
+    private func askTraining(_ tid: String, _ name: String) {
+        guard let p = engine.staffProfile(companyID: companyID, staffID: employeeID), let c = p.courses.first(where: { (x: StaffProfile.Course) -> Bool in x.id == tid }),
+              let co = engine.state.company(companyID) else { return }
+        let cur: Currency = engine.currency(for: co)
+        let cid: Int = companyID
+        let eid: Int = employeeID
+        let cost: Double = c.cost
+        pending = PendingAction(title: "Send \(p.name) on \(name)?", message: "Costs \(cur.tidyDisplay(cost)) from company cash. \(c.benefit) It may also change nothing.", button: "Send for \(cur.tidyShort(cost))", amount: cost, currency: cur) {
+            let r: StaffProfile.CourseResult? = store.act { $0.sendOnCourse(companyID: cid, staffID: eid, courseID: tid) }
+            switch r {
+            case .done(let msg)?: Haptics.success(); store.show("\(name): \(msg).", tone: "good")
+            case .cash?: Haptics.warning(); store.show("Not enough cash for \(name).", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("That course is not available.", tone: "warn")
+            }
+        }
+    }
+}
+
+// MARK: - Brand lines
+
+/// Group overview: "Brand value NN/100" with the four parts in an (i) popover.
+struct GroupBrandLine: View {
+    var engine: GameEngine
+
+    var body: some View {
+        let b: BrandValue = engine.groupBrandValue()
+        let parts: String = "Reputation \(Int(b.reputation.rounded())) of 40\nYears trading \(Int(b.yearsTrading.rounded())) of 15\nReach \(Int(b.reach.rounded())) of 25\nAwards \(Int(b.awards.rounded())) of 20"
+        return HStack(spacing: 4) {
+            Text("Brand value").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            CountingText(shown: b.score, format: { (v: Double) -> String in String(Int(v.rounded())) + "/100" })
+                .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+                .animation(.easeOut(duration: 0.4), value: b.score)
+            InfoPopoverButton(title: "Brand value", text: "What the group's name is worth, 0 to 100. It lifts sale offers and franchise fees.\n" + parts)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 28)
+    }
+}
+
+/// Company Sales header: "Brand NN".
+struct CompanyBrandLine: View {
+    var engine: GameEngine
+    var companyID: Int
+
+    var body: some View {
+        let score: Double = engine.brandValue(companyID: companyID)
+        return HStack(spacing: 4) {
+            Text("Brand").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            CountingText(shown: score, format: { (v: Double) -> String in String(Int(v.rounded())) })
+                .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+                .animation(.easeOut(duration: 0.4), value: score)
+            Text("of 100").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+// MARK: - Research
+
+/// A "Research" row that opens the research popup. Used in the Sales card and in the Market app.
+struct ResearchRow: View {
+    var engine: GameEngine
+    var company: Company
+    @State private var open = false
+
+    var body: some View {
+        let reports: Int = engine.research(companyID: company.id).count
+        let waiting: Int = MarketResearch.pending(company).count
+        let value: String = waiting > 0 ? "\(waiting) on its way" : (reports > 0 ? "\(reports) delivered" : "Buy a report")
+        return SettingsTableRow(title: "Research", value: value, opens: .sheet, glyph: Glyph.stats) { open = true }
+            .centerSheet(isPresented: $open) { ResearchSheet(companyID: company.id) }
+    }
+}
+
+struct ResearchSheet: View {
+    @EnvironmentObject var store: GameStore
+    var companyID: Int
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            content(e, co)
+        } else {
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    private func content(_ e: GameEngine, _ co: Company) -> some View {
+        let cur: Currency = e.currency(for: co)
+        let options: [ResearchOption] = e.researchOptions(companyID: companyID)
+        let reports: [ResearchReport] = Array(e.research(companyID: companyID).reversed())
+        let waiting: [String] = MarketResearch.pending(co).map { (x: (optionID: String, dueWeek: Int)) -> String in x.optionID }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Market research").font(.headline).foregroundStyle(Theme.ivory)
+            ContainedScroll(maxHeight: 460) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(options) { (o: ResearchOption) -> AnyView in AnyView(optionRow(o, cur, waiting.contains(o.id))) }
+                    Text("A market advisor halves cost and time.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    reportList(reports)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .confirmAction($pending)
+    }
+
+    private func optionRow(_ o: ResearchOption, _ cur: Currency, _ onItsWay: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(o.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory)
+                Text(o.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(cur.tidyShort(o.cost) + " \u{00B7} " + o.weeks.weeksText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold)
+            }
+            Spacer(minLength: 4)
+            if onItsWay {
+                Text("On its way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            } else {
+                TeamAction(title: "Buy") { ask(o, cur) }
+            }
+        }
+    }
+
+    @ViewBuilder private func reportList(_ reports: [ResearchReport]) -> some View {
+        if !reports.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Delivered").capsLabel()
+                ForEach(reports) { (r: ResearchReport) -> AnyView in AnyView(reportBlock(r)) }
+            }
+        }
+    }
+
+    private func reportBlock(_ r: ResearchReport) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(r.title + " \u{00B7} " + GameCalendar.dateString(week: r.day / 7)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ivory)
+            ForEach(r.findings, id: \.self) { (f: String) -> AnyView in
+                AnyView(Text(f.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true))
+            }
+        }
+    }
+
+    private func ask(_ o: ResearchOption, _ cur: Currency) {
+        let cid: Int = companyID
+        let oid: String = o.id
+        let title: String = o.title
+        let weeks: Int = o.weeks
+        pending = PendingAction(title: "Order \(title.lowercased())?", message: "Paid now from company cash. The report arrives in \(weeks.weeksText).", button: "Order for \(cur.tidyShort(o.cost))", amount: o.cost, currency: cur) {
+            let r = store.act { $0.buyResearch(companyID: cid, optionID: oid) }
+            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+            else { Haptics.success(); store.show("\(title) ordered.", tone: "good") }
+        }
+    }
+}

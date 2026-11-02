@@ -42,6 +42,7 @@ struct CompanyMarket: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             position
             MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id))
+            Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
             rivals
         }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }

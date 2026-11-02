@@ -29,6 +29,7 @@ struct NewItemSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(isService ? "Add a service" : "Add a product").font(.headline).foregroundStyle(Theme.ivory)
             ForEach(list.options) { (o: NewItemOption) -> AnyView in AnyView(optionRow(o, list.hasMarketAdvisor, cur)) }
+            if list.options.isEmpty { Text("Nothing new to add right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
             if !list.hasMarketAdvisor { lockedLine }
             ownName
         }
@@ -40,8 +41,8 @@ struct NewItemSheet: View {
         Button { ask(o, cur) } label: {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(o.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
-                    Text(badge(o, cur)).font(.system(size: 11)).foregroundStyle(o.needsDevelopment ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(o.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Text(badge(o, cur)).font(.system(size: 11)).foregroundStyle(o.needsDevelopment ? Theme.gold : Theme.ivoryMuted).lineLimit(2)
                 }
                 Spacer(minLength: 4)
                 if advisor {

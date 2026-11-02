@@ -26,10 +26,12 @@ struct CompanySales: View {
         let items: [SalesItem] = engine.salesItems(companyID: company.id)
         let service: Bool = !items.isEmpty && items.allSatisfy { (i: SalesItem) -> Bool in i.isService }
         return VStack(spacing: Theme.Space.m) {
+            CompanyBrandLine(engine: engine, companyID: company.id)
             trendCard
             itemsCard(items, service: service)
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
+                ResearchRow(engine: engine, company: company)
             }
         }
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }

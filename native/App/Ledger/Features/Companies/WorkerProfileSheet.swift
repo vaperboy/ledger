@@ -46,6 +46,7 @@ struct WorkerProfileSheet: View {
                 figures(p, cur)
                 contractLine(p)
                 expectation(p)
+                WorkerGrowthSection(engine: e, companyID: companyID, employeeID: employeeID)
                 promisesBlock(e, cur)
                 moodBlock(p)
                 actions(e, co, p, cur)

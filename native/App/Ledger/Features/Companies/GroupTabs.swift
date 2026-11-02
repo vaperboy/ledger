@@ -141,6 +141,7 @@ struct GroupOverviewTab: View {
             GroupAttention(engine: engine, limit: 3)
             dividendsLink
             figures
+            GroupBrandLine(engine: engine)
             companiesTable(live)
             tiles(live)
         }
