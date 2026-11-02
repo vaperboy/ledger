@@ -130,7 +130,7 @@ struct CompanyLicences: View {
             if ["", "rejected", "lapsed"].contains(l.form.status) {
                 Button(l.form.status == "" ? "Fill in and apply" : "Apply again") { Haptics.tap(); signing = l.id }.buttonStyle(QuietButtonStyle())
             } else if l.form.status == "ok" {
-                Button("Add the product in How you sell") { store.openCompany(company.id, section: .sales) }.buttonStyle(QuietButtonStyle())
+                Button("Add the product in How you sell") { store.openCompany(company.id, section: .salesMarket) }.buttonStyle(QuietButtonStyle())
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
