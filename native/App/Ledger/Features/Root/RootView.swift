@@ -15,6 +15,8 @@ struct RootView: View {
                 if e.state.isGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }
         }
+        .scrollDisabled(store.popupOpen)
+        .allowsHitTesting(!store.popupOpen)
         .overlay { PopupLayer() }
         .overlay { MotionOverlay() }
         // Every scroll view and list in the app only bounces when its content is taller (or wider) than the screen: a page that fits stays still.

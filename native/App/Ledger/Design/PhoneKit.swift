@@ -220,17 +220,12 @@ struct GreyOutlineButtonStyle: ButtonStyle {
     }
 }
 
-/// The body of a Phone app page: a scroll view with the standard margins and a readable maximum width.
+/// The body of a Phone app page: a `ScrollScreen` with the Phone margins, on the page background.
 struct PhonePageScroll<Content: View>: View {
     var spacing: CGFloat = 14
     @ViewBuilder var content: () -> Content
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: spacing) { content() }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-        }
-        .scrollIndicators(.hidden).noSidewaysDrag()
-        .ledgerBackground()
+        ScrollScreen(spacing: spacing, top: 4, bottom: 40, content: content)
+            .ledgerBackground()
     }
 }
