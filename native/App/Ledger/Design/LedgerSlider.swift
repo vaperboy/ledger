@@ -113,8 +113,8 @@ struct LedgerSlider: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { (g: DragGesture.Value) in update(x: g.location.x, width: w) }
-                    .onEnded { (_: DragGesture.Value) in finish() }
+                    .onChanged { (g: DragGesture.Value) in PageSwipeGate.shared.touching = true; update(x: g.location.x, width: w) }
+                    .onEnded { (_: DragGesture.Value) in PageSwipeGate.shared.touching = false; finish() }
             )
             .animation(.easeOut(duration: 0.12), value: dragging)
         }
