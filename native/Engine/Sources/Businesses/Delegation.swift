@@ -49,14 +49,28 @@ public enum Delegation {
         return level <= top.rawValue ? Rank(rawValue: max(level, 1)) ?? .owner : .owner
     }
 
-    /// How serious a message is, 1 (routine) to 5 (only the owner can take it). Read-only news is routine; payroll is routine; people matters are a
-    /// manager's; bad news is a CEO's; anything else that asks for a decision is a director's. A message that reached the owner is shown at the level
-    /// where nobody below could take it.
-    public static func level(of m: Message) -> Int {
+    /// How serious a message is, 1 (routine) to 5 (only the owner can take it), by its kind and its size against the owner's net worth
+    /// (owner decision, 2 Nov): payroll is routine; people matters are a manager's; bad news is a director's or more; selling or buying out a
+    /// shareholder, and dividend proposals, are the CEO's or the owner's. A size of more than a hundredth of net worth raises the level, a tiny one
+    /// lowers it (a 10k matter is routine at 10M). Read-only news is routine unless it is bad.
+    public static func level(of m: Message, netWorth nw: Double = 0) -> Int {
+        let kind = m.value("data")["kind"].string
+        var base: Int
         if m.kind != "ask" || m.status != "open" { return m.tone == "bad" ? 3 : 1 }
         if m.actionID.hasPrefix("pay29") { return 1 }
-        if m.actionID == "staffx" || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { return 2 }
-        return m.tone == "bad" ? 4 : 3
+        if m.actionID == "staffx" || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
+        else if kind == "exit" { return 5 }
+        else if kind == "divq" || kind == "div" || kind == "rofr" { base = 4 }
+        else { base = m.tone == "bad" ? 4 : 3 }
+        guard nw > 0 else { return base }
+        var amount = m.value("data")["amt"].double
+        for o in m.options {
+            let fx = o["fx"]
+            amount = max(amount, abs(fx["cash"].double), abs(fx["loss"].double), abs(fx["fine"].double))
+        }
+        let share = amount / nw
+        if share > 0.05 { base += 2 } else if share > 0.01 { base += 1 } else if share < 0.0005 && amount > 0 { base -= 1 }
+        return min(5, max(1, base))
     }
 
     /// The share of the owner's net worth a manager may spend on one thing without asking.

@@ -42,7 +42,7 @@ struct InboxMailRow: View {
     private var open: Bool { message.status == "open" }
     /// "Level 3 \u{00B7} Director": how serious it is and who would take it, shown on a decision that reached the owner.
     private var levelText: String {
-        let l: Int = Delegation.level(of: message)
+        let l: Int = store.engine?.severityLevel(of: message) ?? Delegation.level(of: message)
         return "Level \(l) \u{00B7} " + (Delegation.Rank(rawValue: l)?.title ?? "You")
     }
     private var unread: Bool { open || !message.isRead }

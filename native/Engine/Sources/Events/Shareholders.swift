@@ -121,10 +121,15 @@ public enum Shareholders {
         let pol = policy(co), pr = quarterProfit(co)
         var paid = 0.0
         if (payout[pol] ?? 0) > 0 && pr > 0 {
+            // Dividends are never automatic (owner decision, 2 Nov): the policy only proposes this quarter's dividend, and the owner (or whoever
+            // holds the authority) answers. No answer in four weeks means no dividend.
             let amt = (pr * payout[pol]! / 1000).rounded() * 1000
-            let r = amt > 0 ? Payments.payDividend(&s, companyID: co.id, amount: amt, context: fc) : .noRetainedProfit
-            if r == .ok { paid = amt; s.note("\(co.name) paid a dividend of \(fc.currency(co.countryCode, s).display(amt)) (\((policyNames[pol] ?? "").lowercased())).", tone: "good", companyID: co.id) }
-            else if r == .notEnoughCash { s.note("\(co.name) skipped its dividend: not enough cash after costs.", tone: "n", companyID: co.id) }
+            if amt > 0 {
+                s.addMessage(kind: "ask", from: "Shareholders of \(co.name)", title: "Dividend for \(co.name) this quarter?",
+                             body: "By the policy (\((policyNames[pol] ?? "").lowercased())) the dividend is \(fc.currency(co.countryCode, s).display(amt)).",
+                             companyID: co.id, tone: "n", status: "open", options: ["Pay it", "Pay half", "Not this quarter"].map { .option($0) }, action: action,
+                             data: .object(["co": .number(Double(co.id)), "kind": .string("divq"), "amt": .number(amt)]), expiresWeek: s.week + 4)
+            }
         }
         s.companies[i].set("dq27", .object(["w": .number(Double(s.week)), "paid": .number(paid), "pr": .number(pr)]))
         var list = s.companies[i].value("holders").array
@@ -198,6 +203,7 @@ public enum Shareholders {
         let d = m.value("data")
         guard let i = s.companyIndex(d["co"].int), s.companies[i].status == .open else { return }
         if d["kind"].string == "rofr" { completeHolderSale(&s, i, d, data: data); return }
+        if d["kind"].string == "divq" { return }   // an unanswered quarterly proposal is simply not paid
         refused(&s, i, d, data: data, context: fc)
     }
 
@@ -213,6 +219,12 @@ public enum Shareholders {
                 return
             }
             refused(&s, i, d, data: data, context: fc)
+        case "divq":
+            guard idx == 0 || idx == 1 else { return }
+            let amt = idx == 0 ? d["amt"].double : (d["amt"].double / 2000).rounded() * 1000
+            let r = Payments.payDividend(&s, companyID: id, amount: amt, context: fc)
+            if r == .ok { s.note("\(co.name) paid a dividend of \(fc.currency(co.countryCode, s).display(amt)).", tone: "good", companyID: id) }
+            else { s.note("\(co.name) could not pay: \(r == .notEnoughCash ? "not enough cash." : "not enough retained profit.")", tone: "bad", companyID: id) }
         case "growth":
             if idx == 0 {
                 let a = d["amt"].double

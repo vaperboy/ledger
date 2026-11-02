@@ -34,3 +34,8 @@ public extension GameEngine {
         }
     }
 }
+
+public extension GameEngine {
+    /// The level (1 to 5) of a message, by its kind and its size against the owner's net worth (see `Delegation.level`).
+    func severityLevel(of m: Message) -> Int { Delegation.level(of: m, netWorth: dayHistory.netWorth.last ?? 0) }
+}

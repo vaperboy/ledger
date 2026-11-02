@@ -1,4 +1,5 @@
 # What's new
+- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth
 - Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still
 - Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list
 - Manage > Licences: apply for the licences that new things to sell need
