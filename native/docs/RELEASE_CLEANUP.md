@@ -49,11 +49,11 @@ Count 4, 4828 KB. Everything else under `native/design` (22 MB, outside the app 
 - Workflows: `main.yml` and `yesmain.yml` already manual-only. `native-ios.yml` (CI), `native-ipa.yml`, `native-testflight.yml` kept.
 
 ## Verification checklist for the release package
-- [ ] `python3 -c "import yaml;yaml.safe_load(open('native/App/project.yml'))"` passes
+- [x] `python3 -c "import yaml;yaml.safe_load(open('native/App/project.yml'))"` passes
 - [ ] `xcodegen generate` then app-build green on CI; engine-tests green
 - [ ] Unzip the IPA: `Payload/Ledger.app` contains no `*-sheet.jpg` except `workers-sheet.jpg`, `managers-sheet.jpg` (and `faces-sheet.jpg`, `faces-suits.jpg`)
-- [ ] `art/cells/<sheet>/manifest.json` present for cars, logos, luxury, premises, trophies
-- [ ] No `LedgerTests`/`LedgerUITests`, `.md`, `.py`, golden `.json`, or mockup files inside the bundle
+- [x] `art/cells/<sheet>/manifest.json` present for cars, logos, luxury, premises, trophies
+- [ ] No `LedgerTests`/`LedgerUITests`, `.md`, `.py`, golden `.json`, or mockup files inside the bundle (source check: only Thumbs/README.md is in the sources, owner call pending)
 - [ ] Bundle size dropped by about 3.5 MB versus the previous build
 - [ ] Launch on simulator: faces (all four sheets), car/logo/luxury/premises/trophy art, AirStay/TechPro photos, thumbnails and app icon all render
 - [ ] Unit and UI tests still pass after any approved deletions
