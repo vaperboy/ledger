@@ -4,58 +4,24 @@ import Countries
 import Businesses
 import Simulation
 
-// The tabs of the Group screen, built to the approved mockups (GroupA Overview, GroupB Structure, GroupC Board; Deals and More follow
-// the same pattern). Every figure and every action comes from the engine; the views only choose, format and report.
+// The Group tab works like Banking: pressing it opens the picker of companies, holdings and chains; everything else is managed per
+// entity on its own page (GroupEntityPage.swift and the GroupEntity*.swift files). Every figure comes from the engine.
 
-/// The six underline tabs under the Group header: ownership, boards, the money (dividends and tax), deals, and one flat More page. No menu layer.
-enum GroupTab: String, CaseIterable, Hashable {
-    case overview = "Overview", structure = "Structure", board = "Board", money = "Money", deals = "Deals", more = "More"
+/// The tabs of an entity page. `key` is the name other screens use to ask for one (`GroupRouteBox.Request.section`).
+enum GroupSection: String, CaseIterable, Hashable {
+    case overview = "Overview", board = "Board", dividends = "Dividends", expansion = "Expansion", money = "Money", deals = "Deals"
+    var key: String { rawValue.lowercased() }
 }
 
-/// The pages behind the More menu. Everything that used to sit on the long Group page, plus the pages it linked to.
-enum GroupMorePage: String, CaseIterable, Hashable, Identifiable {
-    case holdings = "Holdings", chains = "Chains", franchises = "Franchises", standAlone = "Stand-alone companies"
-    case office = "Group office", posts = "Executive posts", boards = "Boards", dividends = "Dividends and group tax"
-    case rivals = "Rival groups and market", giving = "Giving back"
-    var id: String { rawValue }
-    var sub: String {
-        switch self {
-        case .holdings: return "Holding companies and what they own"
-        case .chains: return "Chains, their stores and loose store groups"
-        case .franchises: return "Franchises you run and units you hold"
-        case .standAlone: return "Companies with no group link"
-        case .office: return "Main office, reviews, meetings and suppliers"
-        case .posts: return "Group managing director and chain posts"
-        case .boards: return "Every board and its history"
-        case .dividends: return "Last quarter's decisions and tax between companies"
-        case .rivals: return "Rival groups and how your trades compare"
-        case .giving: return "Gifts, sponsorships and your foundation"
-        }
-    }
-    var glyph: String {
-        switch self {
-        case .holdings: return Glyph.bank
-        case .chains, .franchises: return Glyph.group
-        case .standAlone: return Glyph.home
-        case .office: return Glyph.team
-        case .posts: return Glyph.person
-        case .boards: return Glyph.achievements
-        case .dividends: return Glyph.reports
-        case .rivals: return Glyph.market
-        case .giving: return Glyph.richList
-        }
-    }
-}
-
-/// Text tabs with a champagne underline (never scrolls sideways). Every tab is a plain tab: there is no menu behind any of them.
-struct GroupTabBar: View {
-    @Binding var tab: GroupTab
-    var badges: [GroupTab: Int] = [:]
+/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six short titles fit 375 pt).
+struct GroupSectionBar: View {
+    @Binding var tab: GroupSection
+    var badges: [GroupSection: Int] = [:]
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(GroupTab.allCases, id: \.self) { t in
-                Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, menu: false) }
+            ForEach(GroupSection.allCases, id: \.self) { (t: GroupSection) in
+                Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0) }
                     .buttonStyle(PressableStyle())
                     .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
                     .accessibilityIdentifier("group-tab-\(t.rawValue)")
@@ -64,10 +30,9 @@ struct GroupTabBar: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
     }
 
-    private func cell(_ text: String, on: Bool, badge: Int, menu: Bool) -> some View {
-        HStack(spacing: 3) {
-            Text(text).font(.system(size: 13)).lineLimit(1).minimumScaleFactor(0.8)
-            if menu { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
+    private func cell(_ text: String, on: Bool, badge: Int) -> some View {
+        HStack(spacing: 2) {
+            Text(text).font(.system(size: 12.5, weight: on ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
             RedBubble(count: badge, size: .small)
         }
         .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
@@ -77,623 +42,235 @@ struct GroupTabBar: View {
     }
 }
 
-// MARK: - Small shared pieces
+// MARK: - The entities
 
-/// A card with the house outline.
-private struct GroupCard<Content: View>: View {
-    var strong = false
-    var padding = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
-    @ViewBuilder var content: () -> Content
-    var body: some View {
-        content()
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(strong ? Theme.gold : Theme.border, lineWidth: 1))
-    }
+/// One line of the picker: a company, a holding or a whole chain (a chain is ONE entry). `companyID` is the company the entity page works
+/// on (a chain: its first store); `members` are the companies the entity covers (a holding: itself and everything under it).
+struct GroupEntity: Identifiable, Equatable {
+    var id: String
+    var companyID: Int
+    var chainID: Int?
+    var name: String
+    var kind: String
+    var isHolding: Bool
+    var indent: Bool
+    var value: Double
+    var hasChange: Bool
+    var changeAmount: Double
+    var changeShare: Double?
+    var members: [Int]
+    var isChain: Bool { chainID != nil }
 }
 
-/// The small champagne caps label above a block, with an optional link at the right.
-private struct GroupCaps: View {
-    var text: String
-    var link: String = ""
-    var action: (() -> Void)? = nil
-    var body: some View {
-        HStack {
-            Text(text.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-            Spacer()
-            if let action, !link.isEmpty {
-                Button { Haptics.tap(); action() } label: { Text(link).font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28) }.buttonStyle(PressableStyle())
-            }
+enum GroupEntities {
+    /// The change of a sum of companies over `days`: the amounts add up, the share is against what they were worth before.
+    static func change(_ e: GameEngine, ids: [Int], values: [Int: Double], days: Int) -> (amount: Double, share: Double?)? {
+        var amount: Double = 0
+        var earlier: Double = 0
+        var any = false
+        for id in ids {
+            guard let c = e.companyValueChange(companyID: id, days: days) else { continue }
+            any = true
+            amount += c.amount
+            earlier += (values[id] ?? 0) - c.amount
         }
+        if !any { return nil }
+        return (amount, earlier > 1 ? amount / earlier : nil)
     }
-}
 
-// MARK: - Overview (GroupA)
+    private static func make(_ e: GameEngine, id: String, companyID: Int, chainID: Int?, name: String, kind: String, isHolding: Bool, indent: Bool, ids: [Int], members: [Int], values: [Int: Double], days: Int) -> GroupEntity {
+        var total: Double = 0
+        for i in ids { total += values[i] ?? 0 }
+        let ch = change(e, ids: ids, values: values, days: days)
+        return GroupEntity(id: id, companyID: companyID, chainID: chainID, name: name, kind: kind, isHolding: isHolding, indent: indent, value: total,
+                           hasChange: ch != nil, changeAmount: ch?.amount ?? 0, changeShare: ch?.share, members: members)
+    }
 
-/// Group > Overview, laid out like the table-layout mockup: two figure cards, the companies table (every row opens the company, "View all
-/// companies" opens the full list), four count tiles that each open their area, and the latest activity. The money card stays last.
-struct GroupOverviewTab: View {
-    /// How far back the change figures look (the engine keeps 140 days of history).
-    enum Period: Int, CaseIterable, Identifiable {
-        case week = 7, month = 30, quarter = 90
-        var id: Int { rawValue }
-        var title: String {
-            switch self {
-            case .week: return "7 days"
-            case .month: return "30 days"
-            case .quarter: return "90 days"
-            }
+    /// Everything the picker lists, biggest first; a holding is followed by its companies, indented.
+    static func build(_ e: GameEngine, days: Int = 30) -> [GroupEntity] {
+        let st: GameState = e.state
+        let live: [Company] = st.companies.filter { (c: Company) -> Bool in c.status.isLive }
+        var values: [Int: Double] = [:]
+        for c in live { values[c.id] = Valuation.companyValue(c, state: st, trades: e.data.catalog) }
+        let chains: [Chains.Summary] = e.chainSummaries
+        var inChain = Set<Int>()
+        for ch in chains { for s in ch.stores { inChain.insert(s.id) } }
+        let holdings: [Company] = live.filter { (c: Company) -> Bool in c.type == "hold" }
+        let holdingIDs: Set<Int> = Set(holdings.map { (h: Company) -> Int in h.id })
+        var top: [GroupEntity] = []
+        var subsOf: [Int: [GroupEntity]] = [:]
+        for ch in chains {
+            let ids: [Int] = ch.stores.filter { (s: Chains.StoreLine) -> Bool in s.status.isLive }.map { (s: Chains.StoreLine) -> Int in s.id }
+            guard let first = ids.first else { continue }
+            let kind: String = "Chain \u{00B7} \(ids.count) \(ids.count == 1 ? "store" : "stores")"
+            top.append(make(e, id: "ch\(ch.id)", companyID: first, chainID: ch.id, name: ch.name, kind: kind, isHolding: false, indent: false, ids: ids, members: ids, values: values, days: days))
         }
-    }
-
-    @EnvironmentObject var store: GameStore
-    @State private var period: Period = .month
-    var engine: GameEngine
-    var goStructure: () -> Void
-    var openMore: (GroupMorePage) -> Void
-
-    var body: some View {
-        let live = engine.state.companies.filter { $0.status.isLive }
-        VStack(alignment: .leading, spacing: 12) {
-            // One phone screen: top issues (three), the two key figures, the three biggest companies, the structure counts.
-            // The dividend log and this year's money moved behind their links (company Finances, Bank).
-            GroupAttention(engine: engine, limit: 3)
-            dividendsLink
-            figures
-            GroupBrandLine(engine: engine)
-            companiesTable(live)
-            tiles(live)
-        }
-    }
-
-    /// A way into the dividend desk when some company can pay something: dividends are never automatic, so this is where they are decided.
-    @ViewBuilder private var dividendsLink: some View {
-        let rows: [DividendRow] = engine.dividendRows().filter { $0.payable > 0 }
-        if !rows.isEmpty {
-            let total: Double = rows.reduce(0) { $0 + $1.payable }
-            Button { Haptics.tap(); openMore(.dividends) } label: {
-                CardRow(glyph: Glyph.reports, title: "Dividends you can collect", subtitle: "\(rows.count) \(rows.count == 1 ? "company" : "companies") \u{00B7} up to \(store.short(total))")
-            }.buttonStyle(PressableStyle())
-        }
-    }
-
-    // MARK: Figures
-
-    /// A change as an arrow with a share (or an amount when the earlier value was too small for a share), coloured by direction.
-    private func changeText(_ c: (amount: Double, share: Double?)?, in co: Company? = nil, suffix: String = "") -> (text: String, tint: Color) {
-        guard let c else { return ("No history yet", Theme.ivoryMuted) }
-        guard abs(c.amount) >= 1 else { return ("No change", Theme.ivoryMuted) }
-        let up = c.amount >= 0
-        let size: String
-        if let share = c.share {
-            size = String(format: "%+.0f%%", share * 100)
-        } else {
-            size = co.map { store.short(abs(c.amount), in: $0) } ?? store.short(abs(c.amount))
-        }
-        return ("\(up ? "▲" : "▼") \(size)\(suffix)", up ? Theme.gain : Theme.loss)
-    }
-
-    private var figures: some View {
-        let days = period.rawValue
-        let value = changeText(DayHistory.change(engine.dayHistory.companies, days: days), suffix: " in \(period.title)")
-        let cash = changeText(engine.groupCashChange(days: days), suffix: " in \(period.title)")
-        return HStack(alignment: .top, spacing: 10) {
-            OverviewFigureCard(label: "Value of holdings", value: store.short(engine.netWorth.companies), note: value.text, noteTint: value.tint, live: engine.netWorth.companies)
-            OverviewFigureCard(label: "Group cash", value: store.short(engine.groupCash), note: cash.text, noteTint: cash.tint, live: engine.groupCash)
-        }
-    }
-
-    // MARK: Companies table
-
-    private var periodMenu: some View {
-        Menu {
-            ForEach(Period.allCases) { p in
-                Button(p.title) { Haptics.choose(); period = p }
-            }
-        } label: {
-            HStack(spacing: 3) {
-                Text(period.title).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.ivoryMuted)
-            }
-            .frame(minHeight: 28)
-        }
-        .accessibilityLabel("Change over \(period.title)")
-    }
-
-    private func companyRow(_ c: Company, value: Double) -> OverviewRowData {
-        let ch = changeText(engine.companyValueChange(companyID: c.id, days: period.rawValue), in: c)
-        let id = c.id
-        return OverviewRowData(
-            id: "co\(id)", glyph: c.type == "hold" ? Glyph.bank : Glyph.home, title: c.name,
-            subtitle: "\(engine.tradeName(c)) · \(engine.cityName(c))",
-            value: store.short(value, in: c), valueTint: value < 0 ? Theme.loss : Theme.ivory,
-            note: ch.text, noteTint: ch.tint,
-            action: { store.openCompany(id) })
-    }
-
-    private func companiesTable(_ live: [Company]) -> some View {
-        let ranked = live.map { (co: $0, value: engine.companyHealth($0).value) }.sorted { $0.value > $1.value }
-        let rows = ranked.prefix(3).map { companyRow($0.co, value: $0.value) }
-        return OverviewTable(title: "Companies", rows: Array(rows), emptyText: "No companies yet. Start one from Home.",
-                             footer: "View all companies ›", footerAction: { store.jump(to: .company) }) {
-            periodMenu
-        }
-    }
-
-    // MARK: Count tiles
-
-    private func tiles(_ live: [Company]) -> some View {
-        let operating = live.filter { $0.type != "hold" }
-        let franchisors = operating.filter { engine.isFranchisor(companyID: $0.id) }
-        let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
-        let list: [CountTileData] = [
-            CountTileData(glyph: "M5 21 V4 H15 V21 M15 9 H19 V21 M3 21 H21", count: operating.count, label: "Companies", action: { store.jump(to: .company) }),
-            CountTileData(glyph: "M12 5 L5 18 H19 Z M12 5 V12", count: engine.chainSummaries.count, label: "Chains", action: { openMore(.chains) }),
-            CountTileData(glyph: "M4 9 L6 4 H18 L20 9 M5 9 V20 H19 V9", count: units, label: "Franchises", action: { openMore(.franchises) }),
-            CountTileData(glyph: "M4 8 C4 5 20 5 20 8 C20 11 4 11 4 8 M4 8 V16 C4 19 20 19 20 16 V8", count: engine.holdingCompanies.count, label: "Holdings", action: { openMore(.holdings) }),
-        ]
-        return CountTiles(title: "Structure", link: "View all ›", linkAction: goStructure, tiles: list)
-    }
-
-    /// This year's revenue, profit and what is owed in tax. Read-only: the Bank app is where the group's money is managed.
-    private var money: some View {
-        let o = engine.financeOverview()
-        let growth: Double? = o.lastYearProfit > 1 ? o.yearProfit / o.lastYearProfit - 1 : nil
-        let taxDue = o.upcoming.first { $0.title.localizedCaseInsensitiveContains("tax") || $0.title.localizedCaseInsensitiveContains("vat") }
-        return GroupCard {
-            VStack(alignment: .leading, spacing: 2) {
-                GroupCaps(text: "Money, this year", link: "Manage in Bank ›") { store.openApp(.bank) }.padding(.bottom, 4)
-                moneyRow("Revenue", store.short(o.yearRevenue), "", Theme.ivoryMuted)
-                moneyRow("Profit", store.short(o.yearProfit),
-                         growth.map { String(format: "%+.0f%%", $0 * 100) } ?? "",
-                         (growth ?? 0) < 0 || o.yearProfit < 0 ? Theme.loss : Theme.gain)
-                moneyRow("Tax and VAT owed", store.short(o.taxesOwed), taxDue.map { "due \($0.dateText)" } ?? "", Theme.caution)
-            }
-        }
-    }
-
-    private func moneyRow(_ label: String, _ value: String, _ trend: String, _ tint: Color) -> some View {
-        HStack(spacing: 10) {
-            Text(label).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, alignment: .leading)
-            Text(value).monospacedDigit().foregroundStyle(Theme.ivory)
-            Text(trend).font(.system(size: 12)).foregroundStyle(tint).frame(minWidth: 52, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .font(.system(size: 13.5))
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
-    }
-
-    /// The latest dividend decision of each company that has one, newest first; each opens the company's Finances.
-    private func activity(_ live: [Company]) -> some View {
-        let rows = live.compactMap { c in engine.lastDividendDecision(companyID: c.id).map { (co: c, d: $0) } }.sorted { $0.d.week > $1.d.week }
-        let items: [ActivityItem] = rows.prefix(5).map { r in
-            let id = r.co.id
-            return ActivityItem(
-                id: "div\(id)", glyph: Glyph.reports, title: "Dividend reviewed: \(r.co.name)",
-                subtitle: r.d.paid > 0 ? "Last quarter · paid \(store.short(r.d.paid, in: r.co))" : "Last quarter · skipped",
-                action: { store.openCompany(id, section: .finances) })
-        }
-        return ActivityList(items: items, emptyText: "Dividend decisions and group tax show here once your companies make profit.")
-    }
-}
-
-// MARK: - Structure (GroupB)
-
-/// The four views of Structure: the ownership tree, chains with their franchises, holdings, and who manages whom.
-enum GroupStructurePart: String, CaseIterable, Hashable {
-    case ownership = "Ownership", chains = "Chains", holdings = "Holdings", authority = "Authority"
-    var sub: String {
-        switch self {
-        case .ownership: return "Who owns what"
-        case .chains: return "Chains, stores and franchises"
-        case .holdings: return "Holding companies and what they own"
-        case .authority: return "Who manages whom"
-        }
-    }
-}
-
-struct GroupStructureTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    @Binding var part: GroupStructurePart
-    var openMore: (GroupMorePage) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SegmentedPill(items: GroupStructurePart.allCases, title: { $0.rawValue }, selection: $part, identifier: { "group-structure-\($0.rawValue)" })
-            switch part {
-            case .ownership: ownership
-            case .chains: GroupStructureOverview(engine: engine, parts: [.chains, .franchises])
-            case .holdings:
-                GroupStructureOverview(engine: engine, parts: [.holdings])
-                if engine.holdingCompanies.isEmpty && engine.companiesForHolding.isEmpty {
-                    Text("Holding companies need a limited company to hold.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                }
-            case .authority: GroupAuthoritySection(engine: engine, openMore: openMore)
-            }
-        }
-    }
-
-    @ViewBuilder private var ownership: some View {
-        let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
-        let holdings = engine.holdingCompanies
-        let direct = live.filter { $0.holdingID == 0 }
-        let chains = engine.chainSummaries
-        let franchisors = live.filter { engine.isFranchisor(companyID: $0.id) }
-        let units = franchisors.reduce(0) { $0 + engine.franchiseSystem(companyID: $1.id)["units"].array.count }
-        let franchised = live.filter { !$0.value("franchise").isNull }
-        VStack(alignment: .leading, spacing: 12) {
-            CardRow(glyph: Glyph.person, title: "\(engine.state.player.name) (you)",
-                    subtitle: "Owner · directly owns \(direct.count) \(direct.count == 1 ? "company" : "companies")",
-                    value: store.short(engine.netWorth.companies), chevron: false)
-
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(holdings) { h in
-                    let subs = live.filter { $0.holdingID == h.id }
-                    NavigationLink(value: CompanyRoute.companyAt(h.id, .holding)) {
-                        node(name: h.name, kind: "Holding company · \(subs.count) \(subs.count == 1 ? "company" : "companies") under it",
-                             value: store.short(Valuation.companyValue(h, state: engine.state, trades: engine.data.catalog), in: h), profit: nil, in: h)
-                    }.buttonStyle(PressableStyle())
-                    ForEach(subs) { c in
-                        NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(PressableStyle()).padding(.leading, 18)
-                    }
-                }
-                ForEach(direct) { c in
-                    NavigationLink(value: CompanyRoute.company(c.id)) { companyNode(c) }.buttonStyle(PressableStyle())
-                }
-                if live.isEmpty {
-                    Text("Start a company to build a group.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6)
-                }
-                if holdings.isEmpty {
-                    NavigationLink { NewHoldingView() } label: {
-                        HStack {
-                            Text("No holding company yet").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                            Spacer()
-                            Text("Set one up ›").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
-                        }
-                        .padding(.horizontal, 14).padding(.vertical, 11)
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-                        .contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                }
-            }
-            .padding(.leading, 18)
-            .overlay(alignment: .leading) { Rectangle().fill(Theme.border).frame(width: 1).padding(.leading, 0) }
-            .padding(.leading, 20)
-
-            HStack(spacing: 8) {
-                countTile("Chains", chains.count, chains.isEmpty ? "Start one ›" : "Open ›") { openMore(.chains) }
-                countTile("Franchised out", units, units == 0 ? "Offer ›" : "Open ›") { openMore(.franchises) }
-                countTile("Franchise you hold", franchised.count, franchised.isEmpty ? "Join ›" : "Open ›") { openMore(.franchises) }
-            }
-        }
-    }
-
-    private func companyNode(_ c: Company) -> some View {
-        let h = engine.companyHealth(c)
-        return node(name: c.name, kind: "\(engine.tradeName(c)) · \(engine.cityName(c)) · \(h.label)",
-                    value: store.short(h.value, in: c), profit: h.profitTTM, in: c)
-    }
-
-    private func node(name: String, kind: String, value: String, profit: Double?, in co: Company) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(kind).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                if let profit {
-                    Text("\(store.short(profit, in: co)) / yr").font(.system(size: 11.5)).foregroundStyle(profit > 0 ? Theme.gain : (profit < 0 ? Theme.loss : Theme.ivoryMuted))
-                }
-            }
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .contentShape(Rectangle())
-    }
-
-    private func countTile(_ label: String, _ n: Int, _ cue: String, action: @escaping () -> Void) -> some View {
-        Button { Haptics.tap(); action() } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.7)
-                Text("\(n)").font(.system(size: 17, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text(cue).font(.system(size: 11)).foregroundStyle(Theme.gold)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 11)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
-    }
-}
-
-// MARK: - Board (GroupC)
-
-struct GroupBoardTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var openMore: (GroupMorePage) -> Void
-
-    /// A board with points waiting for a decision: how many, and the first one in words.
-    private struct Waiting: Identifiable {
-        var id: String { key }
-        var key: String
-        var count: Int
-        var headline: String
-    }
-
-    private var waiting: [Waiting] {
-        engine.boardKeys.filter { engine.boardIsActive(key: $0) }.compactMap { (k: String) -> Waiting? in
-            let n: Int = engine.boardOpenDecisions(key: k)
-            guard n > 0 else { return nil }
-            let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: k).filter { $0.isOpen }
-            let heads: [String] = open.compactMap { (m: ManagerModel.BoardMeeting) -> String? in
-                if m.isEmergency { return m.title }
-                return m.items.first(where: { $0.status.isEmpty && !$0.action.isEmpty })?.text
-            }
-            return Waiting(key: k, count: n, headline: heads.first ?? "")
-        }
-    }
-
-    var body: some View {
-        let keys = engine.boardKeys.filter { engine.boardIsActive(key: $0) }
-        let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
-        let list = waiting
-        VStack(alignment: .leading, spacing: 12) {
-            if !list.isEmpty {
-                ForEach(list.prefix(3)) { w in decision(w) }
-                if list.count > 3 {
-                    Text("\(list.count - 3) more \(list.count - 3 == 1 ? "board has" : "boards have") points waiting. Open them below.").font(.system(size: 12)).foregroundStyle(Theme.caution)
-                }
+        for c in live where c.type != "hold" && !inChain.contains(c.id) {
+            let franchisee: Bool = !c.value("franchise").isNull
+            let kind: String = (franchisee ? "Franchise \u{00B7} " : "") + "\(e.tradeName(c)) \u{00B7} \(e.cityName(c))"
+            let ent = make(e, id: "co\(c.id)", companyID: c.id, chainID: nil, name: c.name, kind: kind, isHolding: false, indent: false, ids: [c.id], members: [c.id], values: values, days: days)
+            if c.holdingID != 0 && holdingIDs.contains(c.holdingID) {
+                var one = ent
+                one.indent = true
+                subsOf[c.holdingID, default: []].append(one)
             } else {
-                GroupCard {
-                    VStack(alignment: .leading, spacing: 4) {
-                        GroupCaps(text: "Decisions")
-                        Text(keys.isEmpty ? "A board forms once you register a chain or somebody else owns part of a company."
-                                          : "Nothing waits for a board. A board meets when a seat brings a proposal or a concern.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                }
+                top.append(ent)
             }
+        }
+        for h in holdings {
+            let subs: [GroupEntity] = subsOf[h.id] ?? []
+            let kind: String = "Holding company \u{00B7} \(subs.count) \(subs.count == 1 ? "company" : "companies")"
+            var members: [Int] = [h.id]
+            for s in subs { members.append(s.companyID) }
+            var ent = make(e, id: "co\(h.id)", companyID: h.id, chainID: nil, name: h.name, kind: kind, isHolding: true, indent: false, ids: [h.id], members: members, values: values, days: days)
+            var sum: Double = ent.value
+            for s in subs { sum += s.value }
+            ent.value = sum
+            top.append(ent)
+        }
+        top.sort { (a: GroupEntity, b: GroupEntity) -> Bool in a.value > b.value }
+        var out: [GroupEntity] = []
+        for t in top {
+            out.append(t)
+            if t.isHolding {
+                let subs: [GroupEntity] = (subsOf[t.companyID] ?? []).sorted { (a: GroupEntity, b: GroupEntity) -> Bool in a.value > b.value }
+                out.append(contentsOf: subs)
+            }
+        }
+        return out
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Boards and seats")
-                ForEach(keys, id: \.self) { key in
-                    let voters = engine.boardVoters(key: key)
-                    let seats = engine.boardSeats(key: key)
-                    NavigationLink { BoardView(key: key) } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(engine.boardName(key: key)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).padding(.leading, 2)
-                            ForEach(voters.prefix(5)) { v in
-                                let fee = seats.first { $0.id == v.personID }?.monthlyFee
-                                seatRow(initials: initials(v.name), name: v.name, role: v.title + (v.votes ? " · votes" : " · advises"),
-                                        fee: fee.map { store.short($0) + " / month" } ?? "no fee")
+    /// The entity a request for a company lands on: its own entry, else the chain or holding it belongs to.
+    static func find(_ list: [GroupEntity], companyID: Int) -> GroupEntity? {
+        if let own = list.first(where: { (g: GroupEntity) -> Bool in g.companyID == companyID }) { return own }
+        return list.first(where: { (g: GroupEntity) -> Bool in g.members.contains(companyID) })
+    }
+}
+
+/// A change as an arrow with a share (or an amount when the earlier value was too small for a share), coloured by direction.
+@MainActor
+enum GroupFmt {
+    static func change(_ amount: Double, _ share: Double?, has: Bool, _ store: GameStore) -> (text: String, tint: Color) {
+        guard has else { return ("No history yet", Theme.ivoryMuted) }
+        guard abs(amount) >= 1 else { return ("No change", Theme.ivoryMuted) }
+        let up: Bool = amount >= 0
+        let size: String
+        if let share {
+            size = String(format: "%.0f%%", abs(share) * 100)
+        } else {
+            size = store.short(abs(amount))
+        }
+        return ("\(up ? "\u{25B2}" : "\u{25BC}") \(size)", up ? Theme.gain : Theme.loss)
+    }
+
+    static func change(_ g: GroupEntity, _ store: GameStore) -> (text: String, tint: Color) {
+        change(g.changeAmount, g.changeShare, has: g.hasChange, store)
+    }
+}
+
+// MARK: - Landing
+
+/// The Group landing: an Overview of the whole group, then one compact row per entity, then Suppliers.
+struct GroupLanding: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var onPick: (GroupEntity) -> Void
+    var onSuppliers: () -> Void
+    var onNewHolding: () -> Void
+
+    var body: some View {
+        let list: [GroupEntity] = GroupEntities.build(engine)
+        VStack(alignment: .leading, spacing: 14) {
+            overview
+            VStack(alignment: .leading, spacing: 8) {
+                Text("COMPANIES AND CHAINS").capsLabel()
+                if list.isEmpty {
+                    Text("Start a company from Home to build a group.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                } else {
+                    Card(padding: 4, radius: Theme.Radius.hero) {
+                        VStack(spacing: 0) {
+                            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, g: GroupEntity) in
+                                row(g, first: n == 0)
                             }
                         }
-                    }.buttonStyle(PressableStyle())
-                }
-                if let key = keys.first {
-                    NavigationLink { BoardView(key: key) } label: {
-                        Text(keys.count > 1 ? "Open a board to seat someone ›" : "Seat someone ›").font(.system(size: 13)).foregroundStyle(Theme.gold)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-                            .contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                }
-            }
-
-            owners(live)
-
-            Button { Haptics.tap(); store.openApp(.bank) } label: {
-                CardRow(glyph: Glyph.bank, title: "Stakes in other groups and the big meeting offer", subtitle: "In the Bank app. Owners, dividends and buy-backs are in each company's Finances.")
-            }.buttonStyle(PressableStyle())
-        }
-    }
-
-    private func initials(_ name: String) -> String {
-        let parts = name.split(separator: " ").prefix(2).compactMap { $0.first }
-        return String(parts).uppercased()
-    }
-
-    private func seatRow(initials: String, name: String, role: String, fee: String) -> some View {
-        HStack(spacing: 12) {
-            Text(initials).font(.system(size: 13)).foregroundStyle(Theme.gold)
-                .frame(width: 36, height: 36).background(Circle().fill(Color(hex: 0x1E1F21)))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(role).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            Text(fee).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .contentShape(Rectangle())
-    }
-
-    /// A board with points waiting. Decisions are made on the board page, where each point shows its effect, cost and risk before it is confirmed.
-    private func decision(_ w: Waiting) -> some View {
-        NavigationLink { BoardView(key: w.key) } label: {
-            GroupCard(strong: true) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("DECISION NEEDED").font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-                        Spacer()
-                        Text("\(w.count) to decide").font(.system(size: 12)).foregroundStyle(Theme.caution)
                     }
-                    Text(engine.boardName(key: w.key)).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    if !w.headline.isEmpty { Text(w.headline.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading) }
-                    Text("Open the board ›").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-                        .padding(.top, 2)
                 }
             }
+            Button { Haptics.tap(); onSuppliers() } label: {
+                CardRow(glyph: Glyph.bank, title: "Suppliers", subtitle: "Every supplier your companies use, with profiles")
+            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-suppliers")
+            Button { Haptics.tap(); onNewHolding() } label: {
+                HStack {
+                    Text("Set up a holding company").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    Spacer()
+                    Text("Set one up \u{203A}").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 11)
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                .contentShape(Rectangle())
+            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-new-holding")
+        }
+    }
+
+    // MARK: Overview header
+
+    private var overview: some View {
+        let value: Double = engine.netWorth.companies
+        let vc = DayHistory.change(engine.dayHistory.companies, days: 30)
+        let cc = engine.groupCashChange(days: 30)
+        let vt = GroupFmt.change(vc?.amount ?? 0, vc?.share, has: vc != nil, store)
+        let ct = GroupFmt.change(cc?.amount ?? 0, cc?.share, has: cc != nil, store)
+        return Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("OVERVIEW").capsLabel()
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Group value").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        LiveFigure(value: value, text: store.short(value)).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(vt.text + " in 30 days").font(.system(size: 11.5)).foregroundStyle(vt.tint).lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Group cash").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        LiveFigure(value: engine.groupCash, text: store.short(engine.groupCash)).font(.system(size: 20, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(ct.text).font(.system(size: 11.5)).foregroundStyle(ct.tint).lineLimit(1)
+                    }
+                }
+                NetWorthChart(engine: engine, days: 90, height: 44)
+                GroupBrandLine(engine: engine)
+            }
+        }
+    }
+
+    // MARK: Picker rows
+
+    private func glyph(_ g: GroupEntity) -> String { g.isHolding ? Glyph.bank : (g.isChain ? Glyph.group : Glyph.home) }
+
+    private func row(_ g: GroupEntity, first: Bool) -> some View {
+        let ch = GroupFmt.change(g, store)
+        let key: String = engine.boardKey(companyID: g.companyID) ?? ""
+        let waiting: Int = (!key.isEmpty && engine.boardIsActive(key: key)) ? engine.boardOpenDecisions(key: key) : 0
+        return Button { Haptics.tap(); onPick(g) } label: {
+            HStack(spacing: 10) {
+                IconCircle(glyph: glyph(g), size: 32)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(g.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    Text(g.kind).font(.system(size: 11.5)).foregroundStyle(g.isChain ? Theme.gold : Theme.ivoryFaint).lineLimit(1)
+                }
+                Spacer(minLength: 6)
+                RedBubble(count: waiting, size: .small)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(store.short(g.value)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(g.value < 0 ? Theme.loss : Theme.ivory).lineLimit(1)
+                    Text(ch.text).font(.system(size: 11.5)).foregroundStyle(ch.tint).lineLimit(1)
+                }
+                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+            }
+            .padding(.leading, g.indent ? 26 : 10).padding(.trailing, 10).padding(.vertical, 9)
+            .frame(minHeight: 48)
             .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
-    }
-
-    /// Who owns each company with other owners (or the first few): bars of the shares. "Details" opens the company's Finances.
-    @ViewBuilder private func owners(_ live: [Company]) -> some View {
-        let withHolders = live.filter { !engine.owners(companyID: $0.id).isEmpty }
-        let shown = withHolders.isEmpty ? Array(live.prefix(1)) : Array(withHolders.prefix(4))
-        if !shown.isEmpty {
-            GroupCard {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(shown) { c in
-                        let others = engine.owners(companyID: c.id)
-                        let mine = max(0, 100 - others.reduce(0) { $0 + $1.pct })
-                        HStack {
-                            GroupCaps(text: shown.count > 1 ? "Owners · \(c.name)" : "Owners and stakes")
-                            NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
-                                Text("Details ›").font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28)
-                            }.buttonStyle(PressableStyle())
-                        }.padding(.top, c.id == shown.first?.id ? 0 : 8)
-                        stakeRow("\(engine.state.player.name) (you)", mine, you: true)
-                        ForEach(others) { h in stakeRow(h.name, h.pct, you: false) }
-                        if others.isEmpty { stakeRow("Outside investors", 0, you: false) }
-                    }
-                }
-            }
+            .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
         }
-    }
-
-    private func stakeRow(_ name: String, _ pct: Double, you: Bool) -> some View {
-        HStack(spacing: 10) {
-            Text(name).foregroundStyle(you ? Theme.ivory : Theme.ivoryMuted).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-            Rectangle().fill(Color(hex: 0x26272A)).frame(width: 90, height: 4)
-                .overlay(alignment: .leading) { Rectangle().fill(Theme.gold).frame(width: 90 * CGFloat(min(100, max(0, pct)) / 100), height: 4) }
-            Text("\(Int(pct.rounded()))%").monospacedDigit().foregroundStyle(you ? Theme.ivory : Theme.ivoryMuted).frame(width: 44, alignment: .trailing)
-        }
-        .font(.system(size: 13.5))
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
-    }
-}
-
-// MARK: - Deals
-
-/// Franchise offers and brands, buying a rival, and the deals the group can host or agree. Pages that already exist are reused.
-struct GroupDealsTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var openMore: (GroupMorePage) -> Void
-
-    var body: some View {
-        let live = engine.state.companies.filter { $0.status.isLive && $0.type != "hold" }
-        let franchisors = live.filter { engine.isFranchisor(companyID: $0.id) }
-        let brands = engine.franchiseBrands()
-        let chains = engine.chainSummaries
-        let open = live.filter { $0.status == .open }
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Franchise offers")
-                ForEach(franchisors) { c in
-                    let chain = chains.first { $0.stores.contains { $0.id == c.id } }
-                    ForEach(engine.franchiseApplicants(companyID: c.id)) { a in
-                        let cur = engine.currency(for: c)
-                        NavigationLink { FranchiseTalkView(companyID: c.id, applicantID: a.id) } label: {
-                            CardRow(glyph: Glyph.person, title: "\(a.name) applies to \(chain?.name ?? c.name)",
-                                    subtitle: "\(a.experience) yr experience · own money \(cur.tidyShort(a.capital))", value: "Talk")
-                        }.buttonStyle(PressableStyle())
-                    }
-                }
-                NavigationLink { FranchisesView() } label: {
-                    CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
-                            subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") · apply, meet them, agree terms",
-                            value: brands.isEmpty ? "" : "\(brands.count)")
-                }.buttonStyle(PressableStyle())
-                if !franchisors.isEmpty {
-                    Button { Haptics.tap(); openMore(.franchises) } label: {
-                        CardRow(glyph: Glyph.chevron, title: "Your franchise system", subtitle: "Units, fees and royalties of what you franchise out")
-                    }.buttonStyle(PressableStyle())
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Acquisitions")
-                if open.isEmpty {
-                    Text("Open a company to look at rivals you could buy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                } else {
-                    Button { Haptics.tap(); store.openMarket() } label: {
-                        CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
-                    }.buttonStyle(PressableStyle())
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Group deals")
-                HostingSection(engine: engine)
-                Button { Haptics.tap(); store.openApp(.ventures) } label: {
-                    CardRow(glyph: Glyph.invest, title: "Ventures", subtitle: "Startups you founded, funds and stakes in other businesses (Phone app)")
-                }.buttonStyle(PressableStyle())
-                if !engine.knownSuppliers.isEmpty {
-                    Button { Haptics.tap(); openMore(.office) } label: {
-                        CardRow(glyph: Glyph.bank, title: "Supplier deals for the whole group", subtitle: "\(engine.knownSuppliers.count) known \(engine.knownSuppliers.count == 1 ? "supplier" : "suppliers") · under Group office")
-                    }.buttonStyle(PressableStyle())
-                }
-            }
-        }
-    }
-}
-
-// MARK: - More
-
-/// Group > Money: the dividend desk, the dividend and group-tax log, and gifts and the foundation. Nothing here is paid by itself.
-struct GroupMoneyTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var showGiving: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            GroupCaps(text: "Dividends")
-            GroupDividendsPage(engine: engine)
-            GroupStructureOverview(engine: engine, parts: [.dividends])
-            GroupCaps(text: "Giving back")
-            Button { Haptics.tap(); showGiving() } label: {
-                CardRow(glyph: Glyph.richList, title: "Gifts, sponsorships and your foundation",
-                        subtitle: "\(engine.givingMarks.count) \(engine.givingMarks.count == 1 ? "mark" : "marks")" + (engine.foundation != nil ? " \u{00B7} foundation running" : ""))
-            }.buttonStyle(PressableStyle())
-        }
-    }
-}
-
-// MARK: - More
-
-/// Group > More: the group's own services on ONE page, each under its heading (no menu to pick from): the group office, executive posts,
-/// companies with no group link, and the market and rival groups.
-struct GroupMoreTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-
-    var body: some View {
-        let live = engine.state.companies.filter { $0.type != "hold" && $0.status.isLive }
-        VStack(alignment: .leading, spacing: 12) {
-            GroupCaps(text: "Group office")
-            if !live.isEmpty { HeadOfficeSection(engine: engine) } else { Text("Start a company first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
-            GroupCaps(text: "Executive posts")
-            if engine.groupOfficeEstablished && live.count >= 2 {
-                ExecutivePosts(engine: engine, chainID: nil)
-            } else {
-                Text("Group posts exist once you set up a group office and run two companies.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            }
-            GroupCaps(text: "Companies with no group link")
-            GroupStructureOverview(engine: engine, parts: [.standAlone])
-            GroupCaps(text: "Market and rival groups")
-            if live.contains(where: { $0.status == .open }) {
-                Button { Haptics.tap(); store.openMarket() } label: {
-                    CardRow(glyph: Glyph.market, title: "Market and rivals", subtitle: "Rival groups and how your trades compare.")
-                }.buttonStyle(PressableStyle())
-            } else {
-                Text("Open a company to see the market and rival groups.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            }
-        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("group-entity-\(g.id)")
     }
 }
