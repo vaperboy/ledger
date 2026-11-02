@@ -28,6 +28,7 @@ struct BoardView: View {
     @State private var message = ""
     @State private var candidates: [Person] = []
     @State private var pending: PendingAction?
+    @State private var freshSeats: Set<String> = []
 
     var body: some View {
         if let engine = store.engine, engine.boardIsActive(key: key) {
@@ -264,6 +265,7 @@ struct BoardView: View {
     private func voterCard(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat]) -> some View {
         HStack(spacing: 12) {
             IconCircle(glyph: v.votes ? Glyph.person : Glyph.people, size: 34, tint: v.votes ? Theme.gold : Theme.ivoryMuted)
+                .orgEdge(freshSeats.contains(v.id) ? Theme.gold : nil, radius: 17)
             VStack(alignment: .leading, spacing: 1) {
                 Text(v.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 Text("\(v.title) · \(v.votes ? "votes" : "advises")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
@@ -313,7 +315,7 @@ struct BoardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(engine.boardVoters(key: key).enumerated()), id: \.element.id) { (n: Int, v: ManagerModel.Voter) in
                     if n > 0 { CardLine() }
-                    voterCard(v, seats: seats)
+                    voterCard(v, seats: seats).transition(AnyTransition.orgNode)
                 }
                 ForEach(seats.filter { $0.isAdviser }) { s in
                     Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
@@ -322,6 +324,7 @@ struct BoardView: View {
                 seatFinder(engine)
                 ForEach(candidates) { p in candidateRow(p) }
             }
+            .orgArrivals(engine.boardVoters(key: key).map { $0.id }, fresh: $freshSeats)
         }
     }
 

@@ -31,6 +31,12 @@ struct TeamView: View {
     @State private var decide: DecideRef?
     /// The "Need you" tile was tapped: the Overview shows only the owner's list (the one the tile counts), in full.
     @State private var needYouOnly = false
+    // Animation stage: what just arrived, who just left (with the reason), and the manager set of each company.
+    @State private var freshPeople: Set<String> = []
+    @State private var peopleSnap: [String: TeamSearchResult] = [:]
+    @State private var leavingNotes: [OrgNote] = []
+    @State private var freshManagers: Set<Int> = []
+    @State private var freshPostKeys: Set<String> = []
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .team) }, set: { store.setPath($0, for: .team) })) {
@@ -313,12 +319,32 @@ struct TeamView: View {
             Text(everyone.isEmpty ? "No one works for you yet. Open a company, then hire from its Team section." : "No one matches.")
                 .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8)
         }
+        OrgNoteStack(notes: leavingNotes)
         VStack(spacing: 8) {
             ForEach(shown.prefix(200)) { p in
                 Button { Haptics.tap(); openPerson(p) } label: { personCard(p, e) }.buttonStyle(PressableStyle())
+                    .orgEdge(freshPeople.contains(p.id) ? Theme.gold : nil)
+                    .transition(AnyTransition.orgRow)
             }
         }
+                .orgArrivals(everyone.map { $0.id }, fresh: $freshPeople) { _, gone in
+            for id in gone {
+                guard let p = peopleSnap[id] else { continue }
+                OrgNote.show($leavingNotes, text: leaveLine(p, e), tint: Theme.ivoryMuted, seconds: 3)
+            }
+            peopleSnap = Dictionary(everyone.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        }
+        .onAppear { peopleSnap = Dictionary(everyone.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
         if shown.count > 200 { Text("Showing the first 200 of \(shown.count). Search to narrow it down.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+    }
+
+    /// "Name left: reason" for a person who is no longer listed, from their resignation message when there is one.
+    private func leaveLine(_ p: TeamSearchResult, _ e: GameEngine) -> String {
+        let msg: Message? = e.state.inbox.last { $0.from == p.name && $0.title.lowercased().contains("resign") }
+        guard let m = msg else { return "\(p.name) has left \(p.employer)." }
+        let first: String = m.body.components(separatedBy: ". ").first ?? ""
+        let reason: String = first.hasSuffix(".") ? String(first.dropLast()) : first
+        return reason.isEmpty ? "\(p.name) has left \(p.employer)." : "\(p.name) left: \(reason)."
     }
 
     /// The portrait key of a listed person, when the row points at a person record.
@@ -333,7 +359,7 @@ struct TeamView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(p.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 HStack(spacing: 6) {
-                    badge(p.role)
+                    badge(p.role).orgTextSwap(p.role, interpolate: true).orgPulse(p.role)
                     badge(p.scope)
                     Text(p.employer).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                 }
@@ -369,29 +395,45 @@ struct TeamView: View {
         if o.companies.isEmpty {
             Text("No companies yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
         }
-        handledForYou(e)
+        handledForYou(o, e)
         decidesTables(o, e, alerts, limit: nil)
         performance(o, e)
     }
 
     /// Who takes the routine work in each company. It follows who is hired: nothing here is a setting.
-    @ViewBuilder private func handledForYou(_ e: GameEngine) -> some View {
+    @ViewBuilder private func handledForYou(_ o: TeamOverview, _ e: GameEngine) -> some View {
         let lines: [DelegationLine] = e.delegationLines()
         if !lines.isEmpty {
             let limit: (limit: Double, rate: Double) = e.delegatedSpendLimit()
+            let posts: [String] = lines.compactMap { l in e.state.company(l.id)?.managerID.map { "\(l.id)-\($0)" } }
+            let authorities: [Int] = o.companies.map { $0.authority }
             sectionLabel("Handled for you")
             ForEach(lines) { (l: DelegationLine) in
+                let mgr: Person? = e.state.company(l.id)?.managerID.flatMap { e.state.people[$0] }
+                let post: String = "\(l.id)-\(mgr?.id ?? 0)"
+                let auth: Int = o.companies.first { $0.id == l.id }?.authority ?? -1
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
+                    HStack(spacing: 8) {
+                        if let m = mgr {
+                            ThumbnailView(kind: .person, key: m.role, size: 26, initials: m.name, face: m.faceKey)
+                                .transition(AnyTransition.orgNode)
+                            OrgLink(drawn: freshManagers.contains(l.id))
+                        }
                         Text(l.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
                         Spacer(minLength: 8)
                         Text("Highest rank: " + l.top).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            .orgTextSwap(l.top, interpolate: true).orgPulse("\(l.top)|\(auth)")
                     }
                     delegationRow("Routine payroll", l.payroll)
                     delegationRow("Replacing people who leave", l.rehire)
                     delegationRow("Routine complaints", l.complaints)
                 }
                 .padding(14).teamCard()
+                .orgEdge(freshManagers.contains(l.id) ? Theme.gold : nil, radius: Theme.Radius.row)
+            }
+            .orgHierarchy(authorities)
+            .orgArrivals(posts, fresh: $freshPostKeys) { added, _ in
+                for k in added { if let id = Int(k.split(separator: "-").first ?? "") { freshManagers.insert(id); DispatchQueue.main.asyncAfter(deadline: .now() + OrgMotion.flashSeconds) { freshManagers.remove(id) } } }
             }
             Text(limit.limit > 0
                  ? "Managers spend up to about \(store.short(limit.limit)) without asking you; it grows with your net worth. Companies without a manager always ask."

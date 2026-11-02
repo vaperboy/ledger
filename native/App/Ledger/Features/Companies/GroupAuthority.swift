@@ -30,6 +30,7 @@ struct GroupAuthoritySection: View {
                 office(g)
             }
         }
+        .orgHierarchy(g.lines.map { "\($0.id)|\($0.runner?.name ?? "")|\($0.runner?.authorityText ?? "")|\($0.above.count)" })
     }
 
     private func summary(_ g: GroupManagement) -> some View {
@@ -79,6 +80,7 @@ struct GroupAuthoritySection: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.isHolding ? "\(line.name) (holding)" : line.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
                 Text(runnerLine(line)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .orgTextSwap(runnerLine(line), interpolate: true).orgPulse(runnerLine(line))
                 if let up = reportsLine(line) { Text(up).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
