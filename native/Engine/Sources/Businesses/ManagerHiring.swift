@@ -31,7 +31,7 @@ public enum ManagerHiring {
         if let end = FixedTerm.endWeek(m), end - s.week <= horizonWeeks { return "the fixed term ends" }
         if let n = s.people[m.id], Double(n.age) + Double(s.week - m.hiredWeek) / 52 >= 67 - Double(horizonWeeks) / 52 { return "is about to retire" }
         if m.tiredness >= burnoutTiredness { return "is burning out" }
-        if let mood = StaffProfile.mood(s, companyID: co.id, staffID: m.id, data: data), mood.word == "Unhappy" || mood.word == "Leaving" { return "is unhappy and may leave" }
+        if let mood = StaffProfile.mood(s, companyID: co.id, staffID: m.id, data: data), mood.word == "Leaving" || (mood.word == "Unhappy" && mood.bad.count >= 3) { return "is unhappy and may leave" }
         return nil
     }
 
