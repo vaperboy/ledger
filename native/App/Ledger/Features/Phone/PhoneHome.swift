@@ -44,13 +44,11 @@ struct PhoneHome: View {
     // MARK: Home screen
 
     private var home: some View {
-        let alerts: [PhoneAlert] = store.phoneAlerts
         let badges: [PhoneApp: Int] = store.phoneBadges
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
         return ScrollView {
             VStack(spacing: 16) {
                 clock
-                if let top = alerts.first { banner(top) }
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(PhoneApp.allCases) { app in
                         AppIcon(app: app, badge: badges[app] ?? 0) {

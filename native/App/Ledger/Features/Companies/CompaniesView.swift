@@ -95,14 +95,11 @@ struct CompaniesView: View {
             let priorities: Int = max(1, min(3, Int(((total - 290 - 36 - 32 - 8 - minCompanies - 8) / 38).rounded(.down))))
             let mid: CGFloat = max(0, total - topHeight - 8)
             let fit = Self.companyFit(avail: mid, count: rows.count, head: head, pitch: pitch)
-            let used: CGFloat = cos.isEmpty ? 120 : fit.used
-            let recent: Int = max(0, min(6, Int(((mid - used - 8 - HomeTimeline.titleHeight) / HomeTimeline.rowHeight).rounded(.down))))
             VStack(alignment: .leading, spacing: 8) {
                 HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }, maxPriorities: priorities)
                     .background(GeometryReader { (g: GeometryProxy) in Color.clear.preference(key: HomeTopHeightKey.self, value: g.size.height) })
                 companiesBlock(e, cos: cos, rows: rows, shown: fit.shown, more: fit.more)
                 Spacer(minLength: 0)
-                HomeTimeline(maxRows: recent)
             }
             .onPreferenceChange(HomeTopHeightKey.self) { topHeight = $0 }
             .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 4)

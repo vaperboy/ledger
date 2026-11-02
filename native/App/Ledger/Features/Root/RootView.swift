@@ -21,6 +21,7 @@ struct RootView: View {
         .scrollBounceBehavior(.basedOnSize, axes: [.vertical, .horizontal])
         .transaction { t in if reduceMotion { t.animation = nil } }
         .overlay { errorPopup }
+        .overlay { NotificationBannerLayer(queue: store.banners) }
     }
 
     /// An error is told in the same in-game popup as every question, not in an iOS alert.

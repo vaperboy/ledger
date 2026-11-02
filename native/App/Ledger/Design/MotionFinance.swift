@@ -140,24 +140,6 @@ struct MotionOverlay: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if let n = store.paymentNotice {
-                HStack(spacing: 8) {
-                    Circle().fill(Theme.gain).frame(width: 7, height: 7)
-                    Text("Payment received").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                    Text("+" + store.short(n.amount)).font(.system(size: 13.5, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gain)
-                    Text(n.from).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                }
-                .padding(.horizontal, 14).padding(.vertical, 9)
-                .background(Capsule().fill(Theme.surface))
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-                .id(n.id)
-                .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
-                .task(id: n.id) {
-                    try? await Task.sleep(nanoseconds: 2_500_000_000)
-                    if store.paymentNotice?.id == n.id { withAnimation(Motion.standard(reduceMotion)) { store.dismissPaymentNotice() } }
-                }
-                .accessibilityElement(children: .combine)
-            }
             if let c = store.transferChip {
                 TransferChipView(chip: c)
             }

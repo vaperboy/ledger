@@ -107,6 +107,8 @@ final class GameStore: ObservableObject {
     @Published private(set) var redAlerts: [Message] = []
     func dismissRedAlert() { if !redAlerts.isEmpty { redAlerts.removeFirst() } }
     var toast: Toast? { notices.first }
+    /// The iOS-style notification banners (see `NotificationBannerLayer`).
+    let banners = BannerQueue()
     /// The open decision (an Inbox message id) being answered in a popup on the main screen, or nil.
     @Published var decisionPopup: Int?
     @Published var errorText: String?
@@ -280,6 +282,7 @@ final class GameStore: ObservableObject {
         // A major payment (the day's takings above 1.5 percent of net worth): one small notice per day, never blocking.
         if let nwNow = e.dayHistory.netWorth.last, daily.revenue > 0, daily.revenue >= max(1, nwNow) * 0.015, !out.gameOver {
             paymentNotice = PaymentNotice(amount: daily.revenue, from: daily.bestCompany ?? "Customers")
+            banner("Payment received", body: "+" + short(daily.revenue) + " \u{00B7} " + (daily.bestCompany ?? "Customers"), glyph: Glyph.ovCoin)
         }
         var logged: [HomeEvent] = []
         if let n = paymentNotice, n.amount == daily.revenue { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
@@ -399,7 +402,7 @@ final class GameStore: ObservableObject {
     /// A result line from an action. There is no banner: a refusal or a warning (tone "warn" or "bad") is told in a popup because the
     /// player must see why nothing happened; a plain confirmation ("Saved", "Hired") is already visible on the screen, so it just goes.
     func show(_ text: String, tone: String = "n") {
-        guard tone == "warn" || tone == "bad" else { return }
+        guard tone == "warn" || tone == "bad" else { banner(text); return }
         tell("", text, tone: tone)
     }
 
@@ -681,7 +684,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {
