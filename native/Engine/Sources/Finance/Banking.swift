@@ -83,7 +83,7 @@ public enum Banking {
     /// `netWorth` is the player's net worth; `collateral` is the total lendable value of luxury assets.
     /// Original: `loanOfferCore` (+ the steps that add the own-bank, finance-manager and young-borrower rules).
     public static func offer(kind: String, amount: Double, company co: Company?, state s: GameState, netWorth: Double,
-                             collateral: Double = 0, context: FinanceContext) -> LoanOffer {
+                             collateral: Double = 0, companyValue: Double? = nil, context: FinanceContext) -> LoanOffer {
         let band = creditBand(s.credit)
         var margin = creditMargin(s.credit) + (kind == "biz" ? 0.01 : kind == "mort" ? -0.012 : kind == "cons" ? 0.03 : kind == "lomb" ? -0.004 : 0)
         var maxLoan: Double
@@ -93,7 +93,10 @@ public enum Banking {
             let f: Double = band == "A" ? 2 : band == "B" ? 1.4 : band == "C" ? 1 : band == "D" ? 0.4 : 0
             maxLoan = max(0, consumerBaseMonths * context.homeCountry(s).medianMonthlyWage + max(0, netWorth) * 0.15) * f
         case "biz":
-            let base = co.map { max(0, CompanyFigures.yearlyProfitEstimate($0, currentWeek: s.week)) * 3 + CompanyFigures.fixedAssets($0) * 0.5 } ?? 0
+            // A bank also lends against what the business is worth (customers, contracts, assets), not only against profit: a company that
+            // runs at a loss for years can still borrow while it is worth something, as in real life (owner decision, 2 Nov).
+            let fromBooks: Double = co.map { max(0, CompanyFigures.yearlyProfitEstimate($0, currentWeek: s.week)) * 3 + CompanyFigures.fixedAssets($0) * 0.5 } ?? 0
+            let base: Double = fromBooks + max(0, companyValue ?? 0) * 0.35
             maxLoan = (base + max(0, netWorth) * 0.25) * bandBiz
         case "mort":
             maxLoan = max(0, netWorth) * 1.6 * (band == "E" ? 0 : 1)
@@ -132,7 +135,9 @@ public enum Banking {
         case "biz":
             maxLoan = max(0, maxLoan - owedC)
             if let c = co, c.monthlyHistory.count >= 3 {
-                maxLoan = min(maxLoan, room(max(0, CompanyFigures.yearlyProfitEstimate(c, currentWeek: s.week)) * 0.8, payC))
+                // The income a bank assumes it can service from: profit, or a share of what the business is worth when profit is thin.
+                let serviceable = max(max(0, CompanyFigures.yearlyProfitEstimate(c, currentWeek: s.week)) * 0.8, max(0, companyValue ?? 0) * 0.06)
+                maxLoan = min(maxLoan, room(serviceable, payC))
             }
         default: break
         }

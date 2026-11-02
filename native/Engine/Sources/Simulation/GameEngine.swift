@@ -350,6 +350,7 @@ public struct GameEngine {
         if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
         ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
+        Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         for i in state.companies.indices {
             let c = state.companies[i]
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {

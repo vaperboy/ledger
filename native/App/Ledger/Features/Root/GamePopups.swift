@@ -16,6 +16,7 @@ struct PopupLayer: View {
             else if let d = store.dailySheet { DailyReportPopup(digest: d).transition(.opacity) }
             if let id = store.decisionPopup { DecisionPopup(messageID: id).id(id).transition(.opacity) }
             if let n = store.toast { NoticePopup(notice: n).id(n.id).transition(.opacity) }
+            if let a = store.redAlerts.first { RedAlertPopup(message: a).id(a.id).transition(.opacity) }
         }
     }
 }
@@ -31,6 +32,43 @@ struct NoticePopup: View {
     }
 
     var body: some View {
+        if notice.style == "answered" { answered } else { plain }
+    }
+
+    /// The result of an answered decision: a check, what was chosen, which company, and every change it made.
+    private var answered: some View {
+        GamePopup(title: "Done", showsClose: false, onClose: { store.dismissNotice() }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    GlyphView(glyph: Glyph.check, size: 22, weight: 1.8, tint: Theme.gain)
+                        .frame(width: 40, height: 40).background(Circle().fill(Theme.gain.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(notice.title).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        if !notice.subtitle.isEmpty { Text(notice.subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+                    }
+                }
+                if !notice.rows.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(notice.rows, id: \.self) { (line: String) in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Circle().fill(Theme.gold).frame(width: 5, height: 5).offset(y: -2)
+                                Text(line.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
+                }
+                HStack {
+                    Spacer(minLength: 0)
+                    Button("OK") { Haptics.tap(); store.dismissNotice() }
+                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("notice-ok")
+                }
+            }
+        }
+    }
+
+    private var plain: some View {
         GamePopup(title: heading, showsClose: false, onClose: { store.dismissNotice() }) {
             VStack(alignment: .leading, spacing: 12) {
                 if !notice.text.isEmpty {
@@ -134,7 +172,7 @@ struct DecisionPopup: View {
         let effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
         let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
         store.decisionPopup = nil
-        store.announceAnswer(label: label, effects: effects, ok: ok)
+        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
     }
 }
 
@@ -153,9 +191,10 @@ struct DailyReportPopup: View {
     }
 
     var body: some View {
-        GamePopup(title: digest.dateLabel, showsClose: false, onClose: { store.dismissDailySheet() }) {
+        GamePopup(title: digest.dateLabel, showsClose: false, dismissOnBackdrop: false, onClose: { store.dismissDailySheet() }) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Daily report").capsLabel()
+                moneyLines
                 section("Went well", wentWell, tint: Theme.gain)
                 section("Needs a look", digest.staffMessages, tint: Theme.caution)
                 if digest.decisionsOpen > 0 {
@@ -167,6 +206,27 @@ struct DailyReportPopup: View {
                         .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("daily-continue")
                 }
             }
+        }
+    }
+
+    /// What the day did to your money: always there, even on a quiet day, so every day has something to read.
+    @ViewBuilder private var moneyLines: some View {
+        if let c = digest.cashChange, let n = digest.netWorthChange {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your money").capsLabel()
+                moneyRow("Cash", c)
+                moneyRow("Net worth", n)
+                if digest.isEmpty { Text("A quiet day: nothing sold, nothing new in the Inbox.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
+            }
+        }
+    }
+
+    private func moneyRow(_ label: String, _ change: Double) -> some View {
+        HStack {
+            Text(label).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+            Spacer(minLength: 8)
+            Text((change >= 0 ? "+" : "") + store.short(change)).font(.system(size: 13.5, weight: .medium).monospacedDigit())
+                .foregroundStyle(abs(change) < 1 ? Theme.ivoryMuted : change > 0 ? Theme.gain : Theme.loss)
         }
     }
 
@@ -182,5 +242,44 @@ struct DailyReportPopup: View {
                 }
             }
         }
+    }
+}
+
+/// A company about to be force-sold: a see-through red alert over everything. Tapping outside does nothing; the player has to read it and press Continue.
+struct RedAlertPopup: View {
+    @EnvironmentObject var store: GameStore
+    var message: Message
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.8, green: 0.06, blue: 0.08).opacity(0.34).ignoresSafeArea()
+                .contentShape(Rectangle()).onTapGesture { }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    GlyphView(glyph: Glyph.warning, size: 24, weight: 1.8, tint: Color.white)
+                    Text("About to be sold").font(.system(size: 12, weight: .bold)).tracking(1.4).foregroundStyle(Color.white.opacity(0.9))
+                }
+                Text(store.engine?.displayText(message.title, companyID: message.companyID) ?? message.title)
+                    .font(.serifTitle(22)).foregroundStyle(Color.white).fixedSize(horizontal: false, vertical: true)
+                Text((store.engine?.displayText(message.body, companyID: message.companyID) ?? message.body).tidyMoney)
+                    .font(.system(size: 14.5)).foregroundStyle(Color.white.opacity(0.92)).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    if message.companyID != 0 {
+                        Button("Open the company") {
+                            Haptics.tap(); store.dismissRedAlert(); store.openCompany(message.companyID, section: nil)
+                        }.buttonStyle(QuietButtonStyle())
+                    }
+                    Spacer(minLength: 0)
+                    Button("Continue") { Haptics.tap(); store.dismissRedAlert() }
+                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("alert-continue")
+                }
+            }
+            .padding(18).frame(maxWidth: 420)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Color(red: 0.42, green: 0.04, blue: 0.06).opacity(0.78)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Color(red: 1, green: 0.4, blue: 0.4).opacity(0.7), lineWidth: 1.5))
+            .padding(.horizontal, 22)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 }

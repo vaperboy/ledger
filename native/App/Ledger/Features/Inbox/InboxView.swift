@@ -150,7 +150,7 @@ struct InboxView: View {
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         detailID = nil
-        store.announceAnswer(label: label, effects: effects, ok: ok)
+        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
     }
 
     private func takeRequest(_ proxy: ScrollViewProxy) {

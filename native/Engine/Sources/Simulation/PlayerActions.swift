@@ -236,7 +236,8 @@ public extension GameEngine {
     }
 
     func loanOffer(kind: String, amount: Double, companyID: Int?) -> LoanOffer {
-        Banking.offer(kind: kind, amount: amount, company: companyID.flatMap { state.company($0) }, state: state, netWorth: netWorth.total, collateral: Luxury.collateral(state), context: context)
+        Banking.offer(kind: kind, amount: amount, company: companyID.flatMap { state.company($0) }, state: state, netWorth: netWorth.total, collateral: Luxury.collateral(state),
+                       companyValue: companyID.flatMap { state.company($0) }.map { Valuation.companyValue($0, state: state, trades: data.catalog) }, context: context)
     }
 
     mutating func repayLoan(id: Int, amount: Double) -> Bool {

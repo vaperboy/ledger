@@ -1,25 +1,16 @@
 # What's new
-- Notifications: top banner removed; important info and decisions are popups
-- Daily short report popup; weekly, monthly and yearly reports are popups
-- Goals and missions: "Claim reward" button with reaction
-- Swipe back steps back one screen inside TechPro, AirStay and Atlas
-- TechPro: every item, sort by price, calendar sales including Black Friday
-- Atlas: cancel a policy in the app
-- AirStay: each listing has its own name and picture
-- Hours adjust automatically; burnout from 65 h; "Works here" box in Management
-- Manage: Equipment, Premises and Insurance rows moved to their apps
-- TechPro: every item in the game is for sale to any company; "My items" shows what a company owns in the store's look
-- Settings: "How much I decide" removed. Payroll, replacing leavers and complaints follow who you hired; spending limit grows with net worth; dividends are never automatic
-- Group > Dividends: a dividend desk. Pay a share of what a company can pay, or let a holding collect from the companies under it
-- Team > Delegation: "Handled for you" shows who takes payroll, replacing leavers and complaints in each company; Inbox decisions show a level and rank
-- TechPro: tabs Store, Products, My items (shows what is missing) and My orders; filter chips fixed
-- Starting a company buys and hires nothing; the start-up screen shows a recommended investment and only the necessary part is taken
-- Pricing: type the price per unit or hour; shops set a markup percent on all items
-- Owner hours follow demand and can go under 40 a week
-- Subscriptions: no sales, only a volume discount on the biggest plan; used items never have discounts
-- TechPro: your own delivery company charges a delivery fee, booked as its revenue
+- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it
+- A company about to be force-sold now shows a see-through red alert first
+- Answered decisions show a result card: what you chose, which company, and what changed
+- Loans: banks also lend against what a business is worth, not only its profit
+- Settings: "How much I decide" removed. Payroll, replacing leavers and complaints follow who you hired; managers' spending limit grows with your net worth
+- Group > Dividends: dividends are never automatic; pay a share or let a holding collect
+- Team > Delegation: shows who handles payroll, hiring and complaints in each company; Inbox decisions show a level
+- TechPro: every item for sale to any company; tabs Store, Products, My items (with what is missing) and My orders
+- Starting a company buys and hires nothing; the start-up screen shows a recommended investment and takes only what is needed
+- Pricing: type the price per unit or hour; shops set a markup percent
+- Owner hours can go under 40; subscriptions have no sales (only a discount on the biggest plan); your own delivery company charges a fee
 
-# Missing / coming next
-- Chain and franchise steps
+# Coming next
+- Group, Team and Projects layouts, Inbox and Reports redesign
 - More photos for vehicles, premises and equipment
-- Not yet tested on device: expect rough edges

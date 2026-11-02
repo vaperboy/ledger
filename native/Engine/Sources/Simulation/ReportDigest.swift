@@ -116,5 +116,8 @@ public struct DailyDigest: Equatable, Sendable {
     /// Today's messages that need a look (asks and bad news), most important first.
     public var staffMessages: [String]
     public var decisionsOpen: Int
+    /// What the day did to the owner's money: filled by the app from the day history (nil when there is no history yet).
+    public var cashChange: Double? = nil
+    public var netWorthChange: Double? = nil
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }
