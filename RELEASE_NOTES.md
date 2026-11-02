@@ -1,4 +1,5 @@
 # What's new
+- Net-worth milestones (100k, 250k, 500k, 1M and on) and profit-streak awards (4, 8, 13, 26, 52 weeks) pop up as celebrations
 - TechPro store is a grid of product groups; opening one shows its suppliers as boxes, and every product has its own page
 - Money figures count up and flash green when they rise and red when they fall (home, group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
 - Swiping between tabs needs a longer, clearly sideways drag, so it no longer triggers by accident

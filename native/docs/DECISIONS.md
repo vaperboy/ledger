@@ -109,3 +109,4 @@ Layout bug: some screens move loosely side to side and up and down when content 
 - Balance guard: with owner hours free to go under 40, up to seven of sixteen capital-heavy trades may sit slightly below zero in the first three years (none below -10%); the median stays positive.
 - Motion audit: swipe-back lives in the shared screen chrome; Reduce Motion is dropped at the root for every animation; sideways tab swiping now also covers Inbox and Bank accounts (Team, Group, Reports, Company and Payroll already had it).
 - Home gets the counting and flash animation on net worth and its four figures; its layout is unchanged (owner: Home is the dopamine spot, layout stays as is for now).
+- Milestones: each net-worth threshold (100k, 250k, 500k, 1M, 2.5M, 5M, 10M, ...) celebrates once, only the highest when several are crossed; a profit streak counts weeks where net worth rose, popups at 4, 8, 13, 26, 52 weeks.
