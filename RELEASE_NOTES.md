@@ -1,4 +1,5 @@
 # What's new
+- TechPro store is a grid of product groups; opening one shows its suppliers as boxes, and every product has its own page
 - Money figures count up and flash green when they rise and red when they fall (home, group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
 - Swiping between tabs needs a longer, clearly sideways drag, so it no longer triggers by accident
 - Swipe sideways to change the tab in your Inbox and in a bank account
