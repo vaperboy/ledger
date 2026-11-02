@@ -74,11 +74,12 @@ struct ManagementRow: View {
             }
             Spacer(minLength: 8)
             if let wage { Text(wage).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).accessibilityHidden(true)
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens this post")
     }
 }
 

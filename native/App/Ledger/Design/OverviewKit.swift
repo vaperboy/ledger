@@ -15,7 +15,7 @@ extension Glyph {
 private struct OverviewCaps: View {
     var text: String
     var body: some View {
-        Text(text.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold).lineLimit(1)
+        Text(text.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.8)
     }
 }
 

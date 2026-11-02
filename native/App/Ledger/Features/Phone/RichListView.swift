@@ -69,7 +69,7 @@ struct RichListView: View {
                 Text(p.name).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(p.isYou ? P.accent2 : P.ink)
                     .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8)
                 Text(store.short(max(0, p.wealth))).font(.system(size: 12).monospacedDigit()).foregroundStyle(P.inkSoft)
-                Text(p.isYou ? "You" : p.source).font(.system(size: 10.5)).foregroundStyle(P.inkFaint).lineLimit(1)
+                Text(p.isYou ? "You" : p.source).font(.system(size: 10.5)).foregroundStyle(P.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
             }
             .padding(.horizontal, 6).padding(.top, 10).padding(.bottom, 10)
             .frame(maxWidth: .infinity, minHeight: height, alignment: .top)

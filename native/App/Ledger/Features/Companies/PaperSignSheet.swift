@@ -27,11 +27,11 @@ struct PaperSignSheet: View {
                 line("Answer expected", wait)
                 Button { Haptics.choose(); agreed.toggle() } label: {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: agreed ? "checkmark.square.fill" : "square").foregroundStyle(agreed ? Theme.gold : Theme.ivoryFaint).font(.system(size: 20))
+                        Image(systemName: agreed ? "checkmark.square.fill" : "square").foregroundStyle(agreed ? Theme.gold : Theme.ivoryFaint).font(.system(size: 20)).accessibilityHidden(true)
                         Text("I confirm that the details are true and I accept the terms of this application.").font(.system(size: 13)).foregroundStyle(Theme.ivory)
                             .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                     }
-                }.buttonStyle(PressableStyle())
+                }.buttonStyle(PressableStyle()).accessibilityValue(agreed ? "Checked" : "Unchecked")
                 SignaturePad(strokes: $strokes)
                 HStack {
                     Button("Clear") { strokes = [] }.buttonStyle(QuietButtonStyle()).disabled(strokes.isEmpty)

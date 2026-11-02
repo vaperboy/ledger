@@ -770,7 +770,7 @@ struct PillTabBar: View {
                 } label: {
                     VStack(spacing: 3) {
                         GlyphView(glyph: item.glyph, size: 22, weight: 1.5, tint: on ? Theme.gold : Theme.ivoryMuted)
-                        Text(item.title).font(.system(size: 10.5)).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted).lineLimit(1)
+                        Text(item.title).font(.system(size: 10.5)).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)

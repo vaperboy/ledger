@@ -163,7 +163,7 @@ private struct OrgPin: ViewModifier {
         content
             .overlay(alignment: .topLeading) {
                 if active {
-                    Image(systemName: "mappin.circle.fill").font(.system(size: 17)).foregroundStyle(Theme.gold)
+                    Image(systemName: "mappin.circle.fill").font(.system(size: 17)).foregroundStyle(Theme.gold).accessibilityHidden(true)
                         .offset(x: 4, y: -6)
                         .transition(AnyTransition.scale(scale: 0.4, anchor: .bottom).combined(with: AnyTransition.offset(x: 0, y: -10)).combined(with: AnyTransition.opacity))
                         .allowsHitTesting(false)

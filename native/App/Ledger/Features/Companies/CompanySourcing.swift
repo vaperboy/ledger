@@ -182,7 +182,7 @@ struct CompanySourcing: View {
                     }
                     .chartYAxis {
                         AxisMarks { v in
-                            AxisValueLabel { if let id = v.as(String.self) { Text(names[id] ?? "").font(.system(size: 10)).foregroundStyle(Theme.ivoryMuted).lineLimit(1) } }
+                            AxisValueLabel { if let id = v.as(String.self) { Text(names[id] ?? "").font(.system(size: 10)).foregroundStyle(Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8) } }
                         }
                     }
                     .frame(height: CGFloat(dots.count) * 26 + 34)

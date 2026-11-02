@@ -57,7 +57,7 @@ struct NewItemSheet: View {
 
     private func figure(_ label: String, _ value: Double?, _ text: String?) -> some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Text(label).font(.system(size: 9)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+            Text(label).font(.system(size: 9)).foregroundStyle(Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
             Text(text ?? "-").font(.system(size: 12, weight: .semibold))
                 .foregroundStyle((value ?? 0) >= 0 ? Theme.gain : Theme.loss).lineLimit(1).minimumScaleFactor(0.7)
         }

@@ -181,7 +181,7 @@ struct NewHoldingView: View {
                                         Spacer()
                                         Image(systemName: picked.contains(c.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(picked.contains(c.id) ? Theme.gold : Theme.ivoryFaint)
                                     }.padding(.vertical, 10).contentShape(Rectangle())
-                                }.buttonStyle(PressableStyle())
+                                }.buttonStyle(PressableStyle()).accessibilityValue(picked.contains(c.id) ? "Selected" : "Not selected")
                             }
                         }
                     }

@@ -120,7 +120,7 @@ struct ProjectWeeksChart: View {
                 Color.clear.frame(width: 96)
                 GeometryReader { g in
                     ForEach(Array(stride(from: now - back, to: now + ahead, by: 2).enumerated()), id: \.offset) { _, wk in
-                        Text(shortDate(week: wk)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).fixedSize()
+                        Text(shortDate(week: wk)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8).fixedSize()
                             .position(x: x(wk, g.size.width) + 14, y: 7)
                     }
                 }.frame(height: 14)

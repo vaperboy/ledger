@@ -1,4 +1,5 @@
 # What's new
+- Accessibility: steppers, confirm boxes and Team rows have spoken labels and hints, and small one-line labels shrink instead of cutting off
 - Market news (big contracts, companies for sale, competitor and supplier moves, recognition) arrives as banners and highlighted rows in Market; the Payment banner follows the largest real payment of the day; Sales has a market trend card; the bank flows no longer rise from the bottom; old unused screens are gone
 - Talking terms are two clean one-page steps: contract terms, then pay (pay basis, commission, benefits and expectations are back)
 - Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is gone from Home

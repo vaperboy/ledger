@@ -51,7 +51,7 @@ struct TeamBadge: View {
 
     var body: some View {
         Text(text.tidyText)
-            .font(.system(size: 10.5, weight: .medium)).foregroundStyle(tint).lineLimit(1)
+            .font(.system(size: 10.5, weight: .medium)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.8)
             .padding(.horizontal, 7).padding(.vertical, 2)
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }

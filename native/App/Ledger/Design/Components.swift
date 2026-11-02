@@ -214,9 +214,9 @@ struct Stat: View {
     @Environment(\.outsidePalette) private var palette
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 10.5)).foregroundStyle(palette.inkFaint).lineLimit(1)
+            Text(label).font(.system(size: 10.5)).foregroundStyle(palette.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
             Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint.inPalette(palette)).minimumScaleFactor(0.7).lineLimit(1)
-            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(palette.inkFaint).lineLimit(1) }
+            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(palette.inkFaint).lineLimit(1).minimumScaleFactor(0.8) }
         }
     }
 }

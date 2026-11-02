@@ -8,10 +8,10 @@ struct StepperPill: View {
     var body: some View {
         HStack(spacing: 0) {
             Button { value = max(range.lowerBound, value - step); Haptics.choose() } label: { GlyphView(glyph: Glyph.minus, size: 14, weight: 2, tint: Theme.gold).frame(width: 40, height: 32) }
-                .disabled(value <= range.lowerBound)
+                .disabled(value <= range.lowerBound).accessibilityLabel("Decrease")
             Rectangle().fill(Theme.divider).frame(width: 1, height: 18)
             Button { value = min(range.upperBound, value + step); Haptics.choose() } label: { GlyphView(glyph: Glyph.hire, size: 14, weight: 2, tint: Theme.gold).frame(width: 40, height: 32) }
-                .disabled(value >= range.upperBound)
+                .disabled(value >= range.upperBound).accessibilityLabel("Increase")
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(Theme.gold)

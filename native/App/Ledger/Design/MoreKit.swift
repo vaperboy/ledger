@@ -103,7 +103,7 @@ struct FigureStrip: View {
 
     private func cell(_ it: KeyFigures.Item) -> some View {
         VStack(spacing: 2) {
-            Text(it.label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            Text(it.label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             Text(it.value.tidyText).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(it.tint)
                 .lineLimit(1).minimumScaleFactor(0.7)
             if !it.sub.isEmpty { Text(it.sub.tidyText).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8) }
