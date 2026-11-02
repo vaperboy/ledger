@@ -71,6 +71,28 @@ public extension GameEngine {
         }
     }
 
+    /// The choices for the "new product or service" popup. Profit and market numbers are nil without a market advisor.
+    func newItemOptions(companyID: Int, isService: Bool) -> NewItemOptionList {
+        NewItemOptions.list(state, companyID: companyID, isService: isService, data: data)
+    }
+
+    /// True when a market advisor is employed (or a manager has that duty).
+    func hasMarketAdvisor(companyID: Int) -> Bool { state.company(companyID).map(NewItemOptions.hasAdvisor) ?? false }
+
+    /// Add the chosen option: at once for a variant, or start its development (cost paid now, the item appears when done).
+    @discardableResult
+    mutating func addNewItem(companyID: Int, optionID: String) -> SettingResult {
+        let data = self.data
+        let svc = optionID.hasPrefix("svc:")
+        guard let o = NewItemOptions.list(state, companyID: companyID, isService: svc, data: data).options.first(where: { $0.id == optionID }) else {
+            return .refused("That choice is no longer on offer.")
+        }
+        if !o.needsDevelopment { return addSalesItem(companyID: companyID, name: o.name, isService: o.isService) }
+        return applySetting(refuse: { NewItemOptions.startRefusal($0, companyID: companyID, option: o, data: data) }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            NewItemOptions.start(&s, companyID: companyID, option: o)
+        }
+    }
+
     /// Offer an item to your other companies (or stop).
     @discardableResult
     mutating func setItemListedForGroup(companyID: Int, itemID: String, listed: Bool) -> SettingResult {

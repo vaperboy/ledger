@@ -262,6 +262,7 @@ public enum RoleEffects {
     static let table: [String: Extra] = [
         "guard": Extra(id: "guard", effect: "Cuts losses from theft and shrinkage by 30 percent."),
         "marketer": Extra(id: "marketer", effect: "Campaigns reach 8 percent more people, 18 percent while you work somewhere else."),
+        "advisor": Extra(id: "advisor", effect: "Shows what a new product or service would do to profit and market share."),
         "dev": Extra(id: "dev", effect: "Development projects take a quarter less time."),
         "acct": Extra(id: "acct", effect: "Inspections find fewer faults (5 points lower chance)."),
         "cleaner": Extra(id: "cleaner", effect: "Inspections find fewer faults (4 points lower chance)."),
@@ -280,6 +281,7 @@ public enum RoleEffects {
         default: out = ["acct", "marketer", "recept"]
         }
         if ["startup", "webdev", "mktg", "engcons"].contains(bd.id) { out.insert("dev", at: 0) }
+        if !["hold", "fin", "energy"].contains(bd.family) { out.append("advisor") }
         return out
     }
 

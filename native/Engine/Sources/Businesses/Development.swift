@@ -165,8 +165,12 @@ public enum Development {
         let co = s.companies[i]
         if !r["run"].isNull, s.week >= r["run"]["wEnd"].int, co.status.isLive {
             let k = r["run"]["k"].string
+            let run = r["run"]
             r["run"] = .null
-            if let p = projects(for: co, data: data).first(where: { $0.id == k }) {
+            if k == NewItemOptions.projectID {
+                s.companies[i].set("rd56", r)
+                NewItemOptions.finish(&s, i, name: run["item"].string, isService: run["svc"].bool, data: data)
+            } else if let p = projects(for: co, data: data).first(where: { $0.id == k }) {
                 let salesRoles = data.catalog.tables.salesRoles
                 let sk = co.staff.isEmpty ? 50 : co.staff.reduce(0.0) { $0 + StaffModel.skill($1, person: s.people[$1.id], salesRoles: salesRoles) } / Double(co.staff.count)
                 let mgrBonus = co.managerID != nil ? (ManagerModel.quality(co, bd, people: s.people) - 0.5) * 0.3 : 0
