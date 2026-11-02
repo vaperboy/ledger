@@ -7,9 +7,9 @@ import Simulation
 // The tabs of the Group screen, built to the approved mockups (GroupA Overview, GroupB Structure, GroupC Board; Deals and More follow
 // the same pattern). Every figure and every action comes from the engine; the views only choose, format and report.
 
-/// The five underline tabs under the Group header. Four are fixed; More is a menu of the other Group pages.
+/// The six underline tabs under the Group header: ownership, boards, the money (dividends and tax), deals, and one flat More page. No menu layer.
 enum GroupTab: String, CaseIterable, Hashable {
-    case overview = "Overview", structure = "Structure", board = "Board", deals = "Deals", more = "More"
+    case overview = "Overview", structure = "Structure", board = "Board", money = "Money", deals = "Deals", more = "More"
 }
 
 /// The pages behind the More menu. Everything that used to sit on the long Group page, plus the pages it linked to.
@@ -54,35 +54,26 @@ enum GroupMorePage: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
-/// Text tabs with a champagne underline on the chosen one and a "More" menu at the right (never scrolls sideways).
+/// Text tabs with a champagne underline (never scrolls sideways). Every tab is a plain tab: there is no menu behind any of them.
 struct GroupTabBar: View {
     @Binding var tab: GroupTab
-    @Binding var more: GroupMorePage
     var badges: [GroupTab: Int] = [:]
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(GroupTab.allCases.filter { $0 != .more }, id: \.self) { t in
+            ForEach(GroupTab.allCases, id: \.self) { t in
                 Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, menu: false) }
                     .buttonStyle(PressableStyle())
                     .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
                     .accessibilityIdentifier("group-tab-\(t.rawValue)")
             }
-            Menu {
-                ForEach(GroupMorePage.allCases.filter { $0.inMore }) { p in
-                    Button { more = p; tab = .more; Haptics.choose() } label: {
-                        if tab == .more && more == p { Label(p.rawValue, systemImage: "checkmark") } else { Text(p.rawValue) }
-                    }
-                }
-            } label: { cell("More", on: tab == .more, badge: 0, menu: true) }
-                .accessibilityIdentifier("group-tab-More")
         }
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
     }
 
     private func cell(_ text: String, on: Bool, badge: Int, menu: Bool) -> some View {
         HStack(spacing: 3) {
-            Text(text).font(.system(size: 13.5)).lineLimit(1)
+            Text(text).font(.system(size: 13)).lineLimit(1).minimumScaleFactor(0.8)
             if menu { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             RedBubble(count: badge, size: .small)
         }
@@ -660,62 +651,55 @@ struct GroupDealsTab: View {
 
 // MARK: - More
 
-/// The page chosen in the More menu. Sections that were part of the old long Group page are drawn as they were; the rest are links.
+/// Group > Money: the dividend desk, the dividend and group-tax log, and gifts and the foundation. Nothing here is paid by itself.
+struct GroupMoneyTab: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var showGiving: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            GroupCaps(text: "Dividends")
+            GroupDividendsPage(engine: engine)
+            GroupStructureOverview(engine: engine, parts: [.dividends])
+            GroupCaps(text: "Giving back")
+            Button { Haptics.tap(); showGiving() } label: {
+                CardRow(glyph: Glyph.richList, title: "Gifts, sponsorships and your foundation",
+                        subtitle: "\(engine.givingMarks.count) \(engine.givingMarks.count == 1 ? "mark" : "marks")" + (engine.foundation != nil ? " \u{00B7} foundation running" : ""))
+            }.buttonStyle(PressableStyle())
+        }
+    }
+}
+
+// MARK: - More
+
+/// Group > More: the group's own services on ONE page, each under its heading (no menu to pick from): the group office, executive posts,
+/// companies with no group link, and the market and rival groups.
 struct GroupMoreTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
-    var page: GroupMorePage
-    var pick: (GroupMorePage) -> Void
-    var showGiving: () -> Void
 
     var body: some View {
         let live = engine.state.companies.filter { $0.type != "hold" && $0.status.isLive }
         VStack(alignment: .leading, spacing: 12) {
-            switch page {
-            case .holdings:
-                GroupStructureOverview(engine: engine, parts: [.holdings])
-                if engine.holdingCompanies.isEmpty && engine.companiesForHolding.isEmpty {
-                    Text("Holding companies need a limited company to hold.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                }
-            case .chains: GroupStructureOverview(engine: engine, parts: [.chains])
-            case .franchises: GroupStructureOverview(engine: engine, parts: [.franchises])
-            case .standAlone: GroupStructureOverview(engine: engine, parts: [.standAlone])
-            case .dividends:
-                GroupDividendsPage(engine: engine)
-                GroupStructureOverview(engine: engine, parts: [.dividends])
-            case .office:
-                if !live.isEmpty { HeadOfficeSection(engine: engine) } else { Text("Start a company first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
-            case .posts:
-                if engine.groupOfficeEstablished && live.count >= 2 {
-                    ExecutivePosts(engine: engine, chainID: nil)
-                } else {
-                    Text("Group posts exist once you set up a group office and run two companies.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                    Button { pick(.office) } label: { Text("Open Group office ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36) }.buttonStyle(PressableStyle())
-                }
-            case .boards:
-                GroupBoardTab(engine: engine, openMore: pick)
-            case .rivals:
-                if live.contains(where: { $0.status == .open }) {
-                    Button { Haptics.tap(); store.openMarket() } label: {
-                        CardRow(glyph: Glyph.market, title: "Market and rivals", subtitle: "Rival groups and how your trades compare.")
-                    }.buttonStyle(PressableStyle())
-                } else {
-                    Text("Open a company to see the market and rival groups.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                }
-            case .giving:
-                Button { Haptics.tap(); showGiving() } label: {
-                    CardRow(glyph: Glyph.richList, title: "Gifts, sponsorships and your foundation",
-                            subtitle: "\(engine.givingMarks.count) \(engine.givingMarks.count == 1 ? "mark" : "marks")" + (engine.foundation != nil ? " · foundation running" : "") + " · paid from your own cash")
+            GroupCaps(text: "Group office")
+            if !live.isEmpty { HeadOfficeSection(engine: engine) } else { Text("Start a company first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+            GroupCaps(text: "Executive posts")
+            if engine.groupOfficeEstablished && live.count >= 2 {
+                ExecutivePosts(engine: engine, chainID: nil)
+            } else {
+                Text("Group posts exist once you set up a group office and run two companies.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            }
+            GroupCaps(text: "Companies with no group link")
+            GroupStructureOverview(engine: engine, parts: [.standAlone])
+            GroupCaps(text: "Market and rival groups")
+            if live.contains(where: { $0.status == .open }) {
+                Button { Haptics.tap(); store.openMarket() } label: {
+                    CardRow(glyph: Glyph.market, title: "Market and rivals", subtitle: "Rival groups and how your trades compare.")
                 }.buttonStyle(PressableStyle())
+            } else {
+                Text("Open a company to see the market and rival groups.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                GroupCaps(text: "Other pages")
-                ForEach(GroupMorePage.allCases.filter { $0 != page && $0.inMore }) { p in
-                    Button { Haptics.tap(); pick(p) } label: { CardRow(glyph: p.glyph, title: p.rawValue, subtitle: p.sub) }.buttonStyle(PressableStyle())
-                }
-            }
-            .padding(.top, 8)
         }
     }
 }

@@ -1,4 +1,5 @@
 # What's new
+- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from
 - Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed
 - Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone
 - Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas
