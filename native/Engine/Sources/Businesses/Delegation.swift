@@ -58,7 +58,7 @@ public enum Delegation {
         var base: Int
         if !(m.kind == "ask" || m.kind == "decision") || m.status != "open" { return m.tone == "bad" ? 3 : 1 }
         if m.actionID.hasPrefix("pay29") { return 1 }
-        if m.actionID == "staffx" || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
+        if m.actionID == "staffx" || m.actionID == PromiseReminders.action || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
         else if kind == "exit" { return 5 }
         else if kind == "divq" || kind == "div" || kind == "rofr" { base = 4 }
         else { base = m.tone == "bad" ? 4 : 3 }

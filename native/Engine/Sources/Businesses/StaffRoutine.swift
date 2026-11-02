@@ -178,7 +178,7 @@ public enum StaffRoutine {
                           "sick": "has high sick leave", "theft": "is suspected of stealing"]
             s.note("PROBLEM at \(co.name): \(name(id)) \(labels[trait] ?? "is a concern"). See the team list.", tone: "bad", companyID: co.id)
             if trait == "theft" {
-                var flags = co.value("flags"); flags["shrinkUp"] = .number(flags["shrinkUp"].double + 0.4)
+                var flags = co.value("flags"); flags["shrinkUp"] = .number(flags["shrinkUp"].double + 0.4 * RoleEffects.theftGrowthFactor(co))
                 co.set("flags", flags); s.companies[i] = co
             }
         case .payAsk(let id):

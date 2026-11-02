@@ -60,9 +60,9 @@ public extension GameEngine {
             let n = Hiring.applicantsFound(m)
             return HiringSearchOption(mode: m, title: title, fee: Hiring.searchFee(m), applicantsMin: n.lowerBound, applicantsMax: n.upperBound, note: note)
         }
-        return [option(.ads, "Job ad", "Ads reach many people, but skills vary."),
-                option(.network, "Network", "People you know of: fewer, by word of mouth."),
-                option(.agency, "Agency", "More people, with more of the experienced ones.")]
+        // The network option is gone for the player (deprecated, Nov 2026): a job ad (`postJobAd`) or an agency (`engageAgency`).
+        return [option(.ads, "Job ad", "Ads reach many people over a few weeks, but skills vary."),
+                option(.agency, "Agency", "Costs much more and keeps a share of the pay for two years: suggestions now, better fits later.")]
     }
 
     /// One applicant as the player sees them for a job at a company; nil if the person is not on the market or has no such job in view.

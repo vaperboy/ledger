@@ -241,6 +241,7 @@ public extension GameEngine {
     @discardableResult
     mutating func hire(personID: Int, companyID: Int, monthlyWage: Double, terms: Hiring.Terms = Hiring.Terms()) -> Hiring.HireResult {
         var r = Hiring.HireResult.refused
+        if let co = state.company(companyID), Workplaces.hireBlock(co, data: data) != nil { return .refused }   // no free place; `hireBlock(companyID:)` says why
         update { s, data, _ in r = Hiring.hire(personID, into: companyID, monthlyWage: monthlyWage, state: &s, data: data, terms: terms) }
         return r
     }

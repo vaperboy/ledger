@@ -145,6 +145,7 @@ public struct GameEngine {
         let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
             if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
+            if m.actionID == PromiseReminders.action { PromiseReminders.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
@@ -218,6 +219,8 @@ public struct GameEngine {
     }
 
     mutating func tradeAndPay(day: Int) {
+        JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
+        Agency.runDay(&state, data: data)
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)

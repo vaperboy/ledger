@@ -102,7 +102,7 @@ public enum Development {
         let c = cost(p, for: s.companies[i], currency: World(state: s, data: data).currency(s.companies[i]))
         guard s.companies[i].cash >= c else { return .notEnoughCash }
         Payments.companyPays(&s, companyID: companyID, amount: c, category: "oth", label: "Development: \(p.name)")
-        r["run"] = .object(["k": .string(id), "w0": .number(Double(s.week)), "wEnd": .number(Double(s.week + p.weeks)), "cost": .number(c)])
+        r["run"] = .object(["k": .string(id), "w0": .number(Double(s.week)), "wEnd": .number(Double(s.week + RoleEffects.developmentWeeks(p.weeks, s.companies[i]))), "cost": .number(c)])
         s.companies[i].set("rd56", r)
         refreshFactors(&s, i)
         return .ok
@@ -135,7 +135,7 @@ public enum Development {
         if !r.isNull, !r["run"].isNull { why = "Another project is already running." }
         else if !r.isNull, r["done"].array.contains(where: { $0["k"].string == id && s.week - $0["w"].int < 104 }) { why = "You developed this less than two years ago." }
         else if co.cash < c { why = "The company does not have the cash for it yet." }
-        return Plan(project: p, cost: c, weeks: p.weeks, cashBefore: co.cash, cashAfter: co.cash - c, oddsFull: odds, oddsPartial: (1 - odds) * 0.4, blockedReason: why,
+        return Plan(project: p, cost: c, weeks: RoleEffects.developmentWeeks(p.weeks, co), cashBefore: co.cash, cashAfter: co.cash - c, oddsFull: odds, oddsPartial: (1 - odds) * 0.4, blockedReason: why,
                     requirements: ["Paid in full when you start", "One project at a time", "The team's skill and the company's quality decide how well it works"])
     }
 

@@ -53,7 +53,7 @@ enum SpecialEvents {
             }
             let missing = !Knobs.documentOK(co, "workplace_safety") && bd.documents.contains("workplace_safety")
             let mq = co.managerID != nil ? ManagerModel.quality(co, bd, people: s.people) : 0.55
-            let p = 0.18 + (1 - mq) * 0.25 + (1 - co.quality / 100) * 0.2 + (missing ? 0.5 : 0) + (co.value("flags")["shrinkUp"].bool ? 0.05 : 0)
+            let p = 0.18 + (1 - mq) * 0.25 + (1 - co.quality / 100) * 0.2 + (missing ? 0.5 : 0) + (co.value("flags")["shrinkUp"].bool ? 0.05 : 0) - RoleEffects.inspectionRelief(co)
             if s.random.chance(p) {
                 let f = jsRound(max(cur.scaledPrice(8000), c.wk * 0.2))
                 Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Inspection fine")

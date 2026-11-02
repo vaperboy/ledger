@@ -16,6 +16,8 @@ final class ContractTalkTests: XCTestCase {
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         e.update { s, _, _ in s.rest["ownHrsFixed"] = true }   // these talk tests were tuned with the owner at a full week
+        // an office holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
+        e.update { s, _, _ in if let i = s.companyIndex(id), s.companies[i].value("prem")["kind"].string == "office" || s.companies[i].value("prem")["kind"].isNull { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)
     }
 

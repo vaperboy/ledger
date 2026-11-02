@@ -16,6 +16,9 @@ public enum CompanySetup {
         /// Footfall / location quality (1 = standard)
         public var location: Double
         public var landlord: String
+        public init(index: Int, name: String, squareMetres: Double, rentFactor: Double, location: Double, landlord: String) {
+            self.index = index; self.name = name; self.squareMetres = squareMetres; self.rentFactor = rentFactor; self.location = location; self.landlord = landlord
+        }
     }
 
     public enum StartError: Error, Equatable { case banned(String), notEnoughCash, notAllowedHere, notYetAvailable }
