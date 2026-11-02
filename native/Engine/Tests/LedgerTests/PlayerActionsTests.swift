@@ -169,7 +169,9 @@ final class FinanceOverviewTests: XCTestCase {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
             e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
             var p = ManagementPolicy(); p.autoPayroll = autoPayroll; e.setPolicy(p)
-            guard case .success = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { XCTFail(); return 0 }
+            guard case .success(let cid) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { XCTFail(); return 0 }
+            // Routine payroll is approved by itself only where an accountant or a manager is hired (owner decision, 2 Nov).
+            e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: cid, accountantID: nil, data: d) }
             for _ in 0..<(16 * 7) { e.nextDay() }
             return e.state.inbox.filter { $0.actionID.hasPrefix("pay29") }.count
         }
