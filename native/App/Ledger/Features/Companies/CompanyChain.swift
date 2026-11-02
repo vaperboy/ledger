@@ -55,6 +55,7 @@ struct GrowIntoChain: View {
     var engine: GameEngine
     var company: Company
     @State private var name = ""
+    @State private var signing = false
 
     var body: some View {
         let reqs = engine.chainRequirements(companyID: company.id)
@@ -108,14 +109,22 @@ struct GrowIntoChain: View {
             }
         } else {
             QuietButton(title: "Apply for chain registration · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")))", fullWidth: true) {
-                switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
-                case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
-                }
+                signing = true
             }
             .disabled(blocked).opacity(blocked ? 0.5 : 1)
+            .sheet(isPresented: $signing) {
+                PaperSignSheet(title: "Chain registration", to: "The business register", note: "A lawyer prepares the registration of \(company.name) as a chain. It is reviewed before it is approved.",
+                               fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")), wait: "after a review of some weeks", button: "Sign and send",
+                               onSend: {
+                    switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
+                    case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
+                    case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
+                    default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
+                    }
+                }, onClose: { signing = false })
+                .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
+            }
         }
     }
 }

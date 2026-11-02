@@ -1,4 +1,5 @@
 # What's new
+- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed
 - Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone
 - Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas
 - A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled
