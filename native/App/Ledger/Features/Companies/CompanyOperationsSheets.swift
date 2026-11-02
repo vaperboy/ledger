@@ -65,14 +65,12 @@ struct OpsSettingSheet: View {
 
     private var title: String {
         switch kind {
-        case .hours: return "Your time"
         case .upkeep: return "Upkeep"
         }
     }
 
     @ViewBuilder private func content(_ co: Company) -> some View {
         switch kind {
-        case .hours: hoursBody(co)
         case .upkeep: upkeepBody(co)
         }
     }
@@ -90,30 +88,6 @@ struct OpsSettingSheet: View {
                 store.act { $0.setStockPolicy(companyID: co.id, level: level) }
                 store.saved("Stock: \(OpsWords.name(OpsWords.stock, level).lowercased())")
             }
-        }
-    }
-
-    // MARK: Hours
-
-    private func hoursBody(_ co: Company) -> some View {
-        let hours: Int = Int(co.ownerHours.rounded())
-        let line: String = co.ownerHours == 0 ? "The team runs it without you" : "You work here yourself"
-        let hoursBinding = Binding<Double>(get: { co.ownerHours }, set: { v in
-            store.settle(store.act { $0.setOwnerHours(companyID: co.id, hours: v) }, "Hours saved.", same: "Hours are already that.")
-        })
-        return VStack(alignment: .leading, spacing: 6) {
-            Card {
-                HStack(spacing: Theme.Space.m) {
-                    IconCircle(glyph: Glyph.person)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(hours) hours a week").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(line).font(.caption).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    Spacer()
-                    StepperPill(value: hoursBinding, range: 0...80, step: 5)
-                }
-            }
-            Text("Max 80 h across all companies").font(.caption2).foregroundStyle(Theme.ivoryFaint)
         }
     }
 

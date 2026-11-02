@@ -39,6 +39,8 @@ final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
     static let shared = SwipeBackDelegate()
 
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // A screen with its own in-app Back (a Phone app on an inner page) steps back itself; only at its root does the swipe leave.
+        if SwipeBackSteps.shared.stepIfAny() { return false }
         var responder: UIResponder? = gestureRecognizer.view
         while let r = responder {
             if let nav = r as? UINavigationController { return nav.viewControllers.count > 1 }
@@ -48,21 +50,68 @@ final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
     }
 }
 
+/// The in-app "step back" of the screens on show (a Phone app with its own Back button): the newest one that can step wins. A hook
+/// adds itself when its screen appears and leaves when it goes, so a screen that is covered or closed never answers the swipe.
+final class SwipeBackSteps {
+    static let shared = SwipeBackSteps()
+    private var entries: [(token: UUID, canStep: () -> Bool, step: () -> Void)] = []
+
+    func set(_ token: UUID, canStep: @escaping () -> Bool, step: @escaping () -> Void) {
+        entries.removeAll { $0.token == token }
+        entries.append((token, canStep, step))
+    }
+    func remove(_ token: UUID) { entries.removeAll { $0.token == token } }
+
+    /// Runs the newest step back that applies (after the gesture has been refused) and says whether one did.
+    func stepIfAny() -> Bool {
+        guard let entry = entries.last(where: { $0.canStep() }) else { return false }
+        DispatchQueue.main.async { entry.step() }
+        return true
+    }
+}
+
 private final class SwipeBackHookController: UIViewController {
+    let token = UUID()
+    var canStep: () -> Bool = { false }
+    var step: () -> Void = {}
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         navigationController?.interactivePopGestureRecognizer?.delegate = SwipeBackDelegate.shared
+        register()
+    }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        SwipeBackSteps.shared.remove(token)
+    }
+    func register() {
+        guard viewIfLoaded?.window != nil else { return }
+        SwipeBackSteps.shared.set(token, canStep: canStep, step: step)
     }
 }
 
 private struct SwipeBackHook: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController { SwipeBackHookController() }
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    var canStep: () -> Bool
+    var step: () -> Void
+    func makeUIViewController(context: Context) -> UIViewController {
+        let c = SwipeBackHookController()
+        c.canStep = canStep; c.step = step
+        return c
+    }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        guard let c = uiViewController as? SwipeBackHookController else { return }
+        c.canStep = canStep; c.step = step
+        c.register()
+    }
 }
 
 extension View {
-    /// Keeps the left-edge swipe-back working on a screen whose system back button is hidden.
-    func swipeBackEnabled() -> some View { background(SwipeBackHook().frame(width: 0, height: 0)) }
+    /// Keeps the left-edge swipe-back working on a screen whose system back button is hidden. A screen with its own in-app Back
+    /// passes `canStep` (true while it is on an inner page) and `step` (the very same action its Back button runs): the edge swipe
+    /// then steps back inside the app, and leaves the app only from its root.
+    func swipeBackEnabled(canStep: @escaping () -> Bool = { false }, step: @escaping () -> Void = {}) -> some View {
+        background(SwipeBackHook(canStep: canStep, step: step).frame(width: 0, height: 0))
+    }
 }
 
 // MARK: Swipe between segments

@@ -107,7 +107,7 @@ public extension Luxury {
     /// Tiredness, doctor's warnings, sickness and burn-out; a home of your own helps you rest. Original: `fatigueWeek`, 'a home of your own: rest'.
     static func ownerWeek(_ s: inout GameState) {
         let t = CapacityModel.ownerHoursCommitted(s)
-        var fat = clamp((s.rest["fat"]?.double ?? 0) + (t > 55 ? (t - 55) * 1.2 : t < 45 ? -12 : -6), 0, 100)
+        var fat = clamp((s.rest["fat"]?.double ?? 0) + (t > OwnerHours.burnoutFrom ? (t - OwnerHours.burnoutFrom) * 2.4 : t < 45 ? -12 : -6), 0, 100)
         if let off = s.rest["offW56"], !off.isNull, s.week == off.int { fat = 0 }
         s.rest["fat"] = .number(fat)
         let burning = (s.rest["burnUntil"]?.double).map { Double(s.week) < $0 } ?? false
@@ -115,7 +115,7 @@ public extension Luxury {
             if t > 65 && !(s.rest["fatWarn"]?.bool ?? false) {
                 s.rest["fatWarn"] = true
                 s.addMessage(kind: "info", from: "Your doctor", title: "You are working \(Int(t)) hours a week",
-                             body: "That pace wears anyone down. Above 55 hours you make more mistakes, and you risk getting sick or burning out.", tone: "bad")
+                             body: "That pace wears anyone down. Above 55 hours you make more mistakes, and from 65 hours you risk getting sick or burning out.", tone: "bad")
             }
             if t <= 55 { s.rest["fatWarn"] = false }
             if fat >= 100 {

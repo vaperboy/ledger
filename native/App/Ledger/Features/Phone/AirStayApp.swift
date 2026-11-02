@@ -6,15 +6,14 @@ import Simulation
 
 /// Which picture a place gets: the premises photos in the asset catalogue (`AppPhotos`), by kind of place and floor area.
 enum StayPhotos {
-    static func name(category: PlaceMarket.Category, kind: String, squareMetres m2: Double) -> String {
+    /// Three pictures for each kind of place. The engine fixes the picture slot of a listing (`PlaceMarket.Offer.photoSlot`, varied by its
+    /// index in the feed), so a place keeps its picture when it is rented.
+    static func name(category: PlaceMarket.Category, slot: Int) -> String {
+        let n: Int = ((slot % 3) + 3) % 3 + 1
         switch category {
-        case .offices:
-            return m2 < 60 ? "airstay-office-1" : (m2 < 250 ? "airstay-office-2" : "airstay-office-3")
-        case .shops:
-            return m2 < 120 ? "airstay-shop-1" : "airstay-shop-2"
-        case .retail:
-            if ["shop", "kitchen", "hotel", "gym"].contains(kind) { return "airstay-shop-3" }
-            return m2 < 150 ? "airstay-store-1" : (m2 < 800 ? "airstay-store-2" : "airstay-store-3")
+        case .offices: return "airstay-office-\(n)"
+        case .shops: return "airstay-shop-\(n)"
+        case .retail: return "airstay-store-\(n)"
         }
     }
 }
@@ -50,6 +49,7 @@ struct AirStayApp: View {
         page
             .confirmAction($pending)
             .outsideScreen(P)
+            .swipeBackEnabled(canStep: { step != .explore }, step: { back() })
             .safeAreaInset(edge: .top, spacing: 0) { band }
             .onAppear { take() }
             .onChange(of: store.appRequest) { _, _ in take() }
@@ -122,7 +122,7 @@ struct AirStayApp: View {
     private func matches(_ o: PlaceMarket.Offer) -> Bool {
         let q: String = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty { return true }
-        let hay: String = (o.listing.name + " " + o.cityName + " " + o.buildingType + " " + o.listing.landlord).lowercased()
+        let hay: String = (o.title + " " + o.listing.name + " " + o.cityName + " " + o.buildingType + " " + o.listing.landlord).lowercased()
         return hay.contains(q)
     }
 
@@ -233,7 +233,7 @@ struct AirStayApp: View {
     }
 
     private func photo(_ o: PlaceMarket.Offer) -> String {
-        StayPhotos.name(category: o.category, kind: o.placeKind, squareMetres: o.listing.squareMetres)
+        StayPhotos.name(category: o.category, slot: o.photoSlot)
     }
 
     private func listingCard(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
@@ -247,7 +247,7 @@ struct AirStayApp: View {
             Card(padding: 10) {
                 VStack(alignment: .leading, spacing: 8) {
                     ShopPhoto(name: photo(o), glyph: Glyph.building, height: 150)
-                    Text(o.listing.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
+                    Text(o.title).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
                     HStack(alignment: .top, spacing: 6) {
                         GlyphView(glyph: Glyph.pin, size: 15, weight: 1.5, tint: P.inkFaint).padding(.top, 1)
                         Text(subtitleLine(o)).font(.system(size: 13)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
@@ -272,7 +272,7 @@ struct AirStayApp: View {
             VStack(alignment: .leading, spacing: 16) {
                 ShopPhoto(name: photo(o), glyph: Glyph.building, height: 220, cornerRadius: 16)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(o.listing.name).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
+                    Text(o.title).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
                     Text("\(o.cityName) \u{00B7} \(o.listing.landlord)").font(.system(size: 14)).foregroundStyle(P.inkFaint)
                 }
                 factsCard(e, o, t)
@@ -362,7 +362,7 @@ struct AirStayApp: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Choose company").font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
-                    Text("Which company \(buy ? "buys" : "rents") \(o.listing.name)? Its account pays.")
+                    Text("Which company \(buy ? "buys" : "rents") \(o.title)? Its account pays.")
                         .font(.system(size: 14)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(cands) { (c: PlaceMarket.Candidate) in candidateRow(c) }
@@ -426,7 +426,7 @@ struct AirStayApp: View {
         }
         let risk: String = c.hasPlace ? "The place \(co.name) works in now is given up; its deposit comes back." : ""
         message = message.tidyMoney
-        pending = PendingAction(title: (isBuy ? "Buy " : "Rent ") + o.listing.name + "?", message: message, button: isBuy ? "Buy it" : "Rent it",
+        pending = PendingAction(title: (isBuy ? "Buy " : "Rent ") + o.title + "?", message: message, button: isBuy ? "Buy it" : "Rent it",
                                 alwaysAsk: isBuy, amount: upfront, currency: cur, risk: risk) {
             let r: PlaceMarket.RentOutcome? = store.act { $0.takePlace(companyID: id, offer: place, buy: isBuy, receiptCompanyID: rid) }
             switch r?.result {
@@ -449,7 +449,7 @@ struct AirStayApp: View {
     private func confirmedView(_ e: GameEngine) -> some View {
         let co: Company? = e.state.company(payerID)
         let place: PlaceMarket.Rented? = e.rentedPlaces().first { (r: PlaceMarket.Rented) -> Bool in r.companyID == payerID }
-        let name: String = place?.placeName ?? offer?.listing.name ?? "the place"
+        let name: String = place?.placeName ?? offer?.title ?? "the place"
         let rent: String = place.map { (r: PlaceMarket.Rented) -> String in r.owned ? "Bought, no rent" : money(r.monthlyRent, payerID) + " a month" } ?? ""
         let receipt: String = e.state.company(receiptID)?.name ?? ""
         let facts: [(label: String, value: String)] = [
@@ -489,7 +489,7 @@ struct AirStayApp: View {
         return Card(padding: 12) {
             VStack(alignment: .leading, spacing: 10) {
                 if !r.atHome {
-                    ShopPhoto(name: StayPhotos.name(category: r.category, kind: "", squareMetres: r.squareMetres), glyph: Glyph.building, height: 120)
+                    ShopPhoto(name: StayPhotos.name(category: r.category, slot: r.photoSlot), glyph: Glyph.building, height: 120)
                 }
                 Text(r.atHome ? "Working from home" : r.placeName).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink)
                 Text(rentedLine(r)).font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)

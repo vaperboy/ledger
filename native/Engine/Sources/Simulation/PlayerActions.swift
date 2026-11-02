@@ -46,6 +46,23 @@ public extension GameEngine {
         }
     }
 
+    /// Whether the player works in this company. Stepping out sets the hours to 0 and keeps them there; stepping in starts at the least a working
+    /// owner gives and the weekly adjustment (`OwnerHours`) takes it from there.
+    @discardableResult
+    mutating func setWorksHere(companyID: Int, works: Bool) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
+            guard let i = s.companyIndex(companyID) else { return }
+            if works {
+                s.companies[i].raw["ownOut"] = nil
+                let room = max(0, OwnerHours.weeklyCap - CapacityModel.ownerHoursCommitted(s, except: companyID))
+                s.companies[i].ownerHours = min(OwnerHours.floor, room)
+            } else {
+                s.companies[i].set("ownOut", true)
+                s.companies[i].ownerHours = 0
+            }
+        }
+    }
+
     mutating func setMaintenance(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].maintenance = min(2, max(0, level)) } } }
     mutating func setStockPolicy(companyID: Int, level: Int) { update { s, _, _ in if let i = s.companyIndex(companyID) { s.companies[i].set("stockPol", min(2, max(0, level))) } } }
 

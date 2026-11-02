@@ -236,7 +236,7 @@ struct TradeDetailView: View {
             case .success(let out)?:
                 Haptics.success()
                 var text = "Started. Set it up, then open for business."
-                if out.premises == .notEnoughCash { text = "Started, but the company could not pay for the place you picked. Choose premises under Equipment." }
+                if out.premises == .notEnoughCash { text = "Started, but the company could not pay for the place you picked. Choose premises in AirStay." }
                 else if !out.skipped.isEmpty { text = "Started. Left for you to decide: " + out.skipped.map { $0.title }.prefix(3).joined(separator: ", ") + (out.skipped.count > 3 ? " and more." : ".") }
                 else if !out.setupNotes.isEmpty { text = "Started. Some set-up is left (usually cash): see the checklist in the company." }
                 store.show(text, tone: out.premises == .notEnoughCash || !out.setupNotes.isEmpty || !out.skipped.isEmpty ? "warn" : "good")

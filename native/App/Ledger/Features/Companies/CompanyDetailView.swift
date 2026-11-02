@@ -185,7 +185,7 @@ struct CompanyDetailView: View {
         if let boss = e.decisionChain(companyID: co.id).first {
             parts.append("Run by \(boss.name), \(GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased())")
         } else if co.status == .open && co.type != "hold" {
-            parts.append(co.ownerHours > 0 ? "Run by you" : "No one runs it")
+            parts.append(OwnerHours.works(co) ? "Run by you" : "No one runs it")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

@@ -81,6 +81,12 @@ struct TechProProduct: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text(need.name).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
             Text(sub).font(.system(size: 13)).foregroundStyle(P.inkFaint)
+            if need.dealPercent > 0 {
+                Text("\(need.dealLabel): up to \(need.dealPercent)% off, prices below already include it")
+                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Color.white)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(P.loss))
+            }
             Card(padding: 12) {
                 HStack(spacing: 0) {
                     stat("You have", "\(have)")
@@ -134,9 +140,11 @@ struct TechProProduct: View {
             classChips
             ShopHeading(text: one ? "Suppliers" : "Brands", trailing: "\(list.count)")
             ForEach(list) { (o: EquipmentMarket.Offer) in
-                let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor)
+                let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
+                let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
                 let perf: Int = Int(((o.performance - 1) * 100).rounded())
-                let sub: String = "\(o.className) \u{00B7} \(o.seller) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} output \(o.performance >= 1 ? "+" : "")\(perf)% \u{00B7} reliability \(reliabilityWord(o.reliability))"
+                let saleText: String = sale.isOn ? "\(sale.label) -\(sale.percentOff)% \u{00B7} " : ""
+                let sub: String = saleText + "\(o.className) \u{00B7} \(o.seller) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} output \(o.performance >= 1 ? "+" : "")\(perf)% \u{00B7} reliability \(reliabilityWord(o.reliability))"
                 offerRow(o.name, sub, lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: p)) + "/mo" : cur.tidyShort(p), String(o.index))
             }
         }
@@ -158,7 +166,7 @@ struct TechProProduct: View {
     }
 
     private func brandAdd(_ e: GameEngine, _ need: EquipmentMarket.Need, _ sel: EquipmentMarket.Offer, _ lease: Bool, _ cur: Currency, one: Bool) -> some View {
-        let unit: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: sel.priceFactor)
+        let unit: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: sel.priceFactor, vendorID: sel.vendorID)
         let q: Int = one ? 1 : (quantity > 0 ? quantity : max(1, Int(need.need - need.have - need.leased)))
         let total: Double = unit * Double(q)
         let canFin: Bool = !lease && e.canFinance(companyID: companyID, equipmentID: equipmentID, total: total)
@@ -378,6 +386,8 @@ struct TechProProduct: View {
     private func vehicleCard(_ e: GameEngine, _ o: EquipmentMarket.VehicleOffer, _ lease: Bool, _ cur: Currency) -> some View {
         let price: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
         let on: Bool = selected == o.id
+        let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
+        let saleText: String = sale.isOn ? "\(sale.label) -\(sale.percentOff)% \u{00B7} " : ""
         let right: String = lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(price)
         return Button {
             Haptics.choose()
@@ -388,7 +398,7 @@ struct TechProProduct: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(o.name + ", new").font(.system(size: 15.5, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                        Text("\(o.modelName) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} reliability \(reliabilityWord(o.reliability))")
+                        Text(saleText + "\(o.modelName) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} reliability \(reliabilityWord(o.reliability))")
                             .font(.system(size: 12.5)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 8)

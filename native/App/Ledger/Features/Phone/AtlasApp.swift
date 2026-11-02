@@ -27,6 +27,7 @@ struct AtlasApp: View {
         page
             .confirmAction($pending)
             .outsideScreen(P)
+            .swipeBackEnabled(canStep: { step != .home }, step: { back() })
             .safeAreaInset(edge: .top, spacing: 0) { band }
             .onAppear { start() }
             .onChange(of: store.appRequest) { _, _ in take() }
@@ -190,7 +191,14 @@ struct AtlasApp: View {
                     Text(sub).font(.system(size: 12.5)).foregroundStyle(isOn ? P.gain : P.inkFaint).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 8)
-                Text(money(p.weeklyPremium * 52, co) + " / year").font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(money(p.weeklyPremium * 52, co) + " / year").font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+                    if isOn {
+                        Button("Cancel policy") { askToCancel(co, p) }
+                            .buttonStyle(QuietButtonStyle())
+                            .accessibilityIdentifier("atlas-cancel-\(p.id)")
+                    }
+                }
                 if !isOn { GlyphView(glyph: Glyph.chevron, size: 14, weight: 1.8, tint: P.inkDim) }
             }
         }
@@ -204,6 +212,20 @@ struct AtlasApp: View {
                 } label: { content }
                     .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("atlas-policy-\(p.id)")
+            }
+        }
+    }
+
+    /// Cancels a policy that is in force. It is not linked to a company tab: it is done here, in the app.
+    private func askToCancel(_ co: Company, _ p: InsurancePolicyRow) {
+        let id: Int = co.id
+        let name: String = p.name
+        let saving: String = store.short(p.weeklyPremium * 52 / 12, in: co)
+        pending = PendingAction(title: "Cancel \(name)?", message: "You save about \(saving) a month, but losses of this kind are no longer covered and come out of company cash.",
+                                button: "Cancel policy", destructive: true) {
+            switch store.act({ $0.toggleInsurancePolicy(companyID: id, product: p.id) }) {
+            case .done?: Haptics.success(); store.show("\(name) cancelled.", tone: "n")
+            default: Haptics.warning(); store.show("That policy could not be cancelled.", tone: "warn")
             }
         }
     }

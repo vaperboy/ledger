@@ -33,6 +33,9 @@ public enum PlaceMarket {
         public var cityID: String
         public var cityName: String
         public var canBuy: Bool
+        /// The street and district shown for it, and which of the three pictures of its kind it shows (fixed by the listing).
+        public var title: String = ""
+        public var photoSlot: Int = 0
     }
 
     /// A company that could take an offer, with what it would pay.
@@ -67,6 +70,9 @@ public enum PlaceMarket {
         public var atHome: Bool
         /// A home trade that works from home can look for a place.
         public var isHomeTrade: Bool
+        /// The address and picture slot the place had when it was taken.
+        public var title: String = ""
+        public var photoSlot: Int = 0
     }
 
     // MARK: Kinds
@@ -106,9 +112,12 @@ public enum PlaceMarket {
             seen.insert(group)
             let cityName = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? co.cityID
             let typeName = data.catalog.tables.premises[kind]?.name ?? "Premises"
+            let country = w.country(co)
             for l in CompanySetup.listings(for: co, bd, w) {
+                let title = PlaceNames.title(seed: s.seed, country: country, cityID: co.cityID, cityName: cityName, tier: l.index, group: group, week: s.week, kind: kind)
                 out.append(Offer(id: "\(co.id):\(l.index)", originCompanyID: co.id, listing: l, placeKind: kind, category: category(kind: kind, squareMetres: l.squareMetres),
-                                 buildingType: typeName, cityID: co.cityID, cityName: cityName, canBuy: kind != "slope"))
+                                 buildingType: typeName, cityID: co.cityID, cityName: cityName, canBuy: kind != "slope",
+                                 title: title, photoSlot: PlaceNames.photoSlot(seed: s.seed, group: group + ":" + String(s.week / 26), index: l.index)))
             }
         }
         return out
@@ -144,10 +153,12 @@ public enum PlaceMarket {
             if m2 <= 0 && !PremisesExtras.isHomeTrade(bd) { continue }
             let placeKindNow = prem["kind"].isNull ? kind : prem["kind"].string
             let typeName = data.catalog.tables.premises[placeKindNow]?.name ?? "Premises"
-            out.append(Rented(companyID: co.id, companyName: co.name, placeName: prem["lname"].string.isEmpty ? typeName : prem["lname"].string, landlord: prem["landlord"].string,
+            let shownName: String = !prem["ltitle"].string.isEmpty ? prem["ltitle"].string : (prem["lname"].string.isEmpty ? typeName : prem["lname"].string)
+            let slot: Int = prem["lslot"].isNull ? PlaceNames.photoSlot(seed: s.seed, group: "rented:" + String(co.id), index: 0) : prem["lslot"].int
+            out.append(Rented(companyID: co.id, companyName: co.name, placeName: shownName, landlord: prem["landlord"].string,
                               squareMetres: m2, buildingType: typeName, cityName: cityName, category: category(kind: placeKindNow, squareMetres: m2),
                               owned: prem["owned"].bool, monthlyRent: prem["owned"].bool ? 0 : prem["rent"].double * m2 / 12, deposit: prem["dep"].double,
-                              atHome: home, isHomeTrade: PremisesExtras.isHomeTrade(bd)))
+                              atHome: home, isHomeTrade: PremisesExtras.isHomeTrade(bd), title: shownName, photoSlot: slot))
         }
         return out
     }
@@ -196,12 +207,13 @@ public enum PlaceMarket {
         let now = buy ? t.downPayment + t.fitOut : t.deposit + t.fitOut
         let payer = s.companies[i].name
         let what = buy ? "Purchase" : "Lease"
-        Receipts.add(&s, receiptCompanyID: receiptCompanyID, number: ref, kind: "lease", title: what + ": " + offer.listing.name,
+        Receipts.add(&s, receiptCompanyID: receiptCompanyID, number: ref, kind: "lease", title: what + ": " + (offer.title.isEmpty ? offer.listing.name : offer.title),
                      detail: payer + " \u{00B7} " + String(Int(offer.listing.squareMetres)) + " m² \u{00B7} " + offer.listing.landlord + " \u{00B7} " + offer.cityName, amount: now, payer: payer)
         // The reference stays on the company's place, so the active rent shows it.
         var prem = s.companies[i].value("prem")
         prem["ref"] = .string(ref)
         prem["rc"] = .number(Double(receiptCompanyID))
+        if !offer.title.isEmpty { prem["ltitle"] = .string(offer.title); prem["lslot"] = .number(Double(offer.photoSlot)) }
         s.companies[i].set("prem", prem)
         return RentOutcome(result: .ok, reference: ref)
     }
@@ -240,7 +252,7 @@ public enum PlaceMarket {
         }
         let leftKind = fbd.premisesKind ?? "none"
         s.companies[fi].set("prem", .object(["kind": .string(leftKind), "m2": 0, "rent": 0, "owned": false, "val": 0, "loan": 0]))
-        s.note("\(s.companies[ti].name) took over the lease of \(prem["lname"].string.isEmpty ? "the place" : prem["lname"].string) from \(s.companies[fi].name).", tone: "n", companyID: to)
+        s.note("\(s.companies[ti].name) took over the lease of \(!prem["ltitle"].string.isEmpty ? prem["ltitle"].string : (prem["lname"].string.isEmpty ? "the place" : prem["lname"].string)) from \(s.companies[fi].name).", tone: "n", companyID: to)
         return .ok
     }
 }

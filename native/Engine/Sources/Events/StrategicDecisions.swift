@@ -141,7 +141,7 @@ public enum StrategicDecisions {
                         Opt(label: "Wait for the cheaper repair", detail: "Lost sales for two weeks, and some customers may not come back.") { s, x in
                             pay(&s, x, x.d["c"].double, "oth", "Repair"); cap(&s, x, 0.55, 2); rep(&s, x, -1) }]))
         L.append(Def(id: "s_burnout", cls: "strat", stages: ["start", "grow"], w: 3, def: 2,
-                     cond: { _, co, _ in co.managerID == nil && co.ownerHours >= 50 },
+                     cond: { _, co, _ in co.managerID == nil && co.ownerHours >= OwnerHours.burnoutFrom },
                      title: { co, _, _ in "You are running on empty at \(co.name)" },
                      body: { co, _, _ in "\(Int(co.ownerHours))-hour weeks are catching up with you. Mistakes are creeping in and customers wait longer." },
                      opts: [

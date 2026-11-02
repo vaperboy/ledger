@@ -26,7 +26,7 @@ struct CompanyTeam: View {
             let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
             let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
             line("\(boss.name), \(title), runs the team day to day and \(lvl).", tint: Theme.ivoryMuted, medium: false)
-        } else if company.status == .open && company.ownerHours <= 0 {
+        } else if company.status == .open && !OwnerHours.works(company) {
             line("No one runs this team: you do not work here and there is no manager.", tint: Theme.caution, medium: true)
         }
     }
@@ -55,7 +55,7 @@ struct CompanyTeam: View {
 
     private var runBy: String {
         if let boss = engine.decisionChain(companyID: company.id).first { return boss.name }
-        return company.ownerHours > 0 ? "You" : "No one"
+        return OwnerHours.works(company) ? "You" : "No one"
     }
 
     private var keyFigures: some View {
@@ -73,7 +73,7 @@ struct CompanyTeam: View {
         ]
         let cells: [StatStrip.Cell] = [
             .init(label: "Run by", value: runBy, tint: runBy == "No one" ? Theme.caution : Theme.ivory),
-            .init(label: "Your time", value: "\(Int(company.ownerHours.rounded())) h"),
+            .init(label: "You", value: OwnerHours.works(company) ? "Work here" : "Not here"),
         ]
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 10) {

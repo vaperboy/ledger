@@ -379,7 +379,7 @@ struct NewCompanyReviewView: View {
             Haptics.success()
             var text = "Registered. Set it up, then open for business."
             var tone = "good"
-            if out.premises == .notEnoughCash { text = "Registered, but the company could not pay for the place you picked. Choose premises under Setup."; tone = "warn" }
+            if out.premises == .notEnoughCash { text = "Registered, but the company could not pay for the place you picked. Choose premises in AirStay."; tone = "warn" }
             else if !out.skipped.isEmpty { text = "Registered. Left for you to decide: " + out.skipped.map { $0.title }.prefix(3).joined(separator: ", ") + (out.skipped.count > 3 ? " and more." : "."); tone = "warn" }
             else if !out.setupNotes.isEmpty { text = "Registered. Some set-up is left (usually cash): see the checklist in the company."; tone = "warn" }
             store.show(text, tone: tone)

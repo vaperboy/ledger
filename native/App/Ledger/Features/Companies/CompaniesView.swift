@@ -309,6 +309,6 @@ enum RunBy {
     static func name(_ e: GameEngine, _ co: Company) -> String {
         guard co.status.isLive, co.type != "hold" else { return "–" }
         if let b = e.decisionChain(companyID: co.id).first { return b.name }
-        return co.ownerHours > 0 ? "You" : (co.status == .open ? "No one" : "–")
+        return OwnerHours.works(co) ? "You" : (co.status == .open ? "No one" : "–")
     }
 }
