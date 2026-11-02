@@ -84,6 +84,7 @@ struct GroupDividendsPage: View {
         pending = PendingAction(title: "Pay \(cur.tidyShort(amount)) from \(r.name)?", message: "It goes to \(to) from retained profit. It is taxed as income and cannot be paid back in as a dividend.", button: "Pay", amount: amount, currency: cur) {
             let paid: Double = store.act { $0.payDividendShare(companyID: r.id, share: share) } ?? 0
             store.show(paid > 0 ? "Dividend of \(cur.tidyShort(paid)) paid." : "Nothing could be paid.", tone: paid > 0 ? "good" : "warn")
+            if paid > 0 { store.flyChip("Dividend", amount: paid) }
         }
     }
 
