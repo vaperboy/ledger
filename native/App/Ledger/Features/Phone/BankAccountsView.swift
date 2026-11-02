@@ -25,6 +25,7 @@ struct BankAccountsScreen: View {
                     BankHomeRing(all: all, engine: e)
                     roundButtons(all)
                     billsLink(all, e)
+                    givingLink(e)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOU").capsLabel()
                         ForEach(you) { r in row(r, e) }
@@ -54,6 +55,19 @@ struct BankAccountsScreen: View {
             BankRoundButton(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
         }
         .accessibilityIdentifier("bank-round-actions")
+    }
+
+    /// Gifts, sponsorships and the foundation are paid from the personal account, so they live in the Bank (they used to sit in Group).
+    private func givingLink(_ e: GameEngine) -> some View {
+        let n: Int = e.givingMarks.count
+        let sub: String = "\(n) \(n == 1 ? "mark" : "marks")" + (e.foundation != nil ? " \u{00B7} foundation running" : "")
+        return NavigationLink {
+            GivingView()
+        } label: {
+            CardRow(glyph: Glyph.richList, title: "Giving back", subtitle: "Gifts, sponsorships and your foundation \u{00B7} " + sub)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("bank-giving")
     }
 
     private func billsLink(_ all: BankAccounts, _ e: GameEngine) -> some View {

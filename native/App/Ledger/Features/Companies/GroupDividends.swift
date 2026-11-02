@@ -8,17 +8,23 @@ import Simulation
 struct GroupDividendsPage: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    /// Only these companies (an entity page); nil lists every company. Companies show as cards of their own unless `holding` names the
+    /// holding whose companies they are: then the page shows that holding's collect card.
+    var scope: Set<Int>? = nil
+    var holding: Int? = nil
     @State private var pending: PendingAction?
 
     var body: some View {
-        let rows: [DividendRow] = engine.dividendRows()
-        let holdings: [Company] = engine.holdingCompanies.filter { (h: Company) -> Bool in rows.contains { (r: DividendRow) -> Bool in r.holdingID == h.id } }
+        let all: [DividendRow] = engine.dividendRows()
+        let rows: [DividendRow] = all.filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
+        let grouped: Bool = scope == nil || holding != nil
+        let holdings: [Company] = grouped ? engine.holdingCompanies.filter { (h: Company) -> Bool in rows.contains { (r: DividendRow) -> Bool in r.holdingID == h.id } } : []
         VStack(alignment: .leading, spacing: 12) {
             if rows.isEmpty {
                 Text("No company has retained profit to pay out yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             }
             ForEach(holdings) { (h: Company) in holdingCard(h, rows.filter { (r: DividendRow) -> Bool in r.holdingID == h.id }) }
-            let direct: [DividendRow] = rows.filter { (r: DividendRow) -> Bool in r.holdingID == nil }
+            let direct: [DividendRow] = grouped ? rows.filter { (r: DividendRow) -> Bool in r.holdingID == nil } : rows
             ForEach(direct) { (r: DividendRow) in companyCard(r) }
         }
         .confirmAction($pending)
