@@ -52,6 +52,8 @@ enum AppRequest: Equatable {
     case techPro(companyID: Int, equipmentID: String)
     /// Atlas Insurance for one company.
     case atlas(companyID: Int)
+    /// The merged Ventures screen (the Projects tab) on its Ideas and startups segment.
+    case ventures
 }
 
 /// One notice, told in the in-game popup (never a banner): a refusal, a warning or an outcome the player must see.
@@ -607,6 +609,12 @@ final class GameStore: ObservableObject {
     /// Opens an app of the Phone tab (Inbox, Bank, News ...). From another tab the Phone stack is replaced by the app and Back returns
     /// to where the link was; on the Phone it is pushed (or, when already on the stack, gone back to).
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
+        // Ventures lives in the Projects tab now: any link to the old Phone app lands on its Ideas and startups segment.
+        if app == .ventures {
+            appRequest = .ventures
+            if tab != .projects { let from = tab; arrive(on: .projects, from: from, depth: path(for: .projects).count) }
+            return
+        }
         appRequest = request
         if tab == .phone {
             setPhonePath(phonePath + [.app(app)])
@@ -653,6 +661,11 @@ final class GameStore: ObservableObject {
     func openReport(_ ref: ReportRef) { openApp(.reports, request: .report(ref)) }
 
     /// The apps take their request when they appear and when it changes. A request whose target is gone (a message that was removed) is dropped.
+    func takeVenturesRequest() -> Bool {
+        guard case .ventures? = appRequest else { return false }
+        appRequest = nil
+        return true
+    }
     func takeMessageRequest() -> Int? {
         guard case .message(let id)? = appRequest else { return nil }
         appRequest = nil

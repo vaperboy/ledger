@@ -13,10 +13,23 @@ struct VenturesFeedApp: View {
     private var P: OutsidePalette { .ventures }
     @EnvironmentObject var store: GameStore
     @State private var pending: PendingAction?
+    /// Inside the merged Ventures screen (Projects tab): no header, back button or scroll view of its own.
+    var embedded = false
 
     var body: some View {
         if let e = store.engine {
             let cur = e.homeCurrency
+            if embedded {
+                VStack(alignment: .leading, spacing: 14) {
+                    feedLabel("New pitches", note: "new ones every four weeks")
+                    pitches(e, cur)
+                    stakes(e, cur)
+                    feedLabel("More ventures", note: "")
+                    VenturesContent(hidesBacking: true)
+                }
+                .environment(\.outsidePalette, P)
+                .confirmAction($pending)
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     header(e, cur)
@@ -33,6 +46,7 @@ struct VenturesFeedApp: View {
             .outsideScreen(P)
             .confirmAction($pending)
             .accessibilityIdentifier("ventures-app")
+            }
         }
     }
 

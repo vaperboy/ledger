@@ -8,6 +8,9 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
     case airStay, techPro, atlas
     var id: String { rawValue }
 
+    /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
+    static var launcher: [PhoneApp] { allCases.filter { $0 != .goals && $0 != .reports && $0 != .ventures } }
+
     var title: String {
         switch self {
         case .bank: return "Bank"

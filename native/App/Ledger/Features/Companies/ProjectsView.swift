@@ -7,9 +7,12 @@ import Simulation
 /// things to start), Finished, Ventures. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
 /// (see `ProjectsTabs.swift`). Every company's own Projects section stays reachable from the cards, tender details and the company list.
 struct ProjectsView: View {
-    enum Part: String, CaseIterable, Hashable { case running = "Running", timeline = "Timeline", bids = "Bids and offers", finished = "Finished" }
+    /// The three segments of the merged Ventures screen. Running also holds the Timeline and the Bids and offers lists (`RunPart`).
+    enum Part: String, CaseIterable, Hashable { case running = "Running", ideas = "Ideas and startups", finished = "Done" }
+    enum RunPart: String, CaseIterable, Hashable { case now = "In progress", timeline = "Timeline", bids = "Bids and offers" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .running
+    @State private var runPart: RunPart = .now
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .projects) }, set: { store.setPath($0, for: .projects) })) {
@@ -25,14 +28,16 @@ struct ProjectsView: View {
                 .safeAreaInset(edge: .top, spacing: 0) { ReturnLine(tab: .projects) }
                 .companyRouteDestinations()
                 // Choosing Projects again: back to Running.
-                .onChange(of: store.rootToken(.projects)) { _, _ in part = .running }
+                .onAppear { if store.takeVenturesRequest() { part = .ideas } }
+                .onChange(of: store.appRequest) { _, _ in if store.takeVenturesRequest() { part = .ideas } }
+                .onChange(of: store.rootToken(.projects)) { _, _ in part = .running; runPart = .now }
             }
         }
     }
 
     /// The Running tab is the summary and is fixed when it fits (compacted first); the other tabs are lists and scroll.
     @ViewBuilder private func page(_ e: GameEngine, _ rows: ProjectRows, _ lines: [ProjectTimeline], _ running: [ProjectTimeline]) -> some View {
-        if part == .running {
+        if part == .running && runPart == .now {
             FixedScreen(overflowScrolls: true) { pageContent(e, rows, lines, running) }
         } else {
             ScrollScreen { pageContent(e, rows, lines, running) }
@@ -43,10 +48,19 @@ struct ProjectsView: View {
         header(e, running)
         ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
         switch part {
-        case .running: ProjectsRunningTab(engine: e, rows: rows, running: running)
-        case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
-        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { store.openApp(.ventures) })
+        case .running:
+            ProjectUnderlineTabs(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart)
+            runContent(e, rows, lines, running)
+        case .ideas: VenturesFeedApp(embedded: true)
         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
+        }
+    }
+
+    @ViewBuilder private func runContent(_ e: GameEngine, _ rows: ProjectRows, _ lines: [ProjectTimeline], _ running: [ProjectTimeline]) -> some View {
+        switch runPart {
+        case .now: ProjectsRunningTab(engine: e, rows: rows, running: running)
+        case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
+        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { part = .ideas })
         }
     }
 
@@ -59,8 +73,8 @@ struct ProjectsView: View {
         let sub = running.isEmpty ? "Nothing running" : "\(running.count) running · \(store.short(committed)) committed"
         return HStack(spacing: 12) {
             IconCircle(glyph: Glyph.projects, size: 44)
-            AppHeader(title: "Projects", subtitle: sub) {
-                SmallOutlineButton(title: "New project") { part = .bids }
+            AppHeader(title: "Ventures", subtitle: sub) {
+                SmallOutlineButton(title: "New project") { part = .running; runPart = .bids }
             }
         }
     }

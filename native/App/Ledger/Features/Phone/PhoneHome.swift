@@ -51,7 +51,7 @@ struct PhoneHome: View {
             VStack(spacing: 16) {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(PhoneApp.allCases) { app in
+                    ForEach(PhoneApp.launcher) { app in
                         AppIcon(app: app, badge: badges[app] ?? 0) {
                             Haptics.tap()
                             path.append(.app(app))

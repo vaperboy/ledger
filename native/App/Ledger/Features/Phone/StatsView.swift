@@ -24,6 +24,8 @@ struct StatsView: View {
                 economyCard(e)
                 costCard(e)
                 activityLink
+                pageLink(glyph: Glyph.goals, title: "Goals and awards", note: "Your goals, missions and rewards to claim", app: .goals)
+                pageLink(glyph: Glyph.reports, title: "Previous reports", note: "Weekly, monthly and yearly", app: .reports)
                 TrophiesPreview()
             }
         }
@@ -230,6 +232,16 @@ struct StatsView: View {
         } label: {
             Card(padding: 12, radius: Theme.Radius.row) {
                 RowLine(glyph: Glyph.list, title: "Activity", subtitle: PhonePage.activity.note, chevron: true)
+            }
+        }
+        .buttonStyle(PressableStyle())
+    }
+
+    /// A row that opens a page that used to be its own Phone app (it is still pushed on the Phone stack, so Back returns here).
+    private func pageLink(glyph: String, title: String, note: String, app: PhoneApp) -> some View {
+        Button { Haptics.tap(); store.openApp(app) } label: {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                RowLine(glyph: glyph, title: title, subtitle: note, chevron: true)
             }
         }
         .buttonStyle(PressableStyle())
