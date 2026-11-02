@@ -170,7 +170,8 @@ public enum KeyAccounts {
         let id = s.makeID()
         let acct: JSONValue = .object(["id": .number(Double(id)), "name": .string(name), "f": .number(share), "rel": 0, "w0": .number(Double(s.week)), "disc": 0,
                                        "t": .string(tradeFor(id: id, known: { data.catalog[$0] != nil && data.countries[co.countryCode].map { _ in true } ?? true }))])
-        MarketEvents.log(&s, .majorContract, title: "\(name) wants to buy in bulk", detail: "A larger business customer for \(co.name), about \(Int((share * 100).rounded()))% on top of the normal trade.", companyID: co.id, tone: "good")
+        MarketEvents.log(&s, .majorContract, title: "\(name) wants to buy in bulk", detail: "A larger business customer for \(co.name), about \(Int((share * 100).rounded()))% on top of the normal trade.", companyID: co.id, tone: "good",
+                         consequence: co.managerID.flatMap { s.people[$0]?.name }.map { "\($0) signed it." } ?? "The offer is in your inbox: accept or decline it there.")
         if let mid = co.managerID, let mgr = s.people[mid] {
             var list = co.value("accts").array; list.append(acct); s.companies[i].set("accts", .array(list))
             s.note("\(mgr.name) signed \(name) as a business customer for \(co.name).", tone: "good", companyID: co.id)

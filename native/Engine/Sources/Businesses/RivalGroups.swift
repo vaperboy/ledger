@@ -369,7 +369,12 @@ public enum RivalGroups {
             s.news("\(name) expands into \(cn).", tone: myCountries(s).contains(cc) ? "bad" : "n")
             if myCountries(s).contains(cc) {   // a rival group newly in a country where you trade (it was not there before: the pool excludes its countries)
                 let mine: Int? = s.companies.first(where: { $0.status.isLive && $0.countryCode == cc })?.id
-                MarketEvents.log(&s, .newCountry, title: "\(name) enters \(cn)", detail: "A rival group has started competing in \(cn).", companyID: mine, tone: "bad")
+                // More rival pressure for all your companies there: 3 percent of demand, fading over 26 weeks.
+                for ci in s.companies.indices where s.companies[ci].status.isLive && s.companies[ci].countryCode == cc {
+                    MarketPressure.add(&s, ci, kind: .country, amount: 0.03, weeks: 26)
+                }
+                MarketEvents.log(&s, .newCountry, title: "\(name) enters \(cn)", detail: "A rival group has started competing in \(cn).", companyID: mine, tone: "bad",
+                                 consequence: "Demand about 3% lower at your companies in \(cn), fading over 26 weeks.")
             }
             return true
         case "poach":

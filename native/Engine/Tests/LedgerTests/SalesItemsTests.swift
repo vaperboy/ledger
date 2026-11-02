@@ -126,6 +126,8 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertTrue(e.ownCompanyListings(forBuyer: buyer).isEmpty, "nothing is listed yet")
         let item = e.salesItems(companyID: seller)[0]
         XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)
+        // a two-week-old company is nearly full; the seller needs room to supply (capacity limits are tested in IntegrationBalanceTests)
+        e.update { s, _, _ in let i = s.companyIndex(seller)!; var lw = s.companies[i].value("lastW"); lw["cap"] = 100; s.companies[i].set("lastW", lw) }
         let listing = try XCTUnwrap(e.ownCompanyListings(forBuyer: buyer).first)
         XCTAssertEqual(listing.sellerID, seller)
         XCTAssertEqual(listing.price, item.price, accuracy: 1e-6)

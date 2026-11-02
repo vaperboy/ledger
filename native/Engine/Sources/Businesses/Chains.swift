@@ -344,6 +344,10 @@ public enum Chains {
         s.companies[i].ownerHours = 0
         _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         join(&s, chainID: chainID, companyID: id, rename: true, data: data)
+        // A store of a known brand opens with a head start (instead of the usual 10): `BrandValues.openingAwareness`.
+        if let k = s.companyIndex(id) {
+            s.companies[k].awareness = max(s.companies[k].awareness, BrandValues.openingAwareness(flagshipAwareness: first.awareness, score: BrandValues.company(s, first).score))
+        }
         if let k = s.companyIndex(id) { s.companies[k].set("open13", s.week + 3) }   // a new store opens three weeks after it is set up (ManagerModel.openingWait)
         s.note("\(s.company(id)?.name ?? "A new store") is being set up for \(ch["name"].string).", tone: "good", companyID: id)
         return .success(id)

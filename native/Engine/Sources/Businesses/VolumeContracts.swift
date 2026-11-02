@@ -230,12 +230,15 @@ public enum VolumeContracts {
             let weeks = termChoices[min(2, Int(h.next() * 3))]
             let pay = [0, 4, 8, 13][min(3, Int(h.next() * 4))]
             let t = Terms(name: way.name, customer: who, units: units, discount: discount, weeks: weeks, paymentWeeks: pay, reliability: reliability)
-            MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: units * tk * (1 - discount) * Double(weeks))
+            let worthTotal = units * tk * (1 - discount) * Double(weeks)
             if let m = manager {
                 // A manager takes it when there is room, the discount is modest and the customer is not shaky.
-                if discount <= 0.12 && (lw.isNull || util < 0.92) && reliability >= 0.6 { sign(&s, companyID: co.id, terms: t, signedBy: m) }
+                let takes = discount <= 0.12 && (lw.isNull || util < 0.92) && reliability >= 0.6
+                MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: worthTotal, outcome: takes ? "\(m) signed it." : "\(m) declined it: the terms or the room were not right.")
+                if takes { sign(&s, companyID: co.id, terms: t, signedBy: m) }
                 return
             }
+            MarketEvents.noteContractOffer(&s, company: co, customer: who, worth: worthTotal)
             let total = units * tk * (1 - discount) * Double(weeks)
             let worth = w.currency(co).display(total)
             let perWeek = jsRound(units * 10) / 10

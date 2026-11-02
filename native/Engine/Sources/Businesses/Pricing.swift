@@ -122,7 +122,7 @@ public enum Pricing {
             d *= 1 + min(0.5, (-x - 0.03) * e0 * 0.9 * clamp(co.awareness / 60, 0.25, 1))
         }
         if cp != 0 { d *= 1 + cp * 0.8 * discountFatigue(co, w.week) }
-        return d * SalesItems.demandFactor(co)
+        return d * SalesItems.demandFactor(co) * MarketPressure.demandMultiplier(co, week: w.week)
     }
 
     /// Customers get used to sales: the more weeks on discount lately, the less a new one pulls. Original: `fat`.

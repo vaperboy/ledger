@@ -282,7 +282,8 @@ public enum CompanySale {
             if offers.count < 4 {
                 let co = s.companies[i]
                 let currency = fc.currency(co.countryCode, s)
-                let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog))
+                // A known name sells for more: up to 10 percent at brand score 100 (`BrandValues.salePremium`).
+                let v0 = max(currency.scaledPrice(20000), Valuation.companyValue(co, state: s, trades: data.catalog)) * BrandValues.salePremium(BrandValues.company(s, co).score)
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
                 let hostedInv = StaffPerks.hosted(s, "inv")   // investors you hosted: buyers come sooner and pay a little more

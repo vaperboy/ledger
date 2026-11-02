@@ -326,7 +326,18 @@ public enum Rivals {
                 let end = week + 1 + Int(h.next() * 3)
                 r["camp16"] = .object(["pct": .number(Double(pct)), "end": .number(Double(end))])
                 notes.append(("\(name) runs \(pct)% off for \(end - week) week\(end - week > 1 ? "s" : "").", "bad"))
-                MarketEvents.log(&s, .competitorLaunch, title: "\(name) launches \(pct)% off", detail: "A new offer from a \(bd.name.lowercased()) rival in \(cityName).", companyID: co0.id, amount: Double(pct), tone: "bad")
+                // The offer takes demand from your companies in this trade and city for 6 weeks, fading; more when your price is above the rival's.
+                var worst = 0.0
+                let sizeF = clamp(r["size"].double, 0.5, 1.5)
+                for ci in idx {
+                    let c = s.companies[ci]
+                    let gap = max(0, min(0.5, Pricing.priceIndex(c, w) / max(0.01, c.num("ig", 1)) / max(0.05, effectivePrice(r, week: week)) - 1))
+                    let amount = (0.02 + 0.1 * gap) * sizeF
+                    worst = max(worst, amount)
+                    MarketPressure.add(&s, ci, kind: .launch, amount: amount, weeks: 6, rivalID: r["id"].int)
+                }
+                MarketEvents.log(&s, .competitorLaunch, title: "\(name) launches \(pct)% off", detail: "A new offer from a \(bd.name.lowercased()) rival in \(cityName).", companyID: co0.id, amount: Double(pct), tone: "bad",
+                                 consequence: "Demand about \(max(1, Int((worst * 100).rounded())))% lower, fading over 6 weeks.")
             }
             // Marketing pushes
             if !r["mkt16"].isNull, Double(week) >= r["mkt16"].double { r["mkt16"] = .null; r["size"] = .number(jsRound(r["size"].double * 1.01 * 100) / 100) }
@@ -353,11 +364,13 @@ public enum Rivals {
             m["n"] = .number(m["n"].double + 1)
             if let ti = s.companyIndex(tgt.id) { PriceMoves.addModifier(&s, ti, key: "dem", multiplier: 0.92, weeks: 26) }
             let bn = riv[bigK]["name"].string
-            MarketEvents.log(&s, .competitorLaunch, title: "\(bn) opens a new store", detail: "Next to \(tgt.name) in \(cityName).", companyID: tgt.id, tone: "bad")
+            MarketEvents.log(&s, .competitorLaunch, title: "\(bn) opens a new store", detail: "Next to \(tgt.name) in \(cityName).", companyID: tgt.id, tone: "bad", consequence: "Demand 8% lower at \(tgt.name) for 26 weeks.")
             s.addMessage(from: "Market", title: "\(bn) opens next to \(tgt.name)",
                          body: "\(bn) has opened a new site a few doors from \(tgt.name) in \(cityName). Expect fewer walk-ins for a while. You can answer with prices, marketing or a discount under Price moves.",
                          companyID: tgt.id, tone: "bad")
         }
+        // Rivals answering a player who stays well under the market price (`PriceReaction.swift`).
+        priceReaction(&s, idx: idx, riv: &riv, market: m, bd: bd, cityName: cityName, world: w)
         // The market price index is what the rivals actually charge, weighted by size.
         let wts = riv.map { $0["size"].double * ($0["mkt16"].isNull ? 1 : 1.1) }
         let tot = wts.reduce(0, +)

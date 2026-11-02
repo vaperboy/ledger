@@ -25,11 +25,12 @@ final class MarketEventsTests: XCTestCase {
     func testLoggingHelperKindsAndNewestFirst() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
-            for k in MarketEvent.Kind.allCases { MarketEvents.log(&s, k, title: k.rawValue, detail: "d", companyID: 3, amount: 1.5, tone: "good") }
+            // one kind a week: at most 3 are written in one week
+            for (n, k) in MarketEvent.Kind.allCases.enumerated() { s.week = 10 + n; MarketEvents.log(&s, k, title: k.rawValue, detail: "d", companyID: 3, amount: 1.5, tone: "good") }
         }
         let ev = e.marketEvents(limit: 20)
-        XCTAssertEqual(ev.count, 7)
-        XCTAssertEqual(ev.first?.kind, .recognition)   // newest first
+        XCTAssertEqual(ev.count, MarketEvent.Kind.allCases.count)
+        XCTAssertEqual(ev.first?.kind, MarketEvent.Kind.allCases.last)   // newest first
         XCTAssertEqual(Set(ev.map { $0.kind }), Set(MarketEvent.Kind.allCases))
         XCTAssertEqual(ev.first?.companyID, 3)
         XCTAssertEqual(e.marketEvents(limit: 2).count, 2)
@@ -94,7 +95,7 @@ final class MarketEventsTests: XCTestCase {
         XCTAssertEqual(ev.last?.employeeID, 42)
     }
 
-    func testNewCountryLoggedOnceAfterBaseline() throws {
+    func testStartingAbroadYourselfIsNotAMarketEvent() throws {
         var (e, id) = try engineWithCafe()
         e.update { s, data, _ in
             MarketEvents.weekly(&s, data: data)
@@ -103,7 +104,7 @@ final class MarketEventsTests: XCTestCase {
             MarketEvents.weekly(&s, data: data)
             MarketEvents.weekly(&s, data: data)
         }
-        XCTAssertEqual(e.marketEvents(limit: 100).filter { $0.kind == .newCountry }.count, 1)
+        XCTAssertEqual(e.marketEvents(limit: 100).filter { $0.kind == .newCountry }.count, 0, "your own start is not news; a rival group entering is (RivalGroups)")
     }
 
     func testMajorContractThreshold() throws {
@@ -132,7 +133,7 @@ final class MarketEventsTests: XCTestCase {
 
     func testCapDropsTheOldest() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
-        e.update { s, _, _ in for n in 0..<75 { MarketEvents.log(&s, .recognition, title: "e\(n)", detail: "") } }
+        e.update { s, _, _ in for n in 0..<75 { s.week = 100 + n; MarketEvents.log(&s, .recognition, title: "e\(n)", detail: "") } }   // one a week: the weekly cap of 3 does not bite
         let ev = e.marketEvents(limit: 500)
         XCTAssertEqual(ev.count, 60)
         XCTAssertEqual(ev.first?.title, "e74")

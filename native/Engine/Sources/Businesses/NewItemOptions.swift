@@ -83,9 +83,14 @@ public enum NewItemOptions {
     /// leave the cost of sales; rivals dilute the lift (a quarter each); share is own size over own plus rivals'.
     static func estimate(_ s: GameState, _ co: Company, _ bd: Trade, lift: Double, w: World) -> (Double, Double) {
         let rivals = Rivals.rivals(s, for: co)
-        let effective = lift / (1 + 0.25 * Double(rivals.count))
+        let effective = MarketPressure.addedLift(co, category: lift == categoryLift, rivalCount: rivals.count)   // the very figure the real add uses
         let ticket = SalesItems.marketTicket(co, bd, w)
-        let units = SalesItems.baseUnits(co, bd, w) * effective
+        // The extra customers are what the demand model itself gives with the lift in full force, up to what the company can serve:
+        // the same calculation the weekly simulation runs, so the estimate and the game cannot drift apart.
+        var with = co
+        with.set(MarketPressure.liftKey, .array(co.value(MarketPressure.liftKey).array + [.object(["w0": .number(Double(s.week - MarketPressure.rampWeeks)), "f": .number(effective)])]))
+        let capacity = CapacityModel.compute(co, bd, w).capacity
+        let units = max(0, min(DemandModel.compute(with, bd, w).customers, capacity) - min(DemandModel.compute(co, bd, w).customers, capacity))
         let profit = units * ticket * (1 - bd.costOfSales)
         let others = rivals.reduce(0.0) { $0 + $1.size }
         let own = max(co.size, 0.01)

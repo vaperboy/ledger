@@ -42,6 +42,8 @@ public struct OwnListing: Equatable, Identifiable, Sendable {
     /// The item of the buyer's TechPro list that the purchase puts in the company.
     public var equipmentID: String
     public var equipmentName: String
+    /// How many units the seller can supply this week with the capacity it has left (see `OwnListings.spareUnits`).
+    public var available: Int = 0
 }
 
 public extension SalesItems {
@@ -121,8 +123,13 @@ public extension SalesItems {
         }
     }
 
-    /// A new item takes a tenth of the customers at the company's going price; the others make room, so revenue stays as it was.
+    /// A new item takes a tenth of the customers at the company's going price; the others make room. It also brings new customers: the demand
+    /// lift of `MarketPressure.addedLift` (the same figure the add-item estimate shows) ramps into demand over a few weeks and stays.
     static func add(_ s: inout GameState, companyID: Int, name: String, isService svc: Bool, data: GameData) {
+        if let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type] {
+            let co = s.companies[i]
+            MarketPressure.addLift(&s, i, lift: MarketPressure.addedLift(co, category: svc != isService(bd), rivalCount: Rivals.rivals(s, for: co).count))
+        }
         mutate(&s, companyID: companyID, data: data) { list in
             let qn = 0.1
             for k in list.indices { list[k].unitShare *= 1 - qn }

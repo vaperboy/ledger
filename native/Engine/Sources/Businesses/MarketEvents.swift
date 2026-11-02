@@ -7,6 +7,8 @@ import Countries
 public struct MarketEvent: Identifiable, Equatable, Sendable {
     public enum Kind: String, Sendable, CaseIterable {
         case competitorLaunch, supplierPriceChange, majorContract, acquisitionOpportunity, competitorLostShare, newCountry, recognition
+        /// A rival answering your low prices (a price cut or a marketing push).
+        case priceResponse
     }
     public var id: Int
     public var day: Int            // week * 7 + day
@@ -17,6 +19,10 @@ public struct MarketEvent: Identifiable, Equatable, Sendable {
     public var amount: Double?
     public var tone: String        // "good", "bad" or "n"
     public var employeeID: Int? = nil   // the person a recognition event is about
+    /// One short line on what it does to you ("Demand about 4% lower for 6 weeks"). Empty for older entries.
+    public var consequence: String = ""
+    /// Recognition only: true once `acknowledgeRecognition` has been used.
+    public var acknowledged: Bool = false
 }
 
 public struct MarketTrend: Equatable, Sendable {
@@ -28,23 +34,35 @@ public struct MarketTrend: Equatable, Sendable {
 
 public enum MarketEvents {
     static let cap = 60
+    /// At most this many entries are written in one week, and the same fact (kind, title, company) is not written again within `dedupeWeeks`.
+    static let perWeek = 3
+    static let dedupeWeeks = 4
 
     static func dayKey(_ s: GameState) -> Int { s.week * 7 + s.day }
 
-    /// Append one entry (oldest dropped beyond the cap).
-    public static func log(_ s: inout GameState, _ kind: MarketEvent.Kind, title: String, detail: String, companyID: Int? = nil, amount: Double? = nil, tone: String = "n", employeeID: Int? = nil) {
+    /// Append one entry (oldest dropped beyond the cap). Not written when this week already has 3 entries or the same fact was logged lately;
+    /// returns whether it was written. Effects that go with an event are applied by the caller whether or not it was written.
+    @discardableResult
+    public static func log(_ s: inout GameState, _ kind: MarketEvent.Kind, title: String, detail: String, companyID: Int? = nil, amount: Double? = nil, tone: String = "n", employeeID: Int? = nil, consequence: String = "") -> Bool {
         var m = s.rest["mev"] ?? .object([:])
+        let existing = m["log"].array
+        let today = dayKey(s)
+        if existing.filter({ $0["d"].int / 7 == s.week }).count >= perWeek { return false }
+        if existing.contains(where: { today - $0["d"].int < dedupeWeeks * 7 && $0["k"].string == kind.rawValue && $0["t"].string == title && ($0["c"].isNull ? nil : $0["c"].int) == companyID && ($0["w"].isNull ? nil : $0["w"].int) == employeeID }) { return false }
         let id = m["next"].int + 1
         var list = m["log"].array
         var e: [String: JSONValue] = ["i": .number(Double(id)), "d": .number(Double(dayKey(s))), "k": .string(kind.rawValue), "t": .string(title), "x": .string(detail), "tone": .string(tone)]
         if let c = companyID { e["c"] = .number(Double(c)) }
         if let a = amount { e["a"] = .number(a) }
         if let w = employeeID { e["w"] = .number(Double(w)) }
+        let cq = consequence.isEmpty && kind == .recognition && employeeID != nil ? "Thank them for a lift in mood and loyalty." : consequence
+        if !cq.isEmpty { e["cq"] = .string(cq) }
         list.append(.object(e))
         if list.count > cap { list.removeFirst(list.count - cap) }
         m["log"] = .array(list)
         m["next"] = .number(Double(id))
         s.rest["mev"] = m
+        return true
     }
 
     /// Newest first.
@@ -54,15 +72,17 @@ public enum MarketEvents {
             guard let k = MarketEvent.Kind(rawValue: e["k"].string) else { return nil }
             return MarketEvent(id: e["i"].int, day: e["d"].int, kind: k, title: e["t"].string, detail: e["x"].string,
                                companyID: e["c"].isNull ? nil : e["c"].int, amount: e["a"].isNull ? nil : e["a"].double, tone: e["tone"].string,
-                               employeeID: e["w"].isNull ? nil : e["w"].int)
+                               employeeID: e["w"].isNull ? nil : e["w"].int, consequence: e["cq"].string, acknowledged: e["ack"].bool)
         }
     }
 
     /// A contract offer worth at least 5 percent of the company's yearly sales is a major contract.
-    public static func noteContractOffer(_ s: inout GameState, company co: Company, customer: String, worth: Double) {
+    /// `outcome` says what the manager did with it; without one the offer waits in the inbox to be accepted or declined.
+    public static func noteContractOffer(_ s: inout GameState, company co: Company, customer: String, worth: Double, outcome: String? = nil) {
         let yearly = MarketMap.annualRevenue(co)
         guard yearly > 0, worth >= yearly * 0.05 else { return }
-        log(&s, .majorContract, title: "\(customer) offers a contract", detail: "Worth \(Int((worth / yearly * 100).rounded()))% of a year's sales at \(co.name).", companyID: co.id, amount: worth, tone: "good")
+        log(&s, .majorContract, title: "\(customer) offers a contract", detail: "Worth \(Int((worth / yearly * 100).rounded()))% of a year's sales at \(co.name).", companyID: co.id, amount: worth, tone: "good",
+            consequence: outcome ?? "The offer is in your inbox: accept or decline it there.")
     }
 
     // MARK: Largest payment of the day
@@ -135,14 +155,40 @@ public enum MarketEvents {
         return MarketTrend(priceIndexChangeThisMonth: past > 0 ? pts[29] / past - 1 : 0, points: pts)
     }
 
+    // MARK: Recognition
+
+    /// Weeks of good mood a thanked employee gets (the existing `happyUntilWeek`: lower quit risk, a line on the mood card).
+    static let thanksWeeks = 13
+
+    /// Thank the person a recognition event is about: a small lift in mood and loyalty (`happyUntilWeek` runs 13 weeks from now), noted in the
+    /// company's log. Once per event; ignoring the event does nothing. nil when done, else the reason.
+    public static func acknowledgeRecognition(_ s: inout GameState, eventID: Int) -> String? {
+        var m = s.rest["mev"] ?? .object([:])
+        var list = m["log"].array
+        guard let k = list.firstIndex(where: { $0["i"].int == eventID }), list[k]["k"].string == MarketEvent.Kind.recognition.rawValue, !list[k]["w"].isNull else { return "That is not a recognition event." }
+        if list[k]["ack"].bool { return "You have already thanked them." }
+        let pid = list[k]["w"].int
+        guard let ci = s.companies.firstIndex(where: { $0.status.isLive && $0.staff.contains { $0.id == pid } }),
+              let si = s.companies[ci].staff.firstIndex(where: { $0.id == pid }) else { return "They no longer work for you." }
+        var st = s.companies[ci].staff
+        st[si].happyUntilWeek = max(st[si].happyUntilWeek, s.week + thanksWeeks)
+        s.companies[ci].staff = st
+        list[k]["ack"] = .bool(true)
+        m["log"] = .array(list)
+        s.rest["mev"] = m
+        s.note("You thanked \(s.people[pid]?.name ?? "a team member") at \(s.companies[ci].name).", tone: "good", companyID: s.companies[ci].id)
+        return nil
+    }
+
     // MARK: Weekly sweep (facts that are easiest to see by comparing with last week)
 
     /// Called once at the end of the week. A first sighting is only remembered, never announced.
     public static func weekly(_ s: inout GameState, data: GameData) {
         record(&s)
+        MarketPressure.prune(&s)
         guard s.companies.contains(where: { $0.status.isLive }) else { return }
         var seen = s.rest["mev"]?["seen"] ?? .object([:])
-        sweepEconomy(&s, &seen)
+        sweepEconomy(&s, &seen, data: data)
         sweepCountries(&s, &seen, data: data)
         sweepAnniversaries(&s)
         sweepRivals(&s, &seen, data: data)
@@ -151,7 +197,24 @@ public enum MarketEvents {
         s.rest["mev"] = m
     }
 
-    static func sweepEconomy(_ s: inout GameState, _ seen: inout JSONValue) {
+    /// What a move of an index does to a company's weekly cost of sales, in its own currency (materials and fuel flow into the cost rate in
+    /// `CompanyWeek.costRate`: materials 0.3 of the rate outside goods and projects, fuel by the trade's fuel trait). Power and freight have no
+    /// single cost-of-sales line, so they get no money figure.
+    static func costChange(_ s: GameState, key: String, from old: Double, to new: Double, data: GameData) -> (company: Company, weekly: Double)? {
+        guard key == "materials" || key == "fuel" else { return nil }
+        var best: (company: Company, weekly: Double)?
+        for co in s.companies where co.status == .open {
+            guard let bd = data.catalog[co.type], co.lastWeekRevenue > 0 else { continue }
+            var rate = 0.0
+            if key == "materials", bd.family != "prod", bd.family != "project" { rate = bd.costOfSales * 0.3 * (new - old) / (0.7 + 0.3 * old) }
+            if key == "fuel", let f = bd.trait("fuel") { rate = f * (new - old) }
+            let weekly = rate * co.lastWeekRevenue
+            if weekly != 0, best == nil || abs(weekly) > abs(best!.weekly) { best = (co, weekly) }
+        }
+        return best
+    }
+
+    static func sweepEconomy(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
         let E = s.economy
         let idx: [(String, String, Double)] = [("materials", "Materials", E.materials), ("fuel", "Fuel", E.fuel), ("power", "Power", E.power), ("freight", "Freight", E.freight)]
         var eco = seen["eco"].isNull ? JSONValue.object([:]) : seen["eco"]
@@ -161,22 +224,21 @@ public enum MarketEvents {
             let change = v / last - 1
             guard abs(change) >= 0.03 else { continue }
             eco[k] = .number(v)
+            var cq = "Your suppliers charge \(String(format: "%.1f", abs(change) * 100))% \(change > 0 ? "more" : "less") for \(label.lowercased())."
+            if let c = costChange(s, key: k, from: last, to: v, data: data) {
+                let cur = World(state: s, data: data).currency(c.company)
+                cq = "\(c.company.name) pays about \(cur.display(abs(c.weekly))) a week \(c.weekly > 0 ? "more" : "less") for goods."
+            }
             log(&s, .supplierPriceChange, title: "\(label) prices \(change > 0 ? "up" : "down") \(Int((abs(change) * 100).rounded()))%",
-                detail: "Suppliers' \(label.lowercased()) prices moved \(change > 0 ? "up" : "down") since they were last checked.", amount: change, tone: change > 0 ? "bad" : "good")
+                detail: "\(label) costs \(change > 0 ? "rose" : "fell") since they were last checked.", amount: change, tone: change > 0 ? "bad" : "good", consequence: cq)
         }
         seen["eco"] = eco
     }
 
     static func sweepCountries(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
-        let now = Set(s.companies.filter { $0.status.isLive }.map { $0.countryCode })
         let known: Set<String>? = seen["ctry"].isNull ? nil : Set(seen["ctry"].array.map { $0.string })
-        if let known = known {
-            for code in now.subtracting(known).sorted() {
-                let name = data.countries[code]?.name ?? code
-                let cid = s.companies.first { $0.status.isLive && $0.countryCode == code }?.id
-                log(&s, .newCountry, title: "Now operating in \(name)", detail: "One of your companies has started in \(name).", companyID: cid, tone: "good")
-            }
-        }
+        let now = Set(s.companies.filter { $0.status.isLive }.map { $0.countryCode })
+        // Starting a company abroad is your own doing and is not announced as a market event; a rival group entering is (`RivalGroups`).
         seen["ctry"] = .array(now.union(known ?? []).sorted().map { .string($0) })
     }
 
@@ -186,7 +248,8 @@ public enum MarketEvents {
             for p in co.staff where p.hiredWeek > 0 && s.week > p.hiredWeek && (s.week - p.hiredWeek) % 52 == 0 {
                 let years = (s.week - p.hiredWeek) / 52
                 let name = s.people[p.id]?.name ?? "A team member"
-                log(&s, .recognition, title: "\(name): \(years) year\(years == 1 ? "" : "s") with \(co.name)", detail: "A work anniversary worth a thank-you.", companyID: co.id, tone: "good", employeeID: p.id)
+                log(&s, .recognition, title: "\(name): \(years) year\(years == 1 ? "" : "s") with \(co.name)", detail: "A work anniversary worth a thank-you.", companyID: co.id, tone: "good", employeeID: p.id,
+                    consequence: "")
             }
         }
     }
@@ -200,7 +263,8 @@ public enum MarketEvents {
             for r in Rivals.rivals(s, key: key) where r.forSale {
                 listedNow.append(.number(Double(r.id)))
                 if hadSale, !seen["sale"].array.contains(where: { $0.int == r.id }) {
-                    log(&s, .acquisitionOpportunity, title: "\(r.name) is for sale", detail: "A \((data.catalog[co.type]?.name ?? "local").lowercased()) rival has been put up for sale.", companyID: co.id, tone: "n")
+                    log(&s, .acquisitionOpportunity, title: "\(r.name) is for sale", detail: "A \((data.catalog[co.type]?.name ?? "local").lowercased()) rival has been put up for sale.", companyID: co.id, tone: "n",
+                        consequence: data.catalog[co.type].map { bd in let w = World(state: s, data: data); return "Worth about \(w.currency(co).display(Rivals.value(bd, r, w, co))); you can make an offer." } ?? "")
                 }
             }
         }
@@ -213,7 +277,7 @@ public enum MarketEvents {
                 shares[String(rid)] = .number(p.share)
                 let before = seen["share"][String(rid)]
                 if !before.isNull, before.double - p.share >= 0.01 {
-                    log(&s, .competitorLostShare, title: "\(p.name) is losing share", detail: "Down \(String(format: "%.1f", (before.double - p.share) * 100)) points of the local market in a week.", companyID: cid, amount: p.share - before.double, tone: "good")
+                    log(&s, .competitorLostShare, title: "\(p.name) is losing share", detail: "Down \(String(format: "%.1f", (before.double - p.share) * 100)) points of the local market in a week.", companyID: cid, amount: p.share - before.double, tone: "good", consequence: "A weaker rival eases the pressure on your demand here.")
                 }
             }
         }

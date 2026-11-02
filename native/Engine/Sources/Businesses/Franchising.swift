@@ -54,6 +54,7 @@ public enum Franchising {
         let open3 = L.filter { $0.status == .open }.count
         let prof = L.reduce(0.0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit } }
         let rep = L.isEmpty ? 0 : L.reduce(0.0) { $0 + $1.reputation } / Double(L.count)
+        let ease = BrandValues.requirementEase(BrandValues.company(s, co).score)   // a known brand needs up to 6 points less reputation
         let boss = ch.map { Chains.hasChainBoss(s, $0, stores: L) } ?? false
         let monthly = L.reduce(0.0) { $0 + (($1.monthlyHistory.last?.revenue) ?? 0) }
         let cashOK = monthly > 0 && Payments.liquid(s) >= monthly
@@ -62,7 +63,7 @@ public enum Franchising {
             Requirement(title: "Three stores open", ok: open3 >= 3, detail: "\(open3) of 3"),
             Requirement(title: "Cash to set up the franchise", ok: cashOK, detail: cashOK ? "Enough cash in hand" : "Keep about a month of the chain's sales in cash"),
             Requirement(title: "The chain made money last year", ok: prof > 0, detail: prof > 0 ? "Yes" : "Not yet"),
-            Requirement(title: "Customers like the chain", ok: rep >= 60, detail: L.isEmpty ? "-" : "reputation \(Int(rep))"),
+            Requirement(title: "Customers like the chain", ok: rep >= 60 - ease, detail: L.isEmpty ? "-" : "reputation \(Int(rep)) of \(Int(60 - ease))"),
             Requirement(title: "Someone to look after franchisees", ok: boss, detail: boss ? "Your chain team does" : "Hire a chain manager, or have a manager in every store"),
         ]
     }
@@ -133,7 +134,7 @@ public enum Franchising {
             s.companies[i].addTransaction(week: s.week, amount: -loan, label: "Loan to franchisee \(a["name"].string)")
         }
         let feeFactor = t.isNull ? 1 : t["feeF"].double
-        receive(&s, co.id, f["fee"].double * feeFactor, "rev", "Franchise fee")
+        receive(&s, co.id, f["fee"].double * feeFactor * BrandValues.feeFactor(BrandValues.company(s, co).score), "rev", "Franchise fee")
         let term = t.isNull ? (f["term"].isNull ? 10 : f["term"].double) : t["term"].double
         var u: [String: JSONValue] = ["id": a["id"], "name": a["name"], "city": a["city"], "w0": .number(Double(s.week)), "skill": a["skill"], "rev": 0, "prof": 0, "neg": 0,
                                       "setup": .number(setup), "end": .number(Double(s.week) + term * 52), "owed": 0, "late": 0, "term": .number(term)]
@@ -389,7 +390,7 @@ public enum Franchising {
         let franCost = Documents.definition("fran", country: C, tables: data.catalog.tables)?.cost ?? 25000
         let legal = cur.scaledPrice(franCost * C.bureaucracy)
         if co.cash < legal { return .cash }
-        let fee = f["fee"].double * 3
+        let fee = f["fee"].double * 3 * BrandValues.salePremium(BrandValues.company(s, co).score)   // a licence for a known brand sells for more
         pay(&s, co.id, legal, "oth", "Master franchise legal work: \(C.name)")
         receive(&s, co.id, fee, "rev", "Master franchise fee: \(C.name)")
         masters.append(.object(["c": .string(code), "w0": .number(Double(s.week)), "ready": .number(Double(s.week) + (6 * C.bureaucracy * 1.3).rounded(.up)), "n": 0, "cap": .number(masterCap(C)), "rev": 0]))
@@ -500,7 +501,7 @@ public enum Franchising {
                 if prof > 0 && u["q"].double >= 45 && s.random.chance(0.85) {
                     var arr = f["units"].array
                     if let k = arr.firstIndex(where: { $0["id"].int == uid }) { arr[k]["end"] = .number(Double(s.week) + termYears * 52); f["units"] = .array(arr) }
-                    renew += (f["fee"].double * 0.3).rounded()
+                    renew += (f["fee"].double * 0.3 * BrandValues.feeFactor(BrandValues.company(s, co).score)).rounded()
                     s.note("\(u["name"].string) renewed the \(co.name) franchise for another \(Int(termYears)) years.", tone: "good", companyID: co.id)
                 } else { endUnit(&s, i, &f, unitID: uid, how: "left", context: fc) }
             }
