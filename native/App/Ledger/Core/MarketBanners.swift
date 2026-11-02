@@ -24,6 +24,7 @@ extension GameStore {
     private func marketSeverity(_ k: MarketEvent.Kind) -> Int {
         switch k {
         case .majorContract, .acquisitionOpportunity, .recognition: return 3
+        case .priceResponse: return 2
         default: return 1
         }
     }
@@ -60,6 +61,13 @@ extension GameStore {
             switch m.kind {
             case .majorContract, .acquisitionOpportunity:
                 item.glyph = Glyph.ovCoin
+                if let cid = m.companyID, let co = e.state.company(cid) {
+                    item.target = .place(co.name, { store.openCompany(cid, section: .market) })
+                }
+            case .priceResponse:
+                item.source = "Rival"
+                item.body = m.consequence.isEmpty ? m.detail.tidyText : m.consequence.tidyText
+                item.lifetime = 5
                 if let cid = m.companyID, let co = e.state.company(cid) {
                     item.target = .place(co.name, { store.openCompany(cid, section: .market) })
                 }

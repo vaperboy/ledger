@@ -6,6 +6,7 @@ import Simulation
 /// Compact rows for the latest market events (Market section and Market app). Gold = opportunity, green = gain, red = loss.
 /// A row that appears while the screen is open slides in and gets a brief edge; the first render never animates.
 struct MarketEventRows: View {
+    @EnvironmentObject var store: GameStore
     var events: [MarketEvent]
     @State private var known: Set<Int>? = nil
     @State private var fresh: Set<Int> = []
@@ -52,6 +53,13 @@ struct MarketEventRows: View {
         }
     }
 
+    private func thank(_ m: MarketEvent) {
+        let eid: Int = m.id
+        let r: SettingResult? = store.act { $0.acknowledgeRecognition(eventID: eid) }
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r != nil { Haptics.success(); store.show("Thanked. They will remember it.", tone: "good") }
+    }
+
     private func row(_ m: MarketEvent) -> some View {
         let tint: Color = Self.tint(m)
         let flash: Color? = fresh.contains(m.id) ? tint : nil
@@ -62,6 +70,12 @@ struct MarketEventRows: View {
                 Text(m.title.tidyText).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
                 if !m.detail.isEmpty {
                     Text(m.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                }
+                if !m.consequence.isEmpty {
+                    Text(m.consequence.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                }
+                if m.kind == .recognition && !m.acknowledged {
+                    TeamAction(title: "Thank them") { thank(m) }
                 }
             }
             Spacer(minLength: 0)
