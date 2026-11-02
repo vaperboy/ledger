@@ -25,6 +25,7 @@ struct TechProProduct: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     var equipmentID: String
+    var offerKey: String
     var onAdd: (StoreOrders.Line) -> Void
 
     private enum Mode: Hashable { case new, used, lease }
@@ -47,18 +48,95 @@ struct TechProProduct: View {
     private func content(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need) -> some View {
         let cur: Currency = e.currency(for: co)
         let one: Bool = need.kind == "soft" || need.kind == "svc"
-        let modes: [Mode] = [.new] + (need.canUsed ? [Mode.used] : []) + (need.canLease ? [Mode.lease] : [])
+        let own: Bool = offerKey == "u" || offerKey == "own"
+        let modes: [Mode] = [.new] + (need.canLease && !own ? [Mode.lease] : [])
         let current: Mode = modes.contains(mode) ? mode : .new
         return ShopScroll {
             VStack(alignment: .leading, spacing: 16) {
-                header(co, need, cur)
+                hero(e, need)
+                header(co, need, cur, title: title(e, need))
                 if modes.count > 1 { modePicker(modes, current, one: one, subscription: need.subscription) }
-                if need.kind == "soft" { ownSoftware(e, need, cur) }
-                offers(e, co, need, current, cur, one: one)
+                options(e, co, need, current, cur, one: one)
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
         }
         .confirmAction($pendingOwn)
+    }
+
+    /// The supplier this page is about: "n<index>" a brand or provider, "v<id>" a make and model, "u" the used listings, "own" your own companies.
+    private var offerRest: String { String(offerKey.dropFirst()) }
+
+    private func title(_ e: GameEngine, _ need: EquipmentMarket.Need) -> String {
+        if offerKey == "u" { return "Used " + need.name }
+        if offerKey == "own" { return "From your own companies" }
+        if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) { return o.name }
+        if offerKey.hasPrefix("n"), let o = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.Offer) -> Bool in String(x.index) == offerRest }) { return o.name }
+        return need.name
+    }
+
+    private func hero(_ e: GameEngine, _ need: EquipmentMarket.Need) -> some View {
+        var photo: String = ""
+        if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
+            photo = TechPhotos.vehicle(model: o.modelID)
+        }
+        return ShopPhoto(name: photo, glyph: need.isVehicle ? Glyph.vehicle : TechCategory.of(need).glyph, height: 170, cornerRadius: 16)
+    }
+
+    @ViewBuilder private func options(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ current: Mode, _ cur: Currency, one: Bool) -> some View {
+        if offerKey == "u" {
+            used(e, co, need, cur)
+        } else if offerKey == "own" {
+            ownSoftware(e, need, cur)
+        } else if offerKey.hasPrefix("v") {
+            vehicleOption(e, need, current, cur)
+        } else if let o = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.Offer) -> Bool in String(x.index) == offerRest }) {
+            brandOption(e, co, need, o, current, cur, one: one)
+        } else {
+            Text("This supplier has nothing on offer right now.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+        }
+    }
+
+    @ViewBuilder private func brandOption(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ o: EquipmentMarket.Offer, _ mode: Mode, _ cur: Currency, one: Bool) -> some View {
+        if need.subscription && mode == .new {
+            Text("Sold only as a subscription. Plans are priced by users: you have \(EquipmentMarket.users(co)).")
+                .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            providerCard(e, o, cur)
+        } else {
+            let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
+            let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
+            let perf: Int = Int(((o.performance - 1) * 100).rounded())
+            Card(padding: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ShopFact(label: "Seller", value: o.seller)
+                    ShopFact(label: "Class", value: o.className)
+                    ShopFact(label: "Rating", value: stars(o.rating, o.reviews))
+                    ShopFact(label: "Output", value: (o.performance >= 1 ? "+" : "") + "\(perf)%")
+                    ShopFact(label: "Reliability", value: reliabilityWord(o.reliability))
+                    if sale.isOn { ShopFact(label: sale.label, value: "-\(sale.percentOff)%", tint: P.loss) }
+                    ShopFact(label: "Price each", value: cur.tidyShort(p), strong: true)
+                }
+            }
+            brandAdd(e, need, o, mode == .lease, cur, one: one)
+        }
+    }
+
+    @ViewBuilder private func vehicleOption(_ e: GameEngine, _ need: EquipmentMarket.Need, _ mode: Mode, _ cur: Currency) -> some View {
+        if let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
+            let price: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
+            let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
+            Card(padding: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ShopFact(label: "Model", value: o.modelName)
+                    ShopFact(label: "Rating", value: stars(o.rating, o.reviews))
+                    ShopFact(label: "Reliability", value: reliabilityWord(o.reliability))
+                    if sale.isOn { ShopFact(label: sale.label, value: "-\(sale.percentOff)%", tint: P.loss) }
+                    ShopFact(label: "Price new", value: cur.tidyShort(price), strong: true)
+                }
+            }
+            vehicleAdd(e, o, mode == .lease, cur)
+        } else {
+            Text("This model is not on offer right now.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+        }
     }
 
     @ViewBuilder private func offers(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ current: Mode, _ cur: Currency, one: Bool) -> some View {
@@ -75,11 +153,11 @@ struct TechProProduct: View {
 
     // MARK: Header
 
-    private func header(_ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
+    private func header(_ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency, title: String) -> some View {
         let have: Int = Int((need.have + need.leased).rounded())
         let sub: String = EquipmentMarket.kindName(need.kind) + " \u{00B7} lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " \u{00B7} warranty \(Int(need.warrantyYears)) yr new" : "")
         return VStack(alignment: .leading, spacing: 10) {
-            Text(need.name).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
+            Text(title).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
             Text(sub).font(.system(size: 13)).foregroundStyle(P.inkFaint)
             if need.dealPercent > 0 {
                 Text("\(need.dealLabel): up to \(need.dealPercent)% off, prices below already include it")

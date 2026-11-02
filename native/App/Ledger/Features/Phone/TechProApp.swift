@@ -58,7 +58,7 @@ struct TechProApp: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
 
-    private enum Step: Equatable { case store, category, product, basket, checkout, payment, placed, orders, owned }
+    private enum Step: Equatable { case store, category, suppliers, product, basket, checkout, payment, placed, orders, owned }
 
     @State private var step: Step = .store
     @State private var companyID = 0
@@ -67,6 +67,8 @@ struct TechProApp: View {
     @State private var sort: PriceSort = .needs
     @State private var query = ""
     @State private var itemID = ""
+    @State private var offerKey = ""
+    @State private var groupFrom: Step = .store
     @State private var basket: [StoreOrders.Line] = []
     @State private var delivery: StoreOrders.Delivery = .standard
     @State private var receiptID = 0
@@ -150,6 +152,7 @@ struct TechProApp: View {
                 switch step {
                 case .store: storeView(e, co)
                 case .category: categoryView(e, co)
+                case .suppliers: suppliersView(co)
                 case .product: productView(e, co)
                 case .basket: basketView(e, co)
                 case .checkout: checkoutView(e, co)
@@ -178,7 +181,8 @@ struct TechProApp: View {
         switch step {
         case .store: dismiss()
         case .category: step = .store
-        case .product: step = .category
+        case .suppliers: step = groupFrom
+        case .product: step = .suppliers
         case .basket: step = .store
         case .checkout: step = .basket
         case .payment: step = .checkout
@@ -215,7 +219,8 @@ struct TechProApp: View {
             step = .store
         } else {
             itemID = r.equipmentID
-            step = .product
+            groupFrom = .store
+            step = .suppliers
         }
     }
 
@@ -358,6 +363,9 @@ struct TechProApp: View {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
             }
+            Button("See all \(needs.count) product groups") { shelf = .all; sort = .needs; step = .category }
+                .buttonStyle(QuietButtonStyle())
+                .accessibilityIdentifier("tp-see-all")
         }
     }
 
@@ -367,26 +375,15 @@ struct TechProApp: View {
     }
 
     private func tile(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
-        let st = status(n)
         let from: String = n.subscription ? "from " + money(n.fromPrice / max(1, n.lifeYears) / 12) + "/mo" : "from " + money(n.fromPrice)
+        let have: Double = n.have + n.leased
+        let label: String = have <= 0 ? "Buy" : (n.need > 0 && have < n.need ? "Upgrade" : "Owned")
         return Button {
             Haptics.tap()
             showItem(n.equipmentID)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                ShopPhoto(name: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, height: 84)
-                Text(n.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(n.dealPercent > 0 ? P.loss : P.inkSoft)
-                    if n.dealPercent > 0 { Text("-\(n.dealPercent)%").font(.system(size: 11.5, weight: .bold)).foregroundStyle(P.loss) }
-                }
-                Text(st.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(st.tint)
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-            .contentShape(Rectangle())
+            TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
+                     label: label, tint: status(n).tint)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-tile-\(n.equipmentID)")
@@ -394,7 +391,8 @@ struct TechProApp: View {
 
     private func showItem(_ equipmentID: String) {
         itemID = equipmentID
-        step = .product
+        groupFrom = step == .category || step == .owned ? step : .store
+        step = .suppliers
     }
 
     /// The best discounts of the week, with the headline when it is a big sale day.
@@ -483,7 +481,9 @@ struct TechProApp: View {
                 if needs.isEmpty {
                     Text("Nothing here matches.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
                 }
-                ForEach(needs) { (n: EquipmentMarket.Need) in needRow(e, co, n) }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(needs) { (n: EquipmentMarket.Need) in tile(e, co, n) }
+                }
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
         }
@@ -568,9 +568,17 @@ struct TechProApp: View {
 
     // MARK: An item
 
+    private func suppliersView(_ co: Company) -> some View {
+        TechProSuppliers(companyID: co.id, equipmentID: itemID) { (key: String) in
+            offerKey = key
+            step = .product
+        }
+        .id(itemID + String(co.id))
+    }
+
     private func productView(_ e: GameEngine, _ co: Company) -> some View {
-        TechProProduct(companyID: co.id, equipmentID: itemID) { (line: StoreOrders.Line) in addToBasket(line) }
-            .id(itemID + String(co.id))
+        TechProProduct(companyID: co.id, equipmentID: itemID, offerKey: offerKey) { (line: StoreOrders.Line) in addToBasket(line) }
+            .id(itemID + offerKey + String(co.id))
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !basket.isEmpty {
                     ShopActionBar(left: {
