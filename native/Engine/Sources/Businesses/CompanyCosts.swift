@@ -153,7 +153,7 @@ public enum CompanyCosts {
                 books.add("dep", d)
                 continue
             }
-            guard let spec = bd.equipment.first(where: { $0.id == id }), r["n"].double > 0 else { continue }
+            guard let spec = bd.allEquipment.first(where: { $0.id == id }), r["n"].double > 0 else { continue }
             let used = r["used"].bool
             let dep = r["cost"].double / max(1, spec.lifeYears * (used ? 0.6 : 1)) / 52
             let d = min(r["bv"].double, dep)

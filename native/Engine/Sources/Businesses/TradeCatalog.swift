@@ -24,7 +24,7 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
         } }
         for k in map.keys.sorted() {
             let mine = Set(map[k]!.equipment.map { $0.id })
-            map[k]!.equipment += foreign.filter { !mine.contains($0.id) }
+            map[k]!.foreignItems = foreign.filter { !mine.contains($0.id) }
         }
         trades = map
         order = menu

@@ -262,12 +262,12 @@ public enum EquipmentMarket {
     }
 
     public static func offers(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [Offer] {
-        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return [] }
+        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return [] }
         return offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
     }
 
     public static func vehicleOffers(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [VehicleOffer] {
-        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return [] }
+        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return [] }
         return (e.vehicleModels ?? []).flatMap { m in
             c.tables.vehicles[m].map { vehicleOffers(model: m, modelName: $0.name, countryCode: co.countryCode, seed: s.seed, countries: c.countries) } ?? []
         }
@@ -355,7 +355,7 @@ public enum EquipmentMarket {
 
     @discardableResult
     public static func subscribe(_ s: inout GameState, companyID: Int, equipmentID: String, plan: Int, offer: Offer?, prepaid: Bool = false, data: GameData) -> Result {
-        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
+        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
         let all = offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: c.co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
         guard let o = offer ?? all.first(where: { $0.cls == 1 }) ?? all.first, plan >= 0, plan < 3 else { return .notPossible }
         let p = plans(e, company: c.co, c.w, factor: o.priceFactor)[plan]
@@ -399,7 +399,7 @@ public enum EquipmentMarket {
     /// Second-hand listings of a piece of equipment this month: each one different, and the seller does not always tell the truth.
     /// Original: `usedEqList`.
     public static func usedEquipment(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [UsedOffer] {
-        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return [] }
+        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return [] }
         let key = "\(s.seed):ul:\(co.id):\(e.id):\(monthIdx(s))"
         var r = HashedRandom(key)
         let cat = offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
@@ -424,7 +424,7 @@ public enum EquipmentMarket {
 
     /// Second-hand vehicles this month. Original: `usedVehList`.
     public static func usedVehicles(_ s: GameState, companyID: Int, equipmentID: String, data: GameData) -> [UsedOffer] {
-        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }), let models = e.vehicleModels else { return [] }
+        guard let co = s.company(companyID), let c = ctx(s, co, data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), let models = e.vehicleModels else { return [] }
         let key = "\(s.seed):uv:\(co.id):\(e.id):\(monthIdx(s))"
         var r = HashedRandom(key)
         let sellers = book["sellers"].array.map { $0.string }, says0 = book["usedSaysDressedVehicle"].array.map { $0.string }
@@ -494,7 +494,7 @@ public enum EquipmentMarket {
     /// Software and services are one licence; a licence already owned is replaced by the new version. Original: `buyEq` + the steps.
     @discardableResult
     public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
-        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return .notPossible }
+        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return .notPossible }
         let k = kind(e, tradeID: c.bd.id, tables: c.tables)
         let one = k == "soft" || k == "svc"
         let mode = one ? softwareMode(e, tradeID: c.bd.id, company: c.co, c.w) : nil
@@ -552,7 +552,7 @@ public enum EquipmentMarket {
     /// Buy a used item from this month's listings. Original: `buyUsedEq`.
     @discardableResult
     public static func buyUsed(_ s: inout GameState, companyID: Int, equipmentID: String, listing L: UsedOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
-        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
+        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }) else { return .notPossible }
         if e.vehicleModels != nil { return buyUsedVehicle(&s, companyIndex: i, e, L, payment: payment, prepaid: prepaid, data: data) }
         if payment == .finance {
             if !prepaid && c.co.cash < L.price * 0.2 { return .notEnoughCash }
@@ -592,7 +592,7 @@ public enum EquipmentMarket {
     /// Buy a new vehicle of a chosen make. Cash, loan (20% down, five years) or lease (3 years). Original: `buyVehCore`.
     @discardableResult
     public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
-        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }),
+        guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.allEquipment.first(where: { $0.id == equipmentID }),
               let vm = c.tables.vehicles[offer.modelID] else { return .notPossible }
         let base = vehiclePrice(vm, factor: offer.priceFactor, c.w, dealWeek: dealWeek)
         let mode = payment == .lease ? "lease" : payment == .finance ? "fin" : "own"
@@ -717,7 +717,7 @@ public enum EquipmentMarket {
     public static func needs(_ s: GameState, companyID: Int, data: GameData) -> [Need] {
         guard let co = s.company(companyID), let c = ctx(s, co, data: data) else { return [] }
         let std = CompanySetup.standardEquipment(c.bd, size: co.size)
-        return c.bd.equipment.filter { $0.id != "fit" }.map { e in
+        return c.bd.allEquipment.filter { $0.id != "fit" }.map { e in
             let k = kind(e, tradeID: c.bd.id, tables: c.tables)
             let soft = k == "soft"
             let sub = soft && softwareMode(e, tradeID: c.bd.id, company: co, c.w) == .subscription

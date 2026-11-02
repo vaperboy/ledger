@@ -98,7 +98,8 @@ public enum PriceMoves {
         let old = b.priceMultiplier(level: s.companies[i].priceLevel)
         if s.companies[i].value("pref16").isNull { s.companies[i].set("pref16", old) }
         if s.companies[i].value("ph16").isNull { s.companies[i].set("ph16", .array([.array([.number(Double(s.week)), .number(jsRound(old * 1000) / 1000)])])) }
-        let nb = clamp(old * (1 + d), b.priceMultipliers[0], b.priceMultipliers[6])
+        let bounds = b.priceBounds(tradeID: s.companies[i].type)
+        let nb = clamp(old * (1 + d), bounds.low, bounds.high)
         s.companies[i].priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
         var f = s.companies[i].value("flags"); f["priceAt"] = .number(Double(s.week)); s.companies[i].set("flags", f)
         return nb / old - 1
@@ -124,7 +125,8 @@ public enum PriceMoves {
     /// A manager raises or lowers the price by 6%, not by a whole level. Original: `step` ('tune.after', 'askManager.after').
     public static func managerStep(_ s: inout GameState, _ ci: Int, up: Bool, balance b: Balance) {
         let old = b.priceMultiplier(level: s.companies[ci].priceLevel)
-        let nb = clamp(old * (up ? 1.06 : 0.94), b.priceMultipliers[0], b.priceMultipliers[6])
+        let bounds = b.priceBounds(tradeID: s.companies[ci].type)
+        let nb = clamp(old * (up ? 1.06 : 0.94), bounds.low, bounds.high)
         s.companies[ci].priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
     }
 
@@ -149,7 +151,8 @@ public enum PriceMoves {
         let cap = isGoods ? Double.infinity : CapacityModel.compute(co, bd, w).capacity * (bd.family == "svc" ? 1.1 : 1)
         let e0 = Pricing.priceIndex(co, w), D0 = DemandModel.compute(co, bd, w).customers
         let old = b.priceMultiplier(level: co.priceLevel)
-        let nb = clamp(old * (1 + d), b.priceMultipliers[0], b.priceMultipliers[6])
+        let bounds = b.priceBounds(tradeID: co.type)
+        let nb = clamp(old * (1 + d), bounds.low, bounds.high)
         co.priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
         if cp > 0 { co.set("camp16", .object(["pct": .number(Double(cp)), "end": .number(Double(s.week + 9)), "w0": .number(Double(s.week))])) }
         let e1 = Pricing.priceIndex(co, w), D1 = DemandModel.compute(co, bd, w).customers

@@ -189,7 +189,7 @@ public enum EquipmentUnits {
         let cur = World(state: s, data: data).currency(co0)
         var reports: [String] = []
         for id in s.companies[i].value("eq").object.keys.sorted() where id != "fit" {
-            guard let spec = bd.equipment.first(where: { $0.id == id }) else { continue }
+            guard let spec = bd.allEquipment.first(where: { $0.id == id }) else { continue }
             var rec = s.companies[i].value("eq")[id]
             if !rec["sub"].isNull {
                 // A subscription is paid every month; a plan with too few seats slows the work down.
@@ -243,7 +243,7 @@ public enum EquipmentUnits {
             let rel = v["rel"].isNull ? 1 : v["rel"].double
             let p = 0.003 * (1 + 6 * pow(1 - v["cond"].double, 2)) * rel * (v["kr"].bool ? 0.6 : 1 + max(0, age - 6) * 0.07) * (1 + v["km"].double / 600000)
             if s.random.next() < p {
-                let spec = bd.equipment.first { $0.id == v["eq"].string }
+                let spec = bd.allEquipment.first { $0.id == v["eq"].string }
                 let vname = v["name"].string.isEmpty ? (spec?.name ?? "Vehicle") : v["name"].string
                 let (text, cost) = breakVehicle(&s, &v, name: vname, tables: tables, currency: cur)
                 reports.append(text)

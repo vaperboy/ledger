@@ -76,6 +76,11 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
     /// How many full-time equivalents the owner can supply at size 1
     public var ownerFTE: Double
     public var equipment: [EquipmentSpec]
+    /// Items of other trades that the TechPro Store also sells to this business (owner decision, 2 Nov). They do nothing for the business itself
+    /// (no capacity, quality or requirement), so `equipment` stays what the trade really uses; lookups by id for buying, owning, selling and wear
+    /// use `allEquipment`.
+    public var foreignItems: [EquipmentSpec] = []
+    public var allEquipment: [EquipmentSpec] { foreignItems.isEmpty ? equipment : equipment + foreignItems }
     public var documents: [String]
     public var managerType: String
     public var fixedWeekly: Double

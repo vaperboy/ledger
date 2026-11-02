@@ -142,7 +142,7 @@ public enum StoreOrders {
 
     private static func price(_ s: GameState, companyID: Int, line: Line, data: GameData) -> Priced? {
         guard let co = s.company(companyID), let c = EquipmentMarket.ctx(s, co, data: data),
-              let e = c.bd.equipment.first(where: { $0.id == line.equipmentID }) else { return nil }
+              let e = c.bd.allEquipment.first(where: { $0.id == line.equipmentID }) else { return nil }
         let k = EquipmentMarket.kind(e, tradeID: c.bd.id, tables: c.tables)
         let cur = c.w.currency(co)
         switch line.kind {
@@ -191,7 +191,7 @@ public enum StoreOrders {
     }
 
     private static func usedStillListed(_ s: GameState, companyID: Int, equipmentID: String, listing: EquipmentMarket.UsedOffer, data: GameData) -> Bool {
-        let vehicle = s.company(companyID).flatMap { data.catalog[$0.type] }?.equipment.first { $0.id == equipmentID }?.vehicleModels != nil
+        let vehicle = s.company(companyID).flatMap { data.catalog[$0.type] }?.allEquipment.first { $0.id == equipmentID }?.vehicleModels != nil
         let list: [EquipmentMarket.UsedOffer] = vehicle
             ? EquipmentMarket.usedVehicles(s, companyID: companyID, equipmentID: equipmentID, data: data)
             : EquipmentMarket.usedEquipment(s, companyID: companyID, equipmentID: equipmentID, data: data)

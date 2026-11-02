@@ -71,7 +71,7 @@ public extension EquipmentMarket {
                               wear: wearWord(seen(v)), seenCondition: seen(v), daysInRepair: v["down"].int, monthlyLease: v["lease"].double, bookValue: v["bv"].double,
                               driver: v["driver"].string, fuelPerWeek: fuel)
         }
-        for e in bd.equipment where e.id != "fit" {
+        for e in bd.allEquipment where e.id != "fit" {
             if let _ = e.vehicleModels {
                 let rows = co.value("veh").array.filter { $0["eq"].string == e.id }.map { row($0, perk: false) }
                 if !rows.isEmpty { out.append(Owned(equipmentID: e.id, name: e.name, kind: "veh", count: Double(rows.count), leasedCount: 0, leaseMonthly: 0, units: [], vehicles: rows,

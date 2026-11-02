@@ -40,10 +40,23 @@ struct ReportDigestSheet: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(digest.kind.title + " report").capsLabel()
             Text(digest.range).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            Text(headline).font(.serifTitle(17)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// One plain sentence on how the period went and what moved it, from the digest's own figures (nothing invented).
+    private var headline: String {
+        let profit: Double = digest.netProfit
+        var s: String = profit >= 0 ? "A profit of \(store.short(profit))" : "A loss of \(store.short(abs(profit)))"
+        if digest.revenue > 0.5 { s += " on \(store.short(digest.revenue)) of sales" }
+        s += "."
+        if profit > 0 && digest.cashChange < 0 { s += " Cash still fell by \(store.short(abs(digest.cashChange))): see where the money went." }
+        else if profit < 0 && digest.cashChange > 0 { s += " Cash rose anyway, so a loan or a sale is behind it." }
+        else if abs(digest.netWorthChange) > 0.5 { s += " Net worth \(digest.netWorthChange > 0 ? "rose" : "fell") by \(store.short(abs(digest.netWorthChange)))." }
+        return s
     }
 
     private var figures: some View {
