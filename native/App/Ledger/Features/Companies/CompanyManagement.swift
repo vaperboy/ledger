@@ -68,6 +68,9 @@ struct CompanyManagement: View {
         var level: Int?
         var sheet: Sheet?
         var isOwner = false
+        /// The owner's card only: whether the player works here (nil where a manager runs the place), and the switch.
+        var works: Bool? = nil
+        var toggleWorks: (() -> Void)? = nil
     }
 
     private func opener(_ node: OrgNode) -> (() -> Void)? {
@@ -90,8 +93,16 @@ struct CompanyManagement: View {
 
     private func orgNodes(_ cur: Currency) -> [OrgNode] {
         var out: [OrgNode] = []
-        let youLine: String = company.ownerHours > 0 ? "Runs it day to day." : "Final say on anything above the limits you set."
-        out.append(OrgNode(id: "you", glyph: Glyph.person, row: ManagementRow(name: "You", role: "Owner", scope: "company", line: youLine), level: nil, sheet: nil, isOwner: true))
+        let youLine: String = OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the limits you set."
+        let canWork: Bool = company.managerID == nil && company.type != "hold"
+        let working: Bool = OwnerHours.works(company)
+        let cid: Int = company.id
+        let toggle: () -> Void = {
+            Haptics.tap()
+            store.settle(store.act { $0.setWorksHere(companyID: cid, works: !working) }, working ? "You no longer work here." : "You work here again.")
+        }
+        out.append(OrgNode(id: "you", glyph: Glyph.person, row: ManagementRow(name: engine.state.player.name, role: "Owner", scope: "company", line: youLine), level: nil, sheet: nil, isOwner: true,
+                           works: canWork ? working : nil, toggleWorks: canWork ? toggle : nil))
         for b in chainAbove.reversed() {
             let title: String = GameEngine.bossTitle(b.kind, trade: nil)
             let said: String = GameEngine.authorityText(level: b.level)
@@ -119,8 +130,8 @@ struct CompanyManagement: View {
         let title = engine.tradeInfo(companyID: company.id).map { ManagerModel.title($0) } ?? "Manager"
         guard let mid = company.managerID, let m = engine.state.people[mid] else {
             return ManagementRow(name: nil, role: title, scope: "store",
-                                 line: company.ownerHours > 0 ? "You run it yourself. Hire one to step back." : "No one runs it day to day. Hire one.",
-                                 lineTint: company.ownerHours > 0 ? Theme.ivoryFaint : Theme.caution, wage: nil)
+                                 line: OwnerHours.works(company) ? "You run it yourself. Hire one to step back." : "No one runs it day to day. Hire one.",
+                                 lineTint: OwnerHours.works(company) ? Theme.ivoryFaint : Theme.caution, wage: nil)
         }
         let notice = company.value("mgrNotice")
         if !notice.isNull {
@@ -209,11 +220,23 @@ private struct OrgStripRow: View {
                 trailing(vacant, tappable: tappable)
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: node.isOwner ? .contain : .combine)
     }
 
     @ViewBuilder private func trailing(_ vacant: Bool, tappable: Bool) -> some View {
-        if let wage = node.row.wage {
+        if node.isOwner, let works = node.works {
+            Button { node.toggleWorks?() } label: {
+                HStack(spacing: 5) {
+                    GlyphView(glyph: works ? Glyph.check : Glyph.close, size: 11, weight: 2, tint: works ? Theme.gain : Theme.ivoryFaint)
+                    Text(works ? "Works here" : "Not here").font(.system(size: 11.5, weight: .medium)).foregroundStyle(works ? Theme.ivory : Theme.ivoryMuted)
+                }
+                .padding(.horizontal, 9).frame(minHeight: 30)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.ivory.opacity(0.06)))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
+        } else if let wage = node.row.wage {
             VStack(alignment: .trailing, spacing: 1) {
                 Text(wage).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
                 Text("a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)

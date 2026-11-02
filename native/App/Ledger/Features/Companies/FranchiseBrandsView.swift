@@ -412,7 +412,7 @@ struct StartFranchisedView: View {
             case .success(let out)?:
                 let late = out.premises == .notEnoughCash
                 Haptics.success()
-                store.show(late ? "Started under \(b.name), but the company could not pay for the place you picked. Choose premises under Equipment." : "Started under \(b.name).", tone: late ? "warn" : "good")
+                store.show(late ? "Started under \(b.name), but the company could not pay for the place you picked. Choose premises in AirStay." : "Started under \(b.name).", tone: late ? "warn" : "good")
                 store.openCompany(out.companyID); dismiss()
             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
             case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")

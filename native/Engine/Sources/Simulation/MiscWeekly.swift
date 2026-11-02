@@ -11,6 +11,7 @@ enum MiscWeekly {
         StaffProfile.trackWeek(&s)
         ContractTalk.weekly(&s, data: data)
         PremisesExtras.weekly(&s, data: data)
+        OwnerHours.adjustWeek(&s, data: data)
         Luxury.ownerWeek(&s)
         Luxury.riskChecks(&s, data: data)
         StaffPerks.weekly(&s, data: data)

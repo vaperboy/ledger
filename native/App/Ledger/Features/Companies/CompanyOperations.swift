@@ -32,7 +32,7 @@ enum OpsWords {
 
 /// A small setting changed in a sheet.
 enum OpsSheet: String, Identifiable {
-    case hours, upkeep
+    case upkeep
     var id: String { rawValue }
 }
 
@@ -69,7 +69,6 @@ struct CompanyOperations: View {
 
     @ViewBuilder private var smallRows: some View {
         let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
-        SettingsTableRow(title: "Your time", note: company.ownerHours == 0 ? "The team runs it without you" : "You work here yourself", value: "\(Int(company.ownerHours.rounded())) h a week", glyph: Glyph.clock, readOnly: true) { }
         SettingsTableRow(title: "Upkeep", note: stockNote, value: OpsWords.name(OpsWords.maintenance, company.maintenance) + " / " + OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased(), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .upkeep }
     }
 
@@ -78,34 +77,14 @@ struct CompanyOperations: View {
         if CompanySourcing.isAvailable(engine: engine, company: company) {
             SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
         }
-        SettingsTableRow(title: "Equipment and fleet", note: "What you own; buy in TechPro Store", value: "Manage", glyph: Glyph.opsBox) { part = .equipment }
-        coverageRow
     }
 
     @ViewBuilder private var premisesRow: some View {
         if engine.tradeInfo(companyID: company.id)?.family == "rent" {
             let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
             SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")", glyph: Glyph.opsPin) { part = .premises }
-        } else {
-            let place: String = engine.isWorkingFromHome(companyID: company.id) ? "At home" : company.value("prem")["owned"].bool ? "Owned" : "Rented"
-            SettingsTableRow(title: "Premises", note: "Rent or buy in AirStay, or work from home", value: place, glyph: Glyph.opsPin, thumb: premisesThumb) { store.openAirStay(companyID: company.id) }
         }
-    }
-
-    /// The picture of the company's current place (kind of premises and floor area); a company at home or without a place shows the icon.
-    private var premisesThumb: ThumbSpec {
-        let m2: Double = company.value("prem")["m2"].double
-        let kind: String? = engine.tradeInfo(companyID: company.id)?.premisesKind
-        let key: String = ArtLibrary.premisesKey(kind: kind, squareMetres: m2 > 0 ? m2 : nil)
-        return ThumbSpec(kind: .premisesPhoto, key: m2 > 0 ? key : "none", glyph: Glyph.opsPin, shape: .wide)
-    }
-
-    @ViewBuilder private var coverageRow: some View {
-        let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
-        let count: Int = o?.activeCount ?? 0
-        let total: Int = o?.policies.count ?? 0
-        SettingsTableRow(title: "Insurance and advisers", note: "In Atlas Insurance: policies, insurer, law firm, accountant",
-                         value: count == 0 ? "Not insured" : "\(count) of \(total) policies", valueTint: count == 0 ? Theme.caution : Theme.ivory, glyph: Glyph.opsShield) { store.openAtlas(companyID: company.id) }
+        // Premises are in AirStay, equipment and fleet in TechPro Store, insurance and advisers in Atlas: no tabs for them here.
     }
 
     // MARK: Below: paperwork and what needs you

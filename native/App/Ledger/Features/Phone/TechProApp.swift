@@ -29,6 +29,26 @@ enum TechCategory: String, CaseIterable, Hashable {
     }
 }
 
+/// What the store shows in its list: everything, what is on sale, or one department.
+enum TechShelf: Hashable {
+    case all, sale, dept(TechCategory)
+
+    var title: String {
+        switch self {
+        case .all: return "All items"
+        case .sale: return "On sale"
+        case .dept(let c): return c.rawValue
+        }
+    }
+
+    static func every() -> [TechShelf] { [.all, .sale] + TechCategory.allCases.map { (c: TechCategory) -> TechShelf in .dept(c) } }
+}
+
+/// The order of the list: what the business needs first, or by price.
+enum PriceSort: String, CaseIterable, Hashable {
+    case needs = "Needed first", low = "Price: low to high", high = "Price: high to low"
+}
+
 /// TechPro Store (Phone, green): equipment, software, tools and vehicles for your companies, in one online shop. It merges the old Equipment and
 /// Software screens. The store front shows what each kind of business usually needs; a basket goes to checkout (which store buys and so which
 /// account is charged, where the receipt is filed, how it is delivered), then the payment details, then "Order placed" with the order number
@@ -43,7 +63,9 @@ struct TechProApp: View {
     @State private var step: Step = .store
     @State private var companyID = 0
     @State private var picking = false
-    @State private var category: TechCategory = .software
+    @State private var shelf: TechShelf = .all
+    @State private var sort: PriceSort = .needs
+    @State private var query = ""
     @State private var itemID = ""
     @State private var basket: [StoreOrders.Line] = []
     @State private var delivery: StoreOrders.Delivery = .standard
@@ -62,6 +84,7 @@ struct TechProApp: View {
         page
             .confirmAction($pending)
             .outsideScreen(P)
+            .swipeBackEnabled(canStep: { step != .store }, step: { back() })
             .safeAreaInset(edge: .top, spacing: 0) { band }
             .onAppear { start() }
             .onChange(of: store.appRequest) { _, _ in take() }
@@ -193,6 +216,7 @@ struct TechProApp: View {
                 if picking { storePicker(e) }
                 hero
                 categoryRow(needs)
+                dealsStrip(e, co, needs)
                 popular(e, co, needs)
                 ordersLinks(e, co)
             }
@@ -239,7 +263,7 @@ struct TechProApp: View {
                 Text("Tools, software and more, all in one place.").font(.system(size: 14)).foregroundStyle(Color.white.opacity(0.9))
                 Button {
                     Haptics.tap()
-                    category = .software
+                    shelf = .all
                     step = .category
                 } label: {
                     Text("Shop now").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
@@ -260,7 +284,7 @@ struct TechProApp: View {
                 let count: Int = needs.filter { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == c }.count
                 Button {
                     Haptics.tap()
-                    category = c
+                    shelf = .dept(c)
                     step = .category
                 } label: {
                     VStack(spacing: 6) {
@@ -326,7 +350,10 @@ struct TechProApp: View {
             VStack(alignment: .leading, spacing: 6) {
                 ShopPhoto(name: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, height: 84)
                 Text(n.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
-                Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(P.inkSoft)
+                HStack(spacing: 6) {
+                    Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(n.dealPercent > 0 ? P.loss : P.inkSoft)
+                    if n.dealPercent > 0 { Text("-\(n.dealPercent)%").font(.system(size: 11.5, weight: .bold)).foregroundStyle(P.loss) }
+                }
                 Text(st.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(st.tint)
             }
             .padding(10)
@@ -344,8 +371,28 @@ struct TechProApp: View {
         step = .product
     }
 
+    /// The best discounts of the week, with the headline when it is a big sale day.
+    @ViewBuilder private func dealsStrip(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
+        let onSale: [EquipmentMarket.Need] = needs.filter { (n: EquipmentMarket.Need) -> Bool in n.dealPercent > 0 }
+            .sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in a.dealPercent > b.dealPercent }
+        if !onSale.isEmpty {
+            let top: [EquipmentMarket.Need] = Array(onSale.prefix(4))
+            let headline: String = StoreDeals.isBlackFridayWeek(e.state.week) ? "Black Friday: \(onSale.count) items up to \(top[0].dealPercent)% off" : "Deals this week"
+            VStack(alignment: .leading, spacing: 10) {
+                ShopHeading(text: headline, trailing: "\(onSale.count)")
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
+                }
+                Button("See all \(onSale.count) on sale") { shelf = .sale; sort = .needs; step = .category }
+                    .buttonStyle(QuietButtonStyle())
+                    .accessibilityIdentifier("tp-see-sale")
+            }
+        }
+    }
+
     @ViewBuilder private func ordersLinks(_ e: GameEngine, _ co: Company) -> some View {
         VStack(spacing: 8) {
+            linkRow(Glyph.hardware, "All items", "Everything the store sells \(co.name), sorted by price") { shelf = .all; sort = .low; step = .category }
             linkRow(Glyph.list, "My orders", "Placed orders and when they arrive") { step = .orders }
             NavigationLink {
                 // The old equipment screen keeps the game's own look.
@@ -387,16 +434,37 @@ struct TechProApp: View {
 
     // MARK: A department
 
+    /// The items of the shelf on show: every item the store sells this company, narrowed by department or sale and by the search words, in the order chosen.
+    private func shelfItems(_ e: GameEngine, _ co: Company) -> [EquipmentMarket.Need] {
+        let words: String = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let list: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: co.id).filter { (n: EquipmentMarket.Need) -> Bool in
+            let inShelf: Bool
+            switch shelf {
+            case .all: inShelf = true
+            case .sale: inShelf = n.dealPercent > 0
+            case .dept(let c): inShelf = TechCategory.of(n) == c
+            }
+            return inShelf && (words.isEmpty || n.name.lowercased().contains(words) || EquipmentMarket.kindName(n.kind).lowercased().contains(words))
+        }
+        return list.sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in
+            switch sort {
+            case .needs: return rank(a) != rank(b) ? rank(a) < rank(b) : a.name < b.name
+            case .low: return a.fromPrice != b.fromPrice ? a.fromPrice < b.fromPrice : a.name < b.name
+            case .high: return a.fromPrice != b.fromPrice ? a.fromPrice > b.fromPrice : a.name < b.name
+            }
+        }
+    }
+
     private func categoryView(_ e: GameEngine, _ co: Company) -> some View {
-        let needs: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: co.id)
-            .filter { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == category }
-            .sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in rank(a) < rank(b) }
+        let needs: [EquipmentMarket.Need] = shelfItems(e, co)
         return ShopScroll {
             VStack(alignment: .leading, spacing: 14) {
+                searchField
                 categoryChips
-                ShopHeading(text: category.rawValue, trailing: "\(needs.count)")
+                sortChips
+                ShopHeading(text: shelf.title, trailing: needs.count == 1 ? "1 item" : "\(needs.count) items")
                 if needs.isEmpty {
-                    Text("\(co.name) has nothing to buy here.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+                    Text("Nothing here matches.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
                 }
                 ForEach(needs) { (n: EquipmentMarket.Need) in needRow(e, co, n) }
             }
@@ -405,12 +473,46 @@ struct TechProApp: View {
         .accessibilityIdentifier("tp-category")
     }
 
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            GlyphView(glyph: Glyph.search, size: 18, weight: 1.7, tint: P.inkFaint)
+            TextField("Search the store", text: $query)
+                .font(.system(size: 15)).foregroundStyle(P.ink)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .accessibilityIdentifier("tp-search")
+        }
+        .padding(.horizontal, 14).frame(minHeight: 44)
+        .background(Capsule().fill(P.card))
+        .overlay(Capsule().strokeBorder(P.line, lineWidth: 1))
+    }
+
     private var categoryChips: some View {
-        HStack(spacing: 6) {
-            ForEach(TechCategory.allCases, id: \.self) { (c: TechCategory) in
-                ShopChip(title: c.rawValue, selected: category == c) { category = c }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(TechShelf.every(), id: \.self) { (s: TechShelf) in
+                    ShopChip(title: s.title, selected: shelf == s) { shelf = s }
+                }
             }
         }
+    }
+
+    private var sortChips: some View {
+        HStack(spacing: 6) {
+            ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
+                ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
+                    .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+            }
+        }
+    }
+
+    private func dealBadge(_ n: EquipmentMarket.Need) -> some View {
+        Text("-\(n.dealPercent)% \(n.dealLabel)").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.white)
+            .padding(.horizontal, 7).padding(.vertical, 3).background(Capsule().fill(P.loss)).lineLimit(1).minimumScaleFactor(0.7)
+    }
+
+    private func wasPrice(_ n: EquipmentMarket.Need) -> some View {
+        let was: String = n.subscription ? money(n.listPrice / max(1, n.lifeYears) / 12) + "/mo" : money(n.listPrice)
+        return Text(was).font(.system(size: 12).monospacedDigit()).foregroundStyle(P.inkFaint).strikethrough().lineLimit(1).minimumScaleFactor(0.7)
     }
 
     private func needRow(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
@@ -432,9 +534,11 @@ struct TechProApp: View {
                         Text(st.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(st.tint)
                     }
                     Spacer(minLength: 6)
-                    VStack(alignment: .trailing, spacing: 0) {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        if n.dealPercent > 0 { dealBadge(n) }
                         Text("from").font(.system(size: 11)).foregroundStyle(P.inkFaint)
-                        Text(from).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(P.ink).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(from).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(n.dealPercent > 0 ? P.loss : P.ink).lineLimit(1).minimumScaleFactor(0.7)
+                        if n.dealPercent > 0 { wasPrice(n) }
                     }
                 }
             }

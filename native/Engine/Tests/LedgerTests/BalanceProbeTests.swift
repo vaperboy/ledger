@@ -32,6 +32,7 @@ final class BalanceProbeTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: invested)
             // An owner who does not work in the business: the standard team does everything (how an empire scales)
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
+            if ProcessInfo.processInfo.environment["LEDGER_FIXEDHOURS"] != nil { s.rest["ownHrsFixed"] = true }
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
         guard id != 0 else { return nil }

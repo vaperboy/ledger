@@ -151,7 +151,7 @@ public enum StoreOrders {
             let one = k == "soft" || k == "svc"
             if one && EquipmentMarket.softwareMode(e, tradeID: c.bd.id, company: co, c.w) == .subscription { return nil }
             let q = one ? 1 : max(1, min(50, line.quantity))
-            let unit = EquipmentMarket.price(e, company: co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
+            let unit = EquipmentMarket.price(e, company: co, c.w, factor: offer.priceFactor, vendor: offer.vendorID, dealWeek: s.week)
             let total = unit * Double(q)
             var pay = line.payment
             if one { pay = .cash }
@@ -171,7 +171,7 @@ public enum StoreOrders {
         case .vehicle:
             guard e.vehicleModels != nil, let offer = EquipmentMarket.vehicleOffers(s, companyID: companyID, equipmentID: e.id, data: data).first(where: { $0.id == line.vehicleOfferID }),
                   let vm = c.tables.vehicles[offer.modelID] else { return nil }
-            let base = EquipmentMarket.vehiclePrice(vm, factor: offer.priceFactor, c.w)
+            let base = EquipmentMarket.vehiclePrice(vm, factor: offer.priceFactor, c.w, dealWeek: s.week)
             let now: Double = line.payment == .finance ? base * 0.2 : line.payment == .lease ? 0 : base
             return Priced(name: offer.name + ", new", subtitle: offer.modelName, goods: base, chargeNow: now, payment: line.payment, digital: false, isVehicle: true,
                           baseDays: leadDays(kind: "veh", vehicleKind: vm.kind, used: false, goods: base, currency: cur),
@@ -281,7 +281,7 @@ public enum StoreOrders {
         if q.shipping > 0 { Payments.companyPays(&s, companyID: companyID, amount: q.shipping, category: "oth", label: "Shipping: order \(number)") }
         let order: JSONValue = .object(["no": .string(number), "w": .number(Double(s.week)), "d": .number(Double(s.day)), "del": .string(delivery.rawValue), "car": .string(q.carrier),
                                         "goods": .number(q.goods), "ship": .number(q.shipping), "paid": .number(q.chargeNow), "rc": .number(Double(receiptCompanyID)),
-                                        "eta": .number(Double(day0 + q.days)), "lines": .array(rows), "st": "transit"])
+                                        "eta": .number(Double(day0 + q.days)), "lines": .array(rows), "st": "transit", "dl": .bool(true)])
         var list: [JSONValue] = s.companies[i].value(key).array
         list.insert(order, at: 0)
         if list.count > keepOrders { list.removeLast(list.count - keepOrders) }
@@ -315,7 +315,7 @@ public enum StoreOrders {
             for l in lines.indices where !lines[l]["done"].bool && lines[l]["eta"].int <= day0 {
                 var line = lines[l]
                 line["done"] = .bool(true)
-                if grant(&s, companyID: companyID, line: line, data: data) { arrived.append(line["nm"].string) }
+                if grant(&s, companyID: companyID, line: line, dealWeek: order["dl"].bool ? order["w"].int : nil, data: data) { arrived.append(line["nm"].string) }
                 else {
                     // The goods cannot be delivered (the company changed too much): the charge for them comes back.
                     let back = line["c"].double
@@ -339,19 +339,19 @@ public enum StoreOrders {
     }
 
     /// Put one delivered line into the company (the money was taken at checkout).
-    private static func grant(_ s: inout GameState, companyID: Int, line j: JSONValue, data: GameData) -> Bool {
+    private static func grant(_ s: inout GameState, companyID: Int, line j: JSONValue, dealWeek: Int?, data: GameData) -> Bool {
         guard let line = decode(j) else { return false }
         let r: EquipmentMarket.Result
         switch line.kind {
         case .new:
             guard let offer = EquipmentMarket.offers(s, companyID: companyID, equipmentID: line.equipmentID, data: data).first(where: { $0.index == line.offerIndex }) else { return false }
-            r = EquipmentMarket.buyNew(&s, companyID: companyID, equipmentID: line.equipmentID, offer: offer, quantity: line.quantity, payment: line.payment, prepaid: true, data: data)
+            r = EquipmentMarket.buyNew(&s, companyID: companyID, equipmentID: line.equipmentID, offer: offer, quantity: line.quantity, payment: line.payment, prepaid: true, dealWeek: dealWeek, data: data)
         case .plan:
             guard let offer = EquipmentMarket.offers(s, companyID: companyID, equipmentID: line.equipmentID, data: data).first(where: { $0.index == line.offerIndex }) else { return false }
             r = EquipmentMarket.subscribe(&s, companyID: companyID, equipmentID: line.equipmentID, plan: line.plan, offer: offer, prepaid: true, data: data)
         case .vehicle:
             guard let offer = EquipmentMarket.vehicleOffers(s, companyID: companyID, equipmentID: line.equipmentID, data: data).first(where: { $0.id == line.vehicleOfferID }) else { return false }
-            r = EquipmentMarket.buyNewVehicle(&s, companyID: companyID, equipmentID: line.equipmentID, offer: offer, payment: line.payment, prepaid: true, data: data)
+            r = EquipmentMarket.buyNewVehicle(&s, companyID: companyID, equipmentID: line.equipmentID, offer: offer, payment: line.payment, prepaid: true, dealWeek: dealWeek, data: data)
         case .used:
             guard let u = line.used else { return false }
             r = EquipmentMarket.buyUsed(&s, companyID: companyID, equipmentID: line.equipmentID, listing: u, payment: line.payment, prepaid: true, data: data)

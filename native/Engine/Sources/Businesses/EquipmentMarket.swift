@@ -276,14 +276,26 @@ public enum EquipmentMarket {
     // MARK: Prices
 
     /// Price of one item in a brand (factor 1 is the standard price). Original: `eqPrice`.
-    public static func price(_ e: EquipmentSpec, company co: Company, _ w: World, factor f: Double = 1, vendor: String? = nil) -> Double {
-        let raw = (e.cost * w.inflationIndex * f * w.country(co).costIndex * (1 - Suppliers.discount(w.state, scope: "eq", vendorID: vendor))).rounded()
+    /// `dealWeek` (the TechPro Store) prices the item at that week's sale (`StoreDeals`); nil is the list price.
+    public static func price(_ e: EquipmentSpec, company co: Company, _ w: World, factor f: Double = 1, vendor: String? = nil, dealWeek: Int? = nil) -> Double {
+        let sale: Double = dealWeek.map { dealFor(equipmentID: e.id, vendor: vendor, week: $0, seed: w.state.seed).factor } ?? 1
+        let raw = (e.cost * w.inflationIndex * f * sale * w.country(co).costIndex * (1 - Suppliers.discount(w.state, scope: "eq", vendorID: vendor))).rounded()
         let fx = w.rates.rate(w.country(co))
         return Currency.nicePrice(raw / fx) * fx
     }
 
-    public static func vehiclePrice(_ v: TradeTables.VehicleModel, factor f: Double, _ w: World) -> Double {
-        roundTo(v.price * w.inflationIndex * f, step: 1000)
+    public static func vehiclePrice(_ v: TradeTables.VehicleModel, factor f: Double, _ w: World, dealWeek: Int? = nil) -> Double {
+        let sale: Double = dealWeek.map { vehicleDealFor(model: v.name, factor: f, week: $0, seed: w.state.seed).factor } ?? 1
+        return roundTo(v.price * w.inflationIndex * f * sale, step: 1000)
+    }
+
+    /// The store's sale on one item of one brand in one week.
+    public static func dealFor(equipmentID: String, vendor: String?, week: Int, seed: Int) -> StoreDeals.Deal {
+        StoreDeals.deal(week: week, seed: seed, key: equipmentID + "|" + (vendor ?? "-"))
+    }
+
+    public static func vehicleDealFor(model: String, factor f: Double, week: Int, seed: Int) -> StoreDeals.Deal {
+        StoreDeals.deal(week: week, seed: seed, key: "veh|" + model + "|" + String(Int((f * 100).rounded())))
     }
 
     public static func leaseMonthly(price: Double) -> Double { price * 0.0235 }
@@ -479,14 +491,14 @@ public enum EquipmentMarket {
     /// Buy new equipment of a chosen brand: for cash, on a loan (20% down, four years) or on a lease (3 years, service included).
     /// Software and services are one licence; a licence already owned is replaced by the new version. Original: `buyEq` + the steps.
     @discardableResult
-    public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
+    public static func buyNew(_ s: inout GameState, companyID: Int, equipmentID: String, offer: Offer, quantity: Int, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }), e.vehicleModels == nil else { return .notPossible }
         let k = kind(e, tradeID: c.bd.id, tables: c.tables)
         let one = k == "soft" || k == "svc"
         let mode = one ? softwareMode(e, tradeID: c.bd.id, company: c.co, c.w) : nil
         if mode == .subscription { return subscribe(&s, companyID: companyID, equipmentID: equipmentID, plan: 1, offer: offer, prepaid: prepaid, data: data) }
         let q = one ? 1 : max(1, quantity)
-        let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID)
+        let unit = price(e, company: c.co, c.w, factor: offer.priceFactor, vendor: offer.vendorID, dealWeek: dealWeek)
         let total = unit * Double(q)
         if prepaid || c.co.cash >= total * (payment == .finance ? 0.2 : payment == .lease ? 0 : 1) { Suppliers.recordPurchase(&s, vendorID: offer.vendorID, amount: total, priceIndex: c.w.country(c.co).costIndex, big: true) }
         var pay = payment
@@ -577,10 +589,10 @@ public enum EquipmentMarket {
 
     /// Buy a new vehicle of a chosen make. Cash, loan (20% down, five years) or lease (3 years). Original: `buyVehCore`.
     @discardableResult
-    public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, prepaid: Bool = false, data: GameData) -> Result {
+    public static func buyNewVehicle(_ s: inout GameState, companyID: Int, equipmentID: String, offer: VehicleOffer, payment: Payment, prepaid: Bool = false, dealWeek: Int? = nil, data: GameData) -> Result {
         guard let i = s.companyIndex(companyID), let c = ctx(s, s.companies[i], data: data), let e = c.bd.equipment.first(where: { $0.id == equipmentID }),
               let vm = c.tables.vehicles[offer.modelID] else { return .notPossible }
-        let base = vehiclePrice(vm, factor: offer.priceFactor, c.w)
+        let base = vehiclePrice(vm, factor: offer.priceFactor, c.w, dealWeek: dealWeek)
         let mode = payment == .lease ? "lease" : payment == .finance ? "fin" : "own"
         if !prepaid && payment == .finance && c.co.cash < base * 0.2 { return .notEnoughCash }
         if !prepaid && payment == .cash && c.co.cash < base { return .notEnoughCash }
@@ -694,6 +706,10 @@ public enum EquipmentMarket {
         public var canLease: Bool
         public var lifeYears: Double
         public var warrantyYears: Double
+        /// The lowest price with no sale, and the sale on the cheapest offer (percent 0 = no sale; subscriptions never have one).
+        public var listPrice: Double = 0
+        public var dealPercent: Int = 0
+        public var dealLabel: String = ""
     }
 
     public static func needs(_ s: GameState, companyID: Int, data: GameData) -> [Need] {
@@ -704,18 +720,37 @@ public enum EquipmentMarket {
             let soft = k == "soft"
             let sub = soft && softwareMode(e, tradeID: c.bd.id, company: co, c.w) == .subscription
             let lowest: Double
+            var plain: Double
+            var best = StoreDeals.none
             if let models = e.vehicleModels {
-                lowest = models.compactMap { m in c.tables.vehicles[m].map { vehiclePrice($0, factor: 0.9, c.w) } }.min() ?? 0
+                var found = false
+                var low = 0.0, listLow = 0.0
+                for m in models {
+                    guard let vm = c.tables.vehicles[m] else { continue }
+                    let p = vehiclePrice(vm, factor: 0.9, c.w, dealWeek: s.week)
+                    if !found || p < low {
+                        found = true; low = p; listLow = vehiclePrice(vm, factor: 0.9, c.w)
+                        best = vehicleDealFor(model: vm.name, factor: 0.9, week: s.week, seed: s.seed)
+                    }
+                }
+                lowest = low; plain = listLow
             } else {
                 let cat = offers(for: e, tradeID: c.bd.id, family: c.bd.family, brands: c.brands, countryCode: co.countryCode, seed: s.seed, countries: c.countries, tables: c.tables)
-                lowest = cat.map { price(e, company: co, c.w, factor: $0.priceFactor, vendor: $0.vendorID) }.min() ?? price(e, company: co, c.w)
+                let wk: Int? = sub ? nil : s.week
+                let rows: [(p: Double, list: Double, deal: StoreDeals.Deal)] = cat.map { o in
+                    (price(e, company: co, c.w, factor: o.priceFactor, vendor: o.vendorID, dealWeek: wk), price(e, company: co, c.w, factor: o.priceFactor, vendor: o.vendorID),
+                     wk == nil ? StoreDeals.none : dealFor(equipmentID: e.id, vendor: o.vendorID, week: s.week, seed: s.seed)) }
+                if let top = rows.min(by: { $0.p < $1.p }) { lowest = top.p; plain = top.list; best = top.deal }
+                else { lowest = price(e, company: co, c.w); plain = lowest }
             }
+            if !best.isOn { plain = lowest }
             let have = e.vehicleModels != nil ? Double(co.value("veh").array.filter { $0["eq"].string == e.id }.count) : co.value("eq")[e.id]["n"].double
             let years = EquipmentUnits.warrantyYears(kind: k, vehicleModel: e.vehicleModels?.first, class: 1, price: lowest, tables: c.tables, currency: c.w.currency(co))
             return Need(equipmentID: e.id, name: e.name, kind: k, have: have, leased: co.value("lease")[e.id].double,
                         need: PersonalEquipment.rule(c.bd, e, tables: c.tables) != nil ? PersonalEquipment.needed(co, c.bd, e, tables: c.tables) : (std[e.id] ?? (e.isRequired ? 1 : 0)), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
                         fromPrice: lowest, canUsed: canBuyUsed(e, tradeID: c.bd.id, tables: c.tables),
-                        canLease: canLease(e, tradeID: c.bd.id, unitPrice: lowest, company: co, c.w, tables: c.tables), lifeYears: e.lifeYears, warrantyYears: years)
+                        canLease: canLease(e, tradeID: c.bd.id, unitPrice: lowest, company: co, c.w, tables: c.tables), lifeYears: e.lifeYears, warrantyYears: years,
+                        listPrice: plain, dealPercent: best.isOn ? best.percentOff : 0, dealLabel: best.isOn ? best.label : "")
         }
     }
 

@@ -46,10 +46,17 @@ public extension GameEngine {
     /// Price of one item of the offer, today (a vehicle: of the make and model).
     func equipmentPrice(companyID: Int, equipmentID: String, factor: Double, vendorID: String? = nil) -> Double {
         guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == equipmentID }) else { return 0 }
-        return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor, vendor: vendorID)
+        return EquipmentMarket.price(e, company: co, World(state: state, data: data), factor: factor, vendor: vendorID, dealWeek: state.week)
     }
     func vehiclePrice(modelID: String, factor: Double) -> Double {
-        data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehiclePrice($0, factor: factor, World(state: state, data: data)) } ?? 0
+        data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehiclePrice($0, factor: factor, World(state: state, data: data), dealWeek: state.week) } ?? 0
+    }
+    /// The store's sale on an offer today (what `equipmentPrice` already includes).
+    func equipmentDeal(equipmentID: String, vendorID: String?) -> StoreDeals.Deal {
+        EquipmentMarket.dealFor(equipmentID: equipmentID, vendor: vendorID, week: state.week, seed: state.seed)
+    }
+    func vehicleDeal(modelID: String, factor: Double) -> StoreDeals.Deal {
+        data.catalog.tables.vehicles[modelID].map { EquipmentMarket.vehicleDealFor(model: $0.name, factor: factor, week: state.week, seed: state.seed) } ?? StoreDeals.none
     }
     func subscriptionPlans(companyID: Int, equipmentID: String, offer: EquipmentMarket.Offer) -> [EquipmentMarket.Plan] {
         guard let co = state.company(companyID), let e = data.catalog[co.type]?.equipment.first(where: { $0.id == equipmentID }) else { return [] }

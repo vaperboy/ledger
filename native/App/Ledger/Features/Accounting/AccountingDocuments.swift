@@ -57,7 +57,7 @@ struct AcctDocuments: View {
         case .company: return "Registration, legal form, ownership and licences appear as the company holds them."
         case .tax: return "Tax and VAT records appear once the company has settled or accrued any."
         case .contracts: return "Employment, supplier, customer and financing contracts appear as they are signed."
-        case .insurance: return "Policies appear here once the company holds them. They are chosen under Manage, Insurance and advisers."
+        case .insurance: return "Policies appear here once the company holds them. They are chosen in the Atlas Insurance app."
         case .applications: return "Chain and franchise applications appear here with their status once you have sent one."
         }
     }
