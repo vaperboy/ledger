@@ -113,7 +113,7 @@ final class StageSixToNineTests: XCTestCase {
             Ledger.move(&s, .me, 900_000_000, why: "Test funds")
             if let i = s.companyIndex(id) { s.companies[i].managerID = 0 }
         }
-        let fresh = post()
+        let fresh = Array(post().suffix(1))   // the newest one only: the first stays with the owner
         XCTAssertEqual(e.routeFreshDecisions(fresh), 1)
         let done = try XCTUnwrap(e.state.inbox.first { $0.id == fresh[0].id })
         XCTAssertEqual(done.status, "done")
