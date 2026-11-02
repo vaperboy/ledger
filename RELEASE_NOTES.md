@@ -1,4 +1,5 @@
 # What's new
+- Swiping between tabs needs a longer, clearly sideways drag, so it no longer triggers by accident
 - Swipe sideways to change the tab in your Inbox and in a bank account
 - New game: you can pick an ambition at the start, or decide later; chains and franchises now need real things (profit, cash, reputation, open stores, documents) instead of waiting years; a settled lawsuit can no longer leave wages unpaid
 - Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from

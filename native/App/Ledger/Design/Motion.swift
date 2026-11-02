@@ -126,10 +126,10 @@ struct SwipeBetweenSegments<T: Hashable>: ViewModifier {
 
     func body(content: Content) -> some View {
         content.simultaneousGesture(
-            DragGesture(minimumDistance: 28, coordinateSpace: .local).onEnded { value in
+            DragGesture(minimumDistance: 40, coordinateSpace: .local).onEnded { value in
                 let dx: CGFloat = value.translation.width
                 let dy: CGFloat = value.translation.height
-                guard value.startLocation.x > 32, abs(dx) > 70, abs(dx) > abs(dy) * 2.2 else { return }
+                guard value.startLocation.x > 40, abs(dx) > 120, abs(dx) > abs(dy) * 3.2, abs(value.predictedEndTranslation.width) > 200 else { return }
                 guard let i = items.firstIndex(of: selection) else { return }
                 let next: Int = dx < 0 ? i + 1 : i - 1
                 guard items.indices.contains(next) else { return }
