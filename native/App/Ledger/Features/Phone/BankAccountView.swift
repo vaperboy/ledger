@@ -43,9 +43,9 @@ struct BankAccountScreen: View {
             .noSidewaysDrag()
             .scrollDismissesKeyboard(.interactively)
             .swipeBetween(tabs, selection: $tab)
-            .sheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind).presentationDetents([.medium, .large]) }
-            .sheet(isPresented: $paying) { BankPaySheet(account: id).presentationDetents([.medium, .large]) }
-            .sheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id).presentationDetents([.large]) }
+            .centerSheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind) }
+            .centerSheet(isPresented: $paying) { BankPaySheet(account: id) }
+            .centerSheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id) }
         } else {
             Text("This account is closed.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(24)
         }

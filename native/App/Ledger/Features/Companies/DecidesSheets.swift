@@ -11,7 +11,7 @@ enum DecideKind: String, Hashable {
     case runs = "Who runs it", payroll = "Payroll", hiring = "Hiring", spending = "Spending"
 }
 
-/// Which popup a row opens. A wrapper with an id, so the sheet can be driven by `.sheet(item:)`.
+/// Which popup a row opens. A wrapper with an id, so the sheet can be driven by `.centerSheet(item:)`.
 struct DecideRef: Identifiable, Hashable {
     var companyID: Int
     var kind: DecideKind
@@ -36,9 +36,7 @@ struct DecidesSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
             }
         }
-        .sheet(isPresented: $showManager) { ManagerSheet(companyID: companyID, candidates: $managerCands).environmentObject(store) }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .centerSheet(isPresented: $showManager) { ManagerSheet(companyID: companyID, candidates: $managerCands).environmentObject(store) }
     }
 
     private func content(_ e: GameEngine, _ co: Company) -> some View {

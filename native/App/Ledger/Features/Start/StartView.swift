@@ -85,7 +85,7 @@ struct StartView: View {
             // Ask once the file picker has gone, so the question is not lost behind it.
             DispatchQueue.main.async { replacingSave("Import this save?", button: "Import") { store.importLegacy(text: text) } }
         }
-        .sheet(isPresented: $showPaste) {
+        .centerSheet(isPresented: $showPaste) {
             NavigationStack {
                 VStack(spacing: Theme.Space.m) {
                     TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(minHeight: 220)

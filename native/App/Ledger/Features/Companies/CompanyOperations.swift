@@ -52,7 +52,7 @@ struct CompanyOperations: View {
             notes
             CompanyOtherSections(engine: engine, company: company)
         }
-        .sheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
+        .centerSheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
         }

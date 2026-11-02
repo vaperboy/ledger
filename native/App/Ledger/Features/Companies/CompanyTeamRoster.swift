@@ -212,7 +212,7 @@ struct CompanyTeamRoster: View {
                     Button { Haptics.tap(); openSlot = SlotRef(id: slot.id) } label: { PersonCard(row: row) }.buttonStyle(PressableStyle())
                 }
             }
-            .sheet(item: $openSlot) { ref in
+            .centerSheet(item: $openSlot) { ref in
                 TeamSlotSheet(companyID: company.id, slotID: ref.id, candidates: Binding(get: { candidates[ref.id] ?? [] }, set: { candidates[ref.id] = $0 }))
                     .environmentObject(store)
             }

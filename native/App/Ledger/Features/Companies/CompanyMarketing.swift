@@ -25,7 +25,7 @@ struct CompanyMarketing: View {
                 channelTable(channels, cur: cur, mkt: mkt)
             }
         }
-        .sheet(item: $open) { (o: OpenChannel) in channelSheet(o.id, cur: cur) }
+        .centerSheet(item: $open) { (o: OpenChannel) in channelSheet(o.id, cur: cur) }
     }
 
     /// A campaign channel opened in its sheet.
@@ -48,7 +48,6 @@ struct CompanyMarketing: View {
         if let ch = engine.marketingChannels(companyID: company.id).first(where: { $0.id == id }) {
             PeopleSheet(title: ch.name) { channelCard(ch, cur: cur, mkt: mkt) }
                 .confirmAction($pending)
-                .presentationDetents([.medium, .large])
         }
     }
 

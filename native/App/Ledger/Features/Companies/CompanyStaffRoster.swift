@@ -73,7 +73,7 @@ struct CompanyStaffRoster: View {
             footer(cur)
         }
         .confirmAction($pending)
-        .sheet(item: $profile) { (w: WorkerRef) -> AnyView in
+        .centerSheet(item: $profile) { (w: WorkerRef) -> AnyView in
             AnyView(WorkerProfileSheet(companyID: company.id, employeeID: w.id).environmentObject(store))
         }
     }
@@ -186,7 +186,7 @@ struct StaffProfileView: View {
             .scrollIndicators(.hidden)
             .appScreen(title: p.name, subtitle: sub, tab: .team)
             .confirmAction($pending)
-            .sheet(isPresented: $discussing) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
+            .centerSheet(isPresented: $discussing) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
         } else {
             Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

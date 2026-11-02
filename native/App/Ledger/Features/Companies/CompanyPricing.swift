@@ -19,7 +19,7 @@ struct CompanyPricing: View {
 
     var body: some View {
         content
-            .sheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
+            .centerSheet(isPresented: $showWar) { PriceWarSheet(engine: engine, companyID: company.id) }
     }
 
     @ViewBuilder private var content: some View {

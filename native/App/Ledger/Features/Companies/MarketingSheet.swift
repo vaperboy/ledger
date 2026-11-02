@@ -44,7 +44,6 @@ struct MarketingSheet: View {
         .padding(.horizontal, 16).padding(.top, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ledgerBackground()
-        .presentationDetents([.medium, .large])
     }
 
     private func running(_ ch: MarketingChannel, mkt: JSONValue) -> Double {

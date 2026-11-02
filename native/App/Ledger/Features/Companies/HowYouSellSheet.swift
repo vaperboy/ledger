@@ -21,8 +21,6 @@ struct HowYouSellSheet: View {
         } else {
             PeopleSheet(title: "How you sell") { inner }
                 .confirmAction($pending)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
     }
 

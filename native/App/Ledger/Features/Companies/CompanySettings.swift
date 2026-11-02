@@ -31,7 +31,7 @@ struct CompanySettings: View {
             documents(cur)
         }
         .confirmAction($pending)
-        .sheet(isPresented: $converting) { ConversionSheet(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $converting) { ConversionSheet(companyID: company.id).environmentObject(store) }
     }
 
     // MARK: Legal form

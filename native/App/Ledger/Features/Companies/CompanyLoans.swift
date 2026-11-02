@@ -54,8 +54,8 @@ struct CompanyLoans: View {
                 }
             }
         }
-        .sheet(item: $repaying) { l in
-            LoanDetailSheet(loanID: l.id).environmentObject(store).presentationDetents([.large])
+        .centerSheet(item: $repaying) { l in
+            LoanDetailSheet(loanID: l.id).environmentObject(store)
         }
     }
 }
@@ -97,7 +97,6 @@ struct RepayLoanSheet: View {
             .navigationTitle(loan.name).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
-        .presentationDetents([.medium, .large])
         .confirmAction($pending)
     }
 

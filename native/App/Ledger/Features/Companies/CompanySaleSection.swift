@@ -35,7 +35,7 @@ struct CompanySaleSection: View {
                     }
                 }
             }
-            .sheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
+            .centerSheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
                 BuyerTalkSheet(companyID: company.id, offerID: t.id) { o in laterAsk(o) }
             }
             .confirmAction($pending)

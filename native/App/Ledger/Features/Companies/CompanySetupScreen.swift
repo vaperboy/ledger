@@ -41,7 +41,7 @@ struct CompanySetupScreen: View {
         }
         .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs)
         .frame(maxWidth: 1100, maxHeight: .infinity, alignment: .topLeading).frame(maxWidth: .infinity)
-        .sheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
+        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
         }
     }

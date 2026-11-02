@@ -71,7 +71,7 @@ struct TeamView: View {
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .returnBar(for: .team)
-            .sheet(item: $decide) { (d: DecideRef) -> AnyView in
+            .centerSheet(item: $decide) { (d: DecideRef) -> AnyView in
                 AnyView(DecidesSheet(companyID: d.companyID, kind: d.kind).environmentObject(store))
             }
             // Choosing Team again: back to the Overview, search and filter cleared.

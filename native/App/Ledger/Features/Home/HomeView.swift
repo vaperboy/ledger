@@ -142,7 +142,7 @@ struct HomeShortcutRow: View {
             }
         }
         .contextMenu { Button("Edit shortcuts") { editing = true } }
-        .sheet(isPresented: $editing) { HomeShortcutEditor() }
+        .centerSheet(isPresented: $editing) { HomeShortcutEditor() }
     }
 
     private func box(_ item: HomeShortcut, badge: Int) -> some View {

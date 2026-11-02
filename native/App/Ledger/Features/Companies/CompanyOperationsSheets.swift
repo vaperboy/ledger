@@ -60,8 +60,6 @@ struct OpsSettingSheet: View {
                 Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     private var title: String {

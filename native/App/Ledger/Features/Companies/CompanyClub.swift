@@ -401,7 +401,7 @@ struct ClubMarketView: View {
             }
             .ledgerBackground()
             .appScreen(title: "Football clubs", subtitle: "Buy a club or found a new one.")
-            .sheet(item: $offerFor) { c in offerSheet(c, cur) }
+            .centerSheet(item: $offerFor) { c in offerSheet(c, cur) }
             .confirmAction($pending)
         }
     }
@@ -469,7 +469,6 @@ struct ClubMarketView: View {
             HStack { Button("Close") { offerFor = nil }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }
         }
         .padding(Theme.Space.margin)
-        .presentationDetents([.medium])
         .ledgerBackground()
     }
 }

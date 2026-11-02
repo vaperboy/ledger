@@ -20,8 +20,6 @@ struct SalesItemSheet: View {
     var body: some View {
         let title: String = store.engine?.salesItems(companyID: companyID).first(where: { (i: SalesItem) -> Bool in i.id == itemID })?.name ?? "Item"
         return PeopleSheet(title: title) { inner }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder private var inner: some View {

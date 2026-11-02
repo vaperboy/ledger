@@ -5,7 +5,7 @@ import Employees
 import Businesses
 import Simulation
 
-/// Which worker a list row opens. The engine's types are never made Identifiable: this wraps the id for `.sheet(item:)`.
+/// Which worker a list row opens. The engine's types are never made Identifiable: this wraps the id for `.centerSheet(item:)`.
 struct WorkerRef: Identifiable, Hashable {
     var id: Int
 }
@@ -33,11 +33,9 @@ struct WorkerProfileSheet: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .confirmAction($pending)
-        .sheet(isPresented: $discussing) {
+        .centerSheet(isPresented: $discussing) {
             ContractDiscussionView(companyID: companyID, personID: employeeID).environmentObject(store)
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     private func content(_ e: GameEngine, _ co: Company, _ p: WorkerProfile) -> some View {

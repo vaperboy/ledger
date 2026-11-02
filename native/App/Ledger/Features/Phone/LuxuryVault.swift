@@ -122,7 +122,6 @@ struct LuxuryInspectSheet: View {
             .background(P.ground.ignoresSafeArea())
             .environment(\.outsidePalette, P)
             .preferredColorScheme(.dark)
-            .presentationDetents([.fraction(0.9)])
             .confirmAction($pending)
         }
     }

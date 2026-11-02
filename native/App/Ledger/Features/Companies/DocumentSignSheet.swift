@@ -101,7 +101,7 @@ struct CompanyLicences: View {
             ForEach(lines) { (l: LicenceLine) in card(l) }
             if lines.isEmpty { Text("This business has no licences to add.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
         }
-        .sheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
+        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
         }
     }

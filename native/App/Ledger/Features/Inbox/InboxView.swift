@@ -199,7 +199,7 @@ struct InboxView: View {
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
-        .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
+        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
         .confirmAction(listPending)
         .ledgerBackground()
         .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
@@ -284,7 +284,6 @@ struct InboxView: View {
             .scrollIndicators(.hidden)
             .background(P.ground.ignoresSafeArea())
             .confirmAction($pending)
-            .presentationDetents([.large])
         } else {
             Color.clear.onAppear { detailID = nil }
         }

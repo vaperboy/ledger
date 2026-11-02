@@ -70,7 +70,7 @@ struct HiringView: View {
             .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
         }
         .confirmAction($pending)
-        .sheet(item: $talkRequest) { r in HireFlowSheet(request: r).environmentObject(store) }
+        .centerSheet(item: $talkRequest) { r in HireFlowSheet(request: r).environmentObject(store) }
         .appScreen(title: roleName.isEmpty ? "Hire" : "Hire a \(roleName.lowercased())", subtitle: subtitle, tab: store.tab)
     }
 

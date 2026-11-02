@@ -275,7 +275,7 @@ struct CandidateHireList<Row: View>: View {
             }
         }
         .environment(\.openHire, { r in open = r })
-        .sheet(item: $open) { r in HireFlowSheet(request: r).environmentObject(store) }
+        .centerSheet(item: $open) { r in HireFlowSheet(request: r).environmentObject(store) }
     }
 }
 

@@ -183,7 +183,7 @@ private struct FoundedStartups: View {
                 }
             }
         }
-        .sheet(isPresented: $founding) { FoundStartupSheet() }
+        .centerSheet(isPresented: $founding) { FoundStartupSheet() }
     }
 }
 
@@ -338,7 +338,7 @@ private struct FoundedCard: View {
             }
         }
         .confirmAction($pending)
-        .sheet(isPresented: $launching) { StartupLaunchSheet(engine: engine, f: f) }
+        .centerSheet(isPresented: $launching) { StartupLaunchSheet(engine: engine, f: f) }
     }
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {

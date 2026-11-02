@@ -44,7 +44,7 @@ struct CompanyMarket: View {
             rivals
         }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
-        .sheet(item: rivalBinding) { r in
+        .centerSheet(item: rivalBinding) { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
     }
@@ -247,7 +247,7 @@ struct RivalSheet: View {
             }
             .ledgerBackground()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .sheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price })) { p in
+            .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price })) { p in
                 AcquisitionSheet(companyID: companyID, rivalID: rivalID, price: p.price) { kind in
                     switch kind {
                     case .own: pendingPrice = nil; buy(p.price)

@@ -76,7 +76,7 @@ struct BankPersonalLoans: View {
             }
             loansCard(e, cur, personal)
         }
-        .sheet(item: $repaying) { l in LoanDetailSheet(loanID: l.id).presentationDetents([.large]) }
+        .centerSheet(item: $repaying) { l in LoanDetailSheet(loanID: l.id) }
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {

@@ -29,8 +29,8 @@ struct CompanySales: View {
                 developRow
             }
         }
-        .sheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
-        .sheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
+        .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
+        .centerSheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
         }

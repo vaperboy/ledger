@@ -36,7 +36,7 @@ struct CompanyDevelopment: View {
             finishedCard
         }
         .confirmAction($pending)
-        .sheet(item: $formFor) { c in ExpansionForm(engine: engine, company: company, project: c.project, onStarted: { formFor = nil }) }
+        .centerSheet(item: $formFor) { c in ExpansionForm(engine: engine, company: company, project: c.project, onStarted: { formFor = nil }) }
     }
 
     private static func kindGlyph(_ kind: String) -> String {

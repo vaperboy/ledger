@@ -114,7 +114,7 @@ struct FranchisorCard: View {
                 Button("Apply for franchise documents · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")))") {
                     signing = true
                 }.buttonStyle(TinyButtonStyle()).padding(.top, 10)
-                .sheet(isPresented: $signing) {
+                .centerSheet(isPresented: $signing) {
                     PaperSignSheet(title: "Franchise documents", to: "The franchise register", note: "A lawyer writes the franchise agreement and the disclosure document for \(company.name). They are reviewed before you can sell units.",
                                    fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")), wait: "after a review of some weeks", button: "Sign and send",
                                    onSend: {

@@ -37,7 +37,7 @@ struct CompanyManagement: View {
         Group {
             if thin { thinList } else { fullList }
         }
-        .sheet(item: $sheet) { s in
+        .centerSheet(item: $sheet) { s in
             Group {
                 switch s {
                 case .manager: ManagerSheet(companyID: company.id, candidates: $managerCands)
@@ -345,7 +345,7 @@ struct ManagerSheet: View {
             }
         }
         .confirmAction($pending)
-        .sheet(isPresented: Binding(get: { discussing != nil || discussingOpen }, set: { if !$0 { discussing = nil; discussingOpen = false } })) {
+        .centerSheet(isPresented: Binding(get: { discussing != nil || discussingOpen }, set: { if !$0 { discussing = nil; discussingOpen = false } })) {
             if let mid = store.engine?.state.company(companyID)?.managerID { ContractDiscussionView(companyID: companyID, personID: mid, startTopic: discussing).environmentObject(store) }
         }
     }

@@ -72,7 +72,7 @@ struct CompanyProperties: View {
             }
         }
         .confirmAction($pending)
-        .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
+        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
             propertySheet(cur)
         }
     }
@@ -100,7 +100,6 @@ struct CompanyProperties: View {
         let pf: PropertyPortfolio? = engine.propertyPortfolio(companyID: company.id)
         if let pf, let p = pf.rows.first(where: { $0.id == detailID }) {
             PeopleSheet(title: "Property") { propertyCard(p, pf, cur) }
-                .presentationDetents([.medium, .large])
         } else {
             PeopleSheet(title: "Property") { Text("This property is gone.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
         }

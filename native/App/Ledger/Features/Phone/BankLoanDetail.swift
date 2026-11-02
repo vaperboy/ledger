@@ -35,7 +35,7 @@ struct LoanDetailSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.accessibilityIdentifier("loan-detail-close") } }
         }
         .confirmAction($pending)
-        .sheet(isPresented: $partial) { partialSheet }
+        .centerSheet(isPresented: $partial) { partialSheet }
     }
 
     private func record(_ e: GameEngine, _ l: Loan) -> LoanRecord? {
@@ -136,7 +136,7 @@ struct LoanDetailSheet: View {
     @ViewBuilder private var partialSheet: some View {
         if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) {
             if l.companyID == 0 {
-                RepayPersonalLoanSheet(loanID: loanID).presentationDetents([.medium, .large])
+                RepayPersonalLoanSheet(loanID: loanID)
             } else if let co = e.state.company(l.companyID) {
                 RepayLoanSheet(engine: e, company: co, loan: l).environmentObject(store)
             }

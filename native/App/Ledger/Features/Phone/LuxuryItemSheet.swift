@@ -38,8 +38,6 @@ struct LuxuryItemSheet: View {
         .background(P.ground.ignoresSafeArea())
         .environment(\.outsidePalette, P)
         .preferredColorScheme(.dark)
-        .presentationDetents([.fraction(0.9)])
-        .presentationDragIndicator(.visible)
         .accessibilityIdentifier("luxury-item-sheet")
     }
 
