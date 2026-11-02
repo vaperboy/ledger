@@ -395,28 +395,28 @@ struct SectionTabs<T: Hashable>: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            tabRow(fixed(condensed: false))
-            tabRow(fixed(condensed: true))
+            tabRow(fixed(condensed: false), tight: false)
+            tabRow(fixed(condensed: true), tight: true)
         }
         .padding(.horizontal, Theme.Space.margin)
         .background(alignment: .bottom) { if !sub { Hairline() } }
     }
 
     /// The row of tabs: the fixed items, then a "More" menu for the rest. The width is shared equally, so a row never needs to scroll.
-    private func tabRow(_ fixed: [T]) -> some View {
+    private func tabRow(_ fixed: [T], tight: Bool) -> some View {
         let rest: [T] = items.filter { !fixed.contains($0) }
-        return HStack(spacing: 6) {
+        return HStack(spacing: 4) {
             ForEach(fixed, id: \.self) { item in
                 let on = selection == item
                 Button { selection = item; Haptics.choose() } label: {
-                    cell(title(item), count: badge(item), on: on, more: false, spread: true)
+                    cell(title(item), count: badge(item), on: on, more: false, tight: tight)
                 }.buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
             }
-            if !rest.isEmpty { moreMenu(rest) }
+            if !rest.isEmpty { moreMenu(rest, tight: tight) }
         }
     }
 
-    private func moreMenu(_ rest: [T]) -> some View {
+    private func moreMenu(_ rest: [T], tight: Bool) -> some View {
         let inRest = rest.contains(selection)
         return Menu {
             ForEach(rest, id: \.self) { item in
@@ -427,23 +427,24 @@ struct SectionTabs<T: Hashable>: View {
                 }
             }
         } label: {
-            cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, spread: true)
+            cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, tight: tight)
         }
     }
 
-    private func cell(_ text: String, count: Int, on: Bool, more: Bool, spread: Bool) -> some View {
+    private func cell(_ text: String, count: Int, on: Bool, more: Bool, tight: Bool) -> some View {
         HStack(spacing: 3) {
             Text(sub ? text.uppercased() : text)
                 .font(.system(size: sub ? 11 : 14, weight: on ? .semibold : .regular))
                 .tracking(sub ? 0.6 : 0)
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: !tight, vertical: false)
             if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
             if count > 0 { countView(count) }
         }
         .foregroundStyle(on ? palette.accent : palette.inkFaint)
-        .padding(.horizontal, spread ? 0 : 12)
-        .frame(maxWidth: spread ? .infinity : nil, minHeight: sub ? 34 : 44)
+        .padding(.horizontal, tight ? 2 : 10)
+        .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
         .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? palette.hairline : Color.clear))
         .contentShape(Rectangle())
         .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(palette.accent).frame(height: 1.5) } }
