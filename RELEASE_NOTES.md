@@ -1,4 +1,5 @@
 # What's new
+- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects
 - Bank: the balance card and its buttons are only on the Account tab; screens no longer wiggle sideways in Group, Projects and Bank; full-page popups fade and scale in
 - Sales lists your own products and services (named for your company): tap one for a price slider with live, unrounded numbers, per-item discounts and how it is sold; lower prices raise demand; add a new product or service; Marketing is a popup; Pricing and How you sell are gone. Items can be listed for your other companies in TechPro, with the profit going to the selling company
 - Net-worth milestones (100k, 250k, 500k, 1M and on) and profit-streak awards (4, 8, 13, 26, 52 weeks) pop up as celebrations
