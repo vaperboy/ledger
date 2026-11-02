@@ -7,12 +7,15 @@ import Simulation
 /// The shelves of the store. Equipment, software, tools and vehicles used to be four tabs of the Equipment screen; here they are the
 /// departments of one shop.
 enum TechCategory: String, CaseIterable, Hashable {
-    case software = "Software", hardware = "Hardware", tools = "Tools", vehicles = "Vehicles", office = "Office"
+    case software = "Software", services = "Services", hardware = "IT equipment", payment = "Terminals", machines = "Machines", tools = "Tools", vehicles = "Vehicles", office = "Furniture"
 
     var glyph: String {
         switch self {
         case .software: return Glyph.software
+        case .services: return Glyph.team
         case .hardware: return Glyph.hardware
+        case .payment: return Glyph.bank
+        case .machines: return Glyph.capacity
         case .tools: return Glyph.opsWrench
         case .vehicles: return Glyph.vehicle
         case .office: return Glyph.building
@@ -22,10 +25,13 @@ enum TechCategory: String, CaseIterable, Hashable {
     /// Which department an item of equipment is sold in.
     static func of(_ n: EquipmentMarket.Need) -> TechCategory {
         if n.isVehicle { return .vehicles }
-        if n.isSoftware || n.kind == "svc" { return .software }
+        if n.isSoftware { return .software }
+        if n.kind == "svc" { return .services }
+        if n.kind == "it" { return .hardware }
+        if n.kind == "pos" { return .payment }
         if n.kind == "tool" { return .tools }
         if n.kind == "furn" { return .office }
-        return .hardware
+        return .machines
     }
 }
 
@@ -41,12 +47,16 @@ enum TechShelf: Hashable {
         }
     }
 
-    static func every() -> [TechShelf] { [.all, .sale] + TechCategory.allCases.map { (c: TechCategory) -> TechShelf in .dept(c) } }
+    /// All items, on sale, then one chip for each department the store really has items in.
+    static func every(_ present: Set<TechCategory>) -> [TechShelf] {
+        let depts: [TechCategory] = TechCategory.allCases.filter { (c: TechCategory) -> Bool in present.contains(c) }
+        return [.all, .sale] + depts.map { (c: TechCategory) -> TechShelf in .dept(c) }
+    }
 }
 
 /// The order of the list: what the business needs first, or by price.
 enum PriceSort: String, CaseIterable, Hashable {
-    case needs = "Needed first", low = "Price: low to high", high = "Price: high to low"
+    case needs = "Needed first", low = "Price: low to high", high = "Price: high to low", deal = "Biggest discount", az = "A to Z", life = "Longest life", warranty = "Longest warranty"
 }
 
 /// TechPro Store (Phone, green): equipment, software, tools and vehicles for your companies, in one online shop. It merges the old Equipment and
@@ -312,8 +322,10 @@ struct TechProApp: View {
     }
 
     private func categoryRow(_ needs: [EquipmentMarket.Need]) -> some View {
+        let shown: [TechCategory] = TechCategory.allCases.filter { (c: TechCategory) -> Bool in needs.contains { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == c } }
+        return ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 6) {
-            ForEach(TechCategory.allCases, id: \.self) { (c: TechCategory) in
+            ForEach(shown, id: \.self) { (c: TechCategory) in
                 let count: Int = needs.filter { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == c }.count
                 Button {
                     Haptics.tap()
@@ -325,7 +337,7 @@ struct TechProApp: View {
                             .frame(width: 54, height: 54).background(Circle().fill(P.card)).overlay(Circle().strokeBorder(P.line, lineWidth: 1))
                         Text(c.rawValue).font(.system(size: 12, weight: .medium)).foregroundStyle(count > 0 ? P.ink : P.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(width: 74)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
@@ -333,6 +345,8 @@ struct TechProApp: View {
                 .accessibilityIdentifier("tp-category-\(c.rawValue)")
             }
         }
+        }
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     // MARK: What this business needs
@@ -433,6 +447,10 @@ struct TechProApp: View {
             case .needs: return rank(a) != rank(b) ? rank(a) < rank(b) : a.name < b.name
             case .low: return a.fromPrice != b.fromPrice ? a.fromPrice < b.fromPrice : a.name < b.name
             case .high: return a.fromPrice != b.fromPrice ? a.fromPrice > b.fromPrice : a.name < b.name
+            case .deal: return a.dealPercent != b.dealPercent ? a.dealPercent > b.dealPercent : a.name < b.name
+            case .az: return a.name < b.name
+            case .life: return a.lifeYears != b.lifeYears ? a.lifeYears > b.lifeYears : a.name < b.name
+            case .warranty: return a.warrantyYears != b.warrantyYears ? a.warrantyYears > b.warrantyYears : a.name < b.name
             }
         }
     }
@@ -442,7 +460,7 @@ struct TechProApp: View {
         return ShopScroll {
             VStack(alignment: .leading, spacing: 14) {
                 searchField
-                categoryChips
+                categoryChips(presentDepartments(e, co))
                 sortChips
                 ShopHeading(text: shelf.title, trailing: needs.count == 1 ? "1 item" : "\(needs.count) items")
                 if needs.isEmpty {
@@ -470,10 +488,16 @@ struct TechProApp: View {
         .overlay(Capsule().strokeBorder(P.line, lineWidth: 1))
     }
 
-    private var categoryChips: some View {
+    private func presentDepartments(_ e: GameEngine, _ co: Company) -> Set<TechCategory> {
+        var out: Set<TechCategory> = []
+        for n in e.equipmentNeeds(companyID: co.id) { out.insert(TechCategory.of(n)) }
+        return out
+    }
+
+    private func categoryChips(_ present: Set<TechCategory>) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(TechShelf.every(), id: \.self) { (s: TechShelf) in
+                ForEach(TechShelf.every(present), id: \.self) { (s: TechShelf) in
                     ShopChip(title: s.title, selected: shelf == s) { shelf = s }
                 }
             }

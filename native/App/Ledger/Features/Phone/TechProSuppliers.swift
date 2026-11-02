@@ -43,7 +43,9 @@ struct TechProSuppliers: View {
     var equipmentID: String
     var onPick: (String) -> Void
 
-    private enum Order: String, CaseIterable, Hashable { case best = "Best rated", low = "Price: low to high", high = "Price: high to low" }
+    private enum Order: String, CaseIterable, Hashable {
+        case best = "Best rated", low = "Price: low to high", high = "Price: high to low", deal = "Biggest discount", popular = "Most reviewed", reliable = "Most reliable", az = "A to Z"
+    }
     @State private var order: Order = .best
 
     private struct Row: Identifiable {
@@ -56,6 +58,10 @@ struct TechProSuppliers: View {
         var deal: Int
         var sub: String
         var rating: Double
+        /// How many reviews the supplier has (0 when it has none).
+        var reviews: Int = 0
+        /// Breakdown tendency, lower is better; 99 when the supplier does not publish one.
+        var breakdown: Double = 99
         var id: String { key }
     }
 
@@ -118,6 +124,10 @@ struct TechProSuppliers: View {
             case .best: return a.rating != b.rating ? a.rating > b.rating : a.title < b.title
             case .low: return a.price != b.price ? a.price < b.price : a.title < b.title
             case .high: return a.price != b.price ? a.price > b.price : a.title < b.title
+            case .deal: return a.deal != b.deal ? a.deal > b.deal : a.title < b.title
+            case .popular: return a.reviews != b.reviews ? a.reviews > b.reviews : a.title < b.title
+            case .reliable: return a.breakdown != b.breakdown ? a.breakdown < b.breakdown : a.title < b.title
+            case .az: return a.title < b.title
             }
         }
     }
@@ -134,21 +144,21 @@ struct TechProSuppliers: View {
                 let p: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
                 let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
                 out.append(Row(key: "v" + o.id, title: o.name, photo: TechPhotos.vehicle(model: o.modelID), glyph: Glyph.vehicle, price: p, from: "from " + cur.tidyShort(p),
-                               deal: sale.isOn ? sale.percentOff : 0, sub: stars(o.rating, o.reviews) + " \u{00B7} reliability " + reliabilityWord(o.reliability), rating: o.rating))
+                               deal: sale.isOn ? sale.percentOff : 0, sub: stars(o.rating, o.reviews) + " \u{00B7} reliability " + reliabilityWord(o.reliability), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
             }
         } else if need.subscription {
             for o in e.equipmentOffers(companyID: companyID, equipmentID: equipmentID) where o.cls == 1 {
                 let fees: [Double] = e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o).map { (p: EquipmentMarket.Plan) -> Double in p.monthlyFee }
                 let low: Double = fees.min() ?? 0
                 out.append(Row(key: "n\(o.index)", title: o.name, photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low) + "/mo", deal: 0,
-                               sub: stars(o.rating, o.reviews), rating: o.rating))
+                               sub: stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
             }
         } else {
             for o in e.equipmentOffers(companyID: companyID, equipmentID: equipmentID) {
                 let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
                 let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
                 out.append(Row(key: "n\(o.index)", title: o.name, photo: "", glyph: glyph, price: p, from: "from " + cur.tidyShort(p), deal: sale.isOn ? sale.percentOff : 0,
-                               sub: o.className + " \u{00B7} " + stars(o.rating, o.reviews), rating: o.rating))
+                               sub: o.className + " \u{00B7} " + stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
             }
         }
         if need.canUsed {
