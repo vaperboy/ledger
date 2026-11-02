@@ -44,25 +44,8 @@ struct TeamView: View {
                 if let e = store.engine {
                     let o = e.teamOverview()
                     let alerts = e.payrollAlertInfos()
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            header(o, e)
-                            tabBar
-                            VStack(alignment: .leading, spacing: 12) {
-                                switch tab {
-                                case .overview: overview(o, e, alerts)
-                                case .people: people(o, e)
-                                case .authority: delegation(o, e, alerts)
-                                case .vacancies: vacancies(o)
-                                }
-                            }
-                            .segmentTransition(tab, order: Tab.allCases)
-                        }
-                        .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
-                        .frame(maxWidth: 900).frame(maxWidth: .infinity)
-                    }
+                    page(o, e, alerts)
                     .id(store.rootToken(.team))
-                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                     .scrollDismissesKeyboard(.interactively)
                     .swipeBetween(Tab.allCases, selection: $tab)
                 }
@@ -188,6 +171,29 @@ struct TeamView: View {
         }
     }
 
+    /// The Overview is a fixed summary page (compacted to fit); People, Authority and Vacancies are long lists and scroll.
+    @ViewBuilder private func page(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+        if tab == .overview && !needYouOnly {
+            FixedScreen(top: 8, maxWidth: 900, overflowScrolls: true) { pageContent(o, e, alerts) }
+        } else {
+            ScrollScreen(top: 8, maxWidth: 900) { pageContent(o, e, alerts) }
+        }
+    }
+
+    @ViewBuilder private func pageContent(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
+        header(o, e)
+        tabBar
+        VStack(alignment: .leading, spacing: 12) {
+            switch tab {
+            case .overview: overview(o, e, alerts)
+            case .people: people(o, e)
+            case .authority: delegation(o, e, alerts)
+            case .vacancies: vacancies(o)
+            }
+        }
+        .segmentTransition(tab, order: Tab.allCases)
+    }
+
     private func peopleTiles(_ o: TeamOverview, _ e: GameEngine, _ alerts: [PayrollAlertInfo]) -> some View {
         let need = needYouItems(o, e, alerts).count
         let needed = o.vacancies.filter { $0.needed }.count
@@ -227,7 +233,7 @@ struct TeamView: View {
         for i in people.filter({ !$0.needsOwner }) {
             items.append(ActivityItem(id: "mgr\(i.id)", glyph: Glyph.person, title: i.title, subtitle: "\(i.handledBy) · \(i.detail)", action: { open(i, e) }))
         }
-        return ActivityList(items: Array(items.prefix(8)), emptyText: o.companies.isEmpty
+        return ActivityList(items: Array(items.prefix(5)), emptyText: o.companies.isEmpty
                             ? "No one works for you yet. Open a company, then hire from its Team section."
                             : "Nothing needs you. Your managers have the rest in hand.")
     }

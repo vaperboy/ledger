@@ -22,14 +22,8 @@ struct GroupView: View {
                 GroupTabBar(tab: $tab, badges: badges)
                     .padding(.horizontal, 18).padding(.top, 12)
                 if let e = store.engine {
-                    ScrollView {
-                        content(e)
-                            .segmentTransition(tab, order: GroupTab.allCases)
-                            .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 40)
-                            .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                    }
+                    page(e)
                     .id(store.rootToken(.group))
-                    .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
                     .swipeBetween(GroupTab.allCases, selection: $tab)
                 }
             }
@@ -84,6 +78,15 @@ struct GroupView: View {
         case .boards: tab = .board
         case .dividends, .giving: tab = .money
         default: tab = .more
+        }
+    }
+
+    /// The Overview is a fixed summary page (compacted to fit); the other tabs are long and scroll.
+    @ViewBuilder private func page(_ e: GameEngine) -> some View {
+        if tab == .overview {
+            FixedScreen(top: 12, overflowScrolls: true) { content(e).segmentTransition(tab, order: GroupTab.allCases) }
+        } else {
+            ScrollScreen(top: 12) { content(e).segmentTransition(tab, order: GroupTab.allCases) }
         }
     }
 

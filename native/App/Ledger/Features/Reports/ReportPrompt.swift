@@ -14,7 +14,7 @@ struct ReportDigestSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .vertical) {
                     sections
-                    ScrollView { sections }.scrollBounceBehavior(.basedOnSize)
+                    ContainedScroll { sections }
                 }
                 .frame(maxHeight: 420)
                 VStack(spacing: 4) {

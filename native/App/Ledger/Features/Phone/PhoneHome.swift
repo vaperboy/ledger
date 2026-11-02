@@ -23,6 +23,7 @@ struct PhoneHome: View {
     }
 
     @EnvironmentObject var store: GameStore
+    @Environment(\.tabBarClearance) private var clearance
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
 
@@ -46,7 +47,7 @@ struct PhoneHome: View {
     private var home: some View {
         let badges: [PhoneApp: Int] = store.phoneBadges
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
-        return ScrollView {
+        return FixedScreen(spacing: 16, top: 16, maxWidth: 560) {
             VStack(spacing: 16) {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
@@ -59,11 +60,10 @@ struct PhoneHome: View {
                 }
                 .padding(.top, 2)
             }
-            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24)
-            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity)
         }
         .id(store.rootToken(.phone))
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+        .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("phone-home")

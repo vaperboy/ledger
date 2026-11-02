@@ -26,21 +26,7 @@ struct BankAccountScreen: View {
     var body: some View {
         if let e = store.engine, let d = e.bankAccount(id) {
             let fmt = BankFmt.make(store, id)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let a = d.alert { alertBanner(a, fmt) }
-                    tabRow(d)
-                    if tab == .account {
-                        balanceCard(d, fmt)
-                        tiles(d)
-                    }
-                    content(e, d, fmt).segmentTransition(tab, order: tabs)
-                }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
-                .frame(maxWidth: 560).frame(maxWidth: .infinity)
-            }
-            .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-            .noSidewaysDrag()
+            page(e, d, fmt)
             .scrollDismissesKeyboard(.interactively)
             .swipeBetween(tabs, selection: $tab)
             .centerSheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind) }
@@ -49,6 +35,25 @@ struct BankAccountScreen: View {
         } else {
             Text("This account is closed.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(24)
         }
+    }
+
+    /// The Account tab is a fixed summary (compacted to fit); the other tabs are lists and scroll.
+    @ViewBuilder private func page(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
+        if tab == .account {
+            FixedScreen(top: 4, maxWidth: 560, overflowScrolls: true) { pageContent(e, d, fmt) }
+        } else {
+            ScrollScreen(top: 4, maxWidth: 560) { pageContent(e, d, fmt) }
+        }
+    }
+
+    @ViewBuilder private func pageContent(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
+        if let a = d.alert { alertBanner(a, fmt) }
+        tabRow(d)
+        if tab == .account {
+            balanceCard(d, fmt)
+            tiles(d)
+        }
+        content(e, d, fmt).segmentTransition(tab, order: tabs)
     }
 
     // MARK: Alert

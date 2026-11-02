@@ -17,22 +17,8 @@ struct ProjectsView: View {
                 let rows = e.state.companies.filter { $0.status.isLive }.compactMap { co in e.projectBoard(companyID: co.id).map { (co: co, board: $0) } }
                 let lines = e.projectTimelines()
                 let running = lines.filter { $0.kind == .job || $0.kind == .event || $0.kind == .development }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        header(e, running)
-                        ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
-                        switch part {
-                        case .running: ProjectsRunningTab(engine: e, rows: rows, running: running)
-                        case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
-                        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { store.openApp(.ventures) })
-                        case .finished: ProjectsFinishedTab(engine: e, rows: rows)
-                        }
-                    }
-                    .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 40)
-                    .frame(maxWidth: 900).frame(maxWidth: .infinity)
-                }
+                page(e, rows, lines, running)
                 .id(store.rootToken(.projects))
-                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize).noSidewaysDrag()
                 .scrollDismissesKeyboard(.interactively)
                 .ledgerBackground()
                 .toolbar(.hidden, for: .navigationBar)
@@ -41,6 +27,26 @@ struct ProjectsView: View {
                 // Choosing Projects again: back to Running.
                 .onChange(of: store.rootToken(.projects)) { _, _ in part = .running }
             }
+        }
+    }
+
+    /// The Running tab is the summary and is fixed when it fits (compacted first); the other tabs are lists and scroll.
+    @ViewBuilder private func page(_ e: GameEngine, _ rows: ProjectRows, _ lines: [ProjectTimeline], _ running: [ProjectTimeline]) -> some View {
+        if part == .running {
+            FixedScreen(overflowScrolls: true) { pageContent(e, rows, lines, running) }
+        } else {
+            ScrollScreen { pageContent(e, rows, lines, running) }
+        }
+    }
+
+    @ViewBuilder private func pageContent(_ e: GameEngine, _ rows: ProjectRows, _ lines: [ProjectTimeline], _ running: [ProjectTimeline]) -> some View {
+        header(e, running)
+        ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
+        switch part {
+        case .running: ProjectsRunningTab(engine: e, rows: rows, running: running)
+        case .timeline: ProjectsTimelineTab(engine: e, lines: lines)
+        case .bids: ProjectsBidsTab(engine: e, rows: rows, openVentures: { store.openApp(.ventures) })
+        case .finished: ProjectsFinishedTab(engine: e, rows: rows)
         }
     }
 

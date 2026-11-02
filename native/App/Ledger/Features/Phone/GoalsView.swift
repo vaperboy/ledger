@@ -12,13 +12,14 @@ struct GoalsView: View {
 
     var body: some View {
         if let e = store.engine {
-            PhonePageScroll(spacing: 14) {
+            FixedScreen(spacing: 14, top: 4, overflowScrolls: true) {
                 summaryCard(e)
                 todayCard(e)
                 stepsCard(e)
                 ambitionCard(e)
                 TrophyShelfRow(engine: e)
             }
+            .ledgerBackground()
             .onAppear { refresh() }
         } else {
             Text("No game is open.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(Theme.Space.margin)
