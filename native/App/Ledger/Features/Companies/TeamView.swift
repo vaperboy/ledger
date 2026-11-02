@@ -340,7 +340,7 @@ struct TeamView: View {
 
     /// "Name left: reason" for a person who is no longer listed, from their resignation message when there is one.
     private func leaveLine(_ p: TeamSearchResult, _ e: GameEngine) -> String {
-        let msg: Message? = e.state.inbox.last { $0.from == p.name && $0.title.lowercased().contains("resign") }
+        let msg = e.state.inbox.last { $0.from == p.name && $0.title.lowercased().contains("resign") }
         guard let m = msg else { return "\(p.name) has left \(p.employer)." }
         let first: String = m.body.components(separatedBy: ". ").first ?? ""
         let reason: String = first.hasSuffix(".") ? String(first.dropLast()) : first

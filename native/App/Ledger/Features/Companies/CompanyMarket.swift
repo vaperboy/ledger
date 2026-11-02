@@ -12,12 +12,38 @@ struct CompanyMarket: View {
     var engine: GameEngine
     var company: Company
     @State private var rival: Int?
+    /// Animation stage: a rival whose share moved or who came up for sale gets a brief coloured edge (green gain, red loss, gold opportunity).
+    @State private var rivalFlash: [Int: Color] = [:]
+
+    private struct RivalSig: Equatable { var share: Double; var sale: Bool }
+
+    private var rivalSignals: [Int: RivalSig] {
+        var out: [Int: RivalSig] = [:]
+        for r in engine.rivalRows(company) { out[r.id] = RivalSig(share: ((r.share?.center ?? 0) * 1000).rounded() / 10, sale: r.rival.forSale) }
+        return out
+    }
+
+    /// Compares two readings: a rival newly for sale is an opportunity (gold); a rival that lost at least half a point is a gain for you
+    /// (green); one that gained it is a loss (red).
+    private func flashRivals(old: [Int: RivalSig], new: [Int: RivalSig]) {
+        var marks: [Int: Color] = [:]
+        for (id, n) in new {
+            guard let o = old[id] else { continue }
+            if n.sale && !o.sale { marks[id] = Theme.gold }
+            else if n.share - o.share <= -0.5 { marks[id] = Theme.gain }
+            else if n.share - o.share >= 0.5 { marks[id] = Theme.loss }
+        }
+        guard !marks.isEmpty else { return }
+        rivalFlash = marks
+        DispatchQueue.main.asyncAfter(deadline: .now() + OrgMotion.flashSeconds) { rivalFlash = [:] }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             position
             rivals
         }
+        .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
         .sheet(item: rivalBinding) { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
@@ -80,7 +106,7 @@ struct CompanyMarket: View {
                         Spacer(minLength: 6)
                         MoreChevron()
                     }
-                    Text(row.shareText).font(.serifTitle(34)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(row.shareText).font(.serifTitle(34)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.6).orgTextSwap(row.shareText, interpolate: true)
                     // Without an analyst the share is a guess in words: no graph and no exact points.
                     if measured {
                         Text(changeText).font(.system(size: 11.5)).foregroundStyle(changeTint)
@@ -109,6 +135,7 @@ struct CompanyMarket: View {
                 }
             }
             .frame(height: 96)
+            .animation(Animation.easeInOut(duration: 0.7), value: history)
         } else {
             Text("The share line starts after the first month of trading.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }
@@ -152,6 +179,7 @@ struct CompanyMarket: View {
         }
         .chartXScale(range: .plotDimension(endPadding: 56))
         .frame(height: CGFloat(bars.count) * 30 + 8)
+        .animation(Animation.easeInOut(duration: 0.7), value: bars.map { $0.percent })
     }
 
     // MARK: Rivals
@@ -190,6 +218,7 @@ struct CompanyMarket: View {
         let gapTint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
         let logo = ThumbSpec(kind: .logo, key: "rival|co\(company.id)|\(r.rival.id)", glyph: Glyph.person, initials: r.rival.name, shape: .square)
         return TableRow(columns: cols, title: name, note: note, values: [shareText, gapText], valueTints: [Theme.ivory, gapTint], thumb: logo) { rival = r.id }
+            .orgEdge(rivalFlash[r.id], radius: Theme.Radius.table)
     }
 }
 
@@ -530,7 +559,7 @@ struct MarketView: View {
                         HStack {
                             Text(r.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
                             Spacer()
-                            Text(r.shareText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold)
+                            Text(r.shareText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold).orgTextSwap(r.shareText, interpolate: true)
                             MoreChevron()
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(PressableStyle())
@@ -595,7 +624,7 @@ struct MarketDetailView: View {
                             .init(label: "Your sales", value: store.short(d.yourSales)),
                         ])
                     }
-                    if d.history.count >= 3, d.level.canDrawShareGraph { MoreBlock("Your share, month by month") { Sparkline(values: d.history).frame(height: 54) } }
+                    if d.history.count >= 3, d.level.canDrawShareGraph { MoreBlock("Your share, month by month") { Sparkline(values: d.history).frame(height: 54).orgRedraw(d.history) } }
                     MoreBlock("Who has the market") {
                         VStack(spacing: 0) {
                             ForEach(Array(d.players.enumerated()), id: \.element.id) { n, p in
