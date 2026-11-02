@@ -68,8 +68,8 @@ struct CompanySales: View {
         let share: Double = it.marketPrice > 0 ? it.price / it.marketPrice - 1 : 0
         let change: String = abs(share) < 0.005 ? "At market" : String(format: "%+.0f%%", share * 100) + " vs market"
         let tint: Color = abs(share) < 0.005 ? Theme.ivoryMuted : (share > 0 ? Theme.gain : Theme.loss)
-        return SettingsTableRow(title: it.name, note: status(it), value: cur.tidyDisplay(it.price), change: change, changeTint: tint,
-                                glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox) { picked = SalesItemPick(id: it.id) }
+        return SettingsTableRow(title: it.name, note: status(it), value: cur.tidyDisplay(it.price),
+                                glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox, change: change, changeTint: tint) { picked = SalesItemPick(id: it.id) }
     }
 
     /// One line from the item's demand against the market price, and a running discount.
