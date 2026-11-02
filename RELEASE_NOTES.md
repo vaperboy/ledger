@@ -1,4 +1,5 @@
 # What's new
+- Popups open in the middle of the screen in the report style instead of rising from the bottom; Marketing is a compact popup that fits without scrolling; the new menu item row is gone from Sales
 - Animations: team hires, promotions, manager and board seats, group connections and acquisitions, new stores, project progress, market charts, loan debt, goals, luxury purchases, a Home events timeline and a cleaner milestone celebration
 - Animations: figures count up, profit glows green, big payments slide in, loans visibly shrink, charts draw themselves, goals fill and unlock in gold, luxury purchases get a gold card, milestones use a clean gold ring, Home lists recent important events
 - Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places
