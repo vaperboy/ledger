@@ -151,6 +151,8 @@ final class GameStore: ObservableObject {
     /// The selected tab. Selecting one by hand (`selectTab`) forgets where a link came from.
     @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnInfo = nil } } }
     private var jumping = false
+    private struct LastPush { var route: CompanyRoute; var tab: AppTab; var at: Date }
+    private var lastPush: LastPush?
     /// The navigation stack of Home, Team, Group and Projects. The tab roots bind to these; nothing else holds a stack.
     @Published private(set) var routePaths: [AppTab: [CompanyRoute]] = [:]
     /// The Phone tab's stack: apps, and the companies a link opened from inside an app.
@@ -514,6 +516,10 @@ final class GameStore: ObservableObject {
     func push(_ route: CompanyRoute, on target: AppTab? = nil) {
         if route == .market { openMarket(); return }
         let t = target ?? tab
+        // A double tap must not push the same screen twice: the same route on the same tab within 0.4 s is ignored.
+        let now: Date = Date()
+        if let last = lastPush, last.route == route, last.tab == t, now.timeIntervalSince(last.at) < 0.4 { return }
+        lastPush = LastPush(route: route, tab: t, at: now)
         if t == .phone { setPhonePath(phonePath + [.company(route)]) } else { setPath(path(for: t) + [route], for: t) }
     }
 
@@ -573,13 +579,16 @@ final class GameStore: ObservableObject {
         if tab == .phone { phonePath = [] } else { routePaths[tab] = [] }
     }
 
-    /// A tab chosen by hand (the tab bar or the sidebar). Choosing the tab that is already open returns it to its root.
-    func selectTab(_ t: AppTab) {
+    /// A tab chosen by hand. A tap on the tab bar or the sidebar (`resetRoot` true) always shows that tab's ROOT: the screens it had are
+    /// dropped. A swipe between tabs (`resetRoot` false) keeps the place it had. Choosing the tab that is already open returns it to its root.
+    /// A link (`open`, `jump`, `openApp`) sets the destination's stack itself and never comes through here.
+    func selectTab(_ t: AppTab, resetRoot: Bool = true) {
         if t == tab {
             popToRoot(t)
         } else {
             // Leaving a tab a link opened, by hand: the screens the link pushed there go with it, as with "Back".
             if let r = returnInfo, r.dest == tab { cutStack(r.dest, to: r.destDepth) }
+            if resetRoot { popToRoot(t) }
             tab = t
         }
         appRequest = nil

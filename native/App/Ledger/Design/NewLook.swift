@@ -779,6 +779,7 @@ struct PillTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
+                .animation(.easeOut(duration: 0.2), value: on)
                 .accessibilityLabel(item.title)
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
                 .accessibilityIdentifier("tab-\(item.title)")

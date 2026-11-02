@@ -56,7 +56,7 @@ struct GameShell: View {
 }
 
 /// iPhone: the floating pill tab bar (Home, Team, Group, Projects, Phone) over the pages. The system tab bar is hidden; the pages stay
-/// alive in a `TabView`, so each tab keeps its navigation stack and scroll position. The Phone tab's bubble is the total waiting count.
+/// alive in a sliding `TabPager`, so each tab keeps its navigation stack and scroll position. The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
 
@@ -72,12 +72,8 @@ struct PhoneShell: View {
     }
 
     var body: some View {
-        TabView(selection: $store.tab) {
-            ForEach(AppTab.allCases) { tab in
-                TabContent(tab: tab)
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(tab)
-            }
+        TabPager { (tab: AppTab) in
+            TabContent(tab: tab)
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
         .overlay(alignment: .bottom) {
