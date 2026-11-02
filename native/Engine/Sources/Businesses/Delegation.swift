@@ -51,8 +51,8 @@ public enum Delegation {
 
     /// How serious a message is, 1 (routine) to 5 (only the owner can take it), by its kind and its size against the owner's net worth
     /// (owner decision, 2 Nov): payroll is routine; people matters are a manager's; bad news is a director's or more; selling or buying out a
-    /// shareholder, and dividend proposals, are the CEO's or the owner's. A size of more than a hundredth of net worth raises the level, a tiny one
-    /// lowers it (a 10k matter is routine at 10M). Read-only news is routine unless it is bad.
+    /// shareholder, and dividend proposals, are the CEO's or the owner's. A size of more than a hundredth of net worth raises the level, a small one
+    /// lowers it (a 10k matter is a manager's at 10M, a 1k one routine). Read-only news is routine unless it is bad.
     public static func level(of m: Message, netWorth nw: Double = 0) -> Int {
         let kind = m.value("data")["kind"].string
         var base: Int
@@ -69,7 +69,7 @@ public enum Delegation {
             amount = max(amount, abs(fx["cash"].double), abs(fx["loss"].double), abs(fx["fine"].double))
         }
         let share = amount / nw
-        if share > 0.05 { base += 2 } else if share > 0.01 { base += 1 } else if share < 0.0005 && amount > 0 { base -= 1 }
+        if share > 0.05 { base += 2 } else if share > 0.01 { base += 1 } else if amount > 0 { if share < 0.0005 { base -= 2 } else if share < 0.002 { base -= 1 } }
         return min(5, max(1, base))
     }
 
