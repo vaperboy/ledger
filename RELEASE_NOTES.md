@@ -1,4 +1,5 @@
 # What's new
+- Market news (big contracts, companies for sale, competitor and supplier moves, recognition) arrives as banners and highlighted rows in Market; the Payment banner follows the largest real payment of the day; Sales has a market trend card; the bank flows no longer rise from the bottom; old unused screens are gone
 - Talking terms are two clean one-page steps: contract terms, then pay (pay basis, commission, benefits and expectations are back)
 - Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is gone from Home
 - Home is one locked screen that fits everything: companies get the space first (the full list is in Group), Recent only uses what is left; net worth and the four figures count up only after you press Continue on the report
