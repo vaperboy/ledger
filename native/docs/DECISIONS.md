@@ -81,3 +81,16 @@ Files: `native/design/mockups/photos/` (vehicles_a/b, premises_retail/offices/st
 - Own delivery company books a delivery fee as revenue; the buying company pays it. (To build.)
 - AirStay: a company can take a listing of its own kind of place in the same city.
 - Insurance stays "from today until switched off"; lease-finance loan uses the delivery-day price.
+
+## 2 Nov 2026, owner test feedback on 1.0.11 (all to be fixed)
+Navigation: swipe back steps back to the previous screen/menu inside the new apps too (not leave the app).
+Manage cleanup: "What the company owns" moves INSIDE TechPro (equipment and fleet removed from Manage); Insurance and advisers and Premises tabs removed from Manage (Atlas / AirStay own them).
+Your time: removed. Hours adjust automatically from how much help each business needs; in Management a small box next to the player's name says whether the player works here. Running alone: work as much as demand needs, capped at 80 h (as now), burnout from 65 h.
+Notifications: the banner/toast at the top is removed everywhere (looks dated). Important info becomes a popup. A decision with immediate effect notifies at once (popup).
+Top priorities decisions on Home resolve as a popup on the main screen (not by opening Inbox). Inbox uses game colours, not green; deciding inside Inbox also uses popups, not a bottom banner.
+Reports: weekly, monthly, yearly reports are clean popups (no bottom banner). Every day also shows a short daily popup (what went well, sales count, important staff messages).
+Goals/rewards: resolve in place with a "Claim reward" button and a rewarding reaction (animation, haptic), not "go to Goals to collect".
+Atlas: policies can be removed (cancelled); never linked to a company tab.
+TechPro: show ALL items; website-like with sort by price up/down; discounts follow real-life logic: biggest discounts sometimes, small discounts regularly, Black Friday nearly everything heavily discounted (game calendar).
+AirStay: each listing keeps its own picture locked to the location (no same picture for all small offices), realistic-sounding location names.
+Layout bug: some screens move loosely side to side and up and down when content fits the screen; they must not scroll/bounce when not scrollable.
