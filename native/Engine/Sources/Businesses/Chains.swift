@@ -62,13 +62,16 @@ public enum Chains {
 
     /// A chain comes when the first store has proven itself. Original: `R12.chainReq`.
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
-        let age = s.week - (co.openedWeek ?? s.week)
-        let H = Array(co.monthlyHistory.suffix(12))
+        // Real business constraints, not waiting time: a record of profit, cash in hand to fund the next store, reputation, a manager.
+        // The only delay left is the document review (Documents.apply).
+        let H = Array(co.monthlyHistory.suffix(6))
         let good = H.filter { $0.profit > 0 }.count
-        func months(_ w: Int) -> Int { Int((Double(max(0, w)) / 4.33).rounded(.up)) }
+        let recent = Array(co.monthlyHistory.suffix(3))
+        let need = recent.isEmpty ? 0 : (recent.reduce(0.0) { $0 + $1.revenue } / Double(recent.count)).rounded()
+        let cashOK = !recent.isEmpty && Payments.liquid(s) >= need
         return [
-            Requirement(title: "Open for two years", ok: age >= 104, detail: age >= 104 ? "Open \(age / 52) years" : "\(months(104 - age)) months to go"),
-            Requirement(title: "Money made in 9 of the last 12 months", ok: H.count >= 12 && good >= 9, detail: "\(good) of the last \(H.count) months"),
+            Requirement(title: "Money made in most recent months", ok: H.count >= 3 && good * 3 >= H.count * 2, detail: "\(good) of the last \(H.count) months"),
+            Requirement(title: "Cash to fund the next store", ok: cashOK, detail: cashOK ? "Enough cash in hand" : "Keep about a month of sales in cash"),
             Requirement(title: "Customers like it", ok: co.reputation >= 50, detail: "reputation \(Int(co.reputation))"),
             Requirement(title: "Someone runs it while you are away", ok: co.managerID != nil || !co.value("asst").isNull, detail: co.managerID != nil ? "A manager runs it" : "Hire a manager"),
         ]
