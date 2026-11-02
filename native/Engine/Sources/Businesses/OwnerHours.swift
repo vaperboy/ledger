@@ -19,7 +19,11 @@ public enum OwnerHours {
 
     /// Hours the business needs from its owner so that what it can serve meets demand (5 h steps, from `floor`), at most `room`.
     public static func needed(_ co: Company, _ bd: Trade, _ w: World, room: Double = weeklyCap) -> Double {
-        let demand = DemandModel.compute(co, bd, w).customers
+        // The owner's presence brings customers, so demand is read at a full week: choosing the hours from a demand that itself shrinks
+        // with fewer hours would settle on a smaller and smaller business.
+        var present = co
+        present.ownerHours = max(co.ownerHours, 40)
+        let demand = DemandModel.compute(present, bd, w).customers
         var c = co
         var h = floor
         while h < min(room, weeklyCap) {

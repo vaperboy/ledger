@@ -38,7 +38,7 @@ public extension GameEngine {
             guard level < 5 else { continue }
             let rank = Delegation.handler(level: level, state, co, data: data)
             guard rank != .owner else { continue }
-            let scale = max(1000, co.lastWeekRevenue * 3)
+            let scale = max(currency(for: co).scaledPrice(1000), co.lastWeekRevenue * 3)
             var best = 0, bestScore = -Double.infinity
             for (i, o) in m.options.enumerated() {
                 let sc = Self.score(o["fx"], scale: scale)

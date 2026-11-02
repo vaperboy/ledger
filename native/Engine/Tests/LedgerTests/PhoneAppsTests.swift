@@ -225,11 +225,9 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertEqual(e.buyInsurance(companyID: id, product: policy.id, receiptCompanyID: id).result, .unknown)
         XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: policy.id), .done)
         XCTAssertNil(e.policyRecord(companyID: id, product: policy.id))
-        // Without an insurer nothing starts.
+        // Atlas takes the policy without an insurer chosen first.
         let other = try cafe(&e)
-        if e.coverageOverview(companyID: other)?.insurer == nil {
-            XCTAssertEqual(e.buyInsurance(companyID: other, product: policy.id, receiptCompanyID: other).result, .needInsurer)
-            XCTAssertNil(e.state.company(other)?.raw["polNo"])
-        }
+        XCTAssertEqual(e.buyInsurance(companyID: other, product: policy.id, receiptCompanyID: other).result, .done)
+        XCTAssertEqual(e.state.company(other)?.value("insr")["name"].string, "Atlas Insurance")
     }
 }
