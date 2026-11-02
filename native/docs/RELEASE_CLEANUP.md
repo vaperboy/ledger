@@ -28,7 +28,7 @@ Total excluded from the IPA: 3580 KB. The five sheets stay in the repo (original
 ## Bucket 2: REMOVE from build resources (listed, not applied)
 | Path | Size | Evidence | Recommendation |
 |---|---|---|---|
-| `native/App/Ledger/Assets.xcassets/Thumbs/README.md` | 16 | documentation inside the asset catalogue; referenced only by a comment in `ThumbnailView.swift`; Xcode does not compile it | move to `native/docs` (keep content); then it no longer sits in the catalogue |
+| `native/App/Ledger/Assets.xcassets/Thumbs/README.md` | 16 | documentation inside the asset catalogue; referenced only by a comment in `ThumbnailView.swift`; Xcode does not compile it | DONE: moved (content kept) to `native/docs/THUMBS_README.md`; the comment in `ThumbnailView.swift` and `PICTURE_BRIEF.md` now point to the new path; no other reference to the old path |
 
 Count 1, 16 KB. Empty `Thumbs/{luxury,person,premises,trade}/Contents.json` are tiny, are the catalogue structure `ThumbnailView` expects: keep.
 
@@ -49,11 +49,11 @@ Count 4, 4828 KB. Everything else under `native/design` (22 MB, outside the app 
 - Workflows: `main.yml` and `yesmain.yml` already manual-only. `native-ios.yml` (CI), `native-ipa.yml`, `native-testflight.yml` kept.
 
 ## Verification checklist for the release package
-- [x] `python3 -c "import yaml;yaml.safe_load(open('native/App/project.yml'))"` passes
-- [ ] `xcodegen generate` then app-build green on CI; engine-tests green
-- [ ] Unzip the IPA: `Payload/Ledger.app` contains no `*-sheet.jpg` except `workers-sheet.jpg`, `managers-sheet.jpg` (and `faces-sheet.jpg`, `faces-suits.jpg`)
-- [x] `art/cells/<sheet>/manifest.json` present for cars, logos, luxury, premises, trophies
-- [ ] No `LedgerTests`/`LedgerUITests`, `.md`, `.py`, golden `.json`, or mockup files inside the bundle (source check: only Thumbs/README.md is in the sources, owner call pending)
-- [ ] Bundle size dropped by about 3.5 MB versus the previous build
-- [ ] Launch on simulator: faces (all four sheets), car/logo/luxury/premises/trophy art, AirStay/TechPro photos, thumbnails and app icon all render
-- [ ] Unit and UI tests still pass after any approved deletions
+- [x] `python3 -c "import yaml;yaml.safe_load(open('native/App/project.yml'))"` passes (re-run ok; the five `*-sheet.jpg` and `cells/**` excludes are still in project.yml)
+- [ ] (needs build) `xcodegen generate` then app-build green on CI; engine-tests green
+- [ ] (needs build) Unzip the IPA: `Payload/Ledger.app` contains no `*-sheet.jpg` except `workers-sheet.jpg`, `managers-sheet.jpg` (and `faces-sheet.jpg`, `faces-suits.jpg`)
+- [x] `art/cells/<sheet>/manifest.json` present for cars, logos, luxury, premises, trophies (re-checked: all five exist)
+- [x] No `.md`, `.py`, golden `.json`, test or mockup files in `native/App/Ledger` sources (static check: none since the README moved; tests are separate targets). Bundle contents themselves: needs build
+- [ ] (needs build) Bundle size dropped by about 3.5 MB versus the previous build
+- [ ] (needs device) Launch on simulator: faces (all four sheets), car/logo/luxury/premises/trophy art, AirStay/TechPro photos, thumbnails and app icon all render
+- [ ] (needs build) Unit and UI tests still pass after any approved deletions

@@ -78,5 +78,5 @@ Groups in order: cars 1-15, watches and jewellery 16-23, art and collectibles 24
 
 ## Optional later
 
-- Company pictures per trade (about 100), people roles are covered by the faces. List: `Assets.xcassets/Thumbs/README.md`.
+- Company pictures per trade (about 100), people roles are covered by the faces. List: `native/docs/THUMBS_README.md`.
 - Rights: AI-generated images from your own tool are fine; real photos need permission.

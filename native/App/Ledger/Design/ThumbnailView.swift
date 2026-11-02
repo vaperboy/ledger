@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 /// The four families of things that can carry a picture. The raw value is the middle part of the asset name:
-/// `thumb-<kind>-<key>` (see Assets.xcassets/Thumbs/README.md for the keys the game has).
+/// `thumb-<kind>-<key>` (see native/docs/THUMBS_README.md for the keys the game has).
 enum ThumbKind: String, CaseIterable {
     case premises
     case person
