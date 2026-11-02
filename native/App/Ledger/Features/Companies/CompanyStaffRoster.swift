@@ -33,6 +33,8 @@ struct CompanyStaffRoster: View {
     @State private var query = ""
     @State private var expanded: Set<String> = []
     @State private var pending: PendingAction?
+    /// The worker whose profile popup is open.
+    @State private var profile: WorkerRef?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -43,14 +45,9 @@ struct CompanyStaffRoster: View {
         let rest = shown.filter { !StaffIssue.needsAttention($0) }
         let big = staff.count > 8
         let total: String = cur.tidyShort(staff.reduce(0) { $0 + $1.monthlyWage })
-        TeamGroup(title: "People", trailing: {
+        TeamGroup(title: "Employees", trailing: {
             Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(total) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }) {
-            if staff.isEmpty {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    Text(company.ownerHours > 0 ? "No one works here but you." : "No one works here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                }
-            }
             if staff.count > 12 { search }
             if !attention.isEmpty {
                 Text("Needs attention · \(attention.count)").font(.system(size: 10.5, weight: .semibold)).tracking(0.8).textCase(.uppercase).foregroundStyle(Theme.caution).padding(.top, 2)
@@ -76,6 +73,9 @@ struct CompanyStaffRoster: View {
             footer(cur)
         }
         .confirmAction($pending)
+        .sheet(item: $profile) { (w: WorkerRef) -> AnyView in
+            AnyView(WorkerProfileSheet(companyID: company.id, employeeID: w.id).environmentObject(store))
+        }
     }
 
     private var search: some View {
@@ -96,9 +96,10 @@ struct CompanyStaffRoster: View {
         let attention: Bool = StaffIssue.needsAttention(m)
         let note: String = issues.isEmpty ? "" : issues.joined(separator: " · ")
         let wage: String = cur.tidyShort(m.monthlyWage)
-        return NavigationLink { StaffProfileView(companyID: company.id, staffID: m.id) } label: {
-            PersonCard(name: name(m), role: roleLabel(m.role), scope: "company", note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role,
-                       face: engine.state.people[m.id]?.faceKey)
+        let id: Int = m.id
+        return Button { Haptics.tap(); profile = WorkerRef(id: id) } label: {
+            ThinPersonRow(name: name(m), title: roleLabel(m.role), note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role,
+                          face: engine.state.people[m.id]?.faceKey)
         }.buttonStyle(PressableStyle())
     }
 

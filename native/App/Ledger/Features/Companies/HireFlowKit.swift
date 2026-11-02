@@ -241,7 +241,13 @@ extension EnvironmentValues {
 /// The frame of the hiring flow: its own navigation stack, so page 2 is pushed on page 1 and Back returns to it.
 struct HireFlowSheet: View {
     var request: HireRequest
-    var body: some View { NavigationStack { HireTermsPage(request: request) } }
+    private var isWorker: Bool { if case .worker = request.post { return true }; return false }
+    /// Workers get the one-page terms and salary talk; the other posts keep the two pages.
+    var body: some View {
+        NavigationStack {
+            if isWorker { HireOnePage(request: request) } else { HireTermsPage(request: request) }
+        }
+    }
 }
 
 /// A shortlist of candidates with a heading and a real empty state. It owns the sheet of the hiring flow for its rows.

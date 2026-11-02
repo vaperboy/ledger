@@ -7,6 +7,8 @@ import Simulation
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
     case management = "Management", targets = "Goals", promises = "Promises", hiring = "Hire someone"
+    /// The pages of the new Team tab: the hire flow and the perks list (both pushed, nothing rises from the bottom).
+    case hire = "Hire workers", perks = "Perks"
     var id: String { rawValue }
 }
 
@@ -17,7 +19,6 @@ struct CompanyTeam: View {
     var engine: GameEngine
     var company: Company
     @State private var page: TeamPage?
-    @State private var showPerks = false
 
     /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
     @ViewBuilder private var delegation: some View {
@@ -39,49 +40,35 @@ struct CompanyTeam: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.l) {
-            keyFigures
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                placesNote
+                CompanyManagement(engine: engine, company: company, thin: true)
+            }
+            if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
             settingsTable
-            delegation
-            CompanyTeamRoster(engine: engine, company: company)
-            CompanyStaffRoster(engine: engine, company: company)
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
-        .fullScreenCover(isPresented: $showPerks) {
-            CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).presentationBackground(.clear)
+    }
+
+    // MARK: Header and places
+
+    /// "Team" with the hire button at the top right: "Hire workers" while nobody is hired, "Hire" after.
+    private var header: some View {
+        HStack(alignment: .center) {
+            Text("Team").capsLabel()
+            Spacer(minLength: 8)
+            TeamAction(title: company.staff.isEmpty ? "Hire workers" : "Hire") { page = .hire }
+                .accessibilityIdentifier("team-hire-workers")
         }
     }
 
-    // MARK: Key figures above
-
-    private var runBy: String {
-        if let boss = engine.decisionChain(companyID: company.id).first { return boss.name }
-        return OwnerHours.works(company) ? "You" : "No one"
-    }
-
-    private var keyFigures: some View {
-        let heads: Int = PremisesExtras.heads(company)
-        let cur: Currency = engine.currency(for: company)
-        let metrics: TeamMetrics? = engine.teamMetrics(companyID: company.id)
-        let rate: String = (metrics?.averageHourlyRate ?? 0) > 0 ? cur.tidyDisplay(metrics?.averageHourlyRate ?? 0) : "none"
-        let hours: String = String(Int((metrics?.totalHoursPerWeek ?? 0).rounded()))
-        let payroll: String = cur.tidyShort(metrics?.totalMonthlyCost ?? 0)
-        let metricCells: [StatStrip.Cell] = [
-            .init(label: "Workers", value: String(metrics?.workers ?? 0)),
-            .init(label: "Avg rate/h", value: rate),
-            .init(label: "Hours/week", value: hours),
-            .init(label: "Payroll/month", value: payroll),
-        ]
-        let cells: [StatStrip.Cell] = [
-            .init(label: "Run by", value: runBy, tint: runBy == "No one" ? Theme.caution : Theme.ivory),
-            .init(label: "You", value: OwnerHours.works(company) ? "Work here" : "Not here"),
-        ]
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("The team").capsLabel()
-                Text("\(heads) \(heads == 1 ? "person" : "people") work here").font(.hero(30)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.7).lineLimit(1)
-                StatStrip(cells: metricCells)
-                StatStrip(cells: cells)
-            }
+    /// Why hiring is blocked (the engine's reason), else how many places are free where the premises have a limit. Nothing for unlimited premises.
+    @ViewBuilder private var placesNote: some View {
+        if let why = engine.hireBlock(companyID: company.id) {
+            line(why, tint: Theme.caution, medium: true)
+        } else if let w = engine.workplaces(companyID: company.id), let cap = w.capacity, let free = w.free {
+            line(free == 1 ? "1 of \(cap) places is free" : "\(free) of \(cap) places are free", tint: Theme.ivoryFaint, medium: false)
         }
     }
 
@@ -99,11 +86,8 @@ struct CompanyTeam: View {
         let perksCost: Double = engine.staffPerksMonthlyTotal(companyID: company.id)
         let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on · " + cur.tidyShort(perksCost) + " a month"
         return SettingsTable(heading: "Team matters") {
-            SettingsTableRow(title: "Management", note: "Manager, assistant and posts above them", value: runBy) { page = .management }
             SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
-            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { showPerks = true }
-            SettingsTableRow(title: "Promises", note: "What you have promised your people, and when it falls due", value: promisesValue) { page = .promises }
-            SettingsTableRow(title: "Hire someone", note: "Job ad, network or agency", value: "Find workers") { page = .hiring }
+            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { page = .perks }
         }
     }
 }
@@ -113,11 +97,16 @@ struct TeamPageDestination: View {
     @EnvironmentObject var store: GameStore
     var page: TeamPage
     var companyID: Int
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             if page == .hiring {
                 HiringView(companyID: companyID)
+            } else if page == .hire {
+                HireWorkersView(companyID: companyID)
+            } else if page == .perks {
+                CompanyPerksPopup(companyID: companyID, onClose: { dismiss() }).appScreen(title: "Perks", subtitle: co.name, tab: .company)
             } else {
                 SettingsPage(title: page.rawValue, subtitle: co.name) { content(e, co) }
             }
@@ -131,7 +120,7 @@ struct TeamPageDestination: View {
         case .management: CompanyManagement(engine: e, company: co)
         case .targets: CompanyTargetsCard(engine: e, company: co)
         case .promises: CompanyPromises(engine: e, company: co)
-        case .hiring: EmptyView()
+        case .hiring, .hire, .perks: EmptyView()
         }
     }
 }

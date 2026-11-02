@@ -14,7 +14,10 @@ struct CompanyManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    /// The Team tab's compact list: the owner and the managers as thin rows (open posts say "Appoint"), without the strip and its titles.
+    var thin = false
     @State private var sheet: Sheet?
+    @State private var showVacant = false
     // Shortlists live here, not in the sheets, so a paid search survives closing a sheet.
     @State private var managerCands: [Int] = []
     @State private var assistantCands: [Int] = []
@@ -31,6 +34,22 @@ struct CompanyManagement: View {
     static func scoreWord(_ s: Int) -> String { s >= 80 ? "excellent" : s >= 65 ? "good" : s >= 50 ? "acceptable" : s >= 35 ? "weak" : "poor" }
 
     var body: some View {
+        Group {
+            if thin { thinList } else { fullList }
+        }
+        .sheet(item: $sheet) { s in
+            Group {
+                switch s {
+                case .manager: ManagerSheet(companyID: company.id, candidates: $managerCands)
+                case .assistant: AssistantSheet(companyID: company.id, candidates: $assistantCands)
+                case .slot(let id): TeamSlotSheet(companyID: company.id, slotID: id, candidates: Binding(get: { slotCands[id] ?? [] }, set: { slotCands[id] = $0 }))
+                }
+            }
+            .environmentObject(store)
+        }
+    }
+
+    @ViewBuilder private var fullList: some View {
         let cur = engine.currency(for: company)
         let slots = engine.teamSlots(companyID: company.id)
         let hasAssistant = company.value("asst")["npc"].int != 0
@@ -46,16 +65,68 @@ struct CompanyManagement: View {
             }
             aboveNote
         }
-        .sheet(item: $sheet) { s in
-            Group {
-                switch s {
-                case .manager: ManagerSheet(companyID: company.id, candidates: $managerCands)
-                case .assistant: AssistantSheet(companyID: company.id, candidates: $assistantCands)
-                case .slot(let id): TeamSlotSheet(companyID: company.id, slotID: id, candidates: Binding(get: { slotCands[id] ?? [] }, set: { slotCands[id] = $0 }))
-                }
-            }
-            .environmentObject(store)
+    }
+
+    // MARK: The thin list of the Team tab
+
+    private func isOpenPost(_ n: OrgNode) -> Bool { n.row.name == nil && n.sheet != nil }
+
+    /// The owner, the manager (always, open or not) and the filled posts; open assistant and team posts wait behind "Other posts".
+    private func thinNodes(_ cur: Currency) -> (shown: [OrgNode], hidden: [OrgNode]) {
+        var shown: [OrgNode] = []
+        var hidden: [OrgNode] = []
+        for n in orgNodes(cur) {
+            if n.id.hasPrefix("b:") { continue }
+            if n.id == "you" || n.id == "m" || !isOpenPost(n) { shown.append(n) } else { hidden.append(n) }
         }
+        return (shown, hidden)
+    }
+
+    @ViewBuilder private var thinList: some View {
+        let cur: Currency = engine.currency(for: company)
+        let nodes = thinNodes(cur)
+        let rows: [OrgNode] = nodes.shown + (showVacant ? nodes.hidden : [])
+        VStack(spacing: 6) {
+            ForEach(rows) { (node: OrgNode) -> AnyView in AnyView(thinRow(node)) }
+            if !nodes.hidden.isEmpty {
+                Button { Haptics.tap(); withAnimation(.snappy(duration: 0.2)) { showVacant.toggle() } } label: {
+                    Text(showVacant ? "Hide other posts" : "Other posts (\(nodes.hidden.count) open) \u{203A}")
+                        .font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 30)
+                }.buttonStyle(PressableStyle())
+            }
+        }
+    }
+
+    @ViewBuilder private func thinRow(_ node: OrgNode) -> some View {
+        let r: ManagementRow = node.row
+        let open: Bool = r.name == nil
+        let tinted: Bool = r.lineTint != Theme.ivoryFaint
+        if node.isOwner {
+            HStack(spacing: 8) {
+                ThinPersonRow(name: r.name, title: "Owner", note: (node.works == true) ? "works here" : "", chevron: false, roleKey: "owner")
+                if let works = node.works, let toggle = node.toggleWorks { ownerToggle(works, toggle) }
+            }
+        } else if let target = node.sheet {
+            Button { Haptics.tap(); sheet = target } label: {
+                ThinPersonRow(name: r.name, title: r.role, note: open ? "" : (tinted ? r.line : ""), noteTint: r.lineTint, wage: r.wage, cue: open ? "Appoint" : nil, chevron: !open, roleKey: r.role)
+            }.buttonStyle(PressableStyle())
+        } else {
+            ThinPersonRow(name: r.name, title: r.role, chevron: false, roleKey: r.role)
+        }
+    }
+
+    private func ownerToggle(_ works: Bool, _ toggle: @escaping () -> Void) -> some View {
+        Button { toggle() } label: {
+            HStack(spacing: 5) {
+                GlyphView(glyph: works ? Glyph.check : Glyph.close, size: 11, weight: 2, tint: works ? Theme.gain : Theme.ivoryFaint)
+                Text(works ? "Works here" : "Not here").font(.system(size: 11.5, weight: .medium)).foregroundStyle(works ? Theme.ivory : Theme.ivoryMuted)
+            }
+            .padding(.horizontal, 9).frame(minHeight: 40)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.ivory.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
     }
 
     // MARK: The strip, top (the owner) to bottom (the posts under the manager)

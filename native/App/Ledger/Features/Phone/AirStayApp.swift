@@ -227,7 +227,14 @@ struct AirStayApp: View {
     private func subtitleLine(_ o: PlaceMarket.Offer) -> String {
         let loc: Double = o.listing.location
         let placeWord: String = loc > 1.03 ? "more passing trade" : (loc < 0.97 ? "less passing trade" : "normal location")
-        return "\(o.cityName) \u{00B7} \(o.buildingType) \u{00B7} \(Int(o.listing.squareMetres)) m² \u{00B7} \(placeWord)"
+        let places: String = placesText(o).map { (t: String) -> String in " \u{00B7} " + t } ?? ""
+        return "\(o.cityName) \u{00B7} \(o.buildingType) \u{00B7} \(Int(o.listing.squareMetres)) m²\(places) \u{00B7} \(placeWord)"
+    }
+
+    /// "6 office places": how many people the rental holds (nil when the trade's premises have no limit).
+    private func placesText(_ o: PlaceMarket.Offer) -> String? {
+        guard let e = store.engine, let n: Int = e.officeCapacity(forListing: o.listing, companyID: o.originCompanyID) else { return nil }
+        return n == 1 ? "1 office place" : "\(n) office places"
     }
 
     private func photo(_ o: PlaceMarket.Offer) -> String {
@@ -302,6 +309,7 @@ struct AirStayApp: View {
             VStack(spacing: 10) {
                 ShopFact(label: "Building type", value: o.buildingType)
                 ShopFact(label: "Floor area", value: "\(Int(o.listing.squareMetres)) m²")
+                if let places = placesText(o) { ShopFact(label: "Room for", value: places) }
                 ShopFact(label: "Location", value: locText)
                 ShopFact(label: "Deposit (three months, returned when you leave)", value: money(t?.deposit ?? 0, id))
                 ShopFact(label: "Fit-out, paid once", value: money(t?.fitOut ?? 0, id))

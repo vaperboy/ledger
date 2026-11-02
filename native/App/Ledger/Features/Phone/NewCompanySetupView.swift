@@ -195,7 +195,9 @@ struct NewCompanySetupView: View {
         SegmentedPill(items: ways, title: { $0.rawValue }, selection: selection)
         ForEach(plan.options) { o in
             let up: Double = (way == .buy && canBuy && o.index == chosen) ? o.buyUpfront : o.rentUpfront
-            let sub: String = "\(Int(o.squareMetres)) m² · \(store.money(o.monthlyRent)) a month · \(o.landlord)"
+            let kind: String = store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office"
+            let places: String = Workplaces.places(kind: kind, squareMetres: o.squareMetres).map { (n: Int) -> String in " · \(n) places" } ?? ""
+            let sub: String = "\(Int(o.squareMetres)) m²\(places) · \(store.money(o.monthlyRent)) a month · \(o.landlord)"
             ChoiceCard(title: o.name, subtitle: sub, trailing: store.money(up) + " up front", selected: o.index == chosen, thumb: ThumbSpec(kind: .premisesPhoto, key: ArtLibrary.premisesKey(kind: store.engine?.data.catalog[plan.tradeID]?.premisesKind ?? "office", squareMetres: o.squareMetres), glyph: Glyph.home, shape: .wide)) {
                 placeIndex = o.index
                 if !o.canBuy { way = .rent }
