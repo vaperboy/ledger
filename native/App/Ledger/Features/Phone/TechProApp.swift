@@ -725,7 +725,7 @@ struct TechProApp: View {
                 ShopChoiceRow(title: "Digital delivery", subtitle: "Licences and plans arrive at once.", trailing: "Free", selected: true) { }
             } else {
                 if let own, let name = ship.ownCompanyName {
-                    ShopChoiceRow(title: "Own delivery (\(name))", subtitle: "Your own company delivers \u{00B7} arrives \(own.deliveryText)", trailing: "Free",
+                    ShopChoiceRow(title: "Own delivery (\(name))", subtitle: "Your own company delivers \u{00B7} arrives \(own.deliveryText)", trailing: own.shipping == 0 ? "Free" : money(own.shipping),
                                   selected: delivery == .own, identifier: "tp-delivery-own") { delivery = .own }
                 }
                 if let std {

@@ -234,9 +234,11 @@ public enum StoreOrders {
             }
         }
         var shipping = 0.0
-        if physicalGoods > 0 && delivery != .own {
+        if physicalGoods > 0 {
             let minimumFee = delivery == .express ? cur.scaledPrice(70) : cur.scaledPrice(25)
             shipping = cur.tidy(max(minimumFee, shipPercent))
+            // Your own delivery company charges a fee (revenue for it) a little under the open market, and none to itself.
+            if delivery == .own { shipping = ownCarrier(s, data: data)?.id == companyID ? 0 : cur.tidy(shipping * 0.7) }
         }
         let goods = out.reduce(0) { $0 + $1.goods }
         let now = out.reduce(0) { $0 + $1.chargeNow } + shipping
@@ -279,6 +281,9 @@ public enum StoreOrders {
         let goodsNow = q.lines.reduce(0) { $0 + $1.chargeNow }
         if goodsNow > 0 { Payments.companyPays(&s, companyID: companyID, amount: goodsNow, category: nil, label: "Order \(number)") }
         if q.shipping > 0 { Payments.companyPays(&s, companyID: companyID, amount: q.shipping, category: "oth", label: "Shipping: order \(number)") }
+        if q.shipping > 0, delivery == .own, let own = ownCarrier(s, data: data) {
+            Payments.companyReceives(&s, companyID: own.id, amount: q.shipping, category: "rev", label: "Delivery fee: order \(number)")
+        }
         let order: JSONValue = .object(["no": .string(number), "w": .number(Double(s.week)), "d": .number(Double(s.day)), "del": .string(delivery.rawValue), "car": .string(q.carrier),
                                         "goods": .number(q.goods), "ship": .number(q.shipping), "paid": .number(q.chargeNow), "rc": .number(Double(receiptCompanyID)),
                                         "eta": .number(Double(day0 + q.days)), "lines": .array(rows), "st": "transit", "dl": .bool(true)])

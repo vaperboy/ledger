@@ -8,8 +8,9 @@
 - AirStay: each listing has its own name and picture
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
+- TechPro: your own delivery company charges a delivery fee, booked as its revenue
 
 # Missing / coming next
-- Own delivery company fee, typed prices per trade, chain and franchise steps
+- Typed prices per trade, chain and franchise steps
 - More photos for vehicles, premises and equipment
 - Not yet tested on device: expect rough edges

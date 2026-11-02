@@ -68,7 +68,8 @@ final class PhoneAppsTests: XCTestCase {
         guard case .success(let carrier) = e.startCompany(tradeID: "courier", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("no courier") }
         e.update { s, _, _ in if let i = s.companyIndex(carrier) { s.companies[i].status = .open } }
         let own = try XCTUnwrap(e.storeQuote(companyID: id, lines: [line], delivery: .own))
-        XCTAssertEqual(own.shipping, 0, "your own company delivers for free")
+        XCTAssertGreaterThan(own.shipping, 0, "your own company charges a delivery fee")
+        XCTAssertLessThan(own.shipping, std.shipping)
         XCTAssertLessThanOrEqual(own.days, std.days)
         XCTAssertTrue(own.carrier.hasPrefix("Own delivery"))
         XCTAssertEqual(e.storeShipping().ownCompanyID, carrier)

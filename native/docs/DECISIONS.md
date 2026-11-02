@@ -78,7 +78,7 @@ Files: `native/design/mockups/photos/` (vehicles_a/b, premises_retail/offices/st
 
 ## 2 Nov 2026, Phone apps answers
 - Atlas home shows annual premium and policies in force (no invented sum insured).
-- Own delivery company books a delivery fee as revenue; the buying company pays it. (To build.)
+- Own delivery company books a delivery fee as revenue; the buying company pays it (built: 70% of the standard fee, none when the buyer is the carrier itself).
 - AirStay: a company can take a listing of its own kind of place in the same city.
 - Insurance stays "from today until switched off"; lease-finance loan uses the delivery-day price.
 
