@@ -98,7 +98,7 @@ struct HireOnePage: View {
         }
     }
 
-    private func cardBox<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+    private func cardBox<C: View>(@ViewBuilder _ content: @escaping () -> C) -> some View {
         Card(padding: 12, radius: Theme.Radius.card) { content() }
     }
 
