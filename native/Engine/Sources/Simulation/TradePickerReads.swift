@@ -60,6 +60,11 @@ public struct MonthlyFixedCostEstimate: Equatable, Sendable {
 public extension GameEngine {
     /// The trade picker for a city (the player's home city and country unless given).
     func tradePickerRows(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
+        readMemo.value(stateStamp, "tradePickerRows|\(cityID ?? "-")|\(countryCode ?? "-")") { tradePickerRowsFresh(cityID: cityID, countryCode: countryCode) }
+    }
+
+    /// The same list worked out again from scratch (about 70 trades priced); `tradePickerRows` keeps it until the game state changes.
+    func tradePickerRowsFresh(cityID: String? = nil, countryCode: String? = nil) -> [TradePickerRow] {
         let code = countryCode ?? state.homeCountryCode
         let country = data.countries.resolve(code, orHome: state.homeCountryCode)
         let city = country.city(cityID ?? state.player.cityID) ?? country.cities[0]

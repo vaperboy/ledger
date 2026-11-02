@@ -22,7 +22,10 @@ import Events
 ///                                5. companies that cannot pay are declared bankrupt
 ///                                6. net worth history, bank checks, game over
 public struct GameEngine {
-    public private(set) var state: GameState
+    public private(set) var state: GameState { didSet { stateStamp = ReadMemo.nextStamp() } }
+    /// Changes whenever `state` does (see `ReadMemo`).
+    var stateStamp: UInt64 = ReadMemo.nextStamp()
+    let readMemo = ReadMemo()
     public let data: GameData
     public let context: FinanceContext
     public let events: EventLibrary

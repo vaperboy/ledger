@@ -47,6 +47,10 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
 
 public extension GameEngine {
     func tradeAffordability(cityID: String? = nil) -> [TradeAffordability] {
+        readMemo.value(stateStamp, "tradeAffordability|\(cityID ?? "-")") { tradeAffordabilityFresh(cityID: cityID) }
+    }
+    /// The same list worked out again from scratch; `tradeAffordability` keeps it until the game state changes.
+    func tradeAffordabilityFresh(cityID: String? = nil) -> [TradeAffordability] {
         TradeAffordability.rows(state: state, data: data, cityID: cityID ?? state.player.cityID)
     }
 }
