@@ -83,8 +83,8 @@ public enum Pricing {
     }
 
     /// What one sale costs a customer today, in accounting units. Original: `ticketEff`.
-    public static func ticket(_ co: Company, _ bd: Trade, _ w: World) -> Double {
-        let raw = bd.ticket * bd.ticketMultiplier * ticketMultiplier(co, bd, w) * (1 + (co.reputation - 50) / 500)
+    public static func ticket(_ co: Company, _ bd: Trade, _ w: World, withItems: Bool = true) -> Double {
+        let raw = bd.ticket * bd.ticketMultiplier * ticketMultiplier(co, bd, w) * (1 + (co.reputation - 50) / 500) * (withItems ? SalesItems.ticketFactor(co) : 1)
         let fx = w.rates.rate(w.country(co))
         return Currency.nicePrice(raw / fx) * fx
     }
@@ -122,7 +122,7 @@ public enum Pricing {
             d *= 1 + min(0.5, (-x - 0.03) * e0 * 0.9 * clamp(co.awareness / 60, 0.25, 1))
         }
         if cp != 0 { d *= 1 + cp * 0.8 * discountFatigue(co, w.week) }
-        return d
+        return d * SalesItems.demandFactor(co)
     }
 
     /// Customers get used to sales: the more weeks on discount lately, the less a new one pulls. Original: `fat`.
