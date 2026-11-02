@@ -7,7 +7,7 @@ import Finance
 /// Starting a company: choosing trade, city, legal form and size; the paperwork, premises, equipment and people it
 /// needs. Original: `startCompany`, `newCompany`, `setupEstimate`, `autoSetup` (engine/core/api.js, company.js).
 public enum CompanySetup {
-    public struct Listing: Equatable, Identifiable {
+    public struct Listing: Equatable, Identifiable, Sendable {
         public var id: Int { index }
         public var index: Int
         public var name: String

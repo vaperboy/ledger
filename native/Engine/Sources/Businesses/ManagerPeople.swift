@@ -304,6 +304,7 @@ extension ManagerModel {
         s.companies[bi].managerProfitBonus = bonus   // the profit share goes with the manager
         s.companies[bi].set("mood", md)
         s.note("\(n.name) now manages \(s.companies[bi].name).", tone: "n", companyID: b)
+        GrowthPaths.installSuccessor(&s, companyID: a, data: data)
         return true
     }
 

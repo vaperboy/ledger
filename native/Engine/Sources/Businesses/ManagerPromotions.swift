@@ -254,7 +254,7 @@ extension ManagerModel {
         var tail = ""
         // someone who moves up appoints their own successor
         if let had = had {
-            if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
+            if GrowthPaths.installSuccessor(&s, companyID: co.id, data: data) { /* the named successor */ } else if fillManager(&s, companyID: co.id, by: n.name, why: "\(first) moved up to \(post.title.lowercased())", boss: n, data: data) == nil { s.note("\(had) has no manager now. Find one, or run it yourself.", tone: "bad", companyID: co.id) }
         }
         if shares { tail = giveShares(&s, companyID: co.id, personID: n.id, percent: u.sharesPercent) }
         return "\(first) is now \(post.title)." + tail

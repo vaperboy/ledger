@@ -48,6 +48,7 @@ extension ManagerModel {
         staffWork(&s, ci, bd, n, q, data: data, revenue: rev)
         keepTeam(&s, ci, bd, data: data, quality: q)
         seasonalWeek(&s, ci, n, data: data, capacity: cap)   // seasonal help ahead of a busy season (ManagerSeasonal.swift)
+        PremisesProposals.managerWeek(&s, ci, n, data: data)   // demand-limited by the premises: propose a bigger place (PremisesProposals.swift)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
         if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
@@ -144,8 +145,8 @@ extension ManagerModel {
         let fl = co.value("flags")
         guard Double(s.week) - (fl["rep22"].isNull ? -99 : fl["rep22"].double) >= 2 else { return }
         for (role, want) in base["roles"].object.sorted(by: { $0.key < $1.key }) {
-            let have = co.staff.filter { $0.role == role && $0.noticeWeeks <= 0 && !$0.flag("seas") }.count
-            guard have < want.int, let r = data.catalog.tables.roles[role] else { continue }
+            // the manager's one rule (ManagerHiring): a free place, an empty post, or a leaver and the demand
+            guard let r = data.catalog.tables.roles[role], ManagerHiring.verdict(s, companyID: co.id, role: role, target: want.int, data: data).allowed else { continue }
             let wage = marketWage(s, co, role: role, data: data)
             guard co.cash > weekCost(s, co, data: data) * 4 + wage * 2 else {
                 if fl["warn22"].isNull || Double(s.week) - fl["warn22"].double > 8 {
@@ -155,10 +156,8 @@ extension ManagerModel {
                 return
             }
             var f = fl; f["rep22"] = .number(Double(s.week)); s.companies[ci].set("flags", f)
-            let cands = Hiring.search(role: role, company: s.companies[ci], mode: .network, faces: false, state: &s, data: data)
-            guard !cands.isEmpty else { return }
-            if let pick = AutoHire.hireWorker(role: role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: mgr), state: &s, data: data) {
-                s.note("\(mgr.name) hired \(pick.name) (\(r.name.lowercased())) at \(co.name): the post was empty.", tone: "n", companyID: co.id)
+            if let h = ManagerHiring.hire(&s, companyID: co.id, role: role, target: want.int, data: data) {
+                s.note("\(mgr.name) hired \(h.person.name) (\(r.name.lowercased())) at \(co.name): \(h.verdict == .replace ? "the post was empty" : "hired early" + ManagerHiring.earlyNote(h.verdict)).", tone: "n", companyID: co.id)
             }
             return
         }
@@ -267,6 +266,8 @@ extension ManagerModel {
         let co = s.companies[ci]
         switch dp.kind {
         case "hire":
+            // a growth hire (the work is there): only a manager's, and only into a free place (ManagerHiring)
+            if Workplaces.hireBlock(co, data: data) != nil || !Delegation.hasManager(co) { return }
             let cands = Hiring.search(role: dp.role, company: co, mode: .ads, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { return }
             if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
@@ -320,6 +321,7 @@ extension ManagerModel {
                 else if idx == 1 { Payments.injectCash(&s, companyID: co.id, amount: cur.scaledPrice(30000)) }
                 return
             }
+            if kind == PremisesProposals.kind { PremisesProposals.answer(&s, message: m, option: idx, data: data); return }
             guard idx == 0, let mid = co.managerID, let n = s.people[mid], let bd = data.catalog[co.type] else { return }
             let dp = Proposal(kind: kind, role: d["role"].string, cost: d["cost"].double, id: d["id"].string)
             if kind == "hire" {

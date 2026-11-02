@@ -132,6 +132,7 @@ public enum Dismissal {
         if var n = s.people[mid] { n.employerID = 0; s.people[mid] = n }
         book(&s, payer: .company(companyID), notice: q.notice, severance: q.severance, fine: q.fine, labels: .manager)
         ManagerModel.stepDown(&s, ci)
+        GrowthPaths.installSuccessor(&s, companyID: companyID, data: data)   // the named successor steps up (GrowthPaths.swift)
         return q
     }
 
