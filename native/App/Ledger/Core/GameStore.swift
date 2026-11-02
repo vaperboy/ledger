@@ -115,6 +115,7 @@ final class GameStore: ObservableObject {
         saves = try? SaveStore(directory: base)
         if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board")) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
+        ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
     }
 
     var hasGame: Bool { engine != nil }

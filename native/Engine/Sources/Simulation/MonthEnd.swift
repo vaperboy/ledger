@@ -255,7 +255,7 @@ public enum MonthEnd {
             if let bd = data.catalog[s.companies[i].type] { accrueTax(&s, companyIndex: i, bd, data: data) }
         }
         FootballModel.monthly(&s)
-        autoDividends(&s, context: context)
+        // Dividends are never automatic (owner decision, 2 Nov): the owner decides in Group.
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.advanceTaxMonthly(&s, context: context)
         var rates = ExchangeRates(drift: s.exchangeRates.values)

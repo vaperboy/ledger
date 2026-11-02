@@ -509,7 +509,7 @@ public enum Payday {
                     s.companies[i].set("pr29", cfg.json)
                 } else if md == .manual {
                     // The owner's standing policy approves payroll the company can pay, even when the reminder window was missed.
-                    if cfg.approvedMonth == mi || (s.policy.autoPayroll && s.companies[i].cash >= (s.companies[i].payables["wages"] ?? 0)) {
+                    if cfg.approvedMonth == mi || (Delegation.autoPayroll(s, s.companies[i]) && s.companies[i].cash >= (s.companies[i].payables["wages"] ?? 0)) {
                         let r = runPayroll(&s, i, how: .manual, today: t, data: data, context: context)
                         paidToday.append((s.companies[i].name, r.paid))
                     } else {
@@ -558,7 +558,7 @@ public enum Payday {
                 let country = context.country(of: s.companies[i], s)
                 let est = (s.companies[i].payables["wages"] ?? 0) + Payroll.weeklyCost(s.companies[i], country: country) * Double(max(0, (np - dayNumber(week: s.week, day: 0)) / 7))
                 if md == .manual && cfg.approvedMonth != key {
-                    if s.policy.autoPayroll && s.companies[i].cash >= est {
+                    if Delegation.autoPayroll(s, s.companies[i]) && s.companies[i].cash >= est {
                         // Routine payroll the company can pay: approved by the owner's standing policy, no question asked.
                         cfg.approvedMonth = key
                         s.companies[i].set("pr29", cfg.json)

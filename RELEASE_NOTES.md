@@ -9,6 +9,7 @@
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
 - TechPro: every item in the game is for sale to any company; "My items" shows what a company owns in the store's look
+- Settings: "How much I decide" removed. Payroll, replacing leavers and complaints follow who you hired; spending limit grows with net worth; dividends are never automatic
 - TechPro: tabs Store, Products, My items (shows what is missing) and My orders; filter chips fixed
 - Starting a company buys and hires nothing; the start-up screen shows a recommended investment and only the necessary part is taken
 - Pricing: type the price per unit or hour; shops set a markup percent on all items

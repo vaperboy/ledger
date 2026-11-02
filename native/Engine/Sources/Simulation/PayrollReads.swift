@@ -101,7 +101,7 @@ public extension GameEngine {
         return PayrollOverview(hasPayroll: Payday.hasPayroll(co), mode: mode, modeIsFixed: fixed, choices: choices, payslips: Payday.payslips(co), estimate: est,
                                nextPayDay: next, nextPayText: Payday.dateText(next),
                                needsApproval: mode == .manual && Payday.hasPayroll(co) && !late && cfg.paidMonth < key && cfg.approvedMonth != key,
-                               isApproved: cfg.approvedMonth == key && cfg.paidMonth < key, autoApproves: s.policy.autoPayroll, isLate: late, lateReason: reason,
+                               isApproved: cfg.approvedMonth == key && cfg.paidMonth < key, autoApproves: Delegation.autoPayroll(s, co), isLate: late, lateReason: reason,
                                wagesOwed: co.payables["wages"] ?? 0, companyCash: co.cash, wageShortfall: co.wageShortfall,
                                responsibility: Payday.responsibility(co, state: s, data: data), legacyChosenMode: cfg.mode)
     }

@@ -179,7 +179,7 @@ final class FinanceOverviewTests: XCTestCase {
 }
 
 final class AutoDividendTests: XCTestCase {
-    func testSurplusIsPaidOutOnlyWhenThePolicySaysSo() throws {
+    func testDividendsAreNeverAutomatic() throws {
         func paid(weeks: Double) throws -> Double {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
             e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
@@ -190,7 +190,7 @@ final class AutoDividendTests: XCTestCase {
             return e.state.company(id)?.distributed ?? 0
         }
         XCTAssertEqual(try paid(weeks: 0), 0, "never by default")
-        XCTAssertGreaterThan(try paid(weeks: 4), 0, "a company sitting on spare cash pays it out")
+        XCTAssertEqual(try paid(weeks: 4), 0, "dividends are never automatic, whatever an old save says")
     }
 }
 

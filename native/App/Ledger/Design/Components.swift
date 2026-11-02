@@ -559,6 +559,8 @@ enum ConfirmThreshold {
     /// What a new player gets: small everyday spends are not asked (step 2, 2,000 at the reference level).
     static let defaultStep = 2
     static let key = "askBelowStep"
+    /// Set by the game store: what managers may spend without asking (home currency) and that currency's rate.
+    static var delegated: (() -> (limit: Double, rate: Double))?
     static var step: Int {
         get {
             guard UserDefaults.standard.object(forKey: key) != nil else { return defaultStep }
@@ -570,7 +572,11 @@ enum ConfirmThreshold {
     /// True when `p` runs without asking. Pure so it can be tested as a decision table.
     static func skips(_ p: PendingAction, step: Int) -> Bool {
         var size: Double? = nil
-        if let currency = p.currency { size = limit(step: step, currency: currency) }
+        if let currency = p.currency {
+            size = limit(step: step, currency: currency)
+            // With a manager in charge the limit grows with net worth: a 10k spend is not asked of someone worth 10M (owner decision, 2 Nov).
+            if let d = delegated?(), d.limit > 0, abs(d.rate - currency.rate) < 1e-9 { size = max(size ?? 0, d.limit) }
+        }
         return !ConfirmRule.asks(irreversible: p.destructive || p.alwaysAsk, amount: p.amount, limit: size)
     }
     static func skips(_ p: PendingAction) -> Bool { skips(p, step: step) }

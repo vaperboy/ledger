@@ -9,11 +9,10 @@ import Finance
 /// Not part of the original game, where the player hired every replacement by hand.
 public enum AutoStaff {
     public static func weekly(_ s: inout GameState, data: GameData) {
-        guard s.policy.autoRehire else { return }
         let context = FinanceContext(countries: data.countries, trades: data.catalog)
         for i in s.companies.indices {
             let co = s.companies[i]
-            guard co.status == .open, let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
+            guard co.status == .open, Delegation.autoRehire(s, co), let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
             // Replaces people who left; a company with nobody yet is staffed by the player, never automatically (owner decision, 2 Nov).
             guard !co.staff.isEmpty else { continue }
             let weekly = context.weeklyCost(co, s)

@@ -145,7 +145,7 @@ public extension GameEngine {
                 let np = Payday.nextPay(co, config: cfg, today: today)
                 let est = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: country) * Double(max(0, (np - today) / 7))
                 let mode = Payday.mode(of: co, trade: bd, config: cfg, state: s, data: data)
-                add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !s.policy.autoPayroll ? "Needs your approval" : "Runs by itself", est, np, kind: .payroll, essential: true, company: co.id)
+                add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !Delegation.autoPayroll(s, co) ? "Needs your approval" : "Runs by itself", est, np, kind: .payroll, essential: true, company: co.id)
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
             add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, kind: .bills, essential: true, company: co.id)

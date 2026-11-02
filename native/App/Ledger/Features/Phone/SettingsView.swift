@@ -20,7 +20,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 feelGroup
-                decideGroup
                 savingGroup
                 gameGroup
             }
