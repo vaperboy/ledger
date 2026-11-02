@@ -13,13 +13,13 @@ struct MarketEventRows: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Events of this company, plus the ones about the whole market, newest first.
-    static func relevant(_ e: GameEngine, companyID: Int?) -> [MarketEvent] {
+    static func relevant(_ e: GameEngine, companyID: Int?, limit: Int = 4) -> [MarketEvent] {
         let all: [MarketEvent] = e.marketEvents(limit: 30)
         let mine: [MarketEvent] = all.filter { (m: MarketEvent) -> Bool in
             guard let id = companyID else { return true }
             return m.companyID == nil || m.companyID == id
         }
-        return Array(mine.prefix(4))
+        return Array(mine.prefix(limit))
     }
 
     static func tint(_ m: MarketEvent) -> Color {

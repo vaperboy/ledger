@@ -7,10 +7,19 @@ import Simulation
 
 /// The market around one company, inside the Market app: where you stand (share over time and against the named rivals, drawn only when
 /// an analyst measures the market) and the named rivals as a ranked table. Pricing is a row under Sales.
+/// The segments of the Market app. A company's Market section shows them all at once (no part given).
+enum MarketPart: String, CaseIterable, Hashable {
+    case overview = "Overview", competitors = "Competitors", prices = "Prices", news = "News", research = "Research"
+}
+
 struct CompanyMarket: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    /// One segment of the Market app; nil shows the whole page (the company's Market section).
+    var part: MarketPart? = nil
+    /// Each rival's share when the page opened, so the ranked list can show who is moving.
+    @State private var baseline: [Int: Double] = [:]
     @State private var rival: Int?
     /// Animation stage: a rival whose share moved or who came up for sale gets a brief coloured edge (green gain, red loss, gold opportunity).
     @State private var rivalFlash: [Int: Color] = [:]
@@ -39,16 +48,105 @@ struct CompanyMarket: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            position
-            MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id))
-            Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
-            rivals
+        VStack(alignment: .leading, spacing: part == nil ? Theme.Space.l : 10) {
+            if let p = part {
+                partBody(p)
+            } else {
+                position
+                MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id))
+                Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
+                rivals
+            }
         }
+        .onAppear { if baseline.isEmpty { baseline = shareNow } }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
         .centerSheet(item: rivalBinding) { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
+    }
+
+    private var shareNow: [Int: Double] { rivalSignals.mapValues { (x: RivalSig) -> Double in x.share } }
+
+    @ViewBuilder private func partBody(_ p: MarketPart) -> some View {
+        switch p {
+        case .overview:
+            position
+            MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id, limit: 2))
+        case .competitors: rankedRivals
+        case .prices: priceRows
+        case .news: MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id, limit: 12))
+        case .research: Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
+        }
+    }
+
+    // MARK: Ranked rivals and prices
+
+    private func arrow(_ r: RivalRow) -> (text: String, tint: Color) {
+        let now: Double = ((r.share?.center ?? 0) * 1000).rounded() / 10
+        let was: Double = baseline[r.id] ?? now
+        if now - was >= 0.5 { return ("\u{2191} ", Theme.loss) }
+        if now - was <= -0.5 { return ("\u{2193} ", Theme.gain) }
+        return ("", Theme.ivory)
+    }
+
+    private var rankedRivals: some View {
+        let rows: [RivalRow] = engine.rivalRows(company).sorted { ($0.share?.center ?? -1) > ($1.share?.center ?? -1) }
+        let cols: [TableColumn] = [TableColumn(title: "Rival"), TableColumn(title: "Share", width: 84)]
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Ranked by share").capsLabel()
+                Spacer()
+                Text("Green: losing ground").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }.padding(.horizontal, 2)
+            if rows.isEmpty {
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+            } else {
+                SharpTable {
+                    TableHeader(columns: cols)
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: RivalRow) in rankedRow(n, r, cols) }
+                }
+            }
+        }
+    }
+
+    private func rankedRow(_ n: Int, _ r: RivalRow, _ cols: [TableColumn]) -> some View {
+        let a = arrow(r)
+        let name: String = "\(n + 1). " + r.rival.name + (r.rival.forSale ? " · for sale" : "")
+        let shareText: String = a.text + (r.share.map { MarketMap.text($0) } ?? r.feel)
+        let logo = ThumbSpec(kind: .logo, key: "rival|co\(company.id)|\(r.rival.id)", glyph: Glyph.person, initials: r.rival.name, shape: .square)
+        return TableRow(columns: cols, title: name, note: r.sizeWord, values: [shareText], valueTints: [a.tint], thumb: logo) { rival = r.id }
+            .orgEdge(rivalFlash[r.id], radius: Theme.Radius.table)
+    }
+
+    private var priceRows: some View {
+        let rows: [RivalRow] = engine.rivalRows(company).sorted { abs($0.priceGap) > abs($1.priceGap) }
+        let cols: [TableColumn] = [TableColumn(title: "Rival"), TableColumn(title: "Their price", width: 84)]
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Their prices against yours").capsLabel().padding(.horizontal, 2)
+            if rows.isEmpty {
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    Text("Prices appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+            } else {
+                SharpTable {
+                    TableHeader(columns: cols)
+                    ForEach(rows, id: \.id) { (r: RivalRow) in priceRow(r, cols) }
+                }
+            }
+        }
+    }
+
+    private func priceRow(_ r: RivalRow, _ cols: [TableColumn]) -> some View {
+        let same: Bool = abs(r.priceGap) < 0.03
+        let gapPct: Int = Int((abs(r.priceGap) * 100).rounded())
+        let gapText: String = same ? "Same" : (r.priceGap > 0 ? "+" : "-") + "\(gapPct)%"
+        let tint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
+        let off: String = r.rival.discountPercent.map { "\($0)% off" } ?? ""
+        let mk: String = r.rival.marketing ? "marketing" : ""
+        let note: String = [off, mk].filter { !$0.isEmpty }.joined(separator: " · ")
+        return TableRow(columns: cols, title: r.rival.name, note: note, values: [gapText], valueTints: [tint]) { rival = r.id }
     }
 
     private struct RivalID: Identifiable { var id: Int }
@@ -463,14 +561,13 @@ struct RivalSheet: View {
 struct MarketView: View {
     @EnvironmentObject var store: GameStore
     @State private var showGroups = false
+    /// One segment of the Market app (all markets); nil shows the whole page.
+    var part: MarketPart? = nil
 
     var body: some View {
         if let e = store.engine {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                shares(e)
-                SettingsTable(heading: "Around you") {
-                    SettingsTableRow(title: "Groups", note: "The groups around you", value: "See who") { showGroups = true }
-                }
+                partContent(e)
             }
             .navigationDestination(isPresented: $showGroups) {
                 SettingsPage(title: "Groups", subtitle: "Market", tab: .phone) { groups(e) }
@@ -478,7 +575,25 @@ struct MarketView: View {
         }
     }
 
-    private func shares(_ e: GameEngine) -> some View {
+    @ViewBuilder private func partContent(_ e: GameEngine) -> some View {
+        switch part {
+        case nil:
+            shares(e)
+            SettingsTable(heading: "Around you") {
+                SettingsTableRow(title: "Groups", note: "The groups around you", value: "See who") { showGroups = true }
+            }
+        case .overview?: shares(e, compact: true)
+        case .competitors?: groups(e)
+        case .prices?:
+            Card(padding: 12, radius: Theme.Radius.row) {
+                Text("Choose a business above to compare its prices with its rivals.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            }
+        case .news?: MarketEventRows(events: MarketEventRows.relevant(e, companyID: nil, limit: 12))
+        case .research?: DataAnalystCard()
+        }
+    }
+
+    private func shares(_ e: GameEngine, compact: Bool = false) -> some View {
         let rows = e.marketRows()
         let weight = e.economyWeight()
         let note: String = weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position." : "At about a third of a local market, the competition authority starts to watch your pricing."
@@ -498,7 +613,7 @@ struct MarketView: View {
                 }
             }
         }
-            DataAnalystCard()
+            if !compact { DataAnalystCard() }
             MoreBlock("Your weight in the economy") {
                 VStack(spacing: 6) {
                     weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")

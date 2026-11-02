@@ -12,6 +12,7 @@ struct MarketApp: View {
     @EnvironmentObject var store: GameStore
     /// The business shown; 0 = all markets.
     @State private var companyID = 0
+    @State private var part: MarketPart = .overview
 
     var body: some View {
         Group {
@@ -29,16 +30,21 @@ struct MarketApp: View {
     private func page(_ e: GameEngine) -> some View {
         let companies: [Company] = Self.companies(e)
         let chosen: Company? = companies.first { $0.id == companyID }
-        return ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                selector(companies, chosen)
-                content(e, chosen)
+        // Short segments fit one screen (compacted when needed); the long lists scroll.
+        return Group {
+            if part == .overview || part == .research || part == .prices {
+                FixedScreen(spacing: 10, overflowScrolls: true) { pageContent(e, companies, chosen) }
+            } else {
+                ScrollScreen(spacing: 10) { pageContent(e, companies, chosen) }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
-            .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .accessibilityIdentifier("market-app")
+    }
+
+    @ViewBuilder private func pageContent(_ e: GameEngine, _ companies: [Company], _ chosen: Company?) -> some View {
+        selector(companies, chosen)
+        SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part)
+        content(e, chosen)
     }
 
     /// The businesses that can be looked at: open ones that trade (a holding company has no market).
@@ -48,12 +54,9 @@ struct MarketApp: View {
 
     @ViewBuilder private func content(_ e: GameEngine, _ chosen: Company?) -> some View {
         if let co = chosen {
-            CompanyMarket(engine: e, company: co)
+            CompanyMarket(engine: e, company: co, part: part)
         } else {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                MarketEventRows(events: MarketEventRows.relevant(e, companyID: nil))
-                MarketView()
-            }
+            MarketView(part: part)
         }
     }
 
