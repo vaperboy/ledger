@@ -97,15 +97,6 @@ struct WeatherWarningCards: View {
                     Spacer(minLength: 0)
                 }
                 Text("Can hit: " + names.joined(separator: ", ")).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                ForEach(w.companyIDs, id: \.self) { id in
-                    Button { store.openCompany(id, section: .operations) } label: {
-                        HStack {
-                            Text(engine.state.company(id)?.name ?? "").font(.system(size: 13)).foregroundStyle(P.accent)
-                            Spacer(minLength: 0)
-                            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.inkDim)
-                        }.padding(.vertical, 4).contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                }
             }
         }
     }
@@ -262,19 +253,15 @@ struct WeatherCompaniesCard: View {
 
     private func row(_ co: Company) -> some View {
         let line = engine.weatherLine(companyID: co.id)
-        return Button { store.openCompany(co.id, section: .operations) } label: {
-            HStack(spacing: 10) {
-                IconCircle(glyph: Glyph.weather(line?.kind ?? "mixed"), size: 32, tint: P.inkSoft)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(co.name).font(.system(size: 14)).foregroundStyle(P.ink)
-                    Text(effects(line)).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim)
+        return HStack(spacing: 10) {
+            IconCircle(glyph: Glyph.weather(line?.kind ?? "mixed"), size: 32, tint: P.inkSoft)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(co.name).font(.system(size: 14)).foregroundStyle(P.ink)
+                Text(effects(line)).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.vertical, 8).contentShape(Rectangle())
+            Spacer(minLength: 0)
         }
-        .buttonStyle(PressableStyle())
+        .padding(.vertical, 8)
     }
 
     private func effects(_ l: (weather: Double, tourists: Double, workingTime: Double, kind: String)?) -> String {
