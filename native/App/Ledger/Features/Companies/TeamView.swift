@@ -267,6 +267,7 @@ struct TeamView: View {
         case .chainVacancy: section = .chain
         default: section = .staff
         }
+        if section == .chain { store.openGroupEntity(companyID: id); return }
         path.append(.companyAt(id, section))
     }
 
@@ -389,7 +390,7 @@ struct TeamView: View {
     /// group people open Group.
     private func openPerson(_ p: TeamSearchResult) {
         if let id = p.companyID {
-            path.append(.companyAt(id, (p.scope == "chain" || p.scope == "region") && p.chainID != nil ? .chain : .staff))
+            if (p.scope == "chain" || p.scope == "region") && p.chainID != nil { store.openGroupEntity(companyID: id) } else { path.append(.companyAt(id, .staff)) }
         } else {
             store.jump(to: .group)
         }
@@ -573,7 +574,7 @@ struct TeamView: View {
     /// (executive) post opens Group.
     private func openVacancy(_ v: TeamOverview.Vacancy) {
         Haptics.tap()
-        if v.scope == "chain", let id = v.companyID { path.append(.companyAt(id, .chain)) }
+        if v.scope == "chain", let id = v.companyID { store.openGroupEntity(companyID: id) }
         else if let id = v.companyID { path.append(.companyAt(id, .staff)) }
         else { store.jump(to: .group) }
     }

@@ -41,7 +41,7 @@ struct CompanySectionScreen: View {
         case .energy: CompanyEnergy(engine: e, company: co)
         case .salmon: CompanySalmon(engine: e, company: co)
         case .club: CompanyClub(engine: e, company: co)
-        case .chain: CompanyChain(engine: e, company: co)
+        case .chain: EntityExpansionView(companyID: co.id)
         default: EmptyView()
         }
     }
@@ -71,7 +71,6 @@ struct CompanyMorePages: View {
         case .energy: return "Plant, output and sales of power"
         case .salmon: return "Pens, feed and harvest"
         case .club: return "Squad, matches and club finances"
-        case .chain: return "Stores, franchise and supply between your companies"
         case .book: return "Policies, loans and funds"
         default: return ""
         }

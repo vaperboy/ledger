@@ -40,7 +40,7 @@ struct CompanyPage: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             if let tab = CompanyDetailView.tab(for: section, co, e) {
                 CompanyDetailView(companyID: companyID, initial: tab, part: part ?? (section == .customers ? StatsPart.customers.rawValue : nil))
-            } else if CompanyDetailView.availableSections(co, e).contains(section) {
+            } else if section == .chain || CompanyDetailView.availableSections(co, e).contains(section) {
                 CompanySectionScreen(companyID: companyID, section: section)
             } else {
                 CompanyDetailView(companyID: companyID)

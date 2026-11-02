@@ -64,8 +64,6 @@ struct GrowIntoChain: View {
         VStack(alignment: .leading, spacing: 16) {
             MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("A second store comes when the first one has proven itself. Register the chain, have a lawyer write the operations manual every store follows, then open more stores under the same name.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     RateBar(label: "Ready", fraction: reqs.isEmpty ? 0 : Double(ready) / Double(reqs.count), tint: ready == reqs.count ? Theme.gain : Theme.gold)
                     ForEach(reqs, id: \.id) { r in
                         CardLine()
@@ -79,14 +77,12 @@ struct GrowIntoChain: View {
     }
 
     private func requirementRow(_ r: Chains.Requirement) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            IconCircle(glyph: r.ok ? Glyph.check : Glyph.ring, size: 30, tint: r.ok ? Theme.gain : Theme.ivoryFaint)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(r.title.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                Text(r.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            GlyphView(glyph: r.ok ? Glyph.check : Glyph.close, size: 13, weight: 1.6, tint: r.ok ? Theme.gain : Theme.loss).frame(width: 18)
+            Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+            Spacer(minLength: 8)
+            Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
+        }.padding(.vertical, 2)
     }
 
     @ViewBuilder private func registration(_ status: String, weeksLeft: Int, blocked: Bool) -> some View {

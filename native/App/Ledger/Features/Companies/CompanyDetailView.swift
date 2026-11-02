@@ -117,7 +117,7 @@ struct CompanyDetailView: View {
         case .manage:
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
-                CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club, .chain])
+                CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club])
             } else {
                 CompanyClub(engine: e, company: co)
             }
@@ -251,7 +251,6 @@ struct CompanyDetailView: View {
         let extra: Set<CompanySection> = [.projects, .properties, .book, .energy, .salmon, .holding, .club, .chain, .salesMarket]
         var list = CompanySection.allCases.filter { $0 != .setup && !extra.contains($0) }
         if !own.isEmpty { list.insert(contentsOf: own, at: 1) }
-        if CompanyChain.isRelevant(co, e) { list.append(.chain) }
         return list
     }
 }

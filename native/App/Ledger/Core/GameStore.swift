@@ -528,6 +528,8 @@ final class GameStore: ObservableObject {
     func openCompany(_ id: Int, section: CompanySection? = nil, part: String? = nil) {
         // The Market is a Phone app: a link to a company's market opens it with that company chosen.
         if section == .market { openMarket(companyID: id); return }
+        // Chain and franchise live on the company's entity page in the Group tab.
+        if section == .chain { openGroupEntity(companyID: id); return }
         let route = CompanyRoute.make(id, section, part)
         let target = tab
         // One turn later: a screen that opens a company and then closes itself (a finished form) must pop before the push lands.
