@@ -9,12 +9,14 @@ struct NetWorthChart: View {
     var days: Int = 365
     /// The plot height; Home uses a thin 30 pt line.
     var height: CGFloat = 66
+    /// A series to draw instead of the live one (Home keeps the chart of the day before while the daily report is waiting).
+    var frozen: [Double]? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Point: Identifiable { var id: Int; var value: Double }
 
     var body: some View {
-        let series = engine.netWorthSeries(days: days)
+        let series: [Double] = frozen ?? engine.netWorthSeries(days: days)
         let points: [Point] = series.enumerated().map { (i, v) in Point(id: i, value: v) }
         let lo = series.min() ?? 0, hi = series.max() ?? 0
         // Never zoom in so far that a fraction of a percent looks like a crash: the scale spans at least ±3% of the level.

@@ -43,12 +43,30 @@ struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     @State private var days = 365
+    @State private var snap: NetWorthSnap?
+
+    /// What the chart and the two change texts showed before the day: kept while the daily report is waiting for its Continue.
+    struct NetWorthSnap {
+        var series: [Int: [Double]]
+        var week: Double?
+        var month: Double?
+    }
+
+    private func takeSnap() -> NetWorthSnap {
+        var all: [Int: [Double]] = [:]
+        for p in PeriodPicker.periods { all[p.days] = engine.netWorthSeries(days: p.days) }
+        let hist = engine.dayHistory
+        return NetWorthSnap(series: all, week: DayHistory.change(hist.netWorth, days: 7)?.amount, month: DayHistory.change(hist.netWorth, days: 30)?.amount)
+    }
 
     var body: some View {
         let nw = engine.netWorth
         let hist = engine.dayHistory
-        let week = DayHistory.change(hist.netWorth, days: 7)
-        let month = DayHistory.change(hist.netWorth, days: 30)
+        let blocked: Bool = store.holdsHomeFigures
+        let held: NetWorthSnap? = blocked ? snap : nil
+        let week: Double? = held != nil ? held?.week : DayHistory.change(hist.netWorth, days: 7)?.amount
+        let month: Double? = held != nil ? held?.month : DayHistory.change(hist.netWorth, days: 30)?.amount
+        let frozenSeries: [Double]? = held?.series[days]
         let owed = nw.debt + nw.pendingTax
         let wealth: NetWorthBreakdown = engine.netWorthBreakdown()
         let otherAssets: Double = wealth.investments + wealth.luxury + wealth.otherEstimatedHoldings
@@ -73,7 +91,7 @@ struct NetWorthCard: View {
                     }
                     .font(.system(size: 11.5).monospacedDigit()).lineSpacing(1)
                 }
-                NetWorthChart(engine: engine, days: days, height: 30)
+                NetWorthChart(engine: engine, days: days, height: 30, frozen: frozenSeries)
                 HStack(spacing: 0) {
                     box("Personal cash", wealth.liquid) { store.short($0) }
                     Rectangle().fill(Theme.divider).frame(width: 1)
@@ -89,6 +107,9 @@ struct NetWorthCard: View {
             .padding(.horizontal, 14).padding(.top, 11).padding(.bottom, 10)
         }
         .accessibilityElement(children: .contain)
+        .onAppear { if snap == nil { snap = takeSnap() } }
+        .onChange(of: nw.total) { _, _ in if !store.holdsHomeFigures { snap = takeSnap() } }
+        .onChange(of: blocked) { _, now in if !now { snap = takeSnap() } }
     }
 
     private func box(_ label: String, _ live: Double, loss: Bool = false, _ text: @escaping (Double) -> String) -> some View {
@@ -103,10 +124,10 @@ struct NetWorthCard: View {
         }.frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder private func changeText(_ c: (amount: Double, share: Double?)?, _ unit: String) -> some View {
+    @ViewBuilder private func changeText(_ c: Double?, _ unit: String) -> some View {
         if let c {
             HStack(spacing: 3) {
-                Text((c.amount > 0.5 ? "▲ " : c.amount < -0.5 ? "▼ " : "") + store.short(abs(c.amount))).foregroundStyle(Theme.change(c.amount))
+                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c))).foregroundStyle(Theme.change(c))
                 Text(unit).foregroundStyle(Theme.ivoryMuted)
             }
         } else {
