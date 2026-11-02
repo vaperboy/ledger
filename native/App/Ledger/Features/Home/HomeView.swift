@@ -62,6 +62,7 @@ struct NetWorthCard: View {
                     Text(store.money(nw.total))
                         .font(.hero(34)).foregroundStyle(nw.total < 0 ? Theme.loss : Theme.ivory)
                         .minimumScaleFactor(0.55).lineLimit(1)
+                        .moneyFlash(nw.total)
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 0) {
                         changeText(week, "week")
@@ -71,13 +72,13 @@ struct NetWorthCard: View {
                 }
                 NetWorthChart(engine: engine, days: days, height: 30)
                 HStack(spacing: 0) {
-                    box("Personal cash", store.short(wealth.liquid), Theme.ivory)
+                    box("Personal cash", store.short(wealth.liquid), Theme.ivory, live: wealth.liquid)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Invested", store.short(otherAssets), Theme.ivory)
+                    box("Invested", store.short(otherAssets), Theme.ivory, live: otherAssets)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Companies", store.short(wealth.estimatedCompanyEquity), Theme.ivory)
+                    box("Companies", store.short(wealth.estimatedCompanyEquity), Theme.ivory, live: wealth.estimatedCompanyEquity)
                     Rectangle().fill(Theme.divider).frame(width: 1)
-                    box("Debt", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory)
+                    box("Debt", owed > 0.5 ? "−" + store.short(owed) : store.short(0), owed > 0.5 ? Theme.loss : Theme.ivory, live: -owed)
                 }
                 .padding(.top, 7).overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
                 .fixedSize(horizontal: false, vertical: true)
@@ -87,10 +88,11 @@ struct NetWorthCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func box(_ label: String, _ value: String, _ tint: Color) -> some View {
+    private func box(_ label: String, _ value: String, _ tint: Color, live: Double? = nil) -> some View {
         VStack(spacing: 0) {
             Text(label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
+                .moneyFlash(live ?? 0)
         }.frame(maxWidth: .infinity)
     }
 

@@ -1,5 +1,5 @@
 # What's new
-- Money figures count up and flash green when they rise and red when they fall (group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
+- Money figures count up and flash green when they rise and red when they fall (home, group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
 - Swiping between tabs needs a longer, clearly sideways drag, so it no longer triggers by accident
 - Swipe sideways to change the tab in your Inbox and in a bank account
 - New game: you can pick an ambition at the start, or decide later; chains and franchises now need real things (profit, cash, reputation, open stores, documents) instead of waiting years; a settled lawsuit can no longer leave wages unpaid
