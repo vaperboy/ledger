@@ -1,4 +1,5 @@
 # What's new
+- Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is gone from Home
 - Home is one locked screen that fits everything: companies get the space first (the full list is in Group), Recent only uses what is left; net worth and the four figures count up only after you press Continue on the report
 - Adding a product or service opens a popup with choices named for your company, their development time and cost; profit and market change unlock once you hire a market advisor, a new role
 - Popups open in the middle of the screen in the report style instead of rising from the bottom; Marketing is a compact popup that fits without scrolling; the new menu item row is gone from Sales
