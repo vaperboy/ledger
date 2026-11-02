@@ -1,4 +1,5 @@
 # What's new
+- Suppliers are grouped and compact with a details popup and one payment-terms control; TechPro has a chip for every real item family and more sort options; report figures count up
 - Fix: popups no longer show up empty and are compact; Perks opens as a popup right on Team; no more notification for payments received; Marketing is one compact list; slimmer sliders and switches everywhere; tab rows no longer touch
 - Popups size to their content; recognition banners open the right worker; a rival group entering a country where you trade shows in Market
 - Accessibility: steppers, confirm boxes and Team rows have spoken labels and hints, and small one-line labels shrink instead of cutting off
