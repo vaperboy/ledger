@@ -95,7 +95,7 @@ struct CompaniesView: View {
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .id(store.rootToken(.company))
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.hidden).noSidewaysDrag()
                     .scrollBounceBehavior(.basedOnSize)
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }

@@ -230,7 +230,7 @@ struct PhonePageScroll<Content: View>: View {
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).noSidewaysDrag()
         .ledgerBackground()
     }
 }

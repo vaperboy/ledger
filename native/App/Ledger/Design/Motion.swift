@@ -140,7 +140,29 @@ struct SwipeBetweenSegments<T: Hashable>: ViewModifier {
     }
 }
 
+/// A full page or popup presented over the app arrives with a calm fade and a slight scale (0.97 to 1), not a slide from the bottom.
+/// Under Reduce Motion it simply appears.
+struct PageArrive: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown || reduceMotion ? 1 : 0)
+            .scaleEffect(shown || reduceMotion ? 1 : 0.97)
+            .onAppear {
+                if reduceMotion { shown = true } else { withAnimation(Motion.arrive(false)) { shown = true } }
+            }
+    }
+}
+
 extension View {
+    /// Fade plus slight scale on arrival for full-page presentations (see `PageArrive`).
+    func pageArrive() -> some View { modifier(PageArrive()) }
+    /// A vertical scroll container that never bounces or drags sideways and clips anything wider than itself.
+    func noSidewaysDrag() -> some View {
+        scrollBounceBehavior(.never, axes: .horizontal).clipped()
+    }
     /// Swipe sideways to change the segment (see `SwipeBetweenSegments`).
     func swipeBetween<T: Hashable>(_ items: [T], selection: Binding<T>) -> some View {
         modifier(SwipeBetweenSegments(items: items, selection: selection))

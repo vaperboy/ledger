@@ -599,6 +599,7 @@ private struct ConfirmActionModifier: ViewModifier {
             .onChange(of: pending?.id) { _, _ in settle() }
             .fullScreenCover(item: $asked) { p in
                 ConfirmPopup(action: p, onConfirm: { answer(p, go: true) }, onCancel: { answer(p, go: false) })
+                    .pageArrive()
                     .presentationBackground(.clear)
             }
     }

@@ -29,7 +29,7 @@ struct GroupView: View {
                             .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     }
                     .id(store.rootToken(.group))
-                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+                    .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
                     .swipeBetween(GroupTab.allCases, selection: $tab)
                 }
             }

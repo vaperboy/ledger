@@ -43,7 +43,7 @@ struct ChainView: View {
             }
             .confirmAction($pending)
             .fullScreenCover(isPresented: $renaming) {
-                renamePopup(sum, cur).presentationBackground(.clear)
+                renamePopup(sum, cur).pageArrive().presentationBackground(.clear)
             }
         } else {
             Text("This chain no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()

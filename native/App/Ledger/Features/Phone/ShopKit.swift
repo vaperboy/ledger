@@ -72,7 +72,7 @@ struct ShopScroll<Content: View>: View {
                 .frame(maxWidth: 480)
                 .frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.hidden).noSidewaysDrag()
         .scrollBounceBehavior(.basedOnSize)
     }
 }

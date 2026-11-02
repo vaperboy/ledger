@@ -30,14 +30,17 @@ struct BankAccountScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let a = d.alert { alertBanner(a, fmt) }
                     tabRow(d)
-                    balanceCard(d, fmt)
-                    tiles(d)
+                    if tab == .account {
+                        balanceCard(d, fmt)
+                        tiles(d)
+                    }
                     content(e, d, fmt).segmentTransition(tab, order: tabs)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+            .noSidewaysDrag()
             .scrollDismissesKeyboard(.interactively)
             .swipeBetween(tabs, selection: $tab)
             .sheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind).presentationDetents([.medium, .large]) }
