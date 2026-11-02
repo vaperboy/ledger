@@ -32,7 +32,7 @@ struct BankLoanApplyFlow: View {
             let a: LoanAssessment = e.loanAssessment(kind: kind, companyID: account.companyID)
             let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
             VStack(spacing: 0) {
-                AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: step == 1 ? "Close" : "Back")
+                AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back")
                     .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 StepDots(step: step, count: Self.stepCount, labels: ["Apply", "Offer", "Choose", "Agreement", "Confirm"]).padding(.bottom, 8)
                 ScrollView {
@@ -44,6 +44,9 @@ struct BankLoanApplyFlow: View {
                 .scrollDismissesKeyboard(.interactively)
             }
             .ledgerBackground()
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .swipeBackEnabled(canStep: { approved == nil && step > 1 }, step: { back() })
             .confirmAction($pending)
             .onAppear { if name.isEmpty { name = e.state.player.name } }
         }

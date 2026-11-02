@@ -28,7 +28,9 @@ struct InvestContent: View {
                 FundManagerCard(engine: e)
                 VenturesLinkRow(engine: e)
             }
-            .fullScreenCover(item: $selected) { q in BankAssetScreen(quote: q).pageArrive() }
+            .navigationDestination(isPresented: Binding(get: { selected != nil }, set: { (on: Bool) in if !on { selected = nil } })) {
+                if let q = selected { BankAssetScreen(quote: q) }
+            }
         }
     }
 

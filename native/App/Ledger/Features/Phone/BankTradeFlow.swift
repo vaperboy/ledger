@@ -66,7 +66,10 @@ struct BankAssetScreen: View {
                 .scrollIndicators(.hidden).noSidewaysDrag()
             }
             .ledgerBackground()
-            .fullScreenCover(item: $side) { s in BankTradeFlow(quote: live, side: s).pageArrive() }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .swipeBackEnabled()
+            .navigationDestination(item: $side) { (s: BankTradeSide) in BankTradeFlow(quote: live, side: s) }
         }
     }
 
@@ -118,7 +121,7 @@ struct BankTradeFlow: View {
             let tq: TradeQuote = side == .buy ? e.buyQuote(quote.kind, symbol: quote.symbol, amount: amount)
                                               : e.sellQuote(quote.kind, symbol: quote.symbol, fraction: fraction)
             VStack(spacing: 0) {
-                AppHeader(title: (side == .buy ? "Buy " : "Sell ") + quote.symbol, subtitle: quote.name, onBack: { back() }, backLabel: step == 1 || done != nil ? "Close" : "Back")
+                AppHeader(title: (side == .buy ? "Buy " : "Sell ") + quote.symbol, subtitle: quote.name, onBack: { back() }, backLabel: "Back")
                     .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 ScrollView {
                     content(e, tq, cur)
@@ -129,6 +132,9 @@ struct BankTradeFlow: View {
                 .scrollDismissesKeyboard(.interactively)
             }
             .ledgerBackground()
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .swipeBackEnabled(canStep: { step > 1 && done == nil }, step: { back() })
         }
     }
 

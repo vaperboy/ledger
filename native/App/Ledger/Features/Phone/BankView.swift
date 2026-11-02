@@ -21,7 +21,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .fullScreenCover(isPresented: $applying) { BankLoanApplyFlow(account: account).pageArrive() }
+            .navigationDestination(isPresented: $applying) { BankLoanApplyFlow(account: account) }
         }
     }
 
