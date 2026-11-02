@@ -10,3 +10,8 @@ DerivedData/
 *.whl
 __pycache__/
 *.pyc
+# generated / release artefacts (Stage 9)
+native/App/*.xcodeproj/
+*.ipa
+*.xcarchive
+*.dSYM/
