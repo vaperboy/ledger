@@ -11,8 +11,8 @@ public enum OwnerHours {
     public static let weeklyCap = 80.0
     /// Burn-out (tiredness building up) starts above this many hours a week.
     public static let burnoutFrom = 65.0
-    /// The least a working owner puts in.
-    public static let floor = 10.0
+    /// The least a working owner puts in: a full week. Demand can raise it to 80; stepping out ("Works here" off) is how the player works less.
+    public static let floor = 40.0
 
     /// True when the player works in this company: a company they run themselves (no manager, not a holding) and have not stepped out of.
     public static func works(_ co: Company) -> Bool { co.managerID == nil && co.type != "hold" && !co.flag("ownOut") }
@@ -32,6 +32,7 @@ public enum OwnerHours {
 
     /// Weekly: set the hours of every company the player works in. Companies with a manager or those the player stepped out of are left alone.
     public static func adjustWeek(_ s: inout GameState, data: GameData) {
+        if s.rest["ownHrsFixed"]?.bool == true { return }   // a game (or a test) that sets the hours itself
         var used = 0.0
         let startups = (s.rest["founded"]?.array ?? []).filter { $0["st"].string == "live" }
         used += startups.reduce(0) { $0 + $1["sw"]["selfH"].double + $1["sw16"]["selfH"].double }

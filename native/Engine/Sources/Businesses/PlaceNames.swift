@@ -7,6 +7,15 @@ import Countries
 /// always has the same name and the same picture slot), different for every listing. The listing's tier name ("Back street unit") stays as it was:
 /// other rules read it.
 enum PlaceNames {
+    /// How a country writes its streets (data: `street_styles.json`); anything not listed uses the English style.
+    private static let styles: JSONValue = {
+        guard let url = Bundle.module.url(forResource: "street_styles", withExtension: "json", subdirectory: "Resources"),
+              let data = try? Data(contentsOf: url), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return .null }
+        return json
+    }()
+
+    static func styleOf(_ countryCode: String) -> String { styles[countryCode].string }
+
     private static func pick(_ a: [String], _ r: inout HashedRandom) -> String {
         a.isEmpty ? "" : a[min(a.count - 1, Int(r.next() * Double(a.count)))]
     }
@@ -23,27 +32,27 @@ enum PlaceNames {
     }
 
     /// A street with a house number, written the way the country writes it.
-    static func street(_ code: String, last rawLast: String, number n: Int, _ r: inout HashedRandom) -> String {
+    static func street(_ style: String, last rawLast: String, number n: Int, _ r: inout HashedRandom) -> String {
         let last = rawLast.isEmpty ? "Nova" : rawLast
         let compact = last.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "de", with: "", options: .anchored)
-        switch code {
-        case "DE", "CH": return compact + pick(["straße", "weg", "allee", "platz"], &r) + " \(n)"
-        case "NL": return compact + pick(["straat", "laan", "weg"], &r) + " \(n)"
-        case "NO": return compact + pick(["s gate", "veien", "gata"], &r) + " \(n)"
-        case "SE": return compact + pick(["gatan", "vägen"], &r) + " \(n)"
-        case "DK": return compact + pick(["s Allé", "vej", "gade"], &r) + " \(n)"
-        case "FI": return compact + pick(["nkatu", "ntie"], &r) + " \(n)"
-        case "PL": return "ul. \(last) \(n)"
-        case "LT": return "\(last) g. \(n)"
-        case "FR": return "\(n) " + pick(["Rue", "Avenue", "Boulevard", "Place"], &r) + " \(last)"
-        case "ES", "MX": return pick(["Calle", "Avenida", "Paseo"], &r) + " \(last), \(n)"
-        case "IT": return pick(["Via", "Corso", "Viale"], &r) + " \(last) \(n)"
-        case "BR": return pick(["Rua", "Avenida", "Travessa"], &r) + " \(last), \(n)"
-        case "JP":
+        switch style {
+        case "german": return compact + pick(["straße", "weg", "allee", "platz"], &r) + " \(n)"
+        case "dutch": return compact + pick(["straat", "laan", "weg"], &r) + " \(n)"
+        case "norwegian": return compact + pick(["s gate", "veien", "gata"], &r) + " \(n)"
+        case "swedish": return compact + pick(["gatan", "vägen"], &r) + " \(n)"
+        case "danish": return compact + pick(["s Allé", "vej", "gade"], &r) + " \(n)"
+        case "finnish": return compact + pick(["nkatu", "ntie"], &r) + " \(n)"
+        case "polish": return "ul. \(last) \(n)"
+        case "lithuanian": return "\(last) g. \(n)"
+        case "french": return "\(n) " + pick(["Rue", "Avenue", "Boulevard", "Place"], &r) + " \(last)"
+        case "spanish": return pick(["Calle", "Avenida", "Paseo"], &r) + " \(last), \(n)"
+        case "italian": return pick(["Via", "Corso", "Viale"], &r) + " \(last) \(n)"
+        case "portuguese": return pick(["Rua", "Avenida", "Travessa"], &r) + " \(last), \(n)"
+        case "japanese":
             let chome: Int = Int(r.next() * 4) + 1
             return "\(last) \(chome)-chome-\(n)"
-        case "KR": return "\(last)-ro \(n)"
-        case "US": return "\(n) \(last) " + pick(["Street", "Avenue", "Boulevard", "Drive"], &r)
+        case "korean": return "\(last)-ro \(n)"
+        case "american": return "\(n) \(last) " + pick(["Street", "Avenue", "Boulevard", "Drive"], &r)
         default: return "\(n) \(last) " + pick(["Street", "Road", "Lane", "Way", "Row"], &r)
         }
     }
@@ -53,7 +62,8 @@ enum PlaceNames {
         var r = HashedRandom("\(seed):pname:\(country.code):\(cityID):\(group):\(week / 26):\(tier)")
         let lasts = country.pack["names"]["last"].array.map { $0.string }
         let n = Int(r.next() * 60) + 2
-        let st = street(country.code, last: pick(lasts, &r), number: n, &r)
+        let lastName: String = pick(lasts, &r)
+        let st = street(styleOf(country.code), last: lastName, number: n, &r)
         let area = district(country, &r)
         let industrial = ["industrial", "workshop", "warehouse", "yard", "factory", "farm", "mill"].contains(kind)
         switch tier {

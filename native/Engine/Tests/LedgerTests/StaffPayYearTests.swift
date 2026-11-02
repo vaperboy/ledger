@@ -15,6 +15,7 @@ final class StaffPayYearTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 60_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true }   // these tests are about pay, so the owner's hours stay as set
         return (e, id)
     }
 

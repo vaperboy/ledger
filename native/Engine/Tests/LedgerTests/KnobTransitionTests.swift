@@ -9,7 +9,7 @@ import Simulation
 final class KnobTransitionTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ trade: String) -> Int {
         let id = ChainsTests.start(&e, trade)
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
+        e.update { s, _, _ in s.rest["ownHrsFixed"] = true; if let i = s.companyIndex(id) { s.companies[i].status = .open } }   // hours stay as set: capacity is what is measured
         ChainsTests.play(&e, days: 7 * 3)
         return id
     }
