@@ -106,7 +106,7 @@ struct CompanyOperations: View {
         if let first = paper.first {
             note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
         }
-        if uninsured { note("Not insured. A bad week has nothing behind it: pick an insurer, then the policies you want.", action: "Cover") { store.openAtlas(companyID: company.id) } }
+        if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
         if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
     }
 

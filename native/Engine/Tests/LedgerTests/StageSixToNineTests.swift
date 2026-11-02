@@ -120,4 +120,26 @@ final class StageSixToNineTests: XCTestCase {
         XCTAssertFalse(done.handledBy.isEmpty)
         XCTAssertEqual(done.int("pick"), 1, "the manager takes the option that costs nothing")
     }
+
+    func testAtlasTakesEveryPolicyWithoutChoosingAnInsurerFirst() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 27)
+        let id = try open(&e, "webdev")
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw["insr"] = .null } }
+        let cover = try XCTUnwrap(e.coverageOverview(companyID: id))
+        let policy = try XCTUnwrap(cover.policies.first { !$0.isOn })
+        let out = e.buyInsurance(companyID: id, product: policy.id, receiptCompanyID: id)
+        XCTAssertEqual(out.result, .done)
+        XCTAssertEqual(e.state.company(id)?.value("insr")["name"].string, "Atlas Insurance")
+    }
+
+    func testStartingACompanyFillsInNoDocumentsAndBuysNothing() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 28)
+        e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("no start") }
+        let co = try XCTUnwrap(e.state.company(out.companyID))
+        let docs = co.value("docs").object
+        XCTAssertTrue(docs.filter { $0.key != "accountant_agreement" }.isEmpty, "no document is applied for the player: \(docs.keys.sorted())")
+        XCTAssertTrue(co.value("prem").isNull, "no place is rented by itself")
+        XCTAssertTrue(co.staff.isEmpty)
+    }
 }

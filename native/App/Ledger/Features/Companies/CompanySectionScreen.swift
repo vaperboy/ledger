@@ -35,9 +35,7 @@ struct CompanySectionScreen: View {
     @ViewBuilder private func content(_ co: Company, _ e: GameEngine) -> some View {
         switch section {
         case .setup:
-            CompanySetupSection(engine: e, company: co,
-                                section: Binding<CompanySection>(get: { .setup }, set: { store.openCompany(companyID, section: $0) }),
-                                moneyPart: $moneyPart)
+            CompanySetupScreen(engine: e, company: co)
         case .marketing: CompanyMarketing(engine: e, company: co)
         case .pricing: CompanyPricing(engine: e, company: co)
         case .market: CompanyMarket(engine: e, company: co)

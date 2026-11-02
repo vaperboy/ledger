@@ -4,32 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The links from Setup to buying: equipment and software (TechPro Store) and, for a trade that works in a place, premises (AirStay).
-struct EquipmentEntryRow: View {
-    @EnvironmentObject var store: GameStore
-    var company: Company
-
-    var body: some View {
-        VStack(spacing: Theme.Space.s) {
-            Button { store.openTechPro(companyID: company.id) } label: {
-                CardRow(glyph: Glyph.settings, title: "Equipment, software and vehicles", subtitle: "Shop in TechPro Store: brands, used, lease, subscriptions, delivery")
-            }
-            .buttonStyle(PressableStyle())
-            if needsPlace {
-                Button { store.openAirStay(companyID: company.id) } label: {
-                    CardRow(glyph: Glyph.opsPin, title: "Premises", subtitle: "Find a place to rent in AirStay")
-                }
-                .buttonStyle(PressableStyle())
-            }
-        }
-    }
-
-    private var needsPlace: Bool {
-        guard let kind = store.engine?.tradeInfo(companyID: company.id)?.premisesKind else { return false }
-        return kind != "none"
-    }
-}
-
 private enum EquipmentTab: String, CaseIterable, Hashable, Identifiable {
     case needed = "Equipment", fleet = "Fleet", software = "Software"
     var id: String { rawValue }

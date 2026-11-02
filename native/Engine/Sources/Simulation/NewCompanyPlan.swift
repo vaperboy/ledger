@@ -333,7 +333,9 @@ public extension GameEngine {
                 f["stockShare"] = .number(choices.stock.share)
                 s.companies[i].set("flags", f)
             }
-            let options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2, equipmentInPlace: true, teamInPlace: true)
+            var options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2, equipmentInPlace: true, teamInPlace: true)
+            // Nothing is filled in for the player: documents are signed on the Setup screen, the place and the equipment are chosen in AirStay and TechPro.
+            options.applyDocuments = false; options.autoPremises = false; options.buyProperty = false
             let rep = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: options)
             out.setupNotes = rep.log
             out.skipped = rep.skipped
