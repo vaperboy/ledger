@@ -37,12 +37,29 @@ public enum NewItemOptions {
     static let costShare = 0.02
     static let optionCount = 5
 
-    static let sameKind: (goods: [String], service: [String]) = (
-        ["limited edition", "house special", "seasonal pick", "bestseller", "gift box", "family pack", "classic reserve"],
-        ["express service", "care plan", "weekend special", "premium package", "consultation", "starter session", "annual plan"])
-    static let newKind: (toGoods: [String], toService: [String]) = (
-        ["gift set", "own-brand range", "starter kit", "merchandise", "gift voucher pack"],
-        ["delivery service", "repair and care", "subscription", "workshop", "custom orders"])
+    /// One catalog entry (`Resources/itemcatalog.json`): a realistic product or service for a trade.
+    struct Entry: Equatable { var name: String; var isService: Bool; var develop: Bool; var brand: Bool }
+
+    /// Options per trade id, from the JSON resource. Empty if the resource is missing (then the family fallback below is used).
+    static let catalog: [String: [Entry]] = {
+        guard let url = Bundle.module.url(forResource: "itemcatalog", withExtension: "json", subdirectory: "Resources"),
+              let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [:] }
+        var out: [String: [Entry]] = [:]
+        for (k, rows) in j["trades"].object {
+            out[k] = rows.array.map { Entry(name: $0["n"].string, isService: $0["svc"].bool, develop: $0["dev"].bool, brand: $0["b"].bool) }
+        }
+        return out
+    }()
+
+    /// Last resort for a trade without an entry: generic options by kind.
+    static let fallback: (goods: [String], service: [String]) = (
+        ["Limited edition", "Gift box", "Family pack", "Seasonal range", "Premium range", "Starter kit"],
+        ["Express service", "Care plan", "Weekend special", "Premium package", "Consultation", "Annual plan"])
+
+    static func entries(for bd: Trade) -> [Entry] {
+        if let e = catalog[bd.id], !e.isEmpty { return e }
+        return fallback.goods.map { Entry(name: $0, isService: false, develop: false, brand: false) } + fallback.service.map { Entry(name: $0, isService: true, develop: false, brand: false) }
+    }
 
     public static func hasAdvisor(_ co: Company) -> Bool { RoleEffects.filled(co, advisorRole) }
 
@@ -51,23 +68,26 @@ public enum NewItemOptions {
     public static func list(_ s: GameState, companyID: Int, isService svc: Bool, data: GameData) -> NewItemOptionList {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return NewItemOptionList(options: [], hasMarketAdvisor: false) }
         let advisor = hasAdvisor(co)
-        let category = svc != SalesItems.isService(bd)
-        let pool = category ? (svc ? newKind.toService : newKind.toGoods) : (svc ? sameKind.service : sameKind.goods)
+        let own = SalesItems.isService(bd)
+        let pool = entries(for: bd).filter { $0.isService == svc }
         let existing = Set(SalesItems.items(co, bd).map { $0.name.lowercased() })
         let short = SalesItems.shortName(co)
         var h = HashedRandom("\(s.seed):newitems:\(co.id):\(svc)")
-        let start = Int(h.next() * Double(pool.count))
+        let start = pool.isEmpty ? 0 : Int(h.next() * Double(pool.count))
         let w = World(state: s, data: data)
         let cur = w.currency(co)
-        let weeks = category ? RoleEffects.developmentWeeks(developmentWeeksBase(co), co) : 0
-        let cost = category ? developmentCost(co, currency: cur) : 0
+        let devWeeks = RoleEffects.developmentWeeks(developmentWeeksBase(co), co)
+        let devCost = developmentCost(co, currency: cur)
         var out: [NewItemOption] = []
         for k in pool.indices where out.count < optionCount {
-            let name = "\(short) \(pool[(start + k) % pool.count])"
+            let e = pool[(start + k) % pool.count]
+            let name = e.brand ? "\(short) \(e.name.prefix(1).lowercased() + e.name.dropFirst())" : e.name
             if existing.contains(name.lowercased()) { continue }
+            let category = svc != own          // a different kind of offer is always developed first
+            let develop = category || e.develop
             let est = advisor ? estimate(s, co, bd, lift: category ? categoryLift : variantLift, w: w) : nil
-            out.append(NewItemOption(id: "\(svc ? "svc" : "gds"):\(slug(name))", name: name, isService: svc, needsDevelopment: category, developmentWeeks: weeks,
-                                     developmentCost: cost, profitChange: est?.0, marketChange: est?.1))
+            out.append(NewItemOption(id: "\(svc ? "svc" : "gds"):\(slug(name))", name: name, isService: svc, needsDevelopment: develop, developmentWeeks: develop ? devWeeks : 0,
+                                     developmentCost: develop ? devCost : 0, profitChange: est?.0, marketChange: est?.1))
         }
         return NewItemOptionList(options: out, hasMarketAdvisor: advisor)
     }

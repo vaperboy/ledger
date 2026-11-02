@@ -50,7 +50,7 @@ final class MarketEventsTests: XCTestCase {
         let supplierAfter: Int = e.marketEvents(limit: 100).filter { $0.kind == .supplierPriceChange }.count
         XCTAssertEqual(supplierAfter, supplierBefore, "a 2% move is not announced")
         let before = e.marketEvents(limit: 100).count
-        e.update { s, data, _ in s.economy.materials *= 1.05; MarketEvents.weekly(&s, data: data) }
+        e.update { s, data, _ in s.week += 1; s.economy.materials *= 1.05; MarketEvents.weekly(&s, data: data) }
         let ev = e.marketEvents(limit: 100)
         XCTAssertEqual(ev.count, before + 1)
         XCTAssertEqual(ev.first?.kind, .supplierPriceChange)
@@ -69,6 +69,9 @@ final class MarketEventsTests: XCTestCase {
             riv[0]["listed"] = .bool(true)
             mk[key]["riv"] = .array(riv)
             s.rest["mk"] = mk
+            s.week += 1
+            MarketEvents.weekly(&s, data: data)           // the listing (one market-wide event a week)
+            s.week += 1
             // pretend the first rival had five points more share last week
             let rid = String(riv[0]["id"].int)
             var m = s.rest["mev"]!

@@ -327,6 +327,8 @@ public enum Rivals {
                 r["camp16"] = .object(["pct": .number(Double(pct)), "end": .number(Double(end))])
                 notes.append(("\(name) runs \(pct)% off for \(end - week) week\(end - week > 1 ? "s" : "").", "bad"))
                 // The offer takes demand from your companies in this trade and city for 6 weeks, fading; more when your price is above the rival's.
+                if Double(week) >= r["lw27"].double + 6 {   // a rival's offers count (and make news) at most once in 6 weeks
+                r["lw27"] = .number(Double(week))
                 var worst = 0.0
                 let sizeF = clamp(r["size"].double, 0.5, 1.5)
                 for ci in idx {
@@ -338,6 +340,7 @@ public enum Rivals {
                 }
                 MarketEvents.log(&s, .competitorLaunch, title: "\(name) launches \(pct)% off", detail: "A new offer from a \(bd.name.lowercased()) rival in \(cityName).", companyID: co0.id, amount: Double(pct), tone: "bad",
                                  consequence: "Demand about \(max(1, Int((worst * 100).rounded())))% lower, fading over 6 weeks.")
+                }
             }
             // Marketing pushes
             if !r["mkt16"].isNull, Double(week) >= r["mkt16"].double { r["mkt16"] = .null; r["size"] = .number(jsRound(r["size"].double * 1.01 * 100) / 100) }

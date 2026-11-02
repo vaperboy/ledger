@@ -197,8 +197,10 @@ final class IntegrationBalanceTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in
             s.week = 20
-            for n in 0..<6 { MarketEvents.log(&s, .competitorLaunch, title: "Rival \(n) launches", detail: "d", companyID: 1) }
+            for n in 0..<6 { MarketEvents.log(&s, .competitorLaunch, title: "Rival \(n) launches", detail: "d", companyID: 1) }   // market-wide: one a week
+            for n in 0..<6 { MarketEvents.log(&s, .recognition, title: "Person \(n)", detail: "d", companyID: 1, employeeID: n) }
         }
+        XCTAssertEqual(e.marketEvents(limit: 50).filter { $0.kind == .competitorLaunch }.count, 1, "one market-wide event a week")
         XCTAssertEqual(e.marketEvents(limit: 50).count, 3, "at most 3 a week")
         e.update { s, _, _ in
             s.week = 21
@@ -248,15 +250,15 @@ final class IntegrationBalanceTests: XCTestCase {
         XCTAssertFalse(ev.consequence.isEmpty)
         XCTAssertFalse(ev.acknowledged)
         let happyBefore = e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek
-        let notes = e.state.rest["rep"]?["ev"].array.count ?? 0
         // ignoring it does nothing
         e.week()
         XCTAssertEqual(e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek, happyBefore)
+        let notes = e.state.rest["rep"]?["ev"].array.count ?? 0
         XCTAssertEqual(e.acknowledgeRecognition(eventID: ev.id), .applied)
         let after = e.state.company(id)!.staff.first { $0.id == pid }!.happyUntilWeek
         XCTAssertGreaterThanOrEqual(after, e.state.week + MarketEvents.thanksWeeks)
         XCTAssertGreaterThan(e.state.rest["rep"]?["ev"].array.count ?? 0, notes, "logged")
-        XCTAssertTrue(e.marketEvents(limit: 5).first!.acknowledged)
+        XCTAssertTrue(e.marketEvents(limit: 50).first { $0.id == ev.id }!.acknowledged)
         if case .refused = e.acknowledgeRecognition(eventID: ev.id) {} else { XCTFail("only once") }
         if case .refused = e.acknowledgeRecognition(eventID: 9999) {} else { XCTFail("unknown event") }
     }
@@ -399,6 +401,7 @@ final class IntegrationBalanceTests: XCTestCase {
         }
         var newID: Int?
         e.update { s, d, ctx in
+            var docs = s.companies[s.companyIndex(id)!].value("docs"); docs["chain"] = .object(["st": "ok"]); s.companies[s.companyIndex(id)!].set("docs", docs)
             guard let chainID = Chains.make(&s, companyID: id, name: "Test Chain") else { return }
             if case .success(let n) = Chains.openStore(&s, chainID: chainID, cityID: s.company(id)!.cityID, size: 1, data: d, context: ctx) { newID = n }
         }

@@ -36,6 +36,8 @@ public enum MarketEvents {
     static let cap = 60
     /// At most this many entries are written in one week, and the same fact (kind, title, company) is not written again within `dedupeWeeks`.
     static let perWeek = 3
+    /// Market-wide kinds (suppliers, rivals, countries): one a week at most. Contracts and recognition are about your own people and customers.
+    static let marketWide: Set<MarketEvent.Kind> = [.supplierPriceChange, .competitorLaunch, .priceResponse, .newCountry, .acquisitionOpportunity, .competitorLostShare]
     static let dedupeWeeks = 4
 
     static func dayKey(_ s: GameState) -> Int { s.week * 7 + s.day }
@@ -47,7 +49,9 @@ public enum MarketEvents {
         var m = s.rest["mev"] ?? .object([:])
         let existing = m["log"].array
         let today = dayKey(s)
-        if existing.filter({ $0["d"].int / 7 == s.week }).count >= perWeek { return false }
+        let thisWeek = existing.filter { $0["d"].int / 7 == s.week }
+        if thisWeek.count >= perWeek { return false }
+        if marketWide.contains(kind), thisWeek.contains(where: { MarketEvent.Kind(rawValue: $0["k"].string).map(marketWide.contains) ?? false }) { return false }
         if existing.contains(where: { today - $0["d"].int < dedupeWeeks * 7 && $0["k"].string == kind.rawValue && $0["t"].string == title && ($0["c"].isNull ? nil : $0["c"].int) == companyID && ($0["w"].isNull ? nil : $0["w"].int) == employeeID }) { return false }
         let id = m["next"].int + 1
         var list = m["log"].array
@@ -214,25 +218,37 @@ public enum MarketEvents {
         return best
     }
 
+    /// Weeks an index must rest after it has been announced before it can be announced again.
+    static let supplierCooldown = 4
+
+    /// One "Supplier prices" event a week at most: every index that moved 3 percent or more since it was last announced (and has rested 4 weeks) is
+    /// folded into it; the biggest move is the title, the others are listed in the consequence line.
     static func sweepEconomy(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {
         let E = s.economy
         let idx: [(String, String, Double)] = [("materials", "Materials", E.materials), ("fuel", "Fuel", E.fuel), ("power", "Power", E.power), ("freight", "Freight", E.freight)]
         var eco = seen["eco"].isNull ? JSONValue.object([:]) : seen["eco"]
+        var when = seen["ecoW"].isNull ? JSONValue.object([:]) : seen["ecoW"]
+        var moves: [(key: String, label: String, last: Double, now: Double, change: Double)] = []
         for (k, label, v) in idx {
             let last = eco[k].double
             if eco[k].isNull || last <= 0 { eco[k] = .number(v); continue }
             let change = v / last - 1
-            guard abs(change) >= 0.03 else { continue }
-            eco[k] = .number(v)
-            var cq = "Your suppliers charge \(String(format: "%.1f", abs(change) * 100))% \(change > 0 ? "more" : "less") for \(label.lowercased())."
-            if let c = costChange(s, key: k, from: last, to: v, data: data) {
-                let cur = World(state: s, data: data).currency(c.company)
-                cq = "\(c.company.name) pays about \(cur.display(abs(c.weekly))) a week \(c.weekly > 0 ? "more" : "less") for goods."
-            }
-            log(&s, .supplierPriceChange, title: "\(label) prices \(change > 0 ? "up" : "down") \(Int((abs(change) * 100).rounded()))%",
-                detail: "\(label) costs \(change > 0 ? "rose" : "fell") since they were last checked.", amount: change, tone: change > 0 ? "bad" : "good", consequence: cq)
+            guard abs(change) >= 0.03, !(when[k].isNull ? false : s.week - when[k].int < supplierCooldown) else { continue }
+            eco[k] = .number(v); when[k] = .number(Double(s.week))
+            moves.append((k, label, last, v, change))
         }
-        seen["eco"] = eco
+        seen["eco"] = eco; seen["ecoW"] = when
+        guard let top = moves.max(by: { abs($0.change) < abs($1.change) }) else { return }
+        let pct = Int((abs(top.change) * 100).rounded())
+        var sentence = "\(top.label) prices are \(top.change > 0 ? "up" : "down") \(pct)%: your costs follow."
+        if let c = costChange(s, key: top.key, from: top.last, to: top.now, data: data), let bd = data.catalog[c.company.type], bd.costOfSales > 0, c.company.lastWeekRevenue > 0 {
+            let cur = World(state: s, data: data).currency(c.company)
+            let share = abs(c.weekly) / (c.company.lastWeekRevenue * bd.costOfSales) * 100
+            sentence = "At \(c.company.name) your cost of sales \(c.weekly > 0 ? "rises" : "falls") about \(String(format: "%.1f", share))%, \(cur.display(abs(c.weekly))) a week."
+        }
+        let others = moves.filter { $0.key != top.key }.map { "\($0.label.lowercased()) \($0.change > 0 ? "up" : "down") \(Int((abs($0.change) * 100).rounded()))%" }
+        log(&s, .supplierPriceChange, title: "Supplier prices: \(top.label.lowercased()) \(top.change > 0 ? "up" : "down") \(pct)%", detail: sentence,
+            amount: top.change, tone: top.change > 0 ? "bad" : "good", consequence: others.isEmpty ? sentence : sentence + " Also \(others.joined(separator: ", ")).")
     }
 
     static func sweepCountries(_ s: inout GameState, _ seen: inout JSONValue, data: GameData) {

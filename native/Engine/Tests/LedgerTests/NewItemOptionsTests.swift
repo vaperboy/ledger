@@ -2,7 +2,7 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-import Businesses
+@testable import Businesses
 import Simulation
 
 private extension GameEngine {
@@ -32,11 +32,28 @@ final class NewItemOptionsTests: XCTestCase {
         let first = e.state.company(id)!.name.split(separator: " ").first.map(String.init)!
         let l = e.newItemOptions(companyID: id, isService: false)
         XCTAssertTrue((4...6).contains(l.options.count))
-        XCTAssertTrue(l.options.allSatisfy { $0.name.hasPrefix(first) && !$0.isService })
+        XCTAssertTrue(l.options.allSatisfy { !$0.isService })
+        XCTAssertLessThanOrEqual(l.options.filter { $0.name.hasPrefix(first) }.count, 1, "the company name is a brand prefix on the signature item only")
         let present = Set(e.salesItems(companyID: id).map { $0.name.lowercased() })
         XCTAssertTrue(l.options.allSatisfy { !present.contains($0.name.lowercased()) })
         XCTAssertEqual(Set(l.options.map { $0.id }).count, l.options.count)
         XCTAssertEqual(l, e.newItemOptions(companyID: id, isService: false))
+    }
+
+    func testEveryTradeHasARealisticCatalog() throws {
+        let (e, _) = try engine()
+        let ids = e.data.catalog.order
+        XCTAssertGreaterThanOrEqual(ids.count, 60)
+        for id in ids {
+            let rows = NewItemOptions.catalog[id] ?? []
+            XCTAssertGreaterThanOrEqual(rows.count, 6, "\(id) needs at least 6 options")
+            XCTAssertEqual(Set(rows.map { $0.name.lowercased() }).count, rows.count, "\(id) has duplicate names")
+            XCTAssertLessThanOrEqual(rows.filter { $0.brand }.count, 1, "\(id): at most one branded item")
+            XCTAssertTrue(rows.allSatisfy { !$0.name.isEmpty })
+        }
+        XCTAssertTrue(NewItemOptions.catalog["tutor"]!.contains { $0.name == "Exam preparation course" })
+        XCTAssertTrue(NewItemOptions.catalog["carrental"]!.contains { $0.name == "Chauffeur service" })
+        XCTAssertTrue(NewItemOptions.catalog["hotel"]!.contains { $0.name == "Spa weekend" })
     }
 
     func testNumbersNeedAnAdvisor() throws {
