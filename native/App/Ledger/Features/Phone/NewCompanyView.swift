@@ -17,7 +17,7 @@ struct NewCompanyView: View {
     @State private var goNext = false
 
     private let columns: [TableColumn] = [
-        TableColumn(title: "Trade"), TableColumn(title: "Start-up", width: 74),
+        TableColumn(title: "Trade"), TableColumn(title: "Advised", width: 74),
         TableColumn(title: "Demand", width: 58), TableColumn(title: "Staff", width: 38)
     ]
 
@@ -112,9 +112,10 @@ struct NewCompanyView: View {
         if let b = r.blocked { return b }
         guard let c = r.startUpCost else { return "Cannot be priced here." }
         if !r.isFunded {
-            let short: Double = max(0, c - Payments.liquid(e.state))
-            return "Needs \(store.money(short)) more than you have"
+            let short: Double = max(0, (r.minimumCost ?? c) - Payments.liquid(e.state))
+            return "Needs \(store.money(short)) more than you have to start"
         }
+        if Payments.liquid(e.state) < c { return "Recommended \(store.money(c)); you can start with less" }
         return nil
     }
 

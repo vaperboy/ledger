@@ -30,6 +30,7 @@ struct TechProOwnedView: View {
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         let list: [EquipmentMarket.Owned] = e.ownedEquipment(companyID: companyID)
         let cur: Currency = e.currency(for: co)
+        missingCard(e)
         ShopHeading(text: "My items", trailing: list.isEmpty ? "" : "\(list.count)")
         if list.isEmpty {
             Text("Nothing bought yet. Browse the store and add items to your basket.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
@@ -43,6 +44,28 @@ struct TechProOwnedView: View {
                     Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days.")
                         .font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
+            }
+        }
+    }
+
+    /// What the business still needs to run properly (the engine's own needs list): each row opens the item in the store.
+    @ViewBuilder private func missingCard(_ e: GameEngine) -> some View {
+        let missing: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: companyID).filter { (n: EquipmentMarket.Need) -> Bool in n.need > 0 && n.have + n.leased < n.need }
+        if !missing.isEmpty {
+            ShopHeading(text: "Missing", trailing: "\(missing.count)")
+            ForEach(missing) { (n: EquipmentMarket.Need) in
+                Button { onBuy(n.equipmentID) } label: {
+                    Card(padding: 12) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(n.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
+                                Text("\(Int((n.have + n.leased).rounded())) of \(Int(n.need))" + (n.required ? " \u{00B7} required" : "")).font(.system(size: 12.5)).foregroundStyle(n.required ? P.loss : P.inkFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Text("Shop").font(.system(size: 13, weight: .semibold)).foregroundStyle(P.accent)
+                        }
+                    }
+                }.buttonStyle(PressableStyle())
             }
         }
     }

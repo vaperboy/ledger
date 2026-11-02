@@ -109,6 +109,8 @@ public struct NewCompanyPlan: Equatable {
     public var lines: [PlanLine] = []
     /// What the company needs for the scope chosen (mandatory + chosen optional + working capital), before the 15% margin.
     public var neededNow = 0.0
+    /// The investment the game recommends (equipment, team, buffer on top of what is needed now); never charged by itself.
+    public var recommendedInvestment = 0.0
     public var mandatoryTotal = 0.0, optionalTotal = 0.0, workingCapital = 0.0
     /// Optional items that were NOT chosen, with their price, so the player can add them knowingly.
     public var notChosen: [PlanLine] = []
@@ -225,15 +227,18 @@ public extension GameEngine {
         let working = lines.filter { $0.kind == .workingCapital }.reduce(0) { $0 + $1.amount }
         let fees = lines.filter { $0.kind == .fee }.reduce(0) { $0 + $1.amount }
         // What the company itself needs: everything except registration and abroad fees, which leave your own account.
-        let needed = mandatory + optionalSum + working
-        let wanted = jsRound(needed * 1.15)
+        // Owner decision (2 Nov): the game buys and hires nothing at start, so only what the paperwork and the place need is charged; the full
+        // figure (equipment, a team, a buffer) is the RECOMMENDED investment, shown but never taken unless the player puts it in.
+        let recommendedIDs: Set<String> = ["reqEq", "reqVeh", "optEq", "payroll", "buffer"]
+        let needed = lines.filter { $0.kind != .fee && !recommendedIDs.contains($0.id) }.reduce(0) { $0 + $1.amount }
+        let wanted = needed
         let into: Double
         if let put = choices.putInto { into = max(0, min(put, available - outlay)) } else { into = max(0, min(wanted, available - reserve - outlay)) }
         let shortfall = max(0, needed + outlay - available)
         let cur = homeCurrency
         var risks: [String] = []
         if available < total + outlay {
-            risks.append("About \(cur.short(total + outlay - available)) short of the full cost: registration comes first, then the company can open only as far as its cash goes. Equipment, stock or hiring wait for money.")
+            risks.append("Below the recommended start-up investment (\(cur.short(total + outlay)), you have \(cur.short(available))). Only what the paperwork and place need is taken now; buy equipment and hire as the money comes in.")
         }
         if est.wait > 0 {
             risks.append("A long licence is needed. Wages and rent while you wait (\(cur.short(est.wait))) are already in the cost, and the company earns nothing until it is approved.")
@@ -254,6 +259,7 @@ public extension GameEngine {
         plan.lines = lines
         plan.notChosen = notChosen
         plan.neededNow = needed
+        plan.recommendedInvestment = mandatory + optionalSum + working
         plan.mandatoryTotal = mandatory + fees
         plan.optionalTotal = optionalSum
         plan.workingCapital = working
@@ -327,7 +333,7 @@ public extension GameEngine {
                 f["stockShare"] = .number(choices.stock.share)
                 s.companies[i].set("flags", f)
             }
-            let options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2)
+            let options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2, equipmentInPlace: true, teamInPlace: true)
             let rep = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: options)
             out.setupNotes = rep.log
             out.skipped = rep.skipped

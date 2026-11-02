@@ -9,6 +9,8 @@
 - Hours adjust automatically; burnout from 65 h; "Works here" box in Management
 - Manage: Equipment, Premises and Insurance rows moved to their apps
 - TechPro: every item in the game is for sale to any company; "My items" shows what a company owns in the store's look
+- TechPro: tabs Store, Products, My items (shows what is missing) and My orders; filter chips fixed
+- Starting a company buys and hires nothing; the start-up screen shows a recommended investment and only the necessary part is taken
 - Pricing: type the price per unit or hour; shops set a markup percent on all items
 - Owner hours follow demand and can go under 40 a week
 - Subscriptions: no sales, only a volume discount on the biggest plan; used items never have discounts

@@ -11,10 +11,12 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
     public var tradeID: String
     /// The engine's full start-up cost; nil when the trade cannot be priced here (banned or not yet startable).
     public var cost: Double?
+    /// What must be paid to start at all (papers, a place, registration and capital); the rest of `cost` is the recommended investment.
+    public var minimum: Double? = nil
     public var available: Double
     /// Why the trade cannot be started at all (ban or not yet built); nil if it can.
     public var blocked: String?
-    public var shortfall: Double { max(0, (cost ?? 0) - available) }
+    public var shortfall: Double { max(0, (minimum ?? cost ?? 0) - available) }
     public var isFunded: Bool { blocked == nil && cost != nil && shortfall == 0 }
 
     /// Every trade, priced for the home country in `cityID` at the recommended size (a limited company only where the trade needs one).
@@ -30,7 +32,8 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
             let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
             let est = CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: CompanySetup.recommendedSize(t, city: city), countryCode: country.code, state: probe, data: data)
-            return TradeAffordability(tradeID: t.id, cost: est?.total, available: available, blocked: est == nil ? "Cannot be priced here" : nil)
+            let least: Double? = est.map { $0.documents + $0.premises + $0.property + $0.wait + $0.registration + $0.shareCapital + $0.abroad }
+            return TradeAffordability(tradeID: t.id, cost: est?.total, minimum: least, available: available, blocked: est == nil ? "Cannot be priced here" : nil)
         }
         func rank(_ r: TradeAffordability) -> Int { r.blocked != nil ? 2 : (r.isFunded ? 0 : 1) }
         let order = Dictionary(uniqueKeysWithValues: data.catalog.all.enumerated().map { ($1.id, $0) })

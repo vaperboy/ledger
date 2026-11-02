@@ -85,12 +85,40 @@ struct TechProApp: View {
             .confirmAction($pending)
             .outsideScreen(P)
             .swipeBackEnabled(canStep: { step != .store }, step: { back() })
-            .safeAreaInset(edge: .top, spacing: 0) { band }
+            .safeAreaInset(edge: .top, spacing: 0) { VStack(spacing: 0) { band; if showsTabs { tabBar } } }
             .onAppear { start() }
             .onChange(of: store.appRequest) { _, _ in take() }
     }
 
     // MARK: Chrome
+
+    /// The four tabs under the band: the store front, every product in one list, what the company owns and its orders.
+    private var showsTabs: Bool { step == .store || step == .category || step == .owned || step == .orders }
+
+    private var tabBar: some View {
+        HStack(spacing: 6) {
+            tabButton("Store", on: step == .store) { step = .store }
+            tabButton("Products", on: step == .category) { shelf = .all; step = .category }
+            tabButton("My items", on: step == .owned) { step = .owned }
+            tabButton("My orders", on: step == .orders) { step = .orders }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 8).background(P.ground)
+    }
+
+    private func tabButton(_ title: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.choose()
+            action()
+        } label: {
+            Text(title).font(.system(size: 13.5, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                .foregroundStyle(on ? P.onAccent : P.ink)
+                .frame(maxWidth: .infinity, minHeight: 38)
+                .background(Capsule().fill(on ? P.accent : P.card))
+                .overlay(Capsule().strokeBorder(on ? P.accent : P.line, lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("tp-tab-\(title)")
+    }
 
     private var band: some View {
         ShopBand(title: "TechPro Store", glyph: Glyph.techPro, color: P.accent, onBack: { back() }, backLabel: step == .store ? "Back to Phone" : "Back") {
@@ -220,7 +248,6 @@ struct TechProApp: View {
                 categoryRow(needs)
                 dealsStrip(e, co, needs)
                 popular(e, co, needs)
-                ordersLinks(e, co)
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
         }
@@ -490,10 +517,12 @@ struct TechProApp: View {
     }
 
     private var sortChips: some View {
-        HStack(spacing: 6) {
-            ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
-                ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
-                    .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
+                    ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
+                        .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+                }
             }
         }
     }

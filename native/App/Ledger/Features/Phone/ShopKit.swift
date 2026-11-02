@@ -152,7 +152,8 @@ struct ShopChip: View {
                 Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(selected ? P.onAccent : P.ink)
-            .frame(maxWidth: .infinity, minHeight: 42)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 42)
             .background(Capsule().fill(selected ? P.accent : P.card))
             .overlay(Capsule().strokeBorder(selected ? P.accent : P.line, lineWidth: 1))
             .contentShape(Capsule())
