@@ -115,7 +115,7 @@ struct BankBillsTab: View {
                 ForEach(Array(o.taxes.enumerated()), id: \.element.id) { n, l in
                     FlatRow(label: l.label, value: fmt.full(l.amount), sub: l.detail.tidyMoney, rule: n > 0)
                 }
-                Text("Corporate tax is worked out on taxable profit, after losses carried forward. VAT is collected for the state and is not income. Tax leaves the account on its due date.")
+                Text("VAT is collected for the state and is not income.")
                     .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
             }
         }

@@ -340,7 +340,7 @@ struct TeamView: View {
     }
 
     private func badge(_ text: String) -> some View {
-        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).fixedSize()
+        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             .padding(.horizontal, 6).padding(.vertical, 1)
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }

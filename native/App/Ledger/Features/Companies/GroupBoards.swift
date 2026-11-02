@@ -303,7 +303,7 @@ struct BoardView: View {
             Spacer(minLength: 8)
             Button("Seat · \(store.short(fee)) a month") {
                 pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seat(p, fee: fee) }
-            }.buttonStyle(TinyButtonStyle()).fixedSize()
+            }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 
