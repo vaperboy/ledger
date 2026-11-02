@@ -22,6 +22,12 @@ targets:
       - path: Ledger
         excludes:
           - "Resources/art/cells/**"
+          # The five art sheets were sliced into cells and are not read at runtime: they stay in the repo but out of the release build (Stage 9).
+          - "Resources/art/cars-sheet.jpg"
+          - "Resources/art/logos-sheet.jpg"
+          - "Resources/art/luxury-sheet.jpg"
+          - "Resources/art/premises-sheet.jpg"
+          - "Resources/art/trophies-sheet.jpg"
       # The sliced art cells keep their folders (cells/<sheet>/<cell>.jpg and manifest.json), read by Design/ArtLibrary.swift.
       - path: Ledger/Resources/art/cells
         type: folder
