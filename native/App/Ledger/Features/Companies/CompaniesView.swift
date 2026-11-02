@@ -92,7 +92,10 @@ struct CompaniesView: View {
             let head: CGFloat = regular ? 66 : 27
             let pitch: CGFloat = regular ? 52 : Self.rowHeight + 5
             let minCompanies: CGFloat = cos.isEmpty ? 120 : head + CGFloat(min(2, cos.count)) * pitch - 5
-            let priorities: Int = max(1, min(3, Int(((total - 290 - 36 - 32 - 8 - minCompanies - 8) / 38).rounded(.down))))
+            let fixedParts: CGFloat = 290 + 36 + 32 + 8 + 8
+            let spare: CGFloat = total - fixedParts - minCompanies
+            let rowsFit: Int = Int((spare / 38).rounded(.down))
+            let priorities: Int = max(1, min(3, rowsFit))
             let mid: CGFloat = max(0, total - topHeight - 8)
             let fit = Self.companyFit(avail: mid, count: rows.count, head: head, pitch: pitch)
             VStack(alignment: .leading, spacing: 8) {
