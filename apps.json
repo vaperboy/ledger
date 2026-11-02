@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.19",
+          "buildVersion": "19",
+          "date": "2026-11-02T15:31:30Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v19/Ledger-unsigned.ipa",
+          "size": 23212150,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from\n- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed\n- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone\n- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas\n- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled\n- Team: Overview and a new Authority tab no longer repeat each other; Ventures lives in the Phone app and is linked from Group > Deals; Projects has four tabs\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels fol"
+        },
+        {
           "version": "1.0.18",
           "buildVersion": "18",
           "date": "2026-11-02T13:52:41Z",
@@ -145,10 +154,10 @@
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.18",
-      "versionDate": "2026-11-02T13:52:41Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v18/Ledger-unsigned.ipa",
-      "size": 23205379
+      "version": "1.0.19",
+      "versionDate": "2026-11-02T15:31:30Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v19/Ledger-unsigned.ipa",
+      "size": 23212150
     }
   ]
 }
