@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.17",
+          "buildVersion": "17",
+          "date": "2026-11-02T12:36:58Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v17/Ledger-unsigned.ipa",
+          "size": 23237650,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth\n- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still\n- Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list\n- Manage > Licences: apply for the licences that new things to sell need\n- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens\n- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it\n- A company about to be force-sold now shows a see-through red alert first\n- Answered decisions show a result card: what you chose, which company, and what changed\n- Loans: banks also lend against what a business is worth, not only its profit\n- Settings: \"How much I decide\" removed. Payroll, replacing leavers and complaints follow who you hir"
+        },
+        {
           "version": "1.0.16",
           "buildVersion": "16",
           "date": "2026-11-02T12:18:24Z",
@@ -127,10 +136,10 @@
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.16",
-      "versionDate": "2026-11-02T12:18:24Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v16/Ledger-unsigned.ipa",
-      "size": 23235546
+      "version": "1.0.17",
+      "versionDate": "2026-11-02T12:36:58Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v17/Ledger-unsigned.ipa",
+      "size": 23237650
     }
   ]
 }
