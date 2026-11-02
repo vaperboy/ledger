@@ -1,4 +1,5 @@
 # What's new
+- New systems show up inside existing screens: a growth path and Promote in the worker popup, brand value on Group and Sales, market research in Sales and Market, thank-you buttons and consequence lines in market news; realistic product and service options for every business type; market news is rarer and states what it costs you; competitors react when you undercut them; managers propose bigger premises; only managers hire
 - Summary screens (Team, Group, Projects, Phone home, Goals, Bank account) fit one screen and do not scroll; long lists scroll only vertically; the screen behind a popup is locked
 - Switching main tabs slides sideways like a pager, a tab-bar tap always opens that tab's root, taps cannot pass through during a swipe, and each tab keeps its own place when you swipe between them
 - Suppliers are grouped and compact with a details popup and one payment-terms control; TechPro has a chip for every real item family and more sort options; report figures count up
