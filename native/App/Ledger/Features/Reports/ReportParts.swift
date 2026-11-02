@@ -35,6 +35,18 @@ struct ReportTableRow: View {
     var third: String
     var thirdTint: Color = Theme.ivoryMuted
     var strong = false
+    /// The numbers behind the three columns (start, end, change) and their format: when given they count up instead of showing at once.
+    var nums: [Double] = []
+    var fmt: ReportFormat? = nil
+
+    @ViewBuilder private func cell(_ index: Int, _ text: String, tint: Color) -> some View {
+        if nums.count == 3, let fmt {
+            let render: (Double) -> String = index == 2 ? { (v: Double) -> String in fmt.signed(v) } : { (v: Double) -> String in fmt.short(v) }
+            CountedFigure(value: nums[index], format: render, tint: tint)
+        } else {
+            Text(text).foregroundStyle(tint)
+        }
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -43,11 +55,11 @@ struct ReportTableRow: View {
                 .foregroundStyle(strong ? Theme.ivory : Theme.ivoryMuted)
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(first).font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit()).foregroundStyle(Theme.ivory)
+            cell(0, first, tint: Theme.ivory).font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit())
                 .lineLimit(1).minimumScaleFactor(0.7).frame(width: 66, alignment: .trailing)
-            Text(second).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+            cell(1, second, tint: Theme.ivoryMuted).font(.system(size: 13.5).monospacedDigit())
                 .lineLimit(1).minimumScaleFactor(0.7).frame(width: 66, alignment: .trailing)
-            Text(third).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(thirdTint)
+            cell(2, third, tint: thirdTint).font(.system(size: 12.5).monospacedDigit())
                 .lineLimit(1).minimumScaleFactor(0.7).frame(width: 52, alignment: .trailing)
         }
         .padding(.vertical, 7)
@@ -79,11 +91,23 @@ struct ReportLine: View {
     var value: String
     var tint: Color = Theme.ivory
     var strong = false
+    /// The number behind `value` and its text: the figure counts up to it (see `CountedFigure`).
+    var live: Double? = nil
+    var liveText: ((Double) -> String)? = nil
+
+    @ViewBuilder private var figure: some View {
+        if let live, let liveText {
+            CountedFigure(value: live, format: liveText, tint: tint)
+        } else {
+            Text(value).foregroundStyle(tint)
+        }
+    }
+
     var body: some View {
         HStack {
             Text(label).font(.system(size: 13.5, weight: strong ? .semibold : .regular)).foregroundStyle(strong ? Theme.ivory : Theme.ivoryMuted)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit()).foregroundStyle(tint)
+            figure.font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit())
         }
         .padding(.vertical, 7)
         .accessibilityElement(children: .combine)

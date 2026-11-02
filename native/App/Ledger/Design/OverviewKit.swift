@@ -47,16 +47,27 @@ struct OverviewFigureCard: View {
     var noteTint: Color = Theme.ivoryMuted
     /// The number behind `value`: when it changes the figure rolls and flashes green or red. nil keeps the figure still.
     var live: Double? = nil
+    /// With `live`: the figure counts up to its value (from 0 the first time, from the old value when it changes) using this text.
+    var countFormat: ((Double) -> String)? = nil
+    var valueTint: Color = Theme.ivory
 
     var body: some View {
         Card(padding: 14, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.gold).lineLimit(1)
-                Text(value).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
+                figureText
                 Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(noteTint).lineLimit(2)
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var figureText: some View {
+        if let live, let countFormat {
+            CountedFigure(value: live, format: countFormat, tint: valueTint).font(.serifTitle(30)).lineLimit(1).minimumScaleFactor(0.6)
+        } else {
+            Text(value).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
+        }
     }
 }
 
@@ -80,6 +91,9 @@ struct OverviewRowData: Identifiable {
     var valueTint: Color = Theme.ivory
     var note: String = ""
     var noteTint: Color = Theme.ivoryFaint
+    /// The number behind `value` and its text: the value counts up to it (see `CountedFigure`) instead of showing at once.
+    var live: Double? = nil
+    var liveText: ((Double) -> String)? = nil
     var menu: [OverviewMenuItem] = []
     var action: () -> Void = {}
 }
@@ -97,6 +111,14 @@ struct OverviewRow: View {
         }
     }
 
+    @ViewBuilder private var valueView: some View {
+        if let live = row.live, let text = row.liveText {
+            CountedFigure(value: live, format: text, tint: row.valueTint).font(.system(size: 14).monospacedDigit())
+        } else {
+            Text(row.value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(row.valueTint)
+        }
+    }
+
     private var label: some View {
         HStack(spacing: 10) {
             IconCircle(glyph: row.glyph, size: 34)
@@ -109,7 +131,7 @@ struct OverviewRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 1) {
                 if !row.value.isEmpty {
-                    Text(row.value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(row.valueTint)
+                    valueView
                         .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                 }
                 if !row.note.isEmpty {

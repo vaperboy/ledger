@@ -31,11 +31,11 @@ struct ReportDigestSheet: View {
 
     private var sections: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            header
-            figures
-            list("Major changes", digest.changes, tint: Theme.ivory)
-            list("Risks", digest.risks, tint: Theme.caution)
-            decisions
+            header.staggerReveal(0)
+            figures.staggerReveal(1)
+            list("Major changes", digest.changes, tint: Theme.ivory).staggerReveal(2)
+            list("Risks", digest.risks, tint: Theme.caution).staggerReveal(3)
+            decisions.staggerReveal(4)
         }
     }
 
@@ -64,32 +64,32 @@ struct ReportDigestSheet: View {
         return Card(padding: 12, radius: Theme.Radius.hero) {
             VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
-                    figure("Revenue", store.short(digest.revenue), Theme.ivory)
-                    figure("Profit", signed(profit), Theme.change(profit))
+                    figure("Revenue", digest.revenue, Theme.ivory) { store.short($0) }
+                    figure("Profit", profit, Theme.change(profit)) { signed($0) }.profitGlow(profit)
                 }
                 HStack(alignment: .top, spacing: 12) {
-                    figure("Cash", store.short(digest.cashEnd), digest.cashEnd < 0 ? Theme.loss : Theme.ivory)
-                    figure("Debt", store.short(digest.debt), digest.debt > 0.5 ? Theme.loss : Theme.ivory)
+                    figure("Cash", digest.cashEnd, digest.cashEnd < 0 ? Theme.loss : Theme.ivory) { store.short($0) }
+                    figure("Debt", digest.debt, digest.debt > 0.5 ? Theme.loss : Theme.ivory) { store.short($0) }
                 }
                 HStack(alignment: .top, spacing: 12) {
-                    figure("Payroll", store.short(digest.payroll), Theme.ivory)
-                    figure("Taxes paid", store.short(digest.taxes), Theme.ivory)
+                    figure("Payroll", digest.payroll, Theme.ivory) { store.short($0) }
+                    figure("Taxes paid", digest.taxes, Theme.ivory) { store.short($0) }
                 }
                 Rectangle().fill(Theme.divider).frame(height: 1)
                 HStack {
                     Text("Net worth").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
                     Spacer()
-                    Text(store.short(digest.netWorthEnd)).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text(signed(digest.netWorthChange)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.change(digest.netWorthChange))
+                    CountedFigure(value: digest.netWorthEnd, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory).font(.system(size: 13.5, weight: .medium).monospacedDigit())
+                    CountedFigure(value: digest.netWorthChange, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(digest.netWorthChange)).font(.system(size: 12).monospacedDigit())
                 }
             }
         }
     }
 
-    private func figure(_ label: String, _ value: String, _ tint: Color) -> some View {
+    private func figure(_ label: String, _ value: Double, _ tint: Color, _ text: @escaping (Double) -> String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            Text(value).font(.system(size: 18, weight: .medium).monospacedDigit()).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
+            CountedFigure(value: value, format: text, tint: tint).font(.system(size: 18, weight: .medium).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

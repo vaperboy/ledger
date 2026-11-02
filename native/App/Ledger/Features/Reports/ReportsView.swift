@@ -90,7 +90,7 @@ struct ReportsContent: View {
     private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             hero(r).staggerReveal(0)
-            ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format).staggerReveal(1)
+            ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format).drawsItself(duration: 0.7).staggerReveal(1)
             story(r).staggerReveal(2)
             linesTable(r).staggerReveal(3)
             moreTable(r).staggerReveal(4)
@@ -137,9 +137,10 @@ struct ReportsContent: View {
             HStack(alignment: .top, spacing: 10) {
                 OverviewFigureCard(label: "Profit after tax", value: f.short(net),
                                    note: r.previous.map { "\(profitChange.text) vs \($0.title)" } ?? "Nothing earlier to compare with.",
-                                   noteTint: profitChange.tint, live: net)
+                                   noteTint: profitChange.tint, live: net, countFormat: f.short, valueTint: Theme.change(net))
+                    .profitGlow(net)
                 OverviewFigureCard(label: companyID == nil ? "Net worth" : "Your share's value", value: f.short(r.netWorthEnd.total),
-                                   note: worthNote, noteTint: Theme.change(worthChange), live: r.netWorthEnd.total)
+                                   note: worthNote, noteTint: Theme.change(worthChange), live: r.netWorthEnd.total, countFormat: f.short)
             }
             if let p = worthPrev, r.previous != nil {
                 Text("Net worth change before: " + f.signed(p)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
@@ -165,9 +166,10 @@ struct ReportsContent: View {
         let now = key.value(r.group.pnl)
         let before = r.previous.map { key.value($0.pnl) }
         let c = ReportChangeText(now: now, before: before, isCost: key.isCost, format: format)
+        let tint: Color = key.id == "net" ? Theme.change(now) : Theme.ivory
         return OverviewRowData(id: key.id, glyph: key.glyph, title: key.title, value: format.short(now),
-                               valueTint: key.id == "net" && now < 0 ? Theme.loss : Theme.ivory,
-                               note: c.text, noteTint: c.tint, action: { opened = .line(key) })
+                               valueTint: tint,
+                               note: c.text, noteTint: c.tint, live: now, liveText: format.short, action: { opened = .line(key) })
     }
 
     private func linesTable(_ r: PeriodReport) -> some View {
@@ -188,11 +190,11 @@ struct ReportsContent: View {
         var rows: [OverviewRowData] = []
         rows.append(OverviewRowData(id: "worth", glyph: Glyph.richList, title: companyID == nil ? "Net worth" : "Value of your share",
                                     subtitle: "Start, end and what moved it", value: f.signed(r.netWorthChange),
-                                    valueTint: Theme.change(r.netWorthChange), action: { opened = .worth }))
+                                    valueTint: Theme.change(r.netWorthChange), live: r.netWorthChange, liveText: f.signed, action: { opened = .worth }))
         rows.append(OverviewRowData(id: "cash", glyph: Glyph.bank, title: "Cash", subtitle: "Where the money went",
-                                    value: f.short(r.group.companyCashEnd), action: { opened = .cash }))
+                                    value: f.short(r.group.companyCashEnd), live: r.group.companyCashEnd, liveText: f.short, action: { opened = .cash }))
         rows.append(OverviewRowData(id: "people", glyph: Glyph.team, title: "Customers and people",
-                                    value: f.count(r.group.customers), action: { opened = .people }))
+                                    value: f.count(r.group.customers), live: r.group.customers, liveText: f.count, action: { opened = .people }))
         if companyID == nil && !r.companies.isEmpty {
             rows.append(OverviewRowData(id: "companies", glyph: Glyph.group, title: kind == .year ? "Ranking" : "Companies",
                                         subtitle: "Net profit and change", action: { opened = .companies }))
@@ -240,7 +242,7 @@ struct ReportsContent: View {
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(f.short(c.pnl.netProfit)).font(.system(size: 14).monospacedDigit()).foregroundStyle(c.pnl.netProfit < 0 ? Theme.loss : Theme.ivory)
+                                CountedFigure(value: c.pnl.netProfit, format: f.short, tint: c.pnl.netProfit < 0 ? Theme.loss : Theme.ivory).font(.system(size: 14).monospacedDigit())
                                 if let b = before {
                                     Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.change(c.pnl.netProfit - b))
                                 }
@@ -263,7 +265,7 @@ struct ReportsContent: View {
         let a = r.netWorthStart, b = r.netWorthEnd
         func row(_ label: String, _ x: Double, _ y: Double, debt: Bool = false, strong: Bool = false) -> some View {
             let d = y - x
-            return ReportTableRow(label: label, first: f.short(x), second: f.short(y), third: f.signed(d), thirdTint: abs(d) < 0.5 ? Theme.ivoryMuted : Theme.change(debt ? -d : d), strong: strong)
+            return ReportTableRow(label: label, first: f.short(x), second: f.short(y), third: f.signed(d), thirdTint: abs(d) < 0.5 ? Theme.ivoryMuted : Theme.change(debt ? -d : d), strong: strong, nums: [x, y, d], fmt: f)
         }
         return CardSection(companyID == nil ? "Net worth" : "Value of your share") {
             VStack(spacing: 0) {
@@ -288,22 +290,22 @@ struct ReportsContent: View {
         let f = format
         let g = r.group
         func line(_ label: String, _ v: Double) -> some View {
-            ReportLine(label: label, value: f.signed(v), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v))
+            ReportLine(label: label, value: f.signed(v), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v), live: v, liveText: f.signed)
         }
         let other = g.companyCashEnd - g.companyCashStart - g.ownerIn + g.ownerOut - g.loansTaken + g.loansRepaid
         return CardSection("Cash") {
             VStack(spacing: 0) {
                 if companyID == nil {
-                    ReportLine(label: "Your account at start", value: f.short(g.accountStart))
+                    ReportLine(label: "Your account at start", value: f.short(g.accountStart), live: g.accountStart, liveText: f.short)
                     ForEach(g.accountFlows.filter { abs($0.amount) >= 0.5 }) { fl in
                         CardLine()
                         line(fl.label, fl.amount)
                     }
                     CardLine()
-                    ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true)
+                    ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true, live: g.accountEnd, liveText: f.short)
                     CardLine().padding(.vertical, 6)
                 }
-                ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart))
+                ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart), live: g.companyCashStart, liveText: f.short)
                 if g.ownerIn != 0 { CardLine(); line("Put in by you", g.ownerIn) }
                 if g.ownerOut != 0 { CardLine(); line("Paid out to you (dividends, drawings)", -g.ownerOut) }
                 if g.loansTaken != 0 { CardLine(); line("Loans taken", g.loansTaken) }
@@ -311,7 +313,7 @@ struct ReportsContent: View {
                 CardLine()
                 line("Trading, tax, equipment and other", other)
                 CardLine()
-                ReportLine(label: companyID == nil ? "Company cash at end" : "Cash at end", value: f.short(g.companyCashEnd), strong: true)
+                ReportLine(label: companyID == nil ? "Company cash at end" : "Cash at end", value: f.short(g.companyCashEnd), strong: true, live: g.companyCashEnd, liveText: f.short)
             }
         }
     }
@@ -323,7 +325,7 @@ struct ReportsContent: View {
         let g = r.group
         return CardSection("Customers and people") {
             VStack(spacing: 0) {
-                ReportLine(label: "Customers served", value: f.count(g.customers))
+                ReportLine(label: "Customers served", value: f.count(g.customers), live: g.customers, liveText: f.count)
                 CardLine()
                 ReportLine(label: "Capacity used", value: f.share(g.capacityUse))
                 CardLine()
