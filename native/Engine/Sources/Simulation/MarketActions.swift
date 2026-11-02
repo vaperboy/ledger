@@ -30,7 +30,15 @@ public extension GameEngine {
 
     // MARK: Equipment market
 
-    func equipmentNeeds(companyID: Int) -> [EquipmentMarket.Need] { EquipmentMarket.needs(state, companyID: companyID, data: data) }
+    func equipmentNeeds(companyID: Int) -> [EquipmentMarket.Need] {
+        guard let co = state.company(companyID) else { return [] }
+        let eq: Double = co.value("eq").object.values.reduce(0) { $0 + $1["n"].double }
+        let key = "\(companyID)|\(state.week)|\(state.day)|\(co.cash)|\(eq)|\(co.value("veh").array.count)|\(co.value("lease").object.count)|\(co.value("units").object.count)|\(co.value("sub").object.count)|\(co.value("sw").object.count)"
+        if let hit = needsMemo.get(companyID, key) { return hit }
+        let list = EquipmentMarket.needs(state, companyID: companyID, data: data)
+        needsMemo.set(companyID, key, list)
+        return list
+    }
     func equipmentOffers(companyID: Int, equipmentID: String) -> [EquipmentMarket.Offer] { EquipmentMarket.offers(state, companyID: companyID, equipmentID: equipmentID, data: data) }
     func vehicleOffers(companyID: Int, equipmentID: String) -> [EquipmentMarket.VehicleOffer] { EquipmentMarket.vehicleOffers(state, companyID: companyID, equipmentID: equipmentID, data: data) }
     func usedListings(companyID: Int, equipmentID: String) -> [EquipmentMarket.UsedOffer] {

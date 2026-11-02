@@ -38,6 +38,7 @@ final class StageSixToNineTests: XCTestCase {
         let offer = try XCTUnwrap(e.equipmentOffers(companyID: id, equipmentID: foreign.equipmentID).first)
         XCTAssertEqual(e.buyEquipmentItem(companyID: id, equipmentID: foreign.equipmentID, offer: offer, quantity: 1, payment: .cash), .ok)
         XCTAssertTrue(e.ownedEquipment(companyID: id).contains { $0.equipmentID == foreign.equipmentID }, "it shows in My items")
+        XCTAssertEqual(e.equipmentNeeds(companyID: id).first { $0.equipmentID == foreign.equipmentID }?.have ?? 0, 1, "the store list is not stale after a purchase")
         XCTAssertGreaterThan(e.sellAllEquipment(companyID: id, equipmentID: foreign.equipmentID), 0, "and it can be sold")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }

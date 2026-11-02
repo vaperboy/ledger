@@ -192,11 +192,11 @@ struct TechProApp: View {
 
     /// The companies that buy equipment: live ones with something to buy.
     private func shoppers(_ e: GameEngine) -> [Company] {
-        e.state.companies.filter { (c: Company) -> Bool in c.status.isLive && !e.equipmentNeeds(companyID: c.id).isEmpty }
+        e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
     }
 
     private func current(_ e: GameEngine) -> Company? {
-        if let c = e.state.company(companyID), c.status.isLive, !e.equipmentNeeds(companyID: c.id).isEmpty { return c }
+        if let c = e.state.company(companyID), c.status.isLive { return c }
         return shoppers(e).first
     }
 

@@ -27,6 +27,9 @@ public struct GameEngine {
     public let context: FinanceContext
     public let events: EventLibrary
     public let marketing: MarketingTables
+    /// The TechPro Store lists every item in the game for every company: working out all those prices is the slow part of a screen, so the
+    /// result is kept per company until the day, the company's cash or what it owns changes (a reference, shared by the copies of the engine).
+    let needsMemo = NeedsMemo()
 
     public init(state: GameState, data: GameData, events: EventLibrary, marketing: MarketingTables) {
         var state = state
