@@ -27,7 +27,7 @@ struct FranchisesView: View {
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .ledgerBackground()
             .appScreen(title: "Franchises", subtitle: "Brands that take franchisees", tab: .group)
         }
@@ -164,7 +164,7 @@ struct BrandMeetingView: View {
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .ledgerBackground()
             .appScreen(title: b.name, subtitle: "\(b.tierDescription) · \(FranchiseBrands.brandWord(b.strength))", tab: .group)
         }
@@ -337,7 +337,7 @@ struct StartFranchisedView: View {
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .ledgerBackground()
             .appScreen(title: "Start under \(b.name)", subtitle: "Entry fee \(cur.tidyShort(t.fee)) · royalty \(Currency.percent(t.royalty, decimals: 1)) · marketing \(Currency.percent(t.marketing, decimals: 0)) · \(b.termYears) years", tab: .group)
             .confirmAction($pending)

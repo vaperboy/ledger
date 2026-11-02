@@ -199,7 +199,7 @@ private struct JobList: View {
                 Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
-                SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex).padding(.horizontal, -Theme.Space.margin)
+                SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
                 }.tint(Theme.gold)
@@ -313,7 +313,7 @@ private struct DevelopmentList: View {
         let size = sizes[sizeIndex].factor
         let q = engine.developmentQuote(companyID: company.id, size: size, financed: financed)
         return VStack(alignment: .leading, spacing: 9) {
-            SectionTabs(items: Array(sizes.indices), title: { sizes[$0].name }, selection: $sizeIndex).padding(.horizontal, -Theme.Space.margin)
+            SectionTabs(items: Array(sizes.indices), title: { sizes[$0].name }, selection: $sizeIndex)
             Toggle(isOn: $financed) { Text("Construction loan (up to 70% of the building)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }.tint(Theme.gold)
             if let q {
                 row("Land", store.short(q.land, in: company))

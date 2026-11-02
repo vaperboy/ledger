@@ -418,7 +418,7 @@ private struct FoundStartupSheet: View {
                     .padding(.horizontal, 18).padding(.bottom, 30)
                 }
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
         }
         .ledgerBackground()
         .confirmAction($pending)
@@ -831,7 +831,7 @@ private struct StartupLaunchSheet: View {
                 }
                 .padding(.horizontal, 18).padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
         }
         .ledgerBackground()
         .onAppear { priceStep = 2 }

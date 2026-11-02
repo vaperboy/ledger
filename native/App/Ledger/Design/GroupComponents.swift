@@ -32,7 +32,6 @@ struct AuthorityPicker: View {
         case .full:
             VStack(alignment: .leading, spacing: 6) {
                 SectionTabs(items: [0, 1, 2], title: { AuthorityWords.label($0) }, selection: Binding(get: { lvl }, set: { setLevel($0) }))
-                    .padding(.horizontal, -Theme.Space.margin)
                 Text(AuthorityWords.consequence(lvl)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 limitMenu(lvl).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
             }

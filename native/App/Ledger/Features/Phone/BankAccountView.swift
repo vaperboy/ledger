@@ -292,7 +292,7 @@ struct BankAllMovementsSheet: View {
                     }.padding(Theme.Space.margin)
                 }
             }
-            .ledgerBackground()
+            .noSidewaysDrag().ledgerBackground()
             .navigationTitle("Every movement").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }

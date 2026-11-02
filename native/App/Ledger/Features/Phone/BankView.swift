@@ -161,7 +161,7 @@ struct RepayPersonalLoanSheet: View {
                     Text("This loan is paid off.").foregroundStyle(P.inkSoft).padding()
                 }
             }
-            .ledgerBackground()
+            .noSidewaysDrag().ledgerBackground()
             .navigationTitle("Pay back").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }

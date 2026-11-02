@@ -90,7 +90,7 @@ struct BankMoveSheet: View {
                     .padding(Theme.Space.margin)
                 }
             }
-            .ledgerBackground()
+            .noSidewaysDrag().ledgerBackground()
             .navigationTitle(kind.title).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .confirmAction($pending)
@@ -242,7 +242,7 @@ struct BankPaySheet: View {
                         .padding(Theme.Space.margin)
                 }
             }
-            .ledgerBackground()
+            .noSidewaysDrag().ledgerBackground()
             .navigationTitle("Pay bill").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }

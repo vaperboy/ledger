@@ -35,7 +35,7 @@ struct ChainView: View {
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()
             .appScreen(title: sum.name, subtitle: subtitle(e, sum), tab: .group) {

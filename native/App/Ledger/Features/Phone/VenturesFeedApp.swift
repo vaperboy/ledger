@@ -29,7 +29,7 @@ struct VenturesFeedApp: View {
                 .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 40)
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.hidden).noSidewaysDrag()
             .outsideScreen(P)
             .confirmAction($pending)
             .accessibilityIdentifier("ventures-app")
