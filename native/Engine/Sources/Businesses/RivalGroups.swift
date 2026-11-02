@@ -367,6 +367,10 @@ public enum RivalGroups {
             let cn = data.countries[cc]?.name ?? cc
             logMove(&g, week: week, "Entered \(cn)"); save()
             s.news("\(name) expands into \(cn).", tone: myCountries(s).contains(cc) ? "bad" : "n")
+            if myCountries(s).contains(cc) {   // a rival group newly in a country where you trade (it was not there before: the pool excludes its countries)
+                let mine: Int? = s.companies.first(where: { $0.status.isLive && $0.countryCode == cc })?.id
+                MarketEvents.log(&s, .newCountry, title: "\(name) enters \(cn)", detail: "A rival group has started competing in \(cn).", companyID: mine, tone: "bad")
+            }
             return true
         case "poach":
             // Try to hire your best manager away: they ask you to match, pay a bonus or let them go.
