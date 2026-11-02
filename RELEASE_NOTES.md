@@ -1,4 +1,5 @@
 # What's new
+- Sales lists your own products and services (named for your company): tap one for a price slider with live, unrounded numbers, per-item discounts and how it is sold; lower prices raise demand; add a new product or service; Marketing is a popup; Pricing and How you sell are gone. Items can be listed for your other companies in TechPro, with the profit going to the selling company
 - Net-worth milestones (100k, 250k, 500k, 1M and on) and profit-streak awards (4, 8, 13, 26, 52 weeks) pop up as celebrations
 - TechPro store is a grid of product groups; opening one shows its suppliers as boxes, and every product has its own page
 - Money figures count up and flash green when they rise and red when they fall (home, group, reports, bank, team, company cash); switching tabs slides and fades instead of jumping
