@@ -94,6 +94,4 @@ struct CompanySales: View {
         return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", opens: .sheet, glyph: Glyph.opsMega) { showMarketing = true }
     }
 
-    // MARK: Development, named for the trade
-
 }

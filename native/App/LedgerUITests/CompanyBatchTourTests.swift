@@ -1,6 +1,6 @@
 import XCTest
 
-/// Tours of the Company screens batch: the one Pricing screen, the How-you-sell popup, Stats (Finances, Performance, Customers), the Overview
+/// Tours of the Company screens batch: the Sales popups (item price, Marketing), Stats (Finances, Performance, Customers), the Overview
 /// boxes, and the Reviews and Market apps of the Phone. Pictures are numbered from 90. Every part is its own short test (each stays well under
 /// 100 s) and every step is optional: a screen that is not reachable on this device is noted, never failed.
 class CompanyBatchTourCase: FinanceTourCase {
@@ -18,21 +18,28 @@ class CompanyBatchTourCase: FinanceTourCase {
     }
 }
 
-/// Sales: the Pricing screen (a normal pushed screen) and the How-you-sell popup (a sheet with choices and their cost only).
+/// Sales: the products table, an item's price popup (centred, with "How it is sold" under it) and the Marketing popup.
 final class CompanySalesTourTests: CompanyBatchTourCase {
-    func testPricingAndHowYouSell() {
+    /// Closes a centred popup by tapping the dimmed area above it.
+    func closePopup() {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
+        sleep(1)
+    }
+
+    func testSalesItemAndMarketingPopups() {
         guard openFirstCompany() else { return }
         guard tapID("company-tab-sales") else { return }
         shot("90-sales")
-        if tapLabel("Pricing") || tapContaining("Pricing") {
-            shot("91-pricing")
+        if tapContaining("vs market") || tapContaining("At market") {
+            shot("91-sales-item-popup")
+            XCTAssertTrue(app.descendants(matching: .any)["sales-item-price"].waitForExistence(timeout: 3), "the item popup shows the price")
             app.swipeUp(); sleep(1)
-            shot("91-pricing-lower")
-            goBack()
+            shot("92-how-it-is-sold")
+            closePopup()
         }
-        if tapID("sales-how-you-sell") || tapContaining("How you sell") {
-            shot("92-how-you-sell-popup")
-            tapLabel("Done")
+        if tapLabel("Marketing") || tapContaining("Marketing") {
+            shot("92-marketing-popup")
+            closePopup()
         }
     }
 }
