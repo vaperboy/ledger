@@ -21,7 +21,7 @@ struct WorkerProfileSheet: View {
     @State private var discussing = false
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             Group {
                 if let e = store.engine, let co = e.state.company(companyID), let p = e.workerProfile(companyID: companyID, employeeID: employeeID) {
                     content(e, co, p)

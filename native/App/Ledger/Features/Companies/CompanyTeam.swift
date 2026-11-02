@@ -7,8 +7,8 @@ import Simulation
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
     case targets = "Goals"
-    /// The pages of the new Team tab: the hire flow and the perks list (both pushed, nothing rises from the bottom).
-    case hire = "Hire workers", perks = "Perks"
+    /// The hire flow page (pushed). Perks is a popup on the Team page, not a page.
+    case hire = "Hire workers"
     var id: String { rawValue }
 }
 
@@ -19,6 +19,7 @@ struct CompanyTeam: View {
     var engine: GameEngine
     var company: Company
     @State private var page: TeamPage?
+    @State private var showPerks = false
 
     /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
     @ViewBuilder private var delegation: some View {
@@ -49,6 +50,7 @@ struct CompanyTeam: View {
             settingsTable
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
+        .centerSheet(isPresented: $showPerks) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
     }
 
     // MARK: Header and places
@@ -82,7 +84,7 @@ struct CompanyTeam: View {
         let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on · " + cur.tidyShort(perksCost) + " a month"
         return SettingsTable(heading: "Team matters") {
             SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
-            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { page = .perks }
+            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { showPerks = true }
         }
     }
 }
@@ -98,8 +100,6 @@ struct TeamPageDestination: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             if page == .hire {
                 HireWorkersView(companyID: companyID)
-            } else if page == .perks {
-                CompanyPerksPopup(companyID: companyID, onClose: { dismiss() }).appScreen(title: "Perks", subtitle: co.name, tab: .company)
             } else {
                 SettingsPage(title: page.rawValue, subtitle: co.name) { content(e, co) }
             }
@@ -111,7 +111,7 @@ struct TeamPageDestination: View {
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch page {
         case .targets: CompanyTargetsCard(engine: e, company: co)
-        case .hire, .perks: EmptyView()
+        case .hire: EmptyView()
         }
     }
 }

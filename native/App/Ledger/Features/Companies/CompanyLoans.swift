@@ -74,7 +74,7 @@ struct RepayLoanSheet: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let cash = store.engine?.state.company(company.id)?.cash ?? company.cash
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     KeyFigures(items: [

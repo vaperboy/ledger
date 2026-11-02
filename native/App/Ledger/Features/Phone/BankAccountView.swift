@@ -278,7 +278,7 @@ struct BankAllMovementsSheet: View {
     @Environment(\.dismiss) private var dismiss
     var account: BankAccountID
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine {
                     let fmt = BankFmt.make(store, account)

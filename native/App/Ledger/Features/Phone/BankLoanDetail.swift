@@ -20,7 +20,7 @@ struct LoanDetailSheet: View {
     @State private var talk: String = ""
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }), let rec = record(e, l) {
                     content(e, rec)

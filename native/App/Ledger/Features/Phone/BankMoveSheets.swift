@@ -75,7 +75,7 @@ struct BankMoveSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine {
                     let legs: [Leg] = makeLegs(e)
@@ -235,7 +235,7 @@ struct BankPaySheet: View {
     var account: BankAccountID
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let d = e.bankAccount(account) {
                     BankBillsList(account: account, upcoming: d.upcoming, cash: d.balance)

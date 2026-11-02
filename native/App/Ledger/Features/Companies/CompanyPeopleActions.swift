@@ -283,17 +283,13 @@ struct CompanyPerksPopup: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
-            GamePopup(title: "Perks", onClose: onClose) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
-                        .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    ScrollView {
-                        VStack(spacing: 0) { perkRows(e, co, cur) }
-                    }
-                    .scrollIndicators(.hidden)
-                    .frame(maxHeight: 420)
-                }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Perks").font(.serifTitle(20)).foregroundStyle(P.ink).padding(.trailing, 44).accessibilityAddTraits(.isHeader)
+                Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
+                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 0) { perkRows(e, co, cur) }
             }
+            .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 10)
         } else {
             Color.clear.onAppear { onClose() }
         }

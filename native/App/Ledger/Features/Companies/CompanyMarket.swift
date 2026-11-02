@@ -238,7 +238,7 @@ struct RivalSheet: View {
     @State private var pendingPrice: Double?
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let co = e.state.company(companyID), let d = e.rivalDetail(companyID: companyID, rivalID: rivalID) {
                     content(e, co, d)

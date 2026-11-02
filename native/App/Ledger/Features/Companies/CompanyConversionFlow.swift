@@ -17,7 +17,7 @@ struct ConversionSheet: View {
     @State private var done: String?
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let e = store.engine, let co = e.state.company(companyID) {

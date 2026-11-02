@@ -158,7 +158,7 @@ struct ExpansionForm: View {
     var body: some View {
         let cur: Currency = engine.currency(for: company)
         let plan: Development.Plan? = engine.developmentPlan(companyID: company.id, project: project.id)
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text(project.text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)

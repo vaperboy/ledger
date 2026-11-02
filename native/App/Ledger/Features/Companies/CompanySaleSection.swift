@@ -126,7 +126,7 @@ struct BuyerTalkSheet: View {
     @State private var ask = 0.0
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let co = e.state.company(companyID), let o = CompanySale.listing(e.state, companyID: companyID)?.offers.first(where: { $0.id == offerID }) {
                     let cur = e.currency(for: co)

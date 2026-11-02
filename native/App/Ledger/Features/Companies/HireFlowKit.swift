@@ -244,7 +244,7 @@ struct HireFlowSheet: View {
     private var isWorker: Bool { if case .worker = request.post { return true }; return false }
     /// Workers get the one-page terms and salary talk; the other posts keep the two pages.
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             if isWorker { HireOnePage(request: request) } else { HireTermsPage(request: request) }
         }
     }

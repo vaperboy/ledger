@@ -43,7 +43,7 @@ struct AcquisitionSheet: View {
     private func ownsCompany(_ k: AcquisitionPlan.Kind) -> Bool { k == .own || k == .branch || k == .ownBank }
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let co = e.state.company(companyID), let r = Rivals.rivals(e.state, for: co).first(where: { $0.id == rivalID }), let plan = e.acquisitionPlan(companyID: companyID, rivalID: rivalID, price: price) {
                     let cur = e.currency(for: co)

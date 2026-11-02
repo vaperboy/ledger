@@ -48,7 +48,7 @@ struct DecidesSheet: View {
                 }
                 choices(kind, e, co)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, 22).padding(.bottom, 40)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, 18).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

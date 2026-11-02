@@ -124,7 +124,7 @@ struct RepayPersonalLoanSheet: View {
     @State private var amount = 0.0
 
     var body: some View {
-        NavigationStack {
+        PopupNavStack {
             ScrollView {
                 if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) {
                     let cur = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
