@@ -26,6 +26,7 @@ struct CompanySales: View {
         let items: [SalesItem] = engine.salesItems(companyID: company.id)
         let service: Bool = !items.isEmpty && items.allSatisfy { (i: SalesItem) -> Bool in i.isService }
         return VStack(spacing: Theme.Space.m) {
+            trendCard
             itemsCard(items, service: service)
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
@@ -41,6 +42,11 @@ struct CompanySales: View {
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
         }
+    }
+
+    @ViewBuilder private var trendCard: some View {
+        let trend: MarketTrend = engine.marketTrend(companyID: company.id)
+        if trend.points.count >= 2 { MarketTrendCard(trend: trend) }
     }
 
     // MARK: Your products / services

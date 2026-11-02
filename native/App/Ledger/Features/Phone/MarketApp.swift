@@ -50,7 +50,10 @@ struct MarketApp: View {
         if let co = chosen {
             CompanyMarket(engine: e, company: co)
         } else {
-            MarketView()
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                MarketEventRows(events: MarketEventRows.relevant(e, companyID: nil))
+                MarketView()
+            }
         }
     }
 

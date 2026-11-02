@@ -127,6 +127,10 @@ final class GameStore: ObservableObject {
     @Published private(set) var lastDayChanges = DayChanges()
     /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
     @Published private(set) var paymentNotice: PaymentNotice?
+    /// Highest market event id already seen (nil = not read yet), so only new events become banners.
+    var marketSeen: Int?
+    /// A worker's profile opened from a Recognition banner.
+    @Published var workerPopup: WorkerPopupRef?
     /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
     @Published private(set) var homeEvents: [HomeEvent] = []
     private func logEvents(_ items: [HomeEvent]) {
@@ -257,6 +261,7 @@ final class GameStore: ObservableObject {
 
     private func advanceOneDay() {
         guard var e = engine else { return }
+        let seenBefore: Int = marketSeen ?? (e.marketEvents(limit: 1).first?.id ?? 0)
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
@@ -279,12 +284,17 @@ final class GameStore: ObservableObject {
         let debtAfter: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         lastDayChanges = DayChanges(netWorth: daily.netWorthChange ?? 0, cash: daily.cashChange ?? 0, revenue: daily.revenue, debt: debtAfter - debtBefore)
         // A major payment (the day's takings above 1.5 percent of net worth): one small notice per day, never blocking.
-        if let nwNow = e.dayHistory.netWorth.last, daily.revenue > 0, daily.revenue >= max(1, nwNow) * 0.015, !out.gameOver {
-            paymentNotice = PaymentNotice(amount: daily.revenue, from: daily.bestCompany ?? "Customers")
-            banner("Payment received", body: "+" + short(daily.revenue) + " \u{00B7} " + (daily.bestCompany ?? "Customers"), glyph: Glyph.ovCoin)
+        var todaysPayment: PaymentNotice?
+        if !out.gameOver, let p = bigPayment(e) {
+            let notice = PaymentNotice(amount: p.amount, from: p.from)
+            todaysPayment = notice
+            paymentNotice = notice
+            banner("Payment received", body: "+" + short(p.amount, in: p.company) + " \u{00B7} " + p.from, glyph: Glyph.ovCoin)
         }
+        if !out.gameOver { postMarketBanners(e, after: seenBefore) }
+        marketSeen = e.marketEvents(limit: 1).first?.id ?? seenBefore
         var logged: [HomeEvent] = []
-        if let n = paymentNotice, n.amount == daily.revenue { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
+        if let n = todaysPayment { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
         if lastDayChanges.debt < -0.5 { logged.append(HomeEvent(glyph: Glyph.bank, text: "Loans repaid by \(short(-lastDayChanges.debt))", day: daily.dateLabel)) }
         for line in daily.wentWell.prefix(2) { logged.append(HomeEvent(glyph: Glyph.check, text: line.tidyMoney, day: daily.dateLabel)) }
         for c in celebrations.prefix(2) { logged.append(HomeEvent(glyph: Glyph.achievements, text: c.title, day: daily.dateLabel)) }
@@ -683,7 +693,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; marketSeen = nil; banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {

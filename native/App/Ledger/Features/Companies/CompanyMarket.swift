@@ -41,6 +41,7 @@ struct CompanyMarket: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             position
+            MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id))
             rivals
         }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
