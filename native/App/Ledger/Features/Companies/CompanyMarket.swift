@@ -585,7 +585,7 @@ struct MarketDetailView: View {
                         Text("Without an analyst you only have a feeling about the market.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
             } else {
                 Text("You are no longer in this market.").foregroundStyle(Theme.ivoryMuted).padding()
             }

@@ -29,10 +29,6 @@ struct MarketingSheet: View {
             header(active: active, total: total, cur: cur)
             if channels.isEmpty {
                 Text("No marketing channels are open yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
-            } else if channels.count > 8 {
-                ScrollView { channelList(e, channels, cur: cur, mkt: mkt) }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .frame(maxHeight: 520)
             } else {
                 channelList(e, channels, cur: cur, mkt: mkt)
             }

@@ -11,7 +11,7 @@ struct ReportsScreen: View {
         if let e = store.engine {
             ScrollView {
                 ReportsContent(engine: e, companyID: companyID)
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")

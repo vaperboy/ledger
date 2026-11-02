@@ -58,7 +58,7 @@ struct HireWorkersView: View {
                 runningSection(e, co)
                 applicantsSection(e, co, cur, roles)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

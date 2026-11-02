@@ -90,7 +90,7 @@ struct CompanyDetailView: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         content(current, co, e)
                     }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 40)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
                     .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden)

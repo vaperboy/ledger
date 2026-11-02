@@ -40,7 +40,7 @@ struct DecidesSheet: View {
     }
 
     private func content(_ e: GameEngine, _ co: Company) -> some View {
-        ScrollView {
+        Group {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(kind.rawValue).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
@@ -51,7 +51,6 @@ struct DecidesSheet: View {
             .padding(.horizontal, Theme.Space.margin).padding(.top, 18).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .ledgerBackground()
     }
 

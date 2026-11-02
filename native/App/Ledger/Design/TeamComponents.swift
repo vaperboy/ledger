@@ -92,7 +92,7 @@ struct PeopleSheet<Content: View>: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) { content() }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.interactively)
             .ledgerBackground()

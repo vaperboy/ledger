@@ -23,7 +23,7 @@ struct RivalGroupProfileView: View {
                     competes(e, g)
                     moves(g)
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             } else {
                 NoteCard(text: "This group no longer exists.", glyph: Glyph.info).padding(18)

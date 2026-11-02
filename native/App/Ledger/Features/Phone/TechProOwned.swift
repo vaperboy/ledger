@@ -21,7 +21,7 @@ struct TechProOwnedView: View {
                     content(e, co)
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .confirmAction($pending)
         .accessibilityIdentifier("tp-owned")

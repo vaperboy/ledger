@@ -26,7 +26,7 @@ struct VenturesFeedApp: View {
                     feedLabel("More ventures", note: "")
                     VenturesContent(hidesBacking: true)
                 }
-                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()

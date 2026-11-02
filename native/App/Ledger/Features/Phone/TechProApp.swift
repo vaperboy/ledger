@@ -264,7 +264,7 @@ struct TechProApp: View {
                 dealsStrip(e, co, needs)
                 popular(e, co, needs)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-store")
     }
@@ -470,7 +470,7 @@ struct TechProApp: View {
                     ForEach(needs) { (n: EquipmentMarket.Need) in tile(e, co, n) }
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-category")
     }
@@ -588,7 +588,7 @@ struct TechProApp: View {
                 if !basket.isEmpty { basketTotals(due) }
                 basketButtons(e, co, broken)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-basket")
     }
@@ -665,7 +665,7 @@ struct TechProApp: View {
                 totalsSection(chosen)
                 payButton(e, chosen)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-checkout-page")
     }
@@ -790,7 +790,7 @@ struct TechProApp: View {
                     .disabled(holder.isEmpty || number.isEmpty)
                     .accessibilityIdentifier("tp-continue")
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-payment")
     }
@@ -920,7 +920,7 @@ struct TechProApp: View {
                 }
                 ForEach(Array(all.enumerated()), id: \.offset) { _, x in orderCard(x.company, x.order) }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-orders")
     }

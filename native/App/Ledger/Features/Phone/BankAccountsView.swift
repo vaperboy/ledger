@@ -39,7 +39,7 @@ struct BankAccountsScreen: View {
                     Text("Loans belong to the account they were taken for. Open an account and choose Loans.")
                         .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)

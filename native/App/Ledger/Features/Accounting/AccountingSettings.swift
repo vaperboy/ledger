@@ -38,7 +38,7 @@ struct AcctSettings: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -105,7 +105,7 @@ struct AcctAccessDetail: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -230,7 +230,7 @@ struct AcctAddUser: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

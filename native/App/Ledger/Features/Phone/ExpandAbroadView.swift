@@ -24,7 +24,7 @@ struct ExpandAbroadView: View {
                         companyList(list, showSearch: all.count > 6)
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -89,7 +89,7 @@ struct AbroadOptionsView: View {
                     Text("Brand carried over: about 55% of the reputation and 40% of the awareness of \(co.name). Each country you operate in sets new rules from time to time; a head-office desk for that country handles them, without one a late change is fined.")
                         .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)

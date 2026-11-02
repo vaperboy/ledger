@@ -27,7 +27,7 @@ struct CompanyCoverageScreen: View {
                     providers(e, co, o, .law, "Law firm", cur, empty: "No law firm on retainer. Legal matters are handled at full cost.")
                     providers(e, co, o, .accountant, "Accountant", cur, empty: "No accountant chosen.")
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()

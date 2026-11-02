@@ -91,7 +91,7 @@ struct TechProSuppliers: View {
                     ForEach(rows) { (r: Row) in box(r) }
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-suppliers")
     }

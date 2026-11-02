@@ -75,7 +75,7 @@ struct ReviewsApp: View {
                     }
                 }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

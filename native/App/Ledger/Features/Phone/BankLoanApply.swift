@@ -37,7 +37,7 @@ struct BankLoanApplyFlow: View {
                 StepDots(step: step, count: Self.stepCount, labels: ["Apply", "Offer", "Choose", "Agreement", "Confirm"]).padding(.bottom, 8)
                 ScrollView {
                     stepContent(e, a, q, cur)
-                        .padding(.horizontal, 18).padding(.bottom, 40)
+                        .padding(.horizontal, 18).padding(.bottom, 20)
                         .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).noSidewaysDrag()

@@ -27,7 +27,7 @@ struct WeatherApp: View {
                     WeatherHourlyCard(engine: e, country: cc)
                     WeatherCompaniesCard(engine: e, country: cc)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)

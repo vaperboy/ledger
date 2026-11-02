@@ -58,7 +58,7 @@ struct TechProProduct: View {
                 if modes.count > 1 { modePicker(modes, current, one: one, subscription: need.subscription) }
                 options(e, co, need, current, cur, one: one)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .confirmAction($pendingOwn)
     }

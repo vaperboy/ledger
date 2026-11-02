@@ -100,7 +100,7 @@ struct AtlasApp: View {
                     homeButtons(e, co, o)
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("atlas-home")
     }
@@ -285,7 +285,7 @@ struct AtlasApp: View {
                 paymentCard(co, companies)
                 confirmBlock(e, co, o, p, cur)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         })
     }
 

@@ -52,7 +52,7 @@ struct AcctTransactions: View {
                         AcctLocked(section: "Transactions")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -161,7 +161,7 @@ struct AcctTransactionDetail: View {
                                    message: "Older rows are folded together as the ledger grows. Go back to the list.")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

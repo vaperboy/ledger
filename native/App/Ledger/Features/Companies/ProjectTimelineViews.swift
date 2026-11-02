@@ -54,7 +54,7 @@ struct ProjectTimelineDetail: View {
                         GroupLinkRow(title: "Open \(co.name) > Projects", sub: line.kind == .tender ? "Bid, or withdraw a bid, there." : "Hold, price or review the order book there.")
                     }.buttonStyle(PressableStyle())
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             } else {
                 VStack(spacing: 8) {

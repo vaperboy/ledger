@@ -139,7 +139,7 @@ struct AirStayApp: View {
                 ShopHeading(text: "Recommended for you", trailing: shown.count == 1 ? "1 place" : "\(shown.count) places")
                 listings(e, shown)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("stay-explore")
     }
@@ -485,7 +485,7 @@ struct AirStayApp: View {
                 }
                 ForEach(list) { (r: PlaceMarket.Rented) in rentedCard(e, r) }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("stay-rented")
     }
@@ -580,7 +580,7 @@ struct AirStayApp: View {
                     .disabled(!(chosen?.canRent ?? false))
                     .accessibilityIdentifier("stay-move")
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
     }
 

@@ -43,7 +43,7 @@ struct CompanyEquipmentScreen: View {
                     MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment health \(Int(($0 * 100).rounded()))%" } ?? ""))
                     equipmentTable(e, co, needs, tabs)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)

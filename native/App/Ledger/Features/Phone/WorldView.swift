@@ -33,7 +33,7 @@ struct RankingView: View {
                         NoteCard(text: "The ranking is locked until you run a business. Open or buy a company and you appear here.", glyph: Glyph.richList)
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -207,7 +207,7 @@ struct WorldAroundView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)

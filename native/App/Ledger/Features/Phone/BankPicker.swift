@@ -24,7 +24,7 @@ struct BankPickerScreen: View {
                     Text("Choose whose account to open. Log out inside the bank to swap.")
                         .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)

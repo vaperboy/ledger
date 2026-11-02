@@ -502,7 +502,7 @@ struct HireOnePage: View {
                 Text(model.closing).font(.system(size: 14, weight: .medium)).foregroundStyle(model.hired ? Theme.gain : Theme.ivoryMuted)
                 QuietButton(title: "Done", fullWidth: true) { model.finished = true }.accessibilityIdentifier("hire-done")
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
         }
     }
 }

@@ -21,7 +21,7 @@ struct LuxuryItemSheet: View {
         Group {
             if let e = store.engine, let it = Luxury.item(itemID) {
                 VStack(spacing: 0) {
-                    ScrollView {
+                    ContainedScroll {
                         VStack(alignment: .leading, spacing: 16) {
                             LuxuryItemHead(item: it) { dismiss() }
                             LuxuryItemSpecs(item: it)
@@ -30,11 +30,11 @@ struct LuxuryItemSheet: View {
                         }
                         .padding(.bottom, 16)
                     }
-                    .scrollIndicators(.hidden)
                     footer(e, it)
                 }
             }
         }
+        .centerSheetFills()
         .background(P.ground.ignoresSafeArea())
         .environment(\.outsidePalette, P)
         .preferredColorScheme(.dark)

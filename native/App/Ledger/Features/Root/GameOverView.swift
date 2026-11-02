@@ -31,7 +31,7 @@ struct GameOverView: View {
                 Text("This run stays saved. Starting a new game from the start screen replaces it.")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 18).padding(.bottom, 40)
+            .padding(.horizontal, 18).padding(.bottom, 20)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }

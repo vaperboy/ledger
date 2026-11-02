@@ -24,7 +24,7 @@ struct FranchisesView: View {
                     }
                     ForEach(trades, id: \.self) { t in tradeShelf(e, brands, trade: t) }
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -161,7 +161,7 @@ struct BrandMeetingView: View {
                     }
                     facts(e, b)
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -334,7 +334,7 @@ struct StartFranchisedView: View {
                     whereAndHow(country, city: city, needsLimited: bd?.needsLimitedCompany == true)
                     if let fp { plan(e, b, t, fp, cur: cur, city: city, form: form, pick: pick) }
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()

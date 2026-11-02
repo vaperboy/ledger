@@ -264,7 +264,7 @@ struct InboxView: View {
 
     @ViewBuilder private var detailSheet: some View {
         if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
-            ScrollView {
+            Group {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {
                         Text("Message").font(.serifTitle(24)).foregroundStyle(P.ink)
@@ -281,7 +281,6 @@ struct InboxView: View {
                 }
                 .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 32)
             }
-            .scrollIndicators(.hidden)
             .background(P.ground.ignoresSafeArea())
             .confirmAction($pending)
         } else {

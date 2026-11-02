@@ -40,7 +40,7 @@ struct WorkerProfileSheet: View {
 
     private func content(_ e: GameEngine, _ co: Company, _ p: WorkerProfile) -> some View {
         let cur: Currency = e.currency(for: co)
-        return ScrollView {
+        return Group {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 header(e, p)
                 figures(p, cur)
@@ -50,10 +50,9 @@ struct WorkerProfileSheet: View {
                 moodBlock(p)
                 actions(e, co, p, cur)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, 22).padding(.bottom, 40)
+            .padding(.horizontal, Theme.Space.margin).padding(.top, 22).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .ledgerBackground()
     }
 

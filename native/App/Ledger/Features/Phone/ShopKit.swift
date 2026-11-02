@@ -272,7 +272,7 @@ struct ShopSuccess<Extra: View>: View {
                     Button(secondary, action: onSecondary).buttonStyle(PlainTextButtonStyle(tint: P.accent)).accessibilityIdentifier("shop-secondary")
                 }
             }
-            .padding(.horizontal, 16).padding(.bottom, 40)
+            .padding(.horizontal, 16).padding(.bottom, 20)
         }
     }
 }

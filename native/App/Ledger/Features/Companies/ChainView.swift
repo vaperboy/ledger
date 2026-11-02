@@ -32,7 +32,7 @@ struct ChainView: View {
                     ChainNewStore(engine: e, summary: sum, currency: cur)
                     ChainJoin(engine: e, summary: sum)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()

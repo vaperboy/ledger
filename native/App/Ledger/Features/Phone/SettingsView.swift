@@ -20,7 +20,7 @@ struct SettingsView: View {
                 savingGroup
                 gameGroup
             }
-            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 40)
+            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)

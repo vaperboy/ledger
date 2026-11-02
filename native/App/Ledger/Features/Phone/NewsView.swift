@@ -19,7 +19,7 @@ struct NewsView: View {
                     masthead(e)
                     frontPage(e)
                 }
-                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 40)
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -203,7 +203,7 @@ struct NewsView: View {
     private func paperPage(_ e: GameEngine) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) { paper(e) }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)

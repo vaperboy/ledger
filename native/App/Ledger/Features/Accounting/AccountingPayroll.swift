@@ -27,7 +27,7 @@ struct AcctPayroll: View {
                             tabContent(e, co)
                         }
                     }
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -348,7 +348,7 @@ struct AcctPayrollRunDetail: View {
                         AcctLocked(section: "Payroll")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

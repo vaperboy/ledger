@@ -24,7 +24,7 @@ struct BankAllBillsScreen: View {
                         Text("Nothing is due anywhere.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)

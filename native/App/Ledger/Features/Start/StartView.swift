@@ -67,7 +67,7 @@ struct StartView: View {
                 newGameCard
                 importCard
             }
-            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 40)
+            .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }

@@ -60,7 +60,7 @@ struct BankAssetScreen: View {
                         }
                         .frame(maxWidth: live.quantity > 0 ? .infinity : 140, alignment: .leading)
                     }
-                    .padding(.horizontal, 18).padding(.bottom, 40)
+                    .padding(.horizontal, 18).padding(.bottom, 20)
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).noSidewaysDrag()
@@ -125,7 +125,7 @@ struct BankTradeFlow: View {
                     .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 ScrollView {
                     content(e, tq, cur)
-                        .padding(.horizontal, 18).padding(.bottom, 40)
+                        .padding(.horizontal, 18).padding(.bottom, 20)
                         .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).noSidewaysDrag()

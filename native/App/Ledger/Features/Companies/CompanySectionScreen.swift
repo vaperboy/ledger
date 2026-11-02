@@ -20,7 +20,7 @@ struct CompanySectionScreen: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     content(co, e)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
