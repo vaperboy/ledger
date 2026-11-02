@@ -15,9 +15,12 @@ struct CompanySales: View {
     @Binding var part: OpsPart
     @State private var showMarketing = false
     @State private var picked: SalesItemPick?
+    @State private var addingService: Bool?
+    @State private var showHire = false
 
     /// A tapped item, for the popup.
     private struct SalesItemPick: Identifiable { var id: String }
+    private struct NewItemPick: Identifiable { var id: Bool }
 
     var body: some View {
         let items: [SalesItem] = engine.salesItems(companyID: company.id)
@@ -30,6 +33,11 @@ struct CompanySales: View {
         }
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
         .centerSheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
+        .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
+            NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
+                         onHireAdvisor: { addingService = nil; presentAfterSheet { showHire = true } })
+        }
+        .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
         }
@@ -46,7 +54,7 @@ struct CompanySales: View {
                     Text((service ? "Your services" : "Your products").uppercased()).capsLabel()
                     Spacer()
                     if company.status == .open {
-                        Button { addItem(service: service) } label: {
+                        Button { addingService = service } label: {
                             Text("Add \(noun)").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
                         }
                         .buttonStyle(PressableStyle())
