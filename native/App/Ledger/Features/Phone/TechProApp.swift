@@ -414,39 +414,6 @@ struct TechProApp: View {
         }
     }
 
-    @ViewBuilder private func ordersLinks(_ e: GameEngine, _ co: Company) -> some View {
-        VStack(spacing: 8) {
-            linkRow(Glyph.hardware, "All items", "Everything the store sells \(co.name), sorted by price") { shelf = .all; sort = .low; step = .category }
-            linkRow(Glyph.list, "My orders", "Placed orders and when they arrive") { step = .orders }
-            linkRow(Glyph.opsBox, "My items", "What \(co.name) owns: units, condition, service, selling, fleet and software") { step = .owned }
-        }
-    }
-
-    private func linkRow(_ glyph: String, _ title: String, _ note: String, action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.tap()
-            action()
-        } label: {
-            linkLabel(glyph, title, note)
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("tp-link-\(title)")
-    }
-
-    private func linkLabel(_ glyph: String, _ title: String, _ note: String) -> some View {
-        Card(padding: 12) {
-            HStack(spacing: 12) {
-                GlyphView(glyph: glyph, size: 20, weight: 1.6, tint: P.accent).frame(width: 36)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Text(note).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 14, weight: 1.8, tint: P.inkDim)
-            }
-        }
-    }
-
     // MARK: A department
 
     /// The items of the shelf on show: every item the store sells this company, narrowed by department or sale and by the search words, in the order chosen.
@@ -522,48 +489,6 @@ struct TechProApp: View {
                 }
             }
         }
-    }
-
-    private func dealBadge(_ n: EquipmentMarket.Need) -> some View {
-        Text("-\(n.dealPercent)% \(n.dealLabel)").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.white)
-            .padding(.horizontal, 7).padding(.vertical, 3).background(Capsule().fill(P.loss)).lineLimit(1).minimumScaleFactor(0.7)
-    }
-
-    private func wasPrice(_ n: EquipmentMarket.Need) -> some View {
-        let was: String = n.subscription ? money(n.listPrice / max(1, n.lifeYears) / 12) + "/mo" : money(n.listPrice)
-        return Text(was).font(.system(size: 12).monospacedDigit()).foregroundStyle(P.inkFaint).strikethrough().lineLimit(1).minimumScaleFactor(0.7)
-    }
-
-    private func needRow(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
-        let st = status(n)
-        var line: String = EquipmentMarket.kindName(n.kind)
-        if n.need > 0 { line = "\(Int((n.have + n.leased).rounded())) of \(Int(n.need)) \u{00B7} " + line }
-        if n.required { line += " \u{00B7} required" }
-        let from: String = n.subscription ? money(n.fromPrice / max(1, n.lifeYears) / 12) + "/mo" : money(n.fromPrice)
-        return Button {
-            Haptics.tap()
-            showItem(n.equipmentID)
-        } label: {
-            Card(padding: 10) {
-                HStack(spacing: 12) {
-                    ShopPhoto(name: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, height: 58, cornerRadius: 10).frame(width: 86)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(n.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                        Text(line).font(.system(size: 12)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
-                        Text(st.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(st.tint)
-                    }
-                    Spacer(minLength: 6)
-                    VStack(alignment: .trailing, spacing: 1) {
-                        if n.dealPercent > 0 { dealBadge(n) }
-                        Text("from").font(.system(size: 11)).foregroundStyle(P.inkFaint)
-                        Text(from).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(n.dealPercent > 0 ? P.loss : P.ink).lineLimit(1).minimumScaleFactor(0.7)
-                        if n.dealPercent > 0 { wasPrice(n) }
-                    }
-                }
-            }
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("tp-need-\(n.equipmentID)")
     }
 
     // MARK: An item

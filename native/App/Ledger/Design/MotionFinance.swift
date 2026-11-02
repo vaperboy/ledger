@@ -132,7 +132,7 @@ extension View {
 
 // MARK: Payment notice and transfer chip (app shell)
 
-/// The top-of-screen overlay of the shell: a big customer payment slides in and leaves after 2.5 s; a transfer chip fades and slides.
+/// The top-of-screen overlay of the shell: a transfer chip fades and slides.
 /// Never takes a tap, never blocks.
 struct MotionOverlay: View {
     @EnvironmentObject var store: GameStore
@@ -146,7 +146,6 @@ struct MotionOverlay: View {
         }
         .padding(.top, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(Motion.arrive(reduceMotion), value: store.paymentNotice?.id)
         .allowsHitTesting(false)
     }
 }

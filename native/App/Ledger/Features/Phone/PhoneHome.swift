@@ -88,36 +88,6 @@ struct PhoneHome: View {
         return "\(weekdays[d.weekday % 7]) \(d.day) \(months[d.month % 12]) \(d.year)"
     }
 
-    private func banner(_ alert: PhoneAlert) -> some View {
-        Button {
-            Haptics.tap()
-            if alert.messageID != 0 { store.openMessage(alert.messageID) }
-            else if alert.app == .accounting && alert.companyID != 0 { store.openAccounting(companyID: alert.companyID, payroll: true) }
-            else { path.append(.app(alert.app)) }
-        } label: {
-            HStack(spacing: 12) {
-                GlyphView(glyph: alert.app.glyph, size: 18, weight: 1.6, tint: alert.app.tint)
-                    .frame(width: 34, height: 34)
-                    .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color(hex: 0x1C1D1F)))
-                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(alert.source.uppercased() + " · now").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    Text(alert.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                    if !alert.detail.isEmpty {
-                        Text(alert.detail.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(3).multilineTextAlignment(.leading)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(hex: 0x1E1F21, opacity: 0.9)))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color(hex: 0x2F3033), lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("phone-banner")
-    }
 }
 
 /// What the Phone home's `path.append(.app(app))` calls become: a push through the store.
@@ -212,49 +182,6 @@ struct PhoneAppScreen: View {
             TechProApp()
         case .atlas:
             AtlasApp()
-        }
-    }
-}
-
-/// An app made of two or three existing screens, as a table: one row per page, each opening that screen.
-struct PhonePagedApp: View {
-    var app: PhoneApp
-    var pages: [PhonePage]
-    @State private var opened: PhonePage?
-
-    init(app: PhoneApp, pages: [PhonePage], first: PhonePage) {
-        self.app = app
-        self.pages = pages
-        _opened = State(initialValue: nil)
-    }
-
-    var body: some View {
-        ScrollView {
-            OverviewSettingsCard(heading: app.title) {
-                ForEach(pages) { (p: PhonePage) in
-                    SettingsTableRow(title: p.rawValue, note: p.note, value: "", glyph: p.glyph) { opened = p }
-                }
-            }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 40)
-            .frame(maxWidth: 760).frame(maxWidth: .infinity)
-        }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-        .background(Theme.page)
-        .navigationDestination(item: $opened) { (p: PhonePage) in
-            content(p).appScreen(title: p.rawValue, subtitle: app.title)
-        }
-        .appScreen(title: app.title, subtitle: app.subtitle)
-    }
-
-    @ViewBuilder private func content(_ page: PhonePage) -> some View {
-        switch page {
-        case .stats: StatsView()
-        case .activity: ActivityView()
-        case .goals: GoalsView()
-        case .achievements: AchievementsView()
-        case .around: WorldAroundView()
-        case .biggest: RankingView()
-        case .records: WorldRecordsView()
         }
     }
 }

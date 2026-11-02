@@ -30,7 +30,6 @@ struct TechProProduct: View {
 
     private enum Mode: Hashable { case new, used, lease }
     @State private var mode: Mode = .new
-    @State private var cls: Int? = nil
     @State private var selected: String? = nil
     @State private var quantity = 0
     @State private var finance = false
@@ -143,18 +142,6 @@ struct TechProProduct: View {
         }
     }
 
-    @ViewBuilder private func offers(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ current: Mode, _ cur: Currency, one: Bool) -> some View {
-        if need.isVehicle {
-            vehicles(e, co, need, current, cur)
-        } else if current == .used {
-            used(e, co, need, cur)
-        } else if need.subscription && current == .new {
-            plans(e, co, need, cur)
-        } else {
-            brands(e, co, need, current, cur, one: one)
-        }
-    }
-
     // MARK: Header
 
     private func header(_ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency, title: String) -> some View {
@@ -213,39 +200,6 @@ struct TechProProduct: View {
     }
 
     // MARK: New equipment and licences, by brand
-
-    @ViewBuilder private func brands(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ mode: Mode, _ cur: Currency, one: Bool) -> some View {
-        let all: [EquipmentMarket.Offer] = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID)
-        let list: [EquipmentMarket.Offer] = all.filter { (o: EquipmentMarket.Offer) -> Bool in cls == nil || o.cls == cls }
-        let lease: Bool = mode == .lease
-        VStack(alignment: .leading, spacing: 10) {
-            classChips
-            ShopHeading(text: one ? "Suppliers" : "Brands", trailing: "\(list.count)")
-            ForEach(list) { (o: EquipmentMarket.Offer) in
-                let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
-                let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
-                let perf: Int = Int(((o.performance - 1) * 100).rounded())
-                let saleText: String = sale.isOn ? "\(sale.label) -\(sale.percentOff)% \u{00B7} " : ""
-                let sub: String = saleText + "\(o.className) \u{00B7} \(o.seller) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} output \(o.performance >= 1 ? "+" : "")\(perf)% \u{00B7} reliability \(reliabilityWord(o.reliability))"
-                offerRow(o.name, sub, lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: p)) + "/mo" : cur.tidyShort(p), String(o.index))
-            }
-        }
-        if let sel = all.first(where: { (o: EquipmentMarket.Offer) -> Bool in String(o.index) == selected }) {
-            brandAdd(e, need, sel, lease, cur, one: one)
-        }
-    }
-
-    private var classChips: some View {
-        HStack(spacing: 6) {
-            ForEach([-1, 0, 1, 2], id: \.self) { (c: Int) in
-                let on: Bool = (c < 0 && cls == nil) || cls == c
-                ShopChip(title: c < 0 ? "All" : EquipmentMarket.classNames[c], selected: on) {
-                    cls = c < 0 ? nil : c
-                    selected = nil
-                }
-            }
-        }
-    }
 
     private func brandAdd(_ e: GameEngine, _ need: EquipmentMarket.Need, _ sel: EquipmentMarket.Offer, _ lease: Bool, _ cur: Currency, one: Bool) -> some View {
         let unit: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: sel.priceFactor, vendorID: sel.vendorID)
@@ -393,16 +347,6 @@ struct TechProProduct: View {
 
     // MARK: Subscriptions
 
-    @ViewBuilder private func plans(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
-        let all: [EquipmentMarket.Offer] = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).filter { (o: EquipmentMarket.Offer) -> Bool in o.cls == 1 }
-        let users: Int = EquipmentMarket.users(co)
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Sold only as a subscription. Pick a provider and a plan. Plans are priced by users: you have \(users).")
-                .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            ForEach(all) { (o: EquipmentMarket.Offer) in providerCard(e, o, cur) }
-        }
-    }
-
     private func providerCard(_ e: GameEngine, _ o: EquipmentMarket.Offer, _ cur: Currency) -> some View {
         let list: [EquipmentMarket.Plan] = e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o)
         return Card(padding: 12) {
@@ -477,55 +421,6 @@ struct TechProProduct: View {
     }
 
     // MARK: Vehicles
-
-    @ViewBuilder private func vehicles(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ mode: Mode, _ cur: Currency) -> some View {
-        if mode == .used {
-            used(e, co, need, cur)
-        } else {
-            let list: [EquipmentMarket.VehicleOffer] = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID)
-            let lease: Bool = mode == .lease
-            VStack(alignment: .leading, spacing: 10) {
-                ShopHeading(text: "Makes and models", trailing: "\(list.count)")
-                ForEach(list) { (o: EquipmentMarket.VehicleOffer) in vehicleCard(e, o, lease, cur) }
-            }
-            if let sel = list.first(where: { (o: EquipmentMarket.VehicleOffer) -> Bool in o.id == selected }) {
-                vehicleAdd(e, sel, lease, cur)
-            }
-        }
-    }
-
-    private func vehicleCard(_ e: GameEngine, _ o: EquipmentMarket.VehicleOffer, _ lease: Bool, _ cur: Currency) -> some View {
-        let price: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
-        let on: Bool = selected == o.id
-        let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
-        let saleText: String = sale.isOn ? "\(sale.label) -\(sale.percentOff)% \u{00B7} " : ""
-        let right: String = lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(price)
-        return Button {
-            Haptics.choose()
-            selected = on ? nil : o.id
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                ShopPhoto(name: TechPhotos.vehicle(model: o.modelID), glyph: Glyph.vehicle, height: 130)
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(o.name + ", new").font(.system(size: 15.5, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                        Text(saleText + "\(o.modelName) \u{00B7} \(stars(o.rating, o.reviews)) \u{00B7} reliability \(reliabilityWord(o.reliability))")
-                            .font(.system(size: 12.5)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
-                    }
-                    Spacer(minLength: 8)
-                    Text(right).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(P.ink)
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? P.accent.opacity(0.08) : P.card))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? P.accent : P.line, lineWidth: on ? 1.5 : 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityAddTraits(on ? .isSelected : [])
-        .accessibilityIdentifier("tp-offer-\(o.id)")
-    }
 
     private func vehicleAdd(_ e: GameEngine, _ sel: EquipmentMarket.VehicleOffer, _ lease: Bool, _ cur: Currency) -> some View {
         let price: Double = e.vehiclePrice(modelID: sel.modelID, factor: sel.priceFactor)

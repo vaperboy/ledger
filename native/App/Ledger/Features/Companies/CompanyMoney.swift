@@ -15,19 +15,6 @@ enum CompanyMoneyPart: String, CaseIterable, Hashable {
     static let tabs: [CompanyMoneyPart] = [.summary, .owners, .settings]
 }
 
-/// "Open in Bank": all money handling (transfers, loans, deposits, taxes, bills, payroll approval, statements) lives in the Bank app.
-/// Opens the Bank app on THIS company's account (plain navigation, so no toast); `tab` picks the Bills tab for the pay buttons.
-struct OpenInBankButton: View {
-    @EnvironmentObject var store: GameStore
-    var companyID: Int
-    var title = "Open in Bank"
-    var tab: BankTab = .account
-    var body: some View {
-        QuietButton(title: title, fullWidth: true) { store.openBank(.company(companyID), tab: tab) }
-            .accessibilityHint("Opens the Bank app")
-    }
-}
-
 /// One company's Finances tab: a read-only, scannable view of the money, with the company decisions (dividends, shares, selling,
 /// settings) kept here and every payment handled in the Bank app.
 struct CompanyMoney: View {

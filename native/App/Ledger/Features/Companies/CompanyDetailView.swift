@@ -16,7 +16,7 @@ import Simulation
 enum CompanySection: String, CaseIterable, Hashable {
     case overview = "Overview", projects = "Projects", staff = "Team", finances = "Stats", operations = "Manage"
     case salesMarket = "Sales"
-    case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup", pricing = "Pricing"
+    case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
     /// Only for rental companies (CompanyProperties) and for insurers, banks and funds (CompanyFinanceBook).
     case properties = "Properties", book = "Book"
     // Shown only for the trades that have them (energy, salmon farm, holding company, football club)
@@ -208,7 +208,7 @@ struct CompanyDetailView: View {
     /// A page that is its own pushed screen, not a section of the bar.
     static func isLeaf(_ s: CompanySection) -> Bool {
         switch s {
-        case .marketing, .market, .setup, .book, .energy, .salmon, .club, .chain: return true
+        case .market, .setup, .book, .energy, .salmon, .club, .chain: return true
         default: return false
         }
     }
@@ -222,7 +222,7 @@ struct CompanyDetailView: View {
         case .staff, .holding: return (a.contains(.staff) || a.contains(.holding)) ? .team : .overview
         case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
         case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
-        case .salesMarket, .projects, .pricing: return a.contains(.operations) ? .sales : .overview
+        case .salesMarket, .projects, .marketing: return a.contains(.operations) ? .sales : .overview
         case .finances, .customers: return .stats
         default: return nil
         }

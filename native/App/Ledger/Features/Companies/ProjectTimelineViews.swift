@@ -3,35 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-/// One row of the Projects tab's time-bound work: title, company, a dot per milestone, the next date and what is in the way.
-/// Opens `ProjectTimelineDetail`. Read-only: the actions (bid, start, hold) stay in the company's Projects section.
-struct ProjectTimelineRow: View {
-    @EnvironmentObject var store: GameStore
-    var line: ProjectTimeline
-    var now: Int
-
-    var body: some View {
-        NavigationLink { ProjectTimelineDetail(lineID: line.id) } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(line.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                        Text("\(line.companyName) · \(kindWord(line.kind)) · \(line.subtitle)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    if let w = line.dueWeek { Text(dueText(w, now: now)).font(.system(size: 12).monospacedDigit()).foregroundStyle(w - now <= 2 ? Theme.caution : Theme.ivoryMuted) }
-                    Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                }
-                ProjectStageDots(stages: line.stages)
-                if let b = line.blocking {
-                    Text(b).font(.system(size: 11)).foregroundStyle(line.delayed ? Theme.caution : Theme.ivoryFaint).lineLimit(2)
-                }
-            }
-            .padding(.vertical, 9).contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
-    }
-}
-
 func kindWord(_ k: ProjectTimeline.Kind) -> String {
     switch k {
     case .job: return "Job"
@@ -45,28 +16,6 @@ func kindWord(_ k: ProjectTimeline.Kind) -> String {
 func dueText(_ week: Int, now: Int) -> String {
     let left = week - now
     return left <= 0 ? "due" : left == 1 ? "1 wk" : "\(left) wk"
-}
-
-/// A short chain of dots, one per milestone: filled when done, ringed when current, faint when ahead.
-struct ProjectStageDots: View {
-    var stages: [ProjectTimeline.Stage]
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(stages.enumerated()), id: \.offset) { n, s in
-                if n > 0 { Capsule().fill(s.state == .upcoming ? Theme.hairline : Theme.gold.opacity(0.6)).frame(width: 14, height: 1.5) }
-                switch s.state {
-                case .done: Circle().fill(Theme.gold).frame(width: 7, height: 7)
-                case .current: Circle().strokeBorder(Theme.gold, lineWidth: 1.5).background(Circle().fill(Theme.gold.opacity(0.25))).frame(width: 9, height: 9)
-                case .upcoming: Circle().strokeBorder(Theme.ivoryFaint, lineWidth: 1).frame(width: 7, height: 7)
-                }
-            }
-            if let cur = stages.first(where: { $0.state == .current }) {
-                Text(cur.name).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted).padding(.leading, 4).orgTextSwap(cur.name)
-            } else if stages.allSatisfy({ $0.state == .done }) {
-                Text("Complete").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryMuted).padding(.leading, 4)
-            }
-        }
-    }
 }
 
 /// One project in full: key figures, every milestone with its date, what blocks it, and what lateness costs.

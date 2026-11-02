@@ -7,7 +7,7 @@ import Simulation
 /// app with that company already chosen (`GameStore.openMarket(companyID:)`). "All markets" shows the group view (your share of each
 /// market, your weight in the economy, the groups around you); a company shows where it stands and its named rivals. The share graph
 /// is only drawn when an analyst measures the market (`MarketMap.Knowledge.Level.canDrawShareGraph`); otherwise the share is words.
-/// Pricing is not here: it has its own screen under Sales (`CompanyPricing`).
+/// Pricing is not here: it is a row under Sales.
 struct MarketApp: View {
     @EnvironmentObject var store: GameStore
     /// The business shown; 0 = all markets.

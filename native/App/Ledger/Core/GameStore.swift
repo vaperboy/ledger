@@ -127,7 +127,6 @@ final class GameStore: ObservableObject {
     @Published private(set) var lastDayChanges = DayChanges()
     /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
     @Published private(set) var paymentNotice: PaymentNotice?
-    func dismissPaymentNotice() { paymentNotice = nil }
     /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
     @Published private(set) var homeEvents: [HomeEvent] = []
     private func logEvents(_ items: [HomeEvent]) {

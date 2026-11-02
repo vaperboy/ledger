@@ -14,8 +14,6 @@ struct CompanyManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// The Team tab's compact list: the owner and the managers as thin rows (open posts say "Appoint"), without the strip and its titles.
-    var thin = false
     @State private var sheet: Sheet?
     @State private var showVacant = false
     // Shortlists live here, not in the sheets, so a paid search survives closing a sheet.
@@ -34,9 +32,7 @@ struct CompanyManagement: View {
     static func scoreWord(_ s: Int) -> String { s >= 80 ? "excellent" : s >= 65 ? "good" : s >= 50 ? "acceptable" : s >= 35 ? "weak" : "poor" }
 
     var body: some View {
-        Group {
-            if thin { thinList } else { fullList }
-        }
+        thinList
         .centerSheet(item: $sheet) { s in
             Group {
                 switch s {
@@ -46,24 +42,6 @@ struct CompanyManagement: View {
                 }
             }
             .environmentObject(store)
-        }
-    }
-
-    @ViewBuilder private var fullList: some View {
-        let cur = engine.currency(for: company)
-        let slots = engine.teamSlots(companyID: company.id)
-        let hasAssistant = company.value("asst")["npc"].int != 0
-        let filled = (company.managerID != nil ? 1 : 0) + (hasAssistant ? 1 : 0) + slots.filter { $0.personID != nil }.count
-        let list: [OrgNode] = orgNodes(cur)
-        TeamGroup(title: "Chain of command", trailing: {
-            Text("\(filled) of \(2 + slots.count) posts filled").font(.system(size: 11.5)).foregroundStyle(filled < 2 + slots.count ? Theme.caution : Theme.ivoryFaint)
-        }) {
-            VStack(spacing: 0) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { n, node in
-                    OrgStripRow(node: node, last: n == list.count - 1, open: opener(node))
-                }
-            }
-            aboveNote
         }
     }
 
@@ -144,11 +122,6 @@ struct CompanyManagement: View {
         var toggleWorks: (() -> Void)? = nil
     }
 
-    private func opener(_ node: OrgNode) -> (() -> Void)? {
-        guard let target = node.sheet else { return nil }
-        return { sheet = target }
-    }
-
     /// Who stands above this company's own management (chain, region, group), nearest the manager first.
     private var chainAbove: [ManagerModel.Boss] {
         engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
@@ -190,13 +163,6 @@ struct CompanyManagement: View {
         return out
     }
 
-    @ViewBuilder private var aboveNote: some View {
-        if !chainAbove.isEmpty {
-            Text(engine.chainOf(companyID: company.id) != nil ? "Posts above the company are hired and set in the Chain section and in Group." : "Posts above the company are hired and set in Group (and the holding).")
-                .font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private func managerRow(_ cur: Currency) -> ManagementRow {
         let title = engine.tradeInfo(companyID: company.id).map { ManagerModel.title($0) } ?? "Manager"
         guard let mid = company.managerID, let m = engine.state.people[mid] else {
@@ -226,96 +192,6 @@ struct CompanyManagement: View {
         return ManagementRow(name: n.name, role: "Assistant manager", scope: "store",
                              line: jobs.isEmpty ? "No jobs picked yet: pick up to two." : "Looks after " + jobs.joined(separator: " and "),
                              lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double))
-    }
-}
-
-/// How much a post may decide alone, as three bars and the word: filled up to the level (asks you, within limits, full control).
-private struct AuthorityMark: View {
-    var level: Int
-
-    var body: some View {
-        let lvl: Int = min(2, max(0, level))
-        HStack(spacing: 6) {
-            HStack(spacing: 3) {
-                ForEach(0..<3, id: \.self) { i in
-                    Capsule().fill(i <= lvl ? Theme.gold : Theme.hairline).frame(width: 16, height: 4)
-                }
-            }
-            Text(AuthorityWords.label(lvl)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Authority: \(AuthorityWords.label(lvl))")
-    }
-}
-
-/// One step of the vertical strip: a round icon on the rail, a line down to the next step, and the post as a card. A step with a sheet
-/// is a button with a chevron; the owner and the posts above the company are plain (they are managed elsewhere).
-private struct OrgStripRow: View {
-    var node: CompanyManagement.OrgNode
-    var last: Bool
-    var open: (() -> Void)?
-
-    var body: some View {
-        let vacant: Bool = node.row.name == nil
-        HStack(alignment: .top, spacing: 10) {
-            VStack(spacing: 0) {
-                IconCircle(glyph: node.glyph, size: 34, tint: vacant ? Theme.ivoryFaint : Theme.gold)
-                if !last { Rectangle().fill(Theme.borderStrong).frame(width: 1).frame(maxHeight: .infinity) }
-            }
-            .frame(width: 34)
-            cardOrButton(vacant)
-                .padding(.bottom, last ? 0 : 8)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    @ViewBuilder private func cardOrButton(_ vacant: Bool) -> some View {
-        if let open {
-            Button { Haptics.tap(); open() } label: { card(vacant, tappable: true) }.buttonStyle(PressableStyle())
-        } else {
-            card(vacant, tappable: false)
-        }
-    }
-
-    private func card(_ vacant: Bool, tappable: Bool) -> some View {
-        let r: ManagementRow = node.row
-        return Card(padding: 12, radius: Theme.Radius.card, stroke: node.isOwner ? Theme.gold.opacity(0.5) : Theme.border) {
-            HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(r.role + " · " + r.scope).capsLabel(Theme.ivoryFaint)
-                    Text(r.name ?? "Vacant").font(.system(size: 15, weight: .medium)).foregroundStyle(vacant ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)
-                    if !r.line.isEmpty { Text(r.line).font(.system(size: 11.5)).foregroundStyle(r.lineTint).fixedSize(horizontal: false, vertical: true) }
-                    if let level = node.level { AuthorityMark(level: level).padding(.top, 2) }
-                }
-                Spacer(minLength: 8)
-                trailing(vacant, tappable: tappable)
-            }
-        }
-        .accessibilityElement(children: node.isOwner ? .contain : .combine)
-    }
-
-    @ViewBuilder private func trailing(_ vacant: Bool, tappable: Bool) -> some View {
-        if node.isOwner, let works = node.works {
-            Button { node.toggleWorks?() } label: {
-                HStack(spacing: 5) {
-                    GlyphView(glyph: works ? Glyph.check : Glyph.close, size: 11, weight: 2, tint: works ? Theme.gain : Theme.ivoryFaint)
-                    Text(works ? "Works here" : "Not here").font(.system(size: 11.5, weight: .medium)).foregroundStyle(works ? Theme.ivory : Theme.ivoryMuted)
-                }
-                .padding(.horizontal, 9).frame(minHeight: 30)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.ivory.opacity(0.06)))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
-        } else if let wage = node.row.wage {
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(wage).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text("a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-        } else if vacant && tappable {
-            Text("Hire").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-        }
-        if tappable { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
     }
 }
 

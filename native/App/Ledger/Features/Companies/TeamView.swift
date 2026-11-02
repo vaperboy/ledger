@@ -501,13 +501,6 @@ struct TeamView: View {
         return [runs, payroll, hiring, spending]
     }
 
-    /// The manager's authority level, reported with the engine's own answer. Reversible, so no confirmation.
-    private func setAuthority(_ l: TeamOverview.CompanyLine, _ level: Int) {
-        let name = l.delegated ? l.managedBy : "The manager"
-        _ = store.settle(store.act { $0.setManagerAuthority(companyID: l.id, level: level) },
-                         "\(name) now \(GameEngine.authorityText(level: level)).", same: "\(name) already works that way.")
-    }
-
     // MARK: Manager performance
 
     @ViewBuilder private func performance(_ o: TeamOverview, _ e: GameEngine) -> some View {

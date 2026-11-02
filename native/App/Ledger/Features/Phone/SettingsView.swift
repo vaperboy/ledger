@@ -13,9 +13,6 @@ struct SettingsView: View {
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
 
-    private static let reserveOptions: [Double] = Array(stride(from: 0.0, through: 8.0, by: 0.5))
-    private static let dividendOptions: [Double] = Array(stride(from: 0.0, through: 26.0, by: 2.0))
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -46,28 +43,6 @@ struct SettingsView: View {
     private var feelGroup: some View {
         group("Feel") {
             toggleRow(Glyph.phone, "Haptic feedback", isOn: $haptics)
-        }
-    }
-
-    private var decideGroup: some View {
-        group("How much I decide", footer: "Routine payroll is approved when the company can pay it, gaps in a team are filled, and small complaints are handled. Campaigns pause when cash would drop below the reserve. Big choices (hiring a manager, loans, sales, legal trouble) always come to your inbox. Sales, closures, loans, dismissals and other irreversible steps always ask, whatever the size you set for spending.") {
-            toggleRow(Glyph.check, "Approve routine payroll for me", isOn: $policy.autoPayroll)
-            rule
-            toggleRow(Glyph.hire, "Replace people who leave", detail: "Recruits at the going rate when there is cash", isOn: $policy.autoRehire)
-            rule
-            toggleRow(Glyph.people, "Staff answer routine complaints", detail: "Serious ones still come to you", isOn: $policy.autoComplaints)
-            rule
-            choiceRow(Glyph.bank, "Cash reserve", detail: "Campaigns pause below it", selection: $policy.reserveWeeks, options: Self.reserveOptions) { (v: Double) in
-                v == 0 ? "None" : "\(v.formatted()) weeks"
-            }
-            rule
-            choiceRow(Glyph.info, "Ask before spending", detail: "Spends under this are done at once; the result is still reported", selection: $askStep, options: Array(0..<ConfirmThreshold.sizes.count)) { (v: Int) in
-                askLabel(v)
-            }
-            rule
-            choiceRow(Glyph.invest, "Pay dividends automatically", detail: "When spare cash is above this many weeks of costs", selection: $policy.autoDividendWeeks, options: Self.dividendOptions) { (v: Double) in
-                v == 0 ? "Never" : "Above \(Int(v)) weeks"
-            }
         }
     }
 
@@ -164,19 +139,6 @@ struct SettingsView: View {
         }
         .padding(.vertical, 9).frame(minHeight: 52)
         .accessibilityElement(children: .combine)
-    }
-
-    private func choiceRow<V: Hashable>(_ glyph: String, _ title: String, detail: String = "", selection: Binding<V>, options: [V], label: @escaping (V) -> String) -> some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 32)
-            titleBlock(title, detail)
-            Spacer(minLength: 8)
-            Picker(title, selection: selection) {
-                ForEach(options, id: \.self) { (o: V) in Text(label(o)).tag(o) }
-            }
-            .pickerStyle(.menu).tint(Theme.gold).labelsHidden().fixedSize()
-        }
-        .padding(.vertical, 6).frame(minHeight: 52)
     }
 
     private func plainRow(_ glyph: String, _ title: String, detail: String = "", value: String = "", tint: Color = Theme.gold, chevron: Bool = false) -> some View {

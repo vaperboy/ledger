@@ -176,24 +176,6 @@ struct CompaniesView: View {
         }
     }
 
-    /// Search and chain chips, shown once there are enough companies for a long list to need them.
-    @ViewBuilder private func filterBar(_ chains: [Chains.Summary]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                TextField("Name, city or trade", text: $query).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
-                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(PressableStyle()) }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
-            if !chains.isEmpty {
-                SectionTabs(items: ["all"] + chains.map { String($0.id) } + ["independent"],
-                            title: { k in k == "all" ? "All" : k == "independent" ? "Independent" : (chains.first { String($0.id) == k }?.name ?? "Chain") },
-                            selection: $chainFilter).padding(.horizontal, -18)
-            }
-        }.padding(.bottom, 6)
-    }
-
     private func order(_ a: (co: Company, h: CompanyHealth), _ b: (co: Company, h: CompanyHealth)) -> Bool {
         switch sort {
         case .attention:

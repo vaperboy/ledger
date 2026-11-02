@@ -22,7 +22,6 @@ struct OpsPageDestination: View {
         switch part {
         case .setup: EmptyView()
         case .develop: SettingsPage(title: CompanyDevelopment.title(co, e), subtitle: co.name) { CompanyDevelopment(engine: e, company: co) }
-        case .marketing: SettingsPage(title: "Marketing", subtitle: co.name) { CompanyMarketing(engine: e, company: co) }
         case .premises: premisesPage(e, co)
         case .suppliers: CompanySuppliersScreen(companyID: co.id)
         case .equipment: CompanyEquipmentScreen(companyID: co.id)

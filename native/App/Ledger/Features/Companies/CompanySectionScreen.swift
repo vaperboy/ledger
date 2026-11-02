@@ -36,8 +36,6 @@ struct CompanySectionScreen: View {
         switch section {
         case .setup:
             CompanySetupScreen(engine: e, company: co)
-        case .marketing: CompanyMarketing(engine: e, company: co)
-        case .pricing: CompanyPricing(engine: e, company: co)
         case .market: CompanyMarket(engine: e, company: co)
         case .book: CompanyFinanceBook(engine: e, company: co)
         case .energy: CompanyEnergy(engine: e, company: co)

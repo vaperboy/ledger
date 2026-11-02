@@ -6,7 +6,7 @@ import Countries
 import Simulation
 
 /// The market around one company, inside the Market app: where you stand (share over time and against the named rivals, drawn only when
-/// an analyst measures the market) and the named rivals as a ranked table. Pricing has its own screen (`CompanyPricing`).
+/// an analyst measures the market) and the named rivals as a ranked table. Pricing is a row under Sales.
 struct CompanyMarket: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -453,76 +453,6 @@ struct RivalSheet: View {
 }
 
 // MARK: Price war
-
-struct PriceWarSheet: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
-    var engine: GameEngine
-    var companyID: Int
-    @State private var rivalID: Int?
-    @State private var weeks = 10
-    @State private var pending: PendingAction?
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let e = store.engine, let co = e.state.company(companyID) {
-                    let rows = e.rivalRows(co)
-                    let cur = e.currency(for: co)
-                    let chosen = rows.first { $0.id == rivalID } ?? rows.sorted { $0.rival.size < $1.rival.size }.first
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        MoreHeader(glyph: Glyph.warning, title: "Price war",
-                                   blurb: "Your prices drop to the floor for the weeks you choose. The rival loses money every week, and so do you. If it runs out first it closes, and its customers look for somewhere new. Afterwards your prices go back.")
-                        MoreBlock("Who") {
-                            VStack(spacing: 0) {
-                                ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
-                                    if n > 0 { CardLine() }
-                                    Button { rivalID = r.id } label: {
-                                        HStack { Text(r.rival.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer()
-                                            Text(r.sizeWord).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                                            GlyphView(glyph: chosen?.id == r.id ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: chosen?.id == r.id ? Theme.gold : Theme.ivoryFaint)
-                                        }.padding(.vertical, 9).contentShape(Rectangle())
-                                    }.buttonStyle(PressableStyle())
-                                }
-                            }
-                        }
-                        MoreBlock("How long") {
-                            WrapRow { Group { ForEach([6, 10, 14, 20], id: \.self) { w in
-                                Button("\(w) weeks") { weeks = w }.buttonStyle(TinyButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryFaint)) } } }
-                        }
-                        if let c = chosen, let est = e.warEstimate(companyID: companyID, rivalID: c.id, weeks: weeks) {
-                            MoreBlock("Your chances") {
-                                FigureStrip(items: [
-                                    .init(label: "They hold out", value: "\(est.holdOutWeeks) wk"),
-                                    .init(label: "You hold out", value: est.yourWeeks >= 99 ? "Long" : "\(est.yourWeeks) wk", tint: est.yourWeeks < weeks ? Theme.loss : Theme.ivory),
-                                    .init(label: "They close", value: "\(Int((est.odds * 100).rounded()))%"),
-                                    .init(label: "To you", value: "\(Int((est.toYou * 100).rounded()))%", sub: "of their customers"),
-                                    .init(label: "It costs", value: cur.tidyShort(est.cost), tint: Theme.loss),
-                                    .init(label: "Authority", value: est.yourShare >= 0.35 ? "Can fine" : "Low risk", tint: est.yourShare >= 0.35 ? Theme.loss : Theme.ivory),
-                                ])
-                            }
-                            Button("Start a price war against \(c.rival.name)") { askWar(c.rival.name, c.id, est, cur) }.buttonStyle(TinyButtonStyle())
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
-                }
-            }
-            .ledgerBackground()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
-            .confirmAction($pending)
-        }
-    }
-
-    private func askWar(_ name: String, _ rid: Int, _ est: Rivals.WarEstimate, _ cur: Currency) {
-        let wk: Int = weeks
-        let msg: String = "It costs you about \(cur.tidyShort(est.cost)) over \(wk) weeks. The chance that \(name) closes is about \(Int((est.odds * 100).rounded()))%; if you run out first, you lose. A big share of the market can draw a fine for abusing a dominant position."
-        pending = PendingAction(title: "Start a price war against \(name)?", message: msg, button: "Start price war", destructive: true) {
-            let r = store.act { $0.startPriceWar(companyID: companyID, rivalID: rid, weeks: wk) }
-            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-            else if r != nil { Haptics.success(); store.show("Price war against \(name) started.", tone: "n"); dismiss() }
-        }
-    }
-}
 
 // MARK: The market, for the whole group
 

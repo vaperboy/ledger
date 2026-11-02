@@ -6,7 +6,7 @@ import Simulation
 
 /// The full pages a row of the Team table opens.
 enum TeamPage: String, Hashable, Identifiable {
-    case management = "Management", targets = "Goals", promises = "Promises", hiring = "Hire someone"
+    case targets = "Goals"
     /// The pages of the new Team tab: the hire flow and the perks list (both pushed, nothing rises from the bottom).
     case hire = "Hire workers", perks = "Perks"
     var id: String { rawValue }
@@ -43,7 +43,7 @@ struct CompanyTeam: View {
             VStack(alignment: .leading, spacing: 8) {
                 header
                 placesNote
-                CompanyManagement(engine: engine, company: company, thin: true)
+                CompanyManagement(engine: engine, company: company)
             }
             if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
             settingsTable
@@ -74,11 +74,6 @@ struct CompanyTeam: View {
 
     // MARK: Table of settings
 
-    private var promisesValue: String {
-        let open: Int = engine.promises(companyID: company.id).filter { $0.status == .pending || $0.status == .due }.count
-        return open == 0 ? "None open" : "\(open) open"
-    }
-
     private var settingsTable: some View {
         let cur: Currency = engine.currency(for: company)
         let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
@@ -101,9 +96,7 @@ struct TeamPageDestination: View {
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
-            if page == .hiring {
-                HiringView(companyID: companyID)
-            } else if page == .hire {
+            if page == .hire {
                 HireWorkersView(companyID: companyID)
             } else if page == .perks {
                 CompanyPerksPopup(companyID: companyID, onClose: { dismiss() }).appScreen(title: "Perks", subtitle: co.name, tab: .company)
@@ -117,10 +110,8 @@ struct TeamPageDestination: View {
 
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch page {
-        case .management: CompanyManagement(engine: e, company: co)
         case .targets: CompanyTargetsCard(engine: e, company: co)
-        case .promises: CompanyPromises(engine: e, company: co)
-        case .hiring, .hire, .perks: EmptyView()
+        case .hire, .perks: EmptyView()
         }
     }
 }

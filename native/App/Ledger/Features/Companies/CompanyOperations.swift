@@ -8,7 +8,7 @@ import Simulation
 /// Where Operations is: `setup` is the page itself; the others are the full-screen pages a row of its settings table opens
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
-    case setup = "Operations", marketing = "Marketing", premises = "Premises", suppliers = "Suppliers"
+    case setup = "Operations", premises = "Premises", suppliers = "Suppliers"
     case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop", licences = "Licences"
 }
 

@@ -18,13 +18,6 @@ enum GroupMorePage: String, CaseIterable, Hashable, Identifiable {
     case office = "Group office", posts = "Executive posts", boards = "Boards", dividends = "Dividends and group tax"
     case rivals = "Rival groups and market", giving = "Giving back"
     var id: String { rawValue }
-    /// Holdings, chains, franchises and boards are reached from Structure and Board; the More menu keeps the group's own services.
-    var inMore: Bool {
-        switch self {
-        case .holdings, .chains, .franchises, .boards: return false
-        default: return true
-        }
-    }
     var sub: String {
         switch self {
         case .holdings: return "Holding companies and what they own"

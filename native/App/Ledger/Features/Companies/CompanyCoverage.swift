@@ -4,29 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The row in Operations that opens the insurance and advisers screen, with a one-line summary of where the company stands.
-struct CoverageEntryRow: View {
-    var engine: GameEngine
-    var company: Company
-
-    var body: some View {
-        let o = engine.coverageOverview(companyID: company.id)
-        let cur = engine.currency(for: company)
-        NavigationLink {
-            CompanyCoverageScreen(companyID: company.id)
-        } label: {
-            CardRow(glyph: Glyph.reports, title: "Insurance and advisers", subtitle: summary(o, cur))
-        }
-        .buttonStyle(PressableStyle())
-    }
-
-    private func summary(_ o: CoverageOverview?, _ cur: Currency) -> String {
-        guard let o else { return "Policies, insurer, law firm and accountant" }
-        if o.activeCount == 0 { return "Not insured. Pick an insurer, then the policies you want." }
-        return "\(o.activeCount) of \(o.policies.count) policies · \(cur.tidyShort(o.weeklyPremiums * 52 / 12)) a month"
-    }
-}
-
 /// Insurance policies and the three advisers of one company: insurer, law firm and accountant. Summary first, then the choices.
 struct CompanyCoverageScreen: View {
     @EnvironmentObject var store: GameStore

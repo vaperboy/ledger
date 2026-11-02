@@ -86,14 +86,6 @@ struct CompanySales: View {
         return it.discountPercent > 0 ? word + ", \(Int(it.discountPercent))% off for \(it.discountWeeksLeft.weeksText)" : word
     }
 
-    private func addItem(service: Bool) {
-        let id: Int = company.id
-        let name: String = engine.suggestedItemName(companyID: id, isService: service)
-        let r = store.act { $0.addSalesItem(companyID: id, name: name, isService: service) }
-        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-        else { Haptics.success(); store.show("Added \(name).", tone: "good") }
-    }
-
     // MARK: Marketing (a popup)
 
     private var marketingRow: some View {
@@ -104,12 +96,4 @@ struct CompanySales: View {
 
     // MARK: Development, named for the trade
 
-    @ViewBuilder private var developRow: some View {
-        if CompanyDevelopment.isAvailable(company, engine) {
-            let run = Development.running(company)
-            let left: Int = max(0, (run?.weeksLeft ?? 0) - engine.state.week)
-            SettingsTableRow(title: CompanyDevelopment.title(company, engine), value: run == nil ? "Start one" : "\(left.weeksText) to go",
-                             valueTint: run == nil ? Theme.ivory : Theme.caution, glyph: Glyph.opsBox) { part = .develop }
-        }
-    }
 }

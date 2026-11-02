@@ -27,8 +27,6 @@ enum HireFeedback: Equatable {
     static func counter(_ c: Negotiation.Counter, name: String) -> HireFeedback {
         .countered(c.amount, c.isFinal ? "\(name) says this is as low as they will go." : "\(name) would take the job for this much.")
     }
-    static func insulted(_ name: String) -> HireFeedback { .declined("\(name) took that as an insult and named no figure. Come closer to the going rate or pick someone else.") }
-    static func lostPatience(_ name: String) -> HireFeedback { .unavailable("\(name) lost patience and took another job.") }
 }
 
 /// The words for authority levels, the same on every screen: 0 asks you, 1 within limits, 2 full control.

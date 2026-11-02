@@ -81,12 +81,6 @@ struct DayChip: Equatable, Identifiable {
     var cashChange: Double
 }
 
-/// Sheet item for a report digest (the engine type is not Identifiable).
-struct ReportSheetItem: Identifiable {
-    let digest: ReportDigest
-    var id: String { digest.kind.rawValue + "-" + String(digest.reportID) }
-}
-
 /// Choose up to four shortcuts for Home.
 struct HomeShortcutEditor: View {
     @EnvironmentObject var store: GameStore
