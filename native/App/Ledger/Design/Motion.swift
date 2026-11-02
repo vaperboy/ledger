@@ -161,7 +161,7 @@ extension View {
     func pageArrive() -> some View { modifier(PageArrive()) }
     /// A vertical scroll container that never bounces or drags sideways and clips anything wider than itself.
     func noSidewaysDrag() -> some View {
-        scrollBounceBehavior(.never, axes: .horizontal).clipped()
+        scrollBounceBehavior(.basedOnSize, axes: .horizontal).clipped()
     }
     /// Swipe sideways to change the segment (see `SwipeBetweenSegments`).
     func swipeBetween<T: Hashable>(_ items: [T], selection: Binding<T>) -> some View {
