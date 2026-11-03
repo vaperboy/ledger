@@ -34,7 +34,7 @@ struct AbroadOptionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HeroFigure(label: "Cash and savings", value: e.homeCurrency.tidyDisplay(liquid), note: "Registration and share capital come from this.")
-                    if weak { NoteCard(text: "The brand is too weak (\(Int(co.reputation)) of 35 needed). Build its reputation at home first.", glyph: Glyph.warning, tint: Theme.caution) }
+                    if weak { NoteCard(text: "The brand is too weak to start abroad. Build its reputation at home first.", glyph: Glyph.warning, tint: Theme.caution) }
                     countryTable(e, options, have, liquid)
                     if let pick { detail(e, co, pick, liquid: liquid, weak: weak) }
                     Text("Brand carried over: about 55% of the reputation and 40% of the awareness of \(co.name). Each country you operate in sets new rules from time to time; a head-office desk for that country handles them, without one a late change is fined.")

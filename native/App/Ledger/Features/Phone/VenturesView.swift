@@ -318,7 +318,7 @@ private struct FoundedCard: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(r.name).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                                    Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int((r.odds * 100).rounded()))% chance they sign · relationship \(Int(r.relationship.rounded())) of 100")
+                                    Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int((r.odds * 100).rounded()))% chance they sign · relationship: \(Words.level(r.relationship, scale: .quality).lowercased())")
                                         .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                                 }
                                 Spacer()

@@ -42,9 +42,6 @@ struct GoalsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Your goals").capsLabel()
                     Text(line).font(.serifTitle(20)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    if e.legacyScore > 0 {
-                        Text("Legacy \(Int(e.legacyScore.rounded()))").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                    }
                 }
                 Spacer(minLength: 0)
             }
