@@ -25,6 +25,8 @@ public struct Balance: Sendable {
     public var priceRangeByTrade: [String: [Double]]
     /// Share of customers who are tourists, by trade. Original: `TOUR_T`.
     public var tourismShareByTrade: [String: Double]
+    /// Weight multiplier on bad events by game week (`eventRamp` in balance.json): the entry with the highest `week` not above the current week applies.
+    public var eventRamp: [(week: Int, mult: Double)]
     /// Twelve monthly tourism multipliers by country. Original: `WX56.TS`.
     public var tourismSeasonByCountry: [String: [Double]]
     public var weather: WeatherTables
@@ -55,6 +57,8 @@ public struct Balance: Sendable {
                          peakMonths: w[3]["m"].array.map { $0.int })
             }
         }
+        let ramp = j["eventRamp"].array.map { (week: $0["week"].int, mult: $0["mult"].double) }.sorted { $0.week < $1.week }
+        eventRamp = ramp
         let d = j["demand"]
         demandDesignFactor = d["DK"].double
         economySensitivity = d["SENS"].object.mapValues { $0.double }
@@ -82,6 +86,11 @@ public struct Balance: Sendable {
         // Corrections of the demand levels live in trade_tuning.json (see TradeTuning)
         for (id, k) in TradeTuning.bundled()["demandLevel"].object { json["demand"]["demandLevelByTrade"][id] = k }
         return Balance(json: json, weatherJSON: try load("weather"), waysJSON: try load("sales_ways"), marketJSON: try load("market_classes"))
+    }
+
+    /// Multiplier on the weight of bad events in a game week (1 when there is no table).
+    public func eventRampMultiplier(week: Int) -> Double {
+        eventRamp.last(where: { $0.week <= week })?.mult ?? 1
     }
 
     /// Price multiplier for a (possibly fractional) price level -3 ... +3. Original: `pmOf` (price_moves_and_lawsuits.js).

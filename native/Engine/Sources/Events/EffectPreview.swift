@@ -31,6 +31,7 @@ public enum EffectPreview {
         }
         timed("dem", "Demand"); timed("cap", "Capacity"); timed("price", "Prices"); timed("cogsUp", "Cost of sales")
         if fx["pr"].double != 0 { out.append("Price level \(fx["pr"].double > 0 ? "up" : "down")") }
+        if fx["special"].double > 0 && fx["special"].double < 1 { out.append("Halves the chance of the full hit") }
         if fx["quit"].bool { out.append("An employee may leave") }
         if fx["brk"].bool { out.append("Equipment may break") }
         if fx["ill"].double != 0 { out.append("Disease risk in the pens rises for a few weeks") }

@@ -18,6 +18,8 @@ extension EventEngine {
         let id = s.companies[i].id
         let country = fc.country(of: s.companies[i], s)
         let currency = Currency(country: country, rates: fc.rates(s))
+        // The event's own code (SpecialEvents) as the effect of an option: `special` = the chance it runs (1 = always, 0.5 = half the time).
+        if fx["special"].double > 0, s.random.chance(fx["special"].double) { _ = SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) }
         if !fx["gamble"].isNull {
             let g = fx["gamble"]
             apply(&s, companyIndex: i, s.random.chance(g["p"].double) ? g["ok"] : g["bad"], ctx: ctx, event: e, data: data, context: fc)

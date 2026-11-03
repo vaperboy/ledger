@@ -26,6 +26,8 @@ public struct GameEvent: Sendable {
     public var condition: Formula?
     public var options: [Option]
     public var lawyerHelps: Bool
+    /// A decision that must be answered before the player can play on (Part 4.4 of the rebuild brief). Default false.
+    public var blocking: Bool
 
     init(id: String, json e: JSONValue) {
         self.id = id
@@ -40,6 +42,7 @@ public struct GameEvent: Sendable {
         condition = e["cond"].isNull ? nil : Formula(e["cond"]["expr"].string)
         options = e["opts"].array.map { Option(label: $0["l"].string, detail: $0["d"].string, effects: $0["fx"]) }
         lawyerHelps = e["lawyer"].bool
+        blocking = e["blocking"].bool
     }
 }
 

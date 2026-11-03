@@ -179,6 +179,11 @@ public struct GameEngine {
         return ok
     }
 
+    /// True while an open inbox message comes from a blocking event (`blocking` in events.json): Play waits until it is answered.
+    public var hasBlockingDecision: Bool {
+        state.inbox.contains { $0.status == "open" && events[$0.str("ev")]?.blocking == true }
+    }
+
     /// Open messages waiting for an answer, newest first.
     public var openDecisions: [Message] { state.inbox.filter { $0.status == "open" } }
 

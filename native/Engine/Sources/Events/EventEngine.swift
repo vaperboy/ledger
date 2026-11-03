@@ -63,6 +63,7 @@ public enum EventEngine {
             cooldown -= 1
             setFlag(&s, i, "evCool", cooldown)
         }
+        fireDeferred(&s, companyIndex: i, library: library, data: data, context: fc)
         let w = World(state: s, data: data)
         let risk = Knobs.effect(s.companies[i], bd, "r", w)
         let c = context(for: s.companies[i], data: data, country: w.country(s.companies[i]))
@@ -75,13 +76,54 @@ public enum EventEngine {
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
+            if e.tone == "bad" { p *= data.balance.eventRampMultiplier(week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
             if Sourcing.shields(s, companyID: co.id, eventID: id) { continue }   // supplied from inside: outside supplier trouble does not reach it
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
+            if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }   // weeks 1-12: one bad event a week, the rest wait
             if !e.options.isEmpty { setFlag(&s, i, "evCool", 6) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
         }
+    }
+
+    /// Last week of the one-bad-event-a-week rule.
+    static let badCapLastWeek = 12
+
+    /// In weeks 1 to 12 only one bad event may fire a week across all companies; a second one is put off to the next week
+    /// (state kept in `rest["evBad"]`: `week`, `n`, and `later` = [{c: company, e: event}]). Returns whether this event may fire now.
+    static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
+        guard s.week <= badCapLastWeek else { return true }
+        var st = s.rest["evBad"] ?? .object([:])
+        if st["week"].int != s.week { st["week"] = .number(Double(s.week)); st["n"] = .number(0) }
+        if st["n"].int >= 1 {
+            var later = st["later"].array
+            if !later.contains(where: { $0["c"].int == companyID && $0["e"].string == eventID }) {
+                later.append(.object(["c": .number(Double(companyID)), "e": .string(eventID)]))
+                st["later"] = .array(later)
+            }
+            s.rest["evBad"] = st
+            return false
+        }
+        st["n"] = .number(1)
+        s.rest["evBad"] = st
+        return true
+    }
+
+    /// Fire the bad events put off from an earlier week for this company (one per week while the cap applies).
+    static func fireDeferred(_ s: inout GameState, companyIndex i: Int, library: EventLibrary, data: GameData, context fc: FinanceContext) {
+        guard var st = s.rest["evBad"], !st["later"].array.isEmpty else { return }
+        let id = s.companies[i].id
+        guard let k = st["later"].array.firstIndex(where: { $0["c"].int == id }) else { return }
+        let evID = st["later"].array[k]["e"].string
+        guard let e = library[evID], s.companies[i].status == .open else {
+            var l = st["later"].array; l.remove(at: k); st["later"] = .array(l); s.rest["evBad"] = st; return
+        }
+        if !takeBadSlot(&s, companyID: id, eventID: evID) { return }
+        st = s.rest["evBad"] ?? st
+        var l = st["later"].array; l.removeAll(where: { $0["c"].int == id && $0["e"].string == evID }); st["later"] = .array(l); s.rest["evBad"] = st
+        let c = context(for: s.companies[i], data: data, country: World(state: s, data: data).country(s.companies[i]))
+        fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
     }
 
     static func setFlag(_ s: inout GameState, _ i: Int, _ key: String, _ v: Double) {
@@ -120,7 +162,9 @@ public enum EventEngine {
     static func fire(_ s: inout GameState, companyIndex i: Int, _ e: GameEvent, ctx: Context, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let cur = Currency(country: fc.country(of: co, s), rates: fc.rates(s))
-        if SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) { return }
+        // A special event with options runs its own code only when an option asks for it (effect key `special`).
+        let optionsRunSpecial = e.options.contains { !$0.effects["special"].isNull }
+        if !optionsRunSpecial && SpecialEvents.handle(&s, companyIndex: i, e, ctx: ctx, data: data, context: fc) { return }
         var title = e.text.replacingOccurrences(of: "{n}", with: co.name)
         // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)

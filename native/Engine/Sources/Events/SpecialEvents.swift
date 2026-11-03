@@ -99,7 +99,8 @@ enum SpecialEvents {
             return FinanceModel.specialEvent(e.id, &s, i, data: data)
         default:
             // e_price, e_geo (energy): their family is not simulated natively yet.
-            return e.id.hasPrefix("f_") || e.id.hasPrefix("e_") ? true : false
+            // Data events with effects or options (newer f_ / e_ events) run through the normal path.
+            return (e.id.hasPrefix("f_") || e.id.hasPrefix("e_")) && e.automaticEffects.isNull && e.options.isEmpty
         }
         return true
     }
