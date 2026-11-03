@@ -60,7 +60,7 @@ struct CompanyMarket: View {
         }
         .onAppear { if baseline.isEmpty { baseline = shareNow } }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
-        .centerSheet(item: rivalBinding) { r in
+        .centerSheet(item: rivalBinding, title: "Rival") { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
     }
@@ -337,17 +337,14 @@ struct RivalSheet: View {
     @State private var pendingPrice: Double?
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
-                if let e = store.engine, let co = e.state.company(companyID), let d = e.rivalDetail(companyID: companyID, rivalID: rivalID) {
-                    content(e, co, d)
-                } else {
-                    Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted).padding()
-                }
+        Group {
+            if let e = store.engine, let co = e.state.company(companyID), let d = e.rivalDetail(companyID: companyID, rivalID: rivalID) {
+                content(e, co, d)
+            } else {
+                Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted)
             }
-            .ledgerBackground()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price })) { p in
+        }
+        .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price }), title: "Acquisition", size: .tall) { p in
                 AcquisitionSheet(companyID: companyID, rivalID: rivalID, price: p.price) { kind in
                     switch kind {
                     case .own: pendingPrice = nil; buy(p.price)
@@ -359,7 +356,6 @@ struct RivalSheet: View {
                     case .ownBank: buyWithBank(p.price)
                     }
                 }
-            }
         }
     }
 
@@ -376,7 +372,6 @@ struct RivalSheet: View {
             cutSection(e, d)
             actionsSection(e, co, d, cur)
         }
-        .padding(.horizontal, Theme.Space.margin).padding(.vertical, Theme.Space.m)
     }
 
     @ViewBuilder private func header(_ d: RivalDetail) -> some View {

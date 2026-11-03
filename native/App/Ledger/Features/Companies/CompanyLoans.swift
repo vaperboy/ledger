@@ -54,7 +54,7 @@ struct CompanyLoans: View {
                 }
             }
         }
-        .centerSheet(item: $repaying) { l in
+        .centerSheet(item: $repaying, title: "Loan details") { l in
             LoanDetailSheet(loanID: l.id).environmentObject(store)
         }
     }
@@ -74,8 +74,8 @@ struct RepayLoanSheet: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let cash = store.engine?.state.company(company.id)?.cash ?? company.cash
-        PopupNavStack {
-            ScrollView {
+        Group {
+            Group {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     KeyFigures(items: [
                         .init(label: "Left to pay", value: cur.tidyShort(loan.balance)),
@@ -91,11 +91,7 @@ struct RepayLoanSheet: View {
                     Text("Paid from the company's cash, with no fee for paying early. Less owed means less interest; the monthly instalment falls with the balance.")
                         .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(Theme.Space.margin)
             }
-            .ledgerBackground()
-            .navigationTitle(loan.name).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
         .confirmAction($pending)
     }

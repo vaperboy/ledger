@@ -75,24 +75,21 @@ struct BankMoveSheet: View {
     }
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
+        Group {
+            Group {
                 if let e = store.engine {
                     let legs: [Leg] = makeLegs(e)
                     let leg: Leg? = legs.indices.contains(chosen) ? legs[chosen] : legs.first
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        Text(kind.title).font(.serifTitle(22)).foregroundStyle(P.ink)
                         if let leg {
                             form(leg, legs)
                         } else {
                             emptyState(e)
                         }
                     }
-                    .padding(Theme.Space.margin)
                 }
             }
-            .noSidewaysDrag().ledgerBackground()
-            .navigationTitle(kind.title).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .confirmAction($pending)
         }
     }
@@ -231,20 +228,13 @@ struct BankMoveSheet: View {
 /// Pay bill: everything coming up on the account, with Pay now where the engine allows it.
 struct BankPaySheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
     var account: BankAccountID
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
-                if let e = store.engine, let d = e.bankAccount(account) {
-                    BankBillsList(account: account, upcoming: d.upcoming, cash: d.balance)
-                        .padding(Theme.Space.margin)
-                }
+        Group {
+            if let e = store.engine, let d = e.bankAccount(account) {
+                BankBillsList(account: account, upcoming: d.upcoming, cash: d.balance)
             }
-            .noSidewaysDrag().ledgerBackground()
-            .navigationTitle("Pay bill").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
 }

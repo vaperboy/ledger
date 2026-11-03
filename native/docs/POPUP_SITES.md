@@ -1,0 +1,44 @@
+# Centred popup sites (`.centerSheet`)
+
+Frame: `Design/CenterSheet.swift`. The frame draws a fixed 44pt header row (optional title left, x right, thin divider under it only with a title). Content starts below it and never draws its own close button. A title is set with `title:` on `centerSheet(...)` or, when it depends on the content, with `.centerSheetTitle("...")` inside the content (PeopleSheet does this).
+
+Size: `size: .fit` (default) is exactly as high as the content, at most 80% of the screen, scrolling only when taller (FitScroll, content padding 16 added by the frame). `size: .tall` is a fixed 80% and is used only for flows and full-bleed content. No heuristics: `PopupNavStack`, `centerSheetFills` and the greedy measurement are gone. A content must not contain its own ScrollView/NavigationStack when `.fit`.
+
+Root causes fixed: (1) the x was an overlay on top of the content, so it covered titles and buttons, and content added its own x; (2) a NavigationStack (PopupNavStack, PeopleSheet) inside the unbounded FitScroll collapses to zero height, so the card was either blank or forced to 80% with empty space; (3) `.ledgerBackground()` painted a second panel inside the card.
+
+| File | Shows | Size | Own close before | Fixed |
+|---|---|---|---|---|
+| Phone/BankAccountView.swift | Bank move (deposit/withdraw/transfer) | fit | toolbar Close | stack removed, heading in content |
+| Phone/BankAccountView.swift | Pay bill | fit | toolbar Done | stack removed, title "Pay bill" |
+| Phone/BankAccountView.swift | Every movement | fit | toolbar Done | stack removed, title |
+| Phone/BankAccountsView.swift | Bank move (personal) | fit | via BankMoveSheet | as above |
+| Phone/VenturesView.swift | Found a startup | tall (own scroll) | header Close | header removed, title |
+| Phone/VenturesView.swift | Launch / change price | tall (own scroll) | header Close | header removed, title |
+| Phone/StatsView.swift | Document | fit | x in DocumentView | x removed from DocumentView |
+| Phone/BankView.swift | Loan details | fit | toolbar Close | stack removed, title |
+| Phone/BankLoanDetail.swift | Part payment | fit | toolbar Close | stack removed, title "Pay back" |
+| Phone/LuxuryView.swift | Item purchase | tall (footer + scroll, full-bleed photo) | Close capsule | removed from LuxuryItemHead |
+| Phone/LuxuryView.swift | Inspect piece | tall (own scroll) | Close capsule | removed |
+| Companies/CompanySales.swift (3 sites) | Marketing, sales item (price slider), new item | fit | none (item used PeopleSheet Done) | no stack/background |
+| Companies/GroupEntityMoney.swift | Bank move (company), dividend policy | fit | Close button | removed |
+| Companies/CompanySaleSection.swift | Buyer talk | fit | toolbar Close | stack removed |
+| Companies/GroupEntityBoard.swift | Board seat picker | fit | Close button | removed |
+| Companies/FranchiseBrandsView.swift, CompanyFranchise.swift, CompanyChain.swift, CompanySetupScreen.swift, DocumentSignSheet.swift | Sign and send forms | fit, locked | GamePopup inside popup (second card and x) | plain content, title and lock via frame |
+| Companies/CompanyDevelopment.swift | Expansion plan | fit | bottom Close | removed |
+| Companies/CompanyClub.swift | Club offer | fit | Close button | removed |
+| Companies/CompanyTeam.swift | Perks | fit | none | title in header |
+| Companies/GroupSupplierDirectory.swift, CompanySourcing.swift (2) | Supplier profile, supplier popup, credit info | fit | none | inner ContainedScroll removed, own padding removed |
+| Companies/CompanySettings.swift | Limited company conversion | tall (flow) | toolbar Cancel/Close | stack removed, title |
+| Companies/CompanyTeamRoster.swift, CompanyManagement.swift (2), CompanyProperties.swift, CompanyOperations.swift | Post, manager, assistant, property, setting | fit | PeopleSheet Done | PeopleSheet no longer a stack |
+| Companies/CompanyLoans.swift | Loan details, repay | fit | toolbar Close | stack removed |
+| Companies/GrowthBrandResearch.swift | Market research (+ report with Back) | fit | x in DocumentView | ContainedScroll removed, report switches by @State |
+| Companies/CompanyMarket.swift | Rival; Acquisition | fit; tall (acquisition flow) | toolbar Done/Not now | stacks removed |
+| Companies/WorkerProfileSheet.swift (RootView, CompanyStaffRoster) | Worker profile | fit | none | stack removed |
+| Companies/HireFlowKit.swift | Hire flow | tall (NavigationStack) | none | `NavigationStack`, `size: .tall` |
+| Companies/DecidesSheets.swift | Decision rows, manager | fit | none | background removed |
+| Companies/GroupView.swift | Add to group menu | fit | none | title in header |
+| Companies/CompanyStaffRoster.swift | Contract discussion | fit | PeopleSheet Done | as PeopleSheet |
+| Home/HomeView.swift (HomeShortcutEditor) | Home shortcuts | fit | Done at top | Save button at bottom, scroll removed |
+| Inbox/InboxView.swift | Message / document | fit | two x buttons | x removed, no nested bubble card |
+| Start/StartView.swift | Paste save text | fit | toolbar Cancel | stack removed |
+| Root/RootView.swift | Worker profile, custom tab picker | fit | none | title in header |

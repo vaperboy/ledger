@@ -154,7 +154,6 @@ struct SeatPickerSheet: View {
         let r: ManagerModel.SeatRole? = store.engine?.seatRoles.first { (x: ManagerModel.SeatRole) -> Bool in x.id == role }
         let cands: [Person] = (store.engine?.boardCandidates(key: key) ?? []).filter { (p: Person) -> Bool in p.str("adv13") == role }
         VStack(alignment: .leading, spacing: 8) {
-            Text(r?.title ?? "Board seat").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
             Text(r?.text ?? "").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
             if cands.isEmpty {
                 Text("Nobody lined up for this seat yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
@@ -163,9 +162,8 @@ struct SeatPickerSheet: View {
                 candidateRow(p)
             }
             QuietButton(title: cands.isEmpty ? "Search for candidates" : "Search again", fullWidth: true) { search() }
-            QuietButton(title: "Close", fullWidth: true) { dismiss() }
         }
-        .padding(16)
+        .centerSheetTitle(r?.title ?? "Board seat")
         .id(refresh)
     }
 

@@ -15,7 +15,7 @@ struct MarketingSheet: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted)
         }
     }
 
@@ -33,19 +33,16 @@ struct MarketingSheet: View {
                 channelList(e, channels, cur: cur, mkt: mkt)
             }
         }
-        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .ledgerBackground()
     }
 
-    /// "Marketing", how many campaigns run and the total weekly budget; the popup's x sits at the right of this row.
+    /// "Marketing", how many campaigns run and the total weekly budget; 
     private func header(active: Int, total: Double, cur: Currency) -> some View {
         let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
         return VStack(alignment: .leading, spacing: 1) {
             Text("Marketing").font(.serifTitle(20)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
             Text(sub).font(.system(size: 12.5, weight: .medium)).foregroundStyle(active > 0 ? Theme.gold : Theme.ivoryMuted)
         }
-        .padding(.trailing, 44)
     }
 
     private func channelList(_ e: GameEngine, _ channels: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {

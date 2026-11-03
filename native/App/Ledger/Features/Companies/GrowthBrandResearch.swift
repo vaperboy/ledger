@@ -194,11 +194,14 @@ struct ResearchSheet: View {
 
     var body: some View {
         if let d = shownDoc {
-            DocumentView(doc: d, close: { shownDoc = nil })
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                DocumentView(doc: d, close: { shownDoc = nil })
+                QuietButton(title: "Back to research", fullWidth: true) { shownDoc = nil }
+            }
         } else if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted)
         }
     }
 
@@ -208,16 +211,11 @@ struct ResearchSheet: View {
         let reports: [ResearchReport] = Array(e.research(companyID: companyID).reversed())
         let waiting: [String] = MarketResearch.pending(co).map { (x: (optionID: String, dueWeek: Int)) -> String in x.optionID }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Market research").font(.headline).foregroundStyle(Theme.ivory)
-            ContainedScroll(maxHeight: 460) {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(options) { (o: ResearchOption) -> AnyView in AnyView(optionRow(o, cur, waiting.contains(o.id))) }
-                    Text("A market advisor halves cost and time.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                    reportList(reports)
-                }
-            }
+            ForEach(options) { (o: ResearchOption) -> AnyView in AnyView(optionRow(o, cur, waiting.contains(o.id))) }
+            Text("A market advisor halves cost and time.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            reportList(reports)
         }
-        .padding(.vertical, 4)
+        .centerSheetTitle("Market research")
         .confirmAction($pending)
     }
 

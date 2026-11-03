@@ -38,7 +38,7 @@ struct DocumentSignSheet: View {
     @State private var strokes: [[CGPoint]] = []
 
     var body: some View {
-        GamePopup(title: form?.name ?? "Application", showsClose: true, dismissOnBackdrop: false, onClose: onClose) {
+        Group {
             if let f = form, let co = store.engine?.state.company(companyID) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("To: " + f.issuer.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
@@ -71,6 +71,8 @@ struct DocumentSignSheet: View {
                 }
             }
         }
+        .centerSheetTitle(form?.name ?? "Application")
+        .centerSheetLocked()
     }
 
     private var form: DocumentForm? { store.engine?.documentForm(companyID: companyID, documentID: documentID) }

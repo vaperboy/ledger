@@ -179,7 +179,7 @@ struct GroupSupplierDirectory: View {
                 Spacer(minLength: 4)
                 Chip(text: Self.badge(o, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
             }
-            ContainedScroll(maxHeight: 420) {
+            Group {
                 VStack(alignment: .leading, spacing: 6) {
                     line("Supplies", Self.whatText(en))
                     line("Quality", o.quality ?? "Not rated")
@@ -197,7 +197,7 @@ struct GroupSupplierDirectory: View {
             }
             openButtons(en)
         }
-        .padding(.horizontal, 18).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private func openButtons(_ en: Entry) -> some View {

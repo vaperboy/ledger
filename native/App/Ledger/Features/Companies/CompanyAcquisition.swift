@@ -43,7 +43,7 @@ struct AcquisitionSheet: View {
     private func ownsCompany(_ k: AcquisitionPlan.Kind) -> Bool { k == .own || k == .branch || k == .ownBank }
 
     var body: some View {
-        PopupNavStack {
+        Group {
             ScrollView {
                 if let e = store.engine, let co = e.state.company(companyID), let r = Rivals.rivals(e.state, for: co).first(where: { $0.id == rivalID }), let plan = e.acquisitionPlan(companyID: companyID, rivalID: rivalID, price: price) {
                     let cur = e.currency(for: co)
@@ -76,14 +76,12 @@ struct AcquisitionSheet: View {
                         }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable); Spacer() }
                         if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
                     }
-                    .padding(Theme.Space.margin)
+                    .padding(16)
                 } else {
-                    Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted).padding()
+                    Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted).padding(16)
                 }
             }
-            .ledgerBackground()
-            .navigationTitle("Acquisition").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
+            .noSidewaysDrag()
             .confirmAction($pending)
         }
     }

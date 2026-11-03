@@ -34,10 +34,10 @@ struct LuxuryView: View {
             content
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
-        .centerSheet(item: Binding(get: { itemSheet.map { LuxuryID(id: $0) } }, set: { itemSheet = $0?.id })) { (s: LuxuryID) in
+        .centerSheet(item: Binding(get: { itemSheet.map { LuxuryID(id: $0) } }, set: { itemSheet = $0?.id }), size: .tall) { (s: LuxuryID) in
             LuxuryItemSheet(itemID: s.id) { itemSheet = nil; tab = .vault }
         }
-        .centerSheet(item: Binding(get: { inspected.map { LuxuryPieceID(id: $0) } }, set: { inspected = $0?.id })) { (s: LuxuryPieceID) in
+        .centerSheet(item: Binding(get: { inspected.map { LuxuryPieceID(id: $0) } }, set: { inspected = $0?.id }), size: .tall) { (s: LuxuryPieceID) in
             LuxuryInspectSheet(pieceID: s.id)
         }
     }

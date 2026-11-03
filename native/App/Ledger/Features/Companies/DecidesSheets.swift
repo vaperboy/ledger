@@ -33,25 +33,17 @@ struct DecidesSheet: View {
                 content(e, co)
             } else {
                 Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
             }
         }
         .centerSheet(isPresented: $showManager) { ManagerSheet(companyID: companyID, candidates: $managerCands).environmentObject(store) }
     }
 
     private func content(_ e: GameEngine, _ co: Company) -> some View {
-        Group {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(kind.rawValue).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-                    Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                }
-                choices(kind, e, co)
-            }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, 18).padding(.bottom, 20)
-            .frame(maxWidth: 760).frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            choices(kind, e, co)
         }
-        .ledgerBackground()
+        .centerSheetTitle(kind.rawValue)
     }
 
     @ViewBuilder private func choices(_ k: DecideKind, _ e: GameEngine, _ co: Company) -> some View {

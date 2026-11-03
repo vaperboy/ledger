@@ -19,7 +19,7 @@ struct PaperSignSheet: View {
     @State private var strokes: [[CGPoint]] = []
 
     var body: some View {
-        GamePopup(title: title, showsClose: true, dismissOnBackdrop: false, onClose: onClose) {
+        Group {
             VStack(alignment: .leading, spacing: 12) {
                 Text("To: " + to).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
                 if !note.isEmpty { Text(note).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
@@ -40,6 +40,8 @@ struct PaperSignSheet: View {
                 }
             }
         }
+        .centerSheetTitle(title)
+        .centerSheetLocked()
     }
 
     private func line(_ label: String, _ value: String) -> some View {

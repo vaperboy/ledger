@@ -284,12 +284,11 @@ struct CompanyPerksPopup: View {
             let cur: Currency = e.currency(for: co)
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
             VStack(alignment: .leading, spacing: 10) {
-                Text("Perks").font(.serifTitle(20)).foregroundStyle(P.ink).padding(.trailing, 44).accessibilityAddTraits(.isHeader)
                 Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
                     .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: 0) { perkRows(e, co, cur) }
             }
-            .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 10)
+            .centerSheetTitle("Perks")
         } else {
             Color.clear.onAppear { onClose() }
         }

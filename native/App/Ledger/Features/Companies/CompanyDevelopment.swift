@@ -158,26 +158,12 @@ struct ExpansionForm: View {
     var body: some View {
         let cur: Currency = engine.currency(for: company)
         let plan: Development.Plan? = engine.developmentPlan(companyID: company.id, project: project.id)
-        PopupNavStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text(project.text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    if let plan { details(plan, cur) }
-                }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 30)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .appScreen(title: project.name, subtitle: "Plan the project", tab: .company)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                HStack(spacing: 12) {
-                    QuietButton(title: "Close") { dismiss() }
-                    QuietButton(title: "Start for \(cur.tidyShort(plan?.cost ?? 0))", fullWidth: true) { start() }
-                        .opacity(plan?.blockedReason == nil ? 1 : 0.4).disabled(plan?.blockedReason != nil)
-                }
-                .padding(.horizontal, 18).padding(.vertical, 10)
-                .background(Theme.page)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(project.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            Text(project.text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            if let plan { details(plan, cur) }
+            QuietButton(title: "Start for \(cur.tidyShort(plan?.cost ?? 0))", fullWidth: true) { start() }
+                .opacity(plan?.blockedReason == nil ? 1 : 0.4).disabled(plan?.blockedReason != nil)
         }
     }
 

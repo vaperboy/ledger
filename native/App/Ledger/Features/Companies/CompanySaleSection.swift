@@ -126,8 +126,8 @@ struct BuyerTalkSheet: View {
     @State private var ask = 0.0
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
+        Group {
+            Group {
                 if let e = store.engine, let co = e.state.company(companyID), let o = CompanySale.listing(e.state, companyID: companyID)?.offers.first(where: { $0.id == offerID }) {
                     let cur = e.currency(for: co)
                     let mine = co.ownership / 100
@@ -178,14 +178,10 @@ struct BuyerTalkSheet: View {
                         }
                         Button("Sign at \(cur.tidyShort(o.price * mine))…") { dismiss(); onSign(o) }.buttonStyle(QuietButtonStyle())
                     }
-                    .padding(Theme.Space.margin)
                 } else {
-                    Text("This buyer has left.").foregroundStyle(Theme.ivoryMuted).padding()
+                    Text("This buyer has left.").foregroundStyle(Theme.ivoryMuted)
                 }
             }
-            .ledgerBackground()
-            .navigationTitle("Buyer talk").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
 }

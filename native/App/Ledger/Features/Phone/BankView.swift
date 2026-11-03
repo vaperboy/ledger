@@ -76,7 +76,7 @@ struct BankPersonalLoans: View {
             }
             loansCard(e, cur, personal)
         }
-        .centerSheet(item: $repaying) { l in LoanDetailSheet(loanID: l.id) }
+        .centerSheet(item: $repaying, title: "Loan details") { l in LoanDetailSheet(loanID: l.id) }
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
@@ -124,8 +124,8 @@ struct RepayPersonalLoanSheet: View {
     @State private var amount = 0.0
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
+        Group {
+            Group {
                 if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) {
                     let cur = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
                     let p = e.loanPayoff(loanID: l.id)
@@ -156,14 +156,10 @@ struct RepayPersonalLoanSheet: View {
                             } else { Haptics.warning(); store.show("Not enough money to pay that back.", tone: "warn") }
                         }.buttonStyle(GoldButtonStyle()).disabled(pay <= 0)
                     }
-                    .padding(Theme.Space.margin)
                 } else {
-                    Text("This loan is paid off.").foregroundStyle(P.inkSoft).padding()
+                    Text("This loan is paid off.").foregroundStyle(P.inkSoft)
                 }
             }
-            .noSidewaysDrag().ledgerBackground()
-            .navigationTitle("Pay back").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
 }

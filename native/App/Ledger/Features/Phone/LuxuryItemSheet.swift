@@ -23,7 +23,7 @@ struct LuxuryItemSheet: View {
                 VStack(spacing: 0) {
                     ContainedScroll {
                         VStack(alignment: .leading, spacing: 16) {
-                            LuxuryItemHead(item: it) { dismiss() }
+                            LuxuryItemHead(item: it)
                             LuxuryItemSpecs(item: it)
                             LuxuryBreakdown(item: it)
                             settlementChoice(e, it)
@@ -34,7 +34,6 @@ struct LuxuryItemSheet: View {
                 }
             }
         }
-        .centerSheetFills()
         .background(P.ground.ignoresSafeArea())
         .environment(\.outsidePalette, P)
         .preferredColorScheme(.dark)
@@ -147,7 +146,6 @@ struct LuxuryItemSheet: View {
 
 struct LuxuryItemHead: View {
     var item: Luxury.Item
-    var close: () -> Void
     private var P: OutsidePalette { .luxury }
     var body: some View {
         LuxuryPhoto(itemID: item.id, height: 240)
@@ -158,15 +156,6 @@ struct LuxuryItemHead: View {
                     Text(item.name).font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 8)
-            }
-            .overlay(alignment: .topTrailing) {
-                Button(action: close) {
-                    Text("Close").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.ink)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(Capsule().fill(Color.black.opacity(0.55)))
-                }
-                .buttonStyle(PressableStyle()).padding(12)
-                .accessibilityIdentifier("luxury-sheet-close")
             }
     }
 }

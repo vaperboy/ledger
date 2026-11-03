@@ -280,25 +280,9 @@ struct InboxView: View {
             DocumentView(doc: d, close: { detailID = nil })
                 .onAppear { store.markRead(m.id) }
         } else if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
-            Group {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    HStack {
-                        Text("Message").font(.serifTitle(24)).foregroundStyle(P.ink)
-                        Spacer()
-                        Button { detailID = nil } label: {
-                            GlyphView(glyph: Glyph.close, size: 16, weight: 1.8, tint: P.ink)
-                                .frame(width: 40, height: 40)
-                                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
-                                .contentShape(Circle())
-                        }
-                        .buttonStyle(PressableStyle()).accessibilityLabel("Close message")
-                    }
-                    MessageCard(message: m, week: e.state.week, full: true, ask: ask)
-                }
-                .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 32)
-            }
-            .background(P.ground.ignoresSafeArea())
-            .confirmAction($pending)
+            MessageCard(message: m, week: e.state.week, full: true, ask: ask)
+                .centerSheetTitle("Message")
+                .confirmAction($pending)
         } else {
             Color.clear.onAppear { detailID = nil }
         }
@@ -479,9 +463,9 @@ struct MessageCard: View {
                 }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .background(shape.fill(P.card))
-        .overlay(shape.strokeBorder(P.line, lineWidth: 1))
+        .padding(.horizontal, full ? 0 : 14).padding(.vertical, full ? 0 : 11)
+        .background(shape.fill(full ? Color.clear : P.card))
+        .overlay(shape.strokeBorder(full ? Color.clear : P.line, lineWidth: 1))
     }
 
     @ViewBuilder private var decision: some View {

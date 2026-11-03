@@ -131,19 +131,16 @@ struct GroupEntityMoney: View {
 /// The dividend policy of one company in a centred popup: how much of the profit is proposed each quarter. Nothing is paid by itself.
 struct DividendPolicySheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
     var companyID: Int
 
     var body: some View {
         let chosen: String = store.engine?.dividendPolicy(companyID: companyID) ?? "none"
         VStack(alignment: .leading, spacing: 8) {
-            Text("Dividend policy").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
             ForEach(Shareholders.policies, id: \.self) { (p: String) in
                 ChoiceCard(title: Shareholders.policyNames[p] ?? p, subtitle: blurb(p), selected: chosen == p) { pick(p) }
             }
-            QuietButton(title: "Close", fullWidth: true) { dismiss() }
         }
-        .padding(16)
+        .centerSheetTitle("Dividend policy")
     }
 
     private func blurb(_ p: String) -> String {

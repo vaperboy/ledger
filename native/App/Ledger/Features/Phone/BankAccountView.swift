@@ -41,8 +41,8 @@ struct BankAccountScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .centerSheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind) }
-            .centerSheet(isPresented: $paying) { BankPaySheet(account: id) }
-            .centerSheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id) }
+            .centerSheet(isPresented: $paying, title: "Pay bill") { BankPaySheet(account: id) }
+            .centerSheet(isPresented: $viewAll, title: "Every movement") { BankAllMovementsSheet(account: id) }
         } else {
             Text("This account is closed.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(24)
         }
@@ -289,11 +289,10 @@ struct BankTransactionRow: View {
 struct BankAllMovementsSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
     var account: BankAccountID
     var body: some View {
-        PopupNavStack {
-            ScrollView {
+        Group {
+            Group {
                 if let e = store.engine {
                     let fmt = BankFmt.make(store, account)
                     let list: [BankTransaction] = e.bankTransactions(account, limit: 200)
@@ -303,12 +302,9 @@ struct BankAllMovementsSheet: View {
                             if n > 0 { Hairline() }
                             BankTransactionRow(transaction: t, fmt: fmt)
                         }
-                    }.padding(Theme.Space.margin)
+                    }
                 }
             }
-            .noSidewaysDrag().ledgerBackground()
-            .navigationTitle("Every movement").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
 }

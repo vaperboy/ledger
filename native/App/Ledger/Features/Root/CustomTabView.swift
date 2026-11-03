@@ -74,12 +74,11 @@ struct CustomTabPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(choosingCompany ? "Which company?" : (pickingFirst ? "Pick tab" : "Custom tab")).font(.serifTitle(22)).foregroundStyle(P.ink)
             Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
             if choosingCompany { companyList } else { appGrid }
         }
-        .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle(choosingCompany ? "Which company?" : (pickingFirst ? "Pick tab" : "Custom tab"))
         .accessibilityIdentifier("custom-picker")
     }
 

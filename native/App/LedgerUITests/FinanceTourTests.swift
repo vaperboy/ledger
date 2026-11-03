@@ -185,7 +185,7 @@ final class ConversionPreviewTourTests: FinanceTourCase {
         XCTAssertTrue(app.buttons["conversion-confirm"].waitForExistence(timeout: 3) || app.otherElements["conversion-blocked"].exists, "the preview ends in a decision or says why it is blocked")
         if app.buttons["conversion-payer-company"].exists { app.buttons["conversion-payer-company"].tap(); sleep(1); shot("81-conversion-company-pays") }
         // Cancel: the sheet closes and the company stays what it was.
-        tapID("conversion-cancel")
+        tapID("popup-close")
         shot("81-conversion-cancelled")
     }
 }

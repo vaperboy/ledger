@@ -89,22 +89,15 @@ struct HomeShortcutEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack {
-                Text("Home shortcuts").font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                Spacer()
-                QuietButton(title: "Done") { store.setHomeShortcuts(chosen); dismiss() }
-            }
             Text("Pick up to four. \(chosen.count) of 4 chosen.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(HomeShortcut.allCases) { item in
-                        row(item)
-                    }
+            VStack(spacing: 6) {
+                ForEach(HomeShortcut.allCases) { item in
+                    row(item)
                 }
             }
+            QuietButton(title: "Save shortcuts", fullWidth: true) { store.setHomeShortcuts(chosen); dismiss() }
         }
-        .padding(18)
-        .background(Theme.page.ignoresSafeArea())
+        .centerSheetTitle("Home shortcuts")
         .onAppear { chosen = store.homeShortcuts }
     }
 

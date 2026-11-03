@@ -183,7 +183,7 @@ private struct FoundedStartups: View {
                 }
             }
         }
-        .centerSheet(isPresented: $founding) { FoundStartupSheet() }
+        .centerSheet(isPresented: $founding, title: "Found a startup", size: .tall) { FoundStartupSheet() }
     }
 }
 
@@ -338,7 +338,7 @@ private struct FoundedCard: View {
             }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $launching) { StartupLaunchSheet(engine: engine, f: f) }
+        .centerSheet(isPresented: $launching, title: f.product?.phase == "live" ? "Change the price" : "Launch", size: .tall) { StartupLaunchSheet(engine: engine, f: f) }
     }
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {
@@ -366,10 +366,6 @@ private struct FoundStartupSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AppHeader(title: "Found a startup", subtitle: "Sector, product, builders and seed money") {
-                QuietButton(title: "Close") { dismiss() }
-            }
-            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 10)
             ScrollView {
                 if let e = store.engine, let sec = StartupProducts.sector(sectorID) {
                     let cur = e.homeCurrency
@@ -802,10 +798,6 @@ private struct StartupLaunchSheet: View {
         let weekly: Double = budgets[min(max(0, campaign), budgets.count - 1)]
         let funnel: StartupModel.Funnel? = engine.startupLaunchPreview(startupID: f.id, price: price)
         VStack(spacing: 0) {
-            AppHeader(title: launched ? "Change the price" : "Launch \(f.name)", subtitle: "Price, marketing and what to expect") {
-                QuietButton(title: "Close") { dismiss() }
-            }
-            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 10)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     CardSection("Price per customer") {

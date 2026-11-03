@@ -17,7 +17,7 @@ struct ConversionSheet: View {
     @State private var done: String?
 
     var body: some View {
-        PopupNavStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let e = store.engine, let co = e.state.company(companyID) {
@@ -32,12 +32,10 @@ struct ConversionSheet: View {
                         Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     }
                 }
-                .padding(Theme.Space.margin)
+                .padding(16)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
-            .ledgerBackground()
-            .navigationTitle("Limited company").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(done == nil ? "Cancel" : "Close") { dismiss() }.accessibilityIdentifier("conversion-cancel") } }
+            .noSidewaysDrag()
         }
         .confirmAction($pending)
     }

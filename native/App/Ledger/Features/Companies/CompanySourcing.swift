@@ -198,7 +198,7 @@ struct CompanySourcing: View {
             popupFacts(o, cur: cur)
             popupActions(input, o, cur: cur)
         }
-        .padding(.horizontal, 18).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func popupFacts(_ o: SupplierOption, cur: Currency) -> some View {
@@ -388,7 +388,7 @@ struct CompanySourcing: View {
             Text("Buying on credit").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ivory)
             Text("Buying on credit is a debt: it falls due on its date and shows under what falls due. If the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
                 .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-        }.padding(.horizontal, 18).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func confirmTerms(_ input: SupplierInput, _ t: PaymentTermChoice) {

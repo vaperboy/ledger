@@ -86,20 +86,16 @@ struct StartView: View {
             DispatchQueue.main.async { replacingSave("Import this save?", button: "Import") { store.importLegacy(text: text) } }
         }
         .centerSheet(isPresented: $showPaste) {
-            NavigationStack {
-                VStack(spacing: Theme.Space.m) {
-                    TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(minHeight: 220)
+            VStack(spacing: Theme.Space.m) {
+                    TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(height: 220)
                         .scrollContentBackground(.hidden)
                         .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
                     // The warning sits on the button itself here, so no second dialog has to appear over a closing sheet.
                     if store.hasSavedGame { Text(replacedLine).font(.caption).foregroundStyle(Theme.caution).frame(maxWidth: .infinity, alignment: .leading) }
                     Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
                         .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                .padding().ledgerBackground()
-                .navigationTitle("Paste save text").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showPaste = false } } }
             }
+            .centerSheetTitle("Paste save text")
         }
     }
 

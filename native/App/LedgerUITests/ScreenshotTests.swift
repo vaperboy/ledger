@@ -96,7 +96,7 @@ final class LuxuryTourTests: TourCase {
             shot("22-luxury-item-sheet")
             let financed = app.buttons["luxury-settle-financed"]
             if financed.exists { financed.tap(); sleep(1); shot("23-luxury-item-financed") }
-            let close = app.buttons["luxury-sheet-close"]
+            let close = app.buttons["popup-close"]
             if close.exists { close.tap(); sleep(1) }
         } else { note("no flagship card") }
         let vault = app.buttons["luxury-tab-vault"]

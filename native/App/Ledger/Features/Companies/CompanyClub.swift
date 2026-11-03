@@ -435,7 +435,6 @@ struct ClubMarketView: View {
 
     private func offerSheet(_ c: FootballModel.ClubInfo, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text(c.name).font(.serifTitle(22))
             Text("Rough value \(cur.tidyShort(c.value)). A bad offer can end the talks for a year.").font(.caption).foregroundStyle(Theme.ivoryMuted)
             if let a = answer {
                 Text(a.message.tidyMoney).font(.bodyText).foregroundStyle(a.answer == .accept ? Theme.gain : a.answer == .counter ? Theme.ivory : Theme.loss)
@@ -466,10 +465,8 @@ struct ClubMarketView: View {
                     }.buttonStyle(PressableStyle())
                 }
             }
-            HStack { Button("Close") { offerFor = nil }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }
         }
-        .padding(Theme.Space.margin)
-        .ledgerBackground()
+        .centerSheetTitle(c.name)
     }
 }
 

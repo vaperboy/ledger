@@ -19,14 +19,13 @@ struct GroupAddMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Add to group").font(.serifTitle(20)).foregroundStyle(P.ink).padding(.trailing, 44).accessibilityAddTraits(.isHeader)
             Text("Pick how the group grows.").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
             row(.newCompany, title: "New company", line: "Start a business from scratch in a trade and city of your choice.", id: "group-add-company")
             row(.holding, title: "Holding company", line: "Owns your other companies and collects their dividends.", id: "group-add-holding")
             row(.franchise, title: "Join a franchise", line: "Run a known brand under its rules, for a fee.", id: "group-add-franchise")
             row(.club, title: "Buy or found a football club", line: "Buy a club in a top league, or found a new one.", id: "group-add-club")
         }
-        .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 12)
+        .centerSheetTitle("Add to group")
     }
 
     private func row(_ d: GroupAddDestination, title: String, line: String, id: String) -> some View {

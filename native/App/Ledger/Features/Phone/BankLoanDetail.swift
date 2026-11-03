@@ -20,22 +20,15 @@ struct LoanDetailSheet: View {
     @State private var talk: String = ""
 
     var body: some View {
-        PopupNavStack {
-            ScrollView {
-                if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }), let rec = record(e, l) {
-                    content(e, rec)
-                        .padding(Theme.Space.margin)
-                        .frame(maxWidth: 560).frame(maxWidth: .infinity)
-                } else {
-                    Text("This loan is paid off.").foregroundStyle(P.inkSoft).padding()
-                }
+        Group {
+            if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }), let rec = record(e, l) {
+                content(e, rec)
+            } else {
+                Text("This loan is paid off.").foregroundStyle(P.inkSoft)
             }
-            .noSidewaysDrag().ledgerBackground()
-            .navigationTitle("Loan details").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.accessibilityIdentifier("loan-detail-close") } }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $partial) { partialSheet }
+        .centerSheet(isPresented: $partial, title: "Pay back") { partialSheet }
     }
 
     private func record(_ e: GameEngine, _ l: Loan) -> LoanRecord? {
