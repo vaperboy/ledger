@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.36",
+          "buildVersion": "36",
+          "date": "2026-11-03T15:00:26Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v36/Ledger-unsigned.ipa",
+          "size": 27344070,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Raw internal numbers on screen (quality, mood, standing, solvency, condition, scores) are now words; hidden scores are gone\n- New and important things are marked inside each app (a dot or a NEW tag in the app's own colours), and tabs get a dot when they hold something new\n- New app Marketplace for used items (cars, vans, equipment): message the seller, discuss the price (it can drop, the seller can give up) or buy; used items left TechPro; new trade Used car dealer that buys cars on the marketplace; card numbers show 16 digits with the first 12 starred\n- Applicants have their own page (filter by company and role); the inbox link now says \"Open applicants\"\n- The morning briefing has a thin loading bar; popup buttons are all the same style, with \"Decide later\" and \"Postpone\" greyed\n- Features open when they make sense: the Group Board tab appears once someone could sit on it, chain registration waits for a year of trading, expanding abroad for a profitable year, research for an 8 week old company and dividends for retained profit (locked ones stay visible with the reason); a centred popup announces each new feature with a Take me there button; the chain and franchise r"
+        },
+        {
           "version": "1.0.35",
           "buildVersion": "35",
           "date": "2026-11-03T14:43:57Z",
@@ -187,22 +196,13 @@
           "size": 23237650,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth\n- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still\n- Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list\n- Manage > Licences: apply for the licences that new things to sell need\n- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens\n- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it\n- A company about to be force-sold now shows a see-through red alert first\n- Answered decisions show a result card: what you chose, which company, and what changed\n- Loans: banks also lend against what a business is worth, not only its profit\n- Settings: \"How much I decide\" removed. Payroll, replacing leavers and complaints follow who you hir"
-        },
-        {
-          "version": "1.0.16",
-          "buildVersion": "16",
-          "date": "2026-11-02T12:18:24Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v16/Ledger-unsigned.ipa",
-          "size": 23235546,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still\n- Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list\n- Manage > Licences: apply for the licences that new things to sell need\n- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens\n- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it\n- A company about to be force-sold now shows a see-through red alert first\n- Answered decisions show a result card: what you chose, which company, and what changed\n- Loans: banks also lend against what a business is worth, not only its profit\n- Settings: \"How much I decide\" removed. Payroll, replacing leavers and complaints follow who you hired; managers' spending limit grows with your net worth\n- Group > Dividends: dividends are never automatic; pay a share or let a holding collect\n- Team > Delegation: shows who handle"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.35",
-      "versionDate": "2026-11-03T14:43:57Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v35/Ledger-unsigned.ipa",
-      "size": 27344767
+      "version": "1.0.36",
+      "versionDate": "2026-11-03T15:00:26Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v36/Ledger-unsigned.ipa",
+      "size": 27344070
     }
   ]
 }
