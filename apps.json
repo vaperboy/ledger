@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.37",
+          "buildVersion": "37",
+          "date": "2026-11-03T17:09:37Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v37/Ledger-unsigned.ipa",
+          "size": 27381739,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab"
+        },
+        {
           "version": "1.0.36",
           "buildVersion": "36",
           "date": "2026-11-03T15:00:26Z",
@@ -187,22 +196,13 @@
           "size": 23205379,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed\n- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone\n- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas\n- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled\n- Team: Overview and a new Authority tab no longer repeat each other; Ventures lives in the Phone app and is linked from Group > Deals; Projects has four tabs\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth\n- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still\n- Documents and licences are filled in on a paper form: tick the terms, "
-        },
-        {
-          "version": "1.0.17",
-          "buildVersion": "17",
-          "date": "2026-11-02T12:36:58Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v17/Ledger-unsigned.ipa",
-          "size": 23237650,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels follow the kind and size of a decision against your net worth\n- Pages that fit the screen no longer wobble sideways, and rows of chips that fit stay still\n- Documents and licences are filled in on a paper form: tick the terms, draw your signature, send. The authority answers after its review time and can refuse; you can apply again at once. VAT registration is always on the Setup list\n- Manage > Licences: apply for the licences that new things to sell need\n- A company being set up has one fixed Setup screen: what is missing plus TechPro Store and AirStay buttons in their own colours; no stats until it opens\n- Daily report every day, even a quiet one: shows how your cash and net worth moved. Only Continue closes it\n- A company about to be force-sold now shows a see-through red alert first\n- Answered decisions show a result card: what you chose, which company, and what changed\n- Loans: banks also lend against what a business is worth, not only its profit\n- Settings: \"How much I decide\" removed. Payroll, replacing leavers and complaints follow who you hir"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.36",
-      "versionDate": "2026-11-03T15:00:26Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v36/Ledger-unsigned.ipa",
-      "size": 27344070
+      "version": "1.0.37",
+      "versionDate": "2026-11-03T17:09:37Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v37/Ledger-unsigned.ipa",
+      "size": 27381739
     }
   ]
 }
