@@ -686,7 +686,7 @@ public enum FootballModel {
                 let to = s.random.pick(brandWords) + " " + s.random.pick(bidderSuffixes)
                 let cur = Currency(country: country, rates: ExchangeRates(drift: s.exchangeRates.values))
                 s.addMessage(kind: "ask", from: co.name, title: "\(to) bid \(cur.short(fee)) for \(who)",
-                             body: "\(who) is one of your \(pts > 4 ? "best players" : "regular starters"). Selling brings cash now but weakens the team (about \(String(format: "%.1f", pts)) strength points) until you replace him.",
+                             body: "\(who) is one of your \(pts > 4 ? "best players" : "regular starters"). Selling brings cash now but weakens the team until you replace him.",
                              companyID: co.id, tone: "n", status: "open",
                              options: [.option("Sell for \(cur.short(fee))", "Cash now, weaker squad."), .option("Keep him", "No change.")],
                              action: "club24", data: .object(["who": .string(who), "to": .string(to), "fee": .number(fee), "pts": .number(pts), "xw": .number(xw2)]), expiresWeek: s.week + 2)

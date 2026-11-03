@@ -91,7 +91,7 @@ enum SpecialEvents {
             if s.random.chance(0.5) {
                 let h = s.economy.housing
                 s.economy.housing = clamp(h * (1 + s.random.gauss() * 0.012), 0.7, 1.5)
-                s.note("The housing market moves: price index \(String(format: "%.2f", s.economy.housing)).", tone: s.economy.housing > h ? "good" : "bad", companyID: co.id)
+                s.note("The housing market moves: prices \(s.economy.housing > h ? "rise" : "ease").", tone: s.economy.housing > h ? "good" : "bad", companyID: co.id)
             }
         case "g_lawsuit":
             Lawsuits.begin(&s, companyIndex: i, weeklyRevenue: c.wk, data: data)

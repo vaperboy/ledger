@@ -293,10 +293,10 @@ extension ManagerModel {
             func av(_ L: [MonthRecord], _ f: (MonthRecord) -> Double) -> Double? { L.isEmpty ? nil : L.reduce(0) { $0 + f($1) } / Double(L.count) }
             let rb = av(bef) { $0.revenue }, ra = av(aft) { $0.revenue }, pb = av(bef) { $0.profit }, pa = av(aft) { $0.profit }
             sections.append(("Results", [("Revenue before", rb.map { cur.short($0) } ?? "-"), ("Revenue now", ra.map { cur.short($0) } ?? "-"), ("Profit before", pb.map { cur.short($0) } ?? "-"), ("Profit now", pa.map { cur.short($0) } ?? "-"),
-                                          ("Customer rating", String(format: "%.1f", Pricing.rating(co))), ("Staff mood", "\(Int(jsRound(mood(co)))) / 100"), ("Staff", "\(co.staff.count) people")]))
+                                          ("Customer rating", String(format: "%.1f", Pricing.rating(co))), ("Staff mood", mood(co) < 40 ? "Unhappy" : mood(co) < 60 ? "Uneasy" : mood(co) < 80 ? "Content" : "Happy"), ("Staff", "\(co.staff.count) people")]))
             score = c.skill + (h.suffix(3).allSatisfy { $0.profit > 0 } && !h.isEmpty ? 8 : -8)
         } else if let m = co.staff.first(where: { $0.id == personID }) {
-            sections.append(("Work", [("Costs you", cur.short(m.monthlyWage) + "/mo"), ("Performance now", "\(Int(jsRound(c.skill)))"), ("Better since they started", String(format: "%+.0f points", m.skillGain)),
+            sections.append(("Work", [("Costs you", cur.short(m.monthlyWage) + "/mo"), ("Performance now", StandingWords.reputation(c.skill)), ("Better since they started", m.skillGain >= 5 ? "Clearly better" : m.skillGain > 0.5 ? "A little better" : "No change"),
                                       ("Warnings", "\(m.int("warn"))"), ("Late this quarter", "\(m.int("late"))")]))
             score = c.skill * 0.6 + leadership(c.n) * 40
         }

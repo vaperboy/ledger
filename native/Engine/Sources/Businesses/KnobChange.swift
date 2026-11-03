@@ -148,7 +148,7 @@ public enum KnobChange {
         if abs(d - 1) >= 0.005 { out.append("Pull on customers: \(pct(d)) on paper") }
         if abs(t - 1) >= 0.005 { out.append("Average sale: \(pct(t)) on paper") }
         if abs(k - 1) >= 0.005 { out.append("Capacity: \(pct(k))") }
-        if abs(q) >= 0.5 { out.append(String(format: "Quality: %+.0f points", q)) }
+        if abs(q) >= 0.5 { out.append(q > 0 ? "Higher quality" : "Lower quality") }
         if c > 0.0005 { out.append("Higher cost of sales") } else if c < -0.0005 { out.append("Lower cost of sales") }
         if w > 0 { out.append("Adds running costs every week") } else if w < 0 { out.append("Cuts running costs") }
         return out

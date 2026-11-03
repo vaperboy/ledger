@@ -222,7 +222,7 @@ public extension GameEngine {
             }
             switch b.kind {
             case .insurer:
-                if b.policies > 0, b.solvency >= 0.8, b.solvency < 1.2 { out.append(Insight(id: "solvency", symbol: "gauge.with.dots.needle.33percent", text: "Solvency is \(String(format: "%.2f", b.solvency)); you need 1.0 and the regulator steps in at 0.8.", tone: .warn)) }
+                if b.policies > 0, b.solvency >= 0.8, b.solvency < 1.2 { out.append(Insight(id: "solvency", symbol: "gauge.with.dots.needle.33percent", text: "Solvency is thin: your capital must cover the claims you may face, and the regulator steps in if it gets much lower.", tone: .warn)) }
                 if b.lossRatio > 0.9 { out.append(Insight(id: "claims", symbol: "doc.text.magnifyingglass", text: "Claims take \(Int(jsRound(b.lossRatio * 100)))% of premiums. Raise prices, tighten underwriting or hire claims staff.", tone: .warn)) }
                 let any = insuranceProducts(companyID: co.id).contains { $0.isOffered }
                 if !any { out.append(Insight(id: "products", symbol: "shield", text: "No insurance products on sale. Choose products under Insurance.", tone: .bad)) }
