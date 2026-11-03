@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.40",
+          "buildVersion": "40",
+          "date": "2026-11-03T23:41:01Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v40/Ledger-unsigned.ipa",
+          "size": 27460177,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year"
+        },
+        {
           "version": "1.0.39",
           "buildVersion": "39",
           "date": "2026-11-03T23:08:00Z",
@@ -187,22 +196,13 @@
           "size": 23677980,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places\n- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects\n- Bank: the balance card and its buttons are only on the Account tab; screens no longer wiggle sideways in Group, Projects and Bank; full-page popups fade and scale in\n- Sales lists your own products and services (named for your company): tap one for a price slider with live, unrounded numbers, per-item discounts and how it is sold; lower prices raise demand; add a new product or service; Marketing is a popup; Pricing and How you sell are gone. Items can be listed for your other companies in TechPro, with the pro"
-        },
-        {
-          "version": "1.0.20",
-          "buildVersion": "20",
-          "date": "2026-11-02T16:25:41Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v20/Ledger-unsigned.ipa",
-          "size": 23219080,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Swipe sideways to change the tab in your Inbox and in a bank account\n- New game: you can pick an ambition at the start, or decide later; chains and franchises now need real things (profit, cash, reputation, open stores, documents) instead of waiting years; a settled lawsuit can no longer leave wages unpaid\n- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from\n- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed\n- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone\n- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas\n- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily r"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.39",
-      "versionDate": "2026-11-03T23:08:00Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v39/Ledger-unsigned.ipa",
-      "size": 27492353
+      "version": "1.0.40",
+      "versionDate": "2026-11-03T23:41:01Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v40/Ledger-unsigned.ipa",
+      "size": 27460177
     }
   ]
 }
