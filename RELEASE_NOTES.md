@@ -1,4 +1,5 @@
 # What's new
+- Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox
 - Home has no "All clear" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank
 - Group: Money is one screen with cash, loans and dividends, dividend policy has its own popup, the board shows every seat with who can fill it, Management picks the company inside a chain, and the Ventures link and Who decides what are gone
 - Awards reflect results, not setup: opening a company, hiring or signing documents no longer fire awards; awards now come from profitable months, a manager running a profitable company, three profitable months in a row, being debt free and group reputation
