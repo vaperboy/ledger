@@ -3,29 +3,58 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Management tab of an entity page, scoped to ONE company (a chain: its flagship store; a holding: the holding): the owner, the general
-/// manager and the assistant as thin rows, the executive posts hired for this company (managing director, department heads, regional
-/// managers), "Who decides what" and the management posts still open. The popups are the ones the old Team tab used.
+/// The Management tab of an entity page. A chain or group is picked company by company at the top (a compact chip row); below it come that
+/// company's posts: the owner, the general manager (appointed by the owner), the assistant and the executive posts, and the posts still open.
 struct GroupEntityManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
-    @State private var decide: DecideRef?
+    @State private var picked: Int?
+
+    private var liveMembers: [Company] {
+        entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
+    }
 
     var body: some View {
-        let co: Company? = engine.state.company(entity.companyID)
-        VStack(alignment: .leading, spacing: 14) {
+        let members: [Company] = liveMembers
+        let chosen: Int = picked ?? entity.companyID
+        let co: Company? = members.first { (c: Company) -> Bool in c.id == chosen } ?? engine.state.company(entity.companyID)
+        VStack(alignment: .leading, spacing: 12) {
+            if members.count > 1 { picker(members, selected: co?.id ?? chosen) }
             if let co {
                 people(co)
-                decides(co)
+                approvalNote(co)
                 openPosts(co)
             } else {
                 Text("This company no longer exists.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
             }
         }
-        .centerSheet(item: $decide) { (d: DecideRef) -> AnyView in
-            AnyView(DecidesSheet(companyID: d.companyID, kind: d.kind).environmentObject(store))
+    }
+
+    // MARK: Picker
+
+    private func picker(_ members: [Company], selected: Int) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(members) { (c: Company) in
+                    pickChip(c, on: c.id == selected)
+                }
+            }
         }
+    }
+
+    private func pickChip(_ c: Company, on: Bool) -> some View {
+        let id: Int = c.id
+        return Button { Haptics.choose(); picked = id } label: {
+            Text(c.name).font(.system(size: 12.5, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
+                .lineLimit(1)
+                .padding(.horizontal, 12).frame(minHeight: 34)
+                .background(Capsule().fill(on ? Theme.gold.opacity(0.16) : Theme.surface))
+                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
     }
 
     // MARK: People
@@ -35,50 +64,18 @@ struct GroupEntityManagement: View {
             Text("MANAGEMENT").capsLabel()
             CompanyManagement(engine: engine, company: co, showAll: true)
             CompanyTeamRoster(engine: engine, company: co)
-            if entity.isChain && entity.members.count > 1 {
-                Text("Showing the flagship store. Every other store has its own manager: open it from the chain's Overview.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            }
         }
     }
 
-    // MARK: Who decides what
+    // MARK: Who may appoint
 
-    @ViewBuilder private func decides(_ co: Company) -> some View {
-        let o: TeamOverview = engine.teamOverview()
-        let alerts: [PayrollAlertInfo] = engine.payrollAlertInfos()
-        if !entity.isHolding, let l = o.companies.first(where: { (x: TeamOverview.CompanyLine) -> Bool in x.id == co.id }) {
-            let rows: [OverviewRowData] = decidesRows(l, co, alerts)
-            OverviewTable(title: "Who decides what", rows: rows) {
-                EmptyView()
-            }
+    /// The owner appoints the general manager. The assistant is the general manager's own helper, so with a manager in place the hire needs the
+    /// role above (you) to confirm; the manager's proposals reach you in the Inbox.
+    @ViewBuilder private func approvalNote(_ co: Company) -> some View {
+        if co.managerID != nil, let m = engine.state.people[co.managerID ?? 0] {
+            Text("The assistant manager needs approval from you: \(m.name) can only propose a hire.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private func decidesRows(_ l: TeamOverview.CompanyLine, _ co: Company, _ alerts: [PayrollAlertInfo]) -> [OverviewRowData] {
-        let hasMgr: Bool = l.authority >= 0
-        let lvl: Int = max(0, l.authority)
-        let nobodyPays: Bool = alerts.contains { (a: PayrollAlertInfo) -> Bool in a.companyID == l.id }
-        let buy: Double = co.value("auth")["buy"].double
-        let limitText: String = "up to " + store.short(buy, in: co)
-        let spend: String = !hasMgr || lvl == 0 ? "Ask me always" : lvl == 1 ? "Manager, \(limitText)" : "Manager decides alone"
-        let hire: String = !hasMgr || lvl == 0 ? "You" : lvl == 1 ? "Manager, \(limitText)" : "Manager decides alone"
-        let byRule: Bool = hasMgr && lvl >= 1
-        let id: Int = l.id
-        let leaving: String = l.managerLeaving ? " (leaving)" : ""
-        let runsValue: String = l.delegated ? l.managedBy + leaving : "You"
-        let runsNote: String = l.delegated ? (l.managerTitle ?? "manager").lowercased() : "appoint a manager"
-        let runs = OverviewRowData(id: "run\(id)", glyph: Glyph.ovKey, title: "Runs it", value: runsValue, note: runsNote,
-                                   noteTint: l.delegated ? Theme.ivoryFaint : Theme.caution, action: { decide = DecideRef(companyID: id, kind: .runs) })
-        let payNote: String = nobodyPays ? "no accountant" : (byRule ? "rule set" : "your call")
-        let payValue: String = byRule ? "\(l.managedBy), by their rule" : "You, every month"
-        let payroll = OverviewRowData(id: "pay\(id)", glyph: Glyph.ovCoin, title: "Payroll", value: payValue, note: payNote,
-                                      noteTint: nobodyPays ? Theme.caution : Theme.ivoryFaint, action: { decide = DecideRef(companyID: id, kind: .payroll) })
-        let spending = OverviewRowData(id: "spend\(id)", glyph: Glyph.ovShield, title: "Spending", value: spend, note: "set limit",
-                                       noteTint: Theme.gold, action: { decide = DecideRef(companyID: id, kind: .spending) })
-        let hiring = OverviewRowData(id: "hire\(id)", glyph: Glyph.person, title: "Hiring", value: hire, note: hasMgr ? "change" : "delegate",
-                                     noteTint: Theme.gold, action: { decide = DecideRef(companyID: id, kind: .hiring) })
-        return [runs, payroll, hiring, spending]
     }
 
     // MARK: Open posts

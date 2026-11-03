@@ -111,7 +111,7 @@ final class MainScreensTests: TourCase {
                 moneyTab.tap(); sleep(1)
                 shot("48-group-money")
                 let policy = app.buttons["money-policy"]
-                if policy.waitForExistence(timeout: 2), policy.isHittable { policy.tap(); sleep(1); shot("48-group-money-policy") } else { note("no Policy button in Money") }
+                if policy.waitForExistence(timeout: 2), policy.isHittable { policy.tap(); sleep(1); shot("48-group-money-policy"); if app.buttons["Close"].exists { app.buttons["Close"].tap() } } else { note("no Policy button in Money") }
             }
             let back = app.buttons["group-back"]
             if back.exists && back.isHittable { back.tap(); sleep(1) }
