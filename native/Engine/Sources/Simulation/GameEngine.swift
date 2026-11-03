@@ -95,7 +95,7 @@ public struct GameEngine {
             state.loans.append(l)
         }
         state.economy.set("rate0", state.economy.policyRate)
-        state.rest["gameID"] = .string(UUID().uuidString)
+        state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
         PlayerGoals.startFirstSteps(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
