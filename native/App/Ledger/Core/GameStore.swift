@@ -277,11 +277,37 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
+        guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 40_000_000)
+            try? await Task.sleep(nanoseconds: 350_000_000)
             self?.advanceOneDay()
+            self?.isAdvancing = false
+        }
+    }
+
+    /// The open Inbox item that blocks Play (brief 2.2 and 4.4), if any. No event carries the `blocking` flag yet (Part 4), so none does.
+    var blockingMessageID: Int? { nil }
+
+    /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
+    var canPlayWeek: Bool {
+        guard let e = engine else { return false }
+        return e.state.week >= 1 && !e.state.isGameOver
+    }
+
+    /// Runs the days left in this week one by one, 0.4 s apart, then leaves the week report. Stops early when a report, a reward or a
+    /// popup is waiting, or the game ends. The per-day sheets of the days in between are dropped; the last day's report stays.
+    func playToEndOfWeek() {
+        guard canPlayWeek, !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt else { return }
+        isAdvancing = true
+        let startWeek: Int = engine?.state.week ?? 0
+        Task { @MainActor [weak self] in
+            while let self, let e = self.engine, e.state.week == startWeek, !e.state.isGameOver {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                self.advanceOneDay()
+                if self.reportSheet != nil || !self.celebrationQueue.isEmpty || !self.unlockQueue.isEmpty || self.engine?.state.day == 0 { break }
+                self.dailySheet = nil
+            }
             self?.isAdvancing = false
         }
     }

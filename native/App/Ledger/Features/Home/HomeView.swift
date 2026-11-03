@@ -302,7 +302,10 @@ struct AdvanceBar: View {
                 }
             }
             Spacer(minLength: 8)
-            nextButton
+            VStack(alignment: .trailing, spacing: 4) {
+                nextButton
+                weekButton
+            }
         }
         .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 4)
         .background(LinearGradient(colors: [Theme.page.opacity(0), Theme.page.opacity(0.94), Theme.page], startPoint: .top, endPoint: .center))
@@ -321,20 +324,36 @@ struct AdvanceBar: View {
             }
         }
         .frame(height: 14, alignment: .leading)
-        .animation(Motion.standard(reduceMotion), value: store.dayChip?.id)
+        .animation(Motion.quick(reduceMotion), value: store.dayChip?.id)
         .accessibilityElement(children: .combine)
     }
 
     /// Week 1, day 1 of a game with the ladder: nothing has been played yet.
     private var firstDay: Bool { engine.state.week == 0 && engine.state.day == 0 && Gates.ladderOn(engine.state) }
 
+    /// "Play to end of week": a text button under Next day from week 2; off while a blocking Inbox item is open (brief 2.2).
+    @ViewBuilder private var weekButton: some View {
+        if store.canPlayWeek {
+            Button { store.playToEndOfWeek() } label: {
+                Text("Play to end of week").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            }
+            .buttonStyle(PressableStyle())
+            .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)
+            .accessibilityIdentifier("play-week")
+        }
+    }
+
     private var nextButton: some View {
         let busy: Bool = store.isAdvancing
         let over: Bool = engine.state.isGameOver
-        return Button { store.nextDay() } label: {
+        let blockID: Int? = store.blockingMessageID
+        let label: String = over ? "Game over" : busy ? "Running" : blockID != nil ? "Answer first  ›" : "Next day  ›"
+        return Button {
+            if let id = blockID { store.openApp(.inbox, request: .message(id)) } else { store.nextDay() }
+        } label: {
             HStack(spacing: 8) {
                 if busy { ProgressView().controlSize(.small).tint(Color(red: 0.09, green: 0.075, blue: 0.055)) }
-                Text(over ? "Game over" : busy ? "Running" : "Next day  ›")
+                Text(label)
             }
             .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
             .lineLimit(1).fixedSize()
@@ -346,9 +365,9 @@ struct AdvanceBar: View {
         .onAppear {
             // Brief 1.5: until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
             guard firstDay, !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { pulseDim = true }
+            withAnimation(.easeInOut(duration: Motion.pulseSeconds / 2).repeatForever(autoreverses: true)) { pulseDim = true }
         }
-        .disabled(over || busy || store.reportSheet != nil)
+        .disabled(over || busy || (blockID == nil && store.reportSheet != nil))
         .accessibilityIdentifier("next-day")
     }
 }

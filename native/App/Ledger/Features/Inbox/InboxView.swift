@@ -8,9 +8,10 @@ import Countries
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
 struct InboxView: View {
     private var P: OutsidePalette { .game }
-    /// Needs you: open decisions; Handled: what a hired rank decided for you; Risks: bad news; All: everything.
-    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", handled = "Handled", risks = "Risks", all = "All" }
+    /// Needs you: open decisions; All: everything (brief 2.3).
+    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", all = "All" }
     @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tab: Tab = .decisions
     @State private var query = ""
     /// nil = every company; 0 = messages about the group or you personally
@@ -40,8 +41,6 @@ struct InboxView: View {
         switch t {
         case .all: return true
         case .decisions: return m.status == "open"
-        case .risks: return m.tone == "bad"
-        case .handled: return !m.handledBy.isEmpty
         }
     }
 
@@ -167,7 +166,7 @@ struct InboxView: View {
     private func scrollToTarget(_ proxy: ScrollViewProxy) {
         guard let id = scrollTarget else { return }
         scrollTarget = nil
-        DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+        DispatchQueue.main.async { withAnimation(Motion.move(reduceMotion)) { proxy.scrollTo(id, anchor: .top) } }
     }
 
     /// The confirmation belongs to the screen that asked: the list while the detail sheet is closed, the sheet while it is open.
@@ -238,7 +237,7 @@ struct InboxView: View {
         .listStyle(.plain).scrollBounceBehavior(.basedOnSize)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
-        .animation(.easeOut(duration: 0.25), value: list.count)
+        .animation(Motion.quick(reduceMotion), value: list.count)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
     }
 
@@ -358,7 +357,7 @@ struct InboxView: View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
-            : k == .decisions ? "Nothing needs you right now." : k == .handled ? "Nothing has been handled for you yet." : "Nothing under \(k.rawValue.lowercased())."
+            : k == .decisions ? "Nothing needs you right now." : "Nothing here yet."
         return VStack(spacing: 8) {
             IconCircle(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
             Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
