@@ -17,11 +17,13 @@ public enum PremisesProposals {
     /// Weeks before the manager asks again after an unanswered proposal, and after a decline.
     public static let askCooldownWeeks = 13, declineCooldownWeeks = 52
     /// Smallest unmet demand, as a share of capacity, that is worth a move.
-    public static let minUnmetShare = 0.05
+    public static let minUnmetShare = 0.10
     /// A move is not proposed if it pays back slower than this many weeks.
     public static let maxPaybackWeeks = 104.0
     /// Variable costs of the extra sales that the gross margin does not carry (supplies, hours, wear): the uplift counts this share of the gross margin.
-    public static let marginKept = 0.85
+    public static let marginKept = 0.70
+    /// One move never lifts sales by more than this share of the capacity it starts from (Nov 3 balance report).
+    public static let maxUpliftShare = 0.60
 
     public struct Plan: Equatable, Sendable {
         public var companyID: Int
@@ -93,6 +95,8 @@ public enum PremisesProposals {
             let toPlaces = Workplaces.places(kind: kind, squareMetres: l.squareMetres)
             var placeGain = 0.0
             if let from = info.capacity, let to = toPlaces, to > from, (info.free ?? 1) <= 0 { placeGain = cap * Double(to - from) / Double(max(1, info.used)) }
+            // a move that would lift capacity by more than the cap is not offered: the real uplift of a single move stays within it
+            if max(spaceGain, placeGain) > cap * maxUpliftShare { continue }
             let gain = min(unmet, max(spaceGain, placeGain))
             guard gain > 0 else { continue }
             let moving = cur.scaledPrice(1500) + cur.scaledPrice(12) * fromM2

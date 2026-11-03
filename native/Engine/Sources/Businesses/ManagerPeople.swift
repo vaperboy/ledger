@@ -479,3 +479,21 @@ extension ManagerModel {
         n.set("mtype", "gen"); n.set("exp", max(n.num("exp"), 1))
     }
 }
+
+extension ManagerModel {
+    /// A manager's pay is a fixed cost whatever the trade earns, so it swamps a very small company (Nov 3 balance report: an owner who hired a manager
+    /// into barber, car wash, consulting or web design lost 13-20% a year). For a company with no manager and 0 or 1 staff: a one-line warning when the
+    /// going manager rate is not clearly covered by the recent monthly profit; nil when the appointment is fine (or the company is not small, or has no record yet).
+    public static func managerWarning(_ s: GameState, companyID: Int, data: GameData) -> String? {
+        guard let co = s.company(companyID), co.managerID == nil, co.staff.count <= 1 else { return nil }
+        let h = co.monthlyHistory.suffix(3)
+        guard !h.isEmpty else { return nil }
+        let profit = h.reduce(0) { $0 + $1.profit } / Double(h.count)
+        let wage = managerGoingRate(company: co, state: s, data: data)
+        guard profit < wage * warningCover else { return nil }
+        let cur = World(state: s, data: data).currency(co)
+        return "A manager costs about \(cur.display(wage)) a month; this company earns about \(cur.display(max(0, profit))): you would likely lose money."
+    }
+    /// The recent monthly profit must be at least this many times the manager's pay, or the appointment is warned against.
+    static let warningCover = 1.5
+}

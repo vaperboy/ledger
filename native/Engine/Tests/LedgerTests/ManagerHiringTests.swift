@@ -262,4 +262,28 @@ final class ManagerHiringTests: XCTestCase {
         XCTAssertEqual(c.state, d.state, "a saved and reloaded game plays on identically")
         XCTAssertTrue(Ledger.gaps(c.state).isEmpty)
     }
+
+    /// Appointing a manager into a company with 0 or 1 staff warns when its profit would not carry the pay (Nov 3 balance report).
+    func testManagerWarningForSmallCompany() throws {
+        var (e, id) = try managed(31, trade: "barber", manager: false)
+        func setSmall(_ profit: Double) {
+            e.update { s, _, _ in
+                guard let i = s.companyIndex(id) else { return }
+                s.companies[i].staff = Array(s.companies[i].staff.prefix(1))
+                s.companies[i].monthlyHistory = (1...3).map { MonthRecord(monthIndex: $0, revenue: profit * 3, profit: profit, cash: 1_000_000) }
+            }
+        }
+        setSmall(100_000)
+        let w = try XCTUnwrap(e.managerWarning(companyID: id), "a poor small company is warned")
+        XCTAssertTrue(w.hasPrefix("A manager costs about "), w)
+        XCTAssertTrue(w.contains("you would likely lose money"), w)
+        setSmall(900_000_000)
+        XCTAssertNil(e.managerWarning(companyID: id), "a rich small company is not warned")
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].monthlyHistory = (1...3).map { MonthRecord(monthIndex: $0, revenue: 300_000, profit: 100_000, cash: 1_000_000) }
+            while s.companies[i].staff.count < 4 { s.companies[i].staff.append(s.companies[i].staff[0]) }
+        }
+        XCTAssertNil(e.managerWarning(companyID: id), "a company with a team is not warned")
+    }
 }

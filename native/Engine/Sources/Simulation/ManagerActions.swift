@@ -100,4 +100,9 @@ public extension GameEngine {
     }
 
     mutating func dismissAssistant(companyID: Int) { update { s, data, _ in ManagerModel.fireAssistant(&s, companyID: companyID, data: data) } }
+
+    /// nil when appointing a manager is fine; otherwise a one-line warning for a company with 0 or 1 staff whose profit would not carry the pay.
+    func managerWarning(companyID: Int) -> String? {
+        ManagerModel.managerWarning(state, companyID: companyID, data: data)
+    }
 }
