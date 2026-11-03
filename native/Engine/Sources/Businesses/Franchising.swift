@@ -40,32 +40,34 @@ public enum Franchising {
 
     // MARK: Requirements
 
-    public struct Requirement: Equatable, Sendable, Identifiable {
-        public var id: String { title }
-        public var title: String
-        public var ok: Bool
-        public var detail: String
-    }
+    public typealias Requirement = Chains.Requirement
 
-    /// Franchising is for a chain that has proven itself. Original: `frReq` (the checklist on the chain page).
+    /// What a franchisor really needs (owner decision, 3 Nov, DECISIONS.md "Chain and franchise requirements"): a proven concept (a year of trading and
+    /// four profitable quarters), a registered trademark, an operations manual, a franchise disclosure document prepared with a lawyer, and someone
+    /// to support franchisees. No cash balance, reputation or store count is demanded.
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
         let ch = Chains.chain(s, of: co)
-        let L = ch.map { Chains.stores(s, $0) } ?? []
-        let open3 = L.filter { $0.status == .open }.count
-        let prof = L.reduce(0.0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit } }
-        let rep = L.isEmpty ? 0 : L.reduce(0.0) { $0 + $1.reputation } / Double(L.count)
-        let ease = BrandValues.requirementEase(BrandValues.company(s, co).score)   // a known brand needs up to 6 points less reputation
-        let boss = ch.map { Chains.hasChainBoss(s, $0, stores: L) } ?? false
-        let monthly = L.reduce(0.0) { $0 + (($1.monthlyHistory.last?.revenue) ?? 0) }
-        let cashOK = monthly > 0 && Payments.liquid(s) >= monthly
+        let L = ch.map { Chains.stores(s, $0) } ?? [co]
+        let proven = provenConcept(s, co)
+        let support = L.contains { $0.managerID != nil || $0.staff.contains { m in let r = m.role.lowercased(); return r.contains("manager") || r.contains("franchise") } }
+            || (ch.map { Chains.hasChainBoss(s, $0, stores: L) } ?? false)
         return [
-            Requirement(title: "A registered chain", ok: ch != nil, detail: ch?["name"].string ?? "Register the first store as a chain first"),
-            Requirement(title: "Three stores open", ok: open3 >= 3, detail: "\(open3) of 3"),
-            Requirement(title: "Cash to set up the franchise", ok: cashOK, detail: cashOK ? "Enough cash in hand" : "Keep about a month of the chain's sales in cash"),
-            Requirement(title: "The chain made money last year", ok: prof > 0, detail: prof > 0 ? "Yes" : "Not yet"),
-            Requirement(title: "Customers like the chain", ok: rep >= 60 - ease, detail: L.isEmpty ? "-" : "reputation \(Int(rep)) of \(Int(60 - ease))"),
-            Requirement(title: "Someone to look after franchisees", ok: boss, detail: boss ? "Your chain team does" : "Hire a chain manager, or have a manager in every store"),
+            Requirement(title: "A proven concept", ok: proven.ok, detail: proven.detail, key: "proven"),
+            Chains.documentRequirement(s, co, doc: "trademark", title: "Registered trademark", missing: "Apply to register the brand name (fee, 4 to 8 weeks)"),
+            Chains.documentRequirement(s, co, doc: "ops_manual", title: "Operations manual", missing: "Write it with your manager (a few weeks, a small cost)"),
+            Chains.documentRequirement(s, co, doc: "fran", title: "Franchise disclosure document", missing: "Prepare it with a lawyer, sign it and wait for the review (fee)"),
+            Requirement(title: "Someone to support franchisees", ok: support, detail: support ? "A manager is on staff" : "Employ a manager or a franchise support person", key: "support"),
         ]
+    }
+
+    /// Real franchisors need a proven pilot: traded at least 52 weeks and each of the last four quarters (three months each) profitable.
+    public static func provenConcept(_ s: GameState, _ co: Company) -> (ok: Bool, detail: String) {
+        let weeks = co.openedWeek.map { s.week - $0 } ?? 0
+        let H = Array(co.monthlyHistory.suffix(12))
+        let quarters = stride(from: 0, to: H.count - 2, by: 3).map { k in H[k..<k + 3].reduce(0.0) { $0 + $1.profit } }
+        let good = H.count == 12 ? quarters.filter { $0 > 0 }.count : 0
+        let ok = weeks >= 52 && good == 4
+        return (ok, "Traded \(max(0, weeks)) of 52 weeks; profitable quarters \(good) of 4")
     }
 
     public enum LaunchResult: Equatable, Sendable { case ok, already, notYet(String), needDocuments, notFranchisable }
@@ -76,7 +78,7 @@ public enum Franchising {
         let co = s.companies[i]
         guard FranchiseBrands.isFranchisable(co.type) else { return .notFranchisable }
         if co.value("fr")["on"].bool { return .already }
-        if let miss = requirements(s, co).first(where: { !$0.ok }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
+        if let miss = requirements(s, co).first(where: { !$0.ok && $0.key != "fran" }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
         if co.value("docs")["fran"]["st"].string != "ok" { return .needDocuments }
         s.companies[i].set("fr", .object(["on": 1, "fee": .number(fee), "roy": .number(royalty), "supp": .number(Double(support)), "share": 0.45, "brand": 15, "mkt": 0.02,
                                           "units": .array([]), "app": .array([]), "w0": .number(Double(s.week))]))

@@ -246,9 +246,10 @@ public enum FranchiseBrands {
         v >= 85 ? "A household name" : v >= 70 ? "Very well known" : v >= 55 ? "Well regarded" : v >= 40 ? "Known locally" : v >= 25 ? "Still building a name" : "Little known"
     }
 
-    /// Companies of this trade that prove you can run one: 26 weeks open, reputation 52+. Original: `fbExp`.
+    /// Companies of this trade you have run for at least 26 weeks: it strengthens your hand in the talks, it is no entry gate (a franchisor asks for
+    /// financing and a signed agreement with the entry fee, not a reputation score). Original: `fbExp`.
     public static func experience(_ s: GameState, _ tradeID: String) -> Int {
-        s.companies.filter { $0.type == tradeID && $0.status.isLive && s.week - ($0.openedWeek ?? s.week) >= 26 && $0.reputation >= 52 }.count
+        s.companies.filter { $0.type == tradeID && $0.status.isLive && s.week - ($0.openedWeek ?? s.week) >= 26 }.count
     }
 
     public static func lockedUntil(_ s: GameState, _ b: Brand) -> Int? {
@@ -261,10 +262,21 @@ public enum FranchiseBrands {
     public static func status(_ b: Brand, _ s: GameState, _ w: World) -> Status {
         if let until = lockedUntil(s, b) { return Status(ok: false, why: until - s.week > 5000 ? "They will not do business with you again." : "They will not talk to you again for \(until - s.week) weeks.") }
         if b.openness == "closed" { return Status(ok: false, why: "This brand does not take new franchisees.") }
-        if b.openness == "exp" && experience(s, b.tradeID) == 0 {
-            return Status(ok: false, why: "They only franchise to operators with a proven record: run a company of this kind for 6 months with reputation 52+.")
-        }
         return Status(ok: true, why: "")
+    }
+
+    /// What a franchisee really needs (owner decision, 3 Nov): the brand reviews the application, you sign the franchise agreement, and the entry
+    /// fee is paid (financing: your own cash or a loan). Shown as items with a status, like the franchisor's.
+    public static func requirements(_ b: Brand, _ s: GameState, _ w: World, country cc: String) -> [Franchising.Requirement] {
+        let st = application(s, b.id)["st"].string
+        let reviewed = ["invited", "agreed"].contains(st)
+        let entry = fee(b, w, country: cc)
+        return [
+            Franchising.Requirement(title: "Application reviewed by the brand", ok: reviewed, detail: st == "pending" ? "Waiting for the brand's answer" : (reviewed ? "Done" : "Send your application"), key: "review",
+                                    status: reviewed ? .done : (st == "pending" ? .waiting : .missing)),
+            Franchising.Requirement(title: "Franchise agreement signed", ok: st == "agreed", detail: st == "agreed" ? "Signed" : "Agree the terms and sign", key: "agreement"),
+            Franchising.Requirement(title: "Financing for the entry fee", ok: s.cash >= entry, detail: "Entry fee about \(Int(entry.rounded())), paid on signing: your cash or a loan", key: "financing"),
+        ]
     }
 
     /// Your bargaining power. Original: `fbPower`.

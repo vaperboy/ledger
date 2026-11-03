@@ -44,53 +44,68 @@ public enum Chains {
 
     // MARK: Documents the chain and franchise features add
 
-    /// Original: `DOCS.chain`, `DOCS.fran`, `DOCS.fran_op`.
+    /// Original: `DOCS.chain`, `DOCS.fran`, `DOCS.fran_op`; the trademark and the operations manual are the real-life papers a chain and a franchisor need
+    /// (owner decision, 3 Nov, DECISIONS.md "Chain and franchise requirements"). Fields: name, issuer, base fee, weeks of review or writing, renewal, note.
     static let extraDocuments: [String: JSONValue] = [
-        "chain": .array(["Chain registration and operations manual", "Business lawyer", 18000, 4, 0, "Registers the brand for more stores and writes the manual every store follows."]),
-        "fran": .array(["Franchise disclosure document and concept manual", "Franchise lawyer", 25000, 6, 0, "Describes the concept, fees, support and obligations."]),
+        "trademark": .array(["Trademark registration", "Intellectual property office", 4200, 6, 0, "Registers the brand name so nobody else can use it. The office reviews it for 4 to 8 weeks."]),
+        "ops_manual": .array(["Operations manual", "Written by your own team", 900, 3, 0, "How every store is run, written by you or your manager over a few weeks. No authority reviews it."]),
+        "chain": .array(["Chain registration", "Business lawyer", 6000, 2, 0, "Puts the stores under one name and one set of rules."]),
+        "fran": .array(["Franchise disclosure document", "Franchise lawyer", 25000, 6, 0, "Prepared with a lawyer: describes the concept, fees, support and obligations. It must be signed and reviewed."]),
         "fran_op": .array(["Franchise operating agreement", "Franchisor", 0, 0, 0, "Your signed agreement with the brand."]),
     ]
 
     // MARK: Registration
 
+    public enum RequirementStatus: String, Equatable, Sendable { case done, waiting, missing }
+
     public struct Requirement: Equatable, Sendable, Identifiable {
-        public var id: String { title }
+        public var id: String { key }
+        public var key: String
         public var title: String
         public var ok: Bool
         public var detail: String
+        /// done / waiting for review / missing. `ok` is true only for done.
+        public var status: RequirementStatus
+        public init(title: String, ok: Bool, detail: String, key: String? = nil, status: RequirementStatus? = nil) {
+            self.title = title; self.ok = ok; self.detail = detail; self.key = key ?? title
+            self.status = status ?? (ok ? .done : .missing)
+        }
     }
 
-    /// A chain comes when the first store has proven itself. Original: `R12.chainReq`.
+    /// A requirement that is a document: approved is done, applied is waiting for review (with the weeks left), otherwise missing.
+    static func documentRequirement(_ s: GameState, _ co: Company, doc: String, title: String, missing: String) -> Requirement {
+        let d = co.value("docs")[doc]
+        switch d["st"].string {
+        case "ok": return Requirement(title: title, ok: true, detail: "Done", key: doc)
+        case "applied": return Requirement(title: title, ok: false, detail: "Waiting for review, about \(max(0, d["done"].int - s.week)) weeks left", key: doc, status: .waiting)
+        case "rejected": return Requirement(title: title, ok: false, detail: "Refused: apply again", key: doc)
+        default: return Requirement(title: title, ok: false, detail: missing, key: doc)
+        }
+    }
+
+    /// What really applies to put stores under one name: the brand is a registered trademark, and one operations manual says how every store is run.
+    /// (A chain of company-owned stores needs no track record or cash balance by law.)
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {
-        // Real business constraints, not waiting time: a record of profit, cash in hand to fund the next store, reputation, a manager.
-        // The only delay left is the document review (Documents.apply).
-        let H = Array(co.monthlyHistory.suffix(6))
-        let good = H.filter { $0.profit > 0 }.count
-        let recent = Array(co.monthlyHistory.suffix(3))
-        let need = recent.isEmpty ? 0 : (recent.reduce(0.0) { $0 + $1.revenue } / Double(recent.count)).rounded()
-        let cashOK = !recent.isEmpty && Payments.liquid(s) >= need
-        return [
-            Requirement(title: "Money made in most recent months", ok: H.count >= 3 && good * 3 >= H.count * 2, detail: "\(good) of the last \(H.count) months"),
-            Requirement(title: "Cash to fund the next store", ok: cashOK, detail: cashOK ? "Enough cash in hand" : "Keep about a month of sales in cash"),
-            Requirement(title: "Customers like it", ok: co.reputation >= 50, detail: "reputation \(Int(co.reputation))"),
-            Requirement(title: "Someone runs it while you are away", ok: co.managerID != nil || !co.value("asst").isNull, detail: co.managerID != nil ? "A manager runs it" : "Hire a manager"),
-        ]
+        [documentRequirement(s, co, doc: "trademark", title: "Registered trademark", missing: "Apply to register the brand name (fee, 4 to 8 weeks)"),
+         documentRequirement(s, co, doc: "ops_manual", title: "Operations manual", missing: "Write it with your manager (a few weeks, a small cost)")]
     }
 
     public enum ChainDocResult: Equatable, Sendable { case ok, notYet(String), alreadyHeld, notEnoughCash, notFound }
 
-    /// Apply for the chain registration (`doc` "chain") or the franchise documents ("fran"); the requirements must be met first.
+    /// Apply for a paper of the chain and franchise path: "trademark" (signed, reviewed), "ops_manual" (written by the company), "chain" (the registration)
+    /// or "fran" (the disclosure document, prepared with a lawyer, signed and reviewed). The papers it rests on must be done first.
     /// Original: `applyDoc` with the `applyDoc.check` steps of chain_registration_and_boards.js and deals.js.
     public static func applyDocument(_ s: inout GameState, companyID: Int, doc: String, data: GameData) -> ChainDocResult {
-        guard let i = s.companyIndex(companyID), doc == "chain" || doc == "fran" else { return .notFound }
+        guard let i = s.companyIndex(companyID), ["chain", "fran", "trademark", "ops_manual"].contains(doc) else { return .notFound }
         let co = s.companies[i]
         if doc == "chain" && !co.value("chain").isNull { return .alreadyHeld }
         if doc == "chain", let miss = requirements(s, co).first(where: { !$0.ok }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
         if doc == "fran" {
             if co.value("fr")["on"].bool { return .alreadyHeld }
-            if let miss = Franchising.requirements(s, co).first(where: { !$0.ok }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
+            if let miss = Franchising.requirements(s, co).first(where: { !$0.ok && $0.key != "fran" }) { return .notYet("Not yet: \(miss.title.lowercased()) (\(miss.detail.lowercased())).") }
         }
-        switch Documents.apply(doc, companyID: companyID, state: &s, data: data) {
+        let r = doc == "ops_manual" ? Documents.apply(doc, companyID: companyID, state: &s, data: data) : Documents.applySigned(doc, companyID: companyID, state: &s, data: data)
+        switch r {
         case .ok: return .ok
         case .alreadyHeld: return .alreadyHeld
         case .notEnoughCash: return .notEnoughCash

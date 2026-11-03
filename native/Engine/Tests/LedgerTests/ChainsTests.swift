@@ -44,8 +44,7 @@ final class ChainsTests: XCTestCase {
             s.companies[i].reputation = 70
             s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: 90_000, cash: 0) }
             var docs = s.companies[i].value("docs")
-            docs["chain"] = .object(["st": "ok", "done": 0, "ok": 0])
-            docs["fran"] = .object(["st": "ok", "done": 0, "ok": 0])
+            for d in ["trademark", "ops_manual", "chain", "fran"] { docs[d] = .object(["st": "ok", "done": 0, "ok": 0]) }
             s.companies[i].set("docs", docs)
         }
     }

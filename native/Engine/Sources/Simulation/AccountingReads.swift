@@ -496,7 +496,7 @@ public extension GameEngine {
         let acc = co.value("acc")
         if !acc["id"].isNull { add(.company, "registration", "accagr", "Accountant agreement", acc["name"].string, co.value("docs")["accountant_agreement"]["st"].string == "ok" ? "In force" : "Pending", week: acc["w0"].int) }
         let w = World(state: state, data: data)
-        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where id != "accountant_agreement" && id != "chain" && id != "fran" {
+        for (id, d) in co.value("docs").object.sorted(by: { $0.key < $1.key }) where id != "accountant_agreement" && !["chain", "fran", "trademark", "ops_manual"].contains(id) {
             guard let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }
             let st = d["st"].string
             let isTax = id.hasPrefix("vat") || id == "tax"
@@ -542,14 +542,14 @@ public extension GameEngine {
             }
         }
         // Applications: the company's own chain and franchise paperwork (waiting, approved), and your applications to join a franchise brand.
-        for id in ["chain", "fran"] {
+        for id in ["trademark", "ops_manual", "chain", "fran"] {
             let d = co.value("docs")[id]
             guard !d.isNull, let def = Documents.definition(id, country: country, tables: data.catalog.tables) else { continue }
             let st = d["st"].string
             let status: String = st == "ok" ? "Approved" : (st == "applied" ? "Under review" : (st.isEmpty ? "Not applied" : st.capitalized))
             var detail: String = def.issuer
             if st == "applied" { detail += " \u{00B7} decision due " + GameCalendar.dateString(week: d["done"].int) }
-            add(.applications, "chain", "app-" + id, id == "chain" ? "Chain registration" : "Franchise documents", detail, status, week: d["w0"].isNull ? nil : d["w0"].int)
+            add(.applications, "chain", "app-" + id, ["trademark": "Trademark registration", "ops_manual": "Operations manual", "chain": "Chain registration"][id] ?? "Franchise disclosure document", detail, status, week: d["w0"].isNull ? nil : d["w0"].int)
         }
         if let apps = state.rest["fbApps"]?.object, !apps.isEmpty {
             let world = World(state: state, data: data)

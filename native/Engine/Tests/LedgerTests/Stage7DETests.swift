@@ -33,32 +33,20 @@ final class Stage7DETests: XCTestCase {
         XCTAssertTrue(Trophies.entries(e.state).allSatisfy { $0.reachedWeek == nil }, "nothing is granted before its condition")
     }
 
-    func testChainRequirementsAreRealNotWaiting() throws {
-        var (e, id) = try cafeGame()
-        // A young company with a good record, cash and reputation qualifies: no years of waiting. Only the manager may be missing.
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            s.companies[i].openedWeek = s.week - 10
-            s.companies[i].reputation = 70
-            s.companies[i].monthlyHistory = (0..<6).map { MonthRecord(monthIndex: $0, revenue: 400_000, profit: 90_000, cash: 0) }
-            Ledger.move(&s, .me, 2_000_000, why: "cash in hand")
-            let r = Chains.requirements(s, s.companies[i])
-            XCTAssertFalse(r.contains { $0.title.lowercased().contains("year") }, "no pure waiting-time gate")
-            XCTAssertTrue(r.filter { !$0.ok }.allSatisfy { $0.title.contains("runs it") }, "missing: \(r.filter { !$0.ok }.map { $0.title })")
-        }
-        // Reputation is a real gate.
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            s.companies[i].reputation = 20
-            XCTAssertFalse(Chains.requirements(s, s.companies[i]).first { $0.title == "Customers like it" }!.ok)
-        }
+    func testChainRequirementsAreRealLifePapers() throws {
+        let (e, id) = try cafeGame()
+        // Real basis (DECISIONS.md): a registered trademark and an operations manual; no cash, reputation or record gates.
+        let r = Chains.requirements(e.state, e.state.company(id)!)
+        XCTAssertEqual(r.map { $0.key }, ["trademark", "ops_manual"])
+        XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") || $0.title.lowercased().contains("customers like") })
     }
 
-    func testFranchiseRequirementsHaveNoYearsGate() throws {
+    func testFranchiseRequirementsHaveNoYearsOrCashGate() throws {
         let (e, id) = try cafeGame()
         let r = Franchising.requirements(e.state, e.state.company(id)!)
         XCTAssertFalse(r.contains { $0.title.contains("years") || $0.title.contains("for a year") })
-        XCTAssertTrue(r.contains { $0.title.lowercased().contains("cash") })
+        XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") })
+        XCTAssertEqual(r.map { $0.key }, ["proven", "trademark", "ops_manual", "fran", "support"])
     }
 
     // MARK: E
