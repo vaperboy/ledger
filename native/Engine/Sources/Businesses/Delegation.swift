@@ -60,6 +60,7 @@ public enum Delegation {
         if m.actionID.hasPrefix("pay29") { return 1 }
         if m.actionID == "staffx" || m.actionID == PromiseReminders.action || m.actionID == "mgrraise" || m.actionID == "mgrpoach" { base = 2 }
         else if kind == "exit" || kind == PremisesProposals.kind { return 5 }
+        else if kind == Appointments.kind { return max(3, m.value("data")["lvl"].int) }   // an assistant hire: decided by the level above the manager
         else if kind == "divq" || kind == "div" || kind == "rofr" { base = 4 }
         else { base = m.tone == "bad" ? 4 : 3 }
         guard nw > 0 else { return base }
