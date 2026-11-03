@@ -58,6 +58,9 @@ public enum Unlocks {
         return h.count == 12 ? h.reduce(0.0) { $0 + $1.profit } : nil
     }
 
+    /// Closed months on record, up to twelve (the progress towards a profitable year).
+    public static func monthsClosed(_ co: Company) -> Int { min(12, co.monthlyHistory.count) }
+
     /// Someone could sit on the board now: a board exists (a chain, or co-owners), a search already lined up candidates, or a limited company
     /// has a manager who could take a seat.
     static func boardPossible(_ s: GameState, _ co: Company) -> Bool {
@@ -79,7 +82,7 @@ public enum Unlocks {
             let ok = co.value("fr")["on"].bool || Franchising.provenConcept(s, co).ok
             return (ok, "Unlocks with a proven concept: \(weeksChain) weeks traded and four profitable quarters")
         case "abroad":
-            let ok = (yearProfit(co) ?? 0) > 0
+            let ok = (yearProfit(co) ?? 0) > 0 || !Abroad.foreignCountries(s).isEmpty
             return (ok, "Unlocks after a profitable year (twelve closed months in profit)")
         case "research":
             let ok = weeks >= weeksResearch || !co.value("res27")["r"].array.isEmpty

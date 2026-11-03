@@ -62,12 +62,18 @@ public enum Franchising {
 
     /// Real franchisors need a proven pilot: traded at least 52 weeks and each of the last four quarters (three months each) profitable.
     public static func provenConcept(_ s: GameState, _ co: Company) -> (ok: Bool, detail: String) {
+        let p = provenProgress(s, co)
+        let ok = p.weeks >= 52 && p.quarters == 4
+        return (ok, "Traded \(max(0, p.weeks)) of 52 weeks; profitable quarters \(p.quarters) of 4")
+    }
+
+    /// How far a pilot is from a proven concept: weeks traded and how many of the last four quarters (three months each) were profitable.
+    public static func provenProgress(_ s: GameState, _ co: Company) -> (weeks: Int, quarters: Int) {
         let weeks = co.openedWeek.map { s.week - $0 } ?? 0
         let H = Array(co.monthlyHistory.suffix(12))
         let quarters = stride(from: 0, to: H.count - 2, by: 3).map { k in H[k..<k + 3].reduce(0.0) { $0 + $1.profit } }
         let good = H.count == 12 ? quarters.filter { $0 > 0 }.count : 0
-        let ok = weeks >= 52 && good == 4
-        return (ok, "Traded \(max(0, weeks)) of 52 weeks; profitable quarters \(good) of 4")
+        return (max(0, weeks), good)
     }
 
     public enum LaunchResult: Equatable, Sendable { case ok, already, notYet(String), needDocuments, notFranchisable }
