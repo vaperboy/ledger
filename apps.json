@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.25",
+          "buildVersion": "25",
+          "date": "2026-11-03T00:24:17Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v25/Ledger-unsigned.ipa",
+          "size": 24043811,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Team is merged into Group: each company page has a Management tab (you, managers, executives, Who decides what, open posts); Dividends are inside Money; Add to group opens New company, Holding, Join a franchise and Football club; Expand abroad is per company; a company's Team tab shows staff only\n- Phone: the Market app is organised in five parts; Goals and Reports are no longer apps (Goals and awards and Previous reports are in Stats); Ventures and Projects are one Ventures page; the weather app no longer links to your companies; rewards and achievements must be claimed, and an achievement popup shows its art and title\n- Group works like Banking: Group opens a company and chain picker with value arrows and percentages; each entity has its own overview, Board (thin seat rows), Dividends, Expansion (chain and franchise, moved out of company management), Money and Deals; a group-wide supplier directory lists every supplier with a profile; Structure, More and the group office are gone and Giving moved to Bank\n- New systems show up inside existing screens: a growth path and Promote in the worker popup, brand value on Group and Sales, market research in Sales and Market, "
+        },
+        {
           "version": "1.0.24",
           "buildVersion": "24",
           "date": "2026-11-02T23:17:15Z",
@@ -187,22 +196,13 @@
           "size": 24065740,
           "minOSVersion": "17.0",
           "localizedDescription": "Build v6 from 8e73e39"
-        },
-        {
-          "version": "1.0.5",
-          "buildVersion": "5",
-          "date": "2026-10-31T20:09:55Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v5/Ledger-unsigned.ipa",
-          "size": 24065686,
-          "minOSVersion": "17.0",
-          "localizedDescription": "Build v5 from f16d01b"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.24",
-      "versionDate": "2026-11-02T23:17:15Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v24/Ledger-unsigned.ipa",
-      "size": 23898727
+      "version": "1.0.25",
+      "versionDate": "2026-11-03T00:24:17Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v25/Ledger-unsigned.ipa",
+      "size": 24043811
     }
   ]
 }
