@@ -22,6 +22,8 @@ targets:
       - path: Ledger
         excludes:
           - "Resources/art/cells/**"
+          # Part 10 Home mockups (native/App/Mockups) are review files: out of the release build.
+          - "../Mockups/**"
           # The five art sheets were sliced into cells and are not read at runtime: they stay in the repo but out of the release build (Stage 9).
           - "Resources/art/cars-sheet.jpg"
           - "Resources/art/logos-sheet.jpg"
