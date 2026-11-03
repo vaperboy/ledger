@@ -60,6 +60,11 @@ struct ReviewsApp: View {
         }
     }
 
+    /// The marker id of one review line: the business, the week it was written and who wrote it.
+    static func lineKey(_ e: GameEngine, _ co: Company, _ l: ReviewLine) -> String {
+        "v\(co.id).\(e.state.week - l.weeksAgo).\(l.stars).\(l.who)"
+    }
+
     private func page(_ e: GameEngine) -> some View {
         let companies: [Company] = Self.companies(e)
         let chosen: Company? = companies.first { $0.id == companyID } ?? companies.first
@@ -146,6 +151,7 @@ struct ReviewsApp: View {
             LazyVStack(alignment: .leading, spacing: 10) {
                 ForEach(r.lines) { (line: ReviewLine) in
                     EntityCard { reviewCard(line) }
+                        .newMarker(.reviews, ReviewsApp.lineKey(e, co, line), style: .dot, alignment: .topTrailing)
                 }
             }
         } else {

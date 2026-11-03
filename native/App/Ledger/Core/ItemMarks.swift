@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Businesses
+import Events
 import Simulation
 
 /// In-app markers: which rows of a Phone app are new since the player last opened it. The launcher badge reads the same feeds
@@ -17,6 +18,27 @@ extension GameStore {
         switch app {
         case .market:
             for ev in UpdateFeed.freshMarket(e, marks: base) { out.insert("e\(ev.id)") }
+            for co in e.state.companies where co.status == .open && co.type != "hold" {
+                guard let known = base.texts["rv.\(co.id)"] else { continue }
+                let have: Set<String> = Set(known.split(separator: ",").map { (s: Substring) -> String in String(s) })
+                for r in e.rivalRows(co) where !have.contains(String(r.id)) { out.insert("r\(co.id).\(r.id)") }
+            }
+        case .reviews:
+            if let seen = base.ints["reviews"] {
+                for co in ReviewsApp.companies(e) {
+                    for l in e.reviewSummary(co, limit: 30).lines where e.state.week - l.weeksAgo > seen { out.insert(ReviewsApp.lineKey(e, co, l)) }
+                }
+            }
+        case .stats, .achievements:
+            if let seen = base.ints["tr." + app.rawValue] {
+                for t in Trophies.entries(e.state) where !t.before {
+                    if let w = t.reachedWeek, w > seen { out.insert("t" + t.id) }
+                }
+            }
+        case .accounting:
+            if base.ints["docrev"] != nil {
+                for k in reviewDocKeys(e) where base.texts["dr." + k] == nil { out.insert(k) }
+            }
         case .news:
             for n in UpdateFeed.freshNews(e, marks: base) { out.insert("n" + UpdateFeed.newsKey(n)) }
         case .marketplace:
@@ -77,11 +99,38 @@ extension GameStore {
         return hits.map { (m: Message) -> String in "m\(m.id)" }
     }
 
+    /// The ids of every rival of a company, comma separated (the rivals already known, so a new one can be marked).
+    func rivalIDList(_ e: GameEngine, _ co: Company) -> String {
+        e.rivalRows(co).map { (r: RivalRow) -> String in String(r.id) }.sorted().joined(separator: ",")
+    }
+
+    /// Accounting document rows under review, approved or declined ("d<company>.<doc>.<status>"): a changed status is a new key.
+    func reviewDocKeys(_ e: GameEngine) -> [String] {
+        var out: [String] = []
+        for co in e.state.companies where co.status.isLive {
+            let docs: [AccountingDocument] = e.companyDocuments(companyID: co.id, group: .applications, user: nil) ?? []
+            for d in docs where d.status != "Not applied" { out.append("d\(co.id).\(d.id).\(d.status)") }
+        }
+        return out
+    }
+
+    /// Loan messages of the Bank (optionally one company; 0 = the player) that are still new, for the Loans tab dot.
+    func loanMessageIDs(companyID: Int) -> [String] {
+        guard let e = engine else { return [] }
+        let ids: [String] = messageItemIDs(.bank, companyID: companyID)
+        let hits: [Message] = e.state.inbox.filter { (m: Message) -> Bool in
+            ids.contains("m\(m.id)") && (m.title + " " + m.body).lowercased().contains("loan")
+        }
+        return hits.map { (m: Message) -> String in "m\(m.id)" }
+    }
+
     func markItemSeen(_ app: PhoneApp, _ id: String) {
         let k: String = itemKey(app, id)
         if seenMarks.texts[k] != nil { return }
         var s: UpdateMarks = seenMarks
         s.texts[k] = "1"
+        // A document row's status is remembered for good (the visit keys above are dropped when the launcher shows).
+        if app == .accounting && id.hasPrefix("d") { s.texts["dr." + id] = "1" }
         seenMarks = s
         s.save("seen")
     }

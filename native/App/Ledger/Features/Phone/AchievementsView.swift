@@ -68,6 +68,7 @@ struct AchievementsView: View {
         }
         .padding(.vertical, 9)
         .accessibilityElement(children: .combine)
+        .newMarker(.achievements, "t" + t.id, style: .dot, alignment: .topLeading)
     }
 }
 
@@ -92,6 +93,7 @@ struct TrophiesPreview: View {
                         ForEach(Array(got.prefix(3).enumerated()), id: \.element.id) { i, t in
                             if i > 0 { CardLine() }
                             ValueRow(label: t.name, value: t.reachedWeek.map { GameCalendar.dateString(week: $0) } ?? "").padding(.vertical, 8)
+                                .newMarker(.stats, "t" + t.id, style: .dot, alignment: .topLeading)
                         }
                     }
                 }

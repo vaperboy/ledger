@@ -64,6 +64,7 @@ struct GoalsView: View {
                         Haptics.success(); store.show("Daily goal: \(cur.tidyShort(r)). A new goal comes tomorrow.", tone: "good"); refresh()
                     } else { Haptics.warning(); store.show("That goal cannot be claimed yet.", tone: "warn") }
                 }
+                .flagMarker(g.done && !g.claimed, alignment: .topLeading)
                 missionSwitch(off: false)
             }
         } else if e.dailyGoalsOff {
@@ -111,6 +112,7 @@ struct GoalsView: View {
             if let t = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil { Haptics.success(); store.show(t, tone: "good") }
             else { Haptics.warning(); store.show("That reward cannot be claimed yet.", tone: "warn") }
         }
+        .flagMarker(step.done && !step.claimed, alignment: .topLeading)
     }
 
     // MARK: Ambition

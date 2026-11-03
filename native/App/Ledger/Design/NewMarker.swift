@@ -46,21 +46,64 @@ struct NewMarkerShape: View {
     }
 }
 
+/// Markers per screen are capped (about 8): the first ones drawn keep their place, or an explicit `rank` (0 is most important) decides.
+final class MarkerBudget {
+    static let cap: Int = 8
+    private var claimed: [String] = []
+    func allows(_ key: String, rank: Int?) -> Bool {
+        if let r = rank { return r < Self.cap }
+        if claimed.contains(key) { return true }
+        if claimed.count >= Self.cap { return false }
+        claimed.append(key)
+        return true
+    }
+    func release(_ key: String) { claimed.removeAll { (k: String) -> Bool in k == key } }
+}
+
+private struct MarkerBudgetKey: EnvironmentKey { static let defaultValue: MarkerBudget? = nil }
+/// False while the page holding a marker is not the selected one (a tab or segment that is alive but off screen): its markers are not cleared then.
+private struct MarkerPageActiveKey: EnvironmentKey { static let defaultValue: Bool = true }
+extension EnvironmentValues {
+    var markerBudget: MarkerBudget? {
+        get { self[MarkerBudgetKey.self] }
+        set { self[MarkerBudgetKey.self] = newValue }
+    }
+    var markerPageActive: Bool {
+        get { self[MarkerPageActiveKey.self] }
+        set { self[MarkerPageActiveKey.self] = newValue }
+    }
+}
+
+/// Gives a screen its own marker budget (see `MarkerBudget`).
+private struct MarkerBudgetScope: ViewModifier {
+    @State private var budget = MarkerBudget()
+    func body(content: Content) -> some View { content.environment(\.markerBudget, budget) }
+}
+
 /// A marker tied to one item: shown while the item is new, cleared after it has been on screen for about a second.
 struct NewMarker: View {
     var app: PhoneApp
     var id: String
     var style: NewMarkerStyle = .dot
     var important: Bool = false
+    var rank: Int? = nil
     @EnvironmentObject var store: GameStore
+    @Environment(\.markerBudget) var budget: MarkerBudget?
+    @Environment(\.markerPageActive) var pageActive: Bool
+
+    private var key: String { app.rawValue + "." + id }
 
     var body: some View {
-        if store.isNew(app, id) {
+        if store.isNew(app, id) && (budget?.allows(key, rank: rank) ?? true) {
             NewMarkerShape(style: style, important: important)
                 .transition(.opacity)
-                .task {
+                .task(id: pageActive) {
+                    guard pageActive else { return }
                     try? await Task.sleep(nanoseconds: 1_200_000_000)
-                    if !Task.isCancelled { withAnimation(.easeOut(duration: 0.25)) { store.markItemSeen(app, id) } }
+                    if !Task.isCancelled {
+                        withAnimation(.easeOut(duration: 0.25)) { store.markItemSeen(app, id) }
+                        budget?.release(key)
+                    }
                 }
         }
     }
@@ -72,30 +115,41 @@ struct NewGroupMarker: View {
     var ids: [String]
     var style: NewMarkerStyle = .dot
     var important: Bool = false
+    var rank: Int? = nil
     @EnvironmentObject var store: GameStore
+    @Environment(\.markerBudget) var budget: MarkerBudget?
+    @Environment(\.markerPageActive) var pageActive: Bool
 
     var body: some View {
         let live: [String] = ids.filter { (id: String) -> Bool in store.isNew(app, id) }
-        if !live.isEmpty {
+        let key: String = app.rawValue + ".g." + (live.first ?? "")
+        if !live.isEmpty && (budget?.allows(key, rank: rank) ?? true) {
             NewMarkerShape(style: style, important: important)
                 .transition(.opacity)
-                .task {
+                .task(id: pageActive) {
+                    guard pageActive else { return }
                     try? await Task.sleep(nanoseconds: 1_200_000_000)
-                    if !Task.isCancelled { withAnimation(.easeOut(duration: 0.25)) { for id in live { store.markItemSeen(app, id) } } }
+                    if !Task.isCancelled {
+                        withAnimation(.easeOut(duration: 0.25)) { for id in live { store.markItemSeen(app, id) } }
+                        budget?.release(key)
+                    }
                 }
         }
     }
 }
 
 extension View {
+    /// Caps this screen's in-app markers at about eight (the first drawn, or the lowest `rank`).
+    func markerBudget() -> some View { modifier(MarkerBudgetScope()) }
+
     /// A marker for a group of item ids (see `NewGroupMarker`).
-    func newGroupMarker(_ app: PhoneApp, _ ids: [String], style: NewMarkerStyle = .dot, important: Bool = false, alignment: Alignment = .topTrailing) -> some View {
-        overlay(alignment: alignment) { NewGroupMarker(app: app, ids: ids, style: style, important: important).padding(style == .dot ? 6 : 4) }
+    func newGroupMarker(_ app: PhoneApp, _ ids: [String], style: NewMarkerStyle = .dot, important: Bool = false, rank: Int? = nil, alignment: Alignment = .topTrailing) -> some View {
+        overlay(alignment: alignment) { NewGroupMarker(app: app, ids: ids, style: style, important: important, rank: rank).padding(style == .dot ? 6 : 4) }
     }
 
     /// Puts the item's marker in a corner (dot for list rows, capsule for cards).
-    func newMarker(_ app: PhoneApp, _ id: String, style: NewMarkerStyle = .dot, important: Bool = false, alignment: Alignment = .topTrailing) -> some View {
-        overlay(alignment: alignment) { NewMarker(app: app, id: id, style: style, important: important).padding(style == .dot ? 6 : 4) }
+    func newMarker(_ app: PhoneApp, _ id: String, style: NewMarkerStyle = .dot, important: Bool = false, rank: Int? = nil, alignment: Alignment = .topTrailing) -> some View {
+        overlay(alignment: alignment) { NewMarker(app: app, id: id, style: style, important: important, rank: rank).padding(style == .dot ? 6 : 4) }
     }
 
     /// A marker that is simply on or off (a standing alert, a tab that holds something new).

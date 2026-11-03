@@ -40,6 +40,8 @@ struct BankAccountScreen: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .onAppear { clearLoanDot() }
+            .onChange(of: tab) { _, _ in clearLoanDot() }
             .centerSheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind) }
             .centerSheet(isPresented: $paying, title: "Pay bill") { BankPaySheet(account: id) }
             .centerSheet(isPresented: $viewAll, title: "Every movement") { BankAllMovementsSheet(account: id) }
@@ -90,8 +92,22 @@ struct BankAccountScreen: View {
 
     // MARK: Tabs
 
+    /// The company behind this account (0 for the player's own accounts), to find its Bank messages.
+    private var bankCompanyID: Int {
+        if case .company(let n) = id { return n }
+        return 0
+    }
+
+    /// Opening the Loans tab reads its messages: their dot goes.
+    private func clearLoanDot() {
+        guard tab == .loans else { return }
+        for mid in store.loanMessageIDs(companyID: bankCompanyID) { store.markItemSeen(.bank, mid) }
+    }
+
     private func tabRow(_ d: BankAccountDetail) -> some View {
         let billsDot: Bool = d.alert != nil
+        let loanIDs: [String] = tabs.contains(.loans) ? store.loanMessageIDs(companyID: bankCompanyID) : []
+        let loansDot: Bool = loanIDs.contains { (mid: String) -> Bool in store.isNew(.bank, mid) }
         return HStack(spacing: 2) {
             ForEach(tabs, id: \.self) { t in
                 let on: Bool = tab == t
@@ -105,6 +121,7 @@ struct BankAccountScreen: View {
                         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(on ? P.accent : Color.clear, lineWidth: 1))
                         .overlay(alignment: .topTrailing) {
                             if t == .bills && billsDot { Circle().fill(Theme.alert).frame(width: 8, height: 8).offset(x: -2, y: 3) }
+                            if t == .loans && loansDot && !on { NewMarkerShape(style: .dot).offset(x: -2, y: 3) }
                         }
                         .contentShape(Rectangle())
                 }

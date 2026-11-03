@@ -131,6 +131,18 @@ extension GameStore {
         let known: Bool = e.news.contains { (n: NewsItem) -> Bool in UpdateFeed.newsKey(n) == oldNews }
         if !known { m.texts["news"] = UpdateFeed.newsSignature(e) }
         if m.texts["weather"] == nil { m.texts["weather"] = UpdateFeed.weatherSignature(e) }
+        for k in ["reviews", "tr.stats", "tr.achievements"] {
+            let old: Int? = m.ints[k]
+            if old == nil || old! > e.state.week { m.ints[k] = e.state.week }
+        }
+        if m.ints["docrev"] == nil {
+            m.ints["docrev"] = 1
+            for k in reviewDocKeys(e) { m.texts["dr." + k] = "1" }
+        }
+        for co in e.state.companies where co.status == .open && co.type != "hold" {
+            let k: String = "rv.\(co.id)"
+            if m.texts[k] == nil { m.texts[k] = rivalIDList(e, co) }
+        }
     }
 
     /// Seeds missing (or stale, from another game) markers to "now", so old items never replay as updates.
@@ -150,7 +162,11 @@ extension GameStore {
         var s: UpdateMarks = seenMarks
         refreshVisit(app, before: s)
         switch app {
-        case .market: s.ints["market"] = UpdateFeed.maxMarketID(e)
+        case .market:
+            s.ints["market"] = UpdateFeed.maxMarketID(e)
+            for co in e.state.companies where co.status == .open && co.type != "hold" { s.texts["rv.\(co.id)"] = rivalIDList(e, co) }
+        case .reviews: s.ints["reviews"] = e.state.week
+        case .stats, .achievements: s.ints["tr." + app.rawValue] = e.state.week
         case .news: s.texts["news"] = UpdateFeed.newsSignature(e)
         case .weather: s.texts["weather"] = UpdateFeed.weatherSignature(e)
         case .marketplace: s.ints["marketplace"] = MarketplaceBridge.newestPostedDay(e)

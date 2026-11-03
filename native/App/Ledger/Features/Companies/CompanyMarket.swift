@@ -118,6 +118,7 @@ struct CompanyMarket: View {
         let logo = ThumbSpec(kind: .logo, key: "rival|co\(company.id)|\(r.rival.id)", glyph: Glyph.person, initials: r.rival.name, shape: .square)
         return TableRow(columns: cols, title: name, note: r.sizeWord, values: [shareText], valueTints: [a.tint], thumb: logo) { rival = r.id }
             .orgEdge(rivalFlash[r.id], radius: Theme.Radius.table)
+            .newMarker(.market, "r\(company.id).\(r.id)", style: .dot, alignment: .topLeading)
     }
 
     private var priceRows: some View {

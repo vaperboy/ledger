@@ -9,6 +9,7 @@ struct SegmentPager<T: Hashable, Content: View>: View {
     @Binding var selection: T
     var content: (T) -> Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.markerPageActive) private var outerActive
 
     init(items: [T], selection: Binding<T>, @ViewBuilder content: @escaping (T) -> Content) {
         self.items = items
@@ -22,6 +23,7 @@ struct SegmentPager<T: Hashable, Content: View>: View {
             ForEach(items, id: \.self) { (item: T) in
                 content(item)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .environment(\.markerPageActive, outerActive && item == selection)
                     .tag(item)
             }
         }

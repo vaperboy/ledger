@@ -99,6 +99,13 @@ struct AcctDocuments: View {
         if let date = d.dateText { sub = sub.isEmpty ? date : sub + " \u{00B7} " + date }
         let value: String = d.amount.map { fmt.short($0) } ?? ""
         let identifier: String = "acct-document-row"
+        if d.group == .applications && d.status != "Not applied" {
+            return AnyView(plainRow(d, co, sub, value, identifier).newMarker(.accounting, "d\(co.id).\(d.id).\(d.status)", style: .dot, alignment: .topLeading))
+        }
+        return plainRow(d, co, sub, value, identifier)
+    }
+
+    private func plainRow(_ d: AccountingDocument, _ co: Company, _ sub: String, _ value: String, _ identifier: String) -> AnyView {
         // Records that are managed somewhere else link there (read-only here).
         if d.kind == "financing" {
             return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier) {

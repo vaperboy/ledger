@@ -50,6 +50,7 @@ struct MarketApp: View {
         let fresh: [MarketEvent] = e.marketEvents(limit: 30).filter { (m: MarketEvent) -> Bool in store.isNew(.market, "e\(m.id)") }
         if p == .news { return !fresh.isEmpty }
         if p == .competitors {
+            if store.hasNew(.market, prefix: "r") { return true }
             return fresh.contains { (m: MarketEvent) -> Bool in m.kind == .competitorLaunch || m.kind == .competitorLostShare || m.kind == .priceResponse }
         }
         return false

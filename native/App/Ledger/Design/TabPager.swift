@@ -59,5 +59,6 @@ struct TabPager<Content: View>: View {
             .opacity(reduceMotion && !active ? 0 : 1)
             .allowsHitTesting(active && !settling)
             .accessibilityHidden(!active)
+            .environment(\.markerPageActive, active)
     }
 }
