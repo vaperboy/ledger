@@ -31,6 +31,7 @@ struct DailyReportPopup: View {
     @State private var revealed: Int = 0
     @State private var showContinue: Bool = false
     @State private var skipped: Bool = false
+    @State private var barFill: Double = 0
 
     // MARK: Content from real data
 
@@ -76,14 +77,35 @@ struct DailyReportPopup: View {
 
     private func visible(_ index: Int) -> Bool { reduceMotion || revealed > index }
 
+    private static let barDuration: Double = 1.6
+
+    /// The time (0...1 of the bar) at which the eased bar has reached `p`: the inverse of a smooth ease-in-out.
+    private func timeFor(progress p: Double) -> Double {
+        var lo: Double = 0
+        var hi: Double = 1
+        for _ in 0..<20 {
+            let mid: Double = (lo + hi) / 2
+            let v: Double = mid * mid * (3 - 2 * mid)
+            if v < p { lo = mid } else { hi = mid }
+        }
+        return (lo + hi) / 2
+    }
+
     private func run(count n: Int) async {
         if reduceMotion { return }
+        let total: Double = Self.barDuration
+        withAnimation(.easeInOut(duration: total)) { barFill = 1 }
+        var elapsed: Double = 0
         for i in 0..<n {
+            let at: Double = timeFor(progress: (Double(i) + 0.5) / Double(n)) * total
+            let wait: Double = max(0, at - elapsed)
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
             if skipped { return }
+            elapsed = max(elapsed, at)
             withAnimation(.easeOut(duration: 0.3)) { revealed = i + 1 }
-            let gap: Double = i < n - 1 ? 1.0 / Double(max(n - 1, 1)) : 0.4
-            try? await Task.sleep(nanoseconds: UInt64(gap * 1_000_000_000))
         }
+        let rest: Double = max(0, total - elapsed)
+        try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000))
         if skipped { return }
         withAnimation(.easeOut(duration: 0.3)) { showContinue = true }
     }
@@ -91,11 +113,21 @@ struct DailyReportPopup: View {
     private func skip(count n: Int) {
         if reduceMotion || skipped || showContinue { return }
         skipped = true
-        withAnimation(.easeOut(duration: 0.15)) { revealed = n }
+        withAnimation(.easeOut(duration: 0.15)) { revealed = n; barFill = 1 }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
             withAnimation(.easeOut(duration: 0.3)) { showContinue = true }
         }
+    }
+
+    private var loadingBar: some View {
+        let fill: Double = reduceMotion ? 1 : barFill
+        return ZStack(alignment: .leading) {
+            Capsule().fill(Theme.ivoryFaint.opacity(0.18))
+            Capsule().fill(Theme.gold).scaleEffect(x: max(fill, 0.001), y: 1, anchor: .leading)
+        }
+        .frame(height: 2.5)
+        .accessibilityHidden(true)
     }
 
     // MARK: Views
@@ -109,6 +141,7 @@ struct DailyReportPopup: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Morning briefing").capsLabel()
                     headline.modifier(BriefingStep(shown: visible(0)))
+                    loadingBar
                     ForEach(list) { (line: BriefingLine) in
                         row(line).modifier(BriefingStep(shown: visible(line.id)))
                     }

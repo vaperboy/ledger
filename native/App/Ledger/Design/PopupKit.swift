@@ -96,8 +96,7 @@ struct FitScroll<Content: View>: View {
 
 // MARK: Popup buttons
 
-/// The one highlighted button of a popup: champagne filled, full width. A popup with no real choice has only this; a popup with
-/// several options has exactly one (the recommended one, never a destructive one).
+/// The filled button of a popup with a SOLE action (Continue, OK, Claim): champagne, full width. Never used beside other options.
 struct PopupPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -113,17 +112,19 @@ struct PopupPrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Every other option of a popup: a quiet outline. A destructive option is outlined in the loss colour.
+/// An option of a popup: an equal, neutral outline (same size and weight for every option, no red). A passive option
+/// (Decide later, Postpone, Later, Not now, Skip, Remind me) is drawn lightly grayed.
 struct PopupQuietButtonStyle: ButtonStyle {
-    var destructive: Bool = false
+    var passive: Bool = false
     @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
-        let edge: Color = destructive ? P.loss : P.lineStrong
+        let edge: Color = passive ? P.lineStrong.opacity(0.5) : P.lineStrong
+        let ink: Color = passive ? P.ink.opacity(0.5) : P.ink
         return configuration.label
             .font(.system(size: 14, weight: .medium))
             .lineLimit(1).minimumScaleFactor(0.85)
-            .foregroundStyle(destructive ? P.loss : P.ink)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .foregroundStyle(ink)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 14)
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(edge, lineWidth: 1))
             .contentShape(Rectangle())
@@ -131,8 +132,8 @@ struct PopupQuietButtonStyle: ButtonStyle {
     }
 }
 
-/// One option button of a popup. `highlighted` is true for exactly one option of the popup (or the only one); `destructive` options
-/// are never highlighted, whatever is passed.
+/// One option button of a popup. Every option is the same equal outline; `highlighted` (filled champagne) is only for a SOLE action
+/// (Continue, OK, Claim). `destructive` is kept for call sites but changes nothing: irreversible actions are explained in text.
 struct PopupOptionButton: View {
     var title: String
     var highlighted: Bool = false
@@ -140,12 +141,19 @@ struct PopupOptionButton: View {
     var identifier: String = ""
     var action: () -> Void
 
+    static func isPassive(_ title: String) -> Bool {
+        let t: String = title.trimmingCharacters(in: .whitespaces).lowercased()
+        let names: [String] = ["decide later", "postpone", "later", "not now", "skip", "remind me"]
+        for n in names where t == n || t.hasPrefix(n + " ") { return true }
+        return false
+    }
+
     var body: some View {
         let go: () -> Void = { Haptics.tap(); action() }
-        if highlighted && !destructive {
+        if highlighted {
             Button(action: go) { Text(title) }.buttonStyle(PopupPrimaryButtonStyle()).accessibilityIdentifier(identifier)
         } else {
-            Button(action: go) { Text(title) }.buttonStyle(PopupQuietButtonStyle(destructive: destructive)).accessibilityIdentifier(identifier)
+            Button(action: go) { Text(title) }.buttonStyle(PopupQuietButtonStyle(passive: PopupOptionButton.isPassive(title))).accessibilityIdentifier(identifier)
         }
     }
 }

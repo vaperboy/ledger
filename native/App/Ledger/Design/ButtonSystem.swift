@@ -67,12 +67,11 @@ struct PopupFooter: View {
 
     enum Tone { case normal, expensive, destructive }
 
-    /// Exactly one button is highlighted (champagne filled): the action, or Cancel when the action is destructive.
+    /// Both buttons are the same neutral outline; a passive label such as Not now / Skip is grayed.
     var body: some View {
-        let destructive: Bool = tone == .destructive
         HStack(spacing: 10) {
-            PopupOptionButton(title: cancel, highlighted: destructive, identifier: "confirm-cancel", action: onCancel)
-            PopupOptionButton(title: action, highlighted: !destructive, destructive: destructive, identifier: "confirm-go", action: onAction)
+            PopupOptionButton(title: cancel, identifier: "confirm-cancel", action: onCancel)
+            PopupOptionButton(title: action, identifier: "confirm-go", action: onAction)
         }
         .padding(.top, 4)
     }

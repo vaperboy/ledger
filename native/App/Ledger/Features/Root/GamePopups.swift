@@ -132,19 +132,12 @@ struct DecisionPopup: View {
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
         let lines: [String] = MessageCard.preview(e, m, opt)
         return VStack(alignment: .leading, spacing: 4) {
-            PopupOptionButton(title: label, highlighted: index == recommendedIndex(m),
-                              destructive: DecisionConfirm.confirmation(for: m, option: index).irreversible) { choose(e, m, index) }
+            PopupOptionButton(title: label) { choose(e, m, index) }
             if !detail.isEmpty { Text(detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
             ForEach(lines, id: \.self) { line in
                 Text(line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    /// The recommended option is the first one that is not irreversible; it alone is highlighted. Irreversible options are outlined in red.
-    private func recommendedIndex(_ m: Message) -> Int? {
-        for i in m.options.indices where !DecisionConfirm.confirmation(for: m, option: i).irreversible { return i }
-        return nil
     }
 
     /// The same rule as the Inbox: a routine answer goes at once; an irreversible one, or a spend above the player's size, is asked first.
@@ -202,11 +195,11 @@ struct RedAlertPopup: View {
                     if message.companyID != 0 {
                         Button("Open the company") {
                             Haptics.tap(); store.dismissRedAlert(); store.openCompany(message.companyID, section: nil)
-                        }.buttonStyle(QuietButtonStyle())
+                        }.buttonStyle(QuietButtonStyle(tint: Color.white))
                     }
                     Spacer(minLength: 0)
                     Button("Continue") { Haptics.tap(); store.dismissRedAlert() }
-                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("alert-continue")
+                        .buttonStyle(QuietButtonStyle(tint: Color.white)).accessibilityIdentifier("alert-continue")
                 }
             }
             .padding(18).frame(maxWidth: 420)
