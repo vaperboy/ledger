@@ -560,6 +560,10 @@ struct TechProApp: View {
 
     private func suppliersView(_ co: Company) -> some View {
         TechProSuppliers(companyID: co.id, equipmentID: itemID, onBack: { step = groupFrom }, onPick: { (key: String) in
+            if key == "mk" {
+                store.openApp(.marketplace)
+                return
+            }
             offerKey = key
             step = .product
         })
@@ -817,7 +821,7 @@ struct TechProApp: View {
                 }
                 if let d { savedAccount(d) }
                 if let d { autofillCard(d) }
-                fields
+                fields(d)
                 Toggle(isOn: $remember) {
                     Text("Remember me for this store").font(.system(size: 15)).foregroundStyle(P.ink)
                 }
@@ -841,7 +845,7 @@ struct TechProApp: View {
         }
     }
 
-    private func masked(_ n: String) -> String { "\u{2022}\u{2022}\u{2022}\u{2022} " + String(n.suffix(4)) }
+    private func masked(_ n: String) -> String { CardNumberDisplay.masked(n, companyID: companyID) }
 
     private func autofillCard(_ d: BankPaymentDetails) -> some View {
         Card(padding: 14) {
@@ -861,11 +865,19 @@ struct TechProApp: View {
         }
     }
 
-    private var fields: some View {
+    private func fields(_ d: BankPaymentDetails?) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             field("Account holder", "Name on the account", $holder, id: "tp-holder")
-            field("Account number", "0000 0000", $number, id: "tp-number")
+            field("Account number", "0000 0000 0000 0000", numberShown(d), id: "tp-number")
         }
+    }
+
+    /// The number field shows the bank's number as sixteen digits with the first twelve starred; the engine's number stays what is kept and compared.
+    private func numberShown(_ d: BankPaymentDetails?) -> Binding<String> {
+        let hidden: String = d.map { (x: BankPaymentDetails) -> String in masked(x.accountNumber) } ?? ""
+        return Binding<String>(
+            get: { (d != nil && number == d?.accountNumber) ? hidden : number },
+            set: { (v: String) in if v != hidden { number = v } })
     }
 
     private func field(_ title: String, _ prompt: String, _ text: Binding<String>, id: String) -> some View {
