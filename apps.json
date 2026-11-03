@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.32",
+          "buildVersion": "32",
+          "date": "2026-11-03T14:02:37Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v32/Ledger-unsigned.ipa",
+          "size": 27099161,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Applicants have their own page (filter by company and role); the inbox link now says \"Open applicants\"\n- The morning briefing has a thin loading bar; popup buttons are all the same style, with \"Decide later\" and \"Postpone\" greyed\n- Popups: one slim header with the close button (no overlaps or doubles), every popup hugs its content, and the worker profile and price popups show up again\n- Remembered card details belong to one company in one game: they are not carried into a new game or offered to another company\n- Tapping a notification opens the item itself (the message popup, the right page) without asking; the custom tab starts as \"Pick tab\" until you choose\n- Tabs inside pages slide sideways and follow your finger; no fading between tabs\n- Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager\n- Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, "
+        },
+        {
           "version": "1.0.31",
           "buildVersion": "31",
           "date": "2026-11-03T08:55:30Z",
@@ -187,22 +196,13 @@
           "size": 26635824,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Notifications: top banner removed; important info and decisions are popups\n- Daily short report popup; weekly, monthly and yearly reports are popups\n- Goals and missions: \"Claim reward\" button with reaction\n- Swipe back steps back one screen inside TechPro, AirStay and Atlas\n- TechPro: every item, sort by price, calendar sales including Black Friday\n- Atlas: cancel a policy in the app\n- AirStay: each listing has its own name and picture\n- Hours adjust automatically; burnout from 65 h; \"Works here\" box in Management\n- Manage: Equipment, Premises and Insurance rows moved to their apps\n- TechPro: your own delivery company charges a delivery fee, booked as its revenue\n\n# Missing / coming next\n- Typed prices per trade, chain and franchise steps\n- More photos for vehicles, premises and equipment\n- Not yet tested on device: expect rough edges"
-        },
-        {
-          "version": "1.0.12",
-          "buildVersion": "12",
-          "date": "2026-11-02T02:00:16Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v12/Ledger-unsigned.ipa",
-          "size": 26635766,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Notifications: top banner removed; important info and decisions are popups\n- Daily short report popup; weekly, monthly and yearly reports are popups\n- Goals and missions: \"Claim reward\" button with reaction\n- Swipe back steps back one screen inside TechPro, AirStay and Atlas\n- TechPro: every item, sort by price, calendar sales including Black Friday\n- Atlas: cancel a policy in the app\n- AirStay: each listing has its own name and picture\n- Hours adjust automatically; burnout from 65 h; \"Works here\" box in Management\n- Manage: Equipment, Premises and Insurance rows moved to their apps\n\n# Missing / coming next\n- Own delivery company fee, typed prices per trade, chain and franchise steps\n- More photos for vehicles, premises and equipment\n- Not yet tested on device: expect rough edges"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.31",
-      "versionDate": "2026-11-03T08:55:30Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v31/Ledger-unsigned.ipa",
-      "size": 27035848
+      "version": "1.0.32",
+      "versionDate": "2026-11-03T14:02:37Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v32/Ledger-unsigned.ipa",
+      "size": 27099161
     }
   ]
 }
