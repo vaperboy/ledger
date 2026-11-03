@@ -1,4 +1,5 @@
 # What's new
+- Main tabs are Ventures, Group, Home, your own tab, Phone (long-press the custom tab to choose what it opens); the Team tab is gone; switching tabs is by tapping only and slides the page; the black strip at the top of the screen is filled
 - Fix: popups are exactly as high as their content (before, many stretched to 80% of the screen with empty space above the text); decision and report popups too
 - Pictures for vehicles, premises, equipment, software and insurance now show on TechPro, My items, AirStay and Atlas; neighbouring listings use different pictures
 - Team is merged into Group: each company page has a Management tab (you, managers, executives, Who decides what, open posts); Dividends are inside Money; Add to group opens New company, Holding, Join a franchise and Football club; Expand abroad is per company; a company's Team tab shows staff only
