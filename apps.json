@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.29",
+          "buildVersion": "29",
+          "date": "2026-11-03T08:25:39Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v29/Ledger-unsigned.ipa",
+          "size": 27092467,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager\n- Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, Market, News, Weather, Stats, AirStay, TechPro, Atlas), and new updates arrive as one banner per app (at most two a day) that opens the app\n- Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox\n- Home has no \"All clear\" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank\n- Group: Money is one screen with c"
+        },
+        {
           "version": "1.0.28",
           "buildVersion": "28",
           "date": "2026-11-03T07:45:46Z",
@@ -187,22 +196,13 @@
           "size": 25387284,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Home: pick up to four shortcuts, day chip after Next day\n- Weekly / monthly / yearly report sheets, read before the next day\n- Reward popups with haptic after a day\n- Swipe back everywhere, smoother motion, Reduce Motion respected\n- Ambition popup at game start (change freely in weeks 1-4)\n- Inbox decisions answerable again; Group Overview shortened\n- Earlier this week: Accounting + ivory Bank, new hiring talks, company screens\n\n# Missing / coming next\n- One in-game \"Are you sure\" popup replacing iOS dialogs\n- Insurance, Premises (AirStay) and Equipment (TechPro) as Phone apps\n- Startups as real companies with share counts"
-        },
-        {
-          "version": "1.0.9",
-          "buildVersion": "9",
-          "date": "2026-11-01T13:51:57Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v9/Ledger-unsigned.ipa",
-          "size": 25280863,
-          "minOSVersion": "17.0",
-          "localizedDescription": "What's new\n- Two-page hiring for every hire: contract terms (working percentage, seasonal/temporary, car, promises), then salary (your offer, their ask once they say it, market pay).\n- Promises under Company > Team > Promises, with due dates and consequences.\n- Contract changes show the cost before and after; Reward menu on executives, office staff and the analyst.\n- Hidden scores replaced by words (skill, quit risk, press image, manager scorecard).\n\nMissing / coming next\n- Startups as real companies, share counts, safer business creation (in progress).\n- Home shortcuts, report sheets after day/week/month/year, reward popups, swipe-back (in progress).\n- Typed prices, suppliers in Accounting, chain and franchise application steps.\n- Top Team tab still has two tabs that do the same thing.\n- Not yet hand-tested on a phone beyond what you report."
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.28",
-      "versionDate": "2026-11-03T07:45:46Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v28/Ledger-unsigned.ipa",
-      "size": 27092466
+      "version": "1.0.29",
+      "versionDate": "2026-11-03T08:25:39Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v29/Ledger-unsigned.ipa",
+      "size": 27092467
     }
   ]
 }
