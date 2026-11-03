@@ -125,7 +125,6 @@ struct GroupEntityMoney: View {
         }
     }
 }
-}
 
 // MARK: - Dividend policy popup
 
