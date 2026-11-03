@@ -85,6 +85,7 @@ struct MarketEventRows: View {
         .background(shape.fill(tint.opacity(0.08)))
         .overlay(shape.strokeBorder(tint.opacity(0.28), lineWidth: 1))
         .orgEdge(flash, radius: Theme.Radius.row)
+        .newMarker(.market, "e\(m.id)", style: .capsule, important: m.tone == "bad", alignment: .topTrailing)
     }
 }
 

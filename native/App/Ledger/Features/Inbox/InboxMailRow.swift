@@ -65,9 +65,8 @@ struct InboxMailRow: View {
     }
 
     private var content: some View {
-        let dot: Color = unread ? (open ? P.caution : P.accent) : Color.clear
         return HStack(alignment: .top, spacing: 10) {
-            Circle().fill(dot).frame(width: 8, height: 8).padding(.top, 17).accessibilityHidden(true)
+            ZStack { if unread { NewMarkerShape(style: .dot, important: open) } }.frame(width: 11, height: 11).padding(.top, 16)
             InboxAvatar(initial: message.inboxInitial, glyph: message.inboxGlyph, tint: message.inboxTint(P), size: 44)
             textColumn
             Spacer(minLength: 0)

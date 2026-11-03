@@ -120,7 +120,8 @@ struct AtlasApp: View {
     }
 
     private func companyCard(_ e: GameEngine, _ co: Company) -> some View {
-        Card(padding: 12) {
+        let renewals: [String] = store.messageItemIDs(.atlas, companyID: co.id)
+        return Card(padding: 12) {
             HStack(spacing: 12) {
                 GlyphView(glyph: Glyph.atlas, size: 22, weight: 1.6, tint: P.accent)
                     .frame(width: 42, height: 42).background(Circle().fill(P.accent.opacity(0.1)))
@@ -135,6 +136,7 @@ struct AtlasApp: View {
                         .accessibilityIdentifier("atlas-change")
                 }
             }
+            .newGroupMarker(.atlas, renewals, style: .capsule, alignment: .topTrailing)
         }
     }
 

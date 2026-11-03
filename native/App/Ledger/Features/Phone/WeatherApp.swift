@@ -99,6 +99,7 @@ struct WeatherWarningCards: View {
                 Text("Can hit: " + names.joined(separator: ", ")).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
+        .newMarker(.weather, "w" + w.title, style: .capsule, important: true, alignment: .topTrailing)
     }
 }
 

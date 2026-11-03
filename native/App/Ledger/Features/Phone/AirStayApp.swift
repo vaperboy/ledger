@@ -112,7 +112,8 @@ struct AirStayApp: View {
     }
 
     private var tabPicker: some View {
-        SegmentedChoice(items: StayTab.allCases, title: { (t: StayTab) -> String in t.rawValue }, selection: $tab)
+        SegmentedChoice(items: StayTab.allCases, title: { (t: StayTab) -> String in t.rawValue }, selection: $tab,
+                        badges: { (t: StayTab) -> Bool in t == .rented && !store.messageItemIDs(.airStay, companyID: nil).isEmpty })
             .accessibilityIdentifier("stay-tabs")
     }
 
@@ -503,6 +504,7 @@ struct AirStayApp: View {
 
     private func rentedCard(_ e: GameEngine, _ r: PlaceMarket.Rented) -> some View {
         let id: Int = r.companyID
+        let fresh: [String] = store.messageItemIDs(.airStay, companyID: id)
         return Card(padding: 12) {
             VStack(alignment: .leading, spacing: 10) {
                 if !r.atHome {
@@ -513,6 +515,7 @@ struct AirStayApp: View {
                 rentedActions(e, r, id)
             }
         }
+        .newGroupMarker(.airStay, fresh, style: .capsule, alignment: .topTrailing)
     }
 
     private func rentedLine(_ r: PlaceMarket.Rented) -> String {

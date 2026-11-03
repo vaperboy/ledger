@@ -373,6 +373,9 @@ struct SectionTabs<T: Hashable>: View {
     var title: (T) -> String
     @Binding var selection: T
     var badge: (T) -> Int = { _ in 0 }
+    /// Tabs that hold something new or important get a small marker in the app's colour (a dot; red-filled when `urgent`).
+    var dots: ((T) -> Bool)? = nil
+    var urgent: Bool = false
     /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
     var sub: Bool = false
     @Environment(\.outsidePalette) private var palette
@@ -410,6 +413,7 @@ struct SectionTabs<T: Hashable>: View {
                 let on = selection == item
                 Button { selection = item; Haptics.choose() } label: {
                     cell(title(item), count: badge(item), on: on, more: false, tight: tight)
+                        .flagMarker(!on && (dots?(item) ?? false), important: urgent, alignment: .topTrailing)
                 }.buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
             }
             if !rest.isEmpty { moreMenu(rest, tight: tight) }
@@ -649,6 +653,8 @@ struct SegmentedChoice<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
+    /// Options that hold something new get a small marker in the app's colour.
+    var badges: ((T) -> Bool)? = nil
 
     var body: some View {
         HStack(spacing: 2) {
@@ -663,6 +669,7 @@ struct SegmentedChoice<T: Hashable>: View {
                         .background(RoundedRectangle(cornerRadius: 7).fill(on ? P.hairline : Color.clear))
                         .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
+                        .flagMarker(!on && (badges?(item) ?? false), alignment: .topTrailing)
                 }
                 .buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
             }

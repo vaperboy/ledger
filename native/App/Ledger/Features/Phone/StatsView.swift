@@ -216,6 +216,7 @@ struct StatsView: View {
                                 .frame(minHeight: 36).contentShape(Rectangle())
                             }
                             .buttonStyle(PressableStyle())
+                            .newMarker(.stats, "m\(m.id)", style: .dot, alignment: .topLeading)
                         }
                     }
                 }

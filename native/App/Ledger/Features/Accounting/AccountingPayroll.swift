@@ -16,7 +16,8 @@ struct AcctPayroll: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             VStack(spacing: 0) {
-                SectionTabs(items: AcctPayrollTab.allCases, title: { $0.rawValue }, selection: $m.payTab)
+                SectionTabs(items: AcctPayrollTab.allCases, title: { $0.rawValue }, selection: $m.payTab,
+                            dots: { (t: AcctPayrollTab) -> Bool in t == .run && PhoneAlerts.payroll(engine: e).contains { (p: PayrollAlertInfo) -> Bool in p.companyID == co.id } }, urgent: true)
                     .padding(.top, 4)
                     .accessibilityIdentifier("acct-payroll-tabs")
                 SegmentPager(items: AcctPayrollTab.allCases, selection: $m.payTab) { (t: AcctPayrollTab) in

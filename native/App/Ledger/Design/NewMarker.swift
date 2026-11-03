@@ -66,7 +66,33 @@ struct NewMarker: View {
     }
 }
 
+/// One marker for a group of items (an account's messages, a company's orders): shown while any is new, clears them all after a second.
+struct NewGroupMarker: View {
+    var app: PhoneApp
+    var ids: [String]
+    var style: NewMarkerStyle = .dot
+    var important: Bool = false
+    @EnvironmentObject var store: GameStore
+
+    var body: some View {
+        let live: [String] = ids.filter { (id: String) -> Bool in store.isNew(app, id) }
+        if !live.isEmpty {
+            NewMarkerShape(style: style, important: important)
+                .transition(.opacity)
+                .task {
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    if !Task.isCancelled { withAnimation(.easeOut(duration: 0.25)) { for id in live { store.markItemSeen(app, id) } } }
+                }
+        }
+    }
+}
+
 extension View {
+    /// A marker for a group of item ids (see `NewGroupMarker`).
+    func newGroupMarker(_ app: PhoneApp, _ ids: [String], style: NewMarkerStyle = .dot, important: Bool = false, alignment: Alignment = .topTrailing) -> some View {
+        overlay(alignment: alignment) { NewGroupMarker(app: app, ids: ids, style: style, important: important).padding(style == .dot ? 6 : 4) }
+    }
+
     /// Puts the item's marker in a corner (dot for list rows, capsule for cards).
     func newMarker(_ app: PhoneApp, _ id: String, style: NewMarkerStyle = .dot, important: Bool = false, alignment: Alignment = .topTrailing) -> some View {
         overlay(alignment: alignment) { NewMarker(app: app, id: id, style: style, important: important).padding(style == .dot ? 6 : 4) }

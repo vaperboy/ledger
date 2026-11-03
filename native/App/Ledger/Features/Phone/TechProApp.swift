@@ -112,12 +112,12 @@ struct TechProApp: View {
             tabButton("Store", on: step == .store) { step = .store }
             tabButton("Products", on: step == .category) { shelf = .all; step = .category }
             tabButton("My items", on: step == .owned) { step = .owned }
-            tabButton("My orders", on: step == .orders) { step = .orders }
+            tabButton("My orders", on: step == .orders, flag: !store.messageItemIDs(.techPro, companyID: nil).isEmpty) { step = .orders }
         }
         .padding(.horizontal, 16).padding(.vertical, 8).background(P.ground)
     }
 
-    private func tabButton(_ title: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+    private func tabButton(_ title: String, on: Bool, flag: Bool = false, _ action: @escaping () -> Void) -> some View {
         Button {
             Haptics.choose()
             action()
@@ -127,6 +127,9 @@ struct TechProApp: View {
                 .frame(maxWidth: .infinity, minHeight: 38)
                 .background(Capsule().fill(on ? P.accent : P.card))
                 .overlay(Capsule().strokeBorder(on ? P.accent : P.line, lineWidth: 1))
+                .overlay(alignment: .topTrailing) {
+                    if flag && !on { NewMarkerShape(style: .dot).environment(\.outsidePalette, P).offset(x: -6, y: 4) }
+                }
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-tab-\(title)")
@@ -979,7 +982,8 @@ struct TechProApp: View {
     }
 
     private func orderCard(_ c: Company, _ r: StoreOrders.Record) -> some View {
-        Card(padding: 12) {
+        let fresh: [String] = r.delivered ? store.messageItemIDs(.techPro, companyID: c.id) : []
+        return Card(padding: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("#" + r.number).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
@@ -991,5 +995,6 @@ struct TechProApp: View {
                     .font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
+        .newGroupMarker(.techPro, fresh, style: .capsule, alignment: .topTrailing)
     }
 }

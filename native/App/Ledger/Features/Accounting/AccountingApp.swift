@@ -269,10 +269,11 @@ struct AcctHome: View {
         let drafts: Int = e.invoices(companyID: id, kind: .customer, status: .draft, user: u)?.count ?? 0
         var invoiceNote: String = "Send, receive and track invoices"
         if overdue > 0 { invoiceNote = "\(overdue) overdue" } else if drafts > 0 { invoiceNote = "\(drafts) draft\(drafts == 1 ? "" : "s") to send" }
+        let payrollNeedsYou: Bool = PhoneAlerts.payroll(engine: e).contains { (p: PayrollAlertInfo) -> Bool in p.companyID == id }
         let items: [HomeItem] = [
             HomeItem(key: "transactions", glyph: BankGlyph.bill, title: "Transactions", note: "View and match all transactions", route: .transactions),
-            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: "Manage salaries and timesheets", route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral),
-            HomeItem(key: "invoices", glyph: Glyph.reports, title: "Invoices & Payments", note: invoiceNote, route: .invoices),
+            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: "Manage salaries and timesheets", route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral, flag: payrollNeedsYou),
+            HomeItem(key: "invoices", glyph: Glyph.reports, title: "Invoices & Payments", note: invoiceNote, route: .invoices, flag: overdue > 0),
             HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Supplier agreements and purchases", route: .suppliers),
             HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance, applications", route: .documents),
             HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and user management", route: .settings),
@@ -282,6 +283,7 @@ struct AcctHome: View {
                 VStack(spacing: 0) {
                     if n > 0 { AcctDivider() }
                     AcctRow(glyph: item.glyph, title: item.title, subtitle: item.note, pill: item.pill, pillTone: item.tone, identifier: "acct-row-" + item.key) { m.push(item.route) }
+                        .flagMarker(item.flag, important: true, alignment: .topLeading)
                 }
             }
         }
@@ -295,6 +297,7 @@ struct AcctHome: View {
         var route: AcctRoute
         var pill: String? = nil
         var tone: AcctPill.Tone = .neutral
+        var flag: Bool = false
     }
 
     private func payrollTag(_ e: GameEngine, _ id: Int) -> (String, AcctPill.Tone)? {

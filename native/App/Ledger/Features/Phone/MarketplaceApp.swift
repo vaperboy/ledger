@@ -168,6 +168,7 @@ struct MarketplaceApp: View {
                             openID = l.id
                         } label: {
                             MarketplaceTile(listing: l, price: cur.tidyShort(l.askingPrice), refused: refusedIDs.contains(l.id))
+                                .newMarker(.marketplace, "l" + l.id, style: .capsule, alignment: .topLeading)
                         }
                         .buttonStyle(PressableStyle())
                         .accessibilityIdentifier("mk-listing-\(l.id)")

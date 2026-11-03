@@ -101,6 +101,7 @@ struct BankAccountsScreen: View {
         return Button { Haptics.tap(); onPick(r.id) } label: {
             CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
+        .newGroupMarker(.bank, r.hasAlert ? [] : store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
         .buttonStyle(PressableStyle())
         .disabled(lockedTo != nil && lockedTo != r.id)
         .opacity(lockedTo != nil && lockedTo != r.id ? 0.5 : 1)

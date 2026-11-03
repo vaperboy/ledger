@@ -177,6 +177,7 @@ struct NewsView: View {
             Text(n.text).font(.serifTitle(16)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .newMarker(.news, "n" + UpdateFeed.newsKey(n), style: .dot, important: n.tone == "bad", alignment: .topTrailing)
         .accessibilityElement(children: .combine)
     }
 
@@ -193,6 +194,7 @@ struct NewsView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.vertical, 9)
+                .newMarker(.news, "n" + UpdateFeed.newsKey(n), style: .dot, important: n.tone == "bad", alignment: .topTrailing)
                 .accessibilityElement(children: .combine)
             }
         }

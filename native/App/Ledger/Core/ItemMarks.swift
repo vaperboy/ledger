@@ -68,6 +68,15 @@ extension GameStore {
         return ids.contains { (id: String) -> Bool in id.hasPrefix(prefix) && seenMarks.texts[itemKey(app, id)] == nil }
     }
 
+    /// Ids of this app's fresh messages (optionally of one company; 0 = the player), so a row can carry one marker for its messages.
+    func messageItemIDs(_ app: PhoneApp, companyID: Int?) -> [String] {
+        guard let e = engine, let ids = visitFresh[app.rawValue] else { return [] }
+        let hits: [Message] = e.state.inbox.filter { (m: Message) -> Bool in
+            ids.contains("m\(m.id)") && (companyID == nil || m.companyID == companyID!)
+        }
+        return hits.map { (m: Message) -> String in "m\(m.id)" }
+    }
+
     func markItemSeen(_ app: PhoneApp, _ id: String) {
         let k: String = itemKey(app, id)
         if seenMarks.texts[k] != nil { return }

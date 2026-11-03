@@ -32,7 +32,7 @@ struct MarketApp: View {
         let chosen: Company? = companies.first { $0.id == companyID }
         let header = VStack(alignment: .leading, spacing: 10) {
             selector(companies, chosen)
-            SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part)
+            SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part, badges: { (p: MarketPart) -> Bool in tabHasNew(e, p) })
         }
         .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 4)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -43,6 +43,16 @@ struct MarketApp: View {
             }
         }
         .accessibilityIdentifier("market-app")
+    }
+
+    /// A segment dot: News holds any new market event; Competitors the new ones about rivals.
+    private func tabHasNew(_ e: GameEngine, _ p: MarketPart) -> Bool {
+        let fresh: [MarketEvent] = e.marketEvents(limit: 30).filter { (m: MarketEvent) -> Bool in store.isNew(.market, "e\(m.id)") }
+        if p == .news { return !fresh.isEmpty }
+        if p == .competitors {
+            return fresh.contains { (m: MarketEvent) -> Bool in m.kind == .competitorLaunch || m.kind == .competitorLostShare || m.kind == .priceResponse }
+        }
+        return false
     }
 
     /// Short segments fit one screen (compacted when needed); the long lists scroll.

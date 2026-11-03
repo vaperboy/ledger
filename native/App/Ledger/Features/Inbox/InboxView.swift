@@ -444,7 +444,7 @@ struct MessageCard: View {
                 Text(message.from).font(.caption.weight(.semibold)).foregroundStyle(tint).lineLimit(1)
                 Spacer(minLength: 8)
                 Text(age).font(.caption2).foregroundStyle(P.inkFaint)
-                if !message.isRead || open { Circle().fill(open ? P.caution : P.accent).frame(width: 7, height: 7) }
+                if !message.isRead || open { NewMarkerShape(style: .dot, important: open) }
             }
             Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
             Text(text(message.body)).font(.caption).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
