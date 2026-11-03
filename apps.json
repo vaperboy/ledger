@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.39",
+          "buildVersion": "39",
+          "date": "2026-11-03T23:08:00Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v39/Ledger-unsigned.ipa",
+          "size": 27492353,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet"
+        },
+        {
           "version": "1.0.38",
           "buildVersion": "38",
           "date": "2026-11-03T22:54:53Z",
@@ -187,22 +196,13 @@
           "size": 23219080,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Swipe sideways to change the tab in your Inbox and in a bank account\n- New game: you can pick an ambition at the start, or decide later; chains and franchises now need real things (profit, cash, reputation, open stores, documents) instead of waiting years; a settled lawsuit can no longer leave wages unpaid\n- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from\n- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed\n- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone\n- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas\n- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily r"
-        },
-        {
-          "version": "1.0.19",
-          "buildVersion": "19",
-          "date": "2026-11-02T15:31:30Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v19/Ledger-unsigned.ipa",
-          "size": 23212150,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Group: six plain tabs (Overview, Structure, Board, Money, Deals, More); dividends and giving are on Money, and More is one flat page with the group office, posts, stand-alone companies and the market, no menu to pick from\n- Chain registration, franchise documents and franchise brand applications are signed on a paper form first (tick the terms, draw your signature), then reviewed\n- Starting a company fills in nothing: you sign each document yourself on the Setup screen and choose the place and equipment yourself. The old setup page is gone\n- Atlas Insurance takes every policy: no insurer has to be chosen first, and the insurer, advisers and security tab is removed from Atlas\n- A manager (or a higher rank) now takes the decisions that are theirs: small matters against your net worth are answered for you, and Inbox has Needs you, Handled, Risks and All; the daily report lists what was handled\n- Team: Overview and a new Authority tab no longer repeat each other; Ventures lives in the Phone app and is linked from Group > Deals; Projects has four tabs\n- Shareholder dividend policies now send a quarterly proposal you answer instead of paying by themselves; Inbox levels fol"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.38",
-      "versionDate": "2026-11-03T22:54:53Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v38/Ledger-unsigned.ipa",
-      "size": 27470351
+      "version": "1.0.39",
+      "versionDate": "2026-11-03T23:08:00Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v39/Ledger-unsigned.ipa",
+      "size": 27492353
     }
   ]
 }
