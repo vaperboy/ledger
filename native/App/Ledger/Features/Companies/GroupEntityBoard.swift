@@ -11,10 +11,13 @@ struct GroupEntityBoard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
-    @State private var searchRole: String?
-    @State private var candidates: [Person] = []
+    @State private var seatSheet: SeatRef?
     @State private var message = ""
     @State private var pending: PendingAction?
+
+    private struct SeatRef: Identifiable, Hashable {
+        var id: String
+    }
 
     var body: some View {
         let key: String = engine.boardKey(companyID: entity.companyID) ?? ""
@@ -34,6 +37,7 @@ struct GroupEntityBoard: View {
             }
         }
         .confirmAction($pending)
+        .centerSheet(item: $seatSheet) { (r: SeatRef) in SeatPickerSheet(key: key, role: r.id).environmentObject(store) }
         .onChange(of: message) { _, new in if !new.isEmpty { store.show(new, tone: "n") } }
     }
 
@@ -97,47 +101,32 @@ struct GroupEntityBoard: View {
         }
         ForEach(engine.seatRoles) { (r: ManagerModel.SeatRole) in
             let filled: Int = seats.filter { (s: ManagerModel.Seat) -> Bool in s.role == r.id }.count
-            if filled < r.maxSeats {
-                line(first: false, lead: { plusRing() }, title: r.title, sub: r.text, trail: {
-                    Button { search(key, r) } label: {
-                        Text(searchRole == r.id ? "Searching" : "Appoint").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
-                            .frame(minWidth: 64, minHeight: 36, alignment: .trailing)
-                            .contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                })
-                if searchRole == r.id { candidateRows(key) }
+            ForEach(0..<max(0, r.maxSeats - filled), id: \.self) { (_: Int) in
+                emptySeat(r)
             }
         }
     }
 
+    private func emptySeat(_ r: ManagerModel.SeatRole) -> some View {
+        let id: String = r.id
+        return Button { Haptics.tap(); seatSheet = SeatRef(id: id) } label: {
+            line(first: false, lead: { plusRing() }, title: r.title, sub: r.text, trail: {
+                Text("Appoint").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                    .frame(minWidth: 64, minHeight: 36, alignment: .trailing)
+            })
+        }.buttonStyle(PressableStyle())
+    }
+
     @ViewBuilder private func trailFor(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat], key: String) -> some View {
         if let pid = v.personID, seats.contains(where: { (s: ManagerModel.Seat) -> Bool in s.id == pid && s.isAdviser }) {
-            Button("Let go") {
-                pending = PendingAction(title: "Let \(v.name) go from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Let go", destructive: true) {
+            Button("Remove") {
+                pending = PendingAction(title: "Remove \(v.name) from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Remove", destructive: true) {
                     store.act { $0.removeFromBoard(key: key, personID: pid) }
                     message = "\(v.name) left the board."
                 }
             }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
         } else {
             EmptyView()
-        }
-    }
-
-    @ViewBuilder private func candidateRows(_ key: String) -> some View {
-        if candidates.isEmpty {
-            Text("Nobody suitable answered the search.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 12).padding(.vertical, 8)
-        }
-        ForEach(candidates) { (p: Person) in
-            let fee: Double = p.num("fee13")
-            HStack(spacing: 8) {
-                Text("\(p.name) \u{00B7} \(p.str("advBg"))").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
-                Spacer(minLength: 6)
-                Button("Seat \u{00B7} \(store.short(fee)) a month") {
-                    pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them", amount: fee, currency: engine.homeCurrency) { seat(key, p, fee) }
-                }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Theme.surface.opacity(0.6))
         }
     }
 
@@ -148,30 +137,72 @@ struct GroupEntityBoard: View {
             CardRow(glyph: Glyph.achievements, title: "Board room", subtitle: sub, badge: waiting)
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-board-room")
     }
+}
 
-    // MARK: Engine calls
+// MARK: - The popup for one empty seat
 
-    private func search(_ key: String, _ r: ManagerModel.SeatRole) {
-        Haptics.tap()
-        let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
-        searchRole = r.id
-        if let found {
-            candidates = found
-            message = ""
-        } else {
-            candidates = []
-            message = "Not enough cash for a search."
+/// Who can take one empty board seat: the candidates of the last search for that role (a search costs a fee) with their yearly fee and an
+/// Appoint button. The owners vote on a director; the result shows as a message.
+struct SeatPickerSheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    var key: String
+    var role: String
+    @State private var refresh = 0
+
+    var body: some View {
+        let r: ManagerModel.SeatRole? = store.engine?.seatRoles.first { (x: ManagerModel.SeatRole) -> Bool in x.id == role }
+        let cands: [Person] = (store.engine?.boardCandidates(key: key) ?? []).filter { (p: Person) -> Bool in p.str("adv13") == role }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(r?.title ?? "Board seat").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            Text(r?.text ?? "").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+            if cands.isEmpty {
+                Text("Nobody lined up for this seat yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+            }
+            ForEach(cands) { (p: Person) in
+                candidateRow(p)
+            }
+            QuietButton(title: cands.isEmpty ? "Search for candidates" : "Search again", fullWidth: true) { search() }
+            QuietButton(title: "Close", fullWidth: true) { dismiss() }
         }
+        .padding(16)
+        .id(refresh)
     }
 
-    private func seat(_ key: String, _ p: Person, _ fee: Double) {
-        let r = store.act { $0.fillSeat(key: key, personID: p.id, monthlyFee: fee) }
-        switch r {
-        case .ok?: message = "\(p.name) joins the board."; candidates = []; searchRole = nil; Haptics.success()
-        case .full?: message = "That seat is full."
-        case .refused?: message = "\(p.name) wants more."
-        case .votedDown(let n)?: message = "The owners voted \(p.name) down (\(n)% behind them)."
-        default: message = "\(p.name) is not available."
+    private func candidateRow(_ p: Person) -> some View {
+        let fee: Double = p.num("fee13")
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(p.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text("\(p.str("advBg")) \u{00B7} \(store.short(fee * 12)) a year").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            Button("Appoint") { seat(p, fee) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
         }
+        .padding(.vertical, 4)
+    }
+
+    private func search() {
+        Haptics.tap()
+        let k: String = key
+        let r: String = role
+        let found: [Person]? = store.act { $0.searchForSeat(key: k, role: r) } ?? nil
+        if found == nil { store.show("Not enough cash for a search.", tone: "warn") }
+        refresh += 1
+    }
+
+    private func seat(_ p: Person, _ fee: Double) {
+        let k: String = key
+        let pid: Int = p.id
+        let name: String = p.name
+        let res = store.act { $0.fillSeat(key: k, personID: pid, monthlyFee: fee) }
+        switch res {
+        case .ok?: store.show("\(name) joins the board.", tone: "good"); Haptics.success(); dismiss()
+        case .full?: store.show("That seat is full.", tone: "warn")
+        case .refused?: store.show("\(name) wants more.", tone: "warn")
+        case .votedDown(let n)?: store.show("The owners voted \(name) down (\(n)% behind them).", tone: "warn")
+        default: store.show("\(name) is not available.", tone: "warn")
+        }
+        refresh += 1
     }
 }

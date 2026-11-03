@@ -73,9 +73,6 @@ struct GroupEntityDeals: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("OTHER GROUP DEALS").capsLabel()
                 HostingSection(engine: engine)
-                Button { Haptics.tap(); store.openApp(.ventures) } label: {
-                    CardRow(glyph: Glyph.invest, title: "Ventures", subtitle: "Startups you founded, funds and stakes in other businesses (Phone app)")
-                }.buttonStyle(PressableStyle())
             }
         }
     }
