@@ -15,8 +15,7 @@ struct ReportDigestSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 FitScroll(maxHeight: 420) { sections }
                 VStack(spacing: 4) {
-                    QuietButton(title: "Continue", fullWidth: true) { store.dismissReportSheet() }
-                        .accessibilityIdentifier("report-continue")
+                    PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { store.dismissReportSheet() }
                     Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
                         Text("Open in Reports ›").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(minHeight: 36).contentShape(Rectangle())
                     }

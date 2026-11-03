@@ -47,11 +47,7 @@ struct NoticePopup: View {
                         if let price = notice.rows.first { Text(price.tidyMoney).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold) }
                     }
                 }
-                HStack {
-                    Spacer(minLength: 0)
-                    Button("OK") { Haptics.tap(); store.dismissNotice() }
-                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("notice-ok")
-                }
+                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }
@@ -80,11 +76,7 @@ struct NoticePopup: View {
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
                 }
-                HStack {
-                    Spacer(minLength: 0)
-                    Button("OK") { Haptics.tap(); store.dismissNotice() }
-                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("notice-ok")
-                }
+                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }
@@ -95,11 +87,7 @@ struct NoticePopup: View {
                 if !notice.text.isEmpty {
                     Text(notice.text.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 }
-                HStack {
-                    Spacer(minLength: 0)
-                    Button("OK") { Haptics.tap(); store.dismissNotice() }
-                        .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("notice-ok")
-                }
+                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }
@@ -144,7 +132,8 @@ struct DecisionPopup: View {
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
         let lines: [String] = MessageCard.preview(e, m, opt)
         return VStack(alignment: .leading, spacing: 4) {
-            optionButton(label, primary: index == 0) { choose(e, m, index) }
+            PopupOptionButton(title: label, highlighted: index == recommendedIndex(m),
+                              destructive: DecisionConfirm.confirmation(for: m, option: index).irreversible) { choose(e, m, index) }
             if !detail.isEmpty { Text(detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
             ForEach(lines, id: \.self) { line in
                 Text(line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
@@ -152,12 +141,10 @@ struct DecisionPopup: View {
         }
     }
 
-    @ViewBuilder private func optionButton(_ label: String, primary: Bool, action: @escaping () -> Void) -> some View {
-        if primary {
-            Button(action: action) { Text(label).frame(maxWidth: .infinity) }.buttonStyle(ImportantButtonStyle())
-        } else {
-            Button(action: action) { Text(label).frame(maxWidth: .infinity) }.buttonStyle(GreyOutlineButtonStyle())
-        }
+    /// The recommended option is the first one that is not irreversible; it alone is highlighted. Irreversible options are outlined in red.
+    private func recommendedIndex(_ m: Message) -> Int? {
+        for i in m.options.indices where !DecisionConfirm.confirmation(for: m, option: i).irreversible { return i }
+        return nil
     }
 
     /// The same rule as the Inbox: a routine answer goes at once; an irreversible one, or a spend above the player's size, is asked first.

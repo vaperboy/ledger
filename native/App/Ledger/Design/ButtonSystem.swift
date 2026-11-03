@@ -67,31 +67,14 @@ struct PopupFooter: View {
 
     enum Tone { case normal, expensive, destructive }
 
+    /// Exactly one button is highlighted (champagne filled): the action, or Cancel when the action is destructive.
     var body: some View {
-        VStack(spacing: 0) {
-            Rectangle().fill(P.divider).frame(height: 1)
-            HStack(spacing: 0) {
-                Button(cancel) { Haptics.tap(); onCancel() }
-                    .buttonStyle(PlainTextButtonStyle())
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("confirm-cancel")
-                Rectangle().fill(P.divider).frame(width: 1, height: 28)
-                actionButton.frame(maxWidth: .infinity)
-            }
-            .padding(.top, 8)
+        let destructive: Bool = tone == .destructive
+        HStack(spacing: 10) {
+            PopupOptionButton(title: cancel, highlighted: destructive, identifier: "confirm-cancel", action: onCancel)
+            PopupOptionButton(title: action, highlighted: !destructive, destructive: destructive, identifier: "confirm-go", action: onAction)
         }
-    }
-
-    @ViewBuilder private var actionButton: some View {
-        let go: () -> Void = { Haptics.tap(); onAction() }
-        switch tone {
-        case .normal:
-            Button(action, action: go).buttonStyle(PlainTextButtonStyle(tint: P.accent)).accessibilityIdentifier("confirm-go")
-        case .expensive:
-            Button(action, action: go).buttonStyle(FoilButtonStyle()).accessibilityIdentifier("confirm-go")
-        case .destructive:
-            Button(action, action: go).buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier("confirm-go")
-        }
+        .padding(.top, 4)
     }
 }
 

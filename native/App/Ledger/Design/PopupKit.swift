@@ -93,3 +93,59 @@ struct FitScroll<Content: View>: View {
         }
     }
 }
+
+// MARK: Popup buttons
+
+/// The one highlighted button of a popup: champagne filled, full width. A popup with no real choice has only this; a popup with
+/// several options has exactly one (the recommended one, never a destructive one).
+struct PopupPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14.5, weight: .semibold))
+            .lineLimit(1).minimumScaleFactor(0.85)
+            .foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 14)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+/// Every other option of a popup: a quiet outline. A destructive option is outlined in the loss colour.
+struct PopupQuietButtonStyle: ButtonStyle {
+    var destructive: Bool = false
+    @Environment(\.outsidePalette) private var P
+    func makeBody(configuration: Configuration) -> some View {
+        let edge: Color = destructive ? P.loss : P.lineStrong
+        return configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .lineLimit(1).minimumScaleFactor(0.85)
+            .foregroundStyle(destructive ? P.loss : P.ink)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.horizontal, 14)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(edge, lineWidth: 1))
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+/// One option button of a popup. `highlighted` is true for exactly one option of the popup (or the only one); `destructive` options
+/// are never highlighted, whatever is passed.
+struct PopupOptionButton: View {
+    var title: String
+    var highlighted: Bool = false
+    var destructive: Bool = false
+    var identifier: String = ""
+    var action: () -> Void
+
+    var body: some View {
+        let go: () -> Void = { Haptics.tap(); action() }
+        if highlighted && !destructive {
+            Button(action: go) { Text(title) }.buttonStyle(PopupPrimaryButtonStyle()).accessibilityIdentifier(identifier)
+        } else {
+            Button(action: go) { Text(title) }.buttonStyle(PopupQuietButtonStyle(destructive: destructive)).accessibilityIdentifier(identifier)
+        }
+    }
+}
