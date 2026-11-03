@@ -1,4 +1,5 @@
 # What's new
+- Raw internal numbers on screen (quality, mood, standing, solvency, condition, scores) are now words; hidden scores are gone
 - New and important things are marked inside each app (a dot or a NEW tag in the app's own colours), and tabs get a dot when they hold something new
 - New app Marketplace for used items (cars, vans, equipment): message the seller, discuss the price (it can drop, the seller can give up) or buy; used items left TechPro; new trade Used car dealer that buys cars on the marketplace; card numbers show 16 digits with the first 12 starred
 - Applicants have their own page (filter by company and role); the inbox link now says "Open applicants"
