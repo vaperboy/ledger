@@ -247,9 +247,10 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil) {
+    /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
@@ -258,6 +259,10 @@ final class GameStore: ObservableObject {
         do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); tell("Save imported", "The original file is kept untouched.", tone: "good") }
         catch { errorText = "That save could not be imported. " + Self.describe(error) }
     }
+
+    /// Set at Milestone M8: the classic loan start and the family café become selectable under Settings > Saves > New game.
+    static let classicStartKey = "ledger.classicStartUnlocked"
+    var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
     func exportText() -> String? {
         guard let engine, let d = try? JSONEncoder().encode(engine.state) else { return nil }
@@ -293,6 +298,7 @@ final class GameStore: ObservableObject {
         let celebrations: [Celebration] = e.takeCelebrations()
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
+        if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }   // Milestone M8 (brief 1.2)
         if out.completedWeek { Haptics.weekDone() } else { Haptics.advanceDay() }
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }

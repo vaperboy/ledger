@@ -197,14 +197,24 @@ public enum Ambitions {
 
     /// Choose (or switch to) a path. Switching starts the new perk after half a year. Original: `ACT.amb27pick`.
     @discardableResult
+    /// Whether the ambition can be changed at no delay: the first four game weeks, or in a ladder game (where it appears only after the first
+    /// profitable month) four weeks after it was chosen.
+    public static func changeIsFree(_ s: GameState) -> Bool {
+        guard Gates.ladderOn(s) else { return s.week < freeChangeWeeks }
+        let a = state(s)
+        if a["path"].isNull { return true }
+        return s.week < (a["first"].isNull ? a["since"].int : a["first"].int) + freeChangeWeeks   // re-picking does not extend the window
+    }
+
     public static func choose(_ s: inout GameState, path k: String, data: GameData) -> Bool {
         guard path(k) != nil else { return false }
         var a = state(s)
         let switching = a["path"].isNull == false
         let had = a["hist"].array.contains { !$0["path"].string.isEmpty && $0["path"].string != "give" } || a["was"].bool
+        if a["first"].isNull { a["first"] = .number(Double(s.week)) }   // the free window runs from the first choice
         a["path"] = .string(k); a["since"] = .number(Double(s.week))
         // Free change window: during the first four weeks the ambition can be re-picked at no delay; later a switch settles after half a year.
-        let freeWindow = s.week < freeChangeWeeks
+        let freeWindow = changeIsFree(s)
         a["settle"] = .number(had && !freeWindow ? Double(s.week + 26) : 0)
         _ = switching
         a["was"] = true

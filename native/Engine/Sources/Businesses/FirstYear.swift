@@ -18,6 +18,10 @@ public struct FirstYear: Sendable, Equatable {
     public var bankruptcyEnabled = false
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
+    /// New-player start (brief 1.3): until this week no account goes into overdraft; a bill the cash cannot cover waits for the next day.
+    public var noOverdraftWeeks = 12
+    /// New-player start: weeks of fixed costs and payroll added to the start-up cost to make the starting cash.
+    public var startRunwayWeeks = 8
 
     public init() {}
 
@@ -31,6 +35,8 @@ public struct FirstYear: Sendable, Equatable {
         if !j["bankruptcyEnabled"].isNull { bankruptcyEnabled = j["bankruptcyEnabled"].bool }
         if !j["bankruptcyWeek"].isNull { bankruptcyWeek = j["bankruptcyWeek"].int }
         if !j["frozenAfterWeeks"].isNull { frozenAfterWeeks = j["frozenAfterWeeks"].int }
+        if !j["noOverdraftWeeks"].isNull { noOverdraftWeeks = j["noOverdraftWeeks"].int }
+        if !j["startRunwayWeeks"].isNull { startRunwayWeeks = j["startRunwayWeeks"].int }
     }
 
     /// The bundled table (for code that has no `GameData` at hand).
@@ -41,6 +47,8 @@ public struct FirstYear: Sendable, Equatable {
         guard week >= 0, week < 52, !demandMult.isEmpty else { return 1 }
         return demandMult[min(demandMult.count - 1, week / 13)]
     }
+    /// The no-overdraft protection of a new-player game (ladder games only) is on.
+    public func noOverdraftActive(_ s: GameState) -> Bool { Gates.ladderOn(s) && s.week < noOverdraftWeeks }
     public func supplierCutoffActive(week: Int) -> Bool { supplierCutoffEnabled || week >= supplierCutoffWeek }
     public func bankruptcyActive(week: Int) -> Bool { bankruptcyEnabled || week >= bankruptcyWeek }
     public func competitionAuthorityActive(_ s: GameState) -> Bool {

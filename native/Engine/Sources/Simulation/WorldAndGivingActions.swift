@@ -33,9 +33,13 @@ public extension GameEngine {
     func ambitionPerk(path: String) -> String { Ambitions.perkText(path, level: max(0, Ambitions.perk(state, data, path))) }
     var legacyHistory: [(week: Int, text: String, pathName: String, points: Double)] { Ambitions.history(state) }
     /// The ambition can be changed at no delay during the first four weeks of a game.
-    var ambitionChangeIsFree: Bool { state.week < Ambitions.freeChangeWeeks }
+    var ambitionChangeIsFree: Bool { Ambitions.changeIsFree(state) }
+    /// Ladder games hide the ambition (Goals section, prompt) until the first profitable month (M7) is claimed (brief 1.4); older games always show it.
+    /// A payment waited for cash on the last day run (brief 1.3): Home shows "Cash is tight. A bill waits until tomorrow."
+    var cashIsTight: Bool { state.rest["tight"] != nil }
+    var ambitionVisible: Bool { !Gates.ladderOn(state) || PlayerGoals.ladderFlag(state, "amb") }
     /// True when the start-of-game prompt should still be shown: no ambition chosen, never asked, still inside the free window.
-    var ambitionPromptPending: Bool { Ambitions.currentPath(state) == nil && state.rest["ambPrompt"] == nil && ambitionChangeIsFree }
+    var ambitionPromptPending: Bool { ambitionVisible && Ambitions.currentPath(state) == nil && state.rest["ambPrompt"] == nil && ambitionChangeIsFree }
     /// The prompt has been shown (answered or skipped): it is not shown again. The key is written only now.
     mutating func markAmbitionPromptShown() { update { s, _, _ in s.rest["ambPrompt"] = .number(1) } }
     @discardableResult mutating func chooseAmbition(path: String) -> Bool {

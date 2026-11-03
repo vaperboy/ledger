@@ -55,7 +55,8 @@ public struct GameEngine {
 
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
-    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil) throws -> GameEngine {
+    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil,
+                               tradeID: String? = nil, companyName: String? = nil) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647
@@ -102,6 +103,10 @@ public struct GameEngine {
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         if story == .loan {
             state.note("Welcome to Ledger. You have a start-up loan of \(currency.display(loan)). Open your first business with + on the Company tab.", tone: "good")
+        } else if story == .fresh {
+            let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
+            guard let tradeID, LifeStories.applyFresh(&state, data: data, context: ctx, tradeID: tradeID, name: companyName ?? "") else { throw CocoaError(.fileReadUnknown) }
+            state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Tap Next day to begin.", tone: "good")
         } else {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }

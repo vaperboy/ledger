@@ -9,6 +9,8 @@ struct SettingsView: View {
     @EnvironmentObject var store: GameStore
     @State private var haptics = Haptics.enabled
     @State private var showImporter = false
+    @State private var showPaste = false
+    @State private var pasted = ""
     @State private var policy = ManagementPolicy()
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
@@ -36,6 +38,16 @@ struct SettingsView: View {
         }
         .confirmAction($pending)
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
+        .centerSheet(isPresented: $showPaste) {
+            VStack(spacing: Theme.Space.m) {
+                TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(height: 220)
+                    .scrollContentBackground(.hidden)
+                    .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
+                Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
+                    .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .centerSheetTitle("Paste save text")
+        }
     }
 
     // MARK: Groups
@@ -52,29 +64,57 @@ struct SettingsView: View {
     }
 
     private var savingGroup: some View {
-        group("Saving", footer: "Saved daily, with a monthly backup.") {
-            Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: {
-                plainRow(Glyph.save, "Save now", chevron: true)
-            }.buttonStyle(PressableStyle())
-            if let text = store.exportText() {
-                rule
-                ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) {
-                    plainRow(Glyph.share, "Export this game", chevron: true)
+        group("Saves", footer: store.engine == nil ? "" : "Saved daily, with a monthly backup.") {
+            if store.engine != nil {
+                Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: {
+                    plainRow(Glyph.save, "Save now", chevron: true)
                 }.buttonStyle(PressableStyle())
+                if let text = store.exportText() {
+                    rule
+                    ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) {
+                        plainRow(Glyph.share, "Export this game", chevron: true)
+                    }.buttonStyle(PressableStyle())
+                }
+                rule
             }
-            rule
             Button { showImporter = true } label: {
                 plainRow(Glyph.download, "Import a save from the web game", chevron: true)
             }.buttonStyle(PressableStyle())
+            rule
+            Button { showPaste = true } label: {
+                plainRow(Glyph.download, "Paste save text", chevron: true)
+            }.buttonStyle(PressableStyle())
+            if store.classicStartUnlocked { classicStarts }
         }
+    }
+
+    /// Milestone M8 (brief 1.2): the two older ways to begin, selectable once the new-player ladder has reached them.
+    @ViewBuilder private var classicStarts: some View {
+        rule
+        Button { askNewGame(.loan) } label: {
+            plainRow(Glyph.bank, "New game: start-up loan", detail: LifeStory.loan.tagline, chevron: true)
+        }.buttonStyle(PressableStyle())
+        rule
+        Button { askNewGame(.heir) } label: {
+            plainRow(Glyph.home, "New game: the family café", detail: LifeStory.heir.tagline, chevron: true)
+        }.buttonStyle(PressableStyle())
+    }
+
+    private func askNewGame(_ story: LifeStory) {
+        let code: String = store.engine?.state.homeCountryCode ?? (Locale.current.region?.identifier == "GB" ? "UK" : (Locale.current.region?.identifier ?? "NO"))
+        let who: String = store.engine?.state.player.name ?? ""
+        pending = PendingAction(title: "Start a new game?", message: "It replaces the saved game. The copy before it is kept as a backup file, but the game will no longer open it.",
+                                button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story) }
     }
 
     private var gameGroup: some View {
         group("Game") {
-            Button { store.quitToMenu() } label: {
-                plainRow(Glyph.exit, "Back to the start screen", detail: "Saved first", tint: Theme.loss, chevron: true)
-            }.buttonStyle(PressableStyle())
-            rule
+            if store.engine != nil {
+                Button { store.quitToMenu() } label: {
+                    plainRow(Glyph.exit, "Back to the start screen", detail: "Saved first", tint: Theme.loss, chevron: true)
+                }.buttonStyle(PressableStyle())
+                rule
+            }
             plainRow(Glyph.info, "Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
         }
     }

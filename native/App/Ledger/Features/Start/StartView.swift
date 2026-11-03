@@ -15,25 +15,11 @@ import Finance
 /// Starting or importing over an existing save asks first, because it replaces that save.
 struct StartView: View {
     @EnvironmentObject var store: GameStore
-    @State private var name = ""
-    @State private var countryCode = ""
-    @State private var showImporter = false
-    @State private var showPaste = false
-    @State private var pasted = ""
     @State private var summary: SaveSummary?
     @State private var pending: PendingAction?
-    @State private var story: LifeStory = .loan
-    @State private var familyCityID = ""
-    @State private var ambition: String?   // nil: decide later (never required)
-    @State private var previews: [LifeStory: StoryPreview] = [:]
-    private let countries: [Country] = ((try? CountryBook.bundled().countries) ?? []).sorted { $0.name < $1.name }
-
-    /// The country of the device's region if the game has it; otherwise the first in the list. No country is the built-in default.
-    private var initialCountry: String {
-        let region = Locale.current.region?.identifier ?? ""
-        let code = region == "GB" ? "UK" : region
-        return countries.first { $0.code == code }?.code ?? countries.first?.code ?? ""
-    }
+    @State private var settingUp = false
+    @State private var showSettings = false
+    private let countries: [Country] = (try? CountryBook.bundled().countries) ?? []
 
     /// What is replaced if the player goes ahead, in one line.
     private var replacedLine: String {
@@ -48,55 +34,71 @@ struct StartView: View {
                                 button: button, destructive: true, run: body)
     }
 
-    private func begin() {
-        let n = name.trimmingCharacters(in: .whitespaces)
-        replacingSave("Start a new game?", button: "Start new game") { store.newGame(name: n, countryCode: countryCode, story: story, cityID: story.needsCity && !familyCityID.isEmpty ? familyCityID : nil, ambition: ambition) }
+    /// The new-player start: the company is created fully set up and open on day 1 (`LifeStory.fresh`).
+    private func begin(country: String, trade: String, company: String) {
+        replacingSave("Start a new game?", button: "Start new game") {
+            store.newGame(name: "", countryCode: country, story: .fresh, tradeID: trade, companyName: company)
+        }
     }
 
     var body: some View {
+        Group {
+            if settingUp {
+                NewPlayerSetup(onClose: { settingUp = false }, begin: { (country: String, trade: String, company: String) in begin(country: country, trade: trade, company: company) })
+            } else {
+                home
+            }
+        }
+        .ledgerBackground()
+        .onAppear { summary = store.currentSaveSummary() }
+        .confirmAction($pending)
+        .sheet(isPresented: $showSettings) { settingsSheet }
+    }
+
+    /// Name, one primary button (Start, or Continue with New game under it) and the Settings gear.
+    private var home: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AppHeader(title: "Ledger", subtitle: "Business tycoon simulator").padding(.top, 40)
+                AppHeader(title: "Ledger", subtitle: "Business tycoon simulator") {
+                    Button { Haptics.tap(); showSettings = true } label: {
+                        GlyphView(glyph: Glyph.settings, size: 22)
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityLabel("Settings")
+                }
+                .padding(.top, 40)
 
                 if let problem = store.loadProblem {
                     problemCard(problem)
                 } else if store.hasSavedGame {
                     continueCard
                 }
-
-                newGameCard
-                importCard
+                primaryButtons
             }
             .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
-        .ledgerBackground()
-        .onAppear {
-            if countryCode.isEmpty { countryCode = initialCountry }
-            summary = store.currentSaveSummary()
-        }
-        .confirmAction($pending)
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in
-            guard case .success(let url) = result else { return }
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { store.errorText = "That file could not be read as text."; return }
-            // Ask once the file picker has gone, so the question is not lost behind it.
-            DispatchQueue.main.async { replacingSave("Import this save?", button: "Import") { store.importLegacy(text: text) } }
-        }
-        .centerSheet(isPresented: $showPaste) {
-            VStack(spacing: Theme.Space.m) {
-                    TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(height: 220)
-                        .scrollContentBackground(.hidden)
-                        .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
-                    // The warning sits on the button itself here, so no second dialog has to appear over a closing sheet.
-                    if store.hasSavedGame { Text(replacedLine).font(.caption).foregroundStyle(Theme.caution).frame(maxWidth: .infinity, alignment: .leading) }
-                    Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
-                        .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    @ViewBuilder private var primaryButtons: some View {
+        if store.hasSavedGame && store.loadProblem == nil {
+            Button { Haptics.tap(); settingUp = true } label: {
+                Text("New game").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 36)
             }
-            .centerSheetTitle("Paste save text")
+            .buttonStyle(PressableStyle())
+        } else {
+            QuietButton(title: "Start", fullWidth: true) { settingUp = true }
         }
+    }
+
+    private var settingsSheet: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            AppHeader(title: "Settings", onBack: { showSettings = false }, backLabel: "Close").padding(.horizontal, 18).padding(.top, 20)
+            SettingsView()
+        }
+        .ledgerBackground()
     }
 
     // MARK: States
@@ -140,97 +142,6 @@ struct StartView: View {
                 Text("The file stays on this device untouched until you start or import another game, which replaces it.")
                     .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 QuietButton(title: "Try again") { store.loadCurrent(); summary = store.currentSaveSummary() }
-            }
-        }
-    }
-
-    @ViewBuilder private var newGameCard: some View {
-        CardSection("New game") {
-            TextField("Your name", text: $name)
-                .textInputAutocapitalization(.words)
-                .font(.system(size: 15))
-                .padding(.vertical, 8)
-            CardLine()
-            HStack {
-                Text("Home country").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                Spacer()
-                Picker("Home country", selection: $countryCode) {
-                    ForEach(countries) { c in Text("\(c.flag) \(c.name)").tag(c.code) }
-                }
-                .pickerStyle(.menu)
-            }
-            if let c = countries.first(where: { $0.code == countryCode }) {
-                Text("Currency: \(c.currencyCode)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-            }
-            if countries.isEmpty {
-                Text("The country list could not be loaded, so a new game cannot start. Reinstalling the app restores it.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.loss)
-            }
-        }
-        if !countryCode.isEmpty { storyPicker; ambitionPicker }
-        QuietButton(title: "Begin", fullWidth: true) { begin() }
-            .disabled(countryCode.isEmpty).opacity(countryCode.isEmpty ? 0.4 : 1)
-        if store.hasSavedGame {
-            Text("Replaces your saved game; you will be asked first.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-        }
-    }
-
-    /// The ambition is picked here, optionally: "Decide later" skips it with no penalty and it can be changed freely in the first weeks.
-    private var ambitionPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your ambition (optional)").capsLabel().padding(.horizontal, 2)
-            ForEach(Ambitions.paths) { p in
-                ChoiceCard(title: p.name, subtitle: p.detail, selected: ambition == p.id) { ambition = p.id }
-            }
-            ChoiceCard(title: "Decide later", subtitle: "Nothing is lost. Missions and ambitions are optional.", selected: ambition == nil) { ambition = nil }
-        }
-    }
-
-    /// Each story with the numbers the engine produces for the chosen country (a game is built and read, nothing is typed in).
-    private var storyPicker: some View {
-        let country = countries.first { $0.code == countryCode }
-        let cur = country.map { Currency(country: $0, rates: ExchangeRates()) }
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Your story").capsLabel().padding(.horizontal, 2)
-            ForEach(LifeStory.allCases, id: \.self) { s in
-                ChoiceCard(title: s.title.tidyMoney, subtitle: storyLine(s, cur), selected: story == s) { story = s }
-            }
-            if story.needsCity, let country {
-                Picker("Where is the family café?", selection: Binding(get: { familyCityID.isEmpty ? (country.cities.first?.id ?? "") : familyCityID }, set: { familyCityID = $0 })) {
-                    ForEach(country.cities) { Text($0.name).tag($0.id) }
-                }.pickerStyle(.menu)
-            }
-        }
-        .task(id: countryCode + "|" + familyCityID) { loadPreviews() }
-    }
-
-    private func storyLine(_ s: LifeStory, _ cur: Currency?) -> String {
-        guard let p = previews[s], let cur else { return s.tagline }
-        return s.tagline + "\n" + storyFacts(p, cur)
-    }
-
-    private func storyFacts(_ p: StoryPreview, _ cur: Currency) -> String {
-        var parts = ["Cash \(cur.tidyDisplay(p.cash))"]
-        if p.debt > 0 { parts.append("debt \(cur.tidyDisplay(p.debt)), repaid with about \(cur.tidyDisplay(p.monthlyRepayment)) a month") } else { parts.append("no debt") }
-        if let n = p.companyName { parts.append("you own \(n), worth about \(cur.tidyDisplay(p.companyValue))") } else { parts.append("no business yet") }
-        parts.append("credit \(Int(p.credit.rounded()))")
-        return parts.joined(separator: " · ")
-    }
-
-    private func loadPreviews() {
-        guard !countryCode.isEmpty else { return }
-        var out: [LifeStory: StoryPreview] = [:]
-        for s in LifeStory.allCases { if let p = GameEngine.storyPreview(s, countryCode: countryCode, cityID: s.needsCity && !familyCityID.isEmpty ? familyCityID : nil) { out[s] = p } }
-        previews = out
-    }
-
-    private var importCard: some View {
-        CardSection("Bring a save from the web game") {
-            Text("Your original file is kept untouched. The game is converted into a new native save" + (store.hasSavedGame ? ", which replaces the current one." : "."))
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
-                QuietButton(title: "Choose file", fullWidth: true) { showImporter = true }
-                QuietButton(title: "Paste text", fullWidth: true) { showPaste = true }
             }
         }
     }

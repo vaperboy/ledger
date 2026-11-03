@@ -166,8 +166,10 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
 
     func testAmbitionCanBeChangedFreelyInTheFirstFourWeeksOnly() throws {
         var (e, _) = try cafeGame(seed: 12)
+        XCTAssertFalse(e.ambitionPromptPending, "held back until the first profitable month (brief 1.4)")
+        e.update { s, _, _ in var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l }   // M7 claimed; the window runs four weeks from the choice
         XCTAssertTrue(e.ambitionChangeIsFree)
-        XCTAssertTrue(e.ambitionPromptPending, "asked once at the start of a new game")
+        XCTAssertTrue(e.ambitionPromptPending, "asked once, after the first profitable month")
         e.chooseAmbition(path: "champion")
         e.markAmbitionPromptShown()
         XCTAssertFalse(e.ambitionPromptPending)

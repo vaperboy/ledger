@@ -1,4 +1,5 @@
 # What's new
+- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month
 - Skip to opening: pass the waiting days of a new company in one go
 - More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen
 - No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab

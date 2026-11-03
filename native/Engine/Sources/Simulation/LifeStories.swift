@@ -10,11 +10,16 @@ import Businesses
 /// so a game started the default way is unchanged and an older save without the key is a start-up loan game.
 public enum LifeStory: String, CaseIterable, Sendable {
     case loan, heir
+    /// The new-player start (brief Part 1): one chosen trade, fully set up and open on day 1, cash for the first weeks, no loan.
+    case fresh
 
-    public var title: String { self == .loan ? "Start-up loan" : "Heir" }
+    public var title: String { self == .loan ? "Start-up loan" : self == .heir ? "Heir" : "New business" }
     public var tagline: String {
-        self == .loan ? "The bank lends you a start-up loan. The classic start."
-                      : "The family café is yours: open, a small team and money in its account. A little savings, no loan."
+        switch self {
+        case .loan: return "The bank lends you a start-up loan. The classic start."
+        case .heir: return "The family café is yours: open, a small team and money in its account. A little savings, no loan."
+        case .fresh: return "Your chosen business, set up and open on the first day. No loan."
+        }
     }
     /// Cities matter only for the heir, whose café already exists.
     public var needsCity: Bool { self == .heir }
@@ -49,6 +54,55 @@ public extension GameEngine {
 }
 
 enum LifeStories {
+    /// The new-player start (brief 1.2, 1.3): the chosen trade is created, set up to the cheapest option that opens it, and opened on day 1.
+    /// The starting cash is the cost of all that plus `startRunwayWeeks` weeks of fixed costs and payroll, rounded up to the next 1,000. It is
+    /// measured on a copy of the game (set up with plenty of money) and then paid for real, so it follows every trade and country by itself.
+    static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String) -> Bool {
+        guard let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd), let country = data.countries[s.homeCountryCode],
+              let city = country.city(s.player.cityID) ?? country.cities.first else { return false }
+        let form: LegalForm = bd.needsLimitedCompany ? .limited : .soleTrader
+        let size = CompanySetup.recommendedSize(bd, city: city)
+        let big = 1e9
+        var probe = s
+        Ledger.move(&probe, .me, big, why: "Start probe")
+        guard let pid = build(&probe, data: data, context: context, tradeID: tradeID, cityID: city.id, form: form, size: size, name: name),
+              let pi = probe.companyIndex(pid) else { return false }
+        let spent: Double = big - probe.cash - probe.companies[pi].cash
+        let weekly: Double = context.weeklyCost(probe.companies[pi], probe)
+        let weeks: Double = Double(data.balance.firstYear.startRunwayWeeks)
+        let cash: Double = ((spent + weekly * weeks) / 1000).rounded(.up) * 1000
+        Ledger.move(&s, .me, cash, why: "Starting money")
+        guard let id = build(&s, data: data, context: context, tradeID: tradeID, cityID: city.id, form: form, size: size, name: name),
+              let i = s.companyIndex(id) else { return false }
+        s.rest["start"] = .object(["story": .string(LifeStory.fresh.rawValue), "cash": .number(cash)])
+        return s.companies[i].status == .open
+    }
+
+    /// Creates the company, puts all the player's money into it, buys what the trade cannot open without (premises, required equipment, papers,
+    /// the minimum team), puts the owner to work in it and opens it. Returns its id.
+    private static func build(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, cityID: String, form: LegalForm, size: Double, name: String) -> Int? {
+        guard case .success(let id) = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name.isEmpty ? nil : name, data: data, context: context) else { return nil }
+        _ = Payments.injectCash(&s, companyID: id, amount: s.cash)
+        // The minimum team, and all the equipment the trade needs to serve customers (some of it, such as a café's furniture, is not on the opening
+        // checklist but capacity is zero without it).
+        let options = CompanySetup.SetupOptions(team: .minimum, optionalEquipment: true, payrollMonthsReserve: 2)
+        _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: options)
+        guard let i = s.companyIndex(id), let bd = data.catalog[s.companies[i].type] else { return nil }
+        // The papers are applied for (fees paid) and are in order on day 1.
+        var docs = s.companies[i].value("docs")
+        for d in Documents.needed(s.companies[i], bd, World(state: s, data: data)) where d != "vat_not_applicable" {
+            var entry = docs[d]
+            entry["st"] = .string("ok")
+            for k in ["done", "ok", "w0"] where entry[k].isNull { entry[k] = .number(Double(s.week)) }
+            docs[d] = entry
+        }
+        s.companies[i].set("docs", docs)
+        s.companies[i].raw["ownOut"] = nil
+        s.companies[i].ownerHours = 40
+        _ = OpeningChecklist.open(&s, companyIndex: i, data: data)
+        return id
+    }
+
     /// The heir: a running café, money in its account, savings in yours, no loan. Money arrives and leaves only through the ledger.
     static func applyHeir(_ s: inout GameState, data: GameData, context: FinanceContext) -> Bool {
         guard let bd = data.catalog["cafe"], let country = data.countries[s.homeCountryCode],

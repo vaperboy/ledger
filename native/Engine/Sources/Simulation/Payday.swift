@@ -487,6 +487,25 @@ public enum Payday {
 
     // MARK: The day
 
+    /// New-player start (brief 1.3): in the first weeks a payment the account cannot cover is not made today and not made late either; it waits for
+    /// tomorrow, with no fee and no message beyond the Home banner (`rest["tight"]`). Returns true when today's payment should wait.
+    static func waitsForCash(_ s: inout GameState, _ i: Int, due: Double, today t: Int, data: GameData) -> Bool {
+        guard due > 0, data.balance.firstYear.noOverdraftActive(s), due > s.companies[i].cash else { return false }
+        s.rest["tight"] = .number(Double(t))
+        return true
+    }
+
+    /// What this month's payroll will take from the account: wages owed plus the owner's own pay when they are on the payroll (with a small margin for the service fee).
+    static func payrollDue(_ s: GameState, _ i: Int, month mi: Int, context: FinanceContext) -> Double {
+        let co = s.companies[i]
+        let cfg = config(co, today: dayNumber(week: s.week, day: s.day))
+        var due = co.payables["wages"] ?? 0
+        if cfg.ownerPaidMonth != mi && ownerOnPayroll(co) {
+            due += co.ownerMonthlySalary * context.country(of: co, s).payrollFactor(monthlyWage: co.ownerMonthlySalary)
+        }
+        return due * 1.02
+    }
+
     /// Everything that happens to payroll and bills on one day. Original: `onDay` / `dayCo`.
     public static func onDay(_ s: inout GameState, data: GameData, context: FinanceContext) {
         if !s.dayMode || s.isGameOver { return }
@@ -494,6 +513,7 @@ public enum Payday {
         let c = civil(t)
         let mi = monthNumber(t)
         var paidToday: [(String, Double)] = []
+        s.rest.removeValue(forKey: "tight")
         var needApproval: [(Int, Double, Int)] = []   // company index, estimate, payday
         // Court judgments left unpaid are settled from cash left after the wages owed (see `LegalDebts`).
         for i in s.companies.indices where s.companies[i].status.isLive { LegalDebts.settle(&s, companyIndex: i) }
@@ -503,7 +523,8 @@ public enum Payday {
             let pd = payDate(config: cfg, year: c.year, month: c.month - 1)
             let md = mode(of: s.companies[i], trade: bd, config: cfg, state: s, data: data)
             // Payday
-            if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil {
+            if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil,
+               !waitsForCash(&s, i, due: payrollDue(s, i, month: mi, context: context), today: t, data: data) {
                 if !hasPayroll(s.companies[i]) {
                     cfg.paidMonth = mi
                     applyNewDay(&cfg)
@@ -570,13 +591,15 @@ public enum Payday {
             // Rent and supplier bills: last day of the month.
             let bd2 = billDate(year: c.year, month: c.month - 1)
             cfg = config(s.companies[i], today: t)
-            if cfg.billsMonth < mi - 1 {
+            let billsOwed: Double = (s.companies[i].payables["rent"] ?? 0) + (s.companies[i].payables["other"] ?? 0)
+            let billsWait: Bool = (cfg.billsMonth < mi - 1 || (cfg.billsMonth < mi && t >= bd2)) && waitsForCash(&s, i, due: billsOwed, today: t, data: data)
+            if !billsWait && cfg.billsMonth < mi - 1 {
                 cfg.billsMonth = mi - 1
                 s.companies[i].set("pr29", cfg.json)
                 payBills(&s, i, today: t, context: context, data: data)
             }
             cfg = config(s.companies[i], today: t)
-            if cfg.billsMonth < mi && t >= bd2 {
+            if !billsWait && cfg.billsMonth < mi && t >= bd2 {
                 cfg.billsMonth = mi
                 s.companies[i].set("pr29", cfg.json)
                 payBills(&s, i, today: t, context: context, data: data)

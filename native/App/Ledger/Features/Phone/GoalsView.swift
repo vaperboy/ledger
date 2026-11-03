@@ -16,7 +16,7 @@ struct GoalsView: View {
                 summaryCard(e)
                 todayCard(e)
                 stepsCard(e)
-                ambitionCard(e)
+                if e.ambitionVisible { ambitionCard(e) }
                 TrophyShelfRow(engine: e)
             }
             .ledgerBackground()

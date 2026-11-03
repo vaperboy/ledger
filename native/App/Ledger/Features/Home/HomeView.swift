@@ -17,6 +17,7 @@ struct HomeSummary: View {
         let e = engine
         VStack(alignment: .leading, spacing: 8) {
             HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", onNewCompany: onNewCompany)
+            if e.cashIsTight { cashTightBanner }
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {
                     NetWorthCard(engine: e)
@@ -33,6 +34,16 @@ struct HomeSummary: View {
     private var playerName: String {
         let n = engine.state.player.name
         return n.isEmpty ? "there" : n
+    }
+
+    /// New-player start (brief 1.3): a bill the account cannot cover yet waits one day; nothing else happens.
+    private var cashTightBanner: some View {
+        Text("Cash is tight. A bill waits until tomorrow.")
+            .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.caution))
+            .accessibilityIdentifier("cash-tight-banner")
     }
 }
 
@@ -278,6 +289,7 @@ struct AdvanceBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
+    @State private var pulseDim = false
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
@@ -313,6 +325,9 @@ struct AdvanceBar: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Week 1, day 1 of a game with the ladder: nothing has been played yet.
+    private var firstDay: Bool { engine.state.week == 0 && engine.state.day == 0 && Gates.ladderOn(engine.state) }
+
     private var nextButton: some View {
         let busy: Bool = store.isAdvancing
         let over: Bool = engine.state.isGameOver
@@ -325,9 +340,14 @@ struct AdvanceBar: View {
             .lineLimit(1).fixedSize()
             .padding(.horizontal, 24).frame(height: 44)
             .background(Capsule().fill(Theme.gold))
-            .opacity(busy ? 0.75 : 1)
+            .opacity(busy ? 0.75 : (firstDay && pulseDim ? 0.6 : 1))
         }
         .buttonStyle(PressableStyle())
+        .onAppear {
+            // Brief 1.5: until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
+            guard firstDay, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { pulseDim = true }
+        }
         .disabled(over || busy || store.reportSheet != nil)
         .accessibilityIdentifier("next-day")
     }
