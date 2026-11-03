@@ -98,13 +98,19 @@ final class MainScreensTests: TourCase {
         open("Group"); sleep(1); shot("45-group")
         scrollDown(); shot("46-group-lower")
         scrollUp()
-        // The picker: open the first entity, then its Board, Dividends and Money tabs.
+        // The picker: open the first entity, then its Management, Board, Money (with Dividends inside) and Expansion tabs.
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         if entity.waitForExistence(timeout: 3), entity.isHittable {
             entity.tap(); sleep(1); shot("47-group-entity")
-            for name in ["Board", "Dividends", "Expansion", "Money", "Deals"] {
+            for name in ["Management", "Board", "Money", "Expansion", "Deals"] {
                 let tab = app.buttons["group-tab-\(name)"]
                 if tab.waitForExistence(timeout: 2), tab.isHittable { tab.tap(); sleep(1); shot("48-group-\(name.lowercased())") } else { note("no \(name) tab on the entity page") }
+            }
+            let moneyTab = app.buttons["group-tab-Money"]
+            if moneyTab.exists && moneyTab.isHittable {
+                moneyTab.tap(); sleep(1)
+                let dividends = app.buttons["money-part-Dividends"]
+                if dividends.waitForExistence(timeout: 2), dividends.isHittable { dividends.tap(); sleep(1); shot("48-group-money-dividends") } else { note("no Dividends part in Money") }
             }
             let back = app.buttons["group-back"]
             if back.exists && back.isHittable { back.tap(); sleep(1) }

@@ -12,26 +12,14 @@ enum TeamPage: String, Hashable, Identifiable {
     var id: String { rawValue }
 }
 
-/// One company's Team tab on ONE page: compact key figures above, a table of settings (management, goals, perks and labour rules, hiring),
-/// and a plain line about who runs the team and the rosters below. Perks open as a popup; the labour rules are in Stats. Payroll is in Accounting and the Bank, not here.
+/// One company's Team tab on ONE page, STAFF ONLY: the hire button, free places, the workers and a table of settings (goals, perks).
+/// Managers, the owner and executive posts live in Group > the company > Management. Perks open as a popup; the labour rules are in Stats. Payroll is in Accounting and the Bank, not here.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @State private var page: TeamPage?
     @State private var showPerks = false
-
-    /// Who handles day-to-day staffing here (the engine's decision chain), so an owner change is a deliberate override.
-    @ViewBuilder private var delegation: some View {
-        let chain = engine.decisionChain(companyID: company.id)
-        if let boss = chain.first {
-            let title = GameEngine.bossTitle(boss.kind, trade: engine.tradeInfo(companyID: company.id)).lowercased()
-            let lvl = ["asks you before deciding", "decides within your limits", "decides on their own"][min(2, max(0, boss.level))]
-            line("\(boss.name), \(title), runs the team day to day and \(lvl).", tint: Theme.ivoryMuted, medium: false)
-        } else if company.status == .open && !OwnerHours.works(company) {
-            line("No one runs this team: you do not work here and there is no manager.", tint: Theme.caution, medium: true)
-        }
-    }
 
     /// One plain line of text (not a card).
     private func line(_ text: String, tint: Color, medium: Bool) -> some View {
@@ -44,7 +32,7 @@ struct CompanyTeam: View {
             VStack(alignment: .leading, spacing: 8) {
                 header
                 placesNote
-                CompanyManagement(engine: engine, company: company)
+                managementNote
             }
             if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
             settingsTable
@@ -55,10 +43,24 @@ struct CompanyTeam: View {
 
     // MARK: Header and places
 
-    /// "Team" with the hire button at the top right: "Hire workers" while nobody is hired, "Hire" after.
+    /// Managers and executives are not here any more: they are hired per company in Group > the company > Management.
+    private var managementNote: some View {
+        Button { Haptics.tap(); store.openGroupEntity(companyID: company.id, section: "management") } label: {
+            HStack(spacing: 6) {
+                Text("Managers and executive posts are in Group").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Spacer(minLength: 6)
+                Text("Management \u{203A}").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+            }
+            .frame(minHeight: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("team-open-management")
+    }
+
+    /// "Staff" with the hire button at the top right: "Hire workers" while nobody is hired, "Hire" after.
     private var header: some View {
         HStack(alignment: .center) {
-            Text("Team").capsLabel()
+            Text("Staff").capsLabel()
             Spacer(minLength: 8)
             TeamAction(title: company.staff.isEmpty ? "Hire workers" : "Hire") { page = .hire }
                 .accessibilityIdentifier("team-hire-workers")

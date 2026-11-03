@@ -14,6 +14,8 @@ struct CompanyManagement: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    /// Group > entity > Management: every post is listed (open ones too) and the people above the manager (chain, region, group) show.
+    var showAll: Bool = false
     @State private var sheet: Sheet?
     @State private var showVacant = false
     // Shortlists live here, not in the sheets, so a paid search survives closing a sheet.
@@ -54,8 +56,8 @@ struct CompanyManagement: View {
         var shown: [OrgNode] = []
         var hidden: [OrgNode] = []
         for n in orgNodes(cur) {
-            if n.id.hasPrefix("b:") { continue }
-            if n.id == "you" || n.id == "m" || !isOpenPost(n) { shown.append(n) } else { hidden.append(n) }
+            if n.id.hasPrefix("b:") && !showAll { continue }
+            if showAll || n.id == "you" || n.id == "m" || !isOpenPost(n) { shown.append(n) } else { hidden.append(n) }
         }
         return (shown, hidden)
     }
