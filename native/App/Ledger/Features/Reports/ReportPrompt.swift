@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Countries
+import Events
 import Simulation
 
 /// The popup that appears on the main screen when a week, a month or a year closes. It is read and dismissed with one tap before the next day
@@ -133,7 +134,7 @@ struct CelebrationPopup: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea().onTapGesture { dismiss() }
+            Color.black.opacity(0.55).ignoresSafeArea().contentShape(Rectangle())
             card
                 .padding(.horizontal, 28)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.92)
@@ -149,7 +150,7 @@ struct CelebrationPopup: View {
 
     private var card: some View {
         VStack(spacing: 10) {
-            GoldRingMark(glyph: Glyph.achievements, size: 64)
+            badge
             Text(kindLabel).capsLabel()
             Text(item.title).font(.serifTitle(22)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             if !item.detail.isEmpty {
@@ -159,8 +160,10 @@ struct CelebrationPopup: View {
                 Text(item.reward).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             claimArea
-            QuietButton(title: dismissTitle, fullWidth: true) { dismiss() }
-                .padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
+            if !canClaim {
+                Button(dismissTitle) { dismiss() }
+                    .buttonStyle(ImportantButtonStyle()).padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
+            }
         }
         .padding(20)
         .frame(maxWidth: 380)
@@ -173,9 +176,27 @@ struct CelebrationPopup: View {
     /// A finished goal or today's mission carries a reward that is claimed with one tap, here, not by going to Goals.
     private var canClaim: Bool { claimedText == nil && (item.kind == "mission" || item.kind == "goal") }
 
+    /// Claiming is the only way out: a goal or mission is claimed here, a trophy or milestone (already paid) is claimed with one tap.
     private var dismissTitle: String {
-        if canClaim { return "Later" }
-        return store.celebrationQueue.count > 1 ? "Next" : "Nice"
+        if claimedText != nil { return store.celebrationQueue.count > 1 ? "Next" : "Done" }
+        return "Claim"
+    }
+
+    private var trophyEntry: Trophies.Entry? {
+        guard item.kind == "trophy", let e = store.engine else { return nil }
+        return Trophies.entries(e.state).first(where: { $0.name == item.title })
+    }
+
+    /// The earned trophy's art in a large gold ring; a drawn gold medal when nothing maps to the title.
+    @ViewBuilder private var badge: some View {
+        if let entry = trophyEntry {
+            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: 112, shape: .round, glyph: Glyph.achievements)
+                .padding(6)
+                .overlay(Circle().strokeBorder(Theme.gold, lineWidth: 3))
+                .padding(8)
+        } else {
+            GoldRingMark(glyph: Glyph.achievements, size: item.kind == "trophy" ? 96 : 64)
+        }
     }
 
     @ViewBuilder private var claimArea: some View {
@@ -190,7 +211,7 @@ struct CelebrationPopup: View {
             .transition(.scale.combined(with: .opacity))
             .accessibilityElement(children: .combine)
         } else if canClaim {
-            Button("Claim reward") { claim() }
+            Button("Claim") { claim() }
                 .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("celebration-claim")
         }
     }
