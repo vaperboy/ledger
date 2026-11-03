@@ -161,6 +161,35 @@ extension GameStore {
         var isAlert: Bool
         var target: BannerTarget = .none
         var hasOwnTarget = false
+        /// The newest message of the app's update (0 = none) and the company it concerns (0 = none): the banner opens it directly.
+        var newestID: Int = 0
+        var companyID: Int = 0
+    }
+
+    /// A tap on an "N updates in <App>" banner: the app on its newest item, no question. Inbox: that message's popup; Bank: the account;
+    /// Accounting: payroll; Market: News; Stats: Goals; the shops: the company's page.
+    func openUpdate(_ app: PhoneApp, messageID: Int, companyID cid: Int) {
+        switch app {
+        case .inbox:
+            if messageID != 0 { openMessage(messageID) } else { openApp(.inbox) }
+        case .bank:
+            openBank(cid != 0 ? BankAccountID.company(cid) : BankAccountID.personal)
+        case .accounting:
+            if cid != 0 { openAccounting(companyID: cid, payroll: true) } else { openApp(.accounting) }
+        case .market:
+            marketNewsPending = true
+            openApp(.market, request: .market(companyID: 0))
+        case .stats:
+            openApp(.goals)
+        case .airStay:
+            openAirStay(companyID: cid)
+        case .techPro:
+            if cid != 0 { openTechPro(companyID: cid) } else { openApp(.techPro) }
+        case .atlas:
+            if cid != 0 { openAtlas(companyID: cid) } else { openApp(.atlas) }
+        default:
+            openApp(app)
+        }
     }
 
     /// After a simulated day: one banner per app with new updates, the most severe first, at most two a day. Open decisions, payroll and
@@ -186,6 +215,9 @@ extension GameStore {
             if let m = msgs.first {
                 let t: String = e.displayText(m.title, companyID: m.companyID).tidyText
                 if n == 1 { c.title = t; c.body = m.from } else { c.body = t }
+                let newest: Message = msgs.max { (a: Message, b: Message) -> Bool in a.id < b.id } ?? m
+                c.newestID = newest.id
+                c.companyID = newest.companyID
             } else if let b = events.first {
                 if n == 1 { c.title = b.title; c.body = b.body; c.target = b.target; c.hasOwnTarget = true } else { c.body = b.title }
             } else if let nw = news.first {
@@ -201,7 +233,9 @@ extension GameStore {
             item.isAlert = c.isAlert
             item.lifetime = 4
             let app: PhoneApp = c.app
-            item.target = c.hasOwnTarget ? c.target : .place(app.title, { store.openApp(app) })
+            let newestID: Int = c.newestID
+            let cid: Int = c.companyID
+            item.target = c.hasOwnTarget ? c.target : .place(app.title, { store.openUpdate(app, messageID: newestID, companyID: cid) })
             banners.post(item)
         }
         var a: UpdateMarks = UpdateMarks()

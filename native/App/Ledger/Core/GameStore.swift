@@ -169,6 +169,8 @@ final class GameStore: ObservableObject {
     @Published var customTarget: CustomTabTarget? = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
+    /// Set by a banner for the Market app: it shows its News segment when it takes the request.
+    var marketNewsPending = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     /// Set while the player is on a tab they were sent to by a link; see `ReturnInfo`.

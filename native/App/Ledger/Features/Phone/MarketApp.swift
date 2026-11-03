@@ -102,7 +102,10 @@ struct MarketApp: View {
 
     /// A link from a company names the business to show; one that is gone (sold, closed) falls back to all markets.
     private func take() {
+        let news: Bool = store.marketNewsPending
+        store.marketNewsPending = false
         guard let id = store.takeMarketRequest() else { return }
         companyID = id
+        if news { part = .news }
     }
 }

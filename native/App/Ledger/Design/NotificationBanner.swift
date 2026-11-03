@@ -12,7 +12,7 @@ enum BannerTarget {
     case none
     /// A decision (an open Inbox message with options) the owner can answer right there, in the decision popup.
     case message(Int)
-    /// A place in the app: the tap asks "Take me to <place>?" first.
+    /// A place in the app: the tap goes straight there (no question). The name is only a label.
     case place(String, () -> Void)
 }
 
@@ -137,7 +137,7 @@ struct NotificationBannerLayer: View {
         switch item.target {
         case .none: break
         case .message(let id): store.decisionPopup = id
-        case .place(let name, let go): queue.confirm = BannerConfirm(place: name, go: go)
+        case .place(_, let go): go()
         }
     }
 
