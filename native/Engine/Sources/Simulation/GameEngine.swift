@@ -95,6 +95,7 @@ public struct GameEngine {
             state.loans.append(l)
         }
         state.economy.set("rate0", state.economy.policyRate)
+        state.rest["gameID"] = .string(UUID().uuidString)
         PlayerGoals.startFirstSteps(&state)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)

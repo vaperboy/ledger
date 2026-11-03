@@ -792,14 +792,12 @@ struct TechProApp: View {
 
     // MARK: Payment details
 
-    private var rememberKey: String { "techpro.remember.\(companyID)" }
-
     private func goPayment(_ e: GameEngine) {
         payError = ""
-        if let saved = UserDefaults.standard.string(forKey: rememberKey) {
-            let parts: [String] = saved.components(separatedBy: "|")
-            holder = parts.first ?? ""
-            number = parts.count > 1 ? parts[1] : ""
+        let own: BankPaymentDetails? = e.bankPaymentDetails(companyID: companyID)
+        if let d = RememberedDetails.load(app: "techpro", game: RememberedDetails.gameID(e), companyID: companyID, own: own) {
+            holder = d.holder
+            number = d.accountNumber
             remember = true
         } else {
             holder = ""
@@ -920,7 +918,9 @@ struct TechProApp: View {
             placedDate = date
             placedTotal = cur.tidyShort(total)
             placedCarrier = store.engine?.storeOrders(companyID: id).first?.carrier ?? ""
-            if remember { UserDefaults.standard.set(holder + "|" + number, forKey: rememberKey) } else { UserDefaults.standard.removeObject(forKey: rememberKey) }
+            if let e2 = store.engine {
+                RememberedDetails.save(app: "techpro", game: RememberedDetails.gameID(e2), companyID: id, own: e2.bankPaymentDetails(companyID: id), on: remember)
+            }
             basket = []
             step = .placed
         case .notEnoughCash(let missing)?:
