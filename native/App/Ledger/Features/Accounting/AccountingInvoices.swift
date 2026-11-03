@@ -32,12 +32,14 @@ struct AcctInvoices: View {
     @Environment(\.outsidePalette) private var P
     @ObservedObject var m: AcctModel
 
-    private var filters: [AcctInvoiceFilter] {
-        m.invTab == .invoices ? [.all, .draft, .sent, .paid, .overdue] : [.all, .sent, .paid, .overdue]
+    private var filters: [AcctInvoiceFilter] { filters(for: m.invTab) }
+
+    private func filters(for t: AcctInvoiceTab) -> [AcctInvoiceFilter] {
+        t == .invoices ? [.all, .draft, .sent, .paid, .overdue] : [.all, .sent, .paid, .overdue]
     }
 
-    private func filterTitle(_ f: AcctInvoiceFilter) -> String {
-        if m.invTab == .payments && f == .sent { return "Open" }
+    private func filterTitle(_ f: AcctInvoiceFilter, _ t: AcctInvoiceTab) -> String {
+        if t == .payments && f == .sent { return "Open" }
         return f.rawValue
     }
 
@@ -54,32 +56,38 @@ struct AcctInvoices: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
-            let kind: InvoiceKind = m.invTab == .invoices ? .customer : .supplier
-            let items: [InvoiceItem]? = e.invoices(companyID: co.id, kind: kind, status: statusFilter, user: m.user)
             VStack(spacing: 0) {
                 SectionTabs(items: AcctInvoiceTab.allCases, title: { $0.rawValue }, selection: $m.invTab)
                     .padding(.top, 4)
                     .accessibilityIdentifier("acct-invoice-tabs")
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if let items {
-                            let valid: [AcctInvoiceFilter] = filters
-                            SegmentedPill(items: valid, title: { filterTitle($0) }, selection: $m.invFilter, identifier: { "acct-inv-" + $0.rawValue.lowercased() })
-                            summary(items, fmt, kind)
-                            list(items, fmt, kind)
-                        } else {
-                            AcctLocked(section: "Invoices")
-                        }
-                    }
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
-                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                SegmentPager(items: AcctInvoiceTab.allCases, selection: $m.invTab) { (t: AcctInvoiceTab) in
+                    invoicePage(e, co, fmt, t)
                 }
-                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             }
             .onChange(of: m.invTab) { _, _ in
                 if !filters.contains(m.invFilter) { m.invFilter = .all }
             }
         }
+    }
+
+    private func invoicePage(_ e: GameEngine, _ co: Company, _ fmt: BankFmt, _ t: AcctInvoiceTab) -> some View {
+        let kind: InvoiceKind = t == .invoices ? .customer : .supplier
+        let items: [InvoiceItem]? = e.invoices(companyID: co.id, kind: kind, status: statusFilter, user: m.user)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let items {
+                    let valid: [AcctInvoiceFilter] = filters(for: t)
+                    SegmentedPill(items: valid, title: { filterTitle($0, t) }, selection: $m.invFilter, identifier: { "acct-inv-" + $0.rawValue.lowercased() })
+                    summary(items, fmt, kind)
+                    list(items, fmt, kind)
+                } else {
+                    AcctLocked(section: "Invoices")
+                }
+            }
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
     }
 
     private func summary(_ items: [InvoiceItem], _ fmt: BankFmt, _ kind: InvoiceKind) -> some View {

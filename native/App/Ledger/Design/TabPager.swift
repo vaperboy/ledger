@@ -8,7 +8,7 @@ final class PageSwipeGate {
 
 /// The five tabs side by side: tapping a tab bar item slides the old page out while the new one enters from the same side (a spring of
 /// about 0.3 s, no cross-fade, no scale). There is NO page swipe: tabs change only by tapping the tab bar; horizontal swipes belong to the
-/// segment rows inside a page (`swipeBetween`). All pages stay alive (each keeps its own stack and scroll place). Only the settled page
+/// segment rows inside a page (`SegmentPager`). All pages stay alive (each keeps its own stack and scroll place). Only the settled page
 /// takes touches. Under Reduce Motion the pages fade.
 struct TabPager<Content: View>: View {
     @EnvironmentObject var store: GameStore

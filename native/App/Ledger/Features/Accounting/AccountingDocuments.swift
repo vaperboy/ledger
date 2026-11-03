@@ -15,31 +15,37 @@ struct AcctDocuments: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
-            let docs: [AccountingDocument]? = e.companyDocuments(companyID: co.id, group: m.docTab.group, user: m.user)
             VStack(spacing: 0) {
                 SectionTabs(items: AcctDocTab.allCases, title: { $0.rawValue }, selection: $m.docTab)
                     .padding(.top, 4)
                     .accessibilityIdentifier("acct-document-tabs")
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if let docs {
-                            list(docs, co, fmt)
-                        } else {
-                            AcctLocked(section: "Documents")
-                        }
-                    }
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
-                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                SegmentPager(items: AcctDocTab.allCases, selection: $m.docTab) { (t: AcctDocTab) in
+                    docPage(e, co, fmt, t)
                 }
-                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             }
             .navigationDestination(isPresented: $showFranchises) { FranchisesView().environment(\.outsidePalette, OutsidePalette.game) }
         }
     }
 
-    @ViewBuilder private func list(_ docs: [AccountingDocument], _ co: Company, _ fmt: BankFmt) -> some View {
+    private func docPage(_ e: GameEngine, _ co: Company, _ fmt: BankFmt, _ t: AcctDocTab) -> some View {
+        let docs: [AccountingDocument]? = e.companyDocuments(companyID: co.id, group: t.group, user: m.user)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let docs {
+                    list(docs, co, fmt, t)
+                } else {
+                    AcctLocked(section: "Documents")
+                }
+            }
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+    }
+
+    @ViewBuilder private func list(_ docs: [AccountingDocument], _ co: Company, _ fmt: BankFmt, _ t: AcctDocTab) -> some View {
         if docs.isEmpty {
-            AcctNotice(glyph: Glyph.list, title: "No \(m.docTab.rawValue.lowercased()) documents yet", message: emptyReason)
+            AcctNotice(glyph: Glyph.list, title: "No \(t.rawValue.lowercased()) documents yet", message: emptyReason(t))
         } else {
             AcctPanel {
                 ForEach(Array(docs.enumerated()), id: \.element.id) { n, d in
@@ -52,8 +58,8 @@ struct AcctDocuments: View {
         }
     }
 
-    private var emptyReason: String {
-        switch m.docTab {
+    private func emptyReason(_ t: AcctDocTab) -> String {
+        switch t {
         case .company: return "Registration, legal form, ownership and licences appear as the company holds them."
         case .tax: return "Tax and VAT records appear once the company has settled or accrued any."
         case .contracts: return "Employment, supplier, customer and financing contracts appear as they are signed."

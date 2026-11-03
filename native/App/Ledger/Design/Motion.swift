@@ -115,32 +115,6 @@ extension View {
     }
 }
 
-// MARK: Swipe between segments
-
-/// Swipe left or right on a screen to move to the next or previous segment of its tab row. It is a simultaneous gesture that only
-/// reacts to a clearly horizontal drag that does not start at the left edge (that is the back gesture), so vertical scrolling and
-/// the back swipe are untouched.
-struct SwipeBetweenSegments<T: Hashable>: ViewModifier {
-    var items: [T]
-    @Binding var selection: T
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    func body(content: Content) -> some View {
-        content
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 40, coordinateSpace: .local).onEnded { value in
-                let dx: CGFloat = value.translation.width
-                let dy: CGFloat = value.translation.height
-                guard !PageSwipeGate.shared.touching, value.startLocation.x > 40, abs(dx) > 120, abs(dx) > abs(dy) * 3.2, abs(value.predictedEndTranslation.width) > 200 else { return }
-                guard let i = items.firstIndex(of: selection) else { return }
-                let next: Int = dx < 0 ? i + 1 : i - 1
-                guard items.indices.contains(next) else { return }
-                Motion.run(reduceMotion) { selection = items[next] }
-                Haptics.choose()
-            }
-        )
-    }
-}
-
 /// A full page or popup presented over the app arrives with a calm fade and a slight scale (0.97 to 1), not a slide from the bottom.
 /// Under Reduce Motion it simply appears.
 struct PageArrive: ViewModifier {
@@ -163,10 +137,6 @@ extension View {
     /// A vertical scroll container that never bounces or drags sideways and clips anything wider than itself.
     func noSidewaysDrag() -> some View {
         scrollBounceBehavior(.basedOnSize, axes: .horizontal).clipped()
-    }
-    /// Swipe sideways to change the segment (see `SwipeBetweenSegments`).
-    func swipeBetween<T: Hashable>(_ items: [T], selection: Binding<T>) -> some View {
-        modifier(SwipeBetweenSegments(items: items, selection: selection))
     }
 }
 
@@ -213,41 +183,4 @@ struct LiveFigure: View {
 extension View {
     /// Rolls the figure and flashes it green (up) or red (down) when `value` changes.
     func moneyFlash(_ value: Double) -> some View { modifier(MoneyFlash(value: value)) }
-}
-
-// MARK: Segment transition
-
-/// Content below a tab row: cross-fade, and the new content slides in a few points from the swipe direction. `order` is the tab order
-/// (decides the direction). The content gets a new identity per segment, so use it only where the segments hold no state of their own.
-struct SegmentTransition<T: Hashable>: ViewModifier {
-    var selection: T
-    var order: [T]
-    @State private var last: T?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var forward: Bool {
-        guard let last, let a = order.firstIndex(of: last), let b = order.firstIndex(of: selection) else { return true }
-        return b >= a
-    }
-
-    func body(content: Content) -> some View {
-        let dx: CGFloat = forward ? 28 : -28
-        let slide: AnyTransition = reduceMotion ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(x: dx, y: 0)), removal: .opacity)
-        ZStack(alignment: .top) {
-            content
-                .id(selection)
-                .transition(slide)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-        .animation(Motion.standard(reduceMotion), value: selection)
-        .onChange(of: selection) { _, new in last = new }
-        .onAppear { if last == nil { last = selection } }
-    }
-}
-
-extension View {
-    /// Cross-fade plus a small slide in the swipe direction when `selection` changes (see `SegmentTransition`).
-    func segmentTransition<T: Hashable>(_ selection: T, order: [T]) -> some View {
-        modifier(SegmentTransition(selection: selection, order: order))
-    }
 }
