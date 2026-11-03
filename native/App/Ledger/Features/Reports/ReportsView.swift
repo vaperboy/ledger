@@ -356,7 +356,7 @@ struct ReportsPage: View {
                 ReportLine(label: "Capacity used", value: f.share(g.capacityUse))
                 CardLine()
                 ReportLine(label: companyID == nil ? "Average reputation" : "Reputation",
-                           value: String(format: "%.0f → %.0f", g.reputationStart, g.reputationEnd),
+                           value: Words.move(g.reputationStart, g.reputationEnd, scale: .quality),
                            tint: Theme.change(g.reputationEnd - g.reputationStart))
                 CardLine()
                 ReportLine(label: "Staff hired / left", value: "\(g.hired) / \(g.left)")

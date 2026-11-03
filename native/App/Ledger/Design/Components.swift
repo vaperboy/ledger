@@ -459,6 +459,7 @@ struct SectionTabs<T: Hashable>: View {
 struct Meter: View {
     var label: String
     var value: Double
+    var scale: Words.Scale = .quality
     var body: some View {
         HStack(spacing: 10) {
             Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).frame(minWidth: 90, alignment: .leading)
@@ -468,7 +469,7 @@ struct Meter: View {
                     Capsule().fill(Theme.gold).frame(width: max(3, g.size.width * CGFloat(min(100, max(0, value)) / 100)))
                 }
             }.frame(height: 3)
-            Text("\(Int(value.rounded()))").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 34, alignment: .trailing)
+            Text(Words.level(value, scale: scale)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).frame(minWidth: 34, alignment: .trailing)
         }
     }
 }

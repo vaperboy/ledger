@@ -24,7 +24,7 @@ struct GivingView: View {
                     if let place {
                         CardSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
                             VStack(alignment: .leading, spacing: 0) {
-                                Text("Standing in \(place.name): \(Int(place.standing.rounded())) of 100. It fades slowly; more standing brings a little more demand to your companies there.")
+                                Text("Standing in \(place.name): \(Words.level(place.standing, scale: .quality).lowercased()). It fades slowly; more standing brings a little more demand to your companies there.")
                                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
                                 ForEach(Array(e.giftOptions.enumerated()), id: \.element.id) { n, g in
                                     if n > 0 { CardLine() }

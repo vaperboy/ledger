@@ -40,7 +40,7 @@ struct CompanyEquipmentScreen: View {
             let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment health \(Int(($0 * 100).rounded()))%" } ?? ""))
+                    MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment \(Words.level($0 * 100, scale: .condition).lowercased())" } ?? ""))
                     equipmentTable(e, co, needs, tabs)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
@@ -254,7 +254,7 @@ struct CompanyEquipmentScreen: View {
         if let h = e.equipmentHealth(companyID: companyID) {
             CardSection("Condition") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Meter(label: "Equipment health, as far as you can tell", value: h * 100)
+                    Meter(label: "Equipment health, as far as you can tell", value: h * 100, scale: .condition)
                     Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days. Servicing costs little; replacing costs a lot.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }

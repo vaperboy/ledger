@@ -162,7 +162,7 @@ struct CompanyOverview: View {
         let cells: [StatStrip.Cell] = [
             .init(label: "Rating", value: StandingWords.ratingText(h.rating)),
             .init(label: "Reputation", value: StandingWords.reputation(co.reputation)),
-            .init(label: "Quality", value: "\(Int(co.quality.rounded()))"),
+            .init(label: "Quality", value: Words.level(co.quality, scale: .quality)),
         ]
         let capTint: Color = h.capacityUse > 0.95 ? Theme.caution : Theme.gold
         let demandTint: Color = turnedAway ? Theme.caution : Theme.gain

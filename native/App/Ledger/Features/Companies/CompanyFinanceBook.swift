@@ -49,7 +49,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Policies", value: String(Int(b.policies.rounded()))),
                 .init(label: "Premiums a week", value: cur.tidyShort(b.weeklyPremium), sub: cur.tidyShort(b.weeklyPremium * 52) + " a year"),
                 .init(label: "Claims vs premiums", value: Currency.percent(b.lossRatio, decimals: 0), tint: b.lossRatio > 0.9 ? Theme.loss : Theme.ivory, sub: "loss ratio"),
-                .init(label: "Solvency", value: String(format: "%.2f", b.solvency), tint: b.solvency < 1 ? Theme.loss : Theme.ivory, sub: "needs 1.0"),
+                .init(label: "Solvency", value: b.solvency < 0.8 ? "Critical" : b.solvency < 1 ? "Too low" : b.solvency < 1.3 ? "Adequate" : "Comfortable", tint: b.solvency < 1 ? Theme.loss : Theme.ivory, sub: "capital against claims"),
                 .init(label: "Storm claims", value: cur.tidyShort(b.claimsPaidByStorms), sub: "so far"),
             ])
             CardSection("Products") {
@@ -58,7 +58,7 @@ struct CompanyFinanceBook: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
-                                Text(p.status + (p.isOffered ? " · verified sellers \(String(format: "%.1f", p.verifiedSellers))" : " · approval " + cur.tidyShort(p.approvalFee)))
+                                Text(p.status + (p.isOffered ? " · verified sellers \(Int(p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
                                     .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
                             }
                             Spacer(minLength: 8)
@@ -115,7 +115,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Central bank", value: cur.tidyShort(b.centralBankLoan), tint: b.centralBankLoan > 0 ? Theme.caution : Theme.ivory, sub: "liquidity loan"),
             ])
             CardSection("How the bank earns") {
-                Meter(label: "Capital", value: min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
+                Meter(label: "Capital", value: 100 * min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
                 Text("The bank earns the gap between what borrowers pay and what savers are paid. Bad loans reduce capital, and rumours can start a run on deposits: a solvent bank short of cash borrows from the central bank and repays as deposits come back. Choose the loan book and funding under Operations. Your other companies borrow cheaper here.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             }

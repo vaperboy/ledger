@@ -72,11 +72,10 @@ struct CompanyClub: View {
     private func seasonItems(_ c: FootballModel.Summary, _ cur: Currency) -> [KeyFigures.Item] {
         let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
         let fill: String = c.fill > 0 ? "\(Int((c.fill * 100).rounded()))%" : "–"
-        let strengthSub: String = "strength \(Int(c.squadStrength.rounded()))"
         return [
             .init(label: "Position", value: pos),
             .init(label: "Points", value: "\(c.points)", sub: "from \(c.played) games"),
-            .init(label: "Squad", value: FootballModel.wordForStrength(c.squadStrength), sub: strengthSub),
+            .init(label: "Squad", value: FootballModel.wordForStrength(c.squadStrength)),
             .init(label: "Club value", value: cur.tidyShort(c.clubValue)),
             .init(label: "Titles", value: "\(c.titles)"),
             .init(label: "Stadium full", value: fill),
@@ -261,8 +260,8 @@ struct CompanyClub: View {
     private func tierCard(_ i: Int, windowOpen: Bool, _ cur: Currency) -> some View {
         let t = FootballModel.tiers[i]
         let fee: Double = engine.signingFee(companyID: company.id, tier: i)
-        let strength: String = String(format: "%.1f", t.strength)
-        let line: String = "\(cur.tidyShort(fee)) fee, written off over three years · about +\(strength) strength"
+        let strength: String = t.strength < 2 ? "a small" : t.strength < 5 ? "a solid" : "a big"
+        let line: String = "\(cur.tidyShort(fee)) fee, written off over three years · \(strength) boost to the squad"
         return EntityCard {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.hire, size: 34)
