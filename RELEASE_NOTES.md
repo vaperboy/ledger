@@ -1,4 +1,5 @@
 # What's new
+- Tapping a notification opens the item itself (the message popup, the right page) without asking; the custom tab starts as "Pick tab" until you choose
 - Tabs inside pages slide sideways and follow your finger; no fading between tabs
 - Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager
 - Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, Market, News, Weather, Stats, AirStay, TechPro, Atlas), and new updates arrive as one banner per app (at most two a day) that opens the app
