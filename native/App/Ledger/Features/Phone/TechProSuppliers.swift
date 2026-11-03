@@ -15,10 +15,12 @@ struct TechTile: View {
     var deal: Int
     var label: String
     var tint: Color
+    /// A cell key of the items sheet (see ArtLibrary.itemKey); empty keeps the photo or glyph.
+    var item: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ShopPhoto(name: photo, glyph: glyph, height: 96)
+            ShopPhoto(name: photo, glyph: glyph, height: 96, item: item)
             Text(title).font(.system(size: 15, weight: .bold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
             HStack(spacing: 6) {
                 Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(deal > 0 ? P.loss : P.inkSoft).lineLimit(1).minimumScaleFactor(0.7)
@@ -62,6 +64,7 @@ struct TechProSuppliers: View {
         var reviews: Int = 0
         /// Breakdown tendency, lower is better; 99 when the supplier does not publish one.
         var breakdown: Double = 99
+        var item: String = ""
         var id: String { key }
     }
 
@@ -112,7 +115,7 @@ struct TechProSuppliers: View {
             Haptics.tap()
             onPick(r.key)
         } label: {
-            TechTile(photo: r.photo, glyph: r.glyph, title: r.title, from: r.from, deal: r.deal, label: r.sub, tint: P.inkFaint)
+            TechTile(photo: r.photo, glyph: r.glyph, title: r.title, from: r.from, deal: r.deal, label: r.sub, tint: P.inkFaint, item: r.item)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-supplier-\(r.key)")
@@ -136,6 +139,11 @@ struct TechProSuppliers: View {
 
     private func stars(_ r: Double, _ n: Int) -> String { String(format: "%.1f", r) + " \u{2605} (\(n))" }
 
+    private func cell(_ need: EquipmentMarket.Need, _ seed: String) -> String {
+        let group: String = need.kind == "soft" ? "software" : "equipment"
+        return ArtLibrary.itemKey(group: group, familyKey: need.equipmentID, seed: seed) ?? ""
+    }
+
     private func rowsFor(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> [Row] {
         var out: [Row] = []
         let glyph: String = TechCategory.of(need).glyph
@@ -144,21 +152,24 @@ struct TechProSuppliers: View {
                 let p: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
                 let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
                 out.append(Row(key: "v" + o.id, title: o.name, photo: TechPhotos.vehicle(model: o.modelID), glyph: Glyph.vehicle, price: p, from: "from " + cur.tidyShort(p),
-                               deal: sale.isOn ? sale.percentOff : 0, sub: stars(o.rating, o.reviews) + " \u{00B7} reliability " + reliabilityWord(o.reliability), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
+                               deal: sale.isOn ? sale.percentOff : 0, sub: stars(o.rating, o.reviews) + " \u{00B7} reliability " + reliabilityWord(o.reliability), rating: o.rating, reviews: o.reviews, breakdown: o.reliability,
+                               item: ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""))
             }
         } else if need.subscription {
             for o in e.equipmentOffers(companyID: companyID, equipmentID: equipmentID) where o.cls == 1 {
                 let fees: [Double] = e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o).map { (p: EquipmentMarket.Plan) -> Double in p.monthlyFee }
                 let low: Double = fees.min() ?? 0
                 out.append(Row(key: "n\(o.index)", title: o.name, photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low) + "/mo", deal: 0,
-                               sub: stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
+                               sub: stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability,
+                               item: cell(need, equipmentID + "#" + String(o.index))))
             }
         } else {
             for o in e.equipmentOffers(companyID: companyID, equipmentID: equipmentID) {
                 let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
                 let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
                 out.append(Row(key: "n\(o.index)", title: o.name, photo: "", glyph: glyph, price: p, from: "from " + cur.tidyShort(p), deal: sale.isOn ? sale.percentOff : 0,
-                               sub: o.className + " \u{00B7} " + stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability))
+                               sub: o.className + " \u{00B7} " + stars(o.rating, o.reviews), rating: o.rating, reviews: o.reviews, breakdown: o.reliability,
+                               item: cell(need, equipmentID + "#" + String(o.index))))
             }
         }
         if need.canUsed {
@@ -166,7 +177,7 @@ struct TechProSuppliers: View {
             if !used.isEmpty {
                 let low: Double = used.map { (x: EquipmentMarket.UsedOffer) -> Double in x.price }.min() ?? 0
                 out.append(Row(key: "u", title: "Used listings", photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low), deal: 0,
-                               sub: used.count == 1 ? "1 second-hand listing" : "\(used.count) second-hand listings", rating: 0))
+                               sub: used.count == 1 ? "1 second-hand listing" : "\(used.count) second-hand listings", rating: 0, item: cell(need, equipmentID)))
             }
         }
         if need.kind == "soft" {
@@ -174,14 +185,14 @@ struct TechProSuppliers: View {
             if !own.isEmpty {
                 let low: Double = own.map { (o: SoftwareProducts.Offer) -> Double in o.cost }.min() ?? 0
                 out.append(Row(key: "own", title: "Your own companies", photo: "", glyph: glyph, price: low, from: low == 0 ? "free" : "from " + cur.tidyShort(low), deal: 0,
-                               sub: own.count == 1 ? "1 product" : "\(own.count) products", rating: 5))
+                               sub: own.count == 1 ? "1 product" : "\(own.count) products", rating: 5, item: cell(need, equipmentID)))
             }
         }
         let mine: [OwnListing] = e.ownCompanyListings(forBuyer: companyID).filter { (l: OwnListing) -> Bool in l.equipmentID == equipmentID }
         if !mine.isEmpty {
             let low: Double = mine.map { (l: OwnListing) -> Double in l.price }.min() ?? 0
             out.append(Row(key: "co", title: "Your companies", photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low), deal: 0,
-                           sub: mine.count == 1 ? "1 item, profit stays in the group" : "\(mine.count) items, profit stays in the group", rating: 5))
+                           sub: mine.count == 1 ? "1 item, profit stays in the group" : "\(mine.count) items, profit stays in the group", rating: 5, item: cell(need, equipmentID)))
         }
         return out
     }

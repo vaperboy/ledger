@@ -388,6 +388,15 @@ struct TechProApp: View {
         return TechPhotos.vehicle(model: model)
     }
 
+    private func tileItem(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> String {
+        if n.isVehicle {
+            let model: String = e.data.catalog[co.type]?.equipment.first(where: { (x: EquipmentSpec) -> Bool in x.id == n.equipmentID })?.vehicleModels?.first ?? ""
+            return ArtLibrary.itemKey(group: "vehicle", familyKey: model, seed: n.equipmentID) ?? ""
+        }
+        let group: String = n.kind == "soft" ? "software" : "equipment"
+        return ArtLibrary.itemKey(group: group, familyKey: n.equipmentID, seed: n.equipmentID) ?? ""
+    }
+
     private func tile(_ e: GameEngine, _ co: Company, _ n: EquipmentMarket.Need) -> some View {
         let from: String = n.subscription ? "from " + money(n.fromPrice / max(1, n.lifeYears) / 12) + "/mo" : "from " + money(n.fromPrice)
         let have: Double = n.have + n.leased
@@ -397,7 +406,7 @@ struct TechProApp: View {
             showItem(n.equipmentID)
         } label: {
             TechTile(photo: n.isVehicle ? vehiclePhoto(e, co, n) : "", glyph: TechCategory.of(n).glyph, title: n.name, from: from, deal: n.dealPercent,
-                     label: label, tint: status(n).tint)
+                     label: label, tint: status(n).tint, item: tileItem(e, co, n))
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-tile-\(n.equipmentID)")

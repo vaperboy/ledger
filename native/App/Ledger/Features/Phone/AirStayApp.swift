@@ -241,6 +241,11 @@ struct AirStayApp: View {
         StayPhotos.name(category: o.category, slot: o.photoSlot)
     }
 
+    /// The sheet picture for the kinds of place the places sheet has (hall, warehouse, hotel, clinic ...); empty keeps the catalogue photo.
+    private func art(_ o: PlaceMarket.Offer) -> String {
+        ArtLibrary.itemKey(group: "premises", familyKey: o.placeKind, seed: o.id + "#" + String(o.photoSlot)) ?? ""
+    }
+
     private func listingCard(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
         let rent: Double = e.premisesTerms(companyID: o.originCompanyID, listing: o.listing)?.monthlyRent ?? 0
         return Button {
@@ -251,7 +256,7 @@ struct AirStayApp: View {
         } label: {
             Card(padding: 10) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ShopPhoto(name: photo(o), glyph: Glyph.building, height: 150)
+                    ShopPhoto(name: photo(o), glyph: Glyph.building, height: 150, item: art(o))
                     Text(o.title).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
                     HStack(alignment: .top, spacing: 6) {
                         GlyphView(glyph: Glyph.pin, size: 15, weight: 1.5, tint: P.inkFaint).padding(.top, 1)
@@ -275,7 +280,7 @@ struct AirStayApp: View {
         let rent: Double = t?.monthlyRent ?? 0
         return ShopScroll {
             VStack(alignment: .leading, spacing: 16) {
-                ShopPhoto(name: photo(o), glyph: Glyph.building, height: 220, cornerRadius: 16)
+                ShopPhoto(name: photo(o), glyph: Glyph.building, height: 220, cornerRadius: 16, item: art(o))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(o.title).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
                     Text("\(o.cityName) \u{00B7} \(o.listing.landlord)").font(.system(size: 14)).foregroundStyle(P.inkFaint)
@@ -466,10 +471,11 @@ struct AirStayApp: View {
             (label: "Reference", value: "#" + reference)
         ]
         let photoName: String = offer.map { (o: PlaceMarket.Offer) -> String in photo(o) } ?? "airstay-office-2"
+        let photoItem: String = offer.map { (o: PlaceMarket.Offer) -> String in art(o) } ?? ""
         return ShopSuccess(title: "Rent confirmed", message: "\(co?.name ?? "The company") now works in \(name).", facts: facts,
                            primary: "View in Rented", secondary: "Back to Explore",
                            onPrimary: { tab = .rented; step = .explore }, onSecondary: { tab = .explore; step = .explore },
-                           extra: { ShopPhoto(name: photoName, glyph: Glyph.building, height: 150) })
+                           extra: { ShopPhoto(name: photoName, glyph: Glyph.building, height: 150, item: photoItem) })
     }
 
     // MARK: Rented (active rents)

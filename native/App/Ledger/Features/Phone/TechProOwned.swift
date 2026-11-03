@@ -73,7 +73,11 @@ struct TechProOwnedView: View {
     private func itemCard(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
         Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(o.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
+                HStack(spacing: 10) {
+                    itemThumb(o)
+                    Text(o.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
+                    Spacer(minLength: 0)
+                }
                 planLine(o, cur)
                 ForEach(o.units) { (u: EquipmentMarket.UnitRow) in unitRow(o, u) }
                 ForEach(o.vehicles) { (v: EquipmentMarket.VehicleRow) in vehicleRow(v, cur) }
@@ -81,6 +85,18 @@ struct TechProOwnedView: View {
                 actions(e, o, cur)
             }
         }
+    }
+
+    /// The item's picture from the items sheet; nothing is shown while the family has no art.
+    @ViewBuilder private func itemThumb(_ o: EquipmentMarket.Owned) -> some View {
+        #if canImport(UIKit)
+        let group: String = o.kind == "soft" ? "software" : "equipment"
+        let key: String = ArtLibrary.itemKey(group: group, familyKey: o.equipmentID, seed: o.equipmentID) ?? ""
+        if let ui = ArtLibrary.image(.items, key) {
+            Image(uiImage: ui).resizable().scaledToFill().frame(width: 48, height: 48).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)).accessibilityHidden(true)
+        }
+        #endif
     }
 
     @ViewBuilder private func planLine(_ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {

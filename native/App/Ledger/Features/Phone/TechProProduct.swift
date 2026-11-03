@@ -77,10 +77,15 @@ struct TechProProduct: View {
 
     private func hero(_ e: GameEngine, _ need: EquipmentMarket.Need) -> some View {
         var photo: String = ""
+        let group: String = need.kind == "soft" ? "software" : "equipment"
+        var item: String = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID) ?? ""
         if offerKey.hasPrefix("v"), let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
             photo = TechPhotos.vehicle(model: o.modelID)
+            item = ArtLibrary.itemKey(group: "vehicle", familyKey: o.modelID, seed: equipmentID + "#" + String(o.index)) ?? ""
+        } else if offerKey.hasPrefix("n"), let n = Int(offerRest) {
+            item = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID + "#" + String(n)) ?? ""
         }
-        return ShopPhoto(name: photo, glyph: need.isVehicle ? Glyph.vehicle : TechCategory.of(need).glyph, height: 170, cornerRadius: 16)
+        return ShopPhoto(name: photo, glyph: need.isVehicle ? Glyph.vehicle : TechCategory.of(need).glyph, height: 170, cornerRadius: 16, item: item)
     }
 
     @ViewBuilder private func options(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ current: Mode, _ cur: Currency, one: Bool) -> some View {

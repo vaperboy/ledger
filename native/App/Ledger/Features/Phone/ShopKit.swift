@@ -84,6 +84,8 @@ struct ShopPhoto: View {
     var glyph: String
     var height: CGFloat = 150
     var cornerRadius: CGFloat = 12
+    /// A cell key of the items sheet (`ArtLibrary.itemKey`); wins over `name` when the cell exists.
+    var item: String = ""
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -98,7 +100,9 @@ struct ShopPhoto: View {
 
     @ViewBuilder private var picture: some View {
         #if canImport(UIKit)
-        if UIImage(named: name) != nil {
+        if let cell = ArtLibrary.image(.items, item) {
+            Image(uiImage: cell).resizable().scaledToFill()
+        } else if UIImage(named: name) != nil {
             Image(name).resizable().scaledToFill()
         } else {
             placeholder

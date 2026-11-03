@@ -177,13 +177,29 @@ struct AtlasApp: View {
         }
     }
 
+    /// The product's card picture from the items sheet (clipped, rounded); the shield icon stays while the product has no picture.
+    @ViewBuilder private func policyIcon(_ p: InsurancePolicyRow, size: CGFloat, glyphSize: CGFloat, tint: Color) -> some View {
+        let key: String = ArtLibrary.itemKey(group: "insurance", familyKey: p.id, seed: p.id) ?? ""
+        #if canImport(UIKit)
+        if let ui = ArtLibrary.image(.items, key) {
+            Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)).accessibilityHidden(true)
+        } else {
+            GlyphView(glyph: Glyph.opsShield, size: glyphSize, weight: 1.6, tint: tint)
+                .frame(width: size, height: size).background(Circle().fill(tint.opacity(0.12)))
+        }
+        #else
+        GlyphView(glyph: Glyph.opsShield, size: glyphSize, weight: 1.6, tint: tint)
+            .frame(width: size, height: size).background(Circle().fill(tint.opacity(0.12)))
+        #endif
+    }
+
     private func policyRow(_ e: GameEngine, _ co: Company, _ p: InsurancePolicyRow, isOn: Bool) -> some View {
         let number: String = e.policyRecord(companyID: co.id, product: p.id)?.number ?? ""
         let sub: String = isOn ? (number.isEmpty ? "In force" : "In force \u{00B7} " + number) : "Not covered"
         let content = Card(padding: 12) {
             HStack(spacing: 12) {
-                GlyphView(glyph: Glyph.opsShield, size: 22, weight: 1.6, tint: isOn ? P.gain : P.accent)
-                    .frame(width: 44, height: 44).background(Circle().fill((isOn ? P.gain : P.accent).opacity(0.12)))
+                policyIcon(p, size: 44, glyphSize: 22, tint: isOn ? P.gain : P.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
                     Text(sub).font(.system(size: 12.5)).foregroundStyle(isOn ? P.gain : P.inkFaint).multilineTextAlignment(.leading)
@@ -292,8 +308,7 @@ struct AtlasApp: View {
     private func policyCard(_ co: Company, _ p: InsurancePolicyRow) -> some View {
         Card(padding: 14) {
             HStack(spacing: 14) {
-                GlyphView(glyph: Glyph.opsShield, size: 30, weight: 1.6, tint: P.accent)
-                    .frame(width: 58, height: 58).background(Circle().fill(P.accent.opacity(0.1)))
+                policyIcon(p, size: 58, glyphSize: 30, tint: P.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(p.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink)
                     Text("Annual premium").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
