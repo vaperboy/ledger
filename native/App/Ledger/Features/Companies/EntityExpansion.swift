@@ -33,6 +33,7 @@ struct EntityExpansionView: View {
             } else {
                 Text("Not available for this company yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
             }
+            EntityAbroadSection(companyID: co.id)
         }
     }
 

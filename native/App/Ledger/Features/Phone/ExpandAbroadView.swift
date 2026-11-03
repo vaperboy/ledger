@@ -5,62 +5,7 @@ import Businesses
 import Finance
 import Simulation
 
-/// Expand abroad: pick one of your running companies, then a country. Shows the start-up cost, the wait for registration, the brand it
-/// carries over and the compliance risk before a foreign subsidiary is registered. Reached from "New company". Logic: `Abroad`.
-struct ExpandAbroadView: View {
-    @EnvironmentObject var store: GameStore
-    @State private var search = ""
-
-    var body: some View {
-        if let e = store.engine {
-            let all = e.state.companies.filter { $0.status == .open && !$0.value("franchise")["fran"].bool && $0.type != "hold" }
-            let list = all.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    NoteCard(text: "A foreign subsidiary is a new limited company in another country. It starts in set-up, takes part of your brand with it, and has to register and get local permits before it opens. Registration fees and share capital come from your own cash.", glyph: Glyph.world)
-                    if all.isEmpty {
-                        NoteCard(text: "Only an open company that is not a franchise unit and not a holding can expand abroad. You have none yet.")
-                    } else {
-                        companyList(list, showSearch: all.count > 6)
-                    }
-                }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .scrollIndicators(.hidden)
-            .appScreen(title: "Expand abroad", subtitle: "A subsidiary of one of your companies", tab: .company)
-        }
-    }
-
-    @ViewBuilder private func companyList(_ list: [Company], showSearch: Bool) -> some View {
-        Text("Which company").capsLabel().padding(.horizontal, 2)
-        if showSearch {
-            TextField("Search companies", text: $search).textFieldStyle(.plain).font(.system(size: 14.5))
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        }
-        ForEach(list, id: \.id) { co in
-            NavigationLink { AbroadOptionsView(companyID: co.id) } label: { companyCard(co) }.buttonStyle(PressableStyle())
-        }
-    }
-
-    /// A company with a brand gauge that ends at the 35 points needed to go abroad.
-    private func companyCard(_ co: Company) -> some View {
-        let weak: Bool = co.reputation < 35
-        let fraction: Double = min(1, max(0, co.reputation / 35))
-        return Card(padding: 14, radius: Theme.Radius.row) {
-            HStack(spacing: 12) {
-                IconCircle(glyph: Glyph.group)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(co.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    RateBar(label: weak ? "Brand, 35 needed" : "Brand \(Int(co.reputation))", fraction: fraction, tint: weak ? Theme.caution : Theme.gain)
-                }
-                GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
-            }
-        }
-    }
-}
+/// Expand abroad lives in Group > a company > Expansion (`EntityAbroadSection`); the old company picker was removed.
 
 /// The countries a company can go to, compared in one sharp table; the chosen row opens its details and the Register button below.
 struct AbroadOptionsView: View {
@@ -68,6 +13,12 @@ struct AbroadOptionsView: View {
     var companyID: Int
     @State private var chosen: String?
     @State private var pending: PendingAction?
+
+    /// `country`: the row to open straight away (from a company's Expansion tab).
+    init(companyID: Int, country: String? = nil) {
+        self.companyID = companyID
+        _chosen = State(initialValue: country)
+    }
 
     private let columns: [TableColumn] = [
         TableColumn(title: "Country"), TableColumn(title: "Start-up", width: 84), TableColumn(title: "Weeks", width: 46)
