@@ -184,6 +184,8 @@ struct PhoneAppScreen: View {
             TechProApp()
         case .atlas:
             AtlasApp()
+        case .marketplace:
+            MarketplaceApp()
         }
     }
 }

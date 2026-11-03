@@ -390,39 +390,15 @@ struct TechProProduct: View {
     // MARK: Used
 
     @ViewBuilder private func used(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
-        let list: [EquipmentMarket.UsedOffer] = e.usedListings(companyID: companyID, equipmentID: equipmentID)
         VStack(alignment: .leading, spacing: 10) {
-            Text("Second-hand, sold as seen: no warranty and no guarantees. The seller describes the wear. It is not always the whole truth.")
+            Text("Used items are in Marketplace: second-hand goods from private sellers, with a price you can talk down.")
                 .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            if list.isEmpty {
-                Text("Nothing for sale this month. New listings appear next month.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+            Button("Open Marketplace") {
+                Haptics.tap()
+                store.openApp(.marketplace)
             }
-            ForEach(list) { (x: EquipmentMarket.UsedOffer) in
-                offerRow("\(x.name) \u{00B7} \(x.year)", usedLine(x), cur.tidyShort(x.price), x.id)
-            }
-        }
-        if let sel = list.first(where: { (x: EquipmentMarket.UsedOffer) -> Bool in x.id == selected }) {
-            usedAdd(e, sel, cur)
-        }
-    }
-
-    private func usedLine(_ x: EquipmentMarket.UsedOffer) -> String {
-        var s: String = "\(x.seller) \u{00B7} \(x.age) \(x.age == 1 ? "year" : "years") old \u{00B7} \(EquipmentMarket.wearWord(x.visibleCondition)) \u{00B7} \u{201C}\(x.says)\u{201D}"
-        if x.kilometres > 0 { s += " \u{00B7} \(x.kilometres / 1000) 000 km \u{00B7} breakdown risk, your guess: \(x.risk.lowercased()) \u{00B7} fuel and service: \(x.fuel.lowercased())" }
-        if x.knownToLast { s += " \u{00B7} known to last" }
-        return s + " \u{00B7} no warranty"
-    }
-
-    private func usedAdd(_ e: GameEngine, _ sel: EquipmentMarket.UsedOffer, _ cur: Currency) -> some View {
-        let canFin: Bool = e.canFinance(companyID: companyID, equipmentID: equipmentID, total: sel.price)
-        let useFinance: Bool = finance && canFin
-        let line = StoreOrders.Line(kind: .used, equipmentID: equipmentID, payment: useFinance ? .finance : .cash, used: sel)
-        return Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 12) {
-                if canFin { payChoice() }
-                ShopFact(label: useFinance ? "Down payment now, loan for the rest" : "Total", value: cur.tidyShort(useFinance ? sel.price * 0.2 : sel.price), strong: true)
-                addButton(e, line, "Add used item to basket")
-            }
+            .buttonStyle(QuietButtonStyle())
+            .accessibilityIdentifier("tp-open-marketplace")
         }
     }
 

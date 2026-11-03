@@ -6,6 +6,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, market, reviews, achievements, settings
     /// The three shopping and insurance apps (each in its own colours): places to rent, equipment and software, insurance.
     case airStay, techPro, atlas
+    /// The second-hand market: every used item for sale, from private sellers, one price talk at a time.
+    case marketplace
     var id: String { rawValue }
 
     /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
@@ -32,6 +34,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return "AirStay"
         case .techPro: return "TechPro Store"
         case .atlas: return "Atlas Insurance"
+        case .marketplace: return "Marketplace"
         }
     }
 
@@ -57,6 +60,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return Glyph.airStay
         case .techPro: return Glyph.techPro
         case .atlas: return Glyph.atlas
+        case .marketplace: return Glyph.marketplace
         }
     }
 
@@ -82,6 +86,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return "Offices, shops and storage to rent"
         case .techPro: return "Software, hardware, tools and vehicles"
         case .atlas: return "Cover for your companies"
+        case .marketplace: return "Used items from private sellers"
         }
     }
 }
@@ -109,6 +114,7 @@ extension PhoneApp {
         case .airStay: return Color(hex: 0xCF6A6A)
         case .techPro: return Color(hex: 0x7FB088)
         case .atlas: return Color(hex: 0x7F9FC8)
+        case .marketplace: return Color(hex: 0x4FA39B)
         }
     }
 }

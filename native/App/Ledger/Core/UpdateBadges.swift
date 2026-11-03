@@ -21,7 +21,7 @@ struct UpdateMarks: Codable, Equatable {
 
 /// The apps whose updates are told by messages, and how a message finds its app.
 enum UpdateFeed {
-    static let messageApps: [PhoneApp] = [.inbox, .bank, .accounting, .market, .news, .weather, .stats, .airStay, .techPro, .atlas]
+    static let messageApps: [PhoneApp] = [.inbox, .bank, .accounting, .market, .news, .weather, .stats, .airStay, .techPro, .atlas, .marketplace]
 
     /// The app a message belongs to, from who sent it. Anything unknown stays in the Inbox.
     static func app(of m: Message) -> PhoneApp {
@@ -30,6 +30,7 @@ enum UpdateFeed {
         if has(["airstay"]) { return .airStay }
         if has(["techpro"]) { return .techPro }
         if has(["atlas", "insurer"]) { return .atlas }
+        if has(["marketplace"]) { return .marketplace }
         if has(["weather"]) { return .weather }
         if has(["bank", "creditor"]) { return .bank }
         if has(["payroll", "tax", "accountant", "finance manager"]) { return .accounting }
@@ -41,6 +42,11 @@ enum UpdateFeed {
 
     static func maxMessageID(_ e: GameEngine) -> Int { e.state.inbox.map { (m: Message) -> Int in m.id }.max() ?? 0 }
     static func maxMarketID(_ e: GameEngine) -> Int { e.marketEvents(limit: 1).first?.id ?? 0 }
+    /// Listings posted after the marker (the day of the newest listing seen), over every live company.
+    static func freshListings(_ e: GameEngine, marks: UpdateMarks) -> Int {
+        guard let seen = marks.ints["marketplace"] else { return 0 }
+        return MarketplaceBridge.newestDay(e, after: seen).count
+    }
     static func newsKey(_ n: NewsItem) -> String { "\(n.week)|\(n.text)" }
     static func newsSignature(_ e: GameEngine) -> String { e.news.first.map { (n: NewsItem) -> String in newsKey(n) } ?? "" }
     static func weatherSignature(_ e: GameEngine) -> String { e.bigWeatherWarnings().map { (w: WeatherEvents.BigWarning) -> String in w.title }.joined(separator: "|") }
@@ -78,6 +84,8 @@ enum UpdateFeed {
             let seenSig: String? = marks.texts["weather"]
             let unseen: Bool = seenSig != nil && seenSig != weatherSignature(e)
             return (unseen ? e.bigWeatherWarnings().count : 0) + freshMessages(e, app, marks: marks).count
+        case .marketplace:
+            return freshListings(e, marks: marks) + freshMessages(e, app, marks: marks).count
         case .bank, .stats, .airStay, .techPro, .atlas:
             return freshMessages(e, app, marks: marks).count
         default:
@@ -116,6 +124,9 @@ extension GameStore {
         let ev: Int = UpdateFeed.maxMarketID(e)
         let oldEv: Int? = m.ints["market"]
         if oldEv == nil || oldEv! > ev { m.ints["market"] = ev }
+        let posted: Int = MarketplaceBridge.newestPostedDay(e)
+        let oldPosted: Int? = m.ints["marketplace"]
+        if oldPosted == nil || oldPosted! > posted { m.ints["marketplace"] = posted }
         let oldNews: String? = m.texts["news"]
         let known: Bool = e.news.contains { (n: NewsItem) -> Bool in UpdateFeed.newsKey(n) == oldNews }
         if !known { m.texts["news"] = UpdateFeed.newsSignature(e) }
@@ -141,6 +152,7 @@ extension GameStore {
         case .market: s.ints["market"] = UpdateFeed.maxMarketID(e)
         case .news: s.texts["news"] = UpdateFeed.newsSignature(e)
         case .weather: s.texts["weather"] = UpdateFeed.weatherSignature(e)
+        case .marketplace: s.ints["marketplace"] = MarketplaceBridge.newestPostedDay(e)
         default: break
         }
         if UpdateFeed.messageApps.contains(app) { s.ints["m." + app.rawValue] = UpdateFeed.maxMessageID(e) }

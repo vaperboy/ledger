@@ -132,6 +132,20 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0x1F4B8F), accent2: Color(hex: 0x2F78C8), onAccent: Color(hex: 0xFFFFFF),
         gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xB3261E), caution: Color(hex: 0x8F6410), isLight: true)
 
+    /// Marketplace: second-hand listings on warm paper, ink-teal text and band, an amber price tag. Light pages.
+    static let marketplace = OutsidePalette(
+        ground: Color(hex: 0xF6F2EA), ground2: Color(hex: 0xEBE4D6), card: Color(hex: 0xFFFDF8), cardDeep: Color(hex: 0xEEE8DA),
+        line: Color(hex: 0xE0D8C6), lineStrong: Color(hex: 0xB4AA92), divider: Color(hex: 0xE8E1D1), hairline: Color(hex: 0xE8E1D1),
+        ink: Color(hex: 0x14282A), inkSoft: Color(hex: 0x41544F), inkFaint: Color(hex: 0x5D6C66), inkDim: Color(hex: 0x86908A),
+        accent: Color(hex: 0x0E7C7B), accent2: Color(hex: 0xC47A2C), onAccent: Color(hex: 0xFFFFFF),
+        gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xB3261E), caution: Color(hex: 0x8F6410), isLight: true)
+    static let marketplaceSplash = OutsidePalette(
+        ground: Color(hex: 0x0E5F5E), ground2: Color(hex: 0x0A2E32), card: Color(hex: 0x187370), cardDeep: Color(hex: 0x0B4A4B),
+        line: Color(hex: 0x4FA39B), lineStrong: Color(hex: 0x8FCBC3), divider: Color(hex: 0x4FA39B), hairline: Color(hex: 0x4FA39B),
+        ink: Color(hex: 0xFFFFFF), inkSoft: Color(hex: 0xDDF1ED), inkFaint: Color(hex: 0xBFE0DA), inkDim: Color(hex: 0xA0CFC8),
+        accent: Color(hex: 0xFFFFFF), accent2: Color(hex: 0xFFFFFF), onAccent: Color(hex: 0x0E5F5E),
+        gain: Color(hex: 0xFFFFFF), loss: Color(hex: 0xFFFFFF), caution: Color(hex: 0xFFFFFF))
+
     /// The launch splashes of the three apps: the brand colour, white text.
     static let airStaySplash = OutsidePalette(
         ground: Color(hex: 0xD2384A), ground2: Color(hex: 0x8E1F2D), card: Color(hex: 0xDD5262), cardDeep: Color(hex: 0xB62D3D),
@@ -204,6 +218,7 @@ extension PhoneApp {
         case .airStay: return .airStay
         case .techPro: return .techPro
         case .atlas: return .atlas
+        case .marketplace: return .marketplace
         }
     }
 
@@ -213,6 +228,7 @@ extension PhoneApp {
         case .airStay: return .airStaySplash
         case .techPro: return .techProSplash
         case .atlas: return .atlasSplash
+        case .marketplace: return .marketplaceSplash
         default: return outsidePalette(ownBankIsMain: ownBankIsMain)
         }
     }

@@ -175,12 +175,8 @@ struct TechProSuppliers: View {
             }
         }
         if need.canUsed {
-            let used: [EquipmentMarket.UsedOffer] = e.usedListings(companyID: companyID, equipmentID: equipmentID)
-            if !used.isEmpty {
-                let low: Double = used.map { (x: EquipmentMarket.UsedOffer) -> Double in x.price }.min() ?? 0
-                out.append(Row(key: "u", title: "Used listings", photo: "", glyph: glyph, price: low, from: "from " + cur.tidyShort(low), deal: 0,
-                               sub: used.count == 1 ? "1 second-hand listing" : "\(used.count) second-hand listings", rating: 0, item: cell(need, equipmentID)))
-            }
+            out.append(Row(key: "mk", title: "Used items are in Marketplace", photo: "", glyph: Glyph.marketplace, price: 0, from: "Second-hand, from private sellers", deal: 0,
+                           sub: "Open Marketplace", rating: 0))
         }
         if need.kind == "soft" {
             let own: [SoftwareProducts.Offer] = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)

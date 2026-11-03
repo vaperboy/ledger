@@ -10,6 +10,7 @@ extension Glyph {
     static let airStay = "M3 11 L12 4 L21 11 M5.5 9.5 V20 H18.5 V9.5 M9.5 20 V14 H14.5 V20"
     static let techPro = "M5 8 H19 L18 21 H6 Z M9 8 V6.5 A3 3 0 0 1 15 6.5 V8 M9.5 13 H14.5"
     static let atlas = "M12 3 L19 6 V12 C19 16 16 19 12 21 C8 19 5 16 5 12 V6 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 M8.5 12 H15.5"
+    static let marketplace = "M4 12 L12 4 H20 V12 L12 20 Z M16 8 A1 1 0 1 0 16 8.01"
     static let cart = "M3 4 H6 L8 15 H18 L20 7 H7 M9.5 19 A1.2 1.2 0 1 0 9.5 21.4 A1.2 1.2 0 1 0 9.5 19 M17 19 A1.2 1.2 0 1 0 17 21.4 A1.2 1.2 0 1 0 17 19"
     static let software = "M4 5 H20 V17 H4 Z M8 21 H16 M12 17 V21 M7 9 H13"
     static let hardware = "M6 6 H18 V15 H6 Z M3 19 H21"
