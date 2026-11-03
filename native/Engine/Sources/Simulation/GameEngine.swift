@@ -187,8 +187,11 @@ public struct GameEngine {
     }
 
     /// True while an open inbox message comes from a blocking event (`blocking` in events.json): Play waits until it is answered.
-    public var hasBlockingDecision: Bool {
-        state.inbox.contains { $0.status == "open" && events[$0.str("ev")]?.blocking == true }
+    public var hasBlockingDecision: Bool { blockingMessage != nil }
+
+    /// The first open message from a blocking event, if any.
+    public var blockingMessage: Message? {
+        state.inbox.first { $0.status == "open" && events[$0.str("ev")]?.blocking == true }
     }
 
     /// Open messages waiting for an answer, newest first.

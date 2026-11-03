@@ -286,8 +286,8 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// The open Inbox item that blocks Play (brief 2.2 and 4.4), if any. No event carries the `blocking` flag yet (Part 4), so none does.
-    var blockingMessageID: Int? { nil }
+    /// The open Inbox item that blocks Play (brief 2.2 and 4.4), if any. 
+    var blockingMessageID: Int? { engine?.blockingMessage?.id }
 
     /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
     var canPlayWeek: Bool {
