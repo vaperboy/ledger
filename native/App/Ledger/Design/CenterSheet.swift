@@ -14,12 +14,6 @@ private struct CenterSheetFillKey: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
-/// The natural height of the popup content, measured only as a safety net: a result under 40pt means the content is greedy or empty.
-private struct CenterSheetHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = -1
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 /// Makes the presented controller's views transparent, so the dimmed backdrop of the popup shows the screen below.
 private struct ClearCoverBackground: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView { ClearProbe() }
@@ -104,24 +98,7 @@ struct CenterSheetFrame<Content: View>: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: max(220, room))
         } else {
-            ViewThatFits(in: .vertical) {
-                content()
-                    .frame(maxWidth: .infinity)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .background(
-                        GeometryReader { (g: GeometryProxy) in
-                            Color.clear.preference(key: CenterSheetHeightKey.self, value: g.size.height)
-                        }
-                    )
-                ScrollView(.vertical) {
-                    content().frame(maxWidth: .infinity)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            .frame(maxHeight: room)
-            .onPreferenceChange(CenterSheetHeightKey.self) { (h: CGFloat) in
-                if h >= 0 && h < 40 { greedy = true }
-            }
+            FitScroll(maxHeight: room) { content() }
         }
     }
 }

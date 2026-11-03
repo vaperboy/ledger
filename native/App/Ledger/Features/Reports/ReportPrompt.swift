@@ -13,11 +13,7 @@ struct ReportDigestSheet: View {
     var body: some View {
         GamePopup(title: digest.title, showsClose: false, onClose: { store.dismissReportSheet() }) {
             VStack(alignment: .leading, spacing: 12) {
-                ViewThatFits(in: .vertical) {
-                    sections
-                    ContainedScroll { sections }
-                }
-                .frame(maxHeight: 420)
+                FitScroll(maxHeight: 420) { sections }
                 VStack(spacing: 4) {
                     QuietButton(title: "Continue", fullWidth: true) { store.dismissReportSheet() }
                         .accessibilityIdentifier("report-continue")

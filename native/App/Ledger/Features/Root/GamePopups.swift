@@ -125,11 +125,7 @@ struct DecisionPopup: View {
 
     private func card(_ e: GameEngine, _ m: Message) -> some View {
         GamePopup(title: e.displayText(m.title, companyID: m.companyID), showsClose: true, onClose: { store.decisionPopup = nil }) {
-            ViewThatFits(in: .vertical) {
-                content(e, m)
-                ScrollView { content(e, m) }.scrollBounceBehavior(.basedOnSize)
-            }
-            .frame(maxHeight: 460)
+            FitScroll(maxHeight: 460) { content(e, m) }
         }
     }
 

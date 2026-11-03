@@ -53,3 +53,43 @@ struct InfoPopoverButton: View {
         }
     }
 }
+
+
+/// Height of the measured content of a `FitScroll` (-1 until measured, so even a measured 0 is reported).
+private struct FitScrollHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = -1
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// A scroll area that is exactly as high as its content, up to `maxHeight`; only taller content scrolls (vertically). Unlike
+/// `.frame(maxHeight:)` it never stretches to the maximum, so a popup around it never shows empty space. Content that measures almost
+/// nothing (it fills space by itself) gets `maxHeight`; nothing stays hidden: after a short moment it is shown whatever the measurement.
+struct FitScroll<Content: View>: View {
+    var maxHeight: CGFloat
+    @ViewBuilder var content: () -> Content
+    @State private var natural: CGFloat = -1
+    @State private var forceShow = false
+
+    var body: some View {
+        let reported: Bool = natural >= 0
+        let usable: Bool = natural >= 40
+        let height: CGFloat = usable ? min(natural, maxHeight) : maxHeight
+        ScrollView(.vertical) {
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    GeometryReader { (g: GeometryProxy) in
+                        Color.clear.preference(key: FitScrollHeightKey.self, value: g.size.height)
+                    }
+                )
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: height)
+        .opacity(reported || forceShow ? 1 : 0)
+        .onPreferenceChange(FitScrollHeightKey.self) { (h: CGFloat) in natural = h }
+        .task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            forceShow = true
+        }
+    }
+}
