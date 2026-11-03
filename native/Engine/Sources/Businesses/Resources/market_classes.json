@@ -12,6 +12,7 @@
  "trades": {
   "boutique": { "need": 1.4, "lean": 1.0 },
   "cardealer": { "need": 2.2, "lean": 1.1 },
+  "usedcar": { "need": 1.8, "lean": 1.0 },
   "hotel": { "need": 1.3, "lean": 0.7 },
   "casino": { "need": 1.6, "lean": 0.8 },
   "restaurant": { "need": 1.0, "lean": 0.5 },

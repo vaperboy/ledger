@@ -1161,6 +1161,16 @@
     "svc": false
    }
   ],
+  "usedcar": [
+   { "n": "Certified pre-owned cars", "svc": false },
+   { "n": "Finance packages", "svc": true },
+   { "n": "Extended warranty", "svc": true },
+   { "n": "Trade-in service", "svc": true },
+   { "n": "Car valeting and prep", "svc": true },
+   { "n": "Service plans", "svc": true },
+   { "n": "Accessories and tyres", "svc": false },
+   { "n": "Vans and light commercials", "svc": false }
+  ],
   "cardealer": [
    {
     "n": "Certified used cars",
