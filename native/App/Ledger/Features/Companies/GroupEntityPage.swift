@@ -19,11 +19,19 @@ struct GroupEntityPage: View {
             if let e = store.engine {
                 GroupSectionBar(tab: $section, badges: badges(e))
                     .padding(.horizontal, 18).padding(.top, 10)
-                ScrollScreen(top: 12) {
-                    content(e).segmentTransition(section, order: GroupSection.allCases)
-                }
+                screen(e)
                 .id(entity.id)
                 .swipeBetween(GroupSection.allCases, selection: $section)
+            }
+        }
+    }
+
+    @ViewBuilder private func screen(_ e: GameEngine) -> some View {
+        if section == .money {
+            FixedScreen(top: 12) { content(e) }
+        } else {
+            ScrollScreen(top: 12) {
+                content(e).segmentTransition(section, order: GroupSection.allCases)
             }
         }
     }

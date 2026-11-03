@@ -2,71 +2,19 @@ import SwiftUI
 import GameCore
 import Countries
 import Businesses
+import Events
 import Simulation
-
-/// The Dividends part of an entity's Money page: its quarterly decision and group-tax position, the policy link, and paying out of this company or
-/// collecting for this holding. Nothing is paid by itself.
-struct GroupEntityDividends: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var entity: GroupEntity
-
-    var body: some View {
-        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("QUARTERLY PROPOSAL").capsLabel()
-                Card(padding: 4, radius: Theme.Radius.hero) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(cos.enumerated()), id: \.element.id) { (n: Int, c: Company) in
-                            statusRow(c, first: n == 0)
-                        }
-                    }
-                }
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text(entity.isHolding ? "COLLECT FOR THIS HOLDING" : "PAY OUT").capsLabel()
-                GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil)
-            }
-            Button { Haptics.tap(); store.openCompany(entity.companyID, section: CompanySection.finances) } label: {
-                CardRow(glyph: Glyph.reports, title: "Dividend policy", subtitle: "Set in the company's owners and stats; group tax runs between group companies")
-            }.buttonStyle(PressableStyle())
-        }
-    }
-
-    private func statusRow(_ c: Company, first: Bool) -> some View {
-        let cur: Currency = engine.currency(for: c)
-        let d = engine.lastDividendDecision(companyID: c.id)
-        let t = engine.groupTaxContribution(companyID: c.id)
-        let head: String = d.map { ($0.paid > 0 ? "Last quarter paid \(cur.tidyShort($0.paid))" : "Last quarter skipped") + " on profit \(cur.tidyShort($0.profit))" } ?? "No dividend decided yet"
-        var tax: String = ""
-        if let t {
-            let thisYear: Double = t.thisYear.in - t.thisYear.out
-            let lastYear: Double = t.lastYear.in - t.lastYear.out
-            tax = "Group tax this year \(cur.tidyShort(thisYear)), last year \(cur.tidyShort(lastYear))"
-        }
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-            Text(head).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-            if !tax.isEmpty { Text(tax).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10).padding(.vertical, 9)
-        .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
-    }
-}
 
 // MARK: - Money
 
-/// What this entity holds and how money moves to and from it: cash per company, putting money in or taking it out (the Bank's own move
-/// sheet), and group loans between sister companies.
+/// One fixed screen for an entity's money: a cash box and a group-loans box side by side, and a dividends box below.
 struct GroupEntityMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
     @State private var move: MoveTarget?
     @State private var pending: PendingAction?
-    @State private var part: MoneyPart = .cash
+    @State private var policyOpen = false
 
     private struct MoveTarget: Identifiable {
         var id: String { "\(companyID)-\(kind.rawValue)" }
@@ -74,111 +22,95 @@ struct GroupEntityMoney: View {
         var kind: BankMoveKind
     }
 
+    private var cos: [Company] {
+        entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
+    }
+
     var body: some View {
-        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
-        let cash: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
-        let owed: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + engine.groupLoanBalance(companyID: c.id) }
-        VStack(alignment: .leading, spacing: 14) {
-            Card(padding: 14, radius: Theme.Radius.hero) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entity.isHolding ? "Cash in the holding group" : "Cash").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        LiveFigure(value: cash, text: store.short(cash)).font(.serifTitle(28)).foregroundStyle(cash < 0 ? Theme.loss : Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                    }
-                    Spacer(minLength: 8)
-                    if owed > 0 {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Owed to sister companies").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                            Text(store.short(owed)).font(.system(size: 17, weight: .medium).monospacedDigit()).foregroundStyle(Theme.caution)
-                        }
-                    }
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                cashBox
+                loansBox
             }
-            MoneyPartPicker(part: $part)
-            switch part {
-            case .cash: cashPart(cos)
-            case .dividends: GroupEntityDividends(engine: engine, entity: entity)
-            case .loans: loans(cos)
-            }
+            .fixedSize(horizontal: false, vertical: true)
+            dividendsBox
         }
         .centerSheet(item: $move) { (t: MoveTarget) in BankMoveSheet(account: .company(t.companyID), kind: t.kind) }
+        .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: entity.companyID).environmentObject(store) }
         .confirmAction($pending)
     }
 
-    @ViewBuilder private func cashPart(_ cos: [Company]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("MOVE MONEY TO AND FROM IT").capsLabel()
-            Card(padding: 4, radius: Theme.Radius.hero) {
-                VStack(spacing: 0) {
-                    ForEach(Array(cos.enumerated()), id: \.element.id) { (n: Int, c: Company) in
-                        companyRow(c, first: n == 0)
+    private var cashBox: some View {
+        let cash: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
+        let main: Company? = engine.state.company(entity.companyID)
+        let canTake: Bool = main.map { (c: Company) -> Bool in c.form != .limited && c.type != "hold" } ?? false
+        let id: Int = entity.companyID
+        return Card(padding: 10, radius: Theme.Radius.table) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(entity.isHolding ? "GROUP CASH" : "CASH").capsLabel()
+                LiveFigure(value: cash, text: store.short(cash)).font(.serifTitle(24)).foregroundStyle(cash < 0 ? Theme.loss : Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
+                HStack(spacing: 6) {
+                    Button("Put in") { move = MoveTarget(companyID: id, kind: .deposit) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+                    if canTake {
+                        Button("Take out") { move = MoveTarget(companyID: id, kind: .withdraw) }.buttonStyle(TinyButtonStyle())
                     }
                 }
+                .lineLimit(1).minimumScaleFactor(0.8)
             }
-            Text("A limited company can only pay money out as a dividend (see the Dividends part). A sole trader's money is yours.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func companyRow(_ c: Company, first: Bool) -> some View {
-        let cur: Currency = engine.currency(for: c)
-        let id: Int = c.id
-        return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text("Cash \(cur.tidyShort(c.cash))").font(.system(size: 11.5)).foregroundStyle(c.cash < 0 ? Theme.loss : Theme.ivoryFaint)
-            }
-            Spacer(minLength: 6)
-            Button("Put in") { move = MoveTarget(companyID: id, kind: .deposit) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-            if c.form != .limited && c.type != "hold" {
-                Button("Take out") { move = MoveTarget(companyID: id, kind: .withdraw) }.buttonStyle(TinyButtonStyle())
-            }
-        }
-        .padding(.horizontal, 10).padding(.vertical, 8)
-        .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
-    }
-
-    // MARK: Group loans
-
-    /// A company out of cash can borrow from the sister company with the most to spare, repaid once it has a cushion again.
-    @ViewBuilder private func loans(_ cos: [Company]) -> some View {
-        let short: [Company] = cos.filter { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
-        let indebted: [Company] = cos.filter { (c: Company) -> Bool in engine.groupLoanBalance(companyID: c.id) > 0 }
-        if short.isEmpty && indebted.isEmpty {
-            Text("No group loans: every company in this group has cash. A company that runs out can borrow from a sister company here.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("LOANS BETWEEN GROUP COMPANIES").capsLabel()
-                Card(padding: 4, radius: Theme.Radius.hero) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(cos.enumerated()), id: \.element.id) { (n: Int, c: Company) in
-                            loanRow(c, first: n == 0)
-                        }
-                    }
+    private var loansBox: some View {
+        let owed: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + engine.groupLoanBalance(companyID: c.id) }
+        let short: Company? = cos.first { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
+        return Card(padding: 10, radius: Theme.Radius.table) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("GROUP LOANS").capsLabel()
+                if owed > 0 {
+                    Text(store.short(owed)).font(.system(size: 20, weight: .medium).monospacedDigit()).foregroundStyle(Theme.caution).lineLimit(1).minimumScaleFactor(0.6)
+                } else {
+                    Text("No loans").font(.system(size: 14)).foregroundStyle(Theme.ivoryFaint)
+                }
+                if let c = short {
+                    lendButton(c)
+                } else {
+                    Text("Nobody is short").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    @ViewBuilder private func loanRow(_ c: Company, first: Bool) -> some View {
-        let owed: Double = engine.groupLoanBalance(companyID: c.id)
+    private func lendButton(_ c: Company) -> some View {
         let cur: Currency = engine.currency(for: c)
         let weekly: Double = engine.companyHealth(c).weeklyCost
         let need: Double = cur.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
-        if owed > 0 || c.cash < 0 {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(owed > 0 ? "Owes sister companies \(cur.tidyShort(owed))" : "Out of cash").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+        return Button("Lend \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.gold)).lineLimit(1).minimumScaleFactor(0.8)
+    }
+
+    private var dividendsBox: some View {
+        let d = engine.lastDividendDecision(companyID: entity.companyID)
+        let main: Company? = engine.state.company(entity.companyID)
+        let last: String = lastLine(d, main)
+        return Card(padding: 10, radius: Theme.Radius.table) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(entity.isHolding ? "DIVIDENDS \u{00B7} COLLECT" : "DIVIDENDS \u{00B7} PAY OUT").capsLabel()
+                    Spacer(minLength: 6)
+                    Button("Policy") { Haptics.tap(); policyOpen = true }.buttonStyle(TinyButtonStyle()).accessibilityIdentifier("money-policy")
                 }
-                Spacer(minLength: 6)
-                if c.cash < 0 && c.type != "hold" {
-                    Button("Group loan \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.gold)).lineLimit(1).minimumScaleFactor(0.8)
-                }
+                GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
+                Text(last).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
             }
-            .padding(.horizontal, 10).padding(.vertical, 8)
-            .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func lastLine(_ d: (week: Int, paid: Double, profit: Double)?, _ main: Company?) -> String {
+        guard let d, let main else { return "No dividend decided yet" }
+        let paid: String = d.paid > 0 ? "Last payout \(store.short(d.paid, in: main))" : "Last quarter skipped"
+        return paid + " on profit \(store.short(d.profit, in: main))"
     }
 
     private func askLoan(_ c: Company, _ need: Double, _ cur: Currency) {
@@ -193,42 +125,40 @@ struct GroupEntityMoney: View {
         }
     }
 }
-
-// MARK: - The parts of Money
-
-/// Cash | Dividends | Loans, the three parts of an entity's Money page.
-enum MoneyPart: String, CaseIterable, Hashable {
-    case cash = "Cash", dividends = "Dividends", loans = "Loans"
 }
 
-/// A small segmented control in the page's colours.
-struct MoneyPartPicker: View {
-    @Binding var part: MoneyPart
+// MARK: - Dividend policy popup
+
+/// The dividend policy of one company in a centred popup: how much of the profit is proposed each quarter. Nothing is paid by itself.
+struct DividendPolicySheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    var companyID: Int
 
     var body: some View {
-        HStack(spacing: 3) {
-            ForEach(MoneyPart.allCases, id: \.self) { (p: MoneyPart) in
-                segment(p)
+        let chosen: String = store.engine?.dividendPolicy(companyID: companyID) ?? "none"
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Dividend policy").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            ForEach(Shareholders.policies, id: \.self) { (p: String) in
+                ChoiceCard(title: Shareholders.policyNames[p] ?? p, subtitle: blurb(p), selected: chosen == p) { pick(p) }
             }
+            QuietButton(title: "Close", fullWidth: true) { dismiss() }
         }
-        .padding(3)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(16)
     }
 
-    private func segment(_ p: MoneyPart) -> some View {
-        let on: Bool = part == p
-        return Button { part = p; Haptics.choose() } label: {
-            Text(p.rawValue).font(.system(size: 12.5, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-                .lineLimit(1).minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 34)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? Theme.gold.opacity(0.16) : Color.clear))
-                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
-                .contentShape(Rectangle())
+    private func blurb(_ p: String) -> String {
+        switch p {
+        case "none": return "Keep all profit in the company; no proposals."
+        case "low": return "Each quarter you are offered a quarter of the profit."
+        case "mid": return "Each quarter you are offered half of the profit."
+        default: return "Each quarter you are offered most of the profit."
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
-        .accessibilityIdentifier("money-part-\(p.rawValue)")
+    }
+
+    private func pick(_ p: String) {
+        let id: Int = companyID
+        let name: String = Shareholders.policyNames[p] ?? p
+        store.settle(store.act { $0.setDividendPolicy(companyID: id, policy: p) }, "Dividend policy: \(name).", same: "That is already the dividend policy.")
     }
 }

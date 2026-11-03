@@ -12,9 +12,45 @@ struct GroupDividendsPage: View {
     /// holding whose companies they are: then the page shows that holding's collect card.
     var scope: Set<Int>? = nil
     var holding: Int? = nil
+    /// One tight line per company, for the one-screen Money tab.
+    var compact: Bool = false
     @State private var pending: PendingAction?
 
     var body: some View {
+        if compact { compactBody } else { fullBody }
+    }
+
+    private var compactBody: some View {
+        let rows: [DividendRow] = engine.dividendRows().filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
+        let hold: Company? = holding.flatMap { (id: Int) -> Company? in engine.state.company(id) }
+        return VStack(alignment: .leading, spacing: 6) {
+            if let h = hold {
+                let under: [DividendRow] = rows.filter { (r: DividendRow) -> Bool in r.holdingID == h.id }
+                let total: Double = under.reduce(0) { $0 + $1.payable }
+                compactLine("Up to \(store.short(total, in: h))", payable: total > 0) { (s: Double) in askCollect(h, total, s) }
+            } else if rows.isEmpty {
+                Text("Nothing to pay out yet").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            } else {
+                ForEach(rows.prefix(3)) { (r: DividendRow) in
+                    compactLine("\(r.name) \(money(r.payable, r.id))", payable: r.payable > 0) { (s: Double) in askPay(r, s) }
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func compactLine(_ text: String, payable: Bool, _ pick: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: 6) {
+            Text(text).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+            Spacer(minLength: 4)
+            if payable {
+                Button("Half") { pick(0.5) }.buttonStyle(TinyButtonStyle())
+                Button("All") { pick(1.0) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+            }
+        }
+    }
+
+    @ViewBuilder private var fullBody: some View {
         let all: [DividendRow] = engine.dividendRows()
         let rows: [DividendRow] = all.filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
         let grouped: Bool = scope == nil || holding != nil
