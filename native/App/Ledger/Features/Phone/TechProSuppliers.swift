@@ -43,6 +43,7 @@ struct TechProSuppliers: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     var equipmentID: String
+    var onBack: () -> Void = {}
     var onPick: (String) -> Void
 
     private enum Order: String, CaseIterable, Hashable {
@@ -73,7 +74,8 @@ struct TechProSuppliers: View {
            let need = e.equipmentNeeds(companyID: companyID).first(where: { (n: EquipmentMarket.Need) -> Bool in n.equipmentID == equipmentID }) {
             content(e, co, need)
         } else {
-            Text("Not sold here.").font(.system(size: 15)).foregroundStyle(P.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
+            ShopEmptyNote(text: "This product is not sold to this company.", buttonTitle: "Back to the store", action: onBack)
+                .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -89,7 +91,7 @@ struct TechProSuppliers: View {
                 }
                 orderChips
                 ShopHeading(text: "Suppliers", trailing: rows.count == 1 ? "1 supplier" : "\(rows.count) suppliers")
-                if rows.isEmpty { Text("Nothing on offer right now.").font(.system(size: 14)).foregroundStyle(P.inkSoft) }
+                if rows.isEmpty { ShopEmptyNote(text: "Nothing on offer right now. New offers appear as the weeks go by.", buttonTitle: "Back", action: onBack) }
                 LazyVGrid(columns: cols, spacing: 12) {
                     ForEach(rows) { (r: Row) in box(r) }
                 }

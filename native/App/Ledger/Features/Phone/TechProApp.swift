@@ -473,7 +473,7 @@ struct TechProApp: View {
                 sortChips
                 ShopHeading(text: shelf.title, trailing: needs.count == 1 ? "1 item" : "\(needs.count) items")
                 if needs.isEmpty {
-                    Text("Nothing here matches.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+                    ShopEmptyNote(text: "Nothing here matches.", buttonTitle: "Show all items") { shelf = .all; query = ""; sort = .needs }
                 }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(needs) { (n: EquipmentMarket.Need) in tile(e, co, n) }
@@ -527,15 +527,15 @@ struct TechProApp: View {
     // MARK: An item
 
     private func suppliersView(_ co: Company) -> some View {
-        TechProSuppliers(companyID: co.id, equipmentID: itemID) { (key: String) in
+        TechProSuppliers(companyID: co.id, equipmentID: itemID, onBack: { step = groupFrom }, onPick: { (key: String) in
             offerKey = key
             step = .product
-        }
+        })
         .id(itemID + String(co.id))
     }
 
     private func productView(_ e: GameEngine, _ co: Company) -> some View {
-        TechProProduct(companyID: co.id, equipmentID: itemID, offerKey: offerKey) { (line: StoreOrders.Line) in addToBasket(line) }
+        TechProProduct(companyID: co.id, equipmentID: itemID, offerKey: offerKey, onBack: { step = .suppliers }, onAdd: { (line: StoreOrders.Line) in addToBasket(line) })
             .id(itemID + offerKey + String(co.id))
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !basket.isEmpty {

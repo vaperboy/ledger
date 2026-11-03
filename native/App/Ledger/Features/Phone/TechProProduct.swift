@@ -26,6 +26,7 @@ struct TechProProduct: View {
     var companyID: Int
     var equipmentID: String
     var offerKey: String
+    var onBack: () -> Void = {}
     var onAdd: (StoreOrders.Line) -> Void
 
     private enum Mode: Hashable { case new, used, lease }
@@ -41,7 +42,8 @@ struct TechProProduct: View {
            let need = e.equipmentNeeds(companyID: companyID).first(where: { (n: EquipmentMarket.Need) -> Bool in n.equipmentID == equipmentID }) {
             content(e, co, need)
         } else {
-            Text("Not sold here.").font(.system(size: 15)).foregroundStyle(P.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
+            ShopEmptyNote(text: "This product is not sold to this company.", buttonTitle: "Back to the suppliers", action: onBack)
+                .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -100,7 +102,7 @@ struct TechProProduct: View {
         } else if let o = e.equipmentOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.Offer) -> Bool in String(x.index) == offerRest }) {
             brandOption(e, co, need, o, current, cur, one: one)
         } else {
-            Text("This supplier has nothing on offer right now.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+            ShopEmptyNote(text: "This supplier has nothing on offer right now.", buttonTitle: "Back to the suppliers", action: onBack)
         }
     }
 
@@ -143,7 +145,7 @@ struct TechProProduct: View {
             }
             vehicleAdd(e, o, mode == .lease, cur)
         } else {
-            Text("This model is not on offer right now.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+            ShopEmptyNote(text: "This model is not on offer right now.", buttonTitle: "Back to the suppliers", action: onBack)
         }
     }
 
@@ -305,11 +307,10 @@ struct TechProProduct: View {
     /// It is taken at once (no delivery): it is a licence inside the group.
     @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
         let list: [SoftwareProducts.Offer] = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
-        if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                ShopHeading(text: "From your own companies", trailing: "\(list.count)")
-                ForEach(list) { (o: SoftwareProducts.Offer) in ownRow(e, o, cur) }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            ShopHeading(text: "From your own companies", trailing: "\(list.count)")
+            if list.isEmpty { ShopEmptyNote(text: "None of your companies builds this now.", buttonTitle: "Back to the suppliers", action: onBack) }
+            ForEach(list) { (o: SoftwareProducts.Offer) in ownRow(e, o, cur) }
         }
     }
 

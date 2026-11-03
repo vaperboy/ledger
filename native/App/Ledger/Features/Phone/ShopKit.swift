@@ -77,6 +77,26 @@ struct ShopScroll<Content: View>: View {
     }
 }
 
+/// A visible "nothing here" line with an optional way back, for every shop list that can be empty (never a blank page).
+struct ShopEmptyNote: View {
+    @Environment(\.outsidePalette) private var P
+    var text: String
+    var buttonTitle: String? = nil
+    var action: () -> Void = {}
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(text).font(.system(size: 14)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            if let buttonTitle {
+                Button(buttonTitle) { Haptics.tap(); action() }.buttonStyle(QuietButtonStyle())
+                    .accessibilityIdentifier("shop-empty-action")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+}
+
 /// A photo from the asset catalogue (the premises and vehicle pictures), or a quiet tile with an icon while it is missing.
 struct ShopPhoto: View {
     @Environment(\.outsidePalette) private var P
@@ -91,7 +111,7 @@ struct ShopPhoto: View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         picture
             .frame(maxWidth: .infinity)
-            .frame(height: height)
+            .frame(minHeight: height, maxHeight: height)
             .clipped()
             .clipShape(shape)
             .overlay(shape.strokeBorder(P.line, lineWidth: 1))
@@ -101,9 +121,9 @@ struct ShopPhoto: View {
     @ViewBuilder private var picture: some View {
         #if canImport(UIKit)
         if let cell = ArtLibrary.image(.items, item) {
-            Image(uiImage: cell).resizable().scaledToFill()
-        } else if UIImage(named: name) != nil {
-            Image(name).resizable().scaledToFill()
+            Color.clear.overlay { Image(uiImage: cell).resizable().scaledToFill() }
+        } else if !name.isEmpty, UIImage(named: name) != nil {
+            Color.clear.overlay { Image(name).resizable().scaledToFill() }
         } else {
             placeholder
         }
