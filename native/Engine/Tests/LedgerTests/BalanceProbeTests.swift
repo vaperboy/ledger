@@ -35,8 +35,8 @@ final class BalanceProbeTests: XCTestCase {
             if ProcessInfo.processInfo.environment["LEDGER_FIXEDHOURS"] != nil { s.rest["ownHrsFixed"] = true }
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
             // Owner decision 3 Nov: only a hired manager hires. A trade the owner cannot work in at all (ownerFTE 0: airline, shipping...) loses its leavers
-            // for good without one, so the owner of such a company appoints a manager at the start, as a player would (see DECISIONS.md "Airline guard").
-            if let co = s.company(id), let bd = data.catalog[co.type], bd.ownerFTE == 0, !bd.hasTrait("noStaff"), co.managerID == nil {
+            // for good without one, so the owner of such a company, or of any business with a team of four or more, appoints a manager at the start, as a player would (see DECISIONS.md "Airline guard").
+            if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), !bd.hasTrait("noStaff"), co.managerID == nil {
                 for _ in 0..<6 {
                     let c = ManagerModel.generateCandidate(company: s.company(id), type: bd.managerType, state: &s, data: data)
                     if ManagerModel.hire(&s, personID: c.id, companyID: id, monthlyWage: c.askingMonthlyWage * 1.2, data: data) == .ok { break }
