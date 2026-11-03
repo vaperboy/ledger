@@ -91,6 +91,7 @@ final class MoneyLiteralLintTests: XCTestCase {
         "StaffExtras.swift": ["6000": "fine range, scaled in StaffRoutine.applyExtras", "20000": "fine range, scaled in applyExtras", "10000": "fine range, scaled in applyExtras", "40000": "fine range, scaled in applyExtras"],
         "EventEngine.swift": ["5_000_000": "fallback for imported saves; new games store a scaled value (GameEngine.newGame)"],
         "Providers.swift": ["1400": "number of reviews, not money"],
+        "Marketplace.swift": ["90000": "kilometres a year (truck)", "4000": "kilometres a year (bike)", "18000": "kilometres a year (car)", "900_000": "kilometres at which a vehicle is fully worn"],
         "Currency.swift#unicode": ["2212": "the minus sign escape \\u{2212}"],
         "Balance.swift": ["1000": "rounding to three decimals"], "Demand.swift": ["1000": "rounding to three decimals"],
         "Satisfaction.swift": ["9999": "sentinel week number"], "GameEngine.swift": ["2147483647": "random seed range", "1000": "first id of the id counter"],
