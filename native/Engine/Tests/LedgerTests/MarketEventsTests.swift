@@ -39,6 +39,8 @@ final class MarketEventsTests: XCTestCase {
     func testSupplierPriceChangeFiresAtThreePercent() throws {
         var (e, _) = try engineWithCafe()
         e.update { s, data, _ in
+            // let the log's 4-week rests (same fact, same index) pass, whatever the game announced by itself in the weeks before
+            s.week += MarketEvents.dedupeWeeks + MarketEvents.supplierCooldown
             var mv = s.rest["mev"] ?? .object([:]); mv["seen"]["eco"] = .null; s.rest["mev"] = mv
             MarketEvents.weekly(&s, data: data)           // remembers the level
         }
@@ -62,6 +64,11 @@ final class MarketEventsTests: XCTestCase {
         var key = ""
         e.update { s, data, _ in
             key = Rivals.key(s.company(id)!)
+            s.week += MarketEvents.dedupeWeeks   // the same rival's listing / share loss may already have been logged by the game itself
+            // no rival is for sale at the baseline (the game may have listed one by itself), so the listing below is a real change
+            var mk0 = s.rest["mk"]!
+            mk0[key]["riv"] = .array(mk0[key]["riv"].array.map { var r = $0; r["listed"] = .bool(false); return r })
+            s.rest["mk"] = mk0
             MarketEvents.weekly(&s, data: data)           // baseline
             var mk = s.rest["mk"]!
             var riv = mk[key]["riv"].array

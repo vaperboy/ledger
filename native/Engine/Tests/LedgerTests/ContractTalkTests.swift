@@ -21,10 +21,16 @@ final class ContractTalkTests: XCTestCase {
         return (e, id)
     }
 
-    private func hire(_ e: inout GameEngine, _ id: Int, role: String = "barista", pers: String = "steady", hours: Double? = nil) -> Int {
+    private func hire(_ e: inout GameEngine, _ id: Int, role: String = "barista", pers: String = "steady", hours: Double? = nil, needsHours: Double? = nil) -> Int {
         var pid = 0
         e.update { s, d, _ in
+            // a candidate who studies can work 20 or 30 hours at most: take one who can work the hours asked (the draw stream decides who comes first)
+            let need = max(hours ?? 0, needsHours ?? 0)
             var p = Hiring.generateCandidate(role: role, company: s.company(id), tier: "mid", state: &s, data: d)
+            var tries = 0
+            while let cap = Hiring.maxHoursPerWeek(personID: p.id), cap < need, tries < 60 {
+                p = Hiring.generateCandidate(role: role, company: s.company(id), tier: "mid", state: &s, data: d); tries += 1
+            }
             p.set("pers", pers); p.set("sec", 0.1)
             s.people[p.id] = p; pid = p.id
         }
@@ -185,7 +191,7 @@ final class ContractTalkTests: XCTestCase {
 
     func testHoursSetFullTimeAndSeasons() throws {
         var (e, id) = try shop()
-        let a = hire(&e, id, hours: 20)
+        let a = hire(&e, id, hours: 20, needsHours: 30)
         let before = wage(e, id, a)
         if e.state.people[a]!.num("maxH", 60) >= 30 || member(e, id, a)!.num("maxH", 60) >= 30 {
             guard case .agreed = e.contractPropose(companyID: id, personID: a, proposal: .init(.hours, amount: 30, choice: "hours")) else { return XCTFail("more hours") }
@@ -320,8 +326,14 @@ final class ContractTalkTests: XCTestCase {
     }
 
     func testMoveToAnotherStoreOfTheChainAndAManagerToACompanyWithoutOne() throws {
-        var (e, a) = try shop()
-        guard case .success(let b) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { return XCTFail("second store") }
+        // Whether a person refuses a move is a hashed draw on their id (rare, never certain): try a few games until both agree, so the test does not hang on one id.
+        for seed in 5..<45 { if try moveScenario(seed: seed) { return } }
+        XCTFail("no seed in which both the worker and the manager agree to move")
+    }
+
+    private func moveScenario(seed: Int) throws -> Bool {
+        var (e, a) = try shop(seed: seed)
+        guard case .success(let b) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { XCTFail("second store"); return false }
         e.update { s, d, _ in
             for id in [a, b] { var docs = s.company(id)!.value("docs"); docs["chain"] = .object(["st": "ok", "done": 0, "ok": 0]); s.companies[s.companyIndex(id)!].set("docs", docs) }
             let chain = Chains.make(&s, companyID: a, name: "Beans") ?? 0
@@ -334,16 +346,17 @@ final class ContractTalkTests: XCTestCase {
         let pv = e.contractPreview(companyID: a, personID: pid, proposal: .init(.move, choice: "\(b)"))
         XCTAssertTrue(pv.blocked.isEmpty)
         XCTAssertEqual(pv.costPerMonth, 0, accuracy: 0.01, "the move shifts the cost, it does not add any")
-        guard case .agreed = e.contractPropose(companyID: a, personID: pid, proposal: .init(.move, choice: "\(b)")) else { return XCTFail("move") }
+        guard case .agreed = e.contractPropose(companyID: a, personID: pid, proposal: .init(.move, choice: "\(b)")) else { return false }
         XCTAssertNil(member(e, a, pid)); XCTAssertNotNil(member(e, b, pid))
         XCTAssertEqual(e.state.people[pid]?.employerID, b)
         // the manager of one goes to the other, which has none
         let cands = try XCTUnwrap(e.searchManagers(companyID: a))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: a, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
-        guard case .agreed = e.contractPropose(companyID: a, personID: cands[0].id, proposal: .init(.move, choice: "\(b)")) else { return XCTFail("manager move") }
+        guard case .agreed = e.contractPropose(companyID: a, personID: cands[0].id, proposal: .init(.move, choice: "\(b)")) else { return false }
         XCTAssertEqual(e.state.company(b)?.managerID, cands[0].id)
         XCTAssertNil(e.state.company(a)?.managerID)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        return true
     }
 
     func testTopicsListWhatCanReallyBeDiscussed() throws {
