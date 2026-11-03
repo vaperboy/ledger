@@ -273,7 +273,7 @@ final class ManagerHiringTests: XCTestCase {
                 s.companies[i].monthlyHistory = (1...3).map { MonthRecord(monthIndex: $0, revenue: profit * 3, profit: profit, cash: 1_000_000) }
             }
         }
-        setSmall(100_000)
+        setSmall(1_000)
         let w = try XCTUnwrap(e.managerWarning(companyID: id), "a poor small company is warned")
         XCTAssertTrue(w.hasPrefix("A manager costs about "), w)
         XCTAssertTrue(w.contains("you would likely lose money"), w)
