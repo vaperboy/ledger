@@ -28,12 +28,16 @@ struct CustomTabView: View {
         .accessibilityIdentifier("custom-tab")
     }
 
-    private var rootIdentity: String { "\(store.customTarget)-\(store.rootToken(.custom))" }
+    private var rootIdentity: String { "\(String(describing: store.customTarget))-\(store.rootToken(.custom))" }
 
     @ViewBuilder private var root: some View {
-        switch store.customTarget {
-        case .app(let app): PhoneAppScreen(app: app)
-        case .company(let id): CompanyRouteDestination(route: .company(id))
+        if let target = store.customTarget {
+            switch target {
+            case .app(let app): PhoneAppScreen(app: app)
+            case .company(let id): CompanyRouteDestination(route: .company(id))
+            }
+        } else {
+            CustomTabEmpty()
         }
     }
 
@@ -45,16 +49,32 @@ struct CustomTabView: View {
     }
 }
 
+/// The Custom tab before a destination is picked: a clean empty state with the same picker as the long-press one.
+struct CustomTabEmpty: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        ScrollView {
+            CustomTabPicker(pickingFirst: true)
+        }
+        .background(P.ground.ignoresSafeArea())
+        .accessibilityIdentifier("custom-empty")
+    }
+}
+
 /// The compact popup that changes the Custom tab: a grid of destinations with their icons, and "A company" for a second step that lists
 /// the player's companies.
 struct CustomTabPicker: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     @State private var choosingCompany = false
+    /// True on the empty Custom tab, where the picker is the whole page and the first line says "Pick a tab".
+    var pickingFirst = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(choosingCompany ? "Which company?" : "Custom tab").font(.serifTitle(22)).foregroundStyle(P.ink)
+            Text(choosingCompany ? "Which company?" : (pickingFirst ? "Pick tab" : "Custom tab")).font(.serifTitle(22)).foregroundStyle(P.ink)
             Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
             if choosingCompany { companyList } else { appGrid }
         }
@@ -77,7 +97,7 @@ struct CustomTabPicker: View {
     }
 
     private func appCell(_ app: PhoneApp) -> some View {
-        let on: Bool = store.customTarget == .app(app)
+        let on: Bool = store.customTarget == CustomTabTarget.app(app)
         return Button {
             Haptics.tap()
             store.chooseCustom(.app(app))
@@ -136,7 +156,7 @@ struct CustomTabPicker: View {
                         IconCircle(glyph: Glyph.home, size: 32)
                         Text(c.name).font(.system(size: 14)).foregroundStyle(P.ink).lineLimit(1)
                         Spacer(minLength: 8)
-                        if store.customTarget == .company(c.id) { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.gold) }
+                        if store.customTarget == CustomTabTarget.company(c.id) { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.gold) }
                     }
                     .padding(.vertical, 7)
                     .contentShape(Rectangle())

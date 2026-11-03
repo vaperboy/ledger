@@ -166,7 +166,7 @@ final class GameStore: ObservableObject {
     @Published private(set) var phonePath: [PhoneHome.Page] = []
     /// The Custom tab's stack (its root is the chosen destination), and the destination itself, kept in UserDefaults ("customTab").
     @Published private(set) var customPath: [PhoneHome.Page] = []
-    @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
+    @Published var customTarget: CustomTabTarget? = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
