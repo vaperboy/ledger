@@ -10,12 +10,12 @@ enum MarketplaceBridge {
     }
 
     /// Opens (or resumes) the price talk. Nil: the seller will not deal with this company.
-    static func begin(_ e: inout GameEngine, listingID: String, companyID: Int) -> Negotiation? {
+    static func begin(_ e: inout GameEngine, listingID: String, companyID: Int) -> MarketNegotiation? {
         e.beginNegotiation(listingID: listingID, companyID: companyID)
     }
 
     /// Pushes for a lower price; the seller answers with a new state.
-    static func push(_ e: inout GameEngine, listingID: String, companyID: Int) -> Negotiation {
+    static func push(_ e: inout GameEngine, listingID: String, companyID: Int) -> MarketNegotiation {
         e.pushPrice(listingID: listingID, companyID: companyID)
     }
 
@@ -48,15 +48,15 @@ enum MarketplaceBridge {
 
 extension GameStore {
     /// Opens the price talk on a listing and saves. Nil: the seller already refused this company.
-    func marketBegin(listingID: String, companyID: Int) -> Negotiation? {
-        var out: Negotiation? = nil
+    func marketBegin(listingID: String, companyID: Int) -> MarketNegotiation? {
+        var out: MarketNegotiation? = nil
         act { (e: inout GameEngine) -> Void in out = MarketplaceBridge.begin(&e, listingID: listingID, companyID: companyID) }
         return out
     }
 
     /// One push for a lower price, saved. Nil only when there is no engine.
-    func marketPush(listingID: String, companyID: Int) -> Negotiation? {
-        var out: Negotiation? = nil
+    func marketPush(listingID: String, companyID: Int) -> MarketNegotiation? {
+        var out: MarketNegotiation? = nil
         act { (e: inout GameEngine) -> Void in out = MarketplaceBridge.push(&e, listingID: listingID, companyID: companyID) }
         return out
     }

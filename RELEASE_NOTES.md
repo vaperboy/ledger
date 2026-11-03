@@ -1,4 +1,5 @@
 # What's new
+- New app Marketplace for used items (cars, vans, equipment): message the seller, discuss the price (it can drop, the seller can give up) or buy; used items left TechPro; new trade Used car dealer that buys cars on the marketplace; card numbers show 16 digits with the first 12 starred
 - Applicants have their own page (filter by company and role); the inbox link now says "Open applicants"
 - The morning briefing has a thin loading bar; popup buttons are all the same style, with "Decide later" and "Postpone" greyed
 - Features open when they make sense: the Group Board tab appears once someone could sit on it, chain registration waits for a year of trading, expanding abroad for a profitable year, research for an 8 week old company and dividends for retained profit (locked ones stay visible with the reason); a centred popup announces each new feature with a Take me there button; the chain and franchise requirements each show Done, Waiting or Missing with the button that fixes it right there

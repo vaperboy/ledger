@@ -141,7 +141,7 @@ struct MarketplaceDealView: View {
     var onClose: () -> Void
     var onBought: () -> Void
 
-    @State private var neg: Negotiation? = nil
+    @State private var neg: MarketNegotiation? = nil
     @State private var started = false
     @State private var closedDoor = false
     @State private var topPatience = 1
