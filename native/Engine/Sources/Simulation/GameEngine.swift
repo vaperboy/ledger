@@ -364,6 +364,7 @@ public struct GameEngine {
         if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
         MarketEvents.weekly(&state, data: data)   // log of market facts for the app (no inbox messages)
         MarketResearch.weekly(&state, data: data)   // ordered research reports arrive (inbox message)
+        Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
         ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
         Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         for i in state.companies.indices {
