@@ -8,6 +8,7 @@ import Simulation
 struct SettingsView: View {
     @EnvironmentObject var store: GameStore
     @State private var haptics = Haptics.enabled
+    @State private var reminders: Bool = Reminders.enabled
     @State private var showImporter = false
     @State private var showPaste = false
     @State private var pasted = ""
@@ -30,6 +31,7 @@ struct SettingsView: View {
         .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
         .onChange(of: askStep) { _, v in ConfirmThreshold.step = v; store.saved("asking before spending: " + askLabel(v).lowercased()) }
         .onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) }
+        .onChange(of: reminders) { _, v in Reminders.enabled = v; store.saved("reminders " + (v ? "on" : "off")) }
         .onChange(of: policy) { old, v in
             // Loading the page sets `policy` from the game; only a real change by the player is saved and reported.
             guard let current = store.engine?.state.policy, current != v else { return }
@@ -55,6 +57,8 @@ struct SettingsView: View {
     private var feelGroup: some View {
         group("Feel") {
             toggleRow(Glyph.phone, "Haptic feedback", isOn: $haptics)
+            rule
+            toggleRow(Glyph.phone, "Reminders", isOn: $reminders)
             rule
             Button { store.customPickerOpen = true } label: {
                 plainRow(store.customGlyph, "Custom tab", detail: "Long-press it in the tab bar to change it too", value: store.customTarget == nil ? "Not picked" : store.customTitle, chevron: true)

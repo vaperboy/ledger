@@ -278,12 +278,17 @@ struct WeekReportShell<More: View>: View {
         loaded = true
         if reduceMotion {
             titleShown = true; numberShown = true; bars = [1, 1, 1]; strip = true; storyShown = true; cardShown = true; trophyShown = true
-            if made?.record != nil { Haptics.success() }
+            Haptics.countDone()
+            if made?.record != nil { Haptics.goalDone() }
             return
         }
         try? await Task.sleep(nanoseconds: 30_000_000)
         withAnimation(.easeOut(duration: 0.2)) { titleShown = true }
         withAnimation(Motion.reveal(false)) { numberShown = true }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)   // the number has finished counting
+            Haptics.countDone()
+        }
         for i in 0..<3 {
             withAnimation(Motion.reveal(false)?.delay(0.08 * Double(i))) { bars[i] = 1 }
         }
@@ -292,7 +297,7 @@ struct WeekReportShell<More: View>: View {
         withAnimation(Motion.move(false)?.delay(1.0)) { cardShown = true }
         guard made?.record != nil else { return }
         try? await Task.sleep(nanoseconds: 1_100_000_000)
-        Haptics.success()
+        Haptics.goalDone()
         withAnimation(Motion.move(false)) { trophyShown = true }
         burst = 1
         try? await Task.sleep(nanoseconds: 60_000_000)

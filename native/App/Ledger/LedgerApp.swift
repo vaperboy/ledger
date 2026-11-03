@@ -4,6 +4,7 @@ import UIKit
 @main
 struct LedgerApp: App {
     @StateObject private var store = GameStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let ivory = UIColor(red: 0.937, green: 0.914, blue: 0.875, alpha: 1)
@@ -38,6 +39,10 @@ struct LedgerApp: App {
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .background { store.scheduleReminders() }
+                    if phase == .active { Reminders.cancelAll() }
+                }
         }
     }
 }

@@ -329,6 +329,8 @@ extension AppHeader where Trailing == EmptyView {
 struct HomeHeader: View {
     var name: String
     var dateText: String
+    /// Brief 7.3: consecutive days played; the flame and number show only from 3 up (the store passes 0 below that).
+    var streak: Int = 0
     var onNewCompany: () -> Void
 
     var body: some View {
@@ -339,7 +341,14 @@ struct HomeHeader: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {
-                Text(dateText).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                HStack(spacing: 4) {
+                    if streak >= 3 {
+                        Image(systemName: "flame.fill").font(.system(size: 11)).foregroundStyle(Theme.gold).accessibilityHidden(true)
+                        Text("\(streak)").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+                    }
+                    Text(dateText).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+                .accessibilityElement(children: .combine)
                 SmallOutlineButton(title: "New company", action: onNewCompany)
             }
         }

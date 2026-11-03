@@ -16,7 +16,7 @@ struct HomeSummary: View {
     var body: some View {
         let e = engine
         VStack(alignment: .leading, spacing: 8) {
-            HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", onNewCompany: onNewCompany)
+            HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", streak: store.playStreakShown, onNewCompany: onNewCompany)
             if e.cashIsTight { cashTightBanner }
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {

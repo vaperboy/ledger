@@ -13,14 +13,23 @@ enum Haptics {
     private static let notify = UINotificationFeedbackGenerator()
     private static let select = UISelectionFeedbackGenerator()
 
-    /// A quiet tap for ordinary buttons and tab changes.
-    static func tap() { guard enabled else { return }; light.impactOccurred() }
-    /// The day moved on.
-    static func advanceDay() { guard enabled else { return }; soft.impactOccurred(intensity: 0.7) }
-    /// A week was completed.
-    static func weekDone() { guard enabled else { return }; medium.impactOccurred() }
-    static func choose() { guard enabled else { return }; select.selectionChanged() }
-    static func success() { guard enabled else { return }; notify.notificationOccurred(.success) }
-    static func warning() { guard enabled else { return }; notify.notificationOccurred(.warning) }
-    static func failure() { guard enabled else { return }; notify.notificationOccurred(.error) }
+    // Brief 7.4: exactly six haptics. The older helpers below keep their names so call sites compile, but they are silent.
+    /// Next day pressed.
+    static func nextDay() { guard enabled else { return }; light.impactOccurred() }
+    /// The week report number finished counting.
+    static func countDone() { guard enabled else { return }; medium.impactOccurred() }
+    /// A ladder goal completed, or a record line.
+    static func goalDone() { guard enabled else { return }; notify.notificationOccurred(.success) }
+    /// An option chosen in the Inbox.
+    static func option() { guard enabled else { return }; select.selectionChanged() }
+    /// The cash-below-zero banner appeared.
+    static func cashWarning() { guard enabled else { return }; notify.notificationOccurred(.warning) }
+
+    static func tap() {}
+    static func advanceDay() {}
+    static func weekDone() {}
+    static func choose() {}
+    static func success() {}
+    static func warning() {}
+    static func failure() {}
 }

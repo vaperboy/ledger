@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import GameCore
 import Simulation
 
@@ -68,5 +69,49 @@ enum PhoneAlerts {
             out.append(PhoneAlert(id: "message-\(m.id)", app: .inbox, source: "Inbox", title: title, detail: detail, companyID: m.companyID, messageID: m.id))
         }
         return out
+    }
+}
+
+/// Brief Part 7.1: the only three local notifications (planned by the engine's `SessionHooks`). Scheduled when the app goes to the
+/// background, cancelled when it comes back, never repeating. The Settings toggle `Reminders` (default on) controls all three.
+@MainActor
+enum Reminders {
+    private static let enabledKey: String = "remindersEnabled"
+    private static let askedKey: String = "remindersAsked"
+    private static let ids: [String] = ["ledger.expiry", "ledger.goal", "ledger.idle"]
+
+    static var enabled: Bool {
+        get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: enabledKey)
+            if !newValue { cancelAll() }
+        }
+    }
+
+    /// The system permission prompt, once, after the first week report is dismissed. No custom pre-prompt.
+    static func askOnce() {
+        guard enabled, !UserDefaults.standard.bool(forKey: askedKey) else { return }
+        UserDefaults.standard.set(true, forKey: askedKey)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    static func cancelAll() {
+        let center: UNUserNotificationCenter = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+    }
+
+    static func schedule(_ plans: [SessionHooks.Reminder]) {
+        cancelAll()
+        guard enabled else { return }
+        let center: UNUserNotificationCenter = UNUserNotificationCenter.current()
+        for p in plans {
+            let content: UNMutableNotificationContent = UNMutableNotificationContent()
+            content.title = p.title
+            content.body = p.body
+            content.sound = .default
+            let trigger: UNTimeIntervalNotificationTrigger = UNTimeIntervalNotificationTrigger(timeInterval: p.after, repeats: false)
+            center.add(UNNotificationRequest(identifier: p.id, content: content, trigger: trigger)) { _ in }
+        }
     }
 }

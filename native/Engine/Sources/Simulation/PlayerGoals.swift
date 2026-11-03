@@ -297,7 +297,9 @@ public enum PlayerGoals {
             var l = s.rest["ldr"] ?? .object([:])
             var d = l["done"]; d[g.id] = .object(["w": .number(Double(s.week))]); l["done"] = d
             s.rest["ldr"] = l
-            s.note(ladderReward(&s, g.id, cur), tone: "good")
+            let paid: String = ladderReward(&s, g.id, cur)
+            s.note(paid, tone: "good")
+            Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // Brief 7.4: a goal completion celebrates
             finished.append(g.id)
         }
         return finished

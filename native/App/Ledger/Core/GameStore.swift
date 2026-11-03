@@ -127,6 +127,21 @@ final class GameStore: ObservableObject {
     @Published private(set) var reportSheet: ReportDigest?
     /// Rewards earned and not yet shown, oldest first. The Home screen shows the first, one at a time.
     @Published private(set) var celebrationQueue: [Celebration] = []
+    /// Brief 7.2: rises by one when a closed week report is continued while a decision expires within 2 weeks. Home watches it (scroll to Needs you, pulse the pill once).
+    @Published var homeCliffhanger: Int = 0
+    /// Brief 7.3: consecutive calendar days played; Home shows it from 3 up, else 0 is returned.
+    var playStreakShown: Int {
+        guard let e = engine else { return 0 }
+        let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
+        return n >= PlayStreak.showFrom ? n : 0
+    }
+    /// Local calendar day number (days since the era start), the unit of the play streak.
+    static func calendarDay() -> Int { Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0 }
+    /// The app went to the background: plan the reminders for the state the player left.
+    func scheduleReminders() {
+        guard let e = engine else { return }
+        Reminders.schedule(SessionHooks.reminders(e.state))
+    }
     /// Newly opened features waiting for their announcement popup, oldest first (UnlockKit.swift). One shows at a time, after the day's popups.
     @Published var unlockQueue: [UnlockPrompt] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
@@ -319,13 +334,18 @@ final class GameStore: ObservableObject {
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         let profitBefore: Double = e.groupBooksProfit
+        let tightBefore: Bool = e.cashIsTight
         let out = e.nextDay()
-        if !out.gameOver { e.celebrateDailyGoal() }
-        let celebrations: [Celebration] = e.takeCelebrations()
+        let today: Int = GameStore.calendarDay()
+        e.update { s, _, _ in PlayStreak.record(&s, today: today) }   // Brief 7.3
+        // Brief 7.4: only a finished ladder goal celebrates; trophies, milestones and daily missions are taken and dropped.
+        let celebrations: [Celebration] = e.takeCelebrations().filter { $0.kind == "goal" }
+        if !celebrations.isEmpty { Haptics.goalDone() }
+        if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning() }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }   // Milestone M8 (brief 1.2)
-        if out.completedWeek { Haptics.weekDone() } else { Haptics.advanceDay() }
+        Haptics.nextDay()
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
@@ -380,8 +400,9 @@ final class GameStore: ObservableObject {
         guard var e = engine, !isAdvancing else { return }
         ambitionPrompt = e.ambitionPromptPending
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
-        let waiting: [Celebration] = e.takeCelebrations()
-        if !waiting.isEmpty {
+        let taken: [Celebration] = e.takeCelebrations()
+        let waiting: [Celebration] = taken.filter { $0.kind == "goal" }
+        if !taken.isEmpty {
             engine = e
             save()
             celebrationQueue.append(contentsOf: waiting)
@@ -397,6 +418,8 @@ final class GameStore: ObservableObject {
             return true
         }
         reportSheet = nil
+        if d.kind == .week { Reminders.askOnce() }   // Brief 7: the system prompt, once, after the first week report
+        if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Brief 7.2: Home scrolls to Needs you and the expiry pill pulses once
         if openReports { openReport(ReportRef(kind: d.kind, id: d.reportID)) }
     }
 
