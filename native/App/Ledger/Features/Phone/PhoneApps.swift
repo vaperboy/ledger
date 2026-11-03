@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
-enum PhoneApp: String, CaseIterable, Hashable, Identifiable {
+enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case bank, accounting, inbox, news, weather, stats, goals, world, luxury, ventures, richList, reports, market, reviews, achievements, settings
     /// The three shopping and insurance apps (each in its own colours): places to rent, equipment and software, insurance.
     case airStay, techPro, atlas
