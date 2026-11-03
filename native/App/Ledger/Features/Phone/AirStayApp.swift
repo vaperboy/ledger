@@ -64,7 +64,14 @@ struct AirStayApp: View {
         if let e = store.engine {
             switch step {
             case .explore:
-                if tab == .explore { exploreView(e) } else { rentedView(e) }
+                VStack(spacing: 0) {
+                    tabPicker
+                        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 4)
+                        .frame(maxWidth: 480).frame(maxWidth: .infinity)
+                    SegmentPager(items: StayTab.allCases, selection: $tab) { (t: StayTab) in
+                        if t == .explore { exploreView(e) } else { rentedView(e) }
+                    }
+                }
             case .info:
                 if let o = offer { infoView(e, o) } else { Color.clear }
             case .company:
@@ -131,7 +138,6 @@ struct AirStayApp: View {
         let shown: [PlaceMarket.Offer] = all.filter { (o: PlaceMarket.Offer) -> Bool in o.category == category && matches(o) }
         return ShopScroll {
             VStack(alignment: .leading, spacing: 16) {
-                tabPicker
                 hero
                 searchField
                 chips
@@ -484,7 +490,6 @@ struct AirStayApp: View {
         let list: [PlaceMarket.Rented] = e.rentedPlaces()
         return ShopScroll {
             VStack(alignment: .leading, spacing: 16) {
-                tabPicker
                 ShopHeading(text: "Active rents", trailing: list.isEmpty ? "" : "\(list.count)")
                 if list.isEmpty {
                     Text("None of your companies rents a place. Look under Explore.").font(.system(size: 14)).foregroundStyle(P.inkSoft)

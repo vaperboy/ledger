@@ -63,23 +63,42 @@ struct ReviewsApp: View {
     private func page(_ e: GameEngine) -> some View {
         let companies: [Company] = Self.companies(e)
         let chosen: Company? = companies.first { $0.id == companyID } ?? companies.first
-        return ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                if let co = chosen {
-                    selector(companies, co)
-                    SegmentedPill(items: Side.allCases, title: { $0.rawValue }, selection: $side, identifier: { "reviews-side-" + $0.rawValue.lowercased() })
-                    if side == .yours { yours(e, co) } else { rivals(e, co) }
-                } else {
+        return Group {
+            if let co = chosen {
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        selector(companies, co)
+                        SegmentedPill(items: Side.allCases, title: { $0.rawValue }, selection: $side, identifier: { "reviews-side-" + $0.rawValue.lowercased() })
+                    }
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.s)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    SegmentPager(items: Side.allCases, selection: $side) { (sd: Side) in
+                        sidePage(e, co, sd)
+                    }
+                }
+            } else {
+                ScrollView {
                     Card(padding: 14, radius: Theme.Radius.card) {
                         Text("Reviews arrive once a business is open and customers come.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                     }
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
                 }
+                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+        }
+        .accessibilityIdentifier("reviews-app")
+    }
+
+    private func sidePage(_ e: GameEngine, _ co: Company, _ sd: Side) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                if sd == .yours { yours(e, co) } else { rivals(e, co) }
+            }
+            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-        .accessibilityIdentifier("reviews-app")
     }
 
     private func selector(_ companies: [Company], _ chosen: Company) -> some View {

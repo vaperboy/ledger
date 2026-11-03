@@ -156,20 +156,52 @@ struct TechProApp: View {
         }
     }
 
+    private enum TpTab: Hashable, CaseIterable { case store, products, owned, orders }
+
+    /// The four tabs slide sideways in one pager; the tab bar above (in the top inset) stays fixed and follows the page.
+    private func tabsPager(_ e: GameEngine, _ co: Company) -> some View {
+        let selection: Binding<TpTab> = Binding<TpTab>(
+            get: {
+                switch step {
+                case .category: return TpTab.products
+                case .owned: return TpTab.owned
+                case .orders: return TpTab.orders
+                default: return TpTab.store
+                }
+            },
+            set: { (t: TpTab) in
+                switch t {
+                case .store: step = .store
+                case .products: shelf = .all; step = .category
+                case .owned: step = .owned
+                case .orders: step = .orders
+                }
+            })
+        return SegmentPager(items: TpTab.allCases, selection: selection) { (t: TpTab) in
+            tabPage(e, co, t)
+        }
+    }
+
+    @ViewBuilder private func tabPage(_ e: GameEngine, _ co: Company, _ t: TpTab) -> some View {
+        switch t {
+        case .store: storeView(e, co)
+        case .products: categoryView(e, co)
+        case .owned: TechProOwnedView(companyID: co.id) { (id: String) in showItem(id) }
+        case .orders: ordersView(e, co)
+        }
+    }
+
     @ViewBuilder private var page: some View {
         if let e = store.engine {
             if let co = current(e) {
                 switch step {
-                case .store: storeView(e, co)
-                case .category: categoryView(e, co)
+                case .store, .category, .owned, .orders: tabsPager(e, co)
                 case .suppliers: suppliersView(co)
                 case .product: productView(e, co)
                 case .basket: basketView(e, co)
                 case .checkout: checkoutView(e, co)
                 case .payment: paymentView(e, co)
                 case .placed: placedView(e, co)
-                case .orders: ordersView(e, co)
-                case .owned: TechProOwnedView(companyID: co.id) { (id: String) in showItem(id) }
                 }
             } else {
                 emptyView

@@ -30,21 +30,28 @@ struct MarketApp: View {
     private func page(_ e: GameEngine) -> some View {
         let companies: [Company] = Self.companies(e)
         let chosen: Company? = companies.first { $0.id == companyID }
-        // Short segments fit one screen (compacted when needed); the long lists scroll.
-        return Group {
-            if part == .overview || part == .research || part == .prices {
-                FixedScreen(spacing: 10, overflowScrolls: true) { pageContent(e, companies, chosen) }
-            } else {
-                ScrollScreen(spacing: 10) { pageContent(e, companies, chosen) }
+        let header = VStack(alignment: .leading, spacing: 10) {
+            selector(companies, chosen)
+            SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part)
+        }
+        .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 4)
+        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+        return VStack(spacing: 0) {
+            header
+            SegmentPager(items: MarketPart.allCases, selection: $part) { (p: MarketPart) in
+                partPage(e, chosen, p)
             }
         }
         .accessibilityIdentifier("market-app")
     }
 
-    @ViewBuilder private func pageContent(_ e: GameEngine, _ companies: [Company], _ chosen: Company?) -> some View {
-        selector(companies, chosen)
-        SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part)
-        content(e, chosen)
+    /// Short segments fit one screen (compacted when needed); the long lists scroll.
+    @ViewBuilder private func partPage(_ e: GameEngine, _ chosen: Company?, _ p: MarketPart) -> some View {
+        if p == .overview || p == .research || p == .prices {
+            FixedScreen(spacing: 10, top: 4, overflowScrolls: true) { content(e, chosen, p) }
+        } else {
+            ScrollScreen(spacing: 10, top: 4) { content(e, chosen, p) }
+        }
     }
 
     /// The businesses that can be looked at: open ones that trade (a holding company has no market).
@@ -52,11 +59,11 @@ struct MarketApp: View {
         e.state.companies.filter { $0.status == .open && $0.type != "hold" }
     }
 
-    @ViewBuilder private func content(_ e: GameEngine, _ chosen: Company?) -> some View {
+    @ViewBuilder private func content(_ e: GameEngine, _ chosen: Company?, _ p: MarketPart) -> some View {
         if let co = chosen {
-            CompanyMarket(engine: e, company: co, part: part)
+            CompanyMarket(engine: e, company: co, part: p)
         } else {
-            MarketView(part: part)
+            MarketView(part: p)
         }
     }
 
