@@ -6,6 +6,7 @@ import Businesses
 extension Message {
     /// The sender's icon circle in the Inbox: payroll from the bank, people matters from a person, otherwise by urgency and tone.
     var inboxGlyph: String {
+        if doc != nil { return Glyph.reports }
         if actionID.hasPrefix("pay29") { return Glyph.bank }
         if actionID == "staffx" || actionID == "mgrraise" || actionID == "mgrpoach" { return Glyph.person }
         if status == "open" { return tone == "bad" ? Glyph.warning : Glyph.inbox }
@@ -81,6 +82,9 @@ struct InboxMailRow: View {
             senderLine
             Text(text(message.title)).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
                 .foregroundStyle(unread ? P.ink : P.inkSoft).lineLimit(2).multilineTextAlignment(.leading)
+            if message.doc != nil {
+                Text("Document").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.accent)
+            }
             Text(text(message.body)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
             if !message.handledBy.isEmpty {
                 Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.gain)

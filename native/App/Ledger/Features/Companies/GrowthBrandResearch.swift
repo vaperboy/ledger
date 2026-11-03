@@ -192,9 +192,12 @@ struct ResearchSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     @State private var pending: PendingAction?
+    @State private var shownDoc: InboxDocument?
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
+        if let d = shownDoc {
+            DocumentView(doc: d, close: { shownDoc = nil })
+        } else if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -245,11 +248,23 @@ struct ResearchSheet: View {
         }
     }
 
+    /// The inbox document that delivered this report (matched by its reference number), if it is still in the inbox.
+    private func reportDocument(_ r: ResearchReport) -> InboxDocument? {
+        let ref: String = "LMR-" + String(format: "%05d", r.id)
+        guard let e = store.engine else { return nil }
+        for m in e.state.inbox where m.doc?.reference == ref { return m.doc }
+        return nil
+    }
+
     private func reportBlock(_ r: ResearchReport) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(r.title + " \u{00B7} " + GameCalendar.dateString(week: r.day / 7)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ivory)
             ForEach(r.findings, id: \.self) { (f: String) -> AnyView in
                 AnyView(Text(f.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true))
+            }
+            if let d = reportDocument(r) {
+                Button { shownDoc = d } label: { LinkLabel(text: "Open report") }
+                    .buttonStyle(PressableStyle())
             }
         }
     }

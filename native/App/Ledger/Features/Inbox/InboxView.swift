@@ -263,7 +263,10 @@ struct InboxView: View {
     // MARK: Detail
 
     @ViewBuilder private var detailSheet: some View {
-        if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
+        if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }), let d = m.doc {
+            DocumentView(doc: d, close: { detailID = nil })
+                .onAppear { store.markRead(m.id) }
+        } else if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
             Group {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack {

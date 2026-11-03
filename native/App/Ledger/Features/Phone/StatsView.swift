@@ -11,6 +11,7 @@ import Simulation
 struct StatsView: View {
     @EnvironmentObject var store: GameStore
     @State private var period = 90
+    @State private var docItem: DocumentItem?
 
     private static let periods: [Int] = [30, 90, 365]
 
@@ -22,12 +23,16 @@ struct StatsView: View {
                 makeUpCard(e)
                 compareCard(e)
                 economyCard(e)
-                costCard(e)
+                Group {
+                    costCard(e)
+                    documentsCard(e)
+                }
                 activityLink
                 pageLink(glyph: Glyph.goals, title: "Goals and awards", note: "Your goals, missions and rewards to claim", app: .goals)
                 pageLink(glyph: Glyph.reports, title: "Previous reports", note: "Weekly, monthly and yearly", app: .reports)
                 TrophiesPreview()
             }
+            .centerSheet(item: $docItem) { (item: DocumentItem) in DocumentView(doc: item.doc, close: { docItem = nil }) }
         }
     }
 
@@ -191,6 +196,31 @@ struct StatsView: View {
         var id: String { name }
         var name: String
         var value: Double
+    }
+
+    /// The latest documents in the inbox (research reports and similar); each opens in the report viewer.
+    @ViewBuilder private func documentsCard(_ e: GameEngine) -> some View {
+        let docs: [Message] = Array(e.state.inbox.filter { $0.doc != nil }.suffix(3).reversed())
+        if !docs.isEmpty {
+            Card(padding: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Documents").capsLabel()
+                    ForEach(docs, id: \.id) { (m: Message) in
+                        if let d = m.doc {
+                            Button { docItem = DocumentItem(id: m.id, doc: d) } label: {
+                                HStack {
+                                    Text(d.title).font(.subheadline).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                                    Spacer(minLength: 8)
+                                    Text("Open").font(.caption).foregroundStyle(Theme.gold)
+                                }
+                                .frame(minHeight: 36).contentShape(Rectangle())
+                            }
+                            .buttonStyle(PressableStyle())
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func costCard(_ e: GameEngine) -> some View {
