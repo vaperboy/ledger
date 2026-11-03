@@ -72,7 +72,7 @@ struct FitScroll<Content: View>: View {
 
     var body: some View {
         let reported: Bool = natural >= 0
-        let usable: Bool = natural >= 40
+        let usable: Bool = natural > 0.5
         let height: CGFloat = usable ? min(natural, maxHeight) : maxHeight
         ScrollView(.vertical) {
             content()

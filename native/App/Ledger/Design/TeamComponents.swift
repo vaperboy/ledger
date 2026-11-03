@@ -83,22 +83,12 @@ struct ManagementRow: View {
     }
 }
 
-/// The frame of a people sheet: its own navigation bar with Done, a scroll view and the page background.
+/// The body of a people popup: the title goes into the popup frame's header row; no navigation stack, scroll view or background of its own.
 struct PeopleSheet<Content: View>: View {
     var title: String
     @ViewBuilder var content: () -> Content
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) { content() }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .ledgerBackground()
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.foregroundStyle(Theme.gold) } }
-        }
+        VStack(alignment: .leading, spacing: Theme.Space.l) { content() }
+            .centerSheetTitle(title)
     }
 }

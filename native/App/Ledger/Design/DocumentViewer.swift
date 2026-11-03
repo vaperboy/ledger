@@ -19,26 +19,14 @@ struct DocumentView: View {
             }
             footer
         }
-        .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(P.ground)
     }
 
     private var refPrefix: String { doc.reference.isEmpty ? "" : "Ref \(doc.reference)  \u{00B7}  " }
 
     private var letterhead: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(doc.issuer).capsLabel()
-                Spacer(minLength: 8)
-                Button { close() } label: {
-                    GlyphView(glyph: Glyph.close, size: 16, weight: 1.8, tint: P.ink)
-                        .frame(width: 40, height: 40)
-                        .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
-                        .contentShape(Circle())
-                }
-                .buttonStyle(PressableStyle()).accessibilityLabel("Close document")
-            }
+            Text(doc.issuer).capsLabel()
             Rectangle().fill(P.accent.opacity(0.6)).frame(height: 1)
         }
     }
