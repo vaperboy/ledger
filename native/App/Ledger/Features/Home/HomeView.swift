@@ -218,20 +218,20 @@ struct TopPriorities: View {
         let list: [Suggestion] = engine.suggestions(limit: 8).filter { $0.tone != .neutral }
         let shown: [Suggestion] = Array(list.prefix(limit))
         let waiting: Int = store.openDecisionCount
+        if !shown.isEmpty || waiting > 0 {
         Card(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(shown.isEmpty ? "All clear" : "Top priorities")
-                    .font(.system(size: 10.5, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(Theme.gold)
-                    .padding(.bottom, 3)
-                if shown.isEmpty {
-                    Text("Nothing needs you right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 6)
+                if !shown.isEmpty {
+                    Text("Top priorities")
+                        .font(.system(size: 10.5, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(Theme.gold)
+                        .padding(.bottom, 3)
                 }
                 ForEach(shown) { item in
                     Rectangle().fill(Theme.divider).frame(height: 1)
                     row(item)
                 }
                 if waiting > 0 {
-                    Rectangle().fill(Theme.divider).frame(height: 1)
+                    if !shown.isEmpty { Rectangle().fill(Theme.divider).frame(height: 1) }
                     Button { Haptics.tap(); store.openApp(.inbox) } label: {
                         HStack {
                             Spacer()
@@ -243,6 +243,7 @@ struct TopPriorities: View {
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
+        }
         }
     }
 
