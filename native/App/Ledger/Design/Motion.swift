@@ -11,6 +11,20 @@ enum Motion {
     static func standard(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeInOut(duration: 0.22) }
     /// A calm spring for something that arrives (the reward popup); nil when Reduce Motion is on.
     static func arrive(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.86) }
+    // Brief 9.1 constants. Under Reduce Motion each returns nil (no animation).
+    /// `tap`: button press, 0.12 s ease-out.
+    static func tap(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.12) }
+    /// `quick`: toggles, row expand, pill changes, 0.22 s ease-in-out.
+    static func quick(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeInOut(duration: 0.22) }
+    /// `move`: sheets and cards sliding, spring(response 0.32, damping 0.86).
+    static func move(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86) }
+    /// `reveal`: counting numbers and bar growth in reports, 0.6 s ease-out.
+    static let revealSeconds: Double = 0.6
+    static func reveal(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.6) }
+    /// `celebrate`: goal complete, record line, 1.5 s in total.
+    static let celebrateSeconds: Double = 1.5
+    /// `pulse`: 1.2 s cycle, opacity 1.0 to 0.6.
+    static let pulseSeconds: Double = 1.2
     /// Runs `body` with the standard animation, or at once when Reduce Motion is on.
     static func run(_ reduceMotion: Bool, _ body: () -> Void) {
         if reduceMotion { body() } else { SwiftUI.withAnimation(.easeInOut(duration: 0.22), body) }

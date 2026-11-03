@@ -121,6 +121,8 @@ public struct DailyDigest: Equatable, Sendable {
     /// What the day did to the owner's money: filled by the app from the day history (nil when there is no history yet).
     public var cashChange: Double? = nil
     public var netWorthChange: Double? = nil
+    /// The day's profit over all companies' books (filled by the app from `groupBooksProfit` before and after the day).
+    public var profit: Double? = nil
     /// Decisions a hired rank took for the owner today ("Mia, manager: Replace the oven?").
     public var handled: [String] = []
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }

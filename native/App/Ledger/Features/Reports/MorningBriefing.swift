@@ -159,7 +159,25 @@ struct DailyReportPopup: View {
         .task { await run(count: total) }
     }
 
-    @ViewBuilder private var headline: some View {
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            headlineFigures
+            profitToday
+        }
+    }
+
+    /// The day's profit over all companies, counting up from 0 like the Home figures, green or red by its sign.
+    @ViewBuilder private var profitToday: some View {
+        if let p = digest.profit {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Profit today").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                CountedFigure(value: p, format: signedText, tint: Theme.change(p), instant: instant)
+                    .font(.system(size: 22, weight: .semibold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.6)
+            }
+        }
+    }
+
+    @ViewBuilder private var headlineFigures: some View {
         if let n = digest.netWorthChange {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {

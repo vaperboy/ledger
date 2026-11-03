@@ -287,6 +287,7 @@ final class GameStore: ObservableObject {
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
+        let profitBefore: Double = e.groupBooksProfit
         let out = e.nextDay()
         if !out.gameOver { e.celebrateDailyGoal() }
         let celebrations: [Celebration] = e.takeCelebrations()
@@ -300,6 +301,7 @@ final class GameStore: ObservableObject {
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
+        daily.profit = e.groupBooksProfit - profitBefore
         if let nwBefore, let nwAfter = e.dayHistory.netWorth.last, let cashBefore, let cashAfter = e.dayHistory.cash.last {
             daily.netWorthChange = nwAfter - nwBefore
             daily.cashChange = cashAfter - cashBefore
