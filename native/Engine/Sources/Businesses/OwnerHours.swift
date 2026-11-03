@@ -45,7 +45,7 @@ public enum OwnerHours {
             guard co.status.isLive, co.type != "hold" else { continue }
             if co.managerID != nil || co.flag("ownOut") { continue }
             guard co.status == .open, let bd = data.catalog[co.type] else { used += co.ownerHours; continue }
-            let hours = needed(co, bd, World(state: s, data: data), room: max(0, weeklyCap - used))
+            let hours = needed(co, bd, World(state: s, data: data), room: max(0, Gates.ownerHoursCap(s) - used))
             s.companies[i].ownerHours = hours
             used += hours
         }

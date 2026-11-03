@@ -170,6 +170,7 @@ public extension GameEngine {
         input.lastWeekProfit = r.previous?.pnl.netProfit
         input.profitableRunBefore = run
         input.hadProfitBefore = profits.contains { $0 > 0 }
+        input.completedGoalPastTense = PlayerGoals.ladderPastTense(state, firstWeek: r.firstWeek, lastWeek: r.lastWeek)
         input.cashBelowZeroCompany = r.companies.first { $0.status == "open" && $0.cashEnd < 0 }?.name
         // BRIEF: an event's own cost is not stored; fines plus refunds and losses of the period stand for what the bad events cost.
         if let bad = g.events.first(where: { $0.tone == "bad" }) {
@@ -272,8 +273,9 @@ public extension GameEngine {
         let profit: Double = r.group.pnl.netProfit
         let earlier: [Double] = reports(r.kind).filter { $0.id < r.id }.suffix(52).map { $0.group.pnl.netProfit }
         if earlier.count >= 2, profit > 0, let top = earlier.max(), profit > top { return "Best \(r.kind.noun) so far" }
-        if r.netWorthStart.total < 1_000_000 && r.netWorthEnd.total >= 1_000_000 {
-            return "Net worth passed " + homeCurrency.short(1_000_000).replacingOccurrences(of: "\u{00A0}", with: " ")
+        let million: Double = homeCurrency.scaledPrice(1_000_000)
+        if r.netWorthStart.total < million && r.netWorthEnd.total >= million {
+            return "Net worth passed " + homeCurrency.short(million).replacingOccurrences(of: "\u{00A0}", with: " ")
         }
         return nil
     }

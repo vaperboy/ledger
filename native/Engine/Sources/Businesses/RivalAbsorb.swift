@@ -94,7 +94,7 @@ public enum RivalAbsorb {
         var fine = 0.0
         if let m = MarketMap.market(of: s.companies[ci], s, data: data) {
             let share = MarketMap.truth(s, m, data: data).share
-            if share > 0.35, s.random.chance(min(0.8, 0.25 + (share - 0.35))) {
+            if share > 0.35, data.balance.firstYear.competitionAuthorityActive(s), s.random.chance(min(0.8, 0.25 + (share - 0.35))) {
                 let cur = World(state: s, data: data).currency(s.companies[ci])
                 fine = Rivals.roundTo(max(cur.scaledPrice(100000), s.companies[ci].lastWeekRevenue * 52 * 0.03), 1000)
                 Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Competition authority: closing \(r.name)")

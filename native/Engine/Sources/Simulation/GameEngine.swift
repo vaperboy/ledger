@@ -97,6 +97,7 @@ public struct GameEngine {
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
         PlayerGoals.startFirstSteps(&state)
+        PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates (brief Part 5)
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         if story == .loan {
@@ -152,6 +153,7 @@ public struct GameEngine {
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
             if ManagerTargets.handlesAnswer(m.actionID) { ManagerTargets.answer(&s, message: m, option: idx, data: d); return true }
+            if m.actionID == FirstYear.frozenAction { return true }
             if m.actionID == "oil24" { EnergyModel.answer(&s, message: m, option: idx); return true }
             if m.actionID == "club24" { FootballModel.answerBid(&s, message: m, option: idx); return true }
             if Franchising.handlesAnswer(m.actionID) { Franchising.answer(&s, message: m, option: idx, context: c); return true }
@@ -209,6 +211,7 @@ public struct GameEngine {
         } else {
             // The seventh day is over: the week's money has all been released, so the week (and a month or year that ends with it) can be reported.
             closeReportPeriods()
+            sweepLadder()   // M1 (first week closed) finishes in the week it closed
             state.rest["pend"] = .null
             state.day = 0
             stageWeek()
@@ -219,10 +222,16 @@ public struct GameEngine {
             completed = true
         }
         recordDay()
+        sweepLadder()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
+    }
+
+    /// Finishes ladder goals whose condition now holds (PlayerGoals.ladderSweep); cheap, so it runs every day.
+    mutating func sweepLadder() {
+        update { s, _, ctx in PlayerGoals.ladderSweep(&s, currency: ctx.homeCurrency(s)) }
     }
 
     mutating func tradeAndPay(day: Int) {
@@ -373,7 +382,9 @@ public struct GameEngine {
         Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
         ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
         Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
-        for i in state.companies.indices {
+        FirstYear.freezeSweep(&state, balance: data.balance)   // before week 27 a company in the red is frozen, not bankrupt (Businesses/FirstYear.swift)
+        let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
+        for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
                 Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
@@ -387,7 +398,7 @@ public struct GameEngine {
                 Failure.bankrupt(&state, companyIndex: i, reason: "unpaid", data: data, context: context)
             }
         }
-        for id in FinanceModel.insolventCompanies(&state, data: data) {
+        for id in FinanceModel.insolventCompanies(&state, data: data) where bankruptcyOn {
             if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
         FaceBook.sweep(&state, data: data)   // portraits: hired people keep theirs for good, stale candidates give theirs back

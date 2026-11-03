@@ -51,6 +51,7 @@ final class WorldLeftoversTests: XCTestCase {
 
     func testRivalGroupPoachSupplierBidAndPriceFixingFine() throws {
         var (e, id) = try engineWith(trade: "cafe", weeks: 10)
+        _ = ChainsTests.start(&e, "kiosk"); _ = ChainsTests.start(&e, "barber")   // the competition authority only looks at a group of three (balance.json firstYear)
         // Force each group move once and answer them.
         var gid = ""
         e.update { s, data, _ in

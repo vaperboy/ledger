@@ -395,7 +395,8 @@ public enum Payday {
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
         // Repeated misses: suppliers tighten terms (2 months: stock only against cash in the account) and then stop delivering stock (3 months).
-        let level = cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
+        let cutoffOn = (data?.balance.firstYear ?? FirstYear.bundled).supplierCutoffActive(week: s.week)
+        let level = !cutoffOn ? 0 : cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
         // Bills and invoices each cut suppliers off; stock buying reads the stricter of the two (`SupplyTerms.refreshCut`).
         if level > 0 || s.companies[i].raw["supCutB"] != nil { s.companies[i].set("supCutB", level); if level == 0 { s.companies[i].raw.removeValue(forKey: "supCutB") } }
         let level2 = max(level, SupplyTerms.invoiceCutLevel(s.companies[i], week: s.week))

@@ -32,6 +32,7 @@ final class BillsAndLoansTests: XCTestCase {
 
     func testMissedSupplierBillsCarryLateInterestAndCutOffSuppliers() throws {
         var (e, id) = try cafe(seed: 21)
+        e.update { s, _, _ in s.week = max(s.week, 30) }   // suppliers cut a buyer off only from week 27 (balance.json firstYear)
         var cash0 = 0.0
         e.update { s, _, ctx in
             drain(&s, id, ctx)

@@ -304,7 +304,7 @@ public enum SupplyTerms {
         let hist = (lateWeeks(co).filter { s.week - $0 < t.windowWeeks }) + [s.week]
         s.companies[bi].set("lt", .array(hist.map { .number(Double($0)) }))
         let before = invoiceCutLevel(s.companies[bi], week: s.week)
-        if hist.count >= t.cutoffAfter && !inv.vendorID.isEmpty {
+        if hist.count >= t.cutoffAfter && !inv.vendorID.isEmpty && FirstYear.bundled.supplierCutoffActive(week: s.week) {
             let level = hist.count > t.cutoffAfter ? t.levelRepeat : t.levelFirst
             if level > before {
                 s.companies[bi].set("supCutI", .object(["l": .number(Double(level)), "u": .number(Double(s.week + t.cutoffWeeks))]))

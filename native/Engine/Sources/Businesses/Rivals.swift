@@ -444,7 +444,7 @@ public enum Rivals {
     /// The authority finds out about a price understanding: a fine of 8% of turnover, reputation down. Original: the 'coll' check in `weekCore`.
     static func collusionWeek(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open || s.companies[i].status == .closed {
-            guard s.companies[i].value("flags")["coll"].double != 0, s.random.chance(0.02) else { continue }
+            guard data.balance.firstYear.competitionAuthorityActive(s), s.companies[i].value("flags")["coll"].double != 0, s.random.chance(0.02) else { continue }
             let co = s.companies[i]
             let cur = World(state: s, data: data).currency(co)
             let fine = jsRound(max(cur.scaledPrice(50000), (MarketMap.annualRevenue(co) + co.lastWeekRevenue * 20) * 0.08))
@@ -590,7 +590,7 @@ public enum Rivals {
         } else {
             s.note("\(r?.name ?? "The rival") survived the price war.", tone: "bad", companyID: co.id)
         }
-        if pw["share"].double >= 0.35, h.next() < 0.3 {
+        if pw["share"].double >= 0.35, data.balance.firstYear.competitionAuthorityActive(s), h.next() < 0.3 {
             let cur = World(state: s, data: data).currency(co)
             let fine = Double(jsRound(max(cur.scaledPrice(50000), (co.books.year["rev"] ?? 0) * 0.05)))
             Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Competition fine")

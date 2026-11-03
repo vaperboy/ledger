@@ -27,6 +27,8 @@ public struct Balance: Sendable {
     public var tourismShareByTrade: [String: Double]
     /// Weight multiplier on bad events by game week (`eventRamp` in balance.json): the entry with the highest `week` not above the current week applies.
     public var eventRamp: [(week: Int, mult: Double)]
+    /// First-year easing (`firstYear`): demand by quarter and when supplier cut-off, the competition authority and bankruptcy start. See `FirstYear`.
+    public var firstYear: FirstYear
     /// Twelve monthly tourism multipliers by country. Original: `WX56.TS`.
     public var tourismSeasonByCountry: [String: [Double]]
     public var weather: WeatherTables
@@ -59,6 +61,7 @@ public struct Balance: Sendable {
         }
         let ramp = j["eventRamp"].array.map { (week: $0["week"].int, mult: $0["mult"].double) }.sorted { $0.week < $1.week }
         eventRamp = ramp
+        firstYear = FirstYear(json: j["firstYear"])
         let d = j["demand"]
         demandDesignFactor = d["DK"].double
         economySensitivity = d["SENS"].object.mapValues { $0.double }

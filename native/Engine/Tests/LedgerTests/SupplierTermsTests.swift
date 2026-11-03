@@ -191,6 +191,7 @@ final class SupplierTermsTests: XCTestCase {
 
     func testOutsideSupplierTermsLateFeeRelationshipDealAndCutOff() throws {
         var e = try ChainsTests.engine()
+        e.update { s, _, _ in s.week = max(s.week, 30) }   // suppliers cut a buyer off only from week 27 (balance.json firstYear)
         let cafe = ChainsTests.start(&e, "cafe")
         ChainsTests.play(&e, days: 6 * 7)
         let vendor = try goodsVendorID(e, cafe)
