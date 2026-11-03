@@ -9,11 +9,11 @@ import Simulation
 
 /// The tabs of an entity page. `key` is the name other screens use to ask for one (`GroupRouteBox.Request.section`).
 enum GroupSection: String, CaseIterable, Hashable {
-    case overview = "Overview", board = "Board", dividends = "Dividends", expansion = "Expansion", money = "Money", deals = "Deals"
+    case overview = "Overview", management = "Management", board = "Board", money = "Money", expansion = "Expansion", deals = "Deals"
     var key: String { rawValue.lowercased() }
 }
 
-/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six short titles fit 375 pt).
+/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six titles: Overview, Management, Board, Money, Expansion, Deals fit 375 pt at 12.5 pt with the shrink).
 struct GroupSectionBar: View {
     @Binding var tab: GroupSection
     var badges: [GroupSection: Int] = [:]
@@ -176,7 +176,7 @@ struct GroupLanding: View {
     var engine: GameEngine
     var onPick: (GroupEntity) -> Void
     var onSuppliers: () -> Void
-    var onNewHolding: () -> Void
+    var onAdd: () -> Void
 
     var body: some View {
         let list: [GroupEntity] = GroupEntities.build(engine)
@@ -199,16 +199,16 @@ struct GroupLanding: View {
             Button { Haptics.tap(); onSuppliers() } label: {
                 CardRow(glyph: Glyph.bank, title: "Suppliers", subtitle: "Every supplier your companies use, with profiles")
             }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-suppliers")
-            Button { Haptics.tap(); onNewHolding() } label: {
+            Button { Haptics.tap(); onAdd() } label: {
                 HStack {
-                    Text("Set up a holding company").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    Text("Add to group").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
                     Spacer()
-                    Text("Set one up \u{203A}").font(.system(size: 12.5)).foregroundStyle(Theme.gold)
+                    Text("Choose \u{203A}").font(.system(size: 12.5)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.7)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                 .contentShape(Rectangle())
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-new-holding")
+            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-add")
         }
     }
 

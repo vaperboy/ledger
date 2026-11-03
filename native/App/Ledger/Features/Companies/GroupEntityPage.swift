@@ -62,8 +62,8 @@ struct GroupEntityPage: View {
     @ViewBuilder private func content(_ e: GameEngine) -> some View {
         switch section {
         case .overview: GroupEntityOverview(engine: e, entity: entity)
+        case .management: GroupEntityManagement(engine: e, entity: entity)
         case .board: GroupEntityBoard(engine: e, entity: entity)
-        case .dividends: GroupEntityDividends(engine: e, entity: entity)
         case .expansion: EntityExpansionView(companyID: entity.companyID)
         case .money: GroupEntityMoney(engine: e, entity: entity)
         case .deals: GroupEntityDeals(engine: e, entity: entity)
@@ -74,7 +74,7 @@ struct GroupEntityPage: View {
 // MARK: - Overview
 
 /// The entity's own overview: stores open, franchised out, employees, revenue and profit this month, brand and the rest of its key figures,
-/// plus the way into its Team (managers, regional managers and executives are hired per company).
+/// plus the way into its staff (managers and executives are in the Management tab).
 struct GroupEntityOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -106,7 +106,7 @@ struct GroupEntityOverview: View {
             }
             if entity.isHolding { subsidiaries }
             Button { Haptics.tap(); store.openCompany(entity.companyID, section: .staff) } label: {
-                CardRow(glyph: Glyph.team, title: "Team", subtitle: "Staff, managers, regional managers and executives are hired in the company's Team")
+                CardRow(glyph: Glyph.team, title: "Staff", subtitle: "Workers, hiring, job ads and perks. Managers and executives are in Management")
             }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-entity-team")
             Button { Haptics.tap(); openEntityCompany() } label: {
                 CardRow(glyph: Glyph.home, title: entity.isChain ? "Open the flagship store" : "Open the company", subtitle: "Manage, sales, stats and the rest of its screens")

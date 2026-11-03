@@ -4,7 +4,7 @@ import Businesses
 import Simulation
 
 /// The Group tab, built like Banking: it opens the picker of companies, holdings and chains (with the group Overview above it and the
-/// Suppliers row under it); tapping an entity opens its own page with Overview, Board, Dividends, Expansion, Money and Deals.
+/// Suppliers row under it); tapping an entity opens its own page with Overview, Management, Board, Money, Expansion and Deals.
 /// Choosing the Group tab again returns to the picker. Other screens can ask for an entity page through `GroupRouteBox`.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
@@ -12,7 +12,8 @@ struct GroupView: View {
     @State private var pickedID: String?
     @State private var section: GroupSection = .overview
     @State private var showSuppliers = false
-    @State private var showNewHolding = false
+    @State private var showAddMenu = false
+    @State private var addDestination: GroupAddDestination?
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .group) }, set: { store.setPath($0, for: .group) })) {
@@ -31,10 +32,17 @@ struct GroupView: View {
                     .ledgerBackground()
                     .appScreen(title: "Suppliers", subtitle: "Every supplier your companies use", tab: .group)
             }
-            .navigationDestination(isPresented: $showNewHolding) { NewHoldingView() }
+            .navigationDestination(item: $addDestination) { (d: GroupAddDestination) in addScreen(d) }
+            .centerSheet(isPresented: $showAddMenu) {
+                GroupAddMenu(onPick: { (d: GroupAddDestination) in
+                    showAddMenu = false
+                    addDestination = d
+                })
+                .environmentObject(store)
+            }
             // Choosing Group again: back to the picker.
             .onChange(of: store.rootToken(.group)) { _, _ in
-                pickedID = nil; section = .overview; showSuppliers = false; showNewHolding = false
+                pickedID = nil; section = .overview; showSuppliers = false; showAddMenu = false; addDestination = nil
             }
             .onAppear { takeRoute() }
             .onChange(of: routes.request) { _, _ in takeRoute() }
@@ -52,10 +60,19 @@ struct GroupView: View {
                     .padding(.horizontal, 18).padding(.top, 6)
                 ScrollScreen(top: 12) {
                     GroupLanding(engine: e, onPick: { (g: GroupEntity) in open(g, .overview) },
-                                 onSuppliers: { showSuppliers = true }, onNewHolding: { showNewHolding = true })
+                                 onSuppliers: { showSuppliers = true }, onAdd: { showAddMenu = true })
                 }
             }
             .transition(.move(edge: .leading))
+        }
+    }
+
+    @ViewBuilder private func addScreen(_ d: GroupAddDestination) -> some View {
+        switch d {
+        case .newCompany: NewCompanyView()
+        case .holding: NewHoldingView()
+        case .franchise: FranchisesView()
+        case .club: ClubMarketView()
         }
     }
 
@@ -86,7 +103,7 @@ struct GroupView: View {
         guard let r = routes.take() else { return }
         let list: [GroupEntity] = GroupEntities.find(GroupEntities.build(e), companyID: r.companyID).map { [$0] } ?? []
         guard let g = list.first else { return }
-        showSuppliers = false; showNewHolding = false
+        showSuppliers = false; showAddMenu = false; addDestination = nil
         let s: GroupSection = GroupSection.allCases.first(where: { (x: GroupSection) -> Bool in x.key == r.section }) ?? .overview
         open(g, s)
     }

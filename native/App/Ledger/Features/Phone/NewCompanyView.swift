@@ -6,8 +6,8 @@ import Finance
 import Simulation
 
 /// New company, step 1 of 3: choose the trade. A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
-/// `tradePickerRows` supply every figure and the reason a trade cannot be started. Other ways in (holding, franchise, abroad, club)
-/// stay below the table.
+/// `tradePickerRows` supply every figure and the reason a trade cannot be started. Holding, franchise, abroad and club moved to
+/// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
     @EnvironmentObject var store: GameStore
     @State private var sector = "All"
@@ -35,7 +35,6 @@ struct NewCompanyView: View {
                     table(e, shown)
                     Text("Demand is for this city; staff is the usual team size. Start-up costs are exact; the rest is an estimate and your result depends on price, location and management.")
                         .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    otherWays(e)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -125,27 +124,6 @@ struct NewCompanyView: View {
         case .high: return Theme.gain
         case .medium: return Theme.caution
         case .low: return Theme.loss
-        }
-    }
-
-    @ViewBuilder private func otherWays(_ e: GameEngine) -> some View {
-        let hasOpen: Bool = e.state.companies.contains(where: { $0.status == .open && $0.type != "hold" })
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Other ways in").capsLabel().padding(.top, Theme.Space.s)
-            NavigationLink { NewHoldingView() } label: {
-                CardRow(glyph: Glyph.richList, title: "Holding company", subtitle: "Owns your other companies; dividends into it are taxed far lower")
-            }.buttonStyle(PressableStyle())
-            NavigationLink { FranchisesView() } label: {
-                CardRow(glyph: Glyph.market, title: "Join a franchise", subtitle: "A known brand, their rules and a fee")
-            }.buttonStyle(PressableStyle())
-            if hasOpen {
-                NavigationLink { ExpandAbroadView() } label: {
-                    CardRow(glyph: Glyph.world, title: "Expand abroad", subtitle: "A subsidiary of one of your companies in another country")
-                }.buttonStyle(PressableStyle())
-            }
-            NavigationLink { ClubMarketView() } label: {
-                CardRow(glyph: Glyph.group, title: "Football club", subtitle: "Buy a club in a top league, or found one")
-            }.buttonStyle(PressableStyle())
         }
     }
 

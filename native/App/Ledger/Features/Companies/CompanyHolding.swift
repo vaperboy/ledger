@@ -163,7 +163,10 @@ struct NewHoldingView: View {
             let free = e.companiesForHolding
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    MoreHeader(glyph: Glyph.group, title: "A holding company", blurb: "Owns the shares of your other limited companies. Dividends into it are taxed far lower, and companies it owns 90% or more of share profits and losses for tax.")
+                    ZStack(alignment: .topTrailing) {
+                        MoreHeader(glyph: Glyph.group, title: "A holding company", blurb: "Owns the shares of your other limited companies and collects their dividends in one place. Tap (i) for how it is taxed.")
+                        HoldingInfoButton()
+                    }
                     MoreBlock("Name") {
                         TextField("Holding company name", text: $name).textFieldStyle(.plain).font(.system(size: 16)).foregroundStyle(Theme.ivory)
                     }

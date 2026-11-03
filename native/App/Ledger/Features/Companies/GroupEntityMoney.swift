@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// The dividend desk of ONE entity: its quarterly decision and group-tax position, the policy link, and paying out of this company or
+/// The Dividends part of an entity's Money page: its quarterly decision and group-tax position, the policy link, and paying out of this company or
 /// collecting for this holding. Nothing is paid by itself.
 struct GroupEntityDividends: View {
     @EnvironmentObject var store: GameStore
@@ -66,6 +66,7 @@ struct GroupEntityMoney: View {
     var entity: GroupEntity
     @State private var move: MoveTarget?
     @State private var pending: PendingAction?
+    @State private var part: MoneyPart = .cash
 
     private struct MoveTarget: Identifiable {
         var id: String { "\(companyID)-\(kind.rawValue)" }
@@ -93,21 +94,29 @@ struct GroupEntityMoney: View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: 8) {
-                Text("MOVE MONEY TO AND FROM IT").capsLabel()
-                Card(padding: 4, radius: Theme.Radius.hero) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(cos.enumerated()), id: \.element.id) { (n: Int, c: Company) in
-                            companyRow(c, first: n == 0)
-                        }
-                    }
-                }
-                Text("A limited company can only pay money out as a dividend (see Dividends). A sole trader's money is yours.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            MoneyPartPicker(part: $part)
+            switch part {
+            case .cash: cashPart(cos)
+            case .dividends: GroupEntityDividends(engine: engine, entity: entity)
+            case .loans: loans(cos)
             }
-            loans(cos)
         }
         .centerSheet(item: $move) { (t: MoveTarget) in BankMoveSheet(account: .company(t.companyID), kind: t.kind) }
         .confirmAction($pending)
+    }
+
+    @ViewBuilder private func cashPart(_ cos: [Company]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("MOVE MONEY TO AND FROM IT").capsLabel()
+            Card(padding: 4, radius: Theme.Radius.hero) {
+                VStack(spacing: 0) {
+                    ForEach(Array(cos.enumerated()), id: \.element.id) { (n: Int, c: Company) in
+                        companyRow(c, first: n == 0)
+                    }
+                }
+            }
+            Text("A limited company can only pay money out as a dividend (see the Dividends part). A sole trader's money is yours.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }
     }
 
     private func companyRow(_ c: Company, first: Bool) -> some View {
@@ -134,7 +143,10 @@ struct GroupEntityMoney: View {
     @ViewBuilder private func loans(_ cos: [Company]) -> some View {
         let short: [Company] = cos.filter { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
         let indebted: [Company] = cos.filter { (c: Company) -> Bool in engine.groupLoanBalance(companyID: c.id) > 0 }
-        if !short.isEmpty || !indebted.isEmpty {
+        if short.isEmpty && indebted.isEmpty {
+            Text("No group loans: every company in this group has cash. A company that runs out can borrow from a sister company here.")
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+        } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("LOANS BETWEEN GROUP COMPANIES").capsLabel()
                 Card(padding: 4, radius: Theme.Radius.hero) {
@@ -179,5 +191,44 @@ struct GroupEntityMoney: View {
             if ok { Haptics.success(); store.show("\(name) received a group loan of \(cur.tidyShort(need)).", tone: "good") }
             else { Haptics.warning(); store.show("No sister company can spare that much right now.", tone: "warn") }
         }
+    }
+}
+
+// MARK: - The parts of Money
+
+/// Cash | Dividends | Loans, the three parts of an entity's Money page.
+enum MoneyPart: String, CaseIterable, Hashable {
+    case cash = "Cash", dividends = "Dividends", loans = "Loans"
+}
+
+/// A small segmented control in the page's colours.
+struct MoneyPartPicker: View {
+    @Binding var part: MoneyPart
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(MoneyPart.allCases, id: \.self) { (p: MoneyPart) in
+                segment(p)
+            }
+        }
+        .padding(3)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+    }
+
+    private func segment(_ p: MoneyPart) -> some View {
+        let on: Bool = part == p
+        return Button { part = p; Haptics.choose() } label: {
+            Text(p.rawValue).font(.system(size: 12.5, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 34)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? Theme.gold.opacity(0.16) : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
+        .accessibilityIdentifier("money-part-\(p.rawValue)")
     }
 }
