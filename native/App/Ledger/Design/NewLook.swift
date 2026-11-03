@@ -569,6 +569,8 @@ struct SegmentedPill<T: Hashable>: View {
     @Binding var selection: T
     /// Accessibility identifier of each segment (default `segment-<title>`).
     var identifier: ((T) -> String)? = nil
+    /// Segments that hold something new or important get a small marker in the app's colour (nil = none).
+    var badges: ((T) -> Bool)? = nil
     @Environment(\.outsidePalette) private var palette
 
     var body: some View {
@@ -587,6 +589,7 @@ struct SegmentedPill<T: Hashable>: View {
                         .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? palette.accentSelected : Color.clear))
                         .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? palette.accent : Color.clear, lineWidth: 1))
                         .contentShape(Rectangle())
+                        .flagMarker(!on && (badges?(item) ?? false), alignment: .topTrailing)
                 }
                 .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(on ? .isSelected : [])

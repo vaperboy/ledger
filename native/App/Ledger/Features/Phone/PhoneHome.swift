@@ -63,6 +63,7 @@ struct PhoneHome: View {
             .frame(maxWidth: .infinity)
         }
         .id(store.rootToken(.phone))
+        .onAppear { store.endVisits() }
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)

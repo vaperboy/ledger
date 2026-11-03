@@ -148,6 +148,7 @@ extension GameStore {
     func markSeen(_ app: PhoneApp) {
         guard let e = engine else { return }
         var s: UpdateMarks = seenMarks
+        refreshVisit(app, before: s)
         switch app {
         case .market: s.ints["market"] = UpdateFeed.maxMarketID(e)
         case .news: s.texts["news"] = UpdateFeed.newsSignature(e)

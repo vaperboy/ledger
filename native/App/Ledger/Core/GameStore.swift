@@ -138,6 +138,9 @@ final class GameStore: ObservableObject {
     /// What each Phone app has shown the player so far (badges count what is newer), and what was already announced in a banner.
     @Published var seenMarks = UpdateMarks.load("seen")
     var announcedMarks = UpdateMarks.load("announced")
+    /// Per Phone app (by raw value): the marks when the app was opened, and the item ids that were new then (ItemMarks.swift).
+    var visitBaselines: [String: UpdateMarks] = [:]
+    @Published var visitFresh: [String: Set<String>] = [:]
     /// A worker's profile opened from a Recognition banner.
     @Published var workerPopup: WorkerPopupRef?
     /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
