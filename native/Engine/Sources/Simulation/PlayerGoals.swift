@@ -30,9 +30,9 @@ public enum PlayerGoals {
 
     static func dailyFits(_ id: String, _ s: GameState) -> Bool {
         switch id {
-        case "start": return live(s).isEmpty
+        // "start" and "hire" are setup steps: they are no longer offered as a new daily goal (a goal already picked in an older save still works).
+        case "start", "hire": return false
         case "weeks", "grow": return !live(s).isEmpty
-        case "hire": return live(s).contains { $0.managerID == nil }
         case "cmp": return openComplaints(s) > 0
         default: return false
         }
@@ -90,16 +90,29 @@ public enum PlayerGoals {
         s.rest["dy59"] = d
     }
 
+    static let announcedDaily: Set<String> = ["cmp", "grow"]
+
     /// Queues a celebration the first time today's goal is done (its reward still has to be claimed in Goals). Returns true when one was queued.
     @discardableResult
     public static func announceDailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> Bool {
         guard let g = dailyGoal(&s, today: today, yesterday: yesterday, data: data, currency: cur), g.done, !g.claimed else { return false }
+        // Only goals that ask for a result are announced; setup goals and plain waiting stay quiet (still claimable in Goals).
+        guard announcedDaily.contains(g.id) else { return false }
         var d = s.rest["dy59"] ?? .object([:])
         if d["said"].string == today { return false }
         d["said"] = .string(today)
         s.rest["dy59"] = d
-        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward))
+        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward), art: "mission.daily", tier: 1)
         return true
+    }
+
+    /// Only steps that show a result get a popup: a profitable month, and a manager once a quarter has paid. Setup steps (company, hire, opening, report, prices, ad, answer, pay) stay on the checklist, quietly.
+    static func stepCelebrates(_ id: String, _ s: GameState) -> Bool {
+        switch id {
+        case "profit": return true
+        case "mgr": return stepsLive(s).contains { c in c.managerID != nil && c.monthlyHistory.suffix(3).count == 3 && c.monthlyHistory.suffix(3).allSatisfy { $0.profit > 0 } }
+        default: return false
+        }
     }
 
     /// Queues a celebration for each first step that has just been finished (once each; hidden checklists stay quiet).
@@ -108,9 +121,9 @@ public enum PlayerGoals {
         var said = st["said"]
         if said.isNull { said = .object([:]) }
         var changed = false
-        for step in stepList where st["got"][step.id].isNull && said[step.id].isNull && stepDone(step.id, s) {
+        for step in stepList where st["got"][step.id].isNull && said[step.id].isNull && stepDone(step.id, s) && stepCelebrates(step.id, s) {
             said[step.id] = .number(Double(s.week))
-            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward)
+            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward, art: "goal." + step.id, tier: 1)
             changed = true
         }
         if changed { st["said"] = said; s.rest["fs58"] = st }

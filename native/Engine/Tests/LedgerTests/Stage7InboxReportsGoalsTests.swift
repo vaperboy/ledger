@@ -227,15 +227,19 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
     }
 
     func testFinishedFirstStepIsCelebratedOnceWithItsRealReward() throws {
-        var (e, _) = try cafeGame(weeks: 0)
+        // Rule change (missions rework): setup steps such as "Start a business" are no longer announced; a result step (a profitable month) is.
+        var (e, id) = try cafeGame(weeks: 0)
         XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
+        e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s) }
+        XCTAssertTrue(e.pendingCelebrations.isEmpty, "a setup step earns no popup")
+        e.update { s, _, _ in var c = s.companies[s.companyIndex(id)!]; c.monthlyHistory = [MonthRecord(monthIndex: 1, revenue: 10, profit: 5, cash: 10)]; s.companies[s.companyIndex(id)!] = c }
         e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s); PlayerGoals.announceFirstSteps(&s) }
-        let list = e.pendingCelebrations.filter { $0.kind == "goal" && $0.title == "Start a business" }
+        let list = e.pendingCelebrations.filter { $0.kind == "goal" && $0.title == "Make a profit in a month" }
         XCTAssertEqual(list.count, 1)
-        XCTAssertTrue(list[0].reward.contains("start-up grant"))
+        XCTAssertTrue(list.first?.reward.contains("Better terms") == true)
         _ = e.takeCelebrations()
         e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s) }
-        XCTAssertFalse(e.pendingCelebrations.contains { $0.title == "Start a business" }, "announced once, not again")
+        XCTAssertFalse(e.pendingCelebrations.contains { $0.title == "Make a profit in a month" }, "announced once, not again")
         // A hidden checklist stays quiet.
         var (e2, _) = try cafeGame(weeks: 0)
         e2.setFirstStepsHidden(true)
@@ -274,9 +278,9 @@ final class Stage7InboxReportsGoalsTests: XCTestCase {
         var (e, id) = try cafeGame(weeks: 4)
         XCTAssertEqual(e.state.company(id)?.status, .open)
         let day = Date(timeIntervalSince1970: 1_800_000_000)
-        // Force a goal that is already done: "start" (a business is open) is only picked when none is, so set it directly.
+        // Force a goal that is already done ("grow": net worth is far above the tiny base). Setup goals ("start", "hire") are no longer announced.
         e.update { s, _, _ in
-            s.rest["dy59"] = .object(["streak": 0, "last": "", "d": .string(GameEngine.dayString(day)), "got": 0, "k": "start",
+            s.rest["dy59"] = .object(["streak": 0, "last": "", "d": .string(GameEngine.dayString(day)), "got": 0, "k": "grow",
                                       "b": .object(["week": 0, "staff": 0, "cmp": 0, "nw": 1])])
         }
         XCTAssertTrue(e.celebrateDailyGoal(now: day))

@@ -43,6 +43,11 @@ public enum Trophies {
         var families: Int { Set(ever.compactMap { data.catalog[$0.type]?.family }).count }
         var countries: Int { Set(live.map { $0.countryCode }).count }
         var years: Double { s.companies.isEmpty ? 0 : Double(s.week - (s.companies.map { $0.foundedWeek }.min() ?? s.week)) / 52 }
+        /// Results over time, not setup: a company with a profitable month on record, and one with three profitable months in a row.
+        func profitable(_ c: Company) -> Bool { c.monthlyHistory.contains { $0.profit > 0 } }
+        func quarterProfit(_ c: Company) -> Bool { let h = c.monthlyHistory.suffix(3); return h.count == 3 && h.allSatisfy { $0.profit > 0 } }
+        /// Weeks since the company opened its doors.
+        func age(_ c: Company) -> Int { s.week - (c.openedWeek ?? c.foundedWeek) }
         var portfolio: Double { netWorth.stocks + netWorth.crypto + netWorth.funds }
         func money(_ v: Double) -> Double { cur.scaledPrice(v) }
         func words(_ v: Double) -> String { v >= 1e9 ? "\(Int(v / 1e9)) billion" : "\(Int(v / 1e6)) million" }
@@ -55,18 +60,25 @@ public enum Trophies {
     public static let all: [Trophy] = {
         var L: [Trophy] = []
         func one(_ id: String, _ name: String, _ group: String, _ t: @escaping (Facts) -> String?) { L.append(Trophy(id: id, name: name, group: group, test: t)) }
-        one("cust", "First customer", "first") { f in f.live.first { $0.lastWeekUnits > 0 || ($0.books.total["rev"] ?? 0) > 0 }.map { "\($0.name) served its first customer." } }
-        one("emp", "First employee", "first") { f in f.live.first { !$0.staff.isEmpty }.map { c in "\(f.s.people[c.staff[0].id]?.name ?? "Someone") joined \(c.name)." } }
+        // Ids "cust", "emp", "mgr" and "branch" were setup trophies (first sale, first hire, first manager, second shop); they now ask for a result.
+        // Anyone who already holds one keeps it.
+        one("cust", "A steady trade", "first") { f in f.live.first { $0.status == .open && f.age($0) >= 4 && $0.lastWeekUnits >= 10 }.map { "\($0.name) sells to ten or more customers a week, a month after opening." } }
+        one("emp", "A team that pays", "first") { f in f.live.first { !$0.staff.isEmpty && f.profitable($0) }.map { "\($0.name) pays its people and still makes money." } }
         one("profit", "First profitable month", "first") { f in f.live.first { $0.monthlyHistory.contains { $0.profit > 0 } }.map { "\($0.name) made money for a whole month." } }
-        one("year", "One year in business", "first") { f in f.years >= 1 ? "A year since you started your first company." : nil }
-        one("mgr", "First manager", "first") { f in f.live.first { $0.managerID != nil && f.s.people[$0.managerID!] != nil }.map { "\(f.s.people[$0.managerID!]!.name) now runs \($0.name)." } }
-        one("branch", "First branch", "first") { f in
-            var seen = Set<String>()
-            for c in f.live where c.status == .open && c.type != "hold" { if !seen.insert(c.type).inserted { return "Your second \(f.data.catalog[c.type]?.name.lowercased() ?? "company") is open." } }
+        one("year", "One year in business", "first") { f in f.years >= 1 && f.live.contains { $0.status == .open && f.profitable($0) } ? "A year in business, and still making money." : nil }
+        one("mgr", "A manager who delivers", "first") { f in f.live.first { $0.managerID != nil && f.s.people[$0.managerID!] != nil && f.quarterProfit($0) }.map { "\(f.s.people[$0.managerID!]!.name) runs \($0.name) and it made money three months running." } }
+        one("branch", "An expansion that pays", "first") { f in
+            for c in f.live where c.status == .open && c.type != "hold" && f.profitable(c) {
+                if f.live.contains(where: { $0.id != c.id && $0.status == .open && $0.type == c.type && f.profitable($0) }) { return "Your second \(f.data.catalog[c.type]?.name.lowercased() ?? "company") makes money too." }
+            }
             return nil }
+        one("q3", "A profitable quarter", "first") { f in f.live.first { f.quarterProfit($0) }.map { "\($0.name) made money three months running." } }
+        one("debt0", "Debt-free", "money") { f in f.s.rest["ach28d"] != nil && f.s.loans.isEmpty && f.live.contains { f.profitable($0) } ? "Every loan is paid off." : nil }
+        L += ladder("bv", "legacy", [("25", "A name worth 25", 25), ("50", "A name worth 50", 50), ("75", "A name worth 75", 75)],
+                    test: { f, v in BrandValues.group(f.s).score >= v && f.live.contains { f.quarterProfit($0) } }, text: { _, v in "Your group's brand value passed \(Int(v)) out of 100." })
         one("div", "First dividend", "first") { f in f.s.stats.dividendsReceived > 0 ? "Your company paid you a share of its profit." : nil }
         one("abroad", "First company abroad", "first") { f in f.live.first { $0.countryCode != f.s.homeCountryCode }.map { "\($0.name) opened abroad." } }
-        one("ten", "Ten people on the payroll", "people") { f in f.jobs >= 10 ? "Ten people now earn their living with you." : nil }
+        one("ten", "Ten people on the payroll", "people") { f in f.jobs >= 10 && f.live.contains { f.profitable($0) } ? "Ten people now earn their living with you." : nil }
         one("hundred", "100 people work for you", "people") { f in f.jobs >= 100 ? "A hundred jobs. Families depend on you now." : nil }
         one("million", "First million", "money") { f in f.nw >= f.money(1e6) ? "Your net worth passed \(f.cur.display(f.money(1e6)))." : nil }
         one("tenm", "Net worth of 10 million", "money") { f in f.nw >= f.money(10e6) ? "Your net worth passed \(f.cur.display(f.money(10e6)))." : nil }
@@ -128,6 +140,7 @@ public enum Trophies {
         var rec = record(s)
         let first = s.rest["ach28i"] == nil && s.week > 8
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
+        if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }   // "had a loan", for the debt-free trophy
         let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog),
                       live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies.filter { $0.type != "hold" })
         var got: [String] = []
@@ -143,7 +156,7 @@ public enum Trophies {
                 if let t = all.first(where: { $0.id == id }) {
                     s.addMessage(from: "Trophy wall", title: t.name, body: rec[id]["t"].string, tone: "good")
                     s.note("Trophy: \(t.name)", tone: "good")
-                    Celebrations.add(&s, kind: "trophy", title: t.name, detail: rec[id]["t"].string)
+                    Celebrations.add(&s, kind: "trophy", title: t.name, detail: rec[id]["t"].string, art: "trophy." + t.group, tier: 2)
                 }
             }
         }

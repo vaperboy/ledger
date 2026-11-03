@@ -230,7 +230,7 @@ public enum Ambitions {
             if h.count > 40 { h.removeLast(h.count - 40) }
             a["hist"] = .array(h); s.rest["amb27"] = a
             s.addMessage(kind: "info", from: "Ambition", title: "Milestone: \(m.text)", body: "\(path(k)?.name ?? k) \(roman[min(9, t)]). +\(Int(ptsBase)) legacy points.", tone: "good")
-            Celebrations.add(&s, kind: "milestone", title: m.text, detail: "\(path(k)?.name ?? k) \(roman[min(9, t)])", reward: "+\(Int(ptsBase)) legacy points")
+            Celebrations.add(&s, kind: "milestone", title: m.text, detail: "\(path(k)?.name ?? k) \(roman[min(9, t)])", reward: "+\(Int(ptsBase)) legacy points", art: "ambition." + k, tier: 2)
         }
         let fresh = milestones(s, data, path: k, tier: t)
         if fresh.allSatisfy({ $0.done != nil }) {
@@ -244,7 +244,7 @@ public enum Ambitions {
             s.news("\(s.player.name) reaches \((path(k)?.name ?? k).lowercased()) level \(roman[min(9, t)]).", tone: "good")
             let next = milestones(s, data, path: k, tier: t + 1).map { $0.text }.joined(separator: "; ")
             Celebrations.add(&s, kind: "milestone", title: "\(path(k)?.name ?? k) \(roman[min(9, t)]) complete", detail: t < 2 ? "Your perk grows" : "The next level asks for three times as much",
-                             reward: "+\(Int(bonus)) legacy points")
+                             reward: "+\(Int(bonus)) legacy points", art: "ambition." + k, tier: 2)
             s.addMessage(kind: "info", from: "Ambition", title: "\(path(k)?.name ?? k) \(roman[min(9, t)]) complete",
                          body: "+\(Int(bonus)) legacy points. \(t < 2 ? "Your perk grows: " + perkText(k, level: t + 1) : "The next level asks for three times as much.") Next: \(next).", tone: "good")
         }

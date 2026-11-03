@@ -340,6 +340,10 @@ public extension GameEngine {
     }
     /// Celebrations earned and not yet shown (trophies, ambition milestones, finished first steps, the daily mission).
     var pendingCelebrations: [Celebration] { Celebrations.pending(state) }
+    /// The same waiting list as the popup needs it: id, title, detail, tier and art key.
+    func pendingAwards() -> [AwardInfo] {
+        Celebrations.pending(state).map { AwardInfo(id: String($0.id), title: $0.title, detail: $0.detail, tier: $0.tier, artKey: $0.art) }
+    }
     /// The player has seen them: hands the queue over and clears it.
     mutating func takeCelebrations() -> [Celebration] {
         var r: [Celebration] = []

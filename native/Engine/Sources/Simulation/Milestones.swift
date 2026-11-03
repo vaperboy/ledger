@@ -35,7 +35,7 @@ public enum Milestones {
         while i < 80, threshold(i, cur) <= nw { reached.append(.number(Double(today))); top = i; i += 1 }
         if top >= 0 {
             m["r"] = .array(reached)
-            Celebrations.add(&s, kind: "milestone", title: "Net worth passed \(cur.display(threshold(top, cur)))", detail: "Reached on day \(today + 1) of your game")
+            Celebrations.add(&s, kind: "milestone", title: "Net worth passed \(cur.display(threshold(top, cur)))", detail: "Reached on day \(today + 1) of your game", art: "milestone.networth", tier: 2)
         }
         if weekClosed {
             let gain = nw - m["w"].double
@@ -46,7 +46,7 @@ public enum Milestones {
                 if streak > m["bs"].int { m["bs"] = .number(Double(streak)) }
                 if gain > m["bw"].double { m["bw"] = .number(gain) }
                 if streakSteps.contains(streak) {
-                    Celebrations.add(&s, kind: "milestone", title: "\(streak) profitable weeks in a row", detail: "Your net worth has risen every week for \(streak) weeks")
+                    Celebrations.add(&s, kind: "milestone", title: "\(streak) profitable weeks in a row", detail: "Your net worth has risen every week for \(streak) weeks", art: "milestone.streak", tier: 2)
                 }
             } else {
                 m["s"] = .number(0)
