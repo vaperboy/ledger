@@ -1,6 +1,7 @@
 # What's new
 - Applicants have their own page (filter by company and role); the inbox link now says "Open applicants"
 - The morning briefing has a thin loading bar; popup buttons are all the same style, with "Decide later" and "Postpone" greyed
+- Features open when they make sense: the Group Board tab appears once someone could sit on it, chain registration waits for a year of trading, expanding abroad for a profitable year, research for an 8 week old company and dividends for retained profit (locked ones stay visible with the reason); a centred popup announces each new feature with a Take me there button; the chain and franchise requirements each show Done, Waiting or Missing with the button that fixes it right there
 - Popups: one slim header with the close button (no overlaps or doubles), every popup hugs its content, and the worker profile and price popups show up again
 - Remembered card details belong to one company in one game: they are not carried into a new game or offered to another company
 - Tapping a notification opens the item itself (the message popup, the right page) without asking; the custom tab starts as "Pick tab" until you choose

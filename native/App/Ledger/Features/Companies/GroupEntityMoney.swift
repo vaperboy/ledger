@@ -33,7 +33,7 @@ struct GroupEntityMoney: View {
                 loansBox
             }
             .fixedSize(horizontal: false, vertical: true)
-            dividendsBox
+            dividendsOrLock
         }
         .centerSheet(item: $move) { (t: MoveTarget) in BankMoveSheet(account: .company(t.companyID), kind: t.kind) }
         .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: entity.companyID).environmentObject(store) }
@@ -87,6 +87,15 @@ struct GroupEntityMoney: View {
         let weekly: Double = engine.companyHealth(c).weeklyCost
         let need: Double = cur.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
         return Button("Lend \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.gold)).lineLimit(1).minimumScaleFactor(0.8)
+    }
+
+    /// The dividend desk, or (while the company has no retained profit to pay out) a locked line that says what opens it. A holding collects, so it is never locked.
+    @ViewBuilder private var dividendsOrLock: some View {
+        if let lock = engine.unlockItem("dividends", companyID: entity.companyID), !lock.unlocked {
+            LockedBlock(title: "Dividends", reason: lock.reason)
+        } else {
+            dividendsBox
+        }
     }
 
     private var dividendsBox: some View {

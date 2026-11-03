@@ -65,24 +65,17 @@ struct GrowIntoChain: View {
             MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
                 VStack(alignment: .leading, spacing: 10) {
                     RateBar(label: "Ready", fraction: reqs.isEmpty ? 0 : Double(ready) / Double(reqs.count), tint: ready == reqs.count ? Theme.gain : Theme.gold)
-                    ForEach(reqs, id: \.id) { r in
-                        CardLine()
-                        requirementRow(r)
-                    }
+                    CardLine()
+                    RequirementGuide(engine: engine, company: company, requirements: reqs)
                 }
             }
-            registration(doc.status, weeksLeft: doc.weeksLeft, blocked: reqs.contains { !$0.ok })
+            if let lock = engine.unlockItem("chain", companyID: company.id), !lock.unlocked {
+                LockedBlock(title: "Chain registration", reason: lock.reason, progress: Double(Unlocks.weeksTraded(engine.state, company)) / Double(Unlocks.weeksChain))
+            } else {
+                registration(doc.status, weeksLeft: doc.weeksLeft, blocked: reqs.contains { !$0.ok })
+            }
         }
         .onAppear { if name.isEmpty { name = company.name } }
-    }
-
-    private func requirementRow(_ r: Chains.Requirement) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            GlyphView(glyph: r.ok ? Glyph.check : Glyph.close, size: 13, weight: 1.6, tint: r.ok ? Theme.gain : Theme.loss).frame(width: 18)
-            Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-            Spacer(minLength: 8)
-            Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
-        }.padding(.vertical, 2)
     }
 
     @ViewBuilder private func registration(_ status: String, weeksLeft: Int, blocked: Bool) -> some View {

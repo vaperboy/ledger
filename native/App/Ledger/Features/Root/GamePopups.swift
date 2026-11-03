@@ -18,6 +18,19 @@ struct PopupLayer: View {
             if let n = store.toast { NoticePopup(notice: n).id(n.id).transition(.opacity) }
             if let a = store.redAlerts.first { RedAlertPopup(message: a).id(a.id).transition(.opacity) }
         }
+        .centerSheet(item: unlockBinding) { (p: UnlockPrompt) in
+            UnlockPopup(prompt: p).environmentObject(store)
+        }
+    }
+
+    /// The announcement of a newly opened feature: shown only when nothing else is waiting; closing it counts as Skip.
+    private var unlockBinding: Binding<UnlockPrompt?> {
+        Binding<UnlockPrompt?>(
+            get: { store.unlockReady },
+            set: { (v: UnlockPrompt?) in
+                if v == nil, let p = store.unlockReady { store.dismissUnlock(p) }
+            }
+        )
     }
 }
 

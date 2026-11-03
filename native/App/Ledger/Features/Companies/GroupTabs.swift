@@ -17,10 +17,12 @@ enum GroupSection: String, CaseIterable, Hashable {
 struct GroupSectionBar: View {
     @Binding var tab: GroupSection
     var badges: [GroupSection: Int] = [:]
+    /// The tabs shown (the Board tab is left out until somebody could sit on it: native/docs/UNLOCKS.md).
+    var sections: [GroupSection] = GroupSection.allCases
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(GroupSection.allCases, id: \.self) { (t: GroupSection) in
+            ForEach(sections, id: \.self) { (t: GroupSection) in
                 Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0) }
                     .buttonStyle(PressableStyle())
                     .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])

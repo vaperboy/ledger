@@ -173,11 +173,21 @@ struct CompanyBrandLine: View {
 
 /// A "Research" row that opens the research popup. Used in the Sales card and in the Market app.
 struct ResearchRow: View {
+    @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @State private var open = false
 
     var body: some View {
+        if let lock = engine.unlockItem("research", companyID: company.id), !lock.unlocked {
+            SettingsTableRow(title: "Research", value: "Locked", valueTint: Theme.ivoryFaint, opens: .sheet, glyph: Glyph.lock) { store.show(lock.reason, tone: "n") }
+                .opacity(0.6)
+        } else {
+            openRow
+        }
+    }
+
+    private var openRow: some View {
         let reports: Int = engine.research(companyID: company.id).count
         let waiting: Int = MarketResearch.pending(company).count
         let value: String = waiting > 0 ? "\(waiting) on its way" : (reports > 0 ? "\(reports) delivered" : "Buy a report")

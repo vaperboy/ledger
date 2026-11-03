@@ -17,12 +17,15 @@ struct GroupEntityPage: View {
             header
                 .padding(.horizontal, 18).padding(.top, 6)
             if let e = store.engine {
-                GroupSectionBar(tab: $section, badges: badges(e))
+                let shown: [GroupSection] = visibleSections(e)
+                GroupSectionBar(tab: $section, badges: badges(e), sections: shown)
                     .padding(.horizontal, 18).padding(.top, 10)
-                SegmentPager(items: GroupSection.allCases, selection: $section) { (s: GroupSection) in
+                SegmentPager(items: shown, selection: $section) { (s: GroupSection) in
                     screen(e, s)
                 }
                 .id(entity.id)
+                .onAppear { if !shown.contains(section) { section = .overview } }
+                .onChange(of: shown) { _, now in if !now.contains(section) { section = .overview } }
             }
         }
     }
@@ -33,6 +36,12 @@ struct GroupEntityPage: View {
         } else {
             ScrollScreen(top: 12) { content(e, s) }
         }
+    }
+
+    /// Every tab, minus Board while nobody could sit on it (an unlock hidden until it opens, native/docs/UNLOCKS.md). A board that exists always shows.
+    private func visibleSections(_ e: GameEngine) -> [GroupSection] {
+        let open: Bool = store.isUnlocked("board", companyID: entity.companyID)
+        return GroupSection.allCases.filter { (s: GroupSection) -> Bool in s != .board || open }
     }
 
     private func badges(_ e: GameEngine) -> [GroupSection: Int] {

@@ -56,7 +56,6 @@ struct FranchisorCard: View {
     @State private var support = 0
     @State private var masterCountry = ""
     @State private var pending: PendingAction?
-    @State private var signing = false
     @State private var ftab: FranchiseTab?
 
     var body: some View {
@@ -94,42 +93,12 @@ struct FranchisorCard: View {
 
     @ViewBuilder private func notYet(_ cur: Currency) -> some View {
         let reqs = engine.franchiseRequirements(companyID: company.id)
-        let doc = engine.documentState(companyID: company.id, document: "fran")
         Text("Others open units under your name for a fee and royalties, once the chain has proven itself. \(reqs.filter { $0.ok }.count) of \(reqs.count) ready.")
             .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 6)
-        ForEach(Array(reqs.enumerated()), id: \.element.id) { n, r in
-            if n > 0 { CardLine() }
-            HStack(alignment: .firstTextBaseline) {
-                GlyphView(glyph: r.ok ? Glyph.check : Glyph.ring, size: 14, weight: 1.6, tint: r.ok ? Theme.gain : Theme.ivoryFaint).frame(width: 18)
-                Text(r.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                Spacer(minLength: 8)
-                Text(r.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.trailing)
-            }.padding(.vertical, 8)
-        }
+        RequirementGuide(engine: engine, company: company, requirements: reqs)
         if reqs.allSatisfy({ $0.ok }) {
             CardLine()
-            if doc.status == "applied" {
-                Text("Franchise documents: about \(doc.weeksLeft) \(doc.weeksLeft == 1 ? "week" : "weeks") left. A lawyer writes the agreement and the disclosure document.").font(.caption).foregroundStyle(Theme.caution).padding(.top, 10)
-            } else if doc.status != "ok" {
-                Button("Apply for franchise documents · \(cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")))") {
-                    signing = true
-                }.buttonStyle(TinyButtonStyle()).padding(.top, 10)
-                .centerSheet(isPresented: $signing) {
-                    PaperSignSheet(title: "Franchise documents", to: "The franchise register", note: "A lawyer writes the franchise agreement and the disclosure document for \(company.name). They are reviewed before you can sell units.",
-                                   fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "fran")), wait: "after a review of some weeks", button: "Sign and send",
-                                   onSend: {
-                        switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "fran") }) {
-                        case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
-                        case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
-                        default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
-                        }
-                    }, onClose: { signing = false })
-                    .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
-                }
-            } else {
-                launchForm(cur)
-            }
+            launchForm(cur)
         }
     }
 

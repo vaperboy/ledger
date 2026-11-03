@@ -21,7 +21,15 @@ struct EntityAbroadSection: View {
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID), co.status == .open, co.type != "hold", !co.value("franchise")["fran"].bool {
-            let options: [Abroad.Option] = e.abroadOptions(companyID: companyID)
+            if let lock = e.unlockItem("abroad", companyID: companyID), !lock.unlocked {
+                LockedBlock(title: "Expand abroad", reason: lock.reason, progress: Double(Unlocks.monthsClosed(co)) / 12)
+            } else {
+                openSection(e, co, e.abroadOptions(companyID: companyID))
+            }
+        }
+    }
+
+    @ViewBuilder private func openSection(_ e: GameEngine, _ co: Company, _ options: [Abroad.Option]) -> some View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("EXPAND ABROAD").capsLabel()
                 Text("A foreign subsidiary of \(co.name) is a new limited company that takes part of its brand along.")
@@ -39,7 +47,6 @@ struct EntityAbroadSection: View {
                 }
             }
             .navigationDestination(item: $chosen) { (code: String) in AbroadOptionsView(companyID: companyID, country: code) }
-        }
     }
 
     @ViewBuilder private func table(_ e: GameEngine, _ options: [Abroad.Option]) -> some View {

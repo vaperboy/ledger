@@ -127,6 +127,8 @@ final class GameStore: ObservableObject {
     @Published private(set) var reportSheet: ReportDigest?
     /// Rewards earned and not yet shown, oldest first. The Home screen shows the first, one at a time.
     @Published private(set) var celebrationQueue: [Celebration] = []
+    /// Newly opened features waiting for their announcement popup, oldest first (UnlockKit.swift). One shows at a time, after the day's popups.
+    @Published var unlockQueue: [UnlockPrompt] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
     @Published private(set) var dayChip: DayChip?
     /// What the last day changed (net worth, cash, revenue, debt), for the animation layer.
@@ -267,7 +269,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
+        guard !isAdvancing, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 40_000_000)
@@ -292,6 +294,7 @@ final class GameStore: ObservableObject {
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
         celebrationQueue.append(contentsOf: celebrations)
+        if out.completedWeek { queueUnlocks() }
         reportSheet = digest
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
         if let nwBefore, let nwAfter = e.dayHistory.netWorth.last, let cashBefore, let cashAfter = e.dayHistory.cash.last {
@@ -346,6 +349,7 @@ final class GameStore: ObservableObject {
             save()
             celebrationQueue.append(contentsOf: waiting)
         }
+        queueUnlocks()
     }
 
     /// The player has read the report sheet: the report (and the shorter ones that closed with it) are marked seen.
@@ -745,7 +749,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; customPath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {
