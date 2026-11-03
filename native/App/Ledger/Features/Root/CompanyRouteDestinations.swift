@@ -12,6 +12,7 @@ struct CompanyRouteDestination: View {
             case .companyAt(let id, let sec): CompanyPage(companyID: id, section: sec, part: nil)
             case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part)
             case .newCompany: NewCompanyView()
+            case .applicants(let id, let role): ApplicantsView(companyID: id == 0 ? nil : id, role: role.isEmpty ? nil : role)
             // Normally the store opens the Phone's Market app instead of pushing this route (`GameStore.push`); this is the same app.
             case .market: MarketApp()
             }

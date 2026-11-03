@@ -234,6 +234,10 @@ struct HireWorkersView: View {
                 Text("Applicants").capsLabel()
                 Spacer(minLength: 6)
                 if !list.isEmpty { Text("\(list.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                Button { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) } label: {
+                    Text("Open page \u{203A}").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
             }
             if list.isEmpty {
                 Text("No one yet. Post an ad or engage an agency; answers arrive here and in your inbox.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)

@@ -33,6 +33,7 @@ struct CompanyTeam: View {
                 header
                 placesNote
                 managementNote
+                ApplicantsLinkRow(engine: engine, companyID: company.id)
             }
             if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
             settingsTable

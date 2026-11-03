@@ -458,8 +458,9 @@ struct MessageCard: View {
             }
             if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
                 let sec = Self.section(for: message)
-                Button { store.openCompany(co.id, section: sec) } label: {
-                    LinkLabel(text: "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
+                let app = store.applicantLink(message)
+                Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
+                    LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
                 }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
             }
         }

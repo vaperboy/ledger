@@ -24,6 +24,7 @@ struct GroupEntityManagement: View {
             if let co {
                 people(co)
                 approvalNote(co)
+                ApplicantsLinkRow(engine: engine, companyID: co.id)
                 openPosts(co)
             } else {
                 Text("This company no longer exists.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)

@@ -123,8 +123,9 @@ struct InboxMailRow: View {
     @ViewBuilder private var companyLink: some View {
         if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
             let sec: CompanySection? = MessageCard.section(for: message)
-            let name: String = "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "")
-            Button { store.openCompany(co.id, section: sec) } label: {
+            let app = store.applicantLink(message)
+            let name: String = app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "")
+            Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
                 HStack(spacing: 4) {
                     Text(name).font(.system(size: 12, weight: .medium))
                     GlyphView(glyph: Glyph.chevron, size: 10, weight: 2, tint: P.accent)

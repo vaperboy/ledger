@@ -11,6 +11,8 @@ enum CompanyRoute: Hashable {
     case companyAt(Int, CompanySection)
     /// The same screen opened on one of its parts (the Finances page on Ownership, Operations on Premises): `part` is the part's title.
     case companyPart(Int, CompanySection, String)
+    /// The Applicants page: company id (0 = all companies) and role id ("" = all roles).
+    case applicants(Int, String)
 
     /// What makes two routes "the same record" for the navigation stack: the company, and for the trade pages that are their own screen
     /// (Marketing, Customers, Market, Plant, Fish, Club, Chain, Book, Setup) the page too. The five sections of the company screen
@@ -20,6 +22,7 @@ enum CompanyRoute: Hashable {
         case .company(let id): return "company.\(id)"
         case .companyAt(let id, let s), .companyPart(let id, let s, _): return CompanyDetailView.isLeaf(s) ? "company.\(id).\(s.rawValue)" : "company.\(id)"
         case .newCompany: return "newCompany"
+        case .applicants: return "applicants"
         case .market: return "market"
         }
     }
