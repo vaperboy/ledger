@@ -8,3 +8,4 @@
 - First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year
 - New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings › Saves
 - Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait
+- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days

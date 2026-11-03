@@ -150,6 +150,7 @@ struct InboxView: View {
         var effects: [String] = []
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
+        if ok { Haptics.option() }
         detailID = nil
         store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
     }
