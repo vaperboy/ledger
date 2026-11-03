@@ -133,8 +133,9 @@ final class GameStore: ObservableObject {
     @Published private(set) var lastDayChanges = DayChanges()
     /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
     @Published private(set) var paymentNotice: PaymentNotice?
-    /// Highest market event id already seen (nil = not read yet), so only new events become banners.
-    var marketSeen: Int?
+    /// What each Phone app has shown the player so far (badges count what is newer), and what was already announced in a banner.
+    @Published var seenMarks = UpdateMarks.load("seen")
+    var announcedMarks = UpdateMarks.load("announced")
     /// A worker's profile opened from a Recognition banner.
     @Published var workerPopup: WorkerPopupRef?
     /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
@@ -274,7 +275,7 @@ final class GameStore: ObservableObject {
 
     private func advanceOneDay() {
         guard var e = engine else { return }
-        let seenBefore: Int = marketSeen ?? (e.marketEvents(limit: 1).first?.id ?? 0)
+        seedUpdateMarks()
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
@@ -303,8 +304,7 @@ final class GameStore: ObservableObject {
             todaysPayment = notice
             paymentNotice = notice
         }
-        if !out.gameOver { postMarketBanners(e, after: seenBefore) }
-        marketSeen = e.marketEvents(limit: 1).first?.id ?? seenBefore
+        if !out.gameOver { postUpdateBanners(e) }
         var logged: [HomeEvent] = []
         if let n = todaysPayment { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
         if lastDayChanges.debt < -0.5 { logged.append(HomeEvent(glyph: Glyph.bank, text: "Loans repaid by \(short(-lastDayChanges.debt))", day: daily.dateLabel)) }
@@ -742,7 +742,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
         routePaths = [:]; phonePath = []; customPath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; marketSeen = nil; banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {
@@ -765,10 +765,7 @@ final class GameStore: ObservableObject {
 
     /// Everything on the Phone that asks for the player, most urgent first (see `PhoneAlert`).
     var phoneAlerts: [PhoneAlert] { engine.map { PhoneAlerts.all(engine: $0, formatter: self) } ?? [] }
-    /// The red bubble count of each app: Inbox = open decisions, Bank = payroll alerts.
-    var phoneBadges: [PhoneApp: Int] { engine.map { PhoneAlerts.badges(engine: $0) } ?? [:] }
-    /// The number on the Phone tab: every bubble added up (open decisions + payroll alerts).
-    var waitingCount: Int { phoneBadges.values.reduce(0, +) }
+    // The red bubbles (`appBadge`, `phoneBadges`, `waitingCount`) are in UpdateBadges.swift.
 }
 
 extension Int {

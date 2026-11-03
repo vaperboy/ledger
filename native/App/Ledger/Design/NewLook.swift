@@ -223,7 +223,7 @@ struct RedBubble: View {
         if count > 0 {
             let big = size == .regular
             let h: CGFloat = big ? 20 : 16
-            let text: String = count > 99 ? "99+" : "\(count)"
+            let text: String = count > 9 ? "9+" : "\(count)"
             Text(text)
                 .font(.system(size: big ? 11.5 : 10, weight: .semibold))
                 .foregroundStyle(Color.white)

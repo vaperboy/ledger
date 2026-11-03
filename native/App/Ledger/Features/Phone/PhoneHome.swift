@@ -136,6 +136,8 @@ struct PhoneAppScreen: View {
     var body: some View {
         AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint,
                         palette: app.splashPalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { appContent }
+            .onAppear { store.markSeen(app) }
+            .onChange(of: store.engine?.state.day) { _, _ in store.markSeen(app) }
     }
 
     @ViewBuilder private var appContent: some View {

@@ -45,16 +45,17 @@ extension GameStore {
         return nil
     }
 
-    /// Banners for market events newer than `after`: at most two a day, the most important first.
-    func postMarketBanners(_ e: GameEngine, after: Int) {
+    /// Banner cards for market events newer than `after`, the most important first (`postUpdateBanners` posts and collapses them).
+    func marketBannerItems(_ e: GameEngine, after: Int) -> [BannerItem] {
         let fresh: [MarketEvent] = e.marketEvents(limit: 20).filter { (m: MarketEvent) -> Bool in m.id > after }
-        guard !fresh.isEmpty else { return }
+        guard !fresh.isEmpty else { return [] }
+        var out: [BannerItem] = []
         let ranked: [MarketEvent] = fresh.sorted { (a: MarketEvent, b: MarketEvent) -> Bool in
             let sa: Int = marketSeverity(a.kind)
             let sb: Int = marketSeverity(b.kind)
             return sa != sb ? sa > sb : a.id > b.id
         }
-        for m in ranked.prefix(2) {
+        for m in ranked {
             var item = BannerItem(key: "mev-\(m.id)", source: "Market", title: m.title.tidyText, body: m.detail.tidyText, glyph: Glyph.stats)
             item.severity = marketSeverity(m.kind)
             let store: GameStore = self
@@ -82,7 +83,8 @@ extension GameStore {
             default:
                 item.lifetime = 4
             }
-            banners.post(item)
+            out.append(item)
         }
+        return out
     }
 }

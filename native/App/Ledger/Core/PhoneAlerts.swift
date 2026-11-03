@@ -69,16 +69,4 @@ enum PhoneAlerts {
         }
         return out
     }
-
-    /// Red bubble per app: Inbox = open decisions, Accounting = payroll alerts (payroll is run there), Weather = big weather warnings.
-    static func badges(engine: GameEngine) -> [PhoneApp: Int] {
-        var out: [PhoneApp: Int] = [:]
-        let decisions: Int = engine.state.inbox.filter { $0.status == "open" }.count
-        let payrolls: Int = payroll(engine: engine).count
-        if decisions > 0 { out[.inbox] = decisions }
-        if payrolls > 0 { out[.accounting] = payrolls }
-        let storms: Int = engine.bigWeatherWarnings().count
-        if storms > 0 { out[.weather] = storms }
-        return out
-    }
 }
