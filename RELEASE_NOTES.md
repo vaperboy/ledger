@@ -1,4 +1,5 @@
 # What's new
+- Remembered card details belong to one company in one game: they are not carried into a new game or offered to another company
 - Tapping a notification opens the item itself (the message popup, the right page) without asking; the custom tab starts as "Pick tab" until you choose
 - Tabs inside pages slide sideways and follow your finger; no fading between tabs
 - Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager
