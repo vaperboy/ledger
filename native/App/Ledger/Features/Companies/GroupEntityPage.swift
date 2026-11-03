@@ -19,20 +19,19 @@ struct GroupEntityPage: View {
             if let e = store.engine {
                 GroupSectionBar(tab: $section, badges: badges(e))
                     .padding(.horizontal, 18).padding(.top, 10)
-                screen(e)
+                SegmentPager(items: GroupSection.allCases, selection: $section) { (s: GroupSection) in
+                    screen(e, s)
+                }
                 .id(entity.id)
-                .swipeBetween(GroupSection.allCases, selection: $section)
             }
         }
     }
 
-    @ViewBuilder private func screen(_ e: GameEngine) -> some View {
-        if section == .money {
-            FixedScreen(top: 12) { content(e) }
+    @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
+        if s == .money {
+            FixedScreen(top: 12) { content(e, s) }
         } else {
-            ScrollScreen(top: 12) {
-                content(e).segmentTransition(section, order: GroupSection.allCases)
-            }
+            ScrollScreen(top: 12) { content(e, s) }
         }
     }
 
@@ -67,8 +66,8 @@ struct GroupEntityPage: View {
         }
     }
 
-    @ViewBuilder private func content(_ e: GameEngine) -> some View {
-        switch section {
+    @ViewBuilder private func content(_ e: GameEngine, _ s: GroupSection) -> some View {
+        switch s {
         case .overview: GroupEntityOverview(engine: e, entity: entity)
         case .management: GroupEntityManagement(engine: e, entity: entity)
         case .board: GroupEntityBoard(engine: e, entity: entity)

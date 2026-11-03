@@ -19,26 +19,27 @@ struct AcctPayroll: View {
                 SectionTabs(items: AcctPayrollTab.allCases, title: { $0.rawValue }, selection: $m.payTab)
                     .padding(.top, 4)
                     .accessibilityIdentifier("acct-payroll-tabs")
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        if !e.canAccess(.payroll, companyID: co.id, user: m.user) {
-                            AcctLocked(section: "Payroll")
-                        } else {
-                            tabContent(e, co)
+                SegmentPager(items: AcctPayrollTab.allCases, selection: $m.payTab) { (t: AcctPayrollTab) in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            if !e.canAccess(.payroll, companyID: co.id, user: m.user) {
+                                AcctLocked(section: "Payroll")
+                            } else {
+                                tabContent(e, co, t)
+                            }
                         }
+                        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                        .frame(maxWidth: 560).frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
-                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                    .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                 }
-                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-                .swipeBetween(AcctPayrollTab.allCases, selection: $m.payTab)
             }
             .confirmAction($pending)
         }
     }
 
-    @ViewBuilder private func tabContent(_ e: GameEngine, _ co: Company) -> some View {
-        switch m.payTab {
+    @ViewBuilder private func tabContent(_ e: GameEngine, _ co: Company, _ t: AcctPayrollTab) -> some View {
+        switch t {
         case .overview: overview(e, co)
         case .employees: employees(e, co)
         case .timesheets: timesheets(e, co)

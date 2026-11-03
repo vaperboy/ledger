@@ -19,6 +19,7 @@ struct InboxView: View {
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
     @State private var detailID: Int?
+    @State private var scrollTarget: Int?
     @AppStorage("inboxPinned") private var pinnedText = ""
 
     static let page = 60
@@ -35,8 +36,8 @@ struct InboxView: View {
 
     private var waitingCount: Int { store.openDecisionCount }
 
-    private func matches(_ m: Message) -> Bool {
-        switch tab {
+    private func matches(_ m: Message, _ t: Tab) -> Bool {
+        switch t {
         case .all: return true
         case .decisions: return m.status == "open"
         case .risks: return m.tone == "bad"
@@ -44,10 +45,10 @@ struct InboxView: View {
         }
     }
 
-    private func filtered(_ e: GameEngine) -> [Message] {
+    private func filtered(_ e: GameEngine, _ t: Tab) -> [Message] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return e.state.inbox.filter { m in
-            guard matches(m) else { return false }
+            guard matches(m, t) else { return false }
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""
@@ -154,11 +155,18 @@ struct InboxView: View {
         store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
     }
 
-    private func takeRequest(_ proxy: ScrollViewProxy) {
+    private func takeRequest() {
         guard let id = store.takeMessageRequest() else { return }
         tab = .all; query = ""; companyFilter = nil
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         detailID = id
+        scrollTarget = id
+    }
+
+    /// Scrolls the All page to a requested message (only that page scrolls; the request is cleared once it has).
+    private func scrollToTarget(_ proxy: ScrollViewProxy) {
+        guard let id = scrollTarget else { return }
+        scrollTarget = nil
         DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .top) } }
     }
 
@@ -176,18 +184,13 @@ struct InboxView: View {
     var body: some View {
         Group {
             if let e = store.engine {
-                let list: [Message] = filtered(e)
-                let cut = limited(blocks(e, list))
-                ScrollViewReader { proxy in
-                    mailList(e, list: list, cut: cut)
-                        // A deep link (from Team, a suggestion or a toast) can arrive before this tab was ever shown: take it on appear too,
-                        // and clear every filter so the requested one is not hidden.
-                        .onAppear { takeRequest(proxy) }
-                        .onChange(of: store.appRequest) { _, _ in takeRequest(proxy) }
+                SegmentPager(items: Tab.allCases, selection: $tab) { (k: Tab) in
+                    page(e, k)
                 }
             }
         }
-        .swipeBetween(Tab.allCases, selection: $tab)
+        .onAppear { takeRequest() }
+        .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: Theme.Space.xs) {
                 searchField
@@ -206,11 +209,21 @@ struct InboxView: View {
         .environment(\.outsidePalette, P)
     }
 
-    private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int)) -> some View {
+    private func page(_ e: GameEngine, _ k: Tab) -> some View {
+        let list: [Message] = filtered(e, k)
+        let cut = limited(blocks(e, list))
+        return ScrollViewReader { (proxy: ScrollViewProxy) in
+            mailList(e, list: list, cut: cut, k)
+                .onAppear { if k == .all { scrollToTarget(proxy) } }
+                .onChange(of: scrollTarget) { _, _ in if k == .all { scrollToTarget(proxy) } }
+        }
+    }
+
+    private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int), _ k: Tab) -> some View {
         let week: Int = e.state.week
         return List {
             if companyFilter != nil { filterLine(e).mailRowStyle() }
-            if list.isEmpty { empty(e).mailRowStyle() }
+            if list.isEmpty { empty(e, k).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
                 if !b.title.isEmpty { header(b).mailRowStyle() }
                 ForEach(b.messages) { (m: Message) in
@@ -357,13 +370,13 @@ struct InboxView: View {
         }
     }
 
-    private func empty(_ e: GameEngine) -> some View {
+    private func empty(_ e: GameEngine, _ k: Tab) -> some View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
-            : tab == .decisions ? "Nothing needs you right now." : tab == .handled ? "Nothing has been handled for you yet." : "Nothing under \(tab.rawValue.lowercased())."
+            : k == .decisions ? "Nothing needs you right now." : k == .handled ? "Nothing has been handled for you yet." : "Nothing under \(k.rawValue.lowercased())."
         return VStack(spacing: 8) {
-            IconCircle(glyph: tab == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
+            IconCircle(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
             Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.top, 80)

@@ -9,17 +9,14 @@ struct ReportsScreen: View {
     var companyID: Int? = nil
     var body: some View {
         if let e = store.engine {
-            ScrollView {
-                ReportsContent(engine: e, companyID: companyID)
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
-            }
-            .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")
+            ReportsContent(engine: e, companyID: companyID)
+                .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")
         }
     }
 }
 
-/// Weekly, monthly and yearly reports for the whole group, or for one company. Everything is read from the stored reports.
+/// Weekly, monthly and yearly reports for the whole group, or for one company: the kind row stays fixed, the kinds slide sideways in a
+/// `SegmentPager`, each kind page scrolls on its own.
 struct ReportsContent: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -27,6 +24,42 @@ struct ReportsContent: View {
     @State private var kind: ReportKind = .week
     @State private var chosen: [String: Int] = [:]
     @State private var opened: ReportDest?
+
+    private func takeRequest() {
+        if let req = store.takeReportRequest() {
+            kind = req.kind
+            chosen[req.kind.rawValue] = req.id
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SectionTabs(items: ReportKind.allCases, title: { $0.title }, selection: $kind)
+                .padding(.top, Theme.Space.s)
+            SegmentPager(items: ReportKind.allCases, selection: $kind) { (k: ReportKind) in
+                ScrollView {
+                    ReportsPage(engine: engine, companyID: companyID, kind: k, active: k == kind, chosen: $chosen, opened: $opened)
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
+            }
+        }
+        .onAppear { takeRequest() }
+        .onChange(of: store.appRequest) { _, _ in takeRequest() }
+    }
+}
+
+/// One report kind's page (summary, chart, tables), scoped to `kind`.
+struct ReportsPage: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var companyID: Int? = nil
+    var kind: ReportKind
+    var active: Bool
+    @Binding var chosen: [String: Int]
+    @Binding var opened: ReportDest?
 
     private var format: ReportFormat {
         if let id = companyID, let co = engine.state.company(id) {
@@ -41,24 +74,15 @@ struct ReportsContent: View {
         return all.compactMap { $0.filtered(to: id) }
     }
 
-    private func takeRequest() {
-        if let req = store.takeReportRequest() {
-            kind = req.kind
-            chosen[req.kind.rawValue] = req.id
-        }
-    }
-
     var body: some View {
         let all = reports()
         let picked = chosen[kind.rawValue]
         let current: PeriodReport? = all.first(where: { $0.id == picked }) ?? all.last
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            SectionTabs(items: ReportKind.allCases, title: { $0.title }, selection: $kind)
-                .padding(.horizontal, -Theme.Space.margin)
             if let r = current {
                 picker(r, all)
                 summaryPage(r, all)
-                Color.clear.frame(height: 0).navigationDestination(item: $opened) { (d: ReportDest) in
+                Color.clear.frame(height: 0).navigationDestination(item: openedBinding) { (d: ReportDest) in
                     SettingsPage(title: d.title, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(d, r, all) }
                 }
             } else {
@@ -68,9 +92,11 @@ struct ReportsContent: View {
                 }
             }
         }
-        .onAppear { takeRequest() }
-        .onChange(of: store.appRequest) { _, _ in takeRequest() }
-        .swipeBetween(ReportKind.allCases, selection: $kind)
+    }
+
+    /// Only the visible kind page can push a detail, so the three pages never push it together.
+    private var openedBinding: Binding<ReportDest?> {
+        Binding<ReportDest?>(get: { active ? opened : nil }, set: { opened = $0 })
     }
 
     @ViewBuilder private func detail(_ d: ReportDest, _ r: PeriodReport, _ all: [PeriodReport]) -> some View {

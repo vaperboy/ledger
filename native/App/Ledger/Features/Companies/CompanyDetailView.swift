@@ -77,7 +77,7 @@ struct CompanyDetailView: View {
         } else if let e = store.engine, let co = e.state.company(companyID) {
             let form: String = co.form == .limited ? "Ltd" : "Sole trader"
             let tabs: [CompanyTab] = Self.tabs(co, e)
-            let current: CompanyTab = tabs.contains(segment) ? segment : .overview
+            let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
                     if let context = contextLine(co, e) {
@@ -86,17 +86,18 @@ struct CompanyDetailView: View {
                     SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, 2).padding(.bottom, 8)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        content(current, co, e)
+                SegmentPager(items: tabs, selection: pagerSelection) { (t: CompanyTab) in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            content(t, co, e)
+                        }
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
+                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
-                    .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDismissesKeyboard(.interactively)
                 }
-                .scrollIndicators(.hidden)
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollDismissesKeyboard(.interactively)
-                .swipeBetween(tabs, selection: $segment)
             }
             .appScreen(title: co.name, subtitle: "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)".tidyText) {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }

@@ -26,9 +26,20 @@ struct BankAccountScreen: View {
     var body: some View {
         if let e = store.engine, let d = e.bankAccount(id) {
             let fmt = BankFmt.make(store, id)
-            page(e, d, fmt)
+            let pagerSelection: Binding<BankTab> = Binding(get: { tabs.contains(tab) ? tab : BankTab.account }, set: { tab = $0 })
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let a = d.alert { alertBanner(a, fmt) }
+                    tabRow(d)
+                }
+                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 8)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+                SegmentPager(items: tabs, selection: pagerSelection) { (t: BankTab) in
+                    page(e, d, fmt, t)
+                }
+            }
             .scrollDismissesKeyboard(.interactively)
-            .swipeBetween(tabs, selection: $tab)
             .centerSheet(item: $move) { kind in BankMoveSheet(account: id, kind: kind) }
             .centerSheet(isPresented: $paying) { BankPaySheet(account: id) }
             .centerSheet(isPresented: $viewAll) { BankAllMovementsSheet(account: id) }
@@ -38,22 +49,20 @@ struct BankAccountScreen: View {
     }
 
     /// The Account tab is a fixed summary (compacted to fit); the other tabs are lists and scroll.
-    @ViewBuilder private func page(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        if tab == .account {
-            FixedScreen(top: 4, maxWidth: 560, overflowScrolls: true) { pageContent(e, d, fmt) }
+    @ViewBuilder private func page(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt, _ t: BankTab) -> some View {
+        if t == .account {
+            FixedScreen(top: 4, maxWidth: 560, overflowScrolls: true) { pageContent(e, d, fmt, t) }
         } else {
-            ScrollScreen(top: 4, maxWidth: 560) { pageContent(e, d, fmt) }
+            ScrollScreen(top: 4, maxWidth: 560) { pageContent(e, d, fmt, t) }
         }
     }
 
-    @ViewBuilder private func pageContent(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        if let a = d.alert { alertBanner(a, fmt) }
-        tabRow(d)
-        if tab == .account {
+    @ViewBuilder private func pageContent(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt, _ t: BankTab) -> some View {
+        if t == .account {
             balanceCard(d, fmt)
             tiles(d)
         }
-        content(e, d, fmt).segmentTransition(tab, order: tabs)
+        content(e, d, fmt, t)
     }
 
     // MARK: Alert
@@ -166,8 +175,8 @@ struct BankAccountScreen: View {
 
     // MARK: Content
 
-    @ViewBuilder private func content(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        switch tab {
+    @ViewBuilder private func content(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt, _ t: BankTab) -> some View {
+        switch t {
         case .account: accountTab(e, d, fmt)
         case .loans: BankLoansTab(account: id, loans: d.loans)
         case .deposits: BankDepositsTab(account: id, detail: d)
