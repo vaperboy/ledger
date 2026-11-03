@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.41",
+          "buildVersion": "41",
+          "date": "2026-11-03T23:55:17Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v41/Ledger-unsigned.ipa",
+          "size": 27514911,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves"
+        },
+        {
           "version": "1.0.40",
           "buildVersion": "40",
           "date": "2026-11-03T23:41:01Z",
@@ -187,22 +196,13 @@
           "size": 23887294,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Animations: team hires, promotions, manager and board seats, group connections and acquisitions, new stores, project progress, market charts, loan debt, goals, luxury purchases, a Home events timeline and a cleaner milestone celebration\n- Animations: figures count up, profit glows green, big payments slide in, loans visibly shrink, charts draw themselves, goals fill and unlock in gold, luxury purchases get a gold card, milestones use a clean gold ring, Home lists recent important events\n- Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places\n- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects\n- Bank: the balance card"
-        },
-        {
-          "version": "1.0.21",
-          "buildVersion": "21",
-          "date": "2026-11-02T18:20:32Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v21/Ledger-unsigned.ipa",
-          "size": 23677980,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places\n- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects\n- Bank: the balance card and its buttons are only on the Account tab; screens no longer wiggle sideways in Group, Projects and Bank; full-page popups fade and scale in\n- Sales lists your own products and services (named for your company): tap one for a price slider with live, unrounded numbers, per-item discounts and how it is sold; lower prices raise demand; add a new product or service; Marketing is a popup; Pricing and How you sell are gone. Items can be listed for your other companies in TechPro, with the pro"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.40",
-      "versionDate": "2026-11-03T23:41:01Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v40/Ledger-unsigned.ipa",
-      "size": 27460177
+      "version": "1.0.41",
+      "versionDate": "2026-11-03T23:55:17Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v41/Ledger-unsigned.ipa",
+      "size": 27514911
     }
   ]
 }
