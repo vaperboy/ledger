@@ -72,9 +72,14 @@ struct GroupEntityManagement: View {
     /// The owner appoints the general manager. The assistant is the general manager's own helper, so with a manager in place the hire needs the
     /// role above (you) to confirm; the manager's proposals reach you in the Inbox.
     @ViewBuilder private func approvalNote(_ co: Company) -> some View {
-        if co.managerID != nil, let m = engine.state.people[co.managerID ?? 0] {
-            Text("The assistant manager needs approval from you: \(m.name) can only propose a hire.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        let asst: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "assistant manager")
+        let gm: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "general manager")
+        VStack(alignment: .leading, spacing: 3) {
+            Text(gm.reason).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            if let above = asst.needsConfirmationFrom {
+                Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

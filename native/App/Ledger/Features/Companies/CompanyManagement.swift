@@ -610,9 +610,42 @@ struct AssistantSheet: View {
             }
         }.buttonStyle(QuietButtonStyle())
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
+        let auth: AppointmentAuthority = e.appointmentAuthority(companyID: co.id, role: "assistant manager")
+        if let above = auth.needsConfirmationFrom {
+            Text(above == .ceo ? "Needs confirmation from the CEO" : "Needs your confirmation")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.gold)
+        }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Place a job ad to see applicants." : "Everyone has taken another job. Place a new ad.") { p in
-            let request = HireRequest(post: .assistant, companyID: co.id, personID: p.id, roleTitle: "Assistant manager", onHired: { candidates = [] })
-            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .assistant, companyID: co.id), request: request, roleKey: "assistant-manager")
+            if let above = auth.needsConfirmationFrom {
+                proposeRow(e, co, cur, p, above)
+            } else {
+                let request = HireRequest(post: .assistant, companyID: co.id, personID: p.id, roleTitle: "Assistant manager", onHired: { candidates = [] })
+                CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p), market: e.goingRate(for: .assistant, companyID: co.id), request: request, roleKey: "assistant-manager")
+            }
+        }
+    }
+
+    /// A candidate when the hire needs the level above: Appoint sends a proposal there (an inbox decision) instead of hiring.
+    private func proposeRow(_ e: GameEngine, _ co: Company, _ cur: Currency, _ p: Person, _ above: Delegation.Rank) -> some View {
+        let wage: Double = e.goingRate(for: .assistant, companyID: co.id)
+        let pid: Int = p.id
+        let cid: Int = co.id
+        let who: String = above == .ceo ? "the CEO" : "you"
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                ThumbnailView(kind: .person, key: "assistant-manager", size: 36, initials: p.name, face: p.faceKey)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(p.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(CandidateClaims.line(e, p)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Text(cur.tidyShort(wage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+            }
+            Button("Appoint (proposal to \(who))") {
+                let ok: Bool = store.act { $0.proposeAssistantManager(companyID: cid, personID: pid, monthlyWage: wage) } ?? false
+                if ok { Haptics.tap(); candidates = []; store.show("Proposal sent to \(who)", tone: "good") }
+                else { Haptics.warning(); store.show("A proposal for this post is already open, or the person is not free.", tone: "warn") }
+            }.buttonStyle(QuietButtonStyle())
         }
     }
 }
