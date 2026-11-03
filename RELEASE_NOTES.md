@@ -1,4 +1,5 @@
 # What's new
+- Group: Money is one screen with cash, loans and dividends, dividend policy has its own popup, the board shows every seat with who can fill it, Management picks the company inside a chain, and the Ventures link and Who decides what are gone
 - Awards reflect results, not setup: opening a company, hiring or signing documents no longer fire awards; awards now come from profitable months, a manager running a profitable company, three profitable months in a row, being debt free and group reputation
 - Main tabs are Ventures, Group, Home, your own tab, Phone (long-press the custom tab to choose what it opens); the Team tab is gone; switching tabs is by tapping only and slides the page; the black strip at the top of the screen is filled
 - Fix: popups are exactly as high as their content (before, many stretched to 80% of the screen with empty space above the text); decision and report popups too
