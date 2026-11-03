@@ -158,7 +158,7 @@ struct GroupEntityOverview: View {
         out.append(Stat(label: "Profit this month", value: store.short(profit), tint: profit < 0 ? Theme.loss : Theme.gain))
         out.append(Stat(label: "Cash", value: store.short(cash), tint: cash < 0 ? Theme.loss : Theme.ivory))
         let brand: Double = engine.brandValue(companyID: entity.companyID)
-        out.append(Stat(label: "Brand", value: "\(Int(brand.rounded())) of 100", tint: Theme.gold))
+        out.append(Stat(label: "Brand", value: BrandWords.label(score: brand), tint: Theme.gold))
         if entity.isChain {
             out.append(Stat(label: "Stores in the chain", value: "\(cos.count)"))
             out.append(Stat(label: "Chain CEO", value: chainCEO()))

@@ -134,38 +134,36 @@ struct WorkerGrowthSection: View {
 
 // MARK: - Brand lines
 
-/// Group overview: "Brand value NN/100" with the four parts in an (i) popover.
+/// Group overview: "Brand" in words, with what lifts it explained in an (i) popover.
 struct GroupBrandLine: View {
     var engine: GameEngine
 
     var body: some View {
         let b: BrandValue = engine.groupBrandValue()
-        let parts: String = "Reputation \(Int(b.reputation.rounded())) of 40\nYears trading \(Int(b.yearsTrading.rounded())) of 15\nReach \(Int(b.reach.rounded())) of 25\nAwards \(Int(b.awards.rounded())) of 20"
-        return HStack(spacing: 4) {
-            Text("Brand value").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            CountingText(shown: b.score, format: { (v: Double) -> String in String(Int(v.rounded())) + "/100" })
-                .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
-                .animation(.easeOut(duration: 0.4), value: b.score)
-            InfoPopoverButton(title: "Brand value", text: "What the group's name is worth, 0 to 100. It lifts sale offers and franchise fees.\n" + parts)
+        let parts: String = "Reputation: \(BrandWords.level(value: b.reputation, of: 40))\nYears trading: \(BrandWords.level(value: b.yearsTrading, of: 15))\nReach: \(BrandWords.level(value: b.reach, of: 25))\nAwards: \(BrandWords.level(value: b.awards, of: 20))"
+        let help: String = "How well people know and trust the group's name. It lifts sale offers and franchise fees. It grows with a good reputation, more years trading, wider reach and awards.\n" + parts
+        return HStack(spacing: 6) {
+            Text("Brand").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(BrandWords.label(score: b.score)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+            BrandBar(score: b.score)
+            InfoPopoverButton(title: "Brand", text: help)
             Spacer(minLength: 0)
         }
         .frame(minHeight: 28)
     }
 }
 
-/// Company Sales header: "Brand NN".
+/// Company Sales header: "Brand" in words.
 struct CompanyBrandLine: View {
     var engine: GameEngine
     var companyID: Int
 
     var body: some View {
         let score: Double = engine.brandValue(companyID: companyID)
-        return HStack(spacing: 4) {
+        return HStack(spacing: 6) {
             Text("Brand").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            CountingText(shown: score, format: { (v: Double) -> String in String(Int(v.rounded())) })
-                .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
-                .animation(.easeOut(duration: 0.4), value: score)
-            Text("of 100").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text(BrandWords.label(score: score)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+            BrandBar(score: score)
             Spacer(minLength: 0)
         }
     }
