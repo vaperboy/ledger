@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.30",
+          "buildVersion": "30",
+          "date": "2026-11-03T08:45:04Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v30/Ledger-unsigned.ipa",
+          "size": 27116558,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Tapping a notification opens the item itself (the message popup, the right page) without asking; the custom tab starts as \"Pick tab\" until you choose\n- Tabs inside pages slide sideways and follow your finger; no fading between tabs\n- Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager\n- Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, Market, News, Weather, Stats, AirStay, TechPro, Atlas), and new updates arrive as one banner per app (at most two a day) that opens the app\n- Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox\n- Home ha"
+        },
+        {
           "version": "1.0.29",
           "buildVersion": "29",
           "date": "2026-11-03T08:25:39Z",
@@ -187,22 +196,13 @@
           "size": 26538633,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- One in-game \"Are you sure\" popup replaces every iOS dialog; only big spends and irreversible actions ask\n- New button and popup style (gold, foil, Cancel | Apply)\n- Phone apps: AirStay (rent places), TechPro Store (equipment + software, basket, delivery days), Atlas Insurance\n- Perks popup for all workers; Rules under Stats; Stats and Manage cleanups\n- Stage 4: real share counts, budgeted company creation, startups as real companies, buying a rival moves staff and equipment\n\n# Missing / coming next\n- Own delivery company fee, typed prices per trade, chain/franchise application steps\n- Not yet compiled-tested on device: expect rough edges in the new apps"
-        },
-        {
-          "version": "1.0.10",
-          "buildVersion": "10",
-          "date": "2026-11-01T18:53:08Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v10/Ledger-unsigned.ipa",
-          "size": 25387284,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Home: pick up to four shortcuts, day chip after Next day\n- Weekly / monthly / yearly report sheets, read before the next day\n- Reward popups with haptic after a day\n- Swipe back everywhere, smoother motion, Reduce Motion respected\n- Ambition popup at game start (change freely in weeks 1-4)\n- Inbox decisions answerable again; Group Overview shortened\n- Earlier this week: Accounting + ivory Bank, new hiring talks, company screens\n\n# Missing / coming next\n- One in-game \"Are you sure\" popup replacing iOS dialogs\n- Insurance, Premises (AirStay) and Equipment (TechPro) as Phone apps\n- Startups as real companies with share counts"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.29",
-      "versionDate": "2026-11-03T08:25:39Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v29/Ledger-unsigned.ipa",
-      "size": 27092467
+      "version": "1.0.30",
+      "versionDate": "2026-11-03T08:45:04Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v30/Ledger-unsigned.ipa",
+      "size": 27116558
     }
   ]
 }
