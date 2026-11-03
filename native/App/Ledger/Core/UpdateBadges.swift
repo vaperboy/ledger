@@ -1,5 +1,6 @@
 import SwiftUI
 import GameCore
+import Businesses
 import Simulation
 
 /// Last-seen markers of the Phone apps, kept in UserDefaults. `ints` holds message ids per app ("m.bank") and the highest market event id
