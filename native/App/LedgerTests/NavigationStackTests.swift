@@ -39,22 +39,22 @@ final class NavigationStackTests: XCTestCase {
 
     func testNavigationLinkAppendingASecondCopyIsCollapsed() {
         let store = GameStore()
-        store.setPath([.company(1)], for: .team)
-        store.setPath([.company(1), .company(1)], for: .team)
-        XCTAssertEqual(store.path(for: .team), [.company(1)])
+        store.setPath([.company(1)], for: .group)
+        store.setPath([.company(1), .company(1)], for: .group)
+        XCTAssertEqual(store.path(for: .group), [.company(1)])
     }
 
     func testBackFromACrossTabLinkReturnsToTheOriginAndLeavesNothingBehind() {
         let store = GameStore()
         store.tab = .company
-        store.open(.companyAt(2, .staff), on: .team)
-        XCTAssertEqual(store.tab, .team)
-        XCTAssertEqual(store.path(for: .team), [.companyAt(2, .staff)])
+        store.open(.companyAt(2, .staff), on: .group)
+        XCTAssertEqual(store.tab, .group)
+        XCTAssertEqual(store.path(for: .group), [.companyAt(2, .staff)])
         XCTAssertEqual(store.returnTab, .company)
         // The player presses Back: the Team stack shrinks to what it held before the link.
-        store.setPath([], for: .team)
+        store.setPath([], for: .group)
         XCTAssertEqual(store.tab, .company)
-        XCTAssertTrue(store.path(for: .team).isEmpty)
+        XCTAssertTrue(store.path(for: .group).isEmpty)
         XCTAssertNil(store.returnTab)
     }
 
@@ -70,9 +70,9 @@ final class NavigationStackTests: XCTestCase {
 
     func testLeavingALinkedTabByHandRemovesTheLinkedScreen() {
         let store = GameStore()
-        store.open(.companyAt(2, .staff), on: .team)
+        store.open(.companyAt(2, .staff), on: .group)
         store.selectTab(.group)
-        XCTAssertTrue(store.path(for: .team).isEmpty)
+        XCTAssertTrue(store.path(for: .group).isEmpty)
         XCTAssertNil(store.returnTab)
     }
 

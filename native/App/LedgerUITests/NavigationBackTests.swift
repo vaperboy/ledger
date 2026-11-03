@@ -99,12 +99,12 @@ final class NavigationBackTests: TourCase {
     }
 
     func testBackFromProjectsReturnsToProjects() throws {
-        open("Projects")
+        open("Ventures")
         let link = app.buttons["open-project-company"].firstMatch
         guard link.waitForExistence(timeout: 2) else { throw XCTSkip("no company with project work in the showcase game") }
         link.tap()
         XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 5), "the project link should open the company")
-        XCTAssertTrue(tapBack(to: "Projects"))
+        XCTAssertTrue(tapBack(to: "Ventures"))
         // Asserted: Back lands on Projects (Work / Ventures tabs), not on the Company list.
         XCTAssertTrue(app.buttons["Ventures"].waitForExistence(timeout: 5), "Back should return to Projects")
         XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists)

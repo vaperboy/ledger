@@ -352,6 +352,7 @@ struct HomeHeader: View {
 struct AppScreen<Trailing: View>: ViewModifier {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.hidesRootBack) private var hidesRootBack
     var title: String
     var subtitle: String
     var tab: AppTab
@@ -366,7 +367,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
                 // On the ivory Bank the header is the forest-green band with ivory text; everywhere else it is the page colour.
-                AppHeader(title: title, subtitle: subtitle, onBack: showsBack ? { dismiss() } : nil, trailing: trailing)
+                AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
                     .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
                     .background((palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top))
@@ -388,7 +389,7 @@ struct ReturnLine: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
-                    Text("Back to \(r.from.title)").font(.system(size: 13, weight: .medium))
+                    Text("Back to \(store.title(for: r.from))").font(.system(size: 13, weight: .medium))
                     Spacer()
                 }
                 .foregroundStyle(Theme.gold)
@@ -748,6 +749,8 @@ struct PillTabItem: Identifiable, Equatable {
     var title: String
     var glyph: String
     var badge: Int = 0
+    /// True for the tab the player can re-point with a long press (the Custom tab).
+    var changeable: Bool = false
 }
 
 /// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
@@ -757,6 +760,9 @@ struct PillTabBar: View {
     @Binding var selection: String
     /// Called with the item's id when the tab that is already selected is tapped again (the tab goes back to its root).
     var onReselect: (String) -> Void = { _ in }
+    /// Called with the item's id when a `changeable` item is long-pressed.
+    var onLongPress: (String) -> Void = { _ in }
+    @State private var longPressed: String?
     /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
@@ -766,12 +772,16 @@ struct PillTabBar: View {
                 let on = item.id == selection
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
+                    if longPressed == item.id { longPressed = nil; return }
                     if on { onReselect(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
                         GlyphView(glyph: item.glyph, size: 22, weight: 1.5, tint: on ? Theme.gold : Theme.ivoryMuted)
                         Text(item.title).font(.system(size: 10.5)).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
                     }
+                    .id(item.glyph + item.title)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.25), value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
@@ -779,8 +789,18 @@ struct PillTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                    longPressed = item.id
+                    Haptics.tap()
+                    onLongPress(item.id)
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 400_000_000)
+                        longPressed = nil
+                    }
+                }, including: item.changeable ? .all : .subviews)
                 .animation(.easeOut(duration: 0.2), value: on)
                 .accessibilityLabel(item.title)
+                .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
                 .accessibilityIdentifier("tab-\(item.title)")
                 .accessibilityAddTraits(traits)

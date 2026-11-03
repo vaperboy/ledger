@@ -124,25 +124,13 @@ struct SwipeBetweenSegments<T: Hashable>: ViewModifier {
     var items: [T]
     @Binding var selection: T
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.segmentEdges) private var pageEdges
-    @State private var edgeID = UUID()
-
-    /// Tells the tab pager which way this row can still move: it owns the swipe in that direction (page swipe only at the first or last segment).
-    private func report() {
-        guard let i = items.firstIndex(of: selection) else { return }
-        pageEdges?.set(edgeID, prev: i > 0, next: i < items.count - 1)
-    }
-
     func body(content: Content) -> some View {
         content
-        .onAppear { report() }
-        .onChange(of: selection) { _, _ in report() }
-        .onDisappear { pageEdges?.remove(edgeID) }
         .simultaneousGesture(
             DragGesture(minimumDistance: 40, coordinateSpace: .local).onEnded { value in
                 let dx: CGFloat = value.translation.width
                 let dy: CGFloat = value.translation.height
-                guard value.startLocation.x > 40, abs(dx) > 120, abs(dx) > abs(dy) * 3.2, abs(value.predictedEndTranslation.width) > 200 else { return }
+                guard !PageSwipeGate.shared.touching, value.startLocation.x > 40, abs(dx) > 120, abs(dx) > abs(dy) * 3.2, abs(value.predictedEndTranslation.width) > 200 else { return }
                 guard let i = items.firstIndex(of: selection) else { return }
                 let next: Int = dx < 0 ? i + 1 : i - 1
                 guard items.indices.contains(next) else { return }

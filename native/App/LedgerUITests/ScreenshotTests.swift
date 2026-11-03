@@ -46,9 +46,9 @@ final class ScreenshotTests: TourCase {
             }
             goBack()
         }
-        open("Team"); sleep(1); shot("05-team")
+        open("Group"); sleep(1); shot("05-group")
         open("Group"); sleep(1); shot("06-group")
-        open("Projects"); sleep(1); shot("08-projects")
+        open("Ventures"); sleep(1); shot("08-projects")
 
         // The Phone: its home, then every app on the grid, each with a round back button to the home.
         open("Phone"); sleep(1); shot("09-phone-home")

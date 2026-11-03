@@ -8,22 +8,26 @@ import Events
 import SaveSystem
 import Simulation
 
-/// The five destinations: Home (portfolio and companies), Team (everyone who works for you), Group (ownership and structure), Projects
-/// (time-bound work and investments) and Phone (the apps: Inbox, Bank, Reports, News ...).
-/// The five tabs. The raw values are the route and deep-link names and never change: `.company` is displayed as "Home", and `.phone`
-/// (the Phone tab, home of the apps; Inbox is an app inside it) replaced the old Inbox tab.
+/// The five tabs, left to right: Ventures (Projects), Group, Home (the middle tab, where the game opens), the player's Custom tab (any
+/// destination, see `CustomTabTarget`) and Phone (the apps; Inbox is an app inside it). The raw values are the route and deep-link names
+/// and never change: `.company` is displayed as "Home", `.projects` as "Ventures". The old Team tab is gone: its people pages live in
+/// Group > entity > Management and in each company's Team tab.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case company, team, group, projects, phone
+    case projects, group, company, custom, phone
     var id: String { rawValue }
-    var title: String { switch self { case .company: return "Home"; case .team: return "Team"; case .group: return "Group"; case .projects: return "Projects"; case .phone: return "Phone" } }
+    /// The fixed title; the Custom tab's real title is the chosen destination's (`GameStore.title(for:)`).
+    var title: String { switch self { case .company: return "Home"; case .custom: return "Custom"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
     /// SF Symbol for the iPad sidebar; the floating tab bar uses `glyph`.
     var symbol: String {
-        switch self { case .company: return "house"; case .team: return "person.3"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
+        switch self { case .company: return "house"; case .custom: return "star"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
-    /// The house icon (SVG path data from the new-look mockups).
+    /// The house icon (SVG path data from the new-look mockups); the Custom tab's real icon is the destination's (`GameStore.glyph(for:)`).
     var glyph: String {
-        switch self { case .company: return Glyph.home; case .team: return Glyph.team; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
+        switch self { case .company: return Glyph.home; case .custom: return Glyph.bank; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
+    /// The tab the game opens on: Home, the middle one. A stored or deep-linked name that no longer exists (the old "team") maps to it.
+    static let launch: AppTab = .company
+    static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
 }
 
 /// Where a link is going to land and how it gets back: the tab it came from, the tab it opened on, and how many screens that tab's
@@ -151,14 +155,19 @@ final class GameStore: ObservableObject {
     // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
 
     /// The selected tab. Selecting one by hand (`selectTab`) forgets where a link came from.
-    @Published var tab: AppTab = .company { didSet { if tab != oldValue && !jumping { returnInfo = nil } } }
+    @Published var tab: AppTab = AppTab.launch { didSet { if tab != oldValue && !jumping { returnInfo = nil } } }
     private var jumping = false
     private struct LastPush { var route: CompanyRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
-    /// The navigation stack of Home, Team, Group and Projects. The tab roots bind to these; nothing else holds a stack.
+    /// The navigation stack of Home, Group and Ventures. The tab roots bind to these; nothing else holds a stack.
     @Published private(set) var routePaths: [AppTab: [CompanyRoute]] = [:]
     /// The Phone tab's stack: apps, and the companies a link opened from inside an app.
     @Published private(set) var phonePath: [PhoneHome.Page] = []
+    /// The Custom tab's stack (its root is the chosen destination), and the destination itself, kept in UserDefaults ("customTab").
+    @Published private(set) var customPath: [PhoneHome.Page] = []
+    @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
+    /// The "Change the Custom tab" popup.
+    @Published var customPickerOpen = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
     /// Set while the player is on a tab they were sent to by a link; see `ReturnInfo`.
@@ -466,7 +475,7 @@ final class GameStore: ObservableObject {
 
     func path(for tab: AppTab) -> [CompanyRoute] { routePaths[tab] ?? [] }
     /// How many screens are pushed on a tab (0 = its root).
-    func depth(_ tab: AppTab) -> Int { tab == .phone ? phonePath.count : path(for: tab).count }
+    func depth(_ tab: AppTab) -> Int { tab == .phone ? phonePath.count : (tab == .custom ? customPath.count : path(for: tab).count) }
     func rootToken(_ tab: AppTab) -> Int { rootTokens[tab] ?? 0 }
 
     /// The tab roots set their stack through here (a push, a pop by Back or by swipe). A record that is already on the stack is not
@@ -498,6 +507,17 @@ final class GameStore: ObservableObject {
         afterPathChange(.phone, depth: next.count, grew: next.count > old.count)
     }
 
+    func setCustomPath(_ new: [PhoneHome.Page]) {
+        let old = customPath
+        var next = new
+        if new.count == old.count + 1, let last = new.last {
+            if let i = old.lastIndex(where: { $0.key == last.key }) { next = Array(old.prefix(i)) + [last] }
+        }
+        guard next != old else { return }
+        customPath = next
+        afterPathChange(.custom, depth: next.count, grew: next.count > old.count)
+    }
+
     /// `old` with `route` pushed, unless the same record is already on it: then the stack is cut back to that record, which takes the
     /// new route (so a link to another section of it shows that section). A finished "new company" form is not kept behind a push.
     static func collapse(_ old: [CompanyRoute], pushing route: CompanyRoute) -> [CompanyRoute] {
@@ -522,7 +542,9 @@ final class GameStore: ObservableObject {
         let now: Date = Date()
         if let last = lastPush, last.route == route, last.tab == t, now.timeIntervalSince(last.at) < 0.4 { return }
         lastPush = LastPush(route: route, tab: t, at: now)
-        if t == .phone { setPhonePath(phonePath + [.company(route)]) } else { setPath(path(for: t) + [route], for: t) }
+        if t == .phone { setPhonePath(phonePath + [.company(route)]) }
+        else if t == .custom { setCustomPath(customPath + [.company(route)]) }
+        else { setPath(path(for: t) + [route], for: t) }
     }
 
     /// The one way to open a company (or one of its screens) from anywhere: pushed onto the stack of the tab the player is on, so Back
@@ -574,13 +596,15 @@ final class GameStore: ObservableObject {
     private func cutStack(_ tab: AppTab, to depth: Int) {
         if tab == .phone {
             if phonePath.count > depth { phonePath = Array(phonePath.prefix(depth)) }
+        } else if tab == .custom {
+            if customPath.count > depth { customPath = Array(customPath.prefix(depth)) }
         } else if path(for: tab).count > depth {
             routePaths[tab] = Array(path(for: tab).prefix(depth))
         }
     }
 
     private func clearStack(_ tab: AppTab) {
-        if tab == .phone { phonePath = [] } else { routePaths[tab] = [] }
+        if tab == .phone { phonePath = [] } else if tab == .custom { customPath = [] } else { routePaths[tab] = [] }
     }
 
     /// A tab chosen by hand. A tap on the tab bar or the sidebar (`resetRoot` true) always shows that tab's ROOT: the screens it had are
@@ -618,6 +642,8 @@ final class GameStore: ObservableObject {
         appRequest = request
         if tab == .phone {
             setPhonePath(phonePath + [.app(app)])
+        } else if tab == .custom {
+            setCustomPath(customPath + [.app(app)])
         } else {
             let from = tab
             phonePath = [.app(app)]
@@ -715,7 +741,7 @@ final class GameStore: ObservableObject {
     /// Drops every stack and pending request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
         jumping = true; tab = .company; jumping = false
-        routePaths = [:]; phonePath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
+        routePaths = [:]; phonePath = []; customPath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
         reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; marketSeen = nil; banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; dayChip = nil; ambitionPrompt = false
     }
 

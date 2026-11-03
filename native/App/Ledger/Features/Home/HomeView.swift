@@ -193,13 +193,13 @@ struct HomeShortcutRow: View {
 }
 
 extension GameStore {
-    /// Hire: the Team section of the first company with an open post (posts that are needed now first), else the Team tab.
+    /// Hire: the Team section of the first company with an open post (posts that are needed now first), else the Group tab (its entity pages hold the vacancies under Management).
     func openHiring() {
         let posts = (engine?.teamOverview().vacancies ?? []).filter { $0.companyID != nil && $0.scope != "chain" }
         if let id = (posts.first(where: { $0.needed }) ?? posts.first)?.companyID {
-            open(.companyAt(id, .staff), on: .team)
+            open(.companyAt(id, .staff), on: .company)
         } else {
-            jump(to: .team)
+            jump(to: .group)
         }
     }
 }

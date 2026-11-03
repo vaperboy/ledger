@@ -184,7 +184,7 @@ struct StaffProfileView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .appScreen(title: p.name, subtitle: sub, tab: .team)
+            .appScreen(title: p.name, subtitle: sub, tab: .company)
             .confirmAction($pending)
             .centerSheet(isPresented: $discussing) { ContractDiscussionView(companyID: companyID, personID: staffID).environmentObject(store) }
         } else {

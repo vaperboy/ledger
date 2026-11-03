@@ -92,7 +92,7 @@ final class MainScreensTests: TourCase {
     /// Part 2: the Team tab and the Group tab: the picker, an entity page with its tabs, and the Suppliers directory.
     func testMainScreensTeamAndGroup() {
         if !waitForHome() { note("Home summary not found; continuing anyway") }
-        open("Team"); sleep(1); shot("40-team")
+        open("Group"); sleep(1); shot("40-group-first")
         scrollDown()
 
         open("Group"); sleep(1); shot("45-group")
@@ -122,7 +122,7 @@ final class MainScreensTests: TourCase {
     /// Part 3: Projects, the Phone grid and the Inbox.
     func testMainScreensProjectsAndInbox() {
         if !waitForHome() { note("Home summary not found; continuing anyway") }
-        open("Projects"); sleep(1); shot("50-projects")
+        open("Ventures"); sleep(1); shot("50-projects")
         // The Inbox is an app inside the Phone tab.
         open("Phone"); sleep(1); shot("51-phone-home")
         let inboxIcon = app.buttons["phone-app-Inbox"]
