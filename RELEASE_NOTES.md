@@ -4,3 +4,4 @@
 - No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab
 - Week, month and year reports: short reveal with one story line; profit counts up in the daily report
 - Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet
+- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year
