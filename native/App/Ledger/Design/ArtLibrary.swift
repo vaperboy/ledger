@@ -10,7 +10,7 @@ import UIKit
 enum ArtLibrary {
     /// The sheets that have been sliced (face sheets are handled elsewhere).
     enum Sheet: String, CaseIterable {
-        case premises, luxury, cars, logos, trophies
+        case premises, luxury, cars, logos, trophies, items
     }
 
     // MARK: Manifests and pictures
@@ -103,6 +103,118 @@ enum ArtLibrary {
     static func luxuryImage(itemID: String) -> UIImage? {
         guard let m = luxuryCells[itemID] else { return nil }
         return image(m.sheet, m.cell)
+    }
+    #endif
+
+    // MARK: Item art (vehicles, premises, equipment, insurance cards, software)
+
+    private static let vehicleFamilies: [String: [String]] = [
+        "bus": ["bus", "bus_var", "bus_v2"], "minibus": ["minibus", "minibus_var", "minibus_v2"],
+        "truck_s": ["truck_s", "truck_s_var", "truck_s_v2"], "truck_h": ["truck_h", "truck_h_var", "truck_h_v2"],
+        "truck_ev": ["truck_ev", "truck_ev_var", "truck_ev_v2"], "van_box": ["van_box", "van_box_var", "van_box_v2"],
+        "van_l": ["van_l", "van_l_var", "van_l_v2"], "ev_van": ["ev_van", "ev_van_var", "ev_van_v2", "delivery_van_ev"],
+        "bike": ["bike", "bike_var", "bike_v2"], "scooter": ["scooter", "scooter_var", "scooter_v2"],
+        "foodtruck": ["foodtruck", "foodtruck_var", "foodtruck_v2"], "taxi_xl": ["taxi_xl", "taxi_xl_var", "taxi_xl_v2"],
+        "taxi_cmf": ["taxi_cmf", "taxi_cmf_var", "taxi_cmf_v2"], "taxi_prm": ["taxi_prm", "taxi_prm_var", "taxi_prm_v2"],
+        "excav": ["excav", "excav_var", "excav_v2"], "crane": ["crane", "crane_var", "crane_v2"],
+        "van_s": ["van_box", "van_box_var", "van_box_v2"], "pickup": ["pickup"], "car_s": ["car_compact", "car_estate"],
+        "car_ev": ["car_suv"], "car_lux": ["car_luxury", "limousine"], "taxi_ev": ["car_estate", "taxi_cmf_var"],
+        "car_compact": ["car_compact"], "car_suv": ["car_suv"], "car_estate": ["car_estate"], "car_luxury": ["car_luxury"],
+        "minivan": ["minivan"], "limousine": ["limousine"], "ambulance": ["ambulance"], "tow_truck": ["tow_truck"],
+        "forklift": ["forklift"], "tractor_road": ["tractor_road"], "dump_truck": ["dump_truck"], "concrete_mixer": ["concrete_mixer"],
+        "motorbike_courier": ["motorbike_courier"], "trailer": ["trailer"], "delivery_van_ev": ["delivery_van_ev"],
+    ]
+
+    private static let premisesFamilies: [String: [String]] = [
+        "kitchen": ["rest_kitchen", "rest_kitchen_var"], "industrial": ["industrial_hall", "ind_hall_var"],
+        "warehouse": ["warehouse", "warehouse_var"], "clinic": ["clinic", "clinic_var"], "gym": ["gym_hall", "gym_hall_var"],
+        "hotel": ["hotel_building", "hotel_bldg_var"], "yard": ["yard_lot", "yard_lot_var"],
+        "slope": ["mountain_slope", "mtn_slope_var"], "home": ["home_building_hero"],
+    ]
+
+    /// Engine equipment ids (trades.json `eq`) -> pictures. Ids without a good match are left out and keep their glyph.
+    private static let equipmentFamilies: [String: [String]] = [
+        "tools": ["handyman_tool_kit", "plumber", "electrician"], "meas": ["electrician", "handyman_tool_kit"], "lad": ["construction", "handyman_tool_kit"],
+        "scaf": ["construction"], "wash": ["car_cleaning_machine"], "steam": ["car_cleaning_machine"], "ceram": ["car_cleaning_machine"], "pol": ["car_cleaning_machine"],
+        "scrub": ["cleaning_machine"], "vac": ["cleaning_machine"], "chem": ["cleaning_machine"],
+        "cam": ["camera_and_lens"], "lens": ["camera_and_lens"], "drone": ["camera_and_lens"], "photo": ["camera_and_lens"], "studio": ["camera_and_lens"], "ed": ["camera_and_lens", "video_editing"],
+        "lap": ["laptop"], "ws": ["developer_laptop", "laptop"], "kits": ["developer_laptop"], "tab": ["tutor_tablet"], "mat": ["tutor_tablet"], "room": ["marketing_screen"],
+        "desk": ["desk_setup", "office_furniture"], "furn": ["office_furniture"], "show": ["office_furniture"], "web": ["marketing_screen"], "wrap": ["marketing_screen"],
+        "oven": ["bakery_oven"], "mix": ["bakery_oven"], "proof": ["bakery_oven"], "bake": ["bakery_oven"],
+        "brew": ["brewery_tanks"], "fer": ["brewery_tanks"], "tanks": ["brewery_tanks"], "bot": ["brewery_tanks"], "tap": ["brewery_tanks"], "bottle": ["brewery_tanks"], "press": ["brewery_tanks"], "cold": ["brewery_tanks", "grocery"],
+        "tract": ["farm_tractor"], "harv": ["farm_tractor"], "barn": ["farm_tractor"], "fveh": ["pickup"],
+        "boat": ["fishing_gear"], "feedb": ["fishing_gear"], "pens": ["fishing_gear"], "lice": ["fishing_gear"],
+        "chair": ["hair_salon_chair"], "dry": ["hair_salon_chair"], "unit": ["dental_chair"], "xray": ["dental_chair"], "steril": ["dental_chair"],
+        "shelf": ["kiosk_counter", "hardware"], "frz": ["grocery"], "cof": ["kiosk_counter"], "grill": ["restaurant"],
+        "range": ["restaurant"], "hood": ["restaurant"], "kitch": ["restaurant"], "kit": ["restaurant"], "ikitch": ["restaurant"], "esp": ["kiosk_counter"], "dish": ["restaurant"],
+        "seat": ["restaurant"], "cool": ["grocery", "restaurant"], "wine": ["restaurant"],
+        "bar": ["nightclub"], "glass": ["nightclub"], "sound": ["nightclub"], "vip": ["nightclub"], "stage": ["nightclub"], "light": ["nightclub", "camera_and_lens"],
+        "cardio": ["gym"], "str": ["gym"], "lock": ["gym"], "sauna": ["gym"], "rooms": ["hotel"], "laun": ["hotel"], "lobby": ["hotel"],
+        "tables": ["casino"], "slots": ["casino"], "cage": ["casino"], "lounge": ["casino"], "vault": ["casino"],
+        "gates": ["skires"], "snowm": ["skires"], "rent": ["skires"], "irent": ["skires"], "tbar": ["skires"], "igroom": ["skires"], "ilift": ["skires"], "hall": ["skires"],
+        "grid": ["electrician"], "ev": ["electrician"], "gen": ["electrician"], "turb": ["electrician"],
+        "alarm": ["security"], "cctv": ["security", "pets"], "radio": ["security"], "gate": ["security"],
+        "net": ["webshop"], "scan": ["webshop"], "sort": ["webshop"], "pack": ["webshop"],
+        "ref": ["grocery"], "tills": ["grocery"], "fridge": ["grocery"], "disp": ["grocery"],
+        "saw": ["hardware"], "rack": ["hardware"], "prod": ["hardware"],
+        "groom": ["pets"], "kennel": ["pets"], "bench": ["physio"], "shock": ["physio"], "ex": ["physio"],
+        "robot": ["factory"], "cnc": ["factory"], "paint": ["factory"], "lab": ["factory"], "air": ["factory"],
+        "dtruck": ["truck_h", "truck_h_var"], "dvan": ["van_l", "van_l_var"], "exc": ["excav", "excav_var"], "crane": ["crane", "crane_var"],
+        "truck": ["foodtruck", "foodtruck_var"], "van": ["van_l", "van_box"], "vans": ["van_l", "van_box", "van_l_var"], "trail": ["trailer"],
+        "fork": ["forklift"], "bike": ["bike", "scooter"], "cars": ["car_compact", "car_estate"], "car": ["car_compact"], "demo": ["car_suv", "car_luxury"],
+        "lux": ["car_luxury", "limousine"], "rcar": ["car_compact", "car_suv"], "vcar": ["car_compact", "car_estate"],
+        "tms": ["van_l"], "diag": ["laptop"], "plot": ["design_tablet"], "mocap": ["video_editing"],
+    ]
+
+    /// Engine software ids and the software product types of `SoftwareProducts` -> pictures.
+    private static let softwareFamilies: [String: [String]] = [
+        "crm": ["crm_dashboard"], "ats": ["crm_dashboard"], "dms": ["crm_dashboard"], "case": ["licence"], "lib": ["licence"], "lic": ["licence"], "ehr": ["licence"], "health": ["licence"],
+        "cloud": ["cloud", "backup_drive"], "sw": ["subscription_box", "cloud"], "core": ["accounting_software"], "it": ["accounting_software"], "pay": ["accounting_software"], "acct": ["accounting_software"],
+        "cyber": ["security_shield"], "risk": ["security_shield"], "sec": ["security_shield"],
+        "erp": ["analytics_chart"], "ops": ["analytics_chart"], "term": ["analytics_chart"], "seis": ["analytics_chart"], "scada": ["analytics_chart"], "wms": ["analytics_chart"],
+        "mdt": ["mobile_app_phone"], "book": ["mobile_app_phone"], "fleet": ["mobile_app_phone"], "nav": ["mobile_app_phone"], "pms": ["mobile_app_phone"],
+        "pos": ["pos_terminal"], "shop": ["e_commerce_screen"], "cad": ["design_tablet"], "job": ["licence", "subscription_box"], "ticket": ["email_icon"],
+        "support": ["helpdesk_headset"], "mail": ["email_icon"], "backup": ["backup_drive"],
+    ]
+
+    /// Atlas products (company policies `INSP` and the insurer's `INS_PRODS`).
+    private static let insuranceFamilies: [String: [String]] = [
+        "prop": ["business_property_card"], "bi": ["business_property_card"], "property": ["business_property_card"], "business": ["business_property_card"],
+        "liab": ["liability_card"], "prof": ["liability_card"], "cyber": ["cyber_card"], "key": ["workers_card"], "life": ["workers_card"], "workers": ["workers_card"],
+        "motor": ["car_insurance_card"], "home": ["home_building_hero"], "travel": ["travel_card"], "fleet": ["fleet_card"],
+    ]
+
+    /// The cells a family can show. Group is vehicle, premises, equipment, software or insurance; the family key is the engine id
+    /// (vehicle model, premises kind, equipment id, software id or product id). Unknown family: empty.
+    static func itemKeys(group: String, familyKey: String) -> [String] {
+        switch group {
+        case "vehicle": return vehicleFamilies[familyKey] ?? []
+        case "premises": return premisesFamilies[familyKey] ?? []
+        case "software": return softwareFamilies[familyKey] ?? equipmentFamilies[familyKey] ?? []
+        case "insurance": return insuranceFamilies[familyKey] ?? []
+        default: return equipmentFamilies[familyKey] ?? softwareFamilies[familyKey] ?? vehicleFamilies[familyKey] ?? []
+        }
+    }
+
+    /// Picks one variant of the family by the seed. A seed ending in `#<number>` (a list index) picks consecutive variants for consecutive
+    /// numbers, so two neighbouring listings of one family never show the same picture.
+    static func itemKey(group: String, familyKey: String, seed: String) -> String? {
+        let keys: [String] = itemKeys(group: group, familyKey: familyKey)
+        if keys.isEmpty { return nil }
+        var base: String = seed
+        var step: UInt64 = 0
+        if let at = seed.lastIndex(of: "#"), let n = UInt64(seed[seed.index(after: at)...]) {
+            base = String(seed[seed.startIndex..<at])
+            step = n
+        }
+        let pick: Int = Int((stableHash(base) &+ step) % UInt64(keys.count))
+        return keys[pick]
+    }
+
+    #if canImport(UIKit)
+    static func itemImage(group: String, familyKey: String, seed: String) -> UIImage? {
+        guard let k = itemKey(group: group, familyKey: familyKey, seed: seed) else { return nil }
+        return image(.items, k)
     }
     #endif
 
