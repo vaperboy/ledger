@@ -134,4 +134,47 @@ public struct Message: JSONRecord, Identifiable {
     public var handledBy: String { get { str("by") } set { set("by", newValue) } }
     public var isAlert: Bool { get { flag("alert") } set { set("alert", newValue) } }
     public var options: [JSONValue] { value("opts").array }
+    /// A structured document (a report, a disclosure result) carried by the message, kind "doc". Absent in older saves. The plain `body` stays as the fallback summary.
+    public var doc: InboxDocument? {
+        get { let d = value("doc"); return d.isNull ? nil : InboxDocument(json: d) }
+        set { raw["doc"] = newValue?.json ?? .null }
+    }
+}
+
+/// A document delivered to the inbox: title, issuer, date, reference number and sections of lines (each section may carry figure points for a small chart).
+public struct InboxDocument: Equatable, Sendable {
+    public struct Point: Equatable, Sendable {
+        public var label: String
+        public var value: Double
+        public init(label: String, value: Double) { self.label = label; self.value = value }
+    }
+    public struct Section: Equatable, Sendable {
+        public var heading: String
+        public var lines: [String]
+        public var points: [Point]
+        public init(heading: String, lines: [String], points: [Point] = []) { self.heading = heading; self.lines = lines; self.points = points }
+    }
+    public var title: String
+    public var issuer: String
+    public var date: String
+    public var reference: String
+    public var sections: [Section]
+    public init(title: String, issuer: String, date: String, reference: String, sections: [Section]) {
+        self.title = title; self.issuer = issuer; self.date = date; self.reference = reference; self.sections = sections
+    }
+    init(json d: JSONValue) {
+        title = d["title"].string; issuer = d["issuer"].string; date = d["date"].string; reference = d["ref"].string
+        sections = d["sections"].array.map { sec in
+            Section(heading: sec["h"].string, lines: sec["lines"].array.map { $0.string },
+                    points: sec["pts"].array.map { Point(label: $0["l"].string, value: $0["v"].double) })
+        }
+    }
+    var json: JSONValue {
+        .object(["title": .string(title), "issuer": .string(issuer), "date": .string(date), "ref": .string(reference),
+                 "sections": .array(sections.map { sec in
+                     var o: [String: JSONValue] = ["h": .string(sec.heading), "lines": .array(sec.lines.map { .string($0) })]
+                     if !sec.points.isEmpty { o["pts"] = .array(sec.points.map { .object(["l": .string($0.label), "v": .number($0.value)]) }) }
+                     return .object(o)
+                 })])
+    }
 }

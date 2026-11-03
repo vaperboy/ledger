@@ -93,12 +93,31 @@ public enum MarketResearch {
                 let lines = s.companies[i].status == .open ? findings(s, s.companies[i], optionID: id, data: data) : []
                 let rid = s.makeID()
                 list.append(.object(["i": .number(Double(rid)), "o": .string(id), "t": .string(c.1), "d": .number(Double(s.week * 7 + s.day)), "f": .array(lines.map { .string($0) })]))
-                _ = s.addMessage(kind: "info", from: "Market research", title: "\(c.1) ready for \(s.companies[i].name)", body: lines.joined(separator: "\n"), companyID: s.companies[i].id, tone: "good")
+                let mid = s.addMessage(kind: "doc", from: "Market research", title: "\(c.1) ready for \(s.companies[i].name)", body: lines.joined(separator: "\n"), companyID: s.companies[i].id, tone: "good")
+                if let k = s.inbox.firstIndex(where: { $0.id == mid }) { s.inbox[k].doc = document(optionID: id, title: c.1, company: s.companies[i], reportID: rid, lines: lines, state: s) }
             }
             if list.count > keep { list.removeFirst(list.count - keep) }
             r["r"] = .array(list)
             s.companies[i].set(key, r)
         }
+    }
+
+    // MARK: The report as an inbox document
+
+    /// The findings grouped into sections: Summary (the headline), the topic of the report, and a Recommendation.
+    static func document(optionID: String, title: String, company co: Company, reportID: Int, lines: [String], state s: GameState) -> InboxDocument {
+        let topic = ["forecast": "Demand", "rivals": "Competitors", "benchmark": "Prices", "product": "Products"][optionID] ?? "Findings"
+        let advice = [
+            "forecast": "Plan stock and staffing for the demand above, and do not commit to large purchases before the season turns.",
+            "rivals": "Watch the biggest rival first; answer a price cut with value, not a price war, unless your margin allows it.",
+            "benchmark": "Move items that sit far from the market price back towards it, one step at a time, and watch sales for two weeks.",
+            "product": "Develop the top product first if the pay-back is under a year; the second only when the first is selling.",
+        ][optionID] ?? "Review the findings with your manager."
+        var sections = [InboxDocument.Section(heading: "Summary", lines: Array(lines.prefix(1)))]
+        if lines.count > 1 { sections.append(InboxDocument.Section(heading: topic, lines: Array(lines.dropFirst()))) }
+        sections.append(InboxDocument.Section(heading: "Recommendation", lines: [advice]))
+        return InboxDocument(title: "\(title): \(co.name)", issuer: "Ledger Market Research", date: GameCalendar.dateString(week: s.week, dayOffset: s.day),
+                             reference: "LMR-\(String(format: "%05d", reportID))", sections: sections)
     }
 
     // MARK: Findings
