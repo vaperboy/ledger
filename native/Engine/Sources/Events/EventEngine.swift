@@ -125,6 +125,7 @@ public enum EventEngine {
         // The original always draws the equipment name, even when the text has no {eq}; keep the same number of random draws.
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
         title = title.replacingOccurrences(of: "{eq}", with: machine)
+        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) { return }   // under warranty: no decision
         if e.automatic {
             apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx, currency: cur), ctx: ctx, event: e, data: data, context: fc)
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)

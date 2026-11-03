@@ -131,7 +131,13 @@ public enum StrategicDecisions {
                      make: { s, i, data, fc in
                          let k = fc.country(of: s.companies[i], s)
                          let wk = EventEngine.context(for: s.companies[i], data: data, country: k).wk
-                         return .object(["c": num(jsRound(max(fc.currency(s.companies[i].countryCode, s).scaledPrice(8000), wk * 0.15))), "eq": .string(EventEngine.pickEquipmentName(&s, companyIndex: i, data: data))]) },
+                         let item = EventEngine.pickEquipmentName(&s, companyIndex: i, data: data)
+                         // Under warranty the supplier repairs it at no cost: an info message, no decision.
+                         if EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: item, data: data) {
+                             var st = s.rest["e27"] ?? .object([:]); var last = st["last"].object; last["s_breakdown"] = num(Double(s.week)); st["last"] = .object(last); s.rest["e27"] = st
+                             return nil
+                         }
+                         return .object(["c": num(jsRound(max(fc.currency(s.companies[i].countryCode, s).scaledPrice(8000), wk * 0.15))), "eq": .string(item)]) },
                      title: { co, _, _ in "Essential equipment breaks down at \(co.name)" },
                      body: { _, d, cur in "The \(d["eq"].string) is out. A fast repair costs about \(cur.display(d["c"].double * 1.6)); the normal one about \(cur.display(d["c"].double)) but takes two weeks." },
                      opts: [
