@@ -1,4 +1,5 @@
 # What's new
+- Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager
 - Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, Market, News, Weather, Stats, AirStay, TechPro, Atlas), and new updates arrive as one banner per app (at most two a day) that opens the app
 - Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox
 - Home has no "All clear" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank
