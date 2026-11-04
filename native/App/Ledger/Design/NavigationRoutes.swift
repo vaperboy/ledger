@@ -33,6 +33,32 @@ extension View {
     func returnBar(for tab: AppTab) -> some View { modifier(ReturnBar(tab: tab)) }
 }
 
+// MARK: Ladder goal links (brief 9.2 rule 3)
+
+extension GameStore {
+    /// The screen a ladder goal's button names (`PlayerGoals.LadderGoal.link`): sales, hire, inbox, marketing, money, company, management,
+    /// newCompany. Each goes straight to its target on the stack of the tab the player is on, so Back walks up. A link that needs a
+    /// company uses the first one that is open; without one it opens the new-company page. Returns false for an unknown or empty link.
+    @discardableResult func openLadderLink(_ link: String) -> Bool {
+        if link == "inbox" { openApp(.inbox); return true }
+        if link == "newCompany" { open(.newCompany, on: .company); return true }
+        guard let id = engine?.state.companies.first(where: { $0.status.isLive && $0.type != "hold" })?.id else {
+            if ["sales", "hire", "marketing", "money", "company", "management"].contains(link) { open(.newCompany, on: .company); return true }
+            return false
+        }
+        switch link {
+        case "sales": openCompany(id, section: .salesMarket)
+        case "hire": openApplicants(companyID: id, role: nil)
+        case "marketing": openCompany(id, section: .marketing)
+        case "money": openCompany(id, section: .finances)
+        case "company": openCompany(id)
+        case "management": openCompany(id, section: .operations)
+        default: return false
+        }
+        return true
+    }
+}
+
 // MARK: Shared cash wording (Home and Group > Money say the same thing)
 
 /// What each "cash" figure includes, in one place, so Home and Money cannot drift apart.
