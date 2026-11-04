@@ -13,6 +13,13 @@ public struct BankPaymentDetails: Equatable, Sendable {
     /// Eight digits in two groups, always the same for the same account.
     public var accountNumber: String
     public var bankName: String
+
+    public init(holder: String, accountName: String, accountNumber: String, bankName: String) {
+        self.holder = holder
+        self.accountName = accountName
+        self.accountNumber = accountNumber
+        self.bankName = bankName
+    }
 }
 
 public struct InsuranceOutcome: Equatable, Sendable {
