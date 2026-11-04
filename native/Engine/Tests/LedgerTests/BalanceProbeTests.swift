@@ -36,7 +36,7 @@ final class BalanceProbeTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
             // Owner decision 3 Nov: only a hired manager hires. A trade the owner cannot work in at all (ownerFTE 0: airline, shipping...) loses its leavers
             // for good without one, so the owner of such a company, or of any business with a team of four or more, appoints a manager at the start, as a player would (see DECISIONS.md "Airline guard").
-            if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), !bd.hasTrait("noStaff"), co.managerID == nil {
+            if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), !bd.hasTrait("noStaff"), co.managerID == nil, ProcessInfo.processInfo.environment["LEDGER_NOMGR"] == nil {
                 for _ in 0..<6 {
                     let c = ManagerModel.generateCandidate(company: s.company(id), type: bd.managerType, state: &s, data: data)
                     if ManagerModel.hire(&s, personID: c.id, companyID: id, monthlyWage: c.askingMonthlyWage * 1.2, data: data) == .ok { break }
@@ -72,6 +72,19 @@ final class BalanceProbeTests: XCTestCase {
             BalanceProbeTests.drained {
                 e.nextDay()
                 for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+                // LEDGER_APPROVE=1: an owner who also approves his manager's proposals to hire, buy equipment or vehicles and move to bigger premises (the standard probe leaves them unanswered)
+                if ProcessInfo.processInfo.environment["LEDGER_APPROVE"] != nil {
+                    for m in e.openDecisions where m.actionID == "prop" && ["hire", "eq", "veh", "space", "prem"].contains(m.value("data")["t"].string) { e.answer(messageID: m.id, option: 0) }
+                }
+                // LEDGER_PLAYTRACE=1: every 8 weeks the staff, wages, revenue and cash of the played company
+                if ProcessInfo.processInfo.environment["LEDGER_PLAYTRACE"] != nil, day % 56 == 55, let co = e.state.company(id) {
+                    let lw = co.value("lastW")
+                    print("PT \(trade) w\(day / 7 + 1) \(co.status.rawValue) staff=\(co.staff.map { $0.role }) mgr=\(co.managerID != nil) wages/mo=\(Int(co.staff.reduce(0) { $0 + $1.monthlyWage } / 1000))k mgrwage=\(Int(co.managerMonthlyWage / 1000))k size=\(co.size) cash=\(Int(co.cash / 1000))k rev/wk=\(Int(co.lastWeekRevenue / 1000))k units=\(Int(co.lastWeekUnits)) cap=\(Int(lw["cap"].double)) D=\(Int(lw["D"].double)) rep=\(Int(co.reputation)) q=\(Int(co.quality))")
+                    if let bd = e.data.catalog[co.type], day % 112 == 111 {
+                        let r = CapacityModel.compute(co, bd, World(state: e.state, data: e.data))
+                        print("PT   parts: \(r.parts.map { "\($0.key) have=\(String(format: "%.2f", $0.have)) cap=\(Int($0.capacity.isFinite ? $0.capacity : -1))" })")
+                    }
+                }
                 // Money the owner adds to keep a company alive counts as invested
                 if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
                     let top = -co.cash + 100_000
@@ -84,6 +97,11 @@ final class BalanceProbeTests: XCTestCase {
         let h = co.monthlyHistory
         let y1 = h.prefix(12).reduce(0) { $0 + $1.profit }, y3 = h.suffix(12).reduce(0) { $0 + $1.profit }
         let v = Valuation.companyValue(co, state: e.state, trades: e.data.catalog)
+        if ProcessInfo.processInfo.environment["LEDGER_PLAYTRACE"] != nil {
+            print("PT \(trade) last year books:", co.books.lastYear.sorted { $0.key < $1.key }.map { "\($0.key)=\(Int($0.value / 1000))k" })
+            print("PT \(trade) monthly profit k:", h.map { Int($0.profit / 1000) })
+            print("PT \(trade) notes:", e.state.inbox.filter { $0.companyID == id }.reversed().prefix(60).map { "w\($0.week) \($0.title)" })
+        }
         return Outcome(trade: trade, invested: invested, profitY1: y1, profitY3: y3, value: v, cash: co.cash, status: co.status.rawValue, staff: co.staff.count)
     }
 

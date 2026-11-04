@@ -219,7 +219,13 @@ public enum CapacityModel {
                     switch r.parts[i].kind {
                     case .staff:
                         let p = r.parts[i]
-                        r.parts[i].capacity = max(0, p.have - p.ownerFTE) * p.capacityPerUnit * R + (ownFTE > 0 ? ownUnits * p.ownerFTE / ownFTE : 0)
+                        // The owner's or manager's time in the FIRST role is billable hours (ownUnits). Time spent covering a support role (a dispatcher,
+                        // a receptionist) is that role's work at that role's own scale (one dispatcher serves all the guards), not billable hours:
+                        // valuing it in billable hours capped a small firm with a manager at a fraction of what its own team can deliver.
+                        let isCore = r.parts.first(where: { $0.kind == .staff })?.key == p.key
+                        r.parts[i].capacity = isCore
+                            ? max(0, p.have - p.ownerFTE) * p.capacityPerUnit * R + (ownFTE > 0 ? ownUnits * p.ownerFTE / ownFTE : 0)
+                            : p.have * p.capacityPerUnit * R
                     case .equip:
                         r.parts[i].capacity = max(r.parts[i].capacity * R, r.parts[i].have * 60 * t.productiveShare / t.hours)
                     case .space:

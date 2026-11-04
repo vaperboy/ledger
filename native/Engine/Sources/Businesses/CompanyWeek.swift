@@ -210,8 +210,11 @@ public enum CompanyWeek {
     static let congestionRate = 0.18
     /// Families where staff on the floor are the limit; trades with heavy capital (stock, plant, fleets) keep their own cost structure.
     static let congestionFamilyShare: [String: Double] = ["venue": 1, "svc": 1]
+    /// Trades whose work is booked in advance by the hour or the session (a lawyer's diary, a surgery list, a driving lesson, a guard rota): demand above
+    /// capacity is a waiting list, not a queue at the door, so nobody works a crowd and nothing is wasted. No congestion cost there; walk-in trades keep it.
+    static let bookedTrades: Set<String> = ["law", "acctfirm", "cons", "mktg", "webdev", "tutor", "drivsk", "physio", "dental", "security", "gamestudio"]
     static func congestionCost(_ co: Company, _ bd: Trade, util: Double) -> Double {
-        guard let share = congestionFamilyShare[bd.family], util > congestionStart else { return 0 }
+        guard let share = congestionFamilyShare[bd.family], util > congestionStart, !bookedTrades.contains(bd.id) else { return 0 }
         let payroll = (co.staff.reduce(0) { $0 + $1.monthlyWage * $1.partTimeShare } + co.managerMonthlyWage) * 12 / 52
         return share * payroll * congestionRate * min(1, max(0, util - congestionStart) / (1 - congestionStart))
     }
