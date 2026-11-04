@@ -118,6 +118,8 @@ struct CelebrationPopup: View {
     /// Goal complete (brief 9.3): the card turns green, the check draws itself, the reward fades in.
     @State private var goalShown = false
     @State private var checkDrawn: CGFloat = 0
+    /// Goal complete: after `celebrate` (1.5 s) the card slides up and out with `move`.
+    @State private var leaving = false
 
     var body: some View {
         ZStack {
@@ -126,6 +128,7 @@ struct CelebrationPopup: View {
                 .padding(.horizontal, 28)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.92)
                 .opacity(shown ? 1 : 0)
+                .offset(y: leaving ? -900 : 0)
         }
         .onAppear {
             Haptics.tap()
@@ -133,6 +136,14 @@ struct CelebrationPopup: View {
             if item.kind == "goal" {
                 Motion.animate(Motion.quick(reduceMotion)) { goalShown = true }
                 Motion.animate(Motion.reveal(reduceMotion)) { checkDrawn = 1 }
+                let id: Int = item.id
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: UInt64(Motion.celebrateSeconds * 1_000_000_000))
+                    guard store.celebrationQueue.first?.id == id, !canClaim else { return }
+                    Motion.animate(Motion.move(reduceMotion)) { leaving = true }
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    if store.celebrationQueue.first?.id == id { store.dismissCelebration() }
+                }
             }
         }
         .accessibilityElement(children: .contain)
