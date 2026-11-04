@@ -40,10 +40,10 @@ struct LedgerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .modifier(PaywallHost())
                 .environmentObject(store)
                 .environment(entitlements)
                 .environment(ads)
-                .modifier(PaywallHost())
                 .task { entitlements.start() }
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)

@@ -17,3 +17,4 @@
 - Hiring: every post uses the same two pages; the hire popup fits each step
 - Daily report: bigger profit that counts up; goal cards and unlock apps animate
 - Paywall appears once after your first ambition goal
+- Fixed: the app crashed on launch (paywall host was outside its environment)
