@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.45",
+          "buildVersion": "45",
+          "date": "2026-11-04T01:24:30Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v45/Ledger-unsigned.ipa",
+          "size": 27520063,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days\n- Own staff"
+        },
+        {
           "version": "1.0.44",
           "buildVersion": "44",
           "date": "2026-11-04T00:43:03Z",
@@ -187,22 +196,13 @@
           "size": 26999031,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Home has no \"All clear\" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank\n- Group: Money is one screen with cash, loans and dividends, dividend policy has its own popup, the board shows every seat with who can fill it, Management picks the company inside a chain, and the Ventures link and Who decides what are gone\n- Awards reflect results, not setup: opening a company, hiring or signing documents no longer fire awards; awards now come from profitable months, a manager running a profitable company, three profitable months in a row, being debt free and group reputation\n- Main tabs are Ventures, Group, Home, your own tab, Phone (long-press the custom tab to choose what it opens); the Team tab is gone; switching tabs is by tapping only and slides the page; the black strip at the top of the screen is filled\n- Fix: popups are exactly as high as their content (before, many stretched to 80% of the screen with empty space above the text); decision and report popups too\n- Pictures for vehicles, premises, equipment, software and insurance now show "
-        },
-        {
-          "version": "1.0.25",
-          "buildVersion": "25",
-          "date": "2026-11-03T00:24:17Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v25/Ledger-unsigned.ipa",
-          "size": 24043811,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Team is merged into Group: each company page has a Management tab (you, managers, executives, Who decides what, open posts); Dividends are inside Money; Add to group opens New company, Holding, Join a franchise and Football club; Expand abroad is per company; a company's Team tab shows staff only\n- Phone: the Market app is organised in five parts; Goals and Reports are no longer apps (Goals and awards and Previous reports are in Stats); Ventures and Projects are one Ventures page; the weather app no longer links to your companies; rewards and achievements must be claimed, and an achievement popup shows its art and title\n- Group works like Banking: Group opens a company and chain picker with value arrows and percentages; each entity has its own overview, Board (thin seat rows), Dividends, Expansion (chain and franchise, moved out of company management), Money and Deals; a group-wide supplier directory lists every supplier with a profile; Structure, More and the group office are gone and Giving moved to Bank\n- New systems show up inside existing screens: a growth path and Promote in the worker popup, brand value on Group and Sales, market research in Sales and Market, "
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.44",
-      "versionDate": "2026-11-04T00:43:03Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v44/Ledger-unsigned.ipa",
-      "size": 27520075
+      "version": "1.0.45",
+      "versionDate": "2026-11-04T01:24:30Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v45/Ledger-unsigned.ipa",
+      "size": 27520063
     }
   ]
 }
