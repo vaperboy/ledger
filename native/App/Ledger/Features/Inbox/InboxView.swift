@@ -195,6 +195,7 @@ struct InboxView: View {
             VStack(spacing: Theme.Space.xs) {
                 searchField
                 SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
+                    .pulseOnce(when: waitingCount)
             }
             .padding(.vertical, Theme.Space.xs).background(P.ground)
         }

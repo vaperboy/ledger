@@ -212,4 +212,37 @@ struct LiveFigure: View {
 extension View {
     /// Rolls the figure and flashes it green (up) or red (down) when `value` changes.
     func moneyFlash(_ value: Double) -> some View { modifier(MoneyFlash(value: value)) }
+    /// Pulses once (brief 9.3, `pulse`) when `trigger` rises: a new `Needs you` item. Reduce Motion: a 2 pt accent border for a moment.
+    func pulseOnce(when trigger: Int) -> some View { modifier(PulseOnce(trigger: trigger)) }
 }
+
+/// One `pulse` cycle on a new `Needs you` item (opacity 1.0 to 0.6 and back); under Reduce Motion a static 2 pt accent border instead.
+struct PulseOnce: ViewModifier {
+    var trigger: Int
+    @State private var dim = false
+    @State private var marked = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(dim ? 0.6 : 1)
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.gold, lineWidth: 2).opacity(marked ? 1 : 0).allowsHitTesting(false))
+            .onChange(of: trigger) { old, new in
+                guard new > old else { return }
+                Task { @MainActor in await run() }
+            }
+    }
+
+    private func run() async {
+        if reduceMotion {
+            marked = true
+            try? await Task.sleep(nanoseconds: UInt64(Motion.pulseSeconds * 1_000_000_000))
+            marked = false
+            return
+        }
+        Motion.animate(Motion.pulseAnimation) { dim = true }
+        try? await Task.sleep(nanoseconds: UInt64(Motion.pulseSeconds * 1_000_000_000))
+        Motion.animate(Motion.quickAnimation) { dim = false }
+    }
+}
+

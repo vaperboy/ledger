@@ -25,6 +25,9 @@ struct PhoneHome: View {
 
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
+    /// Brief 9.3 Unlock: the apps that were dimmed the last time the grid looked, and the toast lines for the ones that opened since.
+    @State private var lockedBefore: Set<String>?
+    @State private var notes: [OrgNote] = []
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
 
@@ -66,11 +69,25 @@ struct PhoneHome: View {
             .frame(maxWidth: .infinity)
         }
         .id(store.rootToken(.phone))
-        .onAppear { store.endVisits() }
+        .onAppear { store.endVisits(); lockedBefore = lockedApps }
+        .onChange(of: lockedApps) { _, now in
+            guard let before = lockedBefore else { lockedBefore = now; return }
+            for title in before.subtracting(now).sorted() {
+                OrgNote.show($notes, text: "\(title) unlocked", tint: Theme.gold, seconds: 2)
+                Haptics.tap()
+            }
+            lockedBefore = now
+        }
+        .overlay(alignment: .bottom) { OrgNoteStack(notes: notes).padding(.horizontal, 16).padding(.bottom, clearance + 8) }
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("phone-home")
+    }
+
+    /// The titles of the apps that are dimmed with a lock text right now.
+    private var lockedApps: Set<String> {
+        Set(PhoneApp.launcher.filter { (app: PhoneApp) -> Bool in gateState(app).lockText != nil }.map { (app: PhoneApp) -> String in app.title })
     }
 
     /// Where the app's gate stands; everything is open when no game is loaded.
@@ -122,6 +139,7 @@ struct AppIcon: View {
     /// The lock text of a gate that is near (`Unlocks ...`): the tile is dimmed and does not open.
     var lock: String? = nil
     var action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -129,6 +147,7 @@ struct AppIcon: View {
                 AppIconTile(glyph: app.glyph, tint: app.tint).opacity(lock == nil ? 1 : 0.35)
                 Text(lock ?? app.title).font(.system(size: 11.5)).foregroundStyle(lock == nil ? Theme.ivory : Theme.ivoryFaint).lineLimit(lock == nil ? 1 : 2).minimumScaleFactor(0.8)
             }
+            .animation(Motion.quick(reduceMotion), value: lock)
             .frame(maxWidth: .infinity)
             .overlay(alignment: .topTrailing) { RedBubble(count: badge).offset(x: -2, y: -5) }
             .contentShape(Rectangle())

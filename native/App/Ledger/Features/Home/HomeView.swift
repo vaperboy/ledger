@@ -251,6 +251,7 @@ struct TopPriorities: View {
                         .frame(minHeight: 32).contentShape(Rectangle())
                     }
                     .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-inbox")
+                    .pulseOnce(when: waiting)
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
