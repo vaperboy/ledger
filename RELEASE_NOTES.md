@@ -1,7 +1,7 @@
 # What's new
-- Popups: one overlay host for every popup, one text and layout rule set; tall popups step back inside before closing
-- Sheets turned into popups (car order, price, brand contract); no page pops back when a popup opens
-- Balance fixes for security, driving school, physio, dental, law; real items in every trade
+- Profit today now counts what you did since the last day, e.g. opening a new store in a chain
+- Car dealership: stock budget in the start-up plan, no stockless day trade
+- Popups: one overlay host and one text rule set; tall popups step back inside
 
 # Missing / coming next
 - Own-delivery fee, typed prices per trade, chain/franchise steps, more photos
