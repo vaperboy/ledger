@@ -1,0 +1,1526 @@
+{
+ "about": "Wave 7 real job and contract items per trade (PROJ and job-contract model). `rel` = reference price in a common currency (normalised on install so share x rel adds up to the trade's going ticket and the books never move), `share` = relative customers, `h` = person-hours of labour in the job, `crew` = people on it (roles of tables.json ROLES), `mat` and `sub` = materials and subcontractors as shares of the price before calibration (calibrated so the whole menu weighs the books' mat+sub traits, or cogs for handy and security), `mk` = markup the quote puts on materials, `lead` = days until the crew can start, `co` = call-out (arrives within a day), `wr` = share of jobs that need a warranty callback, `wm` = warranty months, `ph` = phases [name, share of price, share of that phase that is subcontracted], `visits`/`period`/`churn` = recurring plan or contract (hours per period for the guard contract), `buy` = stocked item bought at that share of its price. `extra` = add-item catalogue. `fteHours` = hours a full-time person works a week. `callbackHours` = share of a job's hours a callback takes. `onCost` = employer cost on top of pay.",
+ "fteHours": 36,
+ "callbackHours": 0.4,
+ "onCost": 1.2,
+ "trades": {
+  "electrician": {
+   "skill": "elec",
+   "skillLabel": "electrician",
+   "items": [
+    {
+     "n": "Call-out and fault finding",
+     "m": "svc",
+     "share": 18,
+     "rel": 140,
+     "h": 1.5,
+     "crew": [
+      "elec"
+     ],
+     "mat": 0.12,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 0,
+     "co": true,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true,
+     "note": "Same-day or next-day visit; diagnosis, parts at cost plus markup."
+    },
+    {
+     "n": "Socket and fitting job",
+     "m": "proj",
+     "share": 20,
+     "rel": 220,
+     "h": 3,
+     "crew": [
+      "elec"
+     ],
+     "mat": 0.25,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 4,
+     "wr": 0.04,
+     "wm": 12,
+     "van": true
+    },
+    {
+     "n": "Inspection certificate (EICR)",
+     "m": "svc",
+     "share": 10,
+     "rel": 300,
+     "h": 4,
+     "crew": [
+      "elec"
+     ],
+     "mat": 0.02,
+     "sub": 0,
+     "mk": 0,
+     "lead": 5,
+     "wr": 0.01,
+     "van": true,
+     "doc": "Electrical installation condition report"
+    },
+    {
+     "n": "Fuse board replacement",
+     "m": "proj",
+     "share": 9,
+     "rel": 650,
+     "h": 8,
+     "crew": [
+      "elec",
+      "helper"
+     ],
+     "mat": 0.42,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 7,
+     "wr": 0.03,
+     "wm": 12,
+     "van": true,
+     "doc": "Minor works / installation certificate"
+    },
+    {
+     "n": "EV charger install",
+     "m": "proj",
+     "share": 6,
+     "rel": 1050,
+     "h": 10,
+     "crew": [
+      "elec",
+      "helper"
+     ],
+     "mat": 0.55,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 10,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true,
+     "doc": "Installation certificate and grid notification"
+    },
+    {
+     "n": "Rewire (3-bed house)",
+     "m": "proj",
+     "share": 3.2,
+     "rel": 4200,
+     "h": 60,
+     "crew": [
+      "elec",
+      "elec",
+      "helper"
+     ],
+     "mat": 0.38,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 21,
+     "wr": 0.05,
+     "wm": 12,
+     "van": true,
+     "ph": [
+      [
+       "First fix: cable and back boxes",
+       0.45,
+       0
+      ],
+      [
+       "Second fix: accessories and board",
+       0.4,
+       0
+      ],
+      [
+       "Testing and certificate",
+       0.15,
+       0
+      ]
+     ],
+     "doc": "Installation certificate"
+    },
+    {
+     "n": "Annual safety inspection plan",
+     "m": "sub",
+     "share": 5,
+     "rel": 180,
+     "h": 2.5,
+     "crew": [
+      "elec"
+     ],
+     "mat": 0.02,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "van": true,
+     "visits": 1,
+     "period": 52,
+     "churn": 0.12,
+     "doc": "Plan terms and certificate"
+    }
+   ],
+   "extra": [
+    {
+     "n": "Out-of-hours emergency call-out",
+     "m": "svc",
+     "share": 1,
+     "rel": 260,
+     "h": 2,
+     "crew": [
+      "elec"
+     ],
+     "mat": 0.12,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 0,
+     "co": true,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Smart home install",
+     "m": "proj",
+     "share": 1,
+     "rel": 1800,
+     "h": 24,
+     "crew": [
+      "elec",
+      "helper"
+     ],
+     "mat": 0.5,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 14,
+     "wr": 0.05,
+     "wm": 12,
+     "van": true
+    },
+    {
+     "n": "Lighting design and install",
+     "m": "proj",
+     "share": 1,
+     "rel": 950,
+     "h": 14,
+     "crew": [
+      "elec",
+      "helper"
+     ],
+     "mat": 0.45,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 10,
+     "wr": 0.04,
+     "wm": 12,
+     "van": true
+    },
+    {
+     "n": "Solar panel connection",
+     "m": "proj",
+     "share": 1,
+     "rel": 1600,
+     "h": 16,
+     "crew": [
+      "elec",
+      "helper"
+     ],
+     "mat": 0.2,
+     "sub": 0.35,
+     "mk": 0.15,
+     "lead": 21,
+     "wr": 0.03,
+     "wm": 24,
+     "van": true,
+     "doc": "Installation certificate and DNO notification"
+    },
+    {
+     "n": "Commercial fit-out electrics",
+     "m": "proj",
+     "share": 1,
+     "rel": 9500,
+     "h": 130,
+     "crew": [
+      "elec",
+      "elec",
+      "elec",
+      "helper"
+     ],
+     "mat": 0.4,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 28,
+     "wr": 0.04,
+     "wm": 12,
+     "van": true,
+     "ph": [
+      [
+       "First fix",
+       0.5,
+       0
+      ],
+      [
+       "Second fix",
+       0.35,
+       0
+      ],
+      [
+       "Testing and handover",
+       0.15,
+       0
+      ]
+     ]
+    }
+   ]
+  },
+  "plumber": {
+   "skill": "plumb",
+   "skillLabel": "plumber",
+   "items": [
+    {
+     "n": "Call-out and leak finding",
+     "m": "svc",
+     "share": 18,
+     "rel": 120,
+     "h": 1.5,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.1,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 0,
+     "co": true,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Leak and pipe repair",
+     "m": "svc",
+     "share": 16,
+     "rel": 210,
+     "h": 3,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.2,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 1,
+     "co": true,
+     "wr": 0.05,
+     "wm": 3,
+     "van": true
+    },
+    {
+     "n": "Boiler service",
+     "m": "svc",
+     "share": 14,
+     "rel": 95,
+     "h": 1.2,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.06,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 7,
+     "wr": 0.01,
+     "van": true,
+     "doc": "Service record"
+    },
+    {
+     "n": "Landlord gas safety certificate",
+     "m": "svc",
+     "share": 6,
+     "rel": 85,
+     "h": 1,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "van": true,
+     "doc": "Gas safety record"
+    },
+    {
+     "n": "Toilet, tap and radiator swap",
+     "m": "proj",
+     "share": 12,
+     "rel": 280,
+     "h": 3.5,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.3,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 3,
+     "wr": 0.04,
+     "wm": 12,
+     "van": true
+    },
+    {
+     "n": "Boiler replacement",
+     "m": "proj",
+     "share": 4,
+     "rel": 2500,
+     "h": 14,
+     "crew": [
+      "plumb",
+      "helper"
+     ],
+     "mat": 0.6,
+     "sub": 0,
+     "mk": 0.15,
+     "lead": 10,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true,
+     "doc": "Commissioning and warranty registration"
+    },
+    {
+     "n": "Bathroom install",
+     "m": "proj",
+     "share": 1.8,
+     "rel": 5600,
+     "h": 90,
+     "crew": [
+      "plumb",
+      "plumb",
+      "helper"
+     ],
+     "mat": 0.4,
+     "sub": 0.1,
+     "mk": 0.2,
+     "lead": 28,
+     "wr": 0.06,
+     "wm": 12,
+     "van": true,
+     "ph": [
+      [
+       "Strip out and first fix",
+       0.25,
+       0
+      ],
+      [
+       "Tiling (subcontract)",
+       0.25,
+       0.4
+      ],
+      [
+       "Fit sanitaryware",
+       0.35,
+       0
+      ],
+      [
+       "Finish and snag",
+       0.15,
+       0
+      ]
+     ]
+    },
+    {
+     "n": "Boiler cover plan",
+     "m": "sub",
+     "share": 5,
+     "rel": 240,
+     "h": 1.5,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.04,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "van": true,
+     "visits": 1,
+     "period": 52,
+     "churn": 0.12
+    }
+   ],
+   "extra": [
+    {
+     "n": "Out-of-hours emergency call-out",
+     "m": "svc",
+     "share": 1,
+     "rel": 250,
+     "h": 2,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.1,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 0,
+     "co": true,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Drain clearing",
+     "m": "svc",
+     "share": 1,
+     "rel": 170,
+     "h": 2,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.04,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 1,
+     "co": true,
+     "wr": 0.04,
+     "wm": 3,
+     "van": true
+    },
+    {
+     "n": "Underfloor heating",
+     "m": "proj",
+     "share": 1,
+     "rel": 4200,
+     "h": 50,
+     "crew": [
+      "plumb",
+      "helper"
+     ],
+     "mat": 0.5,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 21,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true
+    },
+    {
+     "n": "Heat pump install",
+     "m": "proj",
+     "share": 1,
+     "rel": 9500,
+     "h": 70,
+     "crew": [
+      "plumb",
+      "plumb",
+      "helper"
+     ],
+     "mat": 0.55,
+     "sub": 0.1,
+     "mk": 0.15,
+     "lead": 35,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true,
+     "doc": "Commissioning certificate"
+    },
+    {
+     "n": "Leak detection survey",
+     "m": "svc",
+     "share": 1,
+     "rel": 230,
+     "h": 3,
+     "crew": [
+      "plumb"
+     ],
+     "mat": 0.02,
+     "sub": 0,
+     "mk": 0,
+     "lead": 3,
+     "van": true,
+     "doc": "Survey report"
+    }
+   ]
+  },
+  "handy": {
+   "skill": "handy",
+   "skillLabel": "handyman",
+   "items": [
+    {
+     "n": "Small repairs (per hour)",
+     "m": "svc",
+     "share": 30,
+     "rel": 45,
+     "h": 1,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.08,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 3,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Flat-pack assembly",
+     "m": "svc",
+     "share": 16,
+     "rel": 60,
+     "h": 1.5,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 3,
+     "wr": 0.02,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Painting (per room)",
+     "m": "proj",
+     "share": 8,
+     "rel": 260,
+     "h": 8,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.22,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 10,
+     "wr": 0.04,
+     "wm": 6,
+     "van": true
+    },
+    {
+     "n": "Shelving and fitting",
+     "m": "svc",
+     "share": 10,
+     "rel": 90,
+     "h": 2,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.2,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 5,
+     "wr": 0.03,
+     "wm": 3,
+     "van": true
+    },
+    {
+     "n": "Door and lock fitting",
+     "m": "svc",
+     "share": 6,
+     "rel": 115,
+     "h": 2,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.32,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 4,
+     "wr": 0.03,
+     "wm": 6,
+     "van": true
+    },
+    {
+     "n": "Emergency call-out",
+     "m": "svc",
+     "share": 4,
+     "rel": 95,
+     "h": 1,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.1,
+     "sub": 0,
+     "mk": 0.3,
+     "lead": 0,
+     "co": true,
+     "wr": 0.03,
+     "wm": 1,
+     "van": true
+    },
+    {
+     "n": "Annual home check plan",
+     "m": "sub",
+     "share": 4,
+     "rel": 180,
+     "h": 2.5,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.03,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "van": true,
+     "visits": 1,
+     "period": 52,
+     "churn": 0.2
+    },
+    {
+     "n": "Tool and materials kit",
+     "m": "stk",
+     "share": 3,
+     "rel": 55,
+     "h": 0,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 3,
+     "buy": 0.6
+    }
+   ],
+   "extra": [
+    {
+     "n": "Garden tidy-up",
+     "m": "svc",
+     "share": 1,
+     "rel": 160,
+     "h": 4,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.05,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "van": true
+    },
+    {
+     "n": "Bathroom sealing and regrout",
+     "m": "svc",
+     "share": 1,
+     "rel": 130,
+     "h": 3,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0.12,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 5,
+     "wr": 0.04,
+     "wm": 6,
+     "van": true
+    },
+    {
+     "n": "Gutter clearing",
+     "m": "svc",
+     "share": 1,
+     "rel": 85,
+     "h": 1.5,
+     "crew": [
+      "handy"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 5,
+     "van": true
+    }
+   ]
+  },
+  "engcons": {
+   "skill": "engineer",
+   "skillLabel": "engineer",
+   "items": [
+    {
+     "n": "Site inspection (day)",
+     "m": "svc",
+     "share": 16,
+     "rel": 650,
+     "h": 8,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "wr": 0.01,
+     "doc": "Inspection report"
+    },
+    {
+     "n": "Design day",
+     "m": "svc",
+     "share": 18,
+     "rel": 900,
+     "h": 8,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "doc": "Calculation pack"
+    },
+    {
+     "n": "Feasibility study",
+     "m": "proj",
+     "share": 7,
+     "rel": 3500,
+     "h": 45,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "wr": 0.01,
+     "ph": [
+      [
+       "Brief and site visit",
+       0.25,
+       0
+      ],
+      [
+       "Options and costing",
+       0.5,
+       0
+      ],
+      [
+       "Report and presentation",
+       0.25,
+       0
+      ]
+     ],
+     "doc": "Feasibility report"
+    },
+    {
+     "n": "Permit drawings",
+     "m": "proj",
+     "share": 8,
+     "rel": 2800,
+     "h": 36,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "wr": 0.02,
+     "ph": [
+      [
+       "Survey and concept",
+       0.3,
+       0
+      ],
+      [
+       "Detailed drawings",
+       0.5,
+       0
+      ],
+      [
+       "Submission and comments",
+       0.2,
+       0
+      ]
+     ],
+     "doc": "Drawing set"
+    },
+    {
+     "n": "House design (fee on build cost)",
+     "m": "proj",
+     "share": 2.6,
+     "rel": 9500,
+     "h": 110,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 28,
+     "wr": 0.02,
+     "ph": [
+      [
+       "Concept design",
+       0.2,
+       0
+      ],
+      [
+       "Developed design",
+       0.3,
+       0
+      ],
+      [
+       "Technical design",
+       0.35,
+       0
+      ],
+      [
+       "Tender and site queries",
+       0.15,
+       0
+      ]
+     ],
+     "doc": "Design package"
+    },
+    {
+     "n": "Site supervision (day)",
+     "m": "svc",
+     "share": 6,
+     "rel": 700,
+     "h": 8,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 10,
+     "wr": 0.01,
+     "doc": "Site report"
+    },
+    {
+     "n": "Retainer (per month)",
+     "m": "sub",
+     "share": 4,
+     "rel": 2400,
+     "h": 24,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "visits": 1,
+     "period": 4,
+     "churn": 0.04,
+     "contract": true,
+     "doc": "Retainer terms"
+    }
+   ],
+   "extra": [
+    {
+     "n": "Structural check",
+     "m": "svc",
+     "share": 1,
+     "rel": 1100,
+     "h": 12,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "doc": "Structural report"
+    },
+    {
+     "n": "Energy efficiency review",
+     "m": "svc",
+     "share": 1,
+     "rel": 1300,
+     "h": 14,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 10,
+     "doc": "Energy report"
+    },
+    {
+     "n": "Project audit",
+     "m": "proj",
+     "share": 1,
+     "rel": 5200,
+     "h": 60,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 21,
+     "doc": "Audit report"
+    },
+    {
+     "n": "Environmental assessment",
+     "m": "proj",
+     "share": 1,
+     "rel": 6800,
+     "h": 80,
+     "crew": [
+      "engineer",
+      "architect"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 28,
+     "doc": "Assessment report"
+    },
+    {
+     "n": "Technical training day",
+     "m": "svc",
+     "share": 1,
+     "rel": 1800,
+     "h": 10,
+     "crew": [
+      "engineer"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 21
+    }
+   ]
+  },
+  "construction": {
+   "skill": "labour",
+   "skillLabel": "builder",
+   "items": [
+    {
+     "n": "Roof repair",
+     "m": "proj",
+     "share": 20,
+     "rel": 4800,
+     "h": 90,
+     "crew": [
+      "labour",
+      "carp"
+     ],
+     "mat": 0.4,
+     "sub": 0.15,
+     "mk": 0.2,
+     "lead": 14,
+     "wr": 0.05,
+     "wm": 24,
+     "van": true
+    },
+    {
+     "n": "Garage or outbuilding",
+     "m": "proj",
+     "share": 6,
+     "rel": 18000,
+     "h": 380,
+     "crew": [
+      "labour",
+      "labour",
+      "carp"
+     ],
+     "mat": 0.45,
+     "sub": 0.15,
+     "mk": 0.15,
+     "lead": 35,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true,
+     "ph": [
+      [
+       "Foundations",
+       0.2,
+       0.3
+      ],
+      [
+       "Walls and roof",
+       0.45,
+       0
+      ],
+      [
+       "Fit-out and finish",
+       0.35,
+       0
+      ]
+     ]
+    },
+    {
+     "n": "Kitchen and bathroom renovation",
+     "m": "proj",
+     "share": 10,
+     "rel": 35000,
+     "h": 480,
+     "crew": [
+      "labour",
+      "carp",
+      "carp"
+     ],
+     "mat": 0.4,
+     "sub": 0.2,
+     "mk": 0.2,
+     "lead": 42,
+     "wr": 0.06,
+     "wm": 24,
+     "van": true,
+     "ph": [
+      [
+       "Strip out",
+       0.1,
+       0
+      ],
+      [
+       "First fix (plumbing, electrics: subcontract)",
+       0.3,
+       0.5
+      ],
+      [
+       "Plaster and fit",
+       0.4,
+       0
+      ],
+      [
+       "Finishes and snagging",
+       0.2,
+       0
+      ]
+     ]
+    },
+    {
+     "n": "House extension",
+     "m": "proj",
+     "share": 5,
+     "rel": 68000,
+     "h": 700,
+     "crew": [
+      "labour",
+      "labour",
+      "carp",
+      "carp"
+     ],
+     "mat": 0.42,
+     "sub": 0.18,
+     "mk": 0.18,
+     "lead": 56,
+     "wr": 0.05,
+     "wm": 24,
+     "van": true,
+     "ph": [
+      [
+       "Groundworks and foundations",
+       0.15,
+       0.4
+      ],
+      [
+       "Walls and structure",
+       0.3,
+       0.1
+      ],
+      [
+       "Roof and weathertight",
+       0.2,
+       0.2
+      ],
+      [
+       "First and second fix",
+       0.25,
+       0.4
+      ],
+      [
+       "Finishes and snagging",
+       0.1,
+       0
+      ]
+     ]
+    },
+    {
+     "n": "Loft conversion",
+     "m": "proj",
+     "share": 3,
+     "rel": 42000,
+     "h": 420,
+     "crew": [
+      "labour",
+      "carp",
+      "carp"
+     ],
+     "mat": 0.42,
+     "sub": 0.18,
+     "mk": 0.18,
+     "lead": 56,
+     "wr": 0.05,
+     "wm": 24,
+     "van": true,
+     "ph": [
+      [
+       "Structure and steels",
+       0.3,
+       0.15
+      ],
+      [
+       "Roof and dormer",
+       0.25,
+       0.1
+      ],
+      [
+       "Insulation and first fix",
+       0.25,
+       0.4
+      ],
+      [
+       "Finishes",
+       0.2,
+       0
+      ]
+     ]
+    },
+    {
+     "n": "New-build house",
+     "m": "proj",
+     "share": 0.5,
+     "rel": 260000,
+     "h": 3200,
+     "crew": [
+      "labour",
+      "labour",
+      "labour",
+      "carp",
+      "carp",
+      "foreman"
+     ],
+     "mat": 0.42,
+     "sub": 0.2,
+     "mk": 0.12,
+     "lead": 120,
+     "wr": 0.04,
+     "wm": 120,
+     "van": true,
+     "ph": [
+      [
+       "Groundworks and foundations",
+       0.12,
+       0.4
+      ],
+      [
+       "Frame and shell",
+       0.28,
+       0.1
+      ],
+      [
+       "Roof and envelope",
+       0.18,
+       0.15
+      ],
+      [
+       "First fix: services",
+       0.14,
+       0.6
+      ],
+      [
+       "Plaster and second fix",
+       0.16,
+       0.3
+      ],
+      [
+       "Finishes and snagging",
+       0.12,
+       0
+      ]
+     ],
+     "doc": "Completion certificate and structural warranty"
+    },
+    {
+     "n": "Commercial fit-out",
+     "m": "proj",
+     "share": 0.8,
+     "rel": 60000,
+     "h": 600,
+     "crew": [
+      "labour",
+      "carp",
+      "carp",
+      "foreman"
+     ],
+     "mat": 0.4,
+     "sub": 0.25,
+     "mk": 0.15,
+     "lead": 42,
+     "wr": 0.04,
+     "wm": 12,
+     "van": true
+    },
+    {
+     "n": "Maintenance contract (per month)",
+     "m": "sub",
+     "share": 8,
+     "rel": 450,
+     "h": 6,
+     "crew": [
+      "labour",
+      "carp"
+     ],
+     "mat": 0.2,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "van": true,
+     "visits": 1,
+     "period": 4,
+     "churn": 0.03,
+     "contract": true,
+     "doc": "Contract terms"
+    }
+   ],
+   "extra": [
+    {
+     "n": "Facade repair",
+     "m": "proj",
+     "share": 1,
+     "rel": 9000,
+     "h": 150,
+     "crew": [
+      "labour",
+      "carp"
+     ],
+     "mat": 0.4,
+     "sub": 0.2,
+     "mk": 0.2,
+     "lead": 28,
+     "wr": 0.05,
+     "wm": 24,
+     "van": true
+    },
+    {
+     "n": "Project management fee",
+     "m": "svc",
+     "share": 1,
+     "rel": 6000,
+     "h": 60,
+     "crew": [
+      "foreman"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14
+    },
+    {
+     "n": "Terrace or patio",
+     "m": "proj",
+     "share": 1,
+     "rel": 7500,
+     "h": 110,
+     "crew": [
+      "labour"
+     ],
+     "mat": 0.45,
+     "sub": 0,
+     "mk": 0.2,
+     "lead": 21,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true
+    },
+    {
+     "n": "Extension subcontract package",
+     "m": "proj",
+     "share": 1,
+     "rel": 22000,
+     "h": 150,
+     "crew": [
+      "labour"
+     ],
+     "mat": 0.1,
+     "sub": 0.6,
+     "mk": 0,
+     "lead": 28,
+     "wr": 0.04,
+     "wm": 24,
+     "van": true
+    }
+   ]
+  },
+  "security": {
+   "skill": "guard",
+   "skillLabel": "guard",
+   "fixed": true,
+   "items": [
+    {
+     "n": "Guard hour (temporary, event)",
+     "m": "svc",
+     "share": 10,
+     "rel": 34,
+     "h": 1,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.04,
+     "sub": 0,
+     "mk": 0,
+     "lead": 3,
+     "note": "Booked per hour for an event or a gap; a minimum shift applies."
+    },
+    {
+     "n": "Guard hours, site contract (per month)",
+     "m": "sub",
+     "share": 60,
+     "rel": 29,
+     "h": 1,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.04,
+     "sub": 0,
+     "mk": 0,
+     "lead": 14,
+     "visits": 160,
+     "period": 4,
+     "churn": 0.03,
+     "contract": true,
+     "doc": "Site contract and post orders"
+    },
+    {
+     "n": "Mobile patrol visit",
+     "m": "svc",
+     "share": 12,
+     "rel": 25,
+     "h": 0.5,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.08,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "van": true
+    },
+    {
+     "n": "Alarm response and key holding",
+     "m": "svc",
+     "share": 5,
+     "rel": 50,
+     "h": 1,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.06,
+     "sub": 0,
+     "mk": 0,
+     "lead": 1,
+     "co": true,
+     "van": true
+    },
+    {
+     "n": "Alarm install",
+     "m": "proj",
+     "share": 0.3,
+     "rel": 700,
+     "h": 9,
+     "crew": [
+      "guard",
+      "guard"
+     ],
+     "mat": 0.45,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 14,
+     "wr": 0.03,
+     "wm": 12,
+     "van": true,
+     "doc": "Commissioning certificate"
+    },
+    {
+     "n": "CCTV install",
+     "m": "proj",
+     "share": 0.12,
+     "rel": 2100,
+     "h": 20,
+     "crew": [
+      "guard",
+      "guard"
+     ],
+     "mat": 0.5,
+     "sub": 0,
+     "mk": 0.25,
+     "lead": 21,
+     "wr": 0.03,
+     "wm": 12,
+     "van": true,
+     "doc": "System handover and data protection notice"
+    },
+    {
+     "n": "Alarm monitoring contract",
+     "m": "sub",
+     "share": 4,
+     "rel": 32,
+     "h": 0.25,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.1,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7,
+     "visits": 1,
+     "period": 4,
+     "churn": 0.02,
+     "contract": true,
+     "doc": "Monitoring contract"
+    }
+   ],
+   "extra": [
+    {
+     "n": "Event security team",
+     "m": "svc",
+     "share": 1,
+     "rel": 38,
+     "h": 1,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.04,
+     "sub": 0,
+     "mk": 0,
+     "lead": 7
+    },
+    {
+     "n": "Risk assessment",
+     "m": "svc",
+     "share": 1,
+     "rel": 420,
+     "h": 6,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 10,
+     "doc": "Risk assessment report"
+    },
+    {
+     "n": "Close protection (per day)",
+     "m": "svc",
+     "share": 1,
+     "rel": 520,
+     "h": 10,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0.03,
+     "sub": 0,
+     "mk": 0,
+     "lead": 5
+    },
+    {
+     "n": "Alarm and CCTV equipment",
+     "m": "stk",
+     "share": 1,
+     "rel": 120,
+     "h": 0,
+     "crew": [
+      "guard"
+     ],
+     "mat": 0,
+     "sub": 0,
+     "mk": 0,
+     "lead": 5,
+     "buy": 0.6
+    }
+   ]
+  }
+ }
+}
