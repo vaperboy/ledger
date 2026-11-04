@@ -30,7 +30,7 @@ struct StatsView: View {
                 activityLink
                 pageLink(glyph: Glyph.goals, title: "Goals and awards", note: "Your goals, missions and rewards to claim", app: .goals)
                 pageLink(glyph: Glyph.reports, title: "Previous reports", note: "Weekly, monthly and yearly", app: .reports)
-                TrophiesPreview()
+                if store.gateOpen(.bank) { TrophiesPreview() }
             }
             .centerSheet(item: $docItem) { (item: DocumentItem) in DocumentView(doc: item.doc, close: { docItem = nil }) }
         }

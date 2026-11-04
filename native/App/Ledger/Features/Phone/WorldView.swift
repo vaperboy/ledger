@@ -98,8 +98,10 @@ struct WorldAroundView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     CardSection("Records") {
                         VStack(spacing: 0) {
-                            recordLink(.rival, e.nemesis.map { "\($0.owner) of \($0.groupName): you \($0.wins), them \($0.losses)" } ?? "No rival has picked you yet")
-                            CardLine()
+                            if store.gateOpen(.rivals) {
+                                recordLink(.rival, e.nemesis.map { "\($0.owner) of \($0.groupName): you \($0.wins), them \($0.losses)" } ?? "No rival has picked you yet")
+                                CardLine()
+                            }
                             recordLink(.topFifty, e.topFifty.map { t in t.yourRank.map { "Last January: you were number \($0) of \(t.of)" } ?? "Last January you were not on it" } ?? "Printed every January")
                             CardLine()
                             recordLink(.months, "Income, costs and profit by month, per company")

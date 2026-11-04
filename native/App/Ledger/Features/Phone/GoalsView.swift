@@ -17,7 +17,7 @@ struct GoalsView: View {
                 todayCard(e)
                 stepsCard(e)
                 if e.ambitionVisible { ambitionCard(e) }
-                TrophyShelfRow(engine: e)
+                if store.gateOpen(.bank) { TrophyShelfRow(engine: e) }
             }
             .ledgerBackground()
             .onAppear { refresh() }
