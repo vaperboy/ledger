@@ -21,6 +21,19 @@ extension Message {
     var inboxInitial: String { String(from.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased() }
 }
 
+extension Message {
+    /// Brief 2.3 row icon: money, people, customers, rivals, property or other, from what the message is about.
+    var inboxCategoryGlyph: String {
+        let words: String = (title + " " + body).lowercased()
+        if actionID.hasPrefix("pay29") || ["loan", "tax", "invoice", "bank", "fine", "payment", "overdraft"].contains(where: { words.contains($0) }) { return Glyph.bank }
+        if ["staffx", "mgrraise", "mgrpoach"].contains(actionID) || ["employee", "worker", "staff", "applicant", "manager", "salary"].contains(where: { words.contains($0) }) { return Glyph.team }
+        if ["prop", "mprop", "mfind11"].contains(actionID) || ["premises", "rent", "lease", "landlord", "property"].contains(where: { words.contains($0) }) { return Glyph.home }
+        if ["rival", "competitor", "opens next door", "undercut"].contains(where: { words.contains($0) }) { return Glyph.market }
+        if actionID == "ctv" || actionID == "acct" || ["customer", "review", "complaint", "queue"].contains(where: { words.contains($0) }) { return Glyph.person }
+        return Glyph.news
+    }
+}
+
 extension View {
     /// A list row without the system chrome: page background, a hairline underneath, mail-width insets.
     func mailRowStyle() -> some View {
@@ -41,99 +54,55 @@ struct InboxMailRow: View {
     var openDetail: () -> Void
 
     private var open: Bool { message.status == "open" }
-    /// "Level 3 \u{00B7} Director": how serious it is and who would take it, shown on a decision that reached the owner.
-    private var levelText: String {
-        let l: Int = store.engine?.severityLevel(of: message) ?? Delegation.level(of: message)
-        return "Level \(l) \u{00B7} " + (Delegation.Rank(rawValue: l)?.title ?? "You")
-    }
     private var unread: Bool { open || !message.isRead }
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
-    private var time: String {
-        let d: Int = week - message.week
-        return d <= 0 ? "Now" : "\(d)w ago"
+    /// With more than one company the company name leads the title (brief 2.3).
+    private var title: String {
+        let t: String = text(message.title)
+        guard let e = store.engine, message.companyID != 0, e.state.companies.filter({ $0.status.isLive }).count > 1,
+              let co = e.state.company(message.companyID) else { return t }
+        return co.name + " \u{00B7} " + t
+    }
+
+    /// One grey line: what happens if it is left (a decision), what came of it (an answered one), else the text.
+    private var consequence: String {
+        let e: GameEngine? = store.engine
+        let raw: String = (open ? e?.expiryOutcome(message) : e?.answeredOutcome(message)) ?? message.body
+        return text(raw)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button { Haptics.tap(); openDetail() } label: { content }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("inbox-row")
-            companyLink
-        }
-        .padding(.vertical, 8)
+        Button { Haptics.tap(); openDetail() } label: { content }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("inbox-row")
+            .padding(.vertical, 8)
     }
 
     private var content: some View {
-        return HStack(alignment: .top, spacing: 10) {
-            ZStack { if unread { NewMarkerShape(style: .dot, important: open) } }.frame(width: 11, height: 11).padding(.top, 16)
-            InboxAvatar(initial: message.inboxInitial, glyph: message.inboxGlyph, tint: message.inboxTint(P), size: 44)
-            textColumn
-            Spacer(minLength: 0)
+        HStack(alignment: .top, spacing: 12) {
+            InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
+                    .foregroundStyle(unread ? P.ink : P.inkFaint).lineLimit(1)
+                Text(consequence).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            if open { expiryPill }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
-    private var textColumn: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            senderLine
-            Text(text(message.title)).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
-                .foregroundStyle(unread ? P.ink : P.inkSoft).lineLimit(2).multilineTextAlignment(.leading)
-            if message.doc != nil {
-                Text("Document").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.accent)
-            }
-            Text(text(message.body)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
-            if !message.handledBy.isEmpty {
-                Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.gain)
-            }
-            if open {
-                Text(levelText).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(P.caution)
-                deadline
-            }
-        }
-    }
-
-    private var senderLine: some View {
-        HStack(spacing: 6) {
-            Text(message.from).font(.system(size: 12.5, weight: unread ? .semibold : .regular)).foregroundStyle(P.inkSoft).lineLimit(1)
-            if pinned { GlyphView(glyph: Glyph.goals, size: 11, weight: 1.8, tint: P.accent).accessibilityLabel("Pinned") }
-            Spacer(minLength: 6)
-            Text(time).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
-        }
-    }
-
-    @ViewBuilder private var deadline: some View {
+    @ViewBuilder private var expiryPill: some View {
         if let exp = message.expiresWeek {
             let left: Int = exp - week
-            let words: String = left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week"
             let tint: Color = left <= 1 ? P.loss : P.caution
-            HStack(spacing: 5) {
-                GlyphView(glyph: Glyph.clock, size: 12, weight: 1.8, tint: tint)
-                Text(words).font(.system(size: 11.5, weight: .medium)).foregroundStyle(tint)
-            }
-            .padding(.top, 2)
-        } else {
-            Text("Waiting for your answer").font(.system(size: 11.5, weight: .medium)).foregroundStyle(P.caution).padding(.top, 2)
-        }
-    }
-
-    @ViewBuilder private var companyLink: some View {
-        if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-            let sec: CompanySection? = MessageCard.section(for: message)
-            let app = store.applicantLink(message)
-            let name: String = app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? "")
-            Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
-                HStack(spacing: 4) {
-                    Text(name).font(.system(size: 12, weight: .medium))
-                    GlyphView(glyph: Glyph.chevron, size: 10, weight: 2, tint: P.accent)
-                }
-                .foregroundStyle(P.accent).frame(minHeight: 32).contentShape(Rectangle())
-            }
-            .buttonStyle(PressableStyle())
-            .padding(.leading, 70)
-            .accessibilityIdentifier("open-company-link")
+            Text(left > 0 ? "\(left)w left" : "This week")
+                .font(.system(size: 11, weight: .semibold)).foregroundStyle(tint)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Capsule().fill(tint.opacity(0.16)))
         }
     }
 }

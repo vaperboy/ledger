@@ -16,7 +16,6 @@ struct InboxView: View {
     @State private var query = ""
     /// nil = every company; 0 = messages about the group or you personally
     @State private var companyFilter: Int? = nil
-    @State private var byCompany = false
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
     @State private var detailID: Int?
@@ -57,47 +56,10 @@ struct InboxView: View {
 
     // MARK: Blocks
 
-    private static func urgency(_ m: Message, week: Int) -> Int {
-        guard let exp = m.expiresWeek else { return 2 }
-        let left = exp - week
-        return left <= 1 ? 0 : 1
-    }
-
+    /// One chronological list, newest first, no sub-folders (brief 2.3).
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
-        let week = e.state.week
-        if byCompany {
-            let ids = Array(Set(list.map { $0.companyID }))
-            let sorted = ids.sorted { a, b in
-                let oa = list.filter { $0.companyID == a && $0.status == "open" }.count, ob = list.filter { $0.companyID == b && $0.status == "open" }.count
-                if oa != ob { return oa > ob }
-                if (a == 0) != (b == 0) { return b == 0 }
-                return (e.state.company(a)?.name ?? "") < (e.state.company(b)?.name ?? "")
-            }
-            return sorted.map { id in
-                let msgs = list.filter { $0.companyID == id }
-                let open = msgs.filter { $0.status == "open" }
-                let rest = msgs.filter { $0.status != "open" }
-                let name = id == 0 ? "Group and personal" : (e.state.company(id)?.name ?? "A former company")
-                let note = open.isEmpty ? "\(msgs.count) message\(msgs.count == 1 ? "" : "s")" : "\(open.count) waiting"
-                return Block(id: "co\(id)", title: name, note: note, tint: open.isEmpty ? P.inkFaint : P.caution,
-                             companyID: id != 0 && e.state.company(id) != nil ? id : nil,
-                             messages: open.sorted { (Self.urgency($0, week: week), $0.expiresWeek ?? .max) < (Self.urgency($1, week: week), $1.expiresWeek ?? .max) } + rest)
-            }
-        }
-        let open = list.filter { $0.status == "open" }.sorted { ($0.expiresWeek ?? .max, -$0.week) < ($1.expiresWeek ?? .max, -$1.week) }
-        let rest = list.filter { $0.status != "open" }
-        var out: [Block] = []
-        let bands: [(Int, String, String, Color)] = [
-            (0, "Act this week", "Expires at the end of the week", P.loss),
-            (1, "Coming up", "Expires in the next weeks", P.caution),
-            (2, "No deadline", "Waits for you", P.inkFaint),
-        ]
-        for (u, title, note, tint) in bands {
-            let msgs = open.filter { Self.urgency($0, week: week) == u }
-            if !msgs.isEmpty { out.append(Block(id: "u\(u)", title: title + " · \(msgs.count)", note: note, tint: tint, messages: msgs)) }
-        }
-        if !rest.isEmpty { out.append(Block(id: "rest", title: open.isEmpty ? "" : "Everything else", messages: rest)) }
-        return out
+        let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
+        return sorted.isEmpty ? [] : [Block(id: "all", messages: sorted)]
     }
 
     /// The blocks cut to the first `limit` messages, so a long inbox stays quick.
@@ -152,7 +114,13 @@ struct InboxView: View {
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         if ok { Haptics.option() }
         detailID = nil
-        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
+        if ok {
+            // Brief 2.3: an Inbox decision returns to Home with a one-line toast.
+            store.selectTab(.company)
+            store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
+        } else {
+            store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
+        }
     }
 
     private func takeRequest() {
@@ -226,7 +194,6 @@ struct InboxView: View {
             if companyFilter != nil { filterLine(e).mailRowStyle() }
             if list.isEmpty { empty(e, k).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
-                if !b.title.isEmpty { header(b).mailRowStyle() }
                 ForEach(b.messages) { (m: Message) in
                     mailRow(m, week: week).transition(.opacity)
                 }
@@ -306,7 +273,6 @@ struct InboxView: View {
 
     private var optionsMenu: some View {
         Menu {
-            Toggle("Group by company", isOn: $byCompany)
             if let e = store.engine {
                 let ids = Array(Set(e.state.inbox.map { $0.companyID })).sorted { (e.state.company($0)?.name ?? "") < (e.state.company($1)?.name ?? "") }
                 if ids.count > 1 {
@@ -330,20 +296,6 @@ struct InboxView: View {
                 .contentShape(Circle())
                 .accessibilityLabel("Inbox options")
         }
-    }
-
-    private func header(_ b: Block) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(b.title.tidyMoney).capsLabel()
-            if !b.note.isEmpty { Text(b.note.tidyMoney).font(.system(size: 11)).foregroundStyle(b.tint) }
-            Spacer(minLength: 8)
-            if let id = b.companyID {
-                Button { store.openCompany(id) } label: {
-                    LinkLabel(text: "Open")
-                }.buttonStyle(PressableStyle())
-            }
-        }
-        .padding(.top, Theme.Space.s)
     }
 
     private func filterLine(_ e: GameEngine) -> some View {
@@ -449,11 +401,6 @@ struct MessageCard: View {
             }
             Text(text(message.title)).font(.bodyText.weight(.semibold)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
             Text(text(message.body)).font(.caption).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            if open, let facts = store.engine?.messageFacts(message), !facts.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(facts, id: \.self) { f in Text("• " + f).font(.caption2).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true) }
-                }.padding(.top, 2)
-            }
             if let o = store.engine?.answeredOutcome(message) {
                 Text(o).font(.caption2.weight(.medium)).foregroundStyle(P.inkFaint).padding(.top, 2)
             }
@@ -486,37 +433,27 @@ struct MessageCard: View {
         if opts.isEmpty {
             Text("Nothing to choose here. This is dealt with in the company it concerns.").font(.caption).foregroundStyle(P.inkSoft)
         }
-        let detailed = message.options.contains { !$0["d"].string.isEmpty || !preview($0).isEmpty }
-        if !detailed && opts.count <= 3 {
-            WrapRow {
-                ForEach(opts, id: \.offset) { idx, opt in
-                    if idx == 0 {
-                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(QuietButtonStyle())
-                    } else {
-                        Button(text(opt["l"].string)) { ask(message, idx) }.buttonStyle(GreyOutlineButtonStyle())
-                    }
-                }
-            }
-        } else {
-            VStack(spacing: 8) {
-                ForEach(opts, id: \.offset) { idx, opt in
-                    Button { ask(message, idx) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
-                            if !opt["d"].string.isEmpty { Text(text(opt["d"].string)).font(.caption).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading) }
-                            ForEach(preview(opt), id: \.self) { line in
-                                Text("• " + line).font(.caption2).foregroundStyle(P.accent.opacity(0.9))
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? P.accentSelected : P.cardDeep))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
-                        .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
-                        .contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                }
+        VStack(spacing: 8) {
+            ForEach(opts, id: \.offset) { idx, opt in
+                optionButton(idx, opt)
             }
         }
+    }
+
+    /// A full-width option: its label, and under it one grey line of what it does (`EffectPreview`); no line when the preview is empty.
+    private func optionButton(_ idx: Int, _ opt: JSONValue) -> some View {
+        let effect: String = preview(opt).joined(separator: ". ")
+        return Button { ask(message, idx) } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
+                if !effect.isEmpty { Text(effect + ".").font(.caption).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? P.accentSelected : P.cardDeep))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
+            .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
+            .contentShape(Rectangle())
+        }.buttonStyle(PressableStyle())
     }
 }
