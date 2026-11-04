@@ -84,6 +84,14 @@ struct SettingsView: View {
                         plainRow(Glyph.share, "Export this game", chevron: true)
                     }.buttonStyle(PressableStyle())
                 }
+                if !embedded {
+                    rule
+                    NavigationLink {
+                        PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup")
+                    } label: {
+                        plainRow(Glyph.save, "Save slots", detail: "Named copies of this game", chevron: true)
+                    }.buttonStyle(PressableStyle())
+                }
                 rule
             }
             Button { showImporter = true } label: {

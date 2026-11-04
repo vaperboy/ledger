@@ -39,6 +39,24 @@ final class SaveStoreTests: XCTestCase {
         XCTAssertEqual(store.slots().count, 1)
     }
 
+    func testSlotsRenameAndDelete() throws {
+        let (store, dir) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (s, _) = try legacyState()
+        let sum = store.summary(of: s, trades: try TradeCatalog.bundled())
+        try store.save(s, summary: sum)
+        try store.save(s, slot: "Slot 2", summary: sum)
+        XCTAssertEqual(SaveStore.cleanSlotName("  A/b: c! "), "Ab c")
+        XCTAssertTrue(try store.renameSlot("Slot 2", to: "Cafe run"))
+        XCTAssertFalse(try store.renameSlot("current", to: "x"))
+        XCTAssertFalse(try store.renameSlot("Cafe run", to: "current"))
+        XCTAssertTrue(store.hasSave(slot: "Cafe run"))
+        try store.delete(slot: "current")
+        XCTAssertTrue(store.hasSave())
+        try store.delete(slot: "Cafe run")
+        XCTAssertEqual(store.slots().count, 1)
+    }
+
     func testPreviousSaveKeptAndDamagedFileFallsBack() throws {
         let (store, dir) = try tempStore()
         defer { try? FileManager.default.removeItem(at: dir) }

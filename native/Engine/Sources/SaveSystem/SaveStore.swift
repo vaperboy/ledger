@@ -92,6 +92,28 @@ public final class SaveStore {
             .sorted { $0.slot < $1.slot }
     }
 
+    /// A slot name as it may sit in a file name: letters, digits, spaces, dashes, at most 24 characters; nil when nothing is left.
+    public static func cleanSlotName(_ raw: String) -> String? {
+        let kept = raw.filter { $0.isLetter || $0.isNumber || $0 == " " || $0 == "-" }.trimmingCharacters(in: .whitespaces)
+        let name = String(kept.prefix(24)).trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    /// Removes a named slot and its previous copy. The `current` slot is the game being played and is never removed.
+    public func delete(slot: String) throws {
+        guard slot != "current", Self.cleanSlotName(slot) == slot else { return }
+        for u in [url(slot: slot), previousURL(slot: slot)] where fm.fileExists(atPath: u.path) { try fm.removeItem(at: u) }
+    }
+
+    /// Renames a named slot (not `current`). Returns false when the new name is unusable or taken.
+    @discardableResult
+    public func renameSlot(_ slot: String, to raw: String) throws -> Bool {
+        guard slot != "current", let name = Self.cleanSlotName(raw), name != "current", !hasSave(slot: name), hasSave(slot: slot) else { return false }
+        try fm.moveItem(at: url(slot: slot), to: url(slot: name))
+        if fm.fileExists(atPath: previousURL(slot: slot).path) { try fm.moveItem(at: previousURL(slot: slot), to: previousURL(slot: name)) }
+        return true
+    }
+
     public func hasSave(slot: String = "current") -> Bool { fm.fileExists(atPath: url(slot: slot).path) }
 
     // MARK: Importing from the HTML game

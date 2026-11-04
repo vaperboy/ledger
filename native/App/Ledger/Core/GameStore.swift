@@ -262,6 +262,31 @@ final class GameStore: ObservableObject {
         } catch { errorText = "Saving failed: \(error)" }
     }
 
+    // MARK: Save slots (Settings > Saves > Save slots; `current` is the game being played)
+
+    func slotList() -> [(slot: String, summary: SaveSummary?)] { saves?.slots() ?? [] }
+
+    /// Copies the game being played into a named slot. Returns false when there is no game, the name is unusable or taken.
+    @discardableResult
+    func saveToSlot(_ raw: String) -> Bool {
+        guard !isShowcase, let saves, let engine, let name = SaveStore.cleanSlotName(raw), name != "current", !saves.hasSave(slot: name) else { return false }
+        do { try saves.save(engine.state, slot: name, summary: saves.summary(of: engine.state, trades: engine.data.catalog)); return true }
+        catch { errorText = "Saving failed: \(error)"; return false }
+    }
+
+    /// Makes a slot the game being played. The game it replaces is kept as a backup file first.
+    func loadSlot(_ slot: String) {
+        guard !isShowcase, let saves else { return }
+        save(backup: true)
+        do { try start(with: saves.load(slot: slot)); loadProblem = nil; resetNavigation(); save() }
+        catch { errorText = "That slot could not be opened. " + Self.describe(error) }
+    }
+
+    func deleteSlot(_ slot: String) { try? saves?.delete(slot: slot) }
+
+    @discardableResult
+    func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
+
     /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
     func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil) {
         RememberedDetails.clearAll()
