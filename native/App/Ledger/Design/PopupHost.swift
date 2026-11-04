@@ -27,6 +27,11 @@ final class PopupHost: ObservableObject {
     private static var counter = 0
 
     @Published private(set) var entries: [String: PopupEntry] = [:]
+    /// How many nested hosts (sheets) are open under this one. While one is, it draws this host's popups, so they are drawn once.
+    @Published private(set) var claims = 0
+
+    func claim() { claims += 1 }
+    func release() { claims = max(0, claims - 1) }
 
     private static func nextSeq() -> Int { counter += 1; return counter }
 
@@ -67,7 +72,8 @@ struct PopupHostLayer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let all: [PopupEntry] = (Array(host.entries.values) + Array(parent.entries.values)).sorted { (a: PopupEntry, b: PopupEntry) -> Bool in a.seq < b.seq }
+        let mine: [PopupEntry] = host.claims > 0 ? [] : Array(host.entries.values)
+        let all: [PopupEntry] = (mine + Array(parent.entries.values)).sorted { (a: PopupEntry, b: PopupEntry) -> Bool in a.seq < b.seq }
         let top: String? = PopupQueue.visible(all.map { (e: PopupEntry) -> PopupQueue.Item in e.item })
         let signature: [String] = all.map { (e: PopupEntry) -> String in e.key } + [top ?? ""]
         return ZStack {
@@ -166,6 +172,28 @@ private struct PopupHostModifier: ViewModifier {
         content
             .overlay { PopupHostLayer(host: host, parent: parent ?? PopupHost.empty) }
             .environment(\.popupHost, host)
+            .onAppear { parent?.claim() }
+            .onDisappear { parent?.release() }
+    }
+}
+
+/// The custom environment values the registering view had, put back around the popup content (which is drawn at the app root).
+struct PopupCarriedEnvironment: ViewModifier {
+    var insideCard: Bool
+    var markerBudget: MarkerBudget?
+    var markerPageActive: Bool
+    var tabBarClearance: CGFloat
+    var openHire: (HireRequest) -> Void
+    var hidesRootBack: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.insideCard, insideCard)
+            .environment(\.markerBudget, markerBudget)
+            .environment(\.markerPageActive, markerPageActive)
+            .environment(\.tabBarClearance, tabBarClearance)
+            .environment(\.openHire, openHire)
+            .environment(\.hidesRootBack, hidesRootBack)
     }
 }
 
@@ -174,6 +202,12 @@ private struct PopupHostModifier: ViewModifier {
 struct HostedPopupModifier<Card: View>: ViewModifier {
     @Environment(\.popupHost) private var host
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.insideCard) private var insideCard
+    @Environment(\.markerBudget) private var markerBudget
+    @Environment(\.markerPageActive) private var markerPageActive
+    @Environment(\.tabBarClearance) private var tabBarClearance
+    @Environment(\.openHire) private var openHire
+    @Environment(\.hidesRootBack) private var hidesRootBack
     var key: String
     var priority: PopupPriority
     var active: Bool
@@ -195,9 +229,11 @@ struct HostedPopupModifier<Card: View>: ViewModifier {
     func body(content view: Content) -> some View {
         let p: OutsidePalette = palette
         let make: () -> Card = card
+        let carried: PopupCarriedEnvironment = PopupCarriedEnvironment(insideCard: insideCard, markerBudget: markerBudget, markerPageActive: markerPageActive,
+                                                                       tabBarClearance: tabBarClearance, openHire: openHire, hidesRootBack: hidesRootBack)
         return view.background(
             PopupRegistration(host: host, key: key, priority: priority, active: active, draw: draw,
-                              content: { AnyView(make().environment(\.outsidePalette, p)) },
+                              content: { AnyView(make().environment(\.outsidePalette, p).modifier(carried)) },
                               onClose: onClose, onDismiss: onDismiss)
         )
     }

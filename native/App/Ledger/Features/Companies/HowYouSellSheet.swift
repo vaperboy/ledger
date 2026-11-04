@@ -199,7 +199,7 @@ private struct SellChoiceRow: View {
             action()
         } label: {
             HStack(spacing: 12) {
-                Text(name.tidyText).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
+                Text(name.tidyText).popupText(.rowValue).multilineTextAlignment(.leading)
                 Spacer(minLength: 8)
                 Text(cost).font(.system(size: 13).monospacedDigit()).foregroundStyle(current ? Theme.gold : Theme.ivoryMuted)
                 if current { GlyphView(glyph: Glyph.check, size: 16, weight: 2, tint: Theme.gold) }
@@ -227,8 +227,8 @@ private struct SellToggleRow: View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(name.tidyText).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                if !cost.isEmpty { Text(cost.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                Text(name.tidyText).popupText(.rowValue)
+                if !cost.isEmpty { Text(cost.tidyMoney).popupText(.caption) }
             }
             Spacer(minLength: 8)
             LedgerSwitch(isOn: $isOn).disabled(disabled)

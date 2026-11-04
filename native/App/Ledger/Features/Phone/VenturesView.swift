@@ -382,7 +382,7 @@ private struct FoundStartupSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         CardSection("Sector") {
                             Picker("Sector", selection: $sectorID) { ForEach(StartupProducts.sectors) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
-                            Text("Capital need \(sec.capitalNeed) of 4 · built by \(sec.builders)" + (sec.canBuildYourself ? " · you can build it yourself" : "")).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            Text("Capital need \(sec.capitalNeed) of 4 · built by \(sec.builders)" + (sec.canBuildYourself ? " · you can build it yourself" : "")).popupText(.caption)
                         }
                         CardSection("Product and how customers pay") {
                             Picker("Product", selection: Binding(get: { product.id }, set: { productID = $0 })) { ForEach(sec.products, id: \.id) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
@@ -403,7 +403,7 @@ private struct FoundStartupSheet: View {
                                 .init(label: "Investors", value: Funding.interestWord(p.interest).word),
                             ])
                             Text("Risk: most startups fail and the seed money is lost. Each round brings money in but makes your share smaller. If the runway ends before the product sells, raise a round or put money in.")
-                                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                .popupText(.caption)
                             QuietButton(title: "Found it for \(cur.tidyShort(p.seed))", fullWidth: true) {
                                 pending = PendingAction(title: "Found a \(sec.name) startup?",
                                                         message: "\(cur.tidyDisplay(p.seed)) of seed money leaves your cash now. Most startups fail and the seed money is lost.",
@@ -807,12 +807,12 @@ private struct StartupLaunchSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     CardSection("Price per customer") {
                         SegmentedPill(items: Array(steps.indices), title: { "\(Int((steps[$0] * 100).rounded()))%" }, selection: $priceStep)
-                        Text("\(cur.tidyDisplay(price)) for each customer. 100% is the usual price in this sector; cheaper brings more customers, dearer fewer.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        Text("\(cur.tidyDisplay(price)) for each customer. 100% is the usual price in this sector; cheaper brings more customers, dearer fewer.").popupText(.caption)
                     }
                     if !launched {
                         CardSection("Marketing each week") {
                             SegmentedPill(items: Array(budgets.indices), title: { $0 == 0 ? "None" : cur.tidyShort(budgets[$0]) }, selection: $campaign)
-                            Text("Paid by the company from its own cash, on the ordinary online channel. More awareness brings more customers; it is a real cost.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text("Paid by the company from its own cash, on the ordinary online channel. More awareness brings more customers; it is a real cost.").popupText(.caption)
                         }
                     }
                     if let funnel {
@@ -823,7 +823,7 @@ private struct StartupLaunchSheet: View {
                             .init(label: "Company cash", value: cur.tidyShort(f.cash), sub: "\(f.runwayWeeks) weeks of runway"),
                         ])
                     }
-                    Text("Customers beyond what the team can look after leave faster. A support person serves far more customers than a builder; hire one in the company's Team screen.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("Customers beyond what the team can look after leave faster. A support person serves far more customers than a builder; hire one in the company's Team screen.").popupText(.caption)
                     QuietButton(title: launched ? "Set this price" : "Launch at \(cur.tidyDisplay(price))", fullWidth: true) { decide(price, weekly) }
                 }
             }

@@ -108,7 +108,7 @@ struct AcquisitionSheet: View {
     private func labelled(_ head: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(head).capsLabel(Theme.ivoryFaint)
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(text).popupText(.body)
         }
     }
 }

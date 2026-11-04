@@ -31,7 +31,7 @@ struct NewItemSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(isService ? "Add a service" : "Add a product").font(.headline).foregroundStyle(Theme.ivory)
             ForEach(list.options) { (o: NewItemOption) -> AnyView in AnyView(optionRow(o, list.hasMarketAdvisor, cur)) }
-            if list.options.isEmpty { Text("Nothing new to add right now.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+            if list.options.isEmpty { Text("Nothing new to add right now.").popupText(.subtitle) }
             if !list.hasMarketAdvisor { lockedLine }
             ownName
         }
@@ -42,7 +42,7 @@ struct NewItemSheet: View {
         Button { ask(o, cur) } label: {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(o.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Text(o.name).popupText(.rowValue).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     Text(badge(o, cur)).font(.system(size: 11)).foregroundStyle(o.needsDevelopment ? Theme.gold : Theme.ivoryMuted).lineLimit(2)
                 }
                 Spacer(minLength: 4)
@@ -59,7 +59,7 @@ struct NewItemSheet: View {
 
     private func figure(_ label: String, _ value: Double?, _ text: String?) -> some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Text(label).font(.system(size: 9)).foregroundStyle(Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
+            Text(label).popupText(.caption).lineLimit(1).minimumScaleFactor(0.8)
             Text(text ?? "-").font(.system(size: 12, weight: .semibold))
                 .foregroundStyle((value ?? 0) >= 0 ? Theme.gain : Theme.loss).lineLimit(1).minimumScaleFactor(0.7)
         }
@@ -80,7 +80,7 @@ struct NewItemSheet: View {
     private var ownName: some View {
         HStack(spacing: 8) {
             TextField("Or name your own", text: $own).font(.system(size: 14)).textFieldStyle(.roundedBorder)
-            Button { addOwn() } label: { Text("Add").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold) }
+            Button { addOwn() } label: { Text("Add").popupText(.effect) }
                 .buttonStyle(PressableStyle())
                 .disabled(own.trimmingCharacters(in: .whitespaces).isEmpty)
         }

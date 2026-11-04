@@ -156,9 +156,9 @@ struct SeatPickerSheet: View {
         let r: ManagerModel.SeatRole? = store.engine?.seatRoles.first { (x: ManagerModel.SeatRole) -> Bool in x.id == role }
         let cands: [Person] = (store.engine?.boardCandidates(key: key) ?? []).filter { (p: Person) -> Bool in p.str("adv13") == role }
         VStack(alignment: .leading, spacing: 8) {
-            Text(r?.text ?? "").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+            Text(r?.text ?? "").popupText(.caption).lineLimit(2)
             if cands.isEmpty {
-                Text("Nobody lined up for this seat yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Nobody lined up for this seat yet.").popupText(.caption)
             }
             ForEach(cands) { (p: Person) in
                 candidateRow(p)
@@ -173,8 +173,8 @@ struct SeatPickerSheet: View {
         let fee: Double = p.num("fee13")
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(p.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text("\(p.str("advBg")) \u{00B7} \(store.short(fee * 12)) a year").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                Text(p.name).popupText(.rowValue).lineLimit(1)
+                Text("\(p.str("advBg")) \u{00B7} \(store.short(fee * 12)) a year").popupText(.caption).lineLimit(1)
             }
             Spacer(minLength: 6)
             Button("Appoint") { seat(p, fee) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))

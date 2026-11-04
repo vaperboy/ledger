@@ -222,7 +222,7 @@ struct ResearchSheet: View {
         let waiting: [String] = MarketResearch.pending(co).map { (x: (optionID: String, dueWeek: Int)) -> String in x.optionID }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(options) { (o: ResearchOption) -> AnyView in AnyView(optionRow(o, cur, waiting.contains(o.id))) }
-            Text("A market advisor halves cost and time.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("A market advisor halves cost and time.").popupText(.caption)
             reportList(reports)
         }
         .centerSheetTitle("Market research")
@@ -232,13 +232,13 @@ struct ResearchSheet: View {
     private func optionRow(_ o: ResearchOption, _ cur: Currency, _ onItsWay: Bool) -> some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(o.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ivory)
-                Text(o.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                Text(cur.tidyShort(o.cost) + " \u{00B7} " + o.weeks.weeksText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold)
+                Text(o.title).popupText(.rowValue)
+                Text(o.detail).popupText(.caption)
+                Text(cur.tidyShort(o.cost) + " \u{00B7} " + o.weeks.weeksText).popupText(.effect)
             }
             Spacer(minLength: 4)
             if onItsWay {
-                Text("On its way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("On its way").popupText(.caption)
             } else {
                 TeamAction(title: "Buy") { ask(o, cur) }
             }
@@ -264,9 +264,9 @@ struct ResearchSheet: View {
 
     private func reportBlock(_ r: ResearchReport) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.title + " \u{00B7} " + GameCalendar.dateString(week: r.day / 7)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ivory)
+            Text(r.title + " \u{00B7} " + GameCalendar.dateString(week: r.day / 7)).popupText(.rowValue)
             ForEach(r.findings, id: \.self) { (f: String) -> AnyView in
-                AnyView(Text(f.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true))
+                AnyView(Text(f.tidyText).popupText(.caption))
             }
             if let d = reportDocument(r) {
                 Button { shownDoc = d } label: { LinkLabel(text: "Open report") }

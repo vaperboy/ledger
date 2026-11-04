@@ -388,7 +388,7 @@ struct RivalSheet: View {
                 VStack(spacing: 0) {
                     ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
                         if n > 0 { CardLine() }
-                        HStack { Text(f.label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(f.value).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }.padding(.vertical, 7)
+                        HStack { Text(f.label).popupText(.subtitle); Spacer(); Text(f.value).popupText(.rowValue) }.padding(.vertical, 7)
                     }
                 }
             }
@@ -397,13 +397,13 @@ struct RivalSheet: View {
     @ViewBuilder private func ownerSection(_ d: RivalDetail) -> some View {
             MoreBlock("The owner") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(d.moodWord) · \(d.temperament)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                    Text(d.nextMove).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("\(d.moodWord) · \(d.temperament)").popupText(.body)
+                    Text(d.nextMove).popupText(.caption)
                     ForEach(Array(d.rival.memory.prefix(6).enumerated()), id: \.offset) { _, m in
                         CardLine()
                         HStack(alignment: .top) {
                             Circle().fill(m.change > 0 ? Theme.gain : m.change < 0 ? Theme.loss : Theme.ivoryFaint).frame(width: 6, height: 6).padding(.top, 6)
-                            Text(m.text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                            Text(m.text.tidyMoney).popupText(.subtitle)
                         }
                     }
                 }
@@ -414,8 +414,8 @@ struct RivalSheet: View {
             if let g = d.group {
                 MoreBlock("Group behind it") {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text("\(g.strategyName): \(g.strategyText)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text(g.name).popupText(.body)
+                        Text("\(g.strategyName): \(g.strategyText)").popupText(.caption)
                         Text("\(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : "")).font(.system(size: 11.5)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryFaint)
                     }
                 }
@@ -423,10 +423,10 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func reviewsSection(_ d: RivalDetail) -> some View {
-            MoreBlock(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            MoreBlock(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).popupText(.caption) }) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(d.reviews) { r in
-                        Text("\(String(repeating: "★", count: r.stars)) \(r.text)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        Text("\(String(repeating: "★", count: r.stars)) \(r.text)").popupText(.subtitle)
                     }
                 }
             }
@@ -436,14 +436,14 @@ struct RivalSheet: View {
             if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
                 MoreBlock("\(d.rival.name) cut prices \(cut.pct)%") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Some of your customers are trying them. It runs until about week \(cut.end).").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                        Text("Some of your customers are trying them. It runs until about week \(cut.end).").popupText(.caption)
                         Button("Match their price") { answerCut(.match) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         Button("Hold prices, sell quality") { answerCut(.quality) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         Button("Add a cheap second brand") { answerCut(.brand) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                     }
                 }
             } else if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), let answer = cut.answered {
-                Text("You answered their price cut: \(answer).").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("You answered their price cut: \(answer).").popupText(.caption)
             }
     }
 
@@ -463,17 +463,17 @@ struct RivalSheet: View {
                     Text("Offer to buy · worth about \(cur.tidyShort(value))").capsLabel(Theme.ivoryFaint)
                     HStack {
                         LedgerSlider(value: $offer, in: 0.8...3, step: 0.05).tint(Theme.gold)
-                        Text(cur.tidyShort(value * offer)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 74, alignment: .trailing)
+                        Text(cur.tidyShort(value * offer)).popupText(.rowValue).frame(width: 74, alignment: .trailing)
                     }
-                    Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Plus about \(cur.tidyShort(e.rivalStartupMoney(companyID: companyID, rivalID: rivalID))) to set the business up as your own.").popupText(.caption)
                     Button("Make the offer") { makeOffer(multiple: offer) }.buttonStyle(TinyButtonStyle())
-                    if let reply { Text(reply).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                    if let reply { Text(reply).popupText(.body) }
                     if let counter { Button("Accept their price · " + cur.tidyShort(counter)) { pendingPrice = counter }.buttonStyle(TinyButtonStyle(tint: Theme.gold)) }
                     CardLine()
                     if co.value("docs")["fran"]["st"].string == "ok" {
                         Button("Open a new site beside them") { openSite() }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                     } else {
-                        Text("A new site beside a rival needs your franchise papers (Chain section).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        Text("A new site beside a rival needs your franchise papers (Chain section).").popupText(.caption)
                     }
                 }
             }

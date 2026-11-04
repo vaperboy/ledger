@@ -137,8 +137,8 @@ struct DailyReportPopup: View {
         let total: Int = list.count + 2
         let canContinue: Bool = reduceMotion || showContinue
         GamePopup(title: digest.dateLabel, showsClose: false, dismissOnBackdrop: false, onClose: { store.dismissDailySheet() }) {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: PopupSpace.block) {
+                VStack(alignment: .leading, spacing: PopupSpace.block) {
                     Text("Morning briefing").capsLabel()
                     headline.modifier(BriefingStep(shown: visible(0)))
                     loadingBar
@@ -171,24 +171,24 @@ struct DailyReportPopup: View {
         if let n = digest.netWorthChange {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Net worth today").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Net worth today").popupText(.rowLabel)
                     CountedFigure(value: n, format: signedText, tint: Theme.change(n), instant: instant)
-                        .font(.serifTitle(30)).lineLimit(1).minimumScaleFactor(0.6)
+                        .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
                 }
                 Spacer(minLength: 8)
                 if let c = digest.cashChange {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("Cash").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text("Cash").popupText(.rowLabel)
                         CountedFigure(value: c, format: signedText, tint: Theme.change(c), instant: instant)
-                            .font(.system(size: 16, weight: .medium).monospacedDigit()).lineLimit(1)
+                            .font(PopupVariant.standard.valueFont).lineLimit(1)
                     }
                 }
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Taken today").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("Taken today").popupText(.rowLabel)
                 CountedFigure(value: digest.revenue, format: signedText, tint: Theme.change(digest.revenue), instant: instant)
-                    .font(.serifTitle(30)).lineLimit(1).minimumScaleFactor(0.6)
+                    .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
             }
         }
     }
@@ -200,22 +200,22 @@ struct DailyReportPopup: View {
     private func row(_ line: BriefingLine) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Circle().fill(line.tint).frame(width: 5, height: 5).offset(y: -2)
-            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(line.text.tidyMoney).popupText(.body)
         }
     }
 
     private func insightView(_ item: BriefingInsight, compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            if compact { Text("A quiet day: nothing sold, nothing new in the Inbox.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint) }
+            if compact { Text("A quiet day: nothing sold, nothing new in the Inbox.").popupText(.subtitle) }
             Text(item.label).capsLabel()
-            Text(item.text).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(item.text).popupText(.body)
             if let title = item.buttonTitle, let action = item.action {
                 Button {
                     Haptics.tap()
                     store.dismissDailySheet()
                     store.go(popup: action)
                 } label: {
-                    Text(title + " ›").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
+                    Text(title + " ›").popupText(.effect).frame(minHeight: 32).contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("daily-insight-action")
             }

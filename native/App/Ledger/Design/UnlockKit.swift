@@ -85,21 +85,21 @@ struct UnlockPopup: View {
     @State private var shown = false
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: PopupSpace.block) {
             ring
             Text("\(prompt.title) unlocked")
-                .font(.serifTitle(25)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                .popupText(.figure, variant: .reward).multilineTextAlignment(.center)
                 .opacity(shown || reduceMotion ? 1 : 0)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.9)
             Text(prompt.line)
-                .font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                .popupText(.subtitle).multilineTextAlignment(.center)
             VStack(spacing: 6) {
                 Button { Haptics.tap(); store.goToUnlock(prompt) } label: {
                     Text("Take me there").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("unlock-go")
                 Button { store.dismissUnlock(prompt) } label: {
-                    Text("Skip").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: 36)
+                    Text("Skip").popupText(.rowLabel).frame(maxWidth: .infinity, minHeight: 36)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("unlock-skip")

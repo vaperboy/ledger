@@ -53,7 +53,7 @@ struct SalesItemSheet: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("PRICE").capsLabel()
                 Spacer()
-                Text(exact(price, cur)).font(.system(size: 20, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gold)
+                Text(exact(price, cur)).popupText(.effect)
             }
             if hi > lo {
                 LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
@@ -91,7 +91,7 @@ struct SalesItemSheet: View {
 
     private func stat(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack {
-            Text(label).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).popupText(.subtitle)
             Spacer()
             Text(value).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(tint)
         }
@@ -109,7 +109,7 @@ struct SalesItemSheet: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], spacing: 8) {
                     ForEach([0] + options, id: \.self) { (p: Int) in chip(p, it) }
                 }
-                Stepper("For \(weeks.weeksText)", value: $weeks, in: 1...26).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                Stepper("For \(weeks.weeksText)", value: $weeks, in: 1...26).popupText(.body)
                     .onChange(of: weeks) { _, _ in if it.discountPercent > 0 { commitDiscount(it.discountPercent) } }
                 if it.discountPercent > 0 {
                     Text("\(Int(it.discountPercent))% off, \(it.discountWeeksLeft.weeksText) left.").font(.caption).foregroundStyle(Theme.ivoryMuted)
@@ -144,7 +144,7 @@ struct SalesItemSheet: View {
         if Self.listingTrades.contains(co.type) || it.listedForGroup {
             let on = Binding<Bool>(get: { it.listedForGroup }, set: { (v: Bool) in setListed(v) })
             VStack(alignment: .leading, spacing: 4) {
-                Toggle("List for my other companies", isOn: on).tint(Theme.gold).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                Toggle("List for my other companies", isOn: on).tint(Theme.gold).popupText(.rowValue)
                 Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").font(.caption).foregroundStyle(Theme.ivoryMuted)
             }
         }

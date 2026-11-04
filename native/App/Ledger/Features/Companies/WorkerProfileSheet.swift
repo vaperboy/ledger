@@ -56,7 +56,7 @@ struct WorkerProfileSheet: View {
         HStack(spacing: 12) {
             ThumbnailView(kind: .person, key: p.role, size: 44, initials: p.name, face: e.state.people[employeeID]?.faceKey)
             VStack(alignment: .leading, spacing: 3) {
-                Text(p.name).font(.serifTitle(21)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(p.name).popupText(.figure).lineLimit(1)
                 HStack(spacing: 5) {
                     TeamBadge(text: p.roleName, tint: Theme.gold)
                     if let d = p.duty, !d.isEmpty { TeamBadge(text: "Duty: " + dutyName(e, d)) }
@@ -91,8 +91,8 @@ struct WorkerProfileSheet: View {
             let weeks: String = p.weeksEmployed >= 52 ? String(format: "%.1f years here", Double(p.weeksEmployed) / 52) : "\(p.weeksEmployed) weeks here"
             VStack(alignment: .leading, spacing: 2) {
                 Text("Contract").capsLabel()
-                Text(line).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Text(weeks + (c.endWeek.map { (w: Int) -> String in " \u{00B7} ends " + GameCalendar.dateString(week: w) } ?? "")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(line).popupText(.body)
+                Text(weeks + (c.endWeek.map { (w: Int) -> String in " \u{00B7} ends " + GameCalendar.dateString(week: w) } ?? "")).popupText(.caption)
             }
         }
     }
@@ -110,7 +110,7 @@ struct WorkerProfileSheet: View {
                 bar("Expected for this pay", p.expectedPerformance, Theme.ivoryMuted)
                 bar("Delivers now", p.performance, tint)
                 if !p.performanceNote.isEmpty {
-                    Text(p.performanceNote).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(p.performanceNote).popupText(.caption)
                 }
             }
         }
@@ -120,9 +120,9 @@ struct WorkerProfileSheet: View {
         let f: Double = min(1, max(0, value / 100))
         return VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(label).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text(label).popupText(.caption)
                 Spacer(minLength: 6)
-                Text(String(Int(value.rounded()))).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(String(Int(value.rounded()))).popupText(.rowValue)
             }
             GeometryReader { (g: GeometryProxy) -> AnyView in
                 AnyView(ZStack(alignment: .leading) {
@@ -151,7 +151,7 @@ struct WorkerProfileSheet: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(x.text).font(.system(size: 13)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 6)
-                    Text(x.status == "Due" ? "Due now" : GameCalendar.dateString(week: x.dueWeek)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(x.status == "Due" ? "Due now" : GameCalendar.dateString(week: x.dueWeek)).popupText(.caption)
                 }
                 WrapRow {
                     TeamAction(title: "Keep it now") { keep(x) }
@@ -165,8 +165,8 @@ struct WorkerProfileSheet: View {
         let bad: [String] = Array(p.moodBad.prefix(2))
         let good: [String] = Array(p.moodGood.prefix(2))
         return VStack(alignment: .leading, spacing: 3) {
-            ForEach(bad, id: \.self) { (t: String) -> AnyView in AnyView(Label(String(t.prefix(1).uppercased() + t.dropFirst()), systemImage: "minus.circle").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)) }
-            ForEach(good, id: \.self) { (t: String) -> AnyView in AnyView(Label(String(t.prefix(1).uppercased() + t.dropFirst()), systemImage: "plus.circle").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)) }
+            ForEach(bad, id: \.self) { (t: String) -> AnyView in AnyView(Label(String(t.prefix(1).uppercased() + t.dropFirst()), systemImage: "minus.circle").popupText(.caption)) }
+            ForEach(good, id: \.self) { (t: String) -> AnyView in AnyView(Label(String(t.prefix(1).uppercased() + t.dropFirst()), systemImage: "plus.circle").popupText(.caption)) }
         }
     }
 
@@ -182,7 +182,7 @@ struct WorkerProfileSheet: View {
                 TeamAction(title: "Let go", tint: Theme.loss) { confirmDismiss(e, p, cur) }
             }
             NavigationLink { StaffProfileView(companyID: companyID, staffID: employeeID) } label: {
-                Text("Full record \u{203A}").font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(minHeight: 32)
+                Text("Full record \u{203A}").popupText(.effect).frame(minHeight: 32)
             }
             .buttonStyle(PressableStyle())
         }
@@ -195,7 +195,7 @@ struct WorkerProfileSheet: View {
                 AnyView(Button(r.name + (r.effect.isEmpty ? "" : ": " + r.effect)) { setDuty(r.id) })
             }
         } label: {
-            Text("Set duty").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+            Text("Set duty").popupText(.effect)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1))
                 .frame(minHeight: 32)

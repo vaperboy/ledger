@@ -61,5 +61,19 @@ Declared variants (`PopupVariant`), the only exceptions:
 - `reward`: larger gold figure (30).
 - `alert`: white text on the red alert.
 
-Not yet on the roles: the daily report, report pages, reward and unlock cards, and most `.centerSheet` contents in the features
-(they keep their own fonts until migrated one by one).
+`overline` is the existing `.capsLabel()` (a small caps section label inside a card).
+
+On the roles: confirm, notice, decision, alert, error, daily report, week/month/year report, reward, ambition and unlock cards (all in
+`GamePopup`, one card), and the text of every struct named `*Sheet`, `*Popup`, `*Picker` or `*Form` in Features (migrated by script,
+`.font(...).foregroundStyle(Theme.ivory...)` pairs only). Remaining: popup bodies built by inline functions inside page files
+(`popupContent`, `debtInfo`, `offerSheet`, `partialSheet`...), counting figures with their own gain/loss colour (they use
+`PopupVariant.figureFont` / `valueFont`), and fonts that are not an ivory/gold/loss pair. New popup content must use the roles.
+
+## Drawn once
+A sheet's nested host claims the root host while it is open: the root layer hides, the nested layer draws the root's popups too, so a
+notice raised by the store is shown once, over the sheet.
+
+## Environment
+Popup content is drawn at the app root, so the registering view's custom environment (palette, `insideCard`, marker budget and page
+flag, `tabBarClearance`, `openHire`, `hidesRootBack`) is carried over (`PopupCarriedEnvironment`). A new custom key read in popup
+content must be added there.

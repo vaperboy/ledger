@@ -27,26 +27,17 @@ struct WeekReportShell<More: View>: View {
     // MARK: Body
 
     var body: some View {
-        ZStack {
-            Theme.page.ignoresSafeArea()
-            VStack(spacing: 0) {
-                ScrollView {
-                    pageContent
-                        .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                footer
-            }
+        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, onClose: { }) {
+            pageContent
+                .frame(maxWidth: .infinity, alignment: .leading)
+            footer
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(.isModal)
         .task { await start() }
     }
 
     @ViewBuilder private var pageContent: some View {
         if let r = recap {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: PopupSpace.card) {
                 titleBlock
                 numberBlock(r)
                 storyBlock(r)
@@ -64,7 +55,7 @@ struct WeekReportShell<More: View>: View {
     private var footer: some View {
         VStack(spacing: 6) {
             Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
-                Text("Full report").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 40).contentShape(Rectangle())
+                Text("Full report").popupText(.effect).frame(minHeight: 40).contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
             Button { Haptics.tap(); continueTapped() } label: {
@@ -90,8 +81,7 @@ struct WeekReportShell<More: View>: View {
 
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(digest.title).font(.system(size: 34, weight: .medium, design: .serif)).foregroundStyle(Theme.ivory)
-            Text(digest.range).font(.system(size: 15)).foregroundStyle(Theme.ivoryMuted)
+            Text(digest.range).popupText(.rowLabel)
         }
         .opacity(titleShown ? 1 : 0)
     }
@@ -108,18 +98,17 @@ struct WeekReportShell<More: View>: View {
         let word: String = vsWord(r)
         return VStack(alignment: .leading, spacing: 4) {
             CountedFigure(value: r.profit, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(r.profit), duration: Motion.revealSeconds)
-                .font(.system(size: 48, weight: .bold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.5)
+                .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.5)
                 .scaleEffect(numberShown || reduceMotion ? 1 : 0.9, anchor: .leading)
             if let d = r.delta {
                 CountedFigure(value: d, format: { (v: Double) -> String in signed(v) + " vs " + word }, tint: Theme.change(d), duration: Motion.revealSeconds)
-                    .font(.system(size: 17).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
+                    .font(PopupVariant.standard.valueFont).lineLimit(1).minimumScaleFactor(0.7)
             }
         }
     }
 
     private func storyBlock(_ r: WeekRecap) -> some View {
-        Text(r.story).font(.serifTitle(20)).foregroundStyle(Theme.ivory)
-            .fixedSize(horizontal: false, vertical: true)
+        Text(r.story).popupText(.title)
             .opacity(storyShown ? 1 : 0)
     }
 
@@ -137,10 +126,10 @@ struct WeekReportShell<More: View>: View {
         let grown: Double = reduceMotion ? 1 : bars[index]
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label).font(.system(size: 15)).foregroundStyle(Theme.ivoryMuted)
+                Text(label).popupText(.rowLabel)
                 Spacer(minLength: 8)
                 CountedFigure(value: value, format: { (v: Double) -> String in withSign ? signed(v) : store.short(v) }, tint: Theme.ivory, duration: Motion.revealSeconds)
-                    .font(.system(size: 15, weight: .semibold).monospacedDigit()).lineLimit(1)
+                    .font(PopupVariant.standard.valueFont).lineLimit(1)
             }
             GeometryReader { (geo: GeometryProxy) in
                 let full: CGFloat = max(6, geo.size.width * CGFloat(share))
@@ -160,7 +149,7 @@ struct WeekReportShell<More: View>: View {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(r.movers.enumerated()), id: \.offset) { (_: Int, m: WeekMover) in moverRow(m) }
                 if let line = r.extremes {
-                    Text(line).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(line).popupText(.subtitle)
                 }
                 if r.kind == .year { yearBlock(r) }
             }
@@ -170,10 +159,10 @@ struct WeekReportShell<More: View>: View {
     private func moverRow(_ m: WeekMover) -> some View {
         let tint: Color = m.isCost ? (m.change > 0 ? Theme.loss : Theme.gain) : Theme.change(m.change)
         return HStack {
-            Text(m.label).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(1)
+            Text(m.label).popupText(.body).lineLimit(1)
             Spacer(minLength: 8)
             CountedFigure(value: m.change, format: { (v: Double) -> String in signed(v) }, tint: tint, duration: Motion.revealSeconds)
-                .font(.system(size: 14, weight: .medium).monospacedDigit()).lineLimit(1)
+                .font(PopupVariant.standard.valueFont).lineLimit(1)
         }
     }
 
@@ -189,9 +178,9 @@ struct WeekReportShell<More: View>: View {
 
     private func yearFigure(_ label: String, _ value: Double, _ tint: Color, _ withSign: Bool) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Text(label).popupText(.rowLabel)
             CountedFigure(value: value, format: { (v: Double) -> String in withSign ? signed(v) : store.short(v) }, tint: tint, duration: Motion.revealSeconds)
-                .font(.system(size: 18, weight: .medium).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
+                .font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -219,8 +208,8 @@ struct WeekReportShell<More: View>: View {
         if let n = r.next {
             VStack(alignment: .leading, spacing: 4) {
                 Text("One thing to do").capsLabel()
-                Text(n.title.tidyMoney).font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Text(n.detail.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(n.title.tidyMoney).popupText(.title)
+                Text(n.detail.tidyMoney).popupText(.subtitle)
                 Button {
                     Haptics.tap()
                     store.dismissReportSheet()
@@ -241,9 +230,9 @@ struct WeekReportShell<More: View>: View {
     @ViewBuilder private func recordLine(_ r: WeekRecap) -> some View {
         if let text = r.record {
             HStack(spacing: 8) {
-                Image(systemName: "trophy").font(.system(size: 16)).foregroundStyle(Theme.gold)
+                Image(systemName: "trophy").popupText(.effect)
                     .scaleEffect((trophyShown || reduceMotion) ? 1 : 0.5)
-                Text(text).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.gold)
+                Text(text).popupText(.effect)
             }
             .overlay(alignment: .top) { confetti }
         }

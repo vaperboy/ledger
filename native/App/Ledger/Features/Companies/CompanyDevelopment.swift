@@ -161,8 +161,8 @@ struct ExpansionForm: View {
         let cur: Currency = engine.currency(for: company)
         let plan: Development.Plan? = engine.developmentPlan(companyID: company.id, project: project.id)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text(project.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            Text(project.text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text(project.name).popupText(.figure)
+            Text(project.text).popupText(.subtitle)
             if let plan { details(plan, cur) }
             QuietButton(title: "Start for \(cur.tidyShort(plan?.cost ?? 0))", fullWidth: true) { start() }
                 .opacity(plan?.blockedReason == nil ? 1 : 0.4).disabled(plan?.blockedReason != nil)
@@ -181,14 +181,14 @@ struct ExpansionForm: View {
         }
         CardSection("What to expect") {
             Text("Works fully: \(Int((plan.oddsFull * 100).rounded()))% · works half as well: \(Int((plan.oddsPartial * 100).rounded()))% · does not work out: \(Int(((1 - plan.oddsFull - plan.oddsPartial) * 100).rounded()))%")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivory)
-            Text("Rivals copy it in time: about half the gain is gone after two years, 40% stays.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                .popupText(.body)
+            Text("Rivals copy it in time: about half the gain is gone after two years, 40% stays.").popupText(.caption)
         }
         CardSection("Requirements") {
-            ForEach(plan.requirements, id: \.self) { r in Text(r).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
-            if let why = plan.blockedReason { Text(why).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.caution) }
+            ForEach(plan.requirements, id: \.self) { r in Text(r).popupText(.subtitle) }
+            if let why = plan.blockedReason { Text(why).popupText(.risk) }
         }
-        Text("Closing this sheet changes nothing. A running project can be cancelled later and the part not yet spent comes back.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        Text("Closing this sheet changes nothing. A running project can be cancelled later and the part not yet spent comes back.").popupText(.caption)
     }
 
     private func start() {

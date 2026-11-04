@@ -58,9 +58,9 @@ struct ConversionSheet: View {
         Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Convert").capsLabel()
-                Text(plan.companyName).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
+                Text(plan.companyName).popupText(.figure).lineLimit(2)
                 Text("From \(plan.currentFormName) to \(plan.newFormName). Nothing happens until you confirm.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.subtitle)
             }
         }
     }
@@ -137,7 +137,7 @@ struct ConversionSheet: View {
             CardSection("Consequences") {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(plan.consequences.enumerated()), id: \.offset) { _, c in
-                        Text(c.tidyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(c.tidyText).popupText(.subtitle)
                     }
                 }
             }
@@ -148,7 +148,7 @@ struct ConversionSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             if !plan.affordable {
                 Text("The chosen account cannot cover this: pick the other or put money in. Nothing is charged.")
-                    .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.risk)
                     .accessibilityIdentifier("conversion-unaffordable")
             }
             QuietButton(title: "Convert to a limited company\u{2026}", fullWidth: true) { confirm(co, plan, cur) }
@@ -203,8 +203,8 @@ struct ConversionSheet: View {
             HStack(alignment: .top, spacing: 12) {
                 IconCircle(glyph: Glyph.check, tint: Theme.gain)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Converted").font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(text.tidyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text("Converted").popupText(.rowValue)
+                    Text(text.tidyText).popupText(.subtitle)
                     Text("Form, name and records are updated; see Accounting > Documents for the registration.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
@@ -216,7 +216,7 @@ struct ConversionSheet: View {
         Card(padding: 16, radius: Theme.Radius.hero) {
             HStack(alignment: .top, spacing: 12) {
                 IconCircle(glyph: Glyph.info)
-                Text(block.text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                Text(block.text).popupText(.body)
             }
         }
     }

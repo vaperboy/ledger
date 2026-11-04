@@ -51,6 +51,11 @@ enum PopupVariant {
         }
     }
 
+    /// The figure font alone (for a counting figure that keeps its own gain or loss colour).
+    var figureFont: Font { Font.system(size: figureSize, weight: .medium, design: .serif).monospacedDigit() }
+    /// The value font alone (a secondary amount beside a figure).
+    var valueFont: Font { Font.system(size: 13.5, weight: .medium).monospacedDigit() }
+
     var risksAreRed: Bool { self == .destructive }
     var footerTone: PopupFooter.Tone {
         switch self {

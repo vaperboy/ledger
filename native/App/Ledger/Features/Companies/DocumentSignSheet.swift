@@ -41,23 +41,22 @@ struct DocumentSignSheet: View {
         Group {
             if let f = form, let co = store.engine?.state.company(companyID) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("To: " + f.issuer.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                    if !f.note.isEmpty { Text(f.note).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                    Text("To: " + f.issuer.tidyText).popupText(.subtitle)
+                    if !f.note.isEmpty { Text(f.note).popupText(.body) }
                     HStack {
-                        Text("Fee").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Fee").popupText(.subtitle)
                         Spacer(minLength: 8)
-                        Text(f.fee > 0 ? store.short(f.fee, in: co) : "Free").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text(f.fee > 0 ? store.short(f.fee, in: co) : "Free").popupText(.rowValue)
                     }
                     HStack {
-                        Text("Answer expected").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Answer expected").popupText(.subtitle)
                         Spacer(minLength: 8)
-                        Text("in about \(max(1, f.weeks)) week\(f.weeks == 1 ? "" : "s")").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
+                        Text("in about \(max(1, f.weeks)) week\(f.weeks == 1 ? "" : "s")").popupText(.rowValue)
                     }
                     Button { Haptics.choose(); agreed.toggle() } label: {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: agreed ? "checkmark.square.fill" : "square").foregroundStyle(agreed ? Theme.gold : Theme.ivoryFaint).font(.system(size: 20)).accessibilityHidden(true)
-                            Text("I confirm that the details are true and I accept the terms of this application.").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                                .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
+                            Text("I confirm that the details are true and I accept the terms of this application.").popupText(.body).multilineTextAlignment(.leading)
                         }
                     }.buttonStyle(PressableStyle()).accessibilityValue(agreed ? "Checked" : "Unchecked")
                     SignaturePad(strokes: $strokes)
@@ -67,7 +66,7 @@ struct DocumentSignSheet: View {
                         Button(f.status == "rejected" ? "Sign and apply again" : "Sign and send") { send(f, co) }
                             .buttonStyle(ImportantButtonStyle()).disabled(!agreed || strokes.isEmpty)
                     }
-                    Text("The authority reviews it and answers by message. It can refuse; you may then apply again at once.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("The authority reviews it and answers by message. It can refuse; you may then apply again at once.").popupText(.caption)
                 }
             }
         }
@@ -99,9 +98,9 @@ struct CompanyLicences: View {
         let lines: [LicenceLine] = engine.licences(companyID: company.id)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Licences let you add new things to sell. Apply here; once one is held, switch the product on in Sales > How you sell.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                .popupText(.subtitle)
             ForEach(lines) { (l: LicenceLine) in card(l) }
-            if lines.isEmpty { Text("This business has no licences to add.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint) }
+            if lines.isEmpty { Text("This business has no licences to add.").popupText(.caption) }
         }
         .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
@@ -122,13 +121,13 @@ struct CompanyLicences: View {
         let s = statusText(l.form)
         return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(l.form.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                Text(l.form.name).popupText(.rowValue)
                 Spacer(minLength: 8)
                 Text(s.0).font(.system(size: 12)).foregroundStyle(s.1)
             }
-            Text("Unlocks: " + l.unlocks.joined(separator: ", ")).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text("Unlocks: " + l.unlocks.joined(separator: ", ")).popupText(.subtitle)
             Text((l.form.fee > 0 ? "Fee " + store.short(l.form.fee, in: company) : "Free") + " \u{00B7} review about \(max(1, l.form.weeks)) week\(l.form.weeks == 1 ? "" : "s")")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                .popupText(.caption)
             if ["", "rejected", "lapsed"].contains(l.form.status) {
                 Button(l.form.status == "" ? "Fill in and apply" : "Apply again") { Haptics.tap(); signing = l.id }.buttonStyle(QuietButtonStyle())
             } else if l.form.status == "ok" {

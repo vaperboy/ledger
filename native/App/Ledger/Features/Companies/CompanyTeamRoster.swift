@@ -261,8 +261,8 @@ struct TeamSlotSheet: View {
         LedgerSection("Who") {
             VStack(alignment: .leading, spacing: 6) {
                 FlatRow(label: p.name, value: "\(cur.tidyShort(slot.monthlyWage)) a month", rule: false)
-                Text("In the post since \(GameCalendar.dateString(week: slot.since, dayOffset: 0)).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                Text(slot.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text("In the post since \(GameCalendar.dateString(week: slot.since, dayOffset: 0)).").popupText(.caption)
+                Text(slot.detail.tidyMoney).popupText(.caption)
             }
         }
         if slot.key == "ceo" {
@@ -273,7 +273,7 @@ struct TeamSlotSheet: View {
                     }
                     if slot.level == 1 {
                         HStack {
-                            Text("Spends up to").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                            Text("Spends up to").popupText(.subtitle)
                             Spacer()
                             Menu {
                                 ForEach([25000.0, 50000, 100000, 250000, 500000], id: \.self) { v in
@@ -281,7 +281,7 @@ struct TeamSlotSheet: View {
                                         store.settle(store.act { $0.setTeamAuthority(companyID: co.id, buy: cur.scaledPrice(v)) }, "Above \(cur.tidyShort(cur.scaledPrice(v))) it comes to you.", same: "That limit is already set.")
                                     }
                                 }
-                            } label: { Text(cur.tidyShort(slot.buy)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.gold) }
+                            } label: { Text(cur.tidyShort(slot.buy)).popupText(.effect) }
                         }
                     }
                 }
@@ -304,7 +304,7 @@ struct TeamSlotSheet: View {
         let fee = ManagerModel.searchFee(currency: cur)
         LedgerSection("Vacant") {
             VStack(alignment: .leading, spacing: 10) {
-                Text(slot.detail.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(slot.detail.tidyMoney).popupText(.subtitle)
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
                                             message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",

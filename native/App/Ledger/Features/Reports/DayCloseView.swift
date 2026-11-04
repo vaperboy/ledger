@@ -21,12 +21,12 @@ struct DayCloseView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let p = profit {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Profit today").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Profit today").popupText(.rowLabel)
                     CountedFigure(value: p, format: format, tint: Theme.change(p), instant: instant)
-                        .font(.system(size: 34, weight: .bold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.6)
+                        .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
-            Text(priorityLine).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+            Text(priorityLine).popupText(.subtitle).lineLimit(1)
             bar(shown: reduceMotion ? target : filled)
         }
         .padding(10)

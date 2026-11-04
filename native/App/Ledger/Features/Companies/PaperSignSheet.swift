@@ -21,15 +21,14 @@ struct PaperSignSheet: View {
     var body: some View {
         Group {
             VStack(alignment: .leading, spacing: 12) {
-                Text("To: " + to).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                if !note.isEmpty { Text(note).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                Text("To: " + to).popupText(.subtitle)
+                if !note.isEmpty { Text(note).popupText(.body) }
                 line("Fee", fee)
                 line("Answer expected", wait)
                 Button { Haptics.choose(); agreed.toggle() } label: {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: agreed ? "checkmark.square.fill" : "square").foregroundStyle(agreed ? Theme.gold : Theme.ivoryFaint).font(.system(size: 20)).accessibilityHidden(true)
-                        Text("I confirm that the details are true and I accept the terms of this application.").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                            .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
+                        Text("I confirm that the details are true and I accept the terms of this application.").popupText(.body).multilineTextAlignment(.leading)
                     }
                 }.buttonStyle(PressableStyle()).accessibilityValue(agreed ? "Checked" : "Unchecked")
                 SignaturePad(strokes: $strokes)
@@ -46,9 +45,9 @@ struct PaperSignSheet: View {
 
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).popupText(.subtitle)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
+            Text(value).popupText(.rowValue)
         }
     }
 }

@@ -27,8 +27,8 @@ struct ReportDigestSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(digest.kind.title + " report").capsLabel()
-            Text(digest.range).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-            Text(headline).font(.serifTitle(17)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            Text(digest.range).popupText(.caption)
+            Text(headline).popupText(.title)
         }
     }
 
@@ -62,10 +62,10 @@ struct ReportDigestSheet: View {
                 }
                 Rectangle().fill(Theme.divider).frame(height: 1)
                 HStack {
-                    Text("Net worth").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Text("Net worth").popupText(.rowLabel)
                     Spacer()
-                    CountedFigure(value: digest.netWorthEnd, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory).font(.system(size: 13.5, weight: .medium).monospacedDigit())
-                    CountedFigure(value: digest.netWorthChange, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(digest.netWorthChange)).font(.system(size: 12).monospacedDigit())
+                    CountedFigure(value: digest.netWorthEnd, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory).font(PopupVariant.standard.valueFont)
+                    CountedFigure(value: digest.netWorthChange, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(digest.netWorthChange)).font(PopupVariant.standard.valueFont)
                 }
             }
         }
@@ -73,8 +73,8 @@ struct ReportDigestSheet: View {
 
     private func figure(_ label: String, _ value: Double, _ tint: Color, _ text: @escaping (Double) -> String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            CountedFigure(value: value, format: text, tint: tint).font(.system(size: 18, weight: .medium).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).popupText(.rowLabel)
+            CountedFigure(value: value, format: text, tint: tint).font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -86,7 +86,7 @@ struct ReportDigestSheet: View {
                 ForEach(lines, id: \.self) { line in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Circle().fill(tint).frame(width: 5, height: 5).offset(y: -2)
-                        Text(line.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        Text(line.tidyMoney).popupText(.body)
                     }
                 }
             }
@@ -98,7 +98,7 @@ struct ReportDigestSheet: View {
         let waiting: String = digest.decisionsOpen == 0 ? "none waiting" : "\(digest.decisionsOpen) waiting in the Inbox"
         return VStack(alignment: .leading, spacing: 4) {
             Text("Decisions").capsLabel()
-            Text(answered + ", " + waiting).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+            Text(answered + ", " + waiting).popupText(.body)
         }
     }
 
@@ -122,17 +122,12 @@ struct CelebrationPopup: View {
     @State private var leaving = false
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea().contentShape(Rectangle())
+        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, onClose: { }) {
             card
-                .padding(.horizontal, 28)
-                .scaleEffect(shown || reduceMotion ? 1 : 0.92)
-                .opacity(shown ? 1 : 0)
-                .offset(y: leaving ? -900 : 0)
         }
+        .offset(y: leaving ? -900 : 0)
         .onAppear {
             Haptics.tap()
-            Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
             if item.kind == "goal" {
                 Motion.animate(Motion.quick(reduceMotion)) { goalShown = true }
                 Motion.animate(Motion.reveal(reduceMotion)) { checkDrawn = 1 }
@@ -151,21 +146,20 @@ struct CelebrationPopup: View {
     }
 
     private var card: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: PopupSpace.block) {
             badge
-            Text(kindLabel).capsLabel()
-            Text(item.title).font(.serifTitle(22)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Text(item.title).popupText(.figure, variant: .reward).multilineTextAlignment(.center)
             if !item.detail.isEmpty {
-                Text(item.detail).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text(item.detail).popupText(.subtitle).multilineTextAlignment(.center)
             }
             if !item.reward.isEmpty {
-                Text(item.reward).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text(item.reward).popupText(.rowValue).multilineTextAlignment(.center)
                     .opacity(item.kind != "goal" || goalShown || reduceMotion ? 1 : 0)
             }
             claimArea
             if let next = nextGoal {
                 Button(next.button) { dismiss(); _ = store.openLadderLink(next.link) }
-                    .buttonStyle(PressableStyle()).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.gold)
+                    .buttonStyle(PressableStyle()).popupText(.effect)
                     .padding(.top, 2).accessibilityIdentifier("celebration-next-goal")
             }
             if !canClaim {
@@ -173,11 +167,7 @@ struct CelebrationPopup: View {
                     .buttonStyle(ImportantButtonStyle()).padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
             }
         }
-        .padding(20)
-        .frame(maxWidth: 380)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.gain.opacity(item.kind == "goal" && (goalShown || reduceMotion) ? 0.16 : 0)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: Claiming in place
@@ -230,11 +220,10 @@ struct CelebrationPopup: View {
     @ViewBuilder private var claimArea: some View {
         if let done = claimedText {
             VStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 36)).foregroundStyle(Theme.gold)
+                Image(systemName: "checkmark.circle.fill").popupText(.effect)
                     .scaleEffect(burst || reduceMotion ? 1 : 0.4)
                     .symbolEffect(.bounce, value: burst)
-                Text(done).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain)
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text(done).popupText(.rowValue).multilineTextAlignment(.center)
             }
             .transition(.scale.combined(with: .opacity))
             .accessibilityElement(children: .combine)

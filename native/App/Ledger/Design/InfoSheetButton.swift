@@ -19,7 +19,7 @@ struct InfoSheetButton: View {
         .buttonStyle(PressableStyle())
         .accessibilityLabel("About " + title)
         .centerSheet(isPresented: $open, title: title, size: .fit) {
-            Text(text).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text(text).popupText(.subtitle)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

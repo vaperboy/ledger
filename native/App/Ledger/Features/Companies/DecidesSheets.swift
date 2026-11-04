@@ -42,7 +42,7 @@ struct DecidesSheet: View {
 
     private func content(_ e: GameEngine, _ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text(co.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            Text(co.name).popupText(.caption)
             choices(kind, e, co)
         }
         .centerSheetTitle(kind.rawValue)
@@ -159,14 +159,14 @@ struct DecidesSheet: View {
 
     private func limitRow(_ label: String, _ value: Double, _ options: [Double], _ cur: Currency, set: @escaping (Double) -> Void) -> some View {
         HStack {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).popupText(.subtitle)
             Spacer()
             Menu {
                 ForEach(options, id: \.self) { (o: Double) -> AnyView in
                     AnyView(Button(o == 0 ? "None" : cur.tidyShort(cur.scaledPrice(o))) { set(cur.scaledPrice(o)) })
                 }
             } label: {
-                Text((value == 0 ? "None" : cur.tidyShort(value)) + "  ⌄").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.gold)
+                Text((value == 0 ? "None" : cur.tidyShort(value)) + "  ⌄").popupText(.effect)
             }
         }
         .padding(.vertical, 4)

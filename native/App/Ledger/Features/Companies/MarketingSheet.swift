@@ -40,7 +40,7 @@ struct MarketingSheet: View {
     private func header(active: Int, total: Double, cur: Currency) -> some View {
         let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
         return VStack(alignment: .leading, spacing: 1) {
-            Text("Marketing").font(.serifTitle(20)).foregroundStyle(Theme.ivory).accessibilityAddTraits(.isHeader)
+            Text("Marketing").popupText(.figure).accessibilityAddTraits(.isHeader)
             Text(sub).font(.system(size: 12.5, weight: .medium)).foregroundStyle(active > 0 ? Theme.gold : Theme.ivoryMuted)
         }
     }
@@ -73,7 +73,7 @@ struct MarketingSheet: View {
         let amount = Binding<Double>(get: { value }, set: { (v: Double) in draft[ch.id] = v })
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
-                Text(ch.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
+                Text(ch.name).popupText(.rowValue)
                     .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                 InfoPopoverButton(title: ch.name, text: ch.note.tidyMoney)
                 Spacer(minLength: 4)

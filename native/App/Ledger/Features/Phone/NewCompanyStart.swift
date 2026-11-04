@@ -262,10 +262,10 @@ struct PremisesPicker: View {
         CardSection("Premises") {
             switch plan.premisesKind {
             case .none:
-                Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text("This trade needs no fixed premises, so there is no rent to pay.").popupText(.subtitle)
             case .home:
                 Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    .popupText(.subtitle)
             case .place:
                 placeChoices
             }
@@ -284,8 +284,8 @@ struct PremisesPicker: View {
         if let o = plan.options.first(where: { $0.index == chosen }) {
             let modes: [Bool] = o.canBuy ? [false, true] : [false]
             SegmentedPill(items: modes, title: { $0 ? "Buy" : "Rent" }, selection: Binding(get: { buying }, set: { buying = $0; if rentIndex == nil { rentIndex = chosen } }))
-            Text(modeNote(o)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            if rentIndex == nil { Text("Nothing picked: the standard middle place is rented.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+            Text(modeNote(o)).popupText(.caption)
+            if rentIndex == nil { Text("Nothing picked: the standard middle place is rented.").popupText(.caption) }
         }
     }
 

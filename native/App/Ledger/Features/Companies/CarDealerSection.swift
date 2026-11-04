@@ -153,7 +153,7 @@ struct CarPriceSheet: View {
         let profit: Double = price - car.cost
         let pct: Double = car.cost > 0 ? profit / car.cost * 100 : 0
         VStack(alignment: .leading, spacing: 16) {
-            Text(car.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+            Text(car.title).popupText(.figure)
             MoreBlock("Cost") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "You paid the supplier", value: cur.tidyShort(car.cost), rule: false)
@@ -206,7 +206,7 @@ struct CarOrderSheet: View {
         let free = e.carDealerSpaces(companyID: companyID)
         return VStack(alignment: .leading, spacing: 12) {
             Text("\(e.carDealerSupplier(companyID: companyID)). Paid on delivery. \(max(0, free.total - free.used)) free spaces.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .popupText(.subtitle)
             ForEach(offers) { (o: CarDealerOffer) in
                 Button { order(o) } label: { offerCard(o, cur) }.buttonStyle(PressableStyle())
             }
@@ -217,17 +217,17 @@ struct CarOrderSheet: View {
         HStack(alignment: .center, spacing: 12) {
             IconCircle(glyph: Glyph.group, size: 42)
             VStack(alignment: .leading, spacing: 4) {
-                Text(o.brandName + " " + o.modelName).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(o.brandName + " " + o.modelName).popupText(.rowValue).lineLimit(1)
                 HStack(spacing: 5) {
                     TeamBadge(text: o.body, tint: Theme.gold)
                     TeamBadge(text: o.fuel)
                 }
-                Text("List \(cur.tidyShort(o.listPrice)). Arrives in about \(o.leadWeeks) weeks.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("List \(cur.tidyShort(o.listPrice)). Arrives in about \(o.leadWeeks) weeks.").popupText(.caption)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(cur.tidyShort(o.cost)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text("you pay").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(cur.tidyShort(o.cost)).popupText(.rowValue)
+                Text("you pay").popupText(.caption)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)

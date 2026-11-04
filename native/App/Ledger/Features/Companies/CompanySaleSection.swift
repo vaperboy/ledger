@@ -135,8 +135,8 @@ struct BuyerTalkSheet: View {
                     let mine = co.ownership / 100
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(o.buyer).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                            Text(o.note.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(o.buyer).popupText(.figure)
+                            Text(o.note.tidyMoney).popupText(.caption)
                         }
                         KeyFigures(items: [
                             .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),

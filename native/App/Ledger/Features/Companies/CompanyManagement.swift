@@ -242,7 +242,7 @@ struct ManagerSheet: View {
             CardSection("Leaving") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("\(m.name.split(separator: " ").first.map(String.init) ?? "The manager") leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Hire a successor before then and they will hand over.")
-                        .font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.risk)
                     SuccessorSection(engine: e, company: co)
                 }
             }
@@ -273,11 +273,11 @@ struct ManagerSheet: View {
                         .init(label: "Reputation", value: StandingWords.reputation(Double(card.reputation))),
                         .init(label: "Quality", value: StandingWords.reputation(Double(card.quality))),
                     ], columns: 4)
-                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
-                    if card.fraud > 0 { Text("Fraud was found under this manager.").font(.system(size: 11.5)).foregroundStyle(Theme.loss) }
+                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").popupText(.risk) }
+                    if card.fraud > 0 { Text("Fraud was found under this manager.").popupText(.risk) }
                 }
-                if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
-                Text("How well they do shows in the scorecard and in the results of the business.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").popupText(.risk) }
+                Text("How well they do shows in the scorecard and in the results of the business.").popupText(.caption)
             }
         }
     }
@@ -301,13 +301,13 @@ struct ManagerSheet: View {
 
     private func limitRow(_ label: String, _ value: Double, _ options: [Double], _ cur: Currency, set: @escaping (Double) -> Void) -> some View {
         HStack {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).popupText(.subtitle)
             Spacer()
             Menu {
                 ForEach(options, id: \.self) { o in
                     Button(o == 0 ? "None" : cur.tidyShort(cur.scaledPrice(o))) { set(cur.scaledPrice(o)); store.show("\(label): \(o == 0 ? "none" : cur.tidyShort(cur.scaledPrice(o))).", tone: "n") }
                 }
-            } label: { Text((value == 0 ? "None" : cur.tidyShort(value)) + "  ⌄").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.gold) }
+            } label: { Text((value == 0 ? "None" : cur.tidyShort(value)) + "  ⌄").popupText(.effect) }
         }
     }
 
@@ -325,8 +325,8 @@ struct ManagerSheet: View {
                         } label: {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(d.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                    Text(d.manager ? d.managerText : d.ownerText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                    Text(d.title.tidyMoney).popupText(.body)
+                                    Text(d.manager ? d.managerText : d.ownerText).popupText(.caption)
                                 }
                                 Spacer(minLength: 8)
                                 handoverSwitch(managerHas: d.manager)
@@ -359,11 +359,11 @@ struct ManagerSheet: View {
     @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         if let pv = e.managerProfitBonusPreview(companyID: co.id, share: co.managerProfitBonus) {
             CardSection(title: "Profit share", trailing: {
-                Text(pv.current > 0 ? "\(Int((pv.current * 100).rounded()))% of profit" : "none").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text(pv.current > 0 ? "\(Int((pv.current * 100).rounded()))% of profit" : "none").popupText(.caption)
             }) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("A share of each profitable month's profit, paid on top of the salary with the next wages. Nothing is paid in a loss month.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.caption)
                     FlatRow(label: "Average monthly profit, last 3 months", value: cur.tidyShort(pv.averageMonthlyProfit), rule: false)
                     if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.tidyShort(pv.monthlyCost)) a month") }
                     if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.tidyShort(pv.lastPaid)) }
@@ -402,10 +402,10 @@ struct ManagerSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
-                    Text("Replace the manager").font(.serifTitle(16)).foregroundStyle(Theme.ivory)
+                    Text("Replace the manager").popupText(.title)
                 }
                 Text("Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.caption)
                 QuietButton(title: "Replace…", tint: Theme.loss) {
                     pending = PendingAction(title: "Dismiss \(m.name)?",
                                             message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
@@ -424,11 +424,11 @@ struct ManagerSheet: View {
         let title = e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager"
         let fee = ManagerModel.searchFee(currency: cur)
         VStack(alignment: .leading, spacing: 4) {
-            Text("Hire a \(title.lowercased())").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            Text("Hire a \(title.lowercased())").popupText(.figure)
             RoleScopeBadge(role: co.name, scope: "store")
         }
         Text("Runs \(co.name) day to day: hires, prices, stock, and keeps the team up. You set what they may decide and step back from the work. They are not cheap, and a manager nobody checks on slowly slips.")
-            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            .popupText(.caption)
         Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
             pending = PendingAction(title: "Pay for an executive search?",
                                     message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist you can interview and check. Risk: none may suit.",
@@ -538,14 +538,14 @@ struct AssistantSheet: View {
                 ForEach(0..<2, id: \.self) { i in
                     Capsule().fill(i < picked ? Theme.gold : Theme.hairline).frame(width: 18, height: 4)
                 }
-                Text("\(picked) of 2").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.leading, 4)
+                Text("\(picked) of 2").popupText(.caption).padding(.leading, 4)
             }
         }) {
             ForEach(Array(ManagerModel.assistantDuties.enumerated()), id: \.offset) { _, d in
                 let on: Bool = a["duties"].array.contains { $0.string == d.key }
                 jobCard(co, n, d, on: on)
             }
-            Text("Two jobs at most. Pick one, or swap by unticking another first.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Two jobs at most. Pick one, or swap by unticking another first.").popupText(.caption)
         }
         letGo(co, a, n, cur)
     }
@@ -561,8 +561,8 @@ struct AssistantSheet: View {
                 HStack(spacing: 12) {
                     IconCircle(glyph: on ? Glyph.check : Glyph.ring, size: 36, tint: on ? Theme.gold : Theme.ivoryFaint)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(d.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(d.text.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(d.title.tidyMoney).popupText(.rowValue)
+                        Text(d.text.tidyMoney).popupText(.caption)
                     }
                     Spacer(minLength: 0)
                 }
@@ -579,10 +579,10 @@ struct AssistantSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
-                    Text("Let \(first) go").font(.serifTitle(16)).foregroundStyle(Theme.ivory)
+                    Text("Let \(first) go").popupText(.title)
                 }
                 Text("About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.caption)
                 QuietButton(title: "Let \(first) go…", tint: Theme.loss) {
                     pending = PendingAction(title: "Let \(n.name) go?", message: "About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").",
                                             button: "Let go", destructive: true) {
@@ -598,11 +598,11 @@ struct AssistantSheet: View {
     @ViewBuilder private func hire(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let fee = cur.scaledPrice(2500)
         VStack(alignment: .leading, spacing: 4) {
-            Text("Hire an assistant manager").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+            Text("Hire an assistant manager").popupText(.figure)
             RoleScopeBadge(role: co.name, scope: "store")
         }
         Text("Works alongside the team and takes up to two jobs off \(co.managerID == nil ? "your" : "the manager's") plate: complaints, paperwork, equipment. Paid more than a worker, less than a manager. They advise; you decide.")
-            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            .popupText(.caption)
         Button(candidates.isEmpty ? "Job ad · \(cur.tidyShort(fee))" : "New job ad · \(cur.tidyShort(fee))") {
             pending = PendingAction(title: "Place a job ad?", message: "Cost: \(cur.tidyShort(fee)). Benefit: a shortlist of applicants. Risk: none may suit.", button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur) {
                 if let list = store.act({ $0.searchAssistants(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) applicants. Job ad paid: \(cur.tidyShort(fee)).", tone: "n") }
@@ -613,7 +613,7 @@ struct AssistantSheet: View {
         let auth: AppointmentAuthority = e.appointmentAuthority(companyID: co.id, role: "assistant manager")
         if let above = auth.needsConfirmationFrom {
             Text(above == .ceo ? "Needs confirmation from the CEO" : "Needs your confirmation")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.gold)
+                .popupText(.effect)
         }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Place a job ad to see applicants." : "Everyone has taken another job. Place a new ad.") { p in
             if let above = auth.needsConfirmationFrom {
@@ -635,11 +635,11 @@ struct AssistantSheet: View {
             HStack(alignment: .center, spacing: 10) {
                 ThumbnailView(kind: .person, key: "assistant-manager", size: 36, initials: p.name, face: p.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(p.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(CandidateClaims.line(e, p)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(p.name).popupText(.rowValue)
+                    Text(CandidateClaims.line(e, p)).popupText(.caption)
                 }
                 Spacer(minLength: 8)
-                Text(cur.tidyShort(wage)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(cur.tidyShort(wage)).popupText(.rowValue)
             }
             Button("Appoint (proposal to \(who))") {
                 let ok: Bool = store.act { $0.proposeAssistantManager(companyID: cid, personID: pid, monthlyWage: wage) } ?? false
