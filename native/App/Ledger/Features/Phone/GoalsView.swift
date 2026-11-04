@@ -14,6 +14,7 @@ struct GoalsView: View {
         if let e = store.engine {
             FixedScreen(spacing: 14, top: 4, overflowScrolls: true) {
                 summaryCard(e)
+                ladderCard(e)
                 todayCard(e)
                 stepsCard(e)
                 if e.ambitionVisible { ambitionCard(e) }
@@ -44,6 +45,22 @@ struct GoalsView: View {
                     Text(line).font(.serifTitle(20)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
+            }
+        }
+    }
+
+    // MARK: Ladder
+
+    /// The one open ladder goal; its button goes straight to the screen it names (brief 9.2 rule 3).
+    @ViewBuilder private func ladderCard(_ e: GameEngine) -> some View {
+        if let g = PlayerGoals.currentLadderGoal(e.state) {
+            let link: String = g.link
+            CardSection("Next goal") {
+                GoalRow(ring: GoalRing(progress: 0, done: false), title: g.title, detail: g.body,
+                        reward: "Reward: " + g.reward.lowercased(), action: g.button.isEmpty ? nil : g.button) {
+                    Haptics.tap()
+                    _ = store.openLadderLink(link)
+                }
             }
         }
     }

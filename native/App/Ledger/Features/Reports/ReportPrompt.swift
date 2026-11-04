@@ -152,6 +152,11 @@ struct CelebrationPopup: View {
                     .opacity(item.kind != "goal" || goalShown || reduceMotion ? 1 : 0)
             }
             claimArea
+            if let next = nextGoal {
+                Button(next.button) { dismiss(); _ = store.openLadderLink(next.link) }
+                    .buttonStyle(PressableStyle()).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.gold)
+                    .padding(.top, 2).accessibilityIdentifier("celebration-next-goal")
+            }
             if !canClaim {
                 Button(dismissTitle) { dismiss() }
                     .buttonStyle(ImportantButtonStyle()).padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
@@ -173,6 +178,12 @@ struct CelebrationPopup: View {
     /// finished), so it is closed with "Nice" instead of a claim button that could only say "Already claimed.".
     private var claimableStep: PlayerGoals.FirstStep? {
         (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
+    }
+
+    /// The goal after a finished ladder goal, when it names a screen: its button opens that screen (brief 9.2 rule 3).
+    private var nextGoal: PlayerGoals.LadderGoal? {
+        guard item.kind == "goal", let e = store.engine, let g = PlayerGoals.currentLadderGoal(e.state), !g.link.isEmpty, !g.button.isEmpty else { return nil }
+        return g
     }
 
     /// Claiming is the only way out: a goal or mission is claimed here, a trophy or milestone (already paid) is claimed with one tap.
