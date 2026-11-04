@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Simulation
+import Businesses
 
 /// The Phone tab: a home screen of apps (time and date, a banner for the most urgent alert, a 4-column grid with red bubbles),
 /// exactly as in native/design/new-look-2026-10/PhoneHome.dc.html. Each app opens as a pushed full screen with its own `AppHeader`
@@ -52,9 +53,8 @@ struct PhoneHome: View {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(PhoneApp.launcher) { app in
-                        let state: GateVisibility = store.engine.map { (e: GameEngine) -> GateVisibility in app.visibility(e) } ?? .open
-                        if state != .hidden {
-                            AppIcon(app: app, badge: badges[app] ?? 0, lock: state.lockText) {
+                        if gateState(app) != .hidden {
+                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText) {
                                 Haptics.tap()
                                 path.append(.app(app))
                             }
@@ -71,6 +71,12 @@ struct PhoneHome: View {
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("phone-home")
+    }
+
+    /// Where the app's gate stands; everything is open when no game is loaded.
+    private func gateState(_ app: PhoneApp) -> GateVisibility {
+        guard let e = store.engine else { return GateVisibility.open }
+        return app.visibility(e)
     }
 
     private var clock: some View {

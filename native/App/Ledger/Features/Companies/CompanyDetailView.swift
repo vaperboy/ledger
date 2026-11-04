@@ -163,7 +163,8 @@ struct CompanyDetailView: View {
         case .settings:
             CompanySettings(engine: e, company: co)
         case .manage:
-            NavigationLink { tabPage(.overview) } label: {
+            // A button that switches the pushed page, not a link to `tabPage`: a link would make `tabPage` and `content` call each other (an opaque-type cycle).
+            Button { Haptics.tap(); openTab = .overview } label: {
                 CardRow(glyph: Glyph.reports, title: "Overview", subtitle: Self.rowNote(.overview))
             }
             .buttonStyle(PressableStyle())
