@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Businesses
 import Countries
+import Simulation
 
 /// The extra item page blocks of the item waves, in one place so `ItemPageView` has a single line for all of them.
 /// Each wave adds its block here when it lands.
