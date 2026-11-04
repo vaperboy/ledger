@@ -21,3 +21,4 @@
 - Car repair earns a sensible return; expired decisions no longer repeat
 - Taking money out of a sole-trader business counts for the "pay yourself" goal
 - Audit notices show the right authority name
+- Save slots in Settings › Saves (Pro); trophies and rival records appear when the ladder opens them
