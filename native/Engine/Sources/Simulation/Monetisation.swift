@@ -1,4 +1,5 @@
 import Foundation
+import Countries
 
 // Brief Part 11: the rules of what a purchase unlocks and when an ad may show. Pure values, no StoreKit and no ad SDK, so the rules are
 // testable on Linux. The app (Core/Entitlements, Core/Ads) feeds these with the store's answers and reads only their results.
@@ -138,8 +139,9 @@ public enum AdPolicy {
     }
 
     /// The extra cash the rewarded ad pays: the grant again, capped at 2% of company cash or 5,000 local units, whichever is higher.
-    public static func rewardedDoubleAmount(grantCash: Double, companyCash: Double, floorUnits: Double = 5000) -> Double {
-        max(0, min(grantCash, max(0.02 * max(0, companyCash), floorUnits)))
+    public static func rewardedDoubleAmount(grantCash: Double, companyCash: Double, floorUnits: Double? = nil, currency: Currency? = nil) -> Double {
+        let floor: Double = floorUnits ?? currency?.scaledPrice(5000) ?? 5000
+        return max(0, min(grantCash, max(0.02 * max(0, companyCash), floor)))
     }
 
     /// Placement 3: `Try Pro for a day` in the paywall, at most once per 7 real days, never to someone who already has Pro.

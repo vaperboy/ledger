@@ -77,7 +77,7 @@ final class IntegrationBalanceTests: XCTestCase {
     /// read off the same live state; the average once the ramp is in (weeks 5 to 8) matches the estimate shown before adding (the trade, season and
     /// awareness move the level a little over 8 weeks, hence the tolerance).
     func testEightWeekRunAfterAddingAnItemMatchesTheEstimate() throws {
-        var (e, id) = try engine()
+        var (e, id) = try engine(weeks: 52)   // past the first-year demand ramp and its capacity squeeze: demand is level
         try giveAdvisorDuty(&e, id)
         let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: false).options.first { !$0.needsDevelopment })
         let estimate = try XCTUnwrap(opt.profitChange)

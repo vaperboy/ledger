@@ -160,6 +160,9 @@ final class MoneyLiteralLintTests: XCTestCase {
         "RivalBids.swift": ["1000": "rounding step of a displayed price (to the nearest thousand), not an amount"],
         "Aftermath.swift": ["4000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "6000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "2000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "3000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "1500": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "15000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "12000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index", "5000": "event data in the events.json shape: costs are scaled by EventEngine with the company country cost index"],
         "CompanyWeek.swift": ["1000": "week sentinel: a retention receivable is due 1000 weeks ahead, i.e. held until the job is done (a duration, not money)"],
+        "Monetisation.swift": ["3600": "seconds in an hour: real-time durations of passes and cooldowns, not money"],
+        "SessionHooks.swift": ["3600": "seconds in an hour: reminder delays in real time, not money", "86400": "seconds in a day: reminder delay in real time, not money"],
+        "LifeStories.swift": ["1000": "rounding step of the starting cash (up to the next thousand), not an amount"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
     /// Files with technical number tables only (calendar arithmetic, hashing, encoding)

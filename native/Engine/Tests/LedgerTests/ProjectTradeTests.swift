@@ -41,7 +41,8 @@ final class ProjectTradeTests: XCTestCase {
                 let lw = c.value("lastW"); utilSum += lw["util"].double; dSum += lw["D"].double; capSum += lw["cap"].double; nW += 1
             }
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            for m in e.openDecisions where m.companyID == id && !m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
+            // a buy-out offer is declined: the run is about the trade, not an exit
+            for m in e.openDecisions where m.companyID == id && !m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: m.actionID == "g27bid" ? m.options.count - 1 : 0) }
             if let co = e.state.company(id), co.status == .open {
                 if trade == "realdev", !started || e.state.week % 10 == 0 {
                     var r = e.startDevelopment(companyID: id, size: 1, financed: true); if r == .loanRefused { r = e.startDevelopment(companyID: id, size: 1, financed: false) }; if r == .started { started = true }

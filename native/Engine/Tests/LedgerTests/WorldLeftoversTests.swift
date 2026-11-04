@@ -84,7 +84,9 @@ final class WorldLeftoversTests: XCTestCase {
         }
         // The collusion flag is found out sooner or later.
         let cash0 = e.state.company(id)?.books.total["fine"] ?? 0
-        for _ in 0..<(60 * 7) { e.nextDay() }
+        // Found out with a 2% chance a week (the draw order moves with every rule change): play until it happens, at most six years.
+        var days = 0
+        while (e.state.company(id)?.books.total["fine"] ?? 0) <= cash0, days < 6 * 52 * 7 { e.nextDay(); days += 1 }
         XCTAssertGreaterThan(e.state.company(id)?.books.total["fine"] ?? 0, cash0, "a price understanding is fined")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }

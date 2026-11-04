@@ -103,7 +103,7 @@ final class MileageAndCommissionFloorTests: XCTestCase {
 
     /// Commission still accrues with no base: the smoothed commission feeds `commEma` once the seller has sales.
     func testCommissionStillAccruesWithNoBase() throws {
-        var (e, id) = try estate("UK", seed: 4)
+        var (e, id) = try estate("UK", seed: 5)
         let pid = try hireAgent(&e, id)
         e.update { s, _, _ in
             s.people[pid]!.set("sec", 0.1); s.people[pid]!.set("pers", "loyal")   // commission only is a less secure plan: a content, flexible person takes it

@@ -9,7 +9,8 @@ import Finance
 
 /// Awards reflect results, not setup: opening a company, hiring and signing papers earn nothing; results over time do.
 final class MissionsReworkTests: XCTestCase {
-    private func setupGame(seed: Int = 4242) throws -> (GameEngine, Int) {
+    /// `ladder: false` plays the older-save mode (no linear ladder): the ladder celebrates every goal by design (brief 7.4), the checklist keeps setup steps silent.
+    private func setupGame(seed: Int = 4242, ladder: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0
         e.update { s, data, ctx in
@@ -23,6 +24,7 @@ final class MissionsReworkTests: XCTestCase {
             m.id = s.makeID(); m.role = "waiter"; m.monthlyWage = 300_000; m.hiredWeek = s.week
             s.companies[i].staff.append(m)
         }
+        if !ladder { e.update { s, _, _ in s.rest["ldr"] = nil } }
         XCTAssertNotEqual(id, 0)
         return (e, id)
     }
@@ -33,7 +35,7 @@ final class MissionsReworkTests: XCTestCase {
     private func got(_ e: GameEngine, _ id: String) -> Bool { Trophies.entries(e.state).contains { $0.id == id && $0.reachedWeek != nil } }
 
     func testSetupStepsEarnAtMostOneAwardInTheFirstFourteenDays() throws {
-        var (e, _) = try setupGame()
+        var (e, _) = try setupGame(ladder: false)
         days(&e, 14)
         _ = e.celebrateDailyGoal()
         // The 80M test funding makes net-worth milestones fire; those are the separate wealth ladder, not setup awards.
@@ -44,7 +46,7 @@ final class MissionsReworkTests: XCTestCase {
     }
 
     func testSetupStepsStayClaimableButSilent() throws {
-        var (e, _) = try setupGame()
+        var (e, _) = try setupGame(ladder: false)
         days(&e, 7)
         XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
         XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "goal" }, "no popup for a setup step")
