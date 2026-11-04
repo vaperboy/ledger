@@ -224,6 +224,9 @@ public enum Wave6 {
         for r in ItemModels.records(s.companies[i]) where r.model == .stk {
             guard let row = rows.first(where: { $0.id == r.id }) else { continue }
             let perWeek = row.weeklyUnits
+            // A small shop sells a fraction of a unit a week: the fraction is carried (company key `w6frac:<item>`) so stock still runs down.
+            let owed = s.companies[i].num("w6frac:" + r.id) + perWeek
+            var carry = owed
             ItemModels.mutate(&s, companyID: id, itemID: r.id) { rec in
                 var arriving = 0
                 rec.plans.removeAll { p in
@@ -236,7 +239,8 @@ public enum Wave6 {
                     if rec.stock == 0 { rec.since = week }
                     rec.stock += arriving
                 }
-                let sold = min(rec.stock, Int(perWeek.rounded()))
+                let sold = min(rec.stock, Int(owed.rounded(.down)))
+                carry = sold < Int(owed.rounded(.down)) ? 0 : owed - Double(sold)
                 rec.stock -= sold
                 if rec.stock == 0 { rec.since = nil }
                 let lead = Double(rec.leadDays) / 7
@@ -249,6 +253,7 @@ public enum Wave6 {
                     rec.plans.append(ItemModels.Plan(kind: "order:\(n)", text: "Reorder of \(n) arrives in week \(due).", week: due))
                 }
             }
+            s.companies[i].set("w6frac:" + r.id, carry)
         }
     }
 

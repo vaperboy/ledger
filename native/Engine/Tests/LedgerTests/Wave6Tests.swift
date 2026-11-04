@@ -175,9 +175,8 @@ final class Wave6Tests: XCTestCase {
         e.update { s, d, _ in Wave6.install(&s, companyID: id, data: d) }
         var sawOrder = false, sawArrival = false
         var last: Int?
-        for _ in 0..<16 {
-            e.w6week()
-            e.update { s, d, _ in if let i = s.companyIndex(id) { Wave6.weekly(&s, i, data: d) } }   // the company is not open here, so the engine's own hook does not tick it
+        for _ in 0..<40 {
+            e.w6week()   // the company is open: the engine's own weekly hook (WaveHooks) ticks it, no manual tick
             let co = try XCTUnwrap(e.state.company(id)), bd = try XCTUnwrap(e.data.catalog["carclean"])
             let it = try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == "Car care products" })
             let r = try XCTUnwrap(ItemModels.record(co, itemID: it.id))

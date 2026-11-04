@@ -10,11 +10,14 @@ private extension GameEngine {
 }
 
 final class ItemModelsTests: XCTestCase {
-    func engine(_ trade: String = "bakery", weeks: Int = 8) throws -> (GameEngine, Int) {
+    /// A trade no item wave opts in (open at once, sells goods), so these tests cover the foundation whichever waves are on. Pick another if a wave adopts it.
+    static let trade = "cardealer"
+    func engine(_ trade: String = ItemModelsTests.trade, weeks: Int = 8) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
+        XCTAssertEqual(e.state.company(id)?.status, .open, "the throwaway trade must be open for these tests")
         return (e, id)
     }
 
@@ -68,7 +71,7 @@ final class ItemModelsTests: XCTestCase {
         let itemsBefore = e.state.company(id)!.value("items27")
         let rowsBefore = e.salesItems(companyID: id)
         var made = 0
-        e.update { s, d, _ in made = ItemModels.migrateOptedIn(&s, data: d, trades: ["bakery"]) }
+        e.update { s, d, _ in made = ItemModels.migrateOptedIn(&s, data: d, trades: [Self.trade]) }
         XCTAssertEqual(made, rowsBefore.count)
         var again = -1
         e.update { s, d, _ in again = ItemModels.migrate(&s, companyID: id, data: d) }
