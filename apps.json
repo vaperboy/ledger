@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.47",
+          "buildVersion": "47",
+          "date": "2026-11-04T08:48:21Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v47/Ledger-unsigned.ipa",
+          "size": 27526112,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days\n- Own staff"
+        },
+        {
           "version": "1.0.46",
           "buildVersion": "46",
           "date": "2026-11-04T08:10:06Z",
@@ -187,22 +196,13 @@
           "size": 27092466,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Reports and research arrive as proper documents in your inbox (letterhead, sections, figures) and in Stats; brand is shown in words (Unknown, Emerging, Known locally, Established, Respected, Trusted, Iconic), never as a number; a manager needs approval from the level above to hire an assistant manager\n- Phone: every app tile and the Phone tab show a red count of what is new since you last opened the app (Inbox, Bank, Accounting, Market, News, Weather, Stats, AirStay, TechPro, Atlas), and new updates arrive as one banner per app (at most two a day) that opens the app\n- Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox\n- Home has no \"All clear\" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank\n- Group: Money is one screen with c"
-        },
-        {
-          "version": "1.0.27",
-          "buildVersion": "27",
-          "date": "2026-11-03T07:34:22Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v27/Ledger-unsigned.ipa",
-          "size": 27021772,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Chain and franchise now need what real life needs (a proven profitable year, a registered trademark, an operations manual, a legal disclosure document and support staff); equipment under warranty is repaired for free without asking; a manager needs approval from the role above to hire an assistant manager; market research arrives as a proper document in your inbox\n- Home has no \"All clear\" card; the daily report is a short morning briefing with an insight and an action; popups highlight one recommended option; report numbers count up; TechPro pages never show up blank\n- Group: Money is one screen with cash, loans and dividends, dividend policy has its own popup, the board shows every seat with who can fill it, Management picks the company inside a chain, and the Ventures link and Who decides what are gone\n- Awards reflect results, not setup: opening a company, hiring or signing documents no longer fire awards; awards now come from profitable months, a manager running a profitable company, three profitable months in a row, being debt free and group reputation\n- Main tabs are Ventures, Group, Home, your own tab, Phone (long-press the custom tab to choose what it opens)"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.46",
-      "versionDate": "2026-11-04T08:10:06Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v46/Ledger-unsigned.ipa",
-      "size": 27503742
+      "version": "1.0.47",
+      "versionDate": "2026-11-04T08:48:21Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v47/Ledger-unsigned.ipa",
+      "size": 27526112
     }
   ]
 }
