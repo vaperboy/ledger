@@ -11,6 +11,10 @@
     "staffing": ["hr"],
     "bank": ["banker"],
     "airline": ["recept"],
-    "carrental": ["rentag"]
+    "carrental": ["rentag"],
+    "hotel": ["recept"],
+    "pcbang": ["cashier"],
+    "resrent": ["propm"],
+    "comrent": ["propm"]
   }
 }

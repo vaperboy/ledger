@@ -315,7 +315,8 @@ public enum RentalModel {
         var rent = 0.0, units = 0.0, occU = 0.0, upkeep = 0.0, ptax = 0.0
         for n in props.indices {
             var p = props[n]
-            let target = clamp(0.03 + 0.28 * (pr - 1) * bd.elasticity + (1 - p.condition) * 0.16 + (1 - w.economy.demand) * 0.6
+            let m = Wave8.rateMultiplier(co, bd, propertyID: p.id)
+            let target = clamp(0.03 + 0.28 * (pr - 1) * bd.elasticity + 0.28 * (m - 1) * bd.elasticity + (1 - p.condition) * 0.16 + (1 - w.economy.demand) * 0.6
                                - (co.awareness / 100) * 0.03 - (co.reputation - 50) / 100 * 0.05 + (1 - dm) * 0.8 + (1 - dKnob) * 0.18
                                + (cover < 1 ? (1 - cover) * 0.06 : 0) + seasonal + rivals, 0.01, 0.8)
             p.vacancy += (target - p.vacancy) * 0.12
@@ -325,7 +326,7 @@ public enum RentalModel {
             occU += lu + fu * occ
             rent += p.leases.reduce(0) { $0 + ($1.weeklyRentPerM2 != 0 ? $1.squareMetres * $1.weeklyRentPerM2 : 0) }
             let idx0 = p.housingAtPurchase == 0 ? housing : p.housingAtPurchase
-            rent += fu * occ * p.rentPerUnit * pr * (0.93 + 0.07 * p.condition) * pow(housing / idx0, 0.6) * (1 + (co.reputation - 50) / 700)
+            rent += fu * occ * p.rentPerUnit * pr * m * (0.93 + 0.07 * p.condition) * pow(housing / idx0, 0.6) * (1 + (co.reputation - 50) / 700)
             upkeep += p.value * maint / 52 * (1.7 - p.condition) * (1.1 - mgrQ * 0.2 * (co.managerID != nil ? 1 : 0))
             ptax += p.value * ptaxRate / 52
             p.condition = clamp(p.condition - 0.0006 * (cover < 1 ? 2 : 1) * [1.5, 1, 0.7][maintIdx], 0.1, 1)
