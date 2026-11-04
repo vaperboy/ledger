@@ -128,15 +128,16 @@ jobs:
           APP=$(find $RUNNER_TEMP/dd/Build/Products -name "Ledger.app" -maxdepth 3 | head -n 1)
           DEV=$(xcrun simctl list devices available | grep -m1 "iPhone" | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
           xcrun simctl boot "$DEV" || true
+          xcrun simctl bootstatus "$DEV" -b || true
           xcrun simctl install "$DEV" "$APP"
           BID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
-          xcrun simctl launch --console-pty "$DEV" "$BID" > launch.log 2>&1 &
-          sleep 25
-          xcrun simctl spawn "$DEV" launchctl list | grep -i "$BID" || echo "NOT RUNNING"
-          cat launch.log | head -60
-          ls ~/Library/Logs/DiagnosticReports 2>/dev/null | head
-          for f in ~/Library/Logs/DiagnosticReports/Ledger*; do echo "== $f"; head -c 9000 "$f"; done 2>/dev/null
-          xcrun simctl spawn "$DEV" log show --last 1m --predicate 'process == "Ledger"' --style compact 2>/dev/null | tail -60
+          xcrun simctl launch --terminate-running-process "$DEV" "$BID" || echo "LAUNCH CALL FAILED"
+          sleep 20
+          if xcrun simctl spawn "$DEV" launchctl list | grep -i "$BID"; then echo "RUNNING"; else echo "NOT RUNNING"; touch notrunning; fi
+          xcrun simctl spawn "$DEV" log show --last 3m --style compact --predicate 'process == "Ledger" OR eventMessage CONTAINS "Fatal error" OR eventMessage CONTAINS "com.example.ledger"' 2>&1 | tail -80 || true
+          find ~/Library/Logs/DiagnosticReports -name "*.ips" -newer notrunning 2>/dev/null | head -3 || true
+          for f in $(find ~/Library/Logs/DiagnosticReports -name "Ledger*.ips" 2>/dev/null | head -2); do echo "== $f"; head -c 6000 "$f"; done || true
+          test ! -f notrunning
 
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/native-swiftui'
