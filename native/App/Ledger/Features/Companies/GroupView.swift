@@ -13,6 +13,7 @@ struct GroupView: View {
     @State private var section: GroupSection = .overview
     @State private var showSuppliers = false
     @State private var showAddMenu = false
+    @Environment(Entitlements.self) private var ent
     @State private var addDestination: GroupAddDestination?
 
     var body: some View {
@@ -36,7 +37,7 @@ struct GroupView: View {
             .centerSheet(isPresented: $showAddMenu) {
                 GroupAddMenu(onPick: { (d: GroupAddDestination) in
                     showAddMenu = false
-                    addDestination = d
+                    if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
                 })
                 .environmentObject(store)
             }

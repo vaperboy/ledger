@@ -295,6 +295,7 @@ struct AdvanceBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
+    @Environment(Entitlements.self) private var ent
     @State private var pulseDim = false
 
     var body: some View {
@@ -340,8 +341,11 @@ struct AdvanceBar: View {
     /// "Play to end of week": a text button under Next day from week 2; off while a blocking Inbox item is open (brief 2.2).
     @ViewBuilder private var weekButton: some View {
         if store.canPlayWeek {
-            Button { store.playToEndOfWeek() } label: {
-                Text("Play to end of week").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+            Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
+                HStack(spacing: 6) {
+                    Text("Play to end of week").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    if !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { ProMark(feature: .playToEndOfWeek) }
+                }
             }
             .buttonStyle(PressableStyle())
             .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)

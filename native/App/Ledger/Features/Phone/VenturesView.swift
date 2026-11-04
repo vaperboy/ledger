@@ -155,6 +155,7 @@ private struct BigMeetingCard: View {
 private struct FoundedStartups: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    @Environment(Entitlements.self) private var ent
     @State private var founding = false
     @State private var showPast = false
 
@@ -167,7 +168,10 @@ private struct FoundedStartups: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Your record: \(r.exits) exit\(r.exits == 1 ? "" : "s") · \(r.fails) failure\(r.fails == 1 ? "" : "s")").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
                 Spacer()
-                Button("Found a startup") { founding = true }.buttonStyle(QuietButtonStyle())
+                HStack(spacing: 8) {
+                    ProMark(feature: .ventures)
+                    Button("Found a startup") { ent.run(.ventures, "Found a startup") { founding = true } }.buttonStyle(QuietButtonStyle())
+                }
             }
             if live.isEmpty {
                 Text("You run no startup. Found one: you put in the seed money, hire builders, and raise rounds from investors as the product takes shape. Most fail; a few sell for many times what went in.")

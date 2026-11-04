@@ -8,6 +8,7 @@ import Businesses
 /// and a round back button to this home. The tab owns the navigation stack: apps and the companies they link to are pushed on it,
 /// so Back always returns to where the player came from.
 struct PhoneHome: View {
+    @Environment(Entitlements.self) private var ent
     /// What the Phone stack holds: an app, or a company a link opened from inside an app. One typed path (not a type-erased
     /// `NavigationPath`), so a company link tapped in the Inbox is pushed on exactly the stack the Inbox itself sits on.
     enum Page: Hashable {
@@ -59,7 +60,7 @@ struct PhoneHome: View {
                         if gateState(app) != .hidden {
                             AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText) {
                                 Haptics.tap()
-                                path.append(.app(app))
+                                if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { path.append(.app(app)) } } else { path.append(.app(app)) }
                             }
                         }
                     }

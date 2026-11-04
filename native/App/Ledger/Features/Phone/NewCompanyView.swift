@@ -10,6 +10,7 @@ import Simulation
 /// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
     @State private var sector = "All"
     @State private var cityID = ""
     @State private var selectedID: String?
@@ -99,11 +100,14 @@ struct NewCompanyView: View {
         let staff: String = r.staffMin == r.staffMax ? "\(r.staffMax)" : "\(r.staffMin)-\(r.staffMax)"
         let costTint: Color = choosable ? Theme.ivory : Theme.ivoryFaint
         let tints: [Color] = [costTint, demandTint(r.demand, choosable), Theme.ivoryMuted]
-        let tap: (() -> Void)? = choosable ? { selectedID = r.tradeID } : nil
+        let trade: String = r.tradeID, tradeName: String = r.name
+        let open: Bool = TradeAccess.isUnlocked(tradeID: trade, startUpCost: r.startUpCost, medianWage: e.homeCountry.medianMonthlyWage, entitlements: ent.effective, now: Date())
+        let tap: (() -> Void)? = choosable ? { if open { selectedID = trade } else { ent.run(.tradeAboveCostLine, "Open a " + tradeName.lowercased()) {} } } : nil
         let opacity: Double = choosable ? 1 : 0.55
         TableRow(columns: columns, title: r.name, note: note, values: [cost, r.demand.rawValue, staff], valueTints: tints,
                  selected: r.tradeID == selectedID, action: tap)
             .opacity(opacity)
+            .overlay(alignment: .topTrailing) { if !open && choosable { ProMark(feature: .tradeAboveCostLine).padding(.trailing, 4).padding(.top, 2) } }
     }
 
     /// Why a trade cannot be picked: the engine's own refusal, or how much more money it needs.
