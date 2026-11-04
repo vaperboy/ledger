@@ -14,3 +14,6 @@
 - Simpler screens: two-page hiring, one-page new company, three-step loan, company opens on five rows; fixed animation timings
 - Ledger Pro and Plus: paywall, restore purchases and plan in Settings (store products to be set up)
 - Company management screen is back to the previous layout
+- Hiring: every post uses the same two pages; the hire popup fits each step
+- Daily report: bigger profit that counts up; goal cards and unlock apps animate
+- Paywall appears once after your first ambition goal
