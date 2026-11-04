@@ -12,3 +12,9 @@ Goal: every trade of your wave sells real things: items with cost, stock/inputs,
 - SIMULATION_RULES.md: no artificial caps/floors, balance causes not outcomes; real money through Ledger/Payments, `Ledger.gaps` empty; old saves unchanged (new keys only when set, migration only for opted-in trades).
 - For EACH trade in your wave: real item set per real life (not titles), per-item economics, supplier/recipe/lead time, capacity, sensible add-item catalog, staff roles and pay plans where the job sells (commission etc.), tools from `EQ_KINDS` correct for the real trade, a 2-year survival probe of a competent owner per trade (report profit, no clamps; compare before/after wave: a trade must not become unprofitable by design, if so find the cause), and a test.
 - Run only filtered suites (`swift test --filter Wave<N>` and the consistency tests: ItemModelsTests, CountryNeutralityTests, MoneyLiteralLintTests, SaveRoundTripTests). Swift: /opt/swift/swift-6.0.3-RELEASE-ubuntu24.04/usr/bin. Report: sha, one line per trade (what it sells now, model), questions with options only.
+
+## Update (lead, 4 Nov): paths and hooks
+- App directory is `native/App/Ledger/Features/Companies/` (not Features/Company). Your app files: `Wave<N>ItemBlocks.swift` there.
+- Hooks are central: the lead adds one line per wave to `Businesses/WaveHooks.swift` (weekly: your `Wave<N>.weekly(&s, i, data:)`) and `Features/Companies/WaveItemBlocks.swift` (your block view). Do not edit them; state the exact lines in your report. For hooks into the weekly company loop that change cost of sales, use `WaveHooks.cogsFactor` pattern (value exactly 1 at default prices).
+- `tables.json` and `trades.json` are single-line files: you may NOT edit them (merge conflicts); put your data in your own `wave<N>_*.json` files, and list any needed edit of those two files in your notes for the lead.
+- `ItemModelsTests` no longer asserts an empty registry.
