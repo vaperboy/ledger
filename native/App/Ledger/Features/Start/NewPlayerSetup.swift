@@ -172,17 +172,12 @@ struct NewPlayerSetup: View {
     /// The popup: what the business costs to open, the money you start with, one button.
     private func tradeSheet(_ t: StarterTrade) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(t.line.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text(t.line.tidyMoney).popupText(.body)
             if let cost = t.startUpCost, let cur = currency {
-                HStack {
-                    Text("Start-up cost").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                    Spacer()
-                    Text(cur.tidyShort(cost)).font(.system(size: 17, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                }
+                PopupRow(label: "Start-up cost", value: cur.tidyShort(cost))
             }
             if let cash = startCash, let cur = currency {
-                Text("You start with \(cur.tidyShort(cash)), enough for the set-up and the first eight weeks.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text("You start with \(cur.tidyShort(cash)), enough for the set-up and the first eight weeks.").popupText(.caption)
             }
             QuietButton(title: "Open \(t.name)", fullWidth: true) { open(t) }
         }

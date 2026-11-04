@@ -57,10 +57,7 @@ struct ChainView: View {
                 Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
                     .popupText(.subtitle)
                 TextField("New name", text: $newName)
-                    .font(.system(size: 15)).foregroundStyle(Theme.ivory)
-                    .padding(.horizontal, 12).frame(minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+                    .popupField()
                     .accessibilityIdentifier("chain-rename-field")
                 PopupFooter(action: "Rename", onCancel: { renaming = false }, onAction: { renaming = false; rename(sum, cur) })
             }

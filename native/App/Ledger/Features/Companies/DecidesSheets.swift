@@ -34,7 +34,7 @@ struct DecidesSheet: View {
             if let e = store.engine, let co = e.state.company(companyID) {
                 content(e, co)
             } else {
-                Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This company no longer exists.").popupText(.body)
             }
         }
         .centerSheet(isPresented: $showManager) { ManagerSheet(companyID: companyID, candidates: $managerCands).environmentObject(store) }
@@ -57,8 +57,8 @@ struct DecidesSheet: View {
         }
     }
 
-    private func note(_ text: String, tint: Color = Theme.ivoryMuted) -> some View {
-        Text(text).font(.system(size: 12.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+    private func note(_ text: String, role: PopupRole = .subtitle) -> some View {
+        Text(text).popupText(role)
     }
 
     private func hasManager(_ co: Company) -> Bool { co.managerID != nil }
@@ -75,7 +75,7 @@ struct DecidesSheet: View {
             QuietButton(title: "Open the manager", fullWidth: true) { showManager = true }
         } else {
             note(OwnerHours.works(co) ? "You run it yourself." : "No one runs it: you do not work here and there is no manager.",
-                 tint: OwnerHours.works(co) ? Theme.ivoryMuted : Theme.caution)
+                 role: OwnerHours.works(co) ? .subtitle : .risk)
             QuietButton(title: "Appoint a manager", fullWidth: true) { showManager = true }.accessibilityIdentifier("decide-appoint-manager")
             if co.type != "hold" { worksToggle(co) }
         }
@@ -96,7 +96,7 @@ struct DecidesSheet: View {
         if let o = e.payrollOverview(companyID: companyID) {
             if let r = o.responsibility {
                 let who: String = r.who == .owner ? "You run payroll" : r.who == .manager ? "\(r.name), the manager, runs payroll" : "\(r.name), the accountant, runs payroll"
-                note(who + ".", tint: r.who == .owner ? Theme.caution : Theme.ivory)
+                note(who + ".", role: r.who == .owner ? .risk : .body)
                 if !r.reason.isEmpty { note(r.reason) }
             }
             if o.autoApproves { note("Your standing rule approves routine payroll the company can pay.") }
@@ -117,7 +117,7 @@ struct DecidesSheet: View {
         }
         QuietButton(title: "Open payroll in Accounting", fullWidth: true) { dismiss(); store.openAccounting(companyID: cid, payroll: true) }
         if o.responsibility?.who == .owner {
-            note("Appoint a manager, or hire an accountant, and payroll runs without you.", tint: Theme.ivoryFaint)
+            note("Appoint a manager, or hire an accountant, and payroll runs without you.", role: .caption)
             QuietButton(title: "Appoint a manager", fullWidth: true) { showManager = true }
         }
     }
@@ -136,7 +136,7 @@ struct DecidesSheet: View {
             }
             if lvl == 1 { limits(e, co, auth, hiring: hiring) }
         } else {
-            note(hiring ? "You decide on every hire: there is no manager." : "You decide on every spend: there is no manager.", tint: Theme.caution)
+            note(hiring ? "You decide on every hire: there is no manager." : "You decide on every spend: there is no manager.", role: .risk)
             QuietButton(title: "Appoint a manager", fullWidth: true) { showManager = true }
         }
     }

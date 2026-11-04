@@ -76,7 +76,7 @@ struct AcquisitionSheet: View {
                                 let k = ch.kind; dismiss(); choose(k)
                             }
                         }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable); Spacer() }
-                        if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
+                        if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").popupText(.risk) }
                     }
                 } else {
                     Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted)

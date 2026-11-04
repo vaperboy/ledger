@@ -422,16 +422,16 @@ struct MessageCard: View {
             let left = exp - week
             HStack(spacing: 6) {
                 GlyphView(glyph: Glyph.clock, size: 14, weight: 1.8, tint: left <= 1 ? P.loss : P.caution)
-                Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").font(.system(size: 12, weight: .medium)).foregroundStyle(left <= 1 ? P.loss : P.caution)
+                Text(left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week").popupText(.risk, variant: left <= 1 ? .destructive : .standard)
             }
             .accessibilityElement(children: .combine)
             if let leave = store.engine?.expiryOutcome(message) {
-                Text(leave).font(.caption2).foregroundStyle(P.inkFaint)
+                Text(leave).popupText(.caption)
             }
         }
         let opts = Array(message.options.enumerated())
         if opts.isEmpty {
-            Text("Nothing to choose here. This is dealt with in the company it concerns.").font(.caption).foregroundStyle(P.inkSoft)
+            Text("Nothing to choose here. This is dealt with in the company it concerns.").popupText(.caption)
         }
         VStack(spacing: 8) {
             ForEach(opts, id: \.offset) { idx, opt in
@@ -445,8 +445,8 @@ struct MessageCard: View {
         let effect: String = preview(opt).joined(separator: ". ")
         return Button { ask(message, idx) } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(text(opt["l"].string)).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
-                if !effect.isEmpty { Text(effect + ".").font(.caption).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading) }
+                Text(text(opt["l"].string)).popupText(.button)
+                if !effect.isEmpty { Text(effect + ".").popupText(.caption).multilineTextAlignment(.leading) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)

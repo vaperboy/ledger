@@ -34,7 +34,7 @@ struct SalesItemSheet: View {
             listSection(co, it)
             soldSection(e, co)
         } else {
-            Text("This item no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+            Text("This item no longer exists.").popupText(.body)
         }
     }
 
@@ -62,7 +62,7 @@ struct SalesItemSheet: View {
                 .tint(Theme.gold)
                 .accessibilityIdentifier("sales-item-price")
             }
-            Text("Market price \(exact(it.marketPrice, cur)). You can go from 30% to 300% of it.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text("Market price \(exact(it.marketPrice, cur)). You can go from 30% to 300% of it.").popupText(.caption)
         }
     }
 
@@ -104,7 +104,7 @@ struct SalesItemSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("DISCOUNT").capsLabel()
             if options.isEmpty {
-                Text("This trade does not discount.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("This trade does not discount.").popupText(.caption)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], spacing: 8) {
                     ForEach([0] + options, id: \.self) { (p: Int) in chip(p, it) }
@@ -112,7 +112,7 @@ struct SalesItemSheet: View {
                 Stepper("For \(weeks.weeksText)", value: $weeks, in: 1...26).popupText(.body)
                     .onChange(of: weeks) { _, _ in if it.discountPercent > 0 { commitDiscount(it.discountPercent) } }
                 if it.discountPercent > 0 {
-                    Text("\(Int(it.discountPercent))% off, \(it.discountWeeksLeft.weeksText) left.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                    Text("\(Int(it.discountPercent))% off, \(it.discountWeeksLeft.weeksText) left.").popupText(.caption)
                 }
             }
         }
@@ -145,7 +145,7 @@ struct SalesItemSheet: View {
             let on = Binding<Bool>(get: { it.listedForGroup }, set: { (v: Bool) in setListed(v) })
             VStack(alignment: .leading, spacing: 4) {
                 Toggle("List for my other companies", isOn: on).tint(Theme.gold).popupText(.rowValue)
-                Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").popupText(.caption)
             }
         }
     }
@@ -166,7 +166,7 @@ struct SalesItemSheet: View {
         if hasKnobs || hasWays {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("HOW IT IS SOLD").capsLabel()
-                Text("These choices apply to the whole company, not only this item.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("These choices apply to the whole company, not only this item.").popupText(.caption)
                 HowYouSellSheet(companyID: co.id, embedded: true)
             }
         }

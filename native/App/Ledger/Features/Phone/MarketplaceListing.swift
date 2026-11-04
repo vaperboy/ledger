@@ -199,7 +199,7 @@ struct MarketplaceDealView: View {
                 .shake(shakes)
                 .accessibilityLabel("Price " + priceText)
             Text(closedDoor ? "Not selling to you." : (neg?.lastMessage ?? " "))
-                .font(.system(size: 14)).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
+                .popupText(.body).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: 40, alignment: .top)
             patienceBar

@@ -27,7 +27,7 @@ struct GroupAddMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Pick how the group grows.").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+            Text("Pick how the group grows.").popupText(.subtitle)
             row(.newCompany, title: "New company", line: "Start a business from scratch in a trade and city of your choice.", id: "group-add-company")
             row(.holding, title: "Holding company", line: "Owns your other companies and collects their dividends.", id: "group-add-holding")
             row(.franchise, title: "Join a franchise", line: "Run a known brand under its rules, for a fee.", id: "group-add-franchise")
@@ -41,10 +41,10 @@ struct GroupAddMenu: View {
             Button { Haptics.tap(); onPick(d) } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(title).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink)
+                        Text(title).popupText(.button)
                         if let g = d.gate { ProMark(feature: g) }
                     }
-                    Text(line).font(.system(size: 12)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    Text(line).popupText(.caption)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(minHeight: 48)

@@ -28,7 +28,7 @@ struct HowYouSellSheet: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
-            Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+            Text("This company no longer exists.").popupText(.body)
         }
     }
 

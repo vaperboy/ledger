@@ -314,7 +314,7 @@ struct BankAllMovementsSheet: View {
                     let fmt = BankFmt.make(store, account)
                     let list: [BankTransaction] = e.bankTransactions(account, limit: 200)
                     VStack(spacing: 0) {
-                        if list.isEmpty { Text("Nothing has gone through yet.").font(.system(size: 13)).foregroundStyle(P.inkSoft) }
+                        if list.isEmpty { Text("Nothing has gone through yet.").popupText(.subtitle) }
                         ForEach(Array(list.enumerated()), id: \.element.id) { n, t in
                             if n > 0 { Hairline() }
                             BankTransactionRow(transaction: t, fmt: fmt)

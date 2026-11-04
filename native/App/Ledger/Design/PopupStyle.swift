@@ -27,6 +27,8 @@ enum PopupRole {
     case risk
     /// A button label in the footer: 14 medium.
     case button
+    /// Pasted or generated text the player does not read as prose (a save text): 12 monospaced.
+    case code
 }
 
 /// The declared exceptions. Anything else is `.standard`.
@@ -105,6 +107,8 @@ private struct PopupTextStyle: ViewModifier {
             content.font(.system(size: 12.5)).foregroundStyle(variant.risksAreRed ? P.loss : P.caution).fixedSize(horizontal: false, vertical: true)
         case .button:
             content.font(.system(size: 14, weight: .medium)).foregroundStyle(ink)
+        case .code:
+            content.font(.system(size: 12, design: .monospaced)).foregroundStyle(ink)
         }
     }
 }
@@ -114,6 +118,26 @@ extension View {
     func popupText(_ role: PopupRole, variant: PopupVariant = .standard) -> some View {
         modifier(PopupTextStyle(role: role, variant: variant))
     }
+}
+
+private struct PopupFieldStyle: ViewModifier {
+    @Environment(\.outsidePalette) private var P
+
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .font(.system(size: 15))
+            .foregroundStyle(P.ink)
+            .padding(.horizontal, PopupSpace.block)
+            .frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(P.cardDeep))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+    }
+}
+
+extension View {
+    /// The one text field of a popup: 15, ink, 44pt high, the card's deep fill and a hairline. Apply it to a `TextField` and nothing else.
+    func popupField() -> some View { modifier(PopupFieldStyle()) }
 }
 
 /// The one row of a popup: the label left, the value right.
@@ -137,4 +161,9 @@ struct PopupBody<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PopupSpace.block) { content() }
     }
+}
+
+extension HireFeedback {
+    /// The popup role of a negotiation answer: an agreement is an effect line, any other answer (a no, a counter, gone) a caution line.
+    var popupRole: PopupRole { isHired ? .effect : .risk }
 }

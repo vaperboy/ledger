@@ -251,7 +251,7 @@ struct TeamSlotSheet: View {
                 PersonCard(row: head, chevron: false)
                 if let pid = slot.personID, let p = e.state.people[pid] { filled(slot, p, co, cur) } else { vacant(slot, co, cur, e) }
             } else {
-                Text("This post no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This post no longer exists.").popupText(.body)
             }
         }
         .confirmAction($pending)

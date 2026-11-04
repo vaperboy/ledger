@@ -29,7 +29,7 @@ struct NewItemSheet: View {
         let cur: Currency = e.currency(for: co)
         let list: NewItemOptionList = e.newItemOptions(companyID: companyID, isService: isService)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text(isService ? "Add a service" : "Add a product").font(.headline).foregroundStyle(Theme.ivory)
+            Text(isService ? "Add a service" : "Add a product").popupText(.title)
             ForEach(list.options) { (o: NewItemOption) -> AnyView in AnyView(optionRow(o, list.hasMarketAdvisor, cur)) }
             if list.options.isEmpty { Text("Nothing new to add right now.").popupText(.subtitle) }
             if !list.hasMarketAdvisor { lockedLine }
@@ -43,7 +43,7 @@ struct NewItemSheet: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(o.name).popupText(.rowValue).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    Text(badge(o, cur)).font(.system(size: 11)).foregroundStyle(o.needsDevelopment ? Theme.gold : Theme.ivoryMuted).lineLimit(2)
+                    Text(badge(o, cur)).popupText(o.needsDevelopment ? .effect : .caption).lineLimit(2)
                 }
                 Spacer(minLength: 4)
                 if advisor {
@@ -60,8 +60,8 @@ struct NewItemSheet: View {
     private func figure(_ label: String, _ value: Double?, _ text: String?) -> some View {
         VStack(alignment: .trailing, spacing: 2) {
             Text(label).popupText(.caption).lineLimit(1).minimumScaleFactor(0.8)
-            Text(text ?? "-").font(.system(size: 12, weight: .semibold))
-                .foregroundStyle((value ?? 0) >= 0 ? Theme.gain : Theme.loss).lineLimit(1).minimumScaleFactor(0.7)
+            Text(text ?? "-").popupText((value ?? 0) >= 0 ? .effect : .risk)
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(minWidth: 62, alignment: .trailing)
     }
@@ -70,7 +70,7 @@ struct NewItemSheet: View {
         Button { onHireAdvisor() } label: {
             HStack(spacing: 6) {
                 Image(systemName: "lock.fill").font(.system(size: 11))
-                Text("Hire a market advisor to see this").font(.system(size: 12))
+                Text("Hire a market advisor to see this").popupText(.caption)
             }
             .foregroundStyle(Theme.ivoryMuted)
         }
@@ -79,7 +79,7 @@ struct NewItemSheet: View {
 
     private var ownName: some View {
         HStack(spacing: 8) {
-            TextField("Or name your own", text: $own).font(.system(size: 14)).textFieldStyle(.roundedBorder)
+            TextField("Or name your own", text: $own).popupField()
             Button { addOwn() } label: { Text("Add").popupText(.effect) }
                 .buttonStyle(PressableStyle())
                 .disabled(own.trimmingCharacters(in: .whitespaces).isEmpty)

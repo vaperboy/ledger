@@ -56,7 +56,7 @@ struct CompanySourcing: View {
             }
             .confirmAction($pending)
             .centerSheet(item: $popup) { (pick: SupplierPick) in popupContent(pick) }
-            .centerSheet(isPresented: $showDebtInfo) { debtInfo }
+            .centerSheet(isPresented: $showDebtInfo, title: "Buying on credit") { debtInfo }
         }
     }
 
@@ -190,15 +190,16 @@ struct CompanySourcing: View {
 
     private func supplierPopup(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(o.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(o.isCurrent ? Theme.gold : Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+            HStack(spacing: 6) {
                 Chip(text: chipText(o), tint: chipTint(o))
+                if o.isCurrent { Chip(text: "In use", tint: Theme.gold) }
+                Spacer(minLength: 0)
             }
             popupFacts(o, cur: cur)
             popupActions(input, o, cur: cur)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle(o.name)
     }
 
     private func popupFacts(_ o: SupplierOption, cur: Currency) -> some View {
@@ -206,14 +207,14 @@ struct CompanySourcing: View {
         let market: Double = o.yearlyVsMarket ?? 0
         let marketText: String = market > 0 ? "saves about \(cur.tidyShort(market)) a year" : "costs about \(cur.tidyShort(-market)) a year more"
         return VStack(alignment: .leading, spacing: 6) {
-            detailRow("Quality", o.quality ?? "Not rated")
-            detailRow("Lead time", o.delivery)
-            detailRow("Reliability", o.reliability)
-            detailRow("Terms", o.terms)
-            if abs(market) >= 1 { detailRow("Against market", marketText) }
-            if !o.risks.isEmpty { detailRow("Risk", riskText, tint: Theme.caution) }
-            if let b = o.blocked { Text(b).font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
-            if let x = o.dealExtra { Text("Negotiated: \(pct(x)) extra off while the deal lasts.").font(.system(size: 11.5)).foregroundStyle(Theme.gain).fixedSize(horizontal: false, vertical: true) }
+            PopupRow(label: "Quality", value: o.quality ?? "Not rated")
+            PopupRow(label: "Lead time", value: o.delivery)
+            PopupRow(label: "Reliability", value: o.reliability)
+            PopupRow(label: "Terms", value: o.terms)
+            if abs(market) >= 1 { PopupRow(label: "Against market", value: marketText) }
+            if !o.risks.isEmpty { Text("Risk: " + riskText).popupText(.risk) }
+            if let b = o.blocked { Text(b).popupText(.risk) }
+            if let x = o.dealExtra { Text("Negotiated: \(pct(x)) extra off while the deal lasts.").popupText(.effect) }
         }
     }
 
@@ -224,19 +225,11 @@ struct CompanySourcing: View {
         let hint: String? = (o.kind != .ownCompany && o.kind != .outside) ? o.nextLevel : nil
         return VStack(alignment: .leading, spacing: 10) {
             if o.negotiable, o.blocked == nil { negotiationRow(input, o) }
-            if let hint { Text("Better terms ahead: " + hint).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+            if let hint { Text("Better terms ahead: " + hint).popupText(.caption) }
             if canLunch, let vid = o.vendorID {
                 SmallOutlineButton(title: "Take to lunch · about \(lunchCost)") { closeThen { lunch(vid, name: o.name) } }
             }
             if canSwitch { QuietButton(title: "Use \(o.name)", fullWidth: true) { closeThen { confirm(input, o, cur: cur) } } }
-        }
-    }
-
-    private func detailRow(_ label: String, _ value: String, tint: Color = Theme.ivory) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            Spacer(minLength: 12)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -385,9 +378,8 @@ struct CompanySourcing: View {
 
     private var debtInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Buying on credit").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ivory)
             Text("Buying on credit is a debt: it falls due on its date and shows under what falls due. If the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .popupText(.body)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -407,14 +399,14 @@ struct CompanySourcing: View {
     @ViewBuilder private func negotiationRow(_ input: SupplierInput, _ o: SupplierOption) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if let until = o.coolingUntil {
-                Text("They ended the last talk. They will talk again from week \(until).").font(.system(size: 11)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                Text("They ended the last talk. They will talk again from week \(until).").popupText(.risk)
             } else if let counter = talks[o.id]?.counterAmount {
                 counterControls(input, o, counter)
             } else {
                 Text(o.isCurrent ? "Renegotiate" : "Negotiate").capsLabel()
                 SegmentedPill(items: SupplyTerms.asks, title: { (a: Double) -> String in pct(a) }, selection: askBinding(input, o))
             }
-            if let f = talks[o.id] { Text(f.text.tidyMoney).font(.system(size: 11.5)).foregroundStyle(f.tint).fixedSize(horizontal: false, vertical: true) }
+            if let f = talks[o.id] { Text(f.text.tidyMoney).popupText(f.popupRole) }
         }
     }
 
@@ -431,7 +423,7 @@ struct CompanySourcing: View {
                         let a = ((lastAsk[o.id] ?? counter) + (counter - (lastAsk[o.id] ?? counter)) * share) / 0.005
                         Button(pct(a.rounded(.down) * 0.005) + " off") { ask(input, o, a.rounded(.down) * 0.005) }
                     }
-                }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivoryMuted)
+                }.popupText(.button)
                 Button("Walk away") { talks[o.id] = .declined("You left the table. They may talk again later if you come back.") }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 Spacer(minLength: 0)
             }

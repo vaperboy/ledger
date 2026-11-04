@@ -52,7 +52,7 @@ struct LuxuryItemSheet: View {
                 option(.financed, "Financed", "20% down, the bank lends the rest")
             }
             if settlement == .financed { financeLines(e, it) }
-            if let p = problem { Text(p).font(.system(size: 12.5)).foregroundStyle(P.loss).fixedSize(horizontal: false, vertical: true) }
+            if let p = problem { Text(p).popupText(.risk) }
         }
         .padding(.horizontal, 18)
     }
@@ -62,7 +62,7 @@ struct LuxuryItemSheet: View {
         return Button { settlement = s; problem = nil } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(on ? P.accent : P.ink)
-                Text(sub).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading)
+                Text(sub).popupText(.caption).multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
             .padding(12)
@@ -86,7 +86,7 @@ struct LuxuryItemSheet: View {
             .padding(.horizontal, 12)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.card))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-            if let r = q.refusal { Text(r).font(.system(size: 12)).foregroundStyle(P.caution) }
+            if let r = q.refusal { Text(r).popupText(.risk) }
         }
     }
 
@@ -102,7 +102,7 @@ struct LuxuryItemSheet: View {
         let short: Bool = e.state.cash < amount
         return VStack(spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Due at closing").font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                Text("Due at closing").popupText(.subtitle)
                 Spacer()
                 Text(store.money(amount)).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(P.ink)
             }

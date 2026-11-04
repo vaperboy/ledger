@@ -147,7 +147,7 @@ struct BuyerTalkSheet: View {
                             CardSection("The talk") {
                                 VStack(alignment: .leading, spacing: 6) {
                                     ForEach(Array(o.talk.enumerated()), id: \.offset) { _, l in
-                                        Text((l.mine ? "You: " : "\(o.buyer): ") + l.text).font(.system(size: 13)).foregroundStyle(l.mine ? Theme.ivoryMuted : Theme.ivory)
+                                        Text((l.mine ? "You: " : "\(o.buyer): ") + l.text).popupText(l.mine ? .subtitle : .body)
                                     }
                                 }
                             }
@@ -166,7 +166,7 @@ struct BuyerTalkSheet: View {
                                         Button("+\(Int(f * 100))%") { ask = (o.price * (1 + f) / 1000).rounded() * 1000 }.buttonStyle(QuietButtonStyle())
                                     }
                                 }
-                                Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                Text("At or below the offer they ask you to sign. A little above, they may agree or stretch half way; far above, they lose patience and may walk away.").popupText(.caption)
                                 Button(ask > 0 ? "Ask \(cur.tidyShort(ask * mine)) for your share" : "Enter a price above") {
                                     switch store.act({ $0.counterBuyer(companyID: companyID, offerID: offerID, price: ask) }) {
                                     case .agreed(let p)?: Haptics.success(); store.show("\(o.buyer) agrees to \(cur.tidyShort(p * mine)).", tone: "good")

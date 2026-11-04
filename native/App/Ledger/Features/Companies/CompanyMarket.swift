@@ -416,7 +416,7 @@ struct RivalSheet: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(g.name).popupText(.body)
                         Text("\(g.strategyName): \(g.strategyText)").popupText(.caption)
-                        Text("\(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : "")).font(.system(size: 11.5)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryFaint)
+                        Text("\(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : "")).popupText(g.inTrouble ? .risk : .caption)
                     }
                 }
             }

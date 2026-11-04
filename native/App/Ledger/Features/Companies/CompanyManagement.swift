@@ -219,7 +219,7 @@ struct ManagerSheet: View {
                 let cur = e.currency(for: co)
                 if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else { hire(e, co, cur) }
             } else {
-                Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This company no longer exists.").popupText(.body)
             }
         }
         .confirmAction($pending)
@@ -523,7 +523,7 @@ struct AssistantSheet: View {
                 let a = co.value("asst")
                 if a["npc"].int != 0, let n = e.state.people[a["npc"].int] { manage(co, a, n, cur) } else { hire(e, co, cur) }
             } else {
-                Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This company no longer exists.").popupText(.body)
             }
         }
         .confirmAction($pending)

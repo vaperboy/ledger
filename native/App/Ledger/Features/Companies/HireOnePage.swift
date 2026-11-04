@@ -45,7 +45,7 @@ struct HireOnePage: View {
                       let opts = e.hireDraftOptions(post: request.post, companyID: request.companyID, personID: request.personID) {
                 page(e, person, opts)
             } else {
-                Text("\(first) is no longer on the market.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding()
+                Text("\(first) is no longer on the market.").popupText(.body).padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
@@ -137,7 +137,7 @@ struct HireOnePage: View {
             ThumbnailView(kind: .person, key: person.role, size: 36, initials: person.name, face: person.faceKey)
             VStack(alignment: .leading, spacing: 1) {
                 Text(person.name).font(.serifTitle(17)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(CandidateClaims.line(e, person)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                Text(CandidateClaims.line(e, person)).popupText(.caption).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
@@ -159,7 +159,7 @@ struct HireOnePage: View {
     }
 
     private func problemText(_ problem: String?) -> some View {
-        Text(problem ?? "").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+        Text(problem ?? "").popupText(.risk)
     }
 
     // MARK: Page 1: the going rate
@@ -182,7 +182,7 @@ struct HireOnePage: View {
                 .opacity(problem == nil ? 1 : 0.5).disabled(problem != nil)
                 .accessibilityIdentifier("hire-quick-offer")
             Button { go(2) } label: {
-                Text("Change the offer").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
+                Text("Change the offer").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
             }
             .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-next")
         }
@@ -205,7 +205,7 @@ struct HireOnePage: View {
 
     private func weeksStepper(_ opts: HireDraftOptions) -> some View {
         Stepper("Ends after \(HireWords.weeksText(model.draft.weeks))", value: $model.draft.weeks, in: opts.temporaryWeekRange, step: 1)
-            .font(.system(size: 13)).foregroundStyle(Theme.ivory)
+            .popupText(.body)
     }
 
     private func seasonBlock(_ opts: HireDraftOptions) -> some View {
@@ -228,9 +228,9 @@ struct HireOnePage: View {
                 Text("Promises you make").capsLabel()
                 ForEach(Array(model.draft.promises.enumerated()), id: \.offset) { i, d -> AnyView in
                     AnyView(HStack {
-                        Text(d.kind.title).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                        Text(d.kind.title).popupText(.body)
                         Spacer(minLength: 6)
-                        Text("in \(HireWords.weeksText(d.dueInWeeks))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("in \(HireWords.weeksText(d.dueInWeeks))").popupText(.caption)
                         Button { model.draft.promises.remove(at: i) } label: { Image(systemName: "xmark.circle").foregroundStyle(Theme.ivoryFaint) }
                             .buttonStyle(PressableStyle()).accessibilityLabel("Remove this promise")
                     })
@@ -270,13 +270,13 @@ struct HireOnePage: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(cur.tidyShort(shown)).font(.serifTitle(34)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                    Text("a month, yours").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Text("a month, yours").popupText(.caption)
                     Spacer(minLength: 0)
                 }
                 HStack {
-                    Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.caution)
+                    Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").popupText(.risk)
                     Spacer(minLength: 6)
-                    Text("Market " + cur.tidyShort(s.market)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                    Text("Market " + cur.tidyShort(s.market)).popupText(.caption)
                 }
             }
         }
@@ -315,7 +315,7 @@ struct HireOnePage: View {
                 model.lines.append(HireLine(mine: false, text: "I would want about \(HireWords.hourly(amount / factor, cur)) an hour for this."))
             }
         } label: {
-            Text("Hear their ask").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, minHeight: 34).contentShape(Rectangle())
+            Text("Hear their ask").popupText(.effect).frame(maxWidth: .infinity, minHeight: 34).contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-hear-ask")
     }
@@ -394,8 +394,8 @@ struct HireOnePage: View {
         let line: String = comOnly ? "No base wage: you pay a share of their sales" : full
         let lifted: Bool = talk?.liftedToMinimum ?? false
         return VStack(alignment: .leading, spacing: 2) {
-            Text(line).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-            if lifted { Text("Lifted to the minimum wage.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+            Text(line).popupText(.body)
+            if lifted { Text("Lifted to the minimum wage.").popupText(.risk) }
         }
     }
 
@@ -418,7 +418,7 @@ struct HireOnePage: View {
             }
             .padding(.top, 6)
         }
-        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+        .popupText(.subtitle)
     }
 
     private func rateBlock() -> some View {
@@ -437,7 +437,7 @@ struct HireOnePage: View {
     private func benefitsBlock(_ opts: HireDraftOptions) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !opts.companyPerks.isEmpty {
-                Text("Already given: " + opts.companyPerks.joined(separator: ", ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Already given: " + opts.companyPerks.joined(separator: ", ")).popupText(.caption)
             }
             if !opts.bonusPlans.isEmpty { bonusBlock(opts) }
             if !opts.expenses.isEmpty { expensesBlock(opts) }
@@ -497,11 +497,11 @@ struct HireOnePage: View {
                 .accessibilityIdentifier("hire-make-offer")
             HStack {
                 Button { go(1) } label: {
-                    Text("Back").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
+                    Text("Back").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-back")
                 Button { Haptics.tap(); dismiss() } label: {
-                    Text("Walk away").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
+                    Text("Walk away").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-walk-away")
             }

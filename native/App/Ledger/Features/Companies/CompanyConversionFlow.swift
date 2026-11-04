@@ -31,7 +31,7 @@ struct ConversionSheet: View {
                             blockedCard(.unknownCountry)
                         }
                     } else {
-                        Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                        Text("This company no longer exists.").popupText(.body)
                     }
                 }
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
@@ -88,7 +88,7 @@ struct ConversionSheet: View {
                     ChoiceCard(title: title, subtitle: sub, trailing: "needs " + cur.tidyShort(o.needed), selected: payer == o.payer) { payer = o.payer }
                         .accessibilityIdentifier("conversion-payer-" + o.payer.rawValue)
                 }
-                Text("The personal option also covers the share capital, so it needs both from your own account and savings.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text("The personal option also covers the share capital, so it needs both from your own account and savings.").popupText(.caption)
             }
         }
     }
@@ -115,7 +115,7 @@ struct ConversionSheet: View {
                         FlatRow(label: l.name, value: cur.tidyShort(l.balance), sub: l.personallyGuaranteed ? "your personal guarantee stays" : "company loan", rule: n > 0)
                     }
                     Text("Banks keep the personal guarantee; ask to release it in the Bank app, at a higher margin.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                        .popupText(.caption).padding(.top, 6)
                 }
             }
         }
@@ -128,7 +128,7 @@ struct ConversionSheet: View {
                 .init(label: "Company account", value: cur.tidyShort(plan.companyBalanceAfter), tint: plan.companyBalanceAfter < 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Company value", value: cur.tidyShort(plan.valueAfter), sub: "was " + cur.tidyShort(plan.valueBefore)),
             ])
-            Text("The value does not change by converting, and it is an estimate, not cash.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+            Text("The value does not change by converting, and it is an estimate, not cash.").popupText(.caption)
         }
     }
 
@@ -206,7 +206,7 @@ struct ConversionSheet: View {
                     Text("Converted").popupText(.rowValue)
                     Text(text.tidyText).popupText(.subtitle)
                     Text("Form, name and records are updated; see Accounting > Documents for the registration.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.caption)
                 }
             }
         }

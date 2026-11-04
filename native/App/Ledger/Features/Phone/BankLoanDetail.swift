@@ -84,7 +84,7 @@ struct LoanDetailSheet: View {
     private func actions(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if rec.thisMonthSettled {
-                Text("This month's instalment is paid. It is not taken again on the due date.").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+                Text("This month's instalment is paid. It is not taken again on the due date.").popupText(.subtitle)
             } else {
                 QuietButton(title: "Pay this month's instalment now", fullWidth: true) { confirmInstalment(e, rec, cur) }
                     .accessibilityIdentifier("loan-pay-instalment")
@@ -146,7 +146,7 @@ struct LoanDetailSheet: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text("REPAYMENT SCHEDULE").capsLabel()
             if rows.isEmpty {
-                Text("Nothing is left to schedule.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                Text("Nothing is left to schedule.").popupText(.subtitle)
             } else {
                 SharpTable {
                     TableHeader(columns: columns)
@@ -154,7 +154,7 @@ struct LoanDetailSheet: View {
                         TableRow(columns: columns, title: r.dateText, note: "Payment \(r.number)", values: [cur.tidyShort(r.payment), cur.tidyShort(r.balance)])
                     }
                 }
-                Text("At today's rate. The bank re-works the instalment each month at that month's rate.").font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                Text("At today's rate. The bank re-works the instalment each month at that month's rate.").popupText(.caption)
             }
         }
     }
@@ -166,15 +166,15 @@ struct LoanDetailSheet: View {
             BankCard(title: "Personal guarantee", trailing: t.guaranteed ? "you guarantee it" : "released") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("You guaranteed this loan personally. The guarantee stays with you, also after a company becomes a limited company, until the bank agrees to release it for a higher margin.")
-                        .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.subtitle)
                     if let why = t.unavailable {
-                        Text(why.tidyText).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
+                        Text(why.tidyText).popupText(.risk)
                             .accessibilityIdentifier("loan-guarantee-unavailable")
                     } else {
                         negotiation(t)
                     }
                     if !talk.isEmpty {
-                        Text(talk).font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                        Text(talk).popupText(.body)
                             .accessibilityIdentifier("loan-guarantee-answer")
                     }
                 }
@@ -185,13 +185,13 @@ struct LoanDetailSheet: View {
     @ViewBuilder private func negotiation(_ t: LoanGuarantee.Terms) -> some View {
         let pct: String = Currency.percent(offer, decimals: 2)
         Stepper(value: $offer, in: 0.001...0.05, step: 0.001) {
-            Text("Extra margin you offer: \(pct) a year").font(.system(size: 13.5)).foregroundStyle(P.ink)
+            Text("Extra margin you offer: \(pct) a year").popupText(.body)
         }
         .onAppear {
             if let c = t.counter { offer = c } else if t.lastOffer > 0 { offer = t.lastOffer }
         }
         if let c = t.counter {
-            Text("The bank's standing counter: " + Currency.percent(c, decimals: 2) + " a year extra.").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+            Text("The bank's standing counter: " + Currency.percent(c, decimals: 2) + " a year extra.").popupText(.caption)
         }
         QuietButton(title: "Ask the bank to release it", fullWidth: true) { confirmOffer(t) }
             .accessibilityIdentifier("loan-guarantee-offer")

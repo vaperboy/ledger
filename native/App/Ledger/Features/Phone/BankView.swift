@@ -137,7 +137,7 @@ struct RepayPersonalLoanSheet: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(l.name).capsLabel()
                             Text(cur.tidyDisplay(l.balance)).font(.hero(34))
-                            Text("left to pay · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? "")).font(.caption).foregroundStyle(P.inkFaint)
+                            Text("left to pay · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? "")).popupText(.caption)
                         }
                         HStack {
                             Button("One instalment") { amount = min(l.balance, l.monthlyPayment) }.buttonStyle(SmallOutlineButtonStyle())

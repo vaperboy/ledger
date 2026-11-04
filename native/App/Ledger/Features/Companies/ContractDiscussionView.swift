@@ -71,13 +71,13 @@ struct ContractDiscussionView: View {
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 12) {
                 ThumbnailView(kind: .person, key: isManager ? "manager" : (m?.role ?? "helper"), size: 44, initials: n.name, face: n.faceKey)
-                Text(n.name).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                Text(n.name).popupText(.figure)
             }
             Text("\(role) at \(co.name) · \(cur.tidyShort(pay)) a month" + (m?.weeklyHours.map { " · \(Int($0.rounded())) h a week" } ?? ""))
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                .popupText(.caption)
             if let h = e.contractHandler(companyID: companyID), !isManager {
                 Text("\(h.name) may handle these within \(cur.tidyShort(h.payLimit)) a month of extra pay and promotions (\(h.level >= 2 ? "full control" : "within limits")). Above that it comes to you.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.caption)
             }
         }
     }
@@ -88,9 +88,9 @@ struct ContractDiscussionView: View {
             let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: talk.proposal, asRequest: true)
             LedgerSection("\(first(n)) asks") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(talk.reason.isEmpty ? "A request about \(talk.proposal.topic.title.lowercased())." : talk.reason).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Text(talk.reason.isEmpty ? "A request about \(talk.proposal.topic.title.lowercased())." : talk.reason).popupText(.body)
                     AskOfferCard(label: "\(first(n).uppercased()) ASKS", figure: requestFigure(talk, cur), note: talk.proposal.topic.title, outlined: true)
-                    if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                    if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").popupText(.risk) }
                     consequenceLines(pv, cur)
                     partWay(talk, cur)
                     WrapRow {
@@ -111,7 +111,7 @@ struct ContractDiscussionView: View {
         } else if talk.proposal.amount > 0 {
             LedgerSection("\(first(n))'s last word") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                    Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).popupText(.body)
                     partWay(talk, cur)
                     Button("Drop this talk") {
                         _ = store.act { $0.contractWithdraw(personID: personID) }
@@ -128,7 +128,7 @@ struct ContractDiscussionView: View {
         let p = t.proposal
         if [.payRise, .promotion, .hours].contains(p.topic), p.amount > 0 {
             let from = t.offered > 0 ? t.offered : (p.topic == .hours ? p.amount : 0)
-            Text("Meet them part way").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Meet them part way").popupText(.caption)
             WrapRow {
                 ForEach([0.25, 0.5, 0.75], id: \.self) { share in
                     let v = from + (p.amount - from) * share
@@ -142,7 +142,7 @@ struct ContractDiscussionView: View {
                     }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
                 }
             }
-            Text("Or set an exact figure below with the stepper or the field.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Text("Or set an exact figure below with the stepper or the field.").popupText(.caption)
         }
     }
 
@@ -170,7 +170,7 @@ struct ContractDiscussionView: View {
                             .disabled(!t.available)
                     }
                 }
-                if let t = list.first(where: { $0.topic == topic }), !t.available { Text(t.why.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                if let t = list.first(where: { $0.topic == topic }), !t.available { Text(t.why.tidyMoney).popupText(.risk) }
             }
         }
     }
@@ -183,7 +183,7 @@ struct ContractDiscussionView: View {
                 switch topic {
                 case .payRise:
                     steps([0.03, 0.06, 0.10, 0.15], current: percent) { percent = $0 }
-                    Stepper("Raise: +\(String(format: "%.1f", percent * 100))%", value: $percent, in: 0.005...0.5, step: 0.005).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                    Stepper("Raise: +\(String(format: "%.1f", percent * 100))%", value: $percent, in: 0.005...0.5, step: 0.005).popupText(.body)
                 case .promotion:
                     pick(options)
                     AmountField(title: "Monthly pay offered", currency: cur, amount: $pay)
@@ -193,27 +193,27 @@ struct ContractDiscussionView: View {
                 case .hours:
                     pick(options)
                     if choice == "percent" { percentEditor() }
-                    if choice == "hours" { Stepper("\(Int(hours)) hours a week", value: $hours, in: 5...60, step: 5).font(.system(size: 13)).foregroundStyle(Theme.ivory) }
+                    if choice == "hours" { Stepper("\(Int(hours)) hours a week", value: $hours, in: 5...60, step: 5).popupText(.body) }
                 case .payBasis:
                     pick(options)
-                    if choice == "mix" || choice == "com" { steps(PayPlans.rateSteps, current: rate) { rate = $0 }; Text("Commission: \(Int((rate * 100).rounded()))% of their sales.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+                    if choice == "mix" || choice == "com" { steps(PayPlans.rateSteps, current: rate) { rate = $0 }; Text("Commission: \(Int((rate * 100).rounded()))% of their sales.").popupText(.caption) }
                 case .bonus:
                     if !isManager && !options.isEmpty {
-                        Text("A bonus plan is paid through payroll with the employer's charges, like wages: a share for every target the company meets, a year-end bonus when the budget is met, and a reward for the better half of the team in a month without a loss.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        Text("A bonus plan is paid through payroll with the employer's charges, like wages: a share for every target the company meets, a year-end bonus when the budget is met, and a reward for the better half of the team in a month without a loss.").popupText(.caption)
                         pick(options)
                         if choice == "commission" { steps(PayPlans.rateSteps, current: rate) { rate = $0 } }
                     } else {
-                        Text(isManager ? "A share of each month's profit, on top of the salary. A share is not cut here." : "Their commission share of their own sales.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
+                        Text(isManager ? "A share of each month's profit, on top of the salary. A share is not cut here." : "Their commission share of their own sales.").popupText(.caption)
                         steps(isManager ? [0.05, 0.1, 0.15, 0.2, 0.3] : PayPlans.rateSteps, current: rate) { rate = $0 }
                     }
                 case .term:
-                    Text("A permanent contract has no end date. A fixed term ends on its date unless you renew it; you are asked a few weeks before. Someone who wants security may not take a fixed term.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text("A permanent contract has no end date. A fixed term ends on its date unless you renew it; you are asked a few weeks before. Someone who wants security may not take a fixed term.").popupText(.caption)
                     pick(options)
                 case .benefits:
                     pick(options)
-                    if let on = options.first(where: { $0.id == choice })?.on { Text(on ? "It is on now: confirming switches it off." : "It is off now: confirming switches it on.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
+                    if let on = options.first(where: { $0.id == choice })?.on { Text(on ? "It is on now: confirming switches it off." : "It is off now: confirming switches it on.").popupText(.caption) }
                 case .notice:
-                    Text("Extra weeks of notice on top of the law, owed both ways: they work them if they resign, you pay them if you let them go without cause.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text("Extra weeks of notice on top of the law, owed both ways: they work them if they resign, you pay them if you let them go without cause.").popupText(.caption)
                     WrapRow {
                         ForEach([0] + ContractTalk.noticeExtraChoices, id: \.self) { w in
                             Button(w == 0 ? "Law only" : "+\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryMuted))
@@ -235,14 +235,14 @@ struct ContractDiscussionView: View {
     }
 
     @ViewBuilder private func pick(_ options: [ContractTalk.Choice]) -> some View {
-        if options.isEmpty { Text("Nothing to choose here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+        if options.isEmpty { Text("Nothing to choose here.").popupText(.body) }
         ForEach(Array(options.enumerated()), id: \.element.id) { n, o in
             if n > 0 { Hairline() }
             Button { choice = o.id; if topic == .promotion, let ask = promotionAsk(o.id) { pay = ask } } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(o.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                        Text(o.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(o.title.tidyMoney).popupText(.body)
+                        Text(o.detail.tidyMoney).popupText(.caption)
                     }
                     Spacer()
                     Image(systemName: choice == o.id ? "checkmark" : "circle").font(.system(size: 11)).foregroundStyle(choice == o.id ? Theme.gold : Theme.ivoryFaint)
@@ -280,7 +280,7 @@ struct ContractDiscussionView: View {
 
     @ViewBuilder private func consequenceLines(_ c: ContractTalk.Consequences, _ cur: Currency) -> some View {
         if !c.blocked.isEmpty {
-            Text(c.blocked).font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+            Text(c.blocked).popupText(.risk)
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 costRows(c, cur)
@@ -288,9 +288,9 @@ struct ContractDiscussionView: View {
                 words(c)
                 if c.mayRefuse {
                     Label("They may well say no to this. You find out when you put it to them.", systemImage: "exclamationmark.bubble")
-                        .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.risk)
                 }
-                ForEach(c.lines, id: \.self) { Text($0).font(.system(size: 12)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true) }
+                ForEach(c.lines, id: \.self) { Text($0).popupText(.body) }
                 notes(c)
             }
         }
@@ -326,9 +326,9 @@ struct ContractDiscussionView: View {
     }
 
     @ViewBuilder private func notes(_ c: ContractTalk.Consequences) -> some View {
-        ForEach(c.peers, id: \.self) { Label($0, systemImage: "person.2").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-        ForEach(c.labour, id: \.self) { Label($0, systemImage: "doc.text").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-        ForEach(c.risks, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true) }
+        ForEach(c.peers, id: \.self) { Label($0, systemImage: "person.2").popupText(.caption) }
+        ForEach(c.labour, id: \.self) { Label($0, systemImage: "doc.text").popupText(.caption) }
+        ForEach(c.risks, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").popupText(.risk) }
     }
 
     @ViewBuilder private func send(_ e: GameEngine, _ co: Company, _ n: Person, _ cur: Currency) -> some View {
@@ -398,8 +398,8 @@ struct ContractDiscussionView: View {
                         .buttonStyle(QuietButtonStyle(tint: abs(workPercent - v) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
                 }
             }
-            Stepper("Other: \(HireWords.percentText(workPercent))", value: $workPercent, in: 10...100, step: 5).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-            Text(HireWords.hours(workPercent / 100 * StaffModel.fullWeekHours)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Stepper("Other: \(HireWords.percentText(workPercent))", value: $workPercent, in: 10...100, step: 5).popupText(.body)
+            Text(HireWords.hours(workPercent / 100 * StaffModel.fullWeekHours)).popupText(.caption)
         }
     }
 
@@ -436,7 +436,7 @@ struct ContractDiscussionView: View {
     @ViewBuilder private func promiseSection(_ e: GameEngine, _ co: Company, _ n: Person) -> some View {
         LedgerSection("Promise") {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Instead of deciding now, promise \(first(n)) something by a date. It is kept in the Promises list.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Instead of deciding now, promise \(first(n)) something by a date. It is kept in the Promises list.").popupText(.caption)
                 promiseMaker(e, label: "Make a promise") { draft in
                     show(store.act { $0.promise(companyID: companyID, personID: personID, draft: draft) })
                 }
@@ -448,7 +448,7 @@ struct ContractDiscussionView: View {
         let entries: [ContractHistory.Entry] = Array(e.contractHistory(companyID: companyID, personID: personID).reversed())
         LedgerSection("Contract history") {
             VStack(alignment: .leading, spacing: 0) {
-                if entries.isEmpty { Text("No changes yet.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                if entries.isEmpty { Text("No changes yet.").popupText(.caption) }
                 ForEach(Array(entries.enumerated()), id: \.element.id) { i, h in
                     FlatRow(label: h.text, value: GameCalendar.dateString(week: h.week), rule: i > 0)
                 }

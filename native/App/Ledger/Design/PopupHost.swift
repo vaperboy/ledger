@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 /// How a registered popup is drawn: `.card` is wrapped in the standard centred card (header with x, scrolling body); `.raw` draws its own
 /// complete popup (a `GamePopup`, a report page).
@@ -23,15 +24,52 @@ struct PopupEntry {
 /// sheet, no dialog, so showing a popup never touches navigation. A `.sheet` that can raise popups installs a nested host with
 /// `.popupHost()`; it shows its own popups and those of the host above it.
 final class PopupHost: ObservableObject {
-    static let empty = PopupHost()
     private static var counter = 0
 
     @Published private(set) var entries: [String: PopupEntry] = [:]
     /// How many nested hosts (sheets) are open under this one. While one is, it draws this host's popups, so they are drawn once.
     @Published private(set) var claims = 0
+    /// The host above this one (set while this nested host's sheet is open), and whether this host holds a claim on it.
+    private(set) weak var parentHost: PopupHost?
+    private var holdsClaim = false
+    private var parentLink: AnyCancellable?
 
     func claim() { claims += 1 }
     func release() { claims = max(0, claims - 1) }
+
+    /// A nested host (the content of a `.sheet`) takes over drawing the popups of the host above it for as long as it is open. The claim is
+    /// taken once and given back once (`detach`, or when this host is deallocated, so a sheet that vanishes without `onDisappear` cannot
+    /// leave the host above silent for good).
+    func attach(to above: PopupHost?) {
+        guard !holdsClaim, let above, above !== self else { return }
+        parentHost = above
+        holdsClaim = true
+        above.claim()
+        parentLink = above.objectWillChange.sink { [weak self] (_: Void) in self?.objectWillChange.send() }
+    }
+
+    func detach() {
+        parentLink = nil
+        if holdsClaim { holdsClaim = false; parentHost?.release() }
+        parentHost = nil
+    }
+
+    deinit {
+        if holdsClaim, let above = parentHost {
+            DispatchQueue.main.async { above.release() }
+        }
+    }
+
+    /// Every popup this host and the hosts above it have registered.
+    func gathered() -> [PopupEntry] {
+        Array(entries.values) + (parentHost?.gathered() ?? [])
+    }
+
+    /// What this host's layer draws: nothing while a nested host (a sheet) is open on top of it, because that one draws these popups
+    /// too (once, over the sheet); otherwise its own popups and those of the hosts above it.
+    func drawnEntries() -> [PopupEntry] {
+        claims > 0 ? [] : gathered()
+    }
 
     private static func nextSeq() -> Int { counter += 1; return counter }
 
@@ -68,12 +106,11 @@ extension EnvironmentValues {
 /// another one is on top, but only the first in `PopupQueue` order is visible and takes touches.
 struct PopupHostLayer: View {
     @ObservedObject var host: PopupHost
-    @ObservedObject var parent: PopupHost
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let mine: [PopupEntry] = host.claims > 0 ? [] : Array(host.entries.values)
-        let all: [PopupEntry] = (mine + Array(parent.entries.values)).sorted { (a: PopupEntry, b: PopupEntry) -> Bool in a.seq < b.seq }
+        let drawn: [PopupEntry] = host.drawnEntries()
+        let all: [PopupEntry] = drawn.sorted { (a: PopupEntry, b: PopupEntry) -> Bool in a.seq < b.seq }
         let top: String? = PopupQueue.visible(all.map { (e: PopupEntry) -> PopupQueue.Item in e.item })
         let signature: [String] = all.map { (e: PopupEntry) -> String in e.key } + [top ?? ""]
         return ZStack {
@@ -170,10 +207,10 @@ private struct PopupHostModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .overlay { PopupHostLayer(host: host, parent: parent ?? PopupHost.empty) }
+            .overlay { PopupHostLayer(host: host) }
             .environment(\.popupHost, host)
-            .onAppear { parent?.claim() }
-            .onDisappear { parent?.release() }
+            .onAppear { host.attach(to: parent) }
+            .onDisappear { host.detach() }
     }
 }
 

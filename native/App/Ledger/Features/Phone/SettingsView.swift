@@ -47,7 +47,7 @@ struct SettingsView: View {
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
         .centerSheet(isPresented: $showPaste) {
             VStack(spacing: Theme.Space.m) {
-                TextEditor(text: $pasted).font(.system(.caption, design: .monospaced)).frame(height: 220)
+                TextEditor(text: $pasted).popupText(.code).frame(height: 220)
                     .scrollContentBackground(.hidden)
                     .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
                 Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }

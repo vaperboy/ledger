@@ -28,7 +28,7 @@ struct MarketingSheet: View {
         return VStack(alignment: .leading, spacing: 8) {
             header(active: active, total: total, cur: cur)
             if channels.isEmpty {
-                Text("No marketing channels are open yet.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("No marketing channels are open yet.").popupText(.caption)
             } else {
                 channelList(e, channels, cur: cur, mkt: mkt)
             }
@@ -41,7 +41,7 @@ struct MarketingSheet: View {
         let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
         return VStack(alignment: .leading, spacing: 1) {
             Text("Marketing").popupText(.figure).accessibilityAddTraits(.isHeader)
-            Text(sub).font(.system(size: 12.5, weight: .medium)).foregroundStyle(active > 0 ? Theme.gold : Theme.ivoryMuted)
+            Text(sub).popupText(active > 0 ? .effect : .subtitle)
         }
     }
 
@@ -78,14 +78,13 @@ struct MarketingSheet: View {
                 InfoPopoverButton(title: ch.name, text: ch.note.tidyMoney)
                 Spacer(minLength: 4)
                 if reason == nil {
-                    Text(cur.tidyDisplay(value) + " a week").font(.system(size: 12.5, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(value > 0 ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(cur.tidyDisplay(value) + " a week").popupText(value > 0 ? .effect : .caption).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 LedgerSwitch(isOn: on).hitHeight(28).disabled(reason != nil)
             }
             .frame(minHeight: 28)
             if let why = reason {
-                Text(why).font(.caption2).foregroundStyle(Theme.caution).padding(.bottom, 6)
+                Text(why).popupText(.risk).padding(.bottom, 6)
             } else {
                 LedgerSlider(value: amount, in: 0...top, onEditingChanged: { (editing: Bool) in
                     if !editing { commit(ch, draft[ch.id] ?? value) }

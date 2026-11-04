@@ -101,7 +101,7 @@ struct CompanyProperties: View {
         if let pf, let p = pf.rows.first(where: { $0.id == detailID }) {
             PeopleSheet(title: "Property") { propertyCard(p, pf, cur) }
         } else {
-            PeopleSheet(title: "Property") { Text("This property is gone.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+            PeopleSheet(title: "Property") { Text("This property is gone.").popupText(.body) }
         }
     }
 
@@ -112,27 +112,27 @@ struct CompanyProperties: View {
                     Card { VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+                                Text(p.name).popupText(.body).lineLimit(2)
                                 Text("\(Int(p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0)) · \(conditionWord(p.condition))")
-                                    .font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                    .popupText(.caption)
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.tidyShort(p.value)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
-                                Text("bought " + cur.tidyShort(p.cost)).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                Text(cur.tidyShort(p.value)).popupText(.rowValue)
+                                Text("bought " + cur.tidyShort(p.cost)).popupText(.caption)
                             }
                         }
                         HStack(spacing: 14) {
-                            Text("Rent " + cur.tidyShort(p.weeklyRent) + " a week").font(.caption).foregroundStyle(Theme.ivoryMuted)
-                            if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).font(.caption).foregroundStyle(Theme.loss) }
+                            Text("Rent " + cur.tidyShort(p.weeklyRent) + " a week").popupText(.caption)
+                            if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).popupText(.risk, variant: .destructive) }
                         }
                         HStack(spacing: 18) {
-                            Button("Renovate") { detailID = nil; presentAfterSheet { askToRenovate(p, cur) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                            Button("Renovate") { detailID = nil; presentAfterSheet { askToRenovate(p, cur) } }.popupText(.effect)
                             if p.kind == "com" {
                                 Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { Motion.animate(Motion.quickAnimation) { openTenants = openTenants == p.id ? nil : p.id } }
-                                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                                    .popupText(.effect)
                             }
-                            Button("Sell") { detailID = nil; presentAfterSheet { askToSell(p, cur) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss)
+                            Button("Sell") { detailID = nil; presentAfterSheet { askToSell(p, cur) } }.popupText(.risk, variant: .destructive)
                             Spacer()
                         }.buttonStyle(PressableStyle())
                         if openTenants == p.id { tenants(p, cur) }
@@ -149,35 +149,35 @@ struct CompanyProperties: View {
                 Text("Current tenants").capsLabel(Theme.ivoryFaint)
                 ForEach(Array(p.leases.enumerated()), id: \.offset) { _, l in
                     HStack {
-                        Text("\(l.tenant) · \(Int(l.squareMetres)) m2").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                        Text("\(l.tenant) · \(Int(l.squareMetres)) m2").popupText(.caption)
                         Spacer()
-                        Text(cur.tidyShort(l.weeklyRent) + " a week · \(l.weeksLeft / 52) y left").font(.caption.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                        Text(cur.tidyShort(l.weeklyRent) + " a week · \(l.weeksLeft / 52) y left").popupText(.caption)
                     }
                 }
             }
             if offers.isEmpty {
-                Text("No space free to let, or nobody interested right now. Offers change every month.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                Text("No space free to let, or nobody interested right now. Offers change every month.").popupText(.caption)
             } else {
                 Text("Wants to lease").capsLabel(Theme.ivoryFaint)
                 ForEach(offers) { o in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("\(Int(o.squareMetres)) m2 · \(cur.tidyShort(o.squareMetres * o.weeklyRentPerM2)) a week · \(o.years) year lease").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text(o.name).popupText(.body)
+                            Text("\(Int(o.squareMetres)) m2 · \(cur.tidyShort(o.squareMetres * o.weeklyRentPerM2)) a week · \(o.years) year lease").popupText(.caption)
                         }
                         Spacer()
-                        Button("Lease") { lease(p, o) }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle())
+                        Button("Lease") { lease(p, o) }.popupText(.effect).buttonStyle(PressableStyle())
                     }
                 }
                 Text("Wants to buy the building").capsLabel(Theme.ivoryFaint).padding(.top, 4)
                 ForEach(offers.prefix(2)) { o in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(o.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text(o.name).popupText(.body)
+                            Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").popupText(.caption)
                         }
                         Spacer()
-                        Button("Sell to them") { detailID = nil; presentAfterSheet { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss).buttonStyle(PressableStyle())
+                        Button("Sell to them") { detailID = nil; presentAfterSheet { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } } }.popupText(.risk, variant: .destructive).buttonStyle(PressableStyle())
                     }
                 }
             }

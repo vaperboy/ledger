@@ -33,7 +33,7 @@ struct RootView: View {
         .modifier(PostM7Paywall())
         // The one popup host: every popup of the app is drawn here, above everything (tab bar included), in queue order.
         .overlay { PopupLayer() }
-        .overlay { PopupHostLayer(host: popups, parent: PopupHost.empty) }
+        .overlay { PopupHostLayer(host: popups) }
         .environment(\.popupHost, popups)
     }
 }

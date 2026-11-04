@@ -101,9 +101,9 @@ struct CarDealerSection: View {
                     .buttonStyle(GoldButtonStyle())
             }
         }
-        .sheet(item: $carSheet) { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store).popupHost() }
-        .sheet(isPresented: $ordering) { CarOrderSheet(companyID: company.id).environmentObject(store).popupHost() }
-        .sheet(isPresented: $brandScreen) { CarBrandScreen(companyID: company.id).environmentObject(store).popupHost() }
+        .centerSheet(item: $carSheet, title: "Car") { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store) }
+        .centerSheet(isPresented: $ordering, title: "Order cars") { CarOrderSheet(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tall) { CarBrandScreen(companyID: company.id).environmentObject(store) }
     }
 
     private func supplierBlock(_ cur: Currency) -> some View {
@@ -126,26 +126,16 @@ struct CarDealerSection: View {
 /// One car: its cost, the list price and the price slider with what the sale would earn or lose right now.
 struct CarPriceSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var carID: Int
     @State private var price = 0.0
     @State private var loaded = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let e = store.engine, let co = e.state.company(companyID), let car = e.carDealerRows(companyID: companyID).first(where: { $0.id == carID && $0.status == .inStock }) {
-                    content(e.currency(for: co), car)
-                } else {
-                    Text("This car has been sold.").foregroundStyle(Theme.ivoryMuted).padding(24)
-                }
-            }
-            .ledgerBackground()
-            .navigationTitle("Car").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        if let e = store.engine, let co = e.state.company(companyID), let car = e.carDealerRows(companyID: companyID).first(where: { $0.id == carID && $0.status == .inStock }) {
+            content(e.currency(for: co), car)
+        } else {
+            Text("This car has been sold.").popupText(.body)
         }
     }
 
@@ -171,7 +161,6 @@ struct CarPriceSheet: View {
                 }
             }
         }
-        .padding(16)
         .onAppear { if !loaded { price = car.askingPrice; loaded = true } }
     }
 
@@ -183,21 +172,11 @@ struct CarPriceSheet: View {
 /// Order cars from the current supplier: the distributor's whole range, or only the contract brand's.
 struct CarOrderSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let e = store.engine, let co = e.state.company(companyID) {
-                    list(e, e.currency(for: co))
-                }
-            }
-            .ledgerBackground()
-            .navigationTitle("Order cars").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        if let e = store.engine, let co = e.state.company(companyID) {
+            list(e, e.currency(for: co))
         }
     }
 
@@ -210,7 +189,7 @@ struct CarOrderSheet: View {
             ForEach(offers) { (o: CarDealerOffer) in
                 Button { order(o) } label: { offerCard(o, cur) }.buttonStyle(PressableStyle())
             }
-        }.padding(16)
+        }
     }
 
     private func offerCard(_ o: CarDealerOffer, _ cur: Currency) -> some View {

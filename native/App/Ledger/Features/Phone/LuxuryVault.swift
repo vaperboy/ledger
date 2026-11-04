@@ -115,7 +115,7 @@ struct LuxuryInspectSheet: View {
             Group {
                 VStack(alignment: .leading, spacing: 14) {
                     LuxuryItemHead(item: p.item)
-                    Text(useLine(e, p)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 18)
+                    Text(useLine(e, p)).popupText(.subtitle).padding(.horizontal, 18)
                     manage(e, p).padding(.horizontal, 18)
                 }
                 .padding(.bottom, 30)
@@ -162,7 +162,7 @@ struct LuxuryInspectSheet: View {
                 SegmentedPill(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in
                                 if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } }))
-                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).font(.caption2).foregroundStyle(P.inkFaint).padding(.top, 4) }
+                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).popupText(.caption).padding(.top, 4) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"
@@ -206,7 +206,7 @@ struct LuxuryInspectSheet: View {
                     }.buttonStyle(GreyOutlineButtonStyle())
                 }
                 if p.use == "museum" && p.until > e.state.week {
-                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).font(.caption).foregroundStyle(P.inkSoft)
+                    Text("At the museum until " + GameCalendar.monthString(week: p.until)).popupText(.caption)
                 }
             }.padding(.vertical, 10)
         }

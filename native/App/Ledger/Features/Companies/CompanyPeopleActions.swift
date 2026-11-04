@@ -285,7 +285,7 @@ struct CompanyPerksPopup: View {
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
             VStack(alignment: .leading, spacing: 10) {
                 Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
-                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.subtitle)
                 VStack(spacing: 0) { perkRows(e, co, cur) }
             }
             .centerSheetTitle("Perks")
@@ -310,9 +310,9 @@ struct CompanyPerksPopup: View {
         return VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink)
-                    Text(p.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    Text(costLine + " · " + fewer(p) + " people leave").font(.system(size: 11.5)).foregroundStyle(on ? P.gain : P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(p.name).popupText(.button)
+                    Text(p.detail.tidyMoney).popupText(.caption)
+                    Text(costLine + " · " + fewer(p) + " people leave").popupText(on ? .effect : .caption)
                 }
                 Spacer(minLength: 8)
                 LedgerSwitch(isOn: binding)
@@ -320,7 +320,7 @@ struct CompanyPerksPopup: View {
             }
             if p.id == "car" && on {
                 ForEach(e.companyCarRecipients(companyID: companyID)) { r in
-                    Text(recipientLine(r, cur)).font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                    Text(recipientLine(r, cur)).popupText(.caption)
                 }
             }
         }

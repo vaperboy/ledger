@@ -19,28 +19,26 @@ struct CarStandardRow: View {
 /// (terms, results, renewal, leaving early) while there is one.
 struct CarBrandScreen: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
 
+    /// A tall popup with its own pages (`PopupStack`): a brand opens its terms; closing from the terms steps back to the list.
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let e = store.engine, let co = e.state.company(companyID) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        if let a = e.carBrandContract(companyID: companyID) {
-                            CarContractView(companyID: companyID, active: a, currency: e.currency(for: co))
-                        } else {
-                            CarBrandList(companyID: companyID, terms: e.carBrandTerms(companyID: companyID), currency: e.currency(for: co))
-                        }
-                    }.padding(16)
-                }
+        PopupStack(root: { brandRoot }, destination: { (brandID: String) in CarBrandTermsView(companyID: companyID, brandID: brandID) })
+    }
+
+    private var brandRoot: some View {
+        ScrollView {
+            if let e = store.engine, let co = e.state.company(companyID) {
+                VStack(alignment: .leading, spacing: 18) {
+                    if let a = e.carBrandContract(companyID: companyID) {
+                        CarContractView(companyID: companyID, active: a, currency: e.currency(for: co))
+                    } else {
+                        CarBrandList(companyID: companyID, terms: e.carBrandTerms(companyID: companyID), currency: e.currency(for: co))
+                    }
+                }.padding(16)
             }
-            .ledgerBackground()
-            .navigationTitle("Brand contract").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .ledgerBackground()
     }
 }
 
@@ -53,9 +51,9 @@ struct CarBrandList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("A brand contract replaces the distributor: you sell only that brand, at the brand's dealer margin, for the whole term. Leaving early costs a penalty. The brand reviews you every year and offers a renewal only if it is happy.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .popupText(.subtitle)
             ForEach(terms, id: \.brand.id) { (t: CarBrandContract.Terms) in
-                NavigationLink { CarBrandTermsView(companyID: companyID, brandID: t.brand.id) } label: { card(t) }.buttonStyle(PressableStyle())
+                NavigationLink(value: t.brand.id) { card(t) }.buttonStyle(PressableStyle())
             }
         }
     }

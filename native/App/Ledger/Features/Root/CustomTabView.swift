@@ -74,7 +74,7 @@ struct CustomTabPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+            Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").popupText(.subtitle)
             if choosingCompany { companyList } else { appGrid }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,7 +120,7 @@ struct CustomTabPicker: View {
         } label: {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.home, size: 32)
-                Text("A company's page").font(.system(size: 14, weight: .medium)).foregroundStyle(P.ink)
+                Text("A company's page").popupText(.button)
                 Spacer(minLength: 8)
                 GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: P.inkFaint)
             }
@@ -153,7 +153,7 @@ struct CustomTabPicker: View {
                 } label: {
                     HStack(spacing: 10) {
                         IconCircle(glyph: Glyph.home, size: 32)
-                        Text(c.name).font(.system(size: 14)).foregroundStyle(P.ink).lineLimit(1)
+                        Text(c.name).popupText(.body).lineLimit(1)
                         Spacer(minLength: 8)
                         if store.customTarget == CustomTabTarget.company(c.id) { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.gold) }
                     }

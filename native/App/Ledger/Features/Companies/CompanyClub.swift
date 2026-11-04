@@ -434,13 +434,13 @@ struct ClubMarketView: View {
 
     private func offerSheet(_ c: FootballModel.ClubInfo, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Rough value \(cur.tidyShort(c.value)). A bad offer can end the talks for a year.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text("Rough value \(cur.tidyShort(c.value)). A bad offer can end the talks for a year.").popupText(.caption)
             if let a = answer {
-                Text(a.message.tidyMoney).font(.bodyText).foregroundStyle(a.answer == .accept ? Theme.gain : a.answer == .counter ? Theme.ivory : Theme.loss)
+                Text(a.message.tidyMoney).popupText(a.answer == .accept || a.answer == .counter ? .body : .risk)
                 if let p = a.price, a.answer == .accept || a.answer == .counter {
                     if let plan = store.engine?.clubPurchasePlan(clubID: c.id, price: p) {
                         Text("The club starts with \(cur.tidyShort(plan.clubCash)) of its own cash" + (plan.debt > 0 ? " and takes over \(cur.tidyShort(plan.debt)) of debt, \(cur.tidyShort(plan.monthlyDebtPayment)) a month for twenty years" : "") + ". You pay \(cur.tidyShort(p)) from cash and savings and have \(cur.tidyShort(max(0, plan.liquidAfter))) left." + (plan.affordable ? "" : " That is more than you have."))
-                            .font(.caption).foregroundStyle(plan.affordable ? Theme.ivoryMuted : Theme.loss).fixedSize(horizontal: false, vertical: true)
+                            .popupText(plan.affordable ? .caption : .risk)
                     }
                     Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.tidyShort(p)) {
                         switch store.act({ $0.buyClub(clubID: c.id, price: p) }) {
@@ -455,9 +455,9 @@ struct ClubMarketView: View {
                     Button { answer = store.act { $0.offerForClub(clubID: c.id, multiple: f) } } label: {
                         EntityCard {
                             HStack {
-                                Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                                Text(cur.tidyShort((c.value * f / 100000).rounded() * 100000)).popupText(.button)
                                 Spacer()
-                                Text("\(Int(f * 100))% of value").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                Text("\(Int(f * 100))% of value").popupText(.caption)
                                 MoreChevron()
                             }.contentShape(Rectangle())
                         }

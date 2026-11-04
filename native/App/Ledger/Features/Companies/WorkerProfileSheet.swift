@@ -27,7 +27,7 @@ struct WorkerProfileSheet: View {
             if let e = store.engine, let co = e.state.company(companyID), let p = e.workerProfile(companyID: companyID, employeeID: employeeID) {
                 content(e, co, p)
             } else {
-                Text("This person no longer works here.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This person no longer works here.").popupText(.body)
             }
         }
         .confirmAction($pending)
@@ -105,7 +105,7 @@ struct WorkerProfileSheet: View {
                 HStack {
                     Text("What to expect").capsLabel()
                     Spacer(minLength: 6)
-                    Text(p.meetsExpectation ? "Meets it" : "Falls short").font(.system(size: 11.5, weight: .medium)).foregroundStyle(tint)
+                    Text(p.meetsExpectation ? "Meets it" : "Falls short").popupText(p.meetsExpectation ? .effect : .risk)
                 }
                 bar("Expected for this pay", p.expectedPerformance, Theme.ivoryMuted)
                 bar("Delivers now", p.performance, tint)
@@ -145,11 +145,10 @@ struct WorkerProfileSheet: View {
     }
 
     private func promiseRow(_ x: WorkerPromise) -> some View {
-        let tint: Color = x.status == "Due" ? Theme.caution : Theme.ivory
         return Card(padding: 12, radius: Theme.Radius.row) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(x.text).font(.system(size: 13)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+                    Text(x.text).popupText(x.status == "Due" ? .risk : .body)
                     Spacer(minLength: 6)
                     Text(x.status == "Due" ? "Due now" : GameCalendar.dateString(week: x.dueWeek)).popupText(.caption)
                 }

@@ -91,7 +91,7 @@ struct HomeShortcutEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Pick up to four. \(chosen.count) of 4 chosen.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text("Pick up to four. \(chosen.count) of 4 chosen.").popupText(.subtitle)
             VStack(spacing: 6) {
                 ForEach(HomeShortcut.allCases) { item in
                     row(item)
@@ -112,7 +112,7 @@ struct HomeShortcutEditor: View {
         } label: {
             HStack(spacing: 10) {
                 GlyphView(glyph: item.glyph, size: 17, weight: 1.7)
-                Text(item.title).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                Text(item.title).popupText(.body)
                 Spacer()
                 if on { GlyphView(glyph: Glyph.check, size: 15, weight: 2, tint: Theme.gold) }
             }

@@ -56,7 +56,7 @@ struct OpsSettingSheet: View {
             if let e = store.engine, let co = e.state.company(companyID) {
                 content(co)
             } else {
-                Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text("This company no longer exists.").popupText(.body)
             }
         }
     }
@@ -96,7 +96,7 @@ struct OpsSettingSheet: View {
         return Card {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SegmentedPill(items: [0, 1, 2], title: { names[$0] }, selection: binding)
-                Text(note).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text(note).popupText(.caption)
             }
         }
     }

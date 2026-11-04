@@ -174,30 +174,30 @@ struct GroupSupplierDirectory: View {
         let extra: Double = en.uses.compactMap { $0.option.dealExtra }.max() ?? 0
         let risks: [String] = Array(Set(en.uses.flatMap { $0.option.risks })).sorted()
         return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(en.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+            HStack(spacing: 6) {
                 Chip(text: Self.badge(o, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
+                Spacer(minLength: 0)
             }
             Group {
                 VStack(alignment: .leading, spacing: 6) {
-                    line("Supplies", Self.whatText(en))
-                    line("Quality", o.quality ?? "Not rated")
-                    line("Lead time", o.delivery)
-                    line("Reliability", o.reliability)
-                    line("Total spent a year", home.tidyShort(en.spendHome))
-                    if discount > 0 { line("Discount", "\(Int((discount * 100).rounded()))% off") }
-                    if extra > 0 { line("Negotiated", "\(Int((extra * 100).rounded()))% extra off", tint: Theme.gain) }
-                    if !risks.isEmpty { line("Risk", risks.joined(separator: " "), tint: Theme.caution) }
+                    PopupRow(label: "Supplies", value: Self.whatText(en))
+                    PopupRow(label: "Quality", value: o.quality ?? "Not rated")
+                    PopupRow(label: "Lead time", value: o.delivery)
+                    PopupRow(label: "Reliability", value: o.reliability)
+                    PopupRow(label: "Total spent a year", value: home.tidyShort(en.spendHome))
+                    if discount > 0 { PopupRow(label: "Discount", value: "\(Int((discount * 100).rounded()))% off") }
+                    if extra > 0 { Text("Negotiated: \(Int((extra * 100).rounded()))% extra off.").popupText(.effect) }
+                    if !risks.isEmpty { Text("Risk: " + risks.joined(separator: " ")).popupText(.risk) }
                     Text("Terms by company").capsLabel(Theme.ivoryFaint).padding(.top, 4)
                     ForEach(Array(en.uses.enumerated()), id: \.offset) { pair in
-                        line(pair.element.companyName, pair.element.option.terms)
+                        PopupRow(label: pair.element.companyName, value: pair.element.option.terms)
                     }
                 }
             }
             openButtons(en)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .centerSheetTitle(en.name)
     }
 
     @ViewBuilder private func openButtons(_ en: Entry) -> some View {
@@ -209,14 +209,6 @@ struct GroupSupplierDirectory: View {
                     store.openCompany(id, section: .operations, part: OpsPart.suppliers.rawValue)
                 }
             }
-        }
-    }
-
-    private func line(_ label: String, _ value: String, tint: Color = Theme.ivory) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            Spacer(minLength: 12)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(tint).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

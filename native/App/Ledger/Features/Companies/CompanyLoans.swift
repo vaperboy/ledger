@@ -85,13 +85,13 @@ struct RepayLoanSheet: View {
                         .init(label: "Company cash", value: cur.tidyShort(cash), tint: cash < loan.balance ? P.caution : P.ink),
                     ])
                     AmountField(title: "Repay", currency: cur, amount: $amount)
-                    if cash < loan.balance { Text("The company holds less than the whole balance: put money in first to repay it all.").font(.caption).foregroundStyle(P.caution) }
+                    if cash < loan.balance { Text("The company holds less than the whole balance: put money in first to repay it all.").popupText(.risk) }
                     HStack {
                         Button("Repay this amount…") { confirmRepay(min(amount, loan.balance), cur, cash) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
                         Button("Repay all…") { confirmRepay(loan.balance, cur, cash) }.buttonStyle(QuietButtonStyle())
                     }
                     Text("Paid from the company's cash, with no fee for paying early. Less owed means less interest; the monthly instalment falls with the balance.")
-                        .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                        .popupText(.caption)
                 }
             }
         }
