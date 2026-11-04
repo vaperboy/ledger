@@ -94,6 +94,8 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO > build.log 2>&1; then
             grep -E "error:" build.log | sort -u | head -80
+            grep -E "failed|Segmentation|Stack dump|fatal|Command .* failed|unable to" build.log | sort -u | head -30
+            tail -n 25 build.log
             exit 1
           fi
           grep -E "warning:" build.log | grep "/native/App/" | sort -u | head -30 || true
