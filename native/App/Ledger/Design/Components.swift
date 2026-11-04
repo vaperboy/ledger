@@ -595,42 +595,40 @@ enum ConfirmThreshold {
 }
 
 /// Holds the popup for a `PendingAction`: setting `pending` either runs it at once (a small or free action) or opens the popup.
-/// The popup is a clear full-screen cover, so it sits above the whole screen (and above a sheet) whichever view the modifier is on.
+/// The question is registered with the app's popup host (highest priority, above any popup or sheet that raised it). Nothing is
+/// presented, so no screen underneath changes.
 private struct ConfirmActionModifier: ViewModifier {
     @Binding var pending: PendingAction?
     @State private var asked: PendingAction?
 
     func body(content: Content) -> some View {
-        content
+        let current: PendingAction? = asked
+        return content
             .onChange(of: pending?.id) { _, _ in settle() }
-            .fullScreenCover(item: $asked) { p in
-                ConfirmPopup(action: p, onConfirm: { answer(p, go: true) }, onCancel: { answer(p, go: false) })
-                    .pageArrive()
-                    .presentationBackground(.clear)
-            }
+            .modifier(HostedPopupModifier(key: current.map { (p: PendingAction) -> String in "confirm-" + p.id.uuidString } ?? "confirm", priority: .confirm,
+                                          active: current != nil, draw: .raw,
+                                          onClose: { if let p = current { answer(p, go: false) } }, onDismiss: nil,
+                                          card: { () -> AnyView in
+                                              guard let p = current else { return AnyView(EmptyView()) }
+                                              return AnyView(ConfirmPopup(action: p, onConfirm: { answer(p, go: true) }, onCancel: { answer(p, go: false) }))
+                                          }))
     }
 
     private func settle() {
-        guard let p = pending else { instant { asked = nil }; return }
+        guard let p = pending else { asked = nil; return }
         if ConfirmThreshold.skips(p) {
             pending = nil
             p.run()
         } else {
-            instant { asked = p }
+            asked = p
         }
     }
 
     private func answer(_ p: PendingAction, go: Bool) {
-        instant { asked = nil; pending = nil }
-        // Once the cover is gone, so the action may open or close screens without clashing with it.
+        asked = nil
+        pending = nil
+        // Once the popup is gone, so the action may open or close screens without clashing with it.
         if go { DispatchQueue.main.async { p.run() } }
-    }
-
-    /// The popup fades in itself; the system slide-up of a cover is switched off.
-    private func instant(_ change: () -> Void) {
-        var t = Transaction()
-        t.disablesAnimations = true
-        withTransaction(t, change)
     }
 }
 

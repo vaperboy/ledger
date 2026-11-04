@@ -10,7 +10,9 @@ import Simulation
 /// ownership and the books, and that the loan guarantees stay. The owner always pays the share capital personally. Cancelling changes nothing.
 struct ConversionSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     @State private var payer: CompanyConversion.Payer = .personal
     @State private var pending: PendingAction?

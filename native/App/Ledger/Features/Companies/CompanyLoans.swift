@@ -64,7 +64,9 @@ struct CompanyLoans: View {
 struct RepayLoanSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var engine: GameEngine
     var company: Company
     var loan: Loan

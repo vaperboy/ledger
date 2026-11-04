@@ -15,7 +15,9 @@ import Simulation
 /// labour data requires, and what the person answers. The screen shows the preview before anything is confirmed and the answer after.
 struct ContractDiscussionView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var personID: Int
     var startTopic: ContractTalk.Topic? = nil

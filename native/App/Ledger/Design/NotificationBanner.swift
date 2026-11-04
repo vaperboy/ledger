@@ -114,9 +114,11 @@ struct NotificationBannerLayer: View {
                     .id(item.id)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
-            if let c = queue.confirm { confirmPopup(c) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .hostedPopup(key: "banner-confirm", priority: .confirm, active: queue.confirm != nil, onClose: { queue.confirm = nil }) {
+            if let c = queue.confirm { confirmPopup(c) }
+        }
         .animation(slide, value: queue.current?.id)
         .task(id: key) {
             if key.blocked || key.hasCurrent || !key.hasPending { return }
@@ -150,7 +152,6 @@ struct NotificationBannerLayer: View {
                     .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("banner-go")
             }
         }
-        .transition(.opacity)
     }
 
     /// Reads the Phone's standing alerts (payroll, weather, open decisions) into banners.

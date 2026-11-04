@@ -61,7 +61,6 @@ struct CompaniesView: View {
                 }
             }
             .ledgerBackground()
-            .overlay { celebration }
             .onAppear { store.refreshPending() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
@@ -157,15 +156,6 @@ struct CompaniesView: View {
                     .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-group")
                 }
             }
-        }
-    }
-
-    /// The reward popup, once the report sheet (if any) has been read.
-    @ViewBuilder private var celebration: some View {
-        if store.ambitionPrompt {
-            AmbitionPrompt().transition(.opacity)
-        } else if store.reportSheet == nil, store.dailySheet == nil, let first = store.celebrationQueue.first {
-            CelebrationPopup(item: first).id(first.id).transition(.opacity)
         }
     }
 

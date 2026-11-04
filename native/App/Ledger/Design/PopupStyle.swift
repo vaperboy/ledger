@@ -1,0 +1,135 @@
+import SwiftUI
+
+// The rule set of every popup (see native/docs/POPUPS.md). Content never picks its own font, size or colour: it names a ROLE.
+// A popup that does something more important (an expensive or irreversible confirmation, a report, a reward) names a VARIANT, and only
+// the exceptions declared here apply. One card (`CenterSheetFrame` / `GamePopup`), one header (title left, x right), one footer
+// (Cancel | Apply, `PopupFooter`).
+
+/// The text roles of a popup.
+enum PopupRole {
+    /// Header title (drawn by the frame, serif 16 semibold).
+    case title
+    /// A second line under a heading: 12.5 soft.
+    case subtitle
+    /// Running text: 14.
+    case body
+    /// Small explanation or note: 12 soft.
+    case caption
+    /// A key amount or number: 22 serif, monospaced digits.
+    case figure
+    /// Left side of a row: 13 soft.
+    case rowLabel
+    /// Right side of a row: 13.5 medium, monospaced digits.
+    case rowValue
+    /// What an option does to the numbers (a consequence line): 12, gold.
+    case effect
+    /// A risk or validation line: 12.5, warning colour.
+    case risk
+    /// A button label in the footer: 14 medium.
+    case button
+}
+
+/// The declared exceptions. Anything else is `.standard`.
+enum PopupVariant {
+    case standard
+    /// Red alert over everything (a company about to be force-sold): white text.
+    case alert
+    /// A spend: gold foil footer, the amount in the label.
+    case expensive
+    /// Irreversible: red footer and a red risk line.
+    case destructive
+    /// A week, month or year report: larger figure.
+    case report
+    /// A reward or milestone: larger gold figure.
+    case reward
+
+    var figureSize: CGFloat {
+        switch self {
+        case .report: return 28
+        case .reward: return 30
+        default: return 22
+        }
+    }
+
+    var risksAreRed: Bool { self == .destructive }
+    var footerTone: PopupFooter.Tone {
+        switch self {
+        case .expensive: return .expensive
+        case .destructive: return .destructive
+        default: return .normal
+        }
+    }
+}
+
+/// One spacing scale for the inside of every popup.
+enum PopupSpace {
+    static let tight: CGFloat = 4
+    static let row: CGFloat = 8
+    static let block: CGFloat = 12
+    static let card: CGFloat = 16
+}
+
+private struct PopupTextStyle: ViewModifier {
+    @Environment(\.outsidePalette) private var P
+    var role: PopupRole
+    var variant: PopupVariant
+
+    private var ink: Color { variant == .alert ? Color.white : P.ink }
+    private var soft: Color { variant == .alert ? Color.white.opacity(0.9) : P.inkSoft }
+
+    func body(content: Content) -> some View {
+        switch role {
+        case .title:
+            content.font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(ink)
+        case .subtitle:
+            content.font(.system(size: 12.5)).foregroundStyle(soft).fixedSize(horizontal: false, vertical: true)
+        case .body:
+            content.font(.system(size: 14)).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
+        case .caption:
+            content.font(.system(size: 12)).foregroundStyle(soft).fixedSize(horizontal: false, vertical: true)
+        case .figure:
+            content.font(.system(size: variant.figureSize, weight: .medium, design: .serif).monospacedDigit())
+                .foregroundStyle(variant == .reward ? Theme.gold : ink)
+        case .rowLabel:
+            content.font(.system(size: 13)).foregroundStyle(soft)
+        case .rowValue:
+            content.font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(ink)
+        case .effect:
+            content.font(.system(size: 12)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
+        case .risk:
+            content.font(.system(size: 12.5)).foregroundStyle(variant.risksAreRed ? P.loss : P.caution).fixedSize(horizontal: false, vertical: true)
+        case .button:
+            content.font(.system(size: 14, weight: .medium)).foregroundStyle(ink)
+        }
+    }
+}
+
+extension View {
+    /// Gives this text the font and colour of a popup role (and, for a declared variant, its exceptions).
+    func popupText(_ role: PopupRole, variant: PopupVariant = .standard) -> some View {
+        modifier(PopupTextStyle(role: role, variant: variant))
+    }
+}
+
+/// The one row of a popup: the label left, the value right.
+struct PopupRow: View {
+    var label: String
+    var value: String
+    var variant: PopupVariant = .standard
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PopupSpace.row) {
+            Text(label).popupText(.rowLabel, variant: variant)
+            Spacer(minLength: PopupSpace.row)
+            Text(value).popupText(.rowValue, variant: variant).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+/// The vertical stack every popup body is built in.
+struct PopupBody<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: PopupSpace.block) { content() }
+    }
+}

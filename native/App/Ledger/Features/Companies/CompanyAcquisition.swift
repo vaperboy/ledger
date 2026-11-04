@@ -8,7 +8,9 @@ import Simulation
 /// take on and what changes in control, before anything is paid. Figures come from `acquisitionPlan`, which repeats the checks of the purchase.
 struct AcquisitionSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var rivalID: Int
     var price: Double

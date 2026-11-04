@@ -21,7 +21,9 @@ struct DecideRef: Identifiable, Hashable {
 /// One popup (medium and large detents) for one row and one company. Every choice calls the engine's own action.
 struct DecidesSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var kind: DecideKind
     @State private var showManager = false

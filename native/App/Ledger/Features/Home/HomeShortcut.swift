@@ -84,7 +84,9 @@ struct DayChip: Equatable, Identifiable {
 /// Choose up to four shortcuts for Home.
 struct HomeShortcutEditor: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var chosen: [HomeShortcut] = []
 
     var body: some View {

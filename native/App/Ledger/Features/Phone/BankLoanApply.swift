@@ -9,7 +9,9 @@ import Simulation
 /// Every figure comes from `loanAssessment`, `loanApplicationQuote` and `loanAgreement`; `applyForLoan` re-checks everything and may refuse with a reason.
 struct BankLoanApplyFlow: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var account: BankAccountID
     @State private var step = 1   // 1 Offer, 2 Choose, 3 Confirm
     @State private var amount = 0.0

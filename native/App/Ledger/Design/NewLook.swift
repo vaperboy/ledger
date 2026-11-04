@@ -369,7 +369,9 @@ struct HomeHeader: View {
 /// back button above the content. Back from the first screen a link from another tab pushed returns to that tab (see `GameStore.setPath`).
 /// `trailing` is for a screen's own menu (the Inbox options). Apply it to the content of a `navigationDestination`, not to a tab root.
 struct AppScreen<Trailing: View>: ViewModifier {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @Environment(\.outsidePalette) private var palette
     @Environment(\.hidesRootBack) private var hidesRootBack
     var title: String

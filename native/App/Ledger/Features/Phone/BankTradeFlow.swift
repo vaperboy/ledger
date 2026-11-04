@@ -39,7 +39,9 @@ enum BankTradeSide: String, Identifiable { case buy, sell; var id: String { rawV
 struct BankAssetScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var quote: Quote
     @State private var side: BankTradeSide?
 
@@ -106,7 +108,9 @@ struct BankAssetScreen: View {
 struct BankTradeFlow: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var quote: Quote
     var side: BankTradeSide
     @State private var step = 1

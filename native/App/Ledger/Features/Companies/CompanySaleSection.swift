@@ -119,7 +119,9 @@ struct CompanySaleSection: View {
 /// The talk with one buyer: ask about the staff and how they would pay, name a price (they agree, stretch, or lose patience), then sign.
 struct BuyerTalkSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var offerID: Int
     var onSign: (CompanySale.Offer) -> Void

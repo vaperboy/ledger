@@ -97,7 +97,9 @@ struct TeamPageDestination: View {
     @EnvironmentObject var store: GameStore
     var page: TeamPage
     var companyID: Int
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {

@@ -41,7 +41,9 @@ enum BankGlyph {
 struct BankApp: View {
     private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     /// The account the player logged in as; nil shows the picker (the first page). `account` is nil on the all-accounts overview.
     @State private var session: BankAccountID?
     @State private var account: BankAccountID?

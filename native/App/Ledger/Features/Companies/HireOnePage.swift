@@ -12,7 +12,9 @@ import Simulation
 /// `embedded`: shown inside the hiring popup (no screen frame, no scroll view of its own: the popup's `FitScroll` hugs each page).
 struct HireOnePage: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var request: HireRequest
     var embedded = false

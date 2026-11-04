@@ -145,7 +145,9 @@ struct GroupEntityBoard: View {
 /// Appoint button. The owners vote on a director; the result shows as a message.
 struct SeatPickerSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var key: String
     var role: String
     @State private var refresh = 0

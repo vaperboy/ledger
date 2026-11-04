@@ -19,7 +19,9 @@ struct CarStandardRow: View {
 /// (terms, results, renewal, leaving early) while there is one.
 struct CarBrandScreen: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
 
     var body: some View {
@@ -88,7 +90,9 @@ struct CarBrandList: View {
 /// The terms of one brand and the button to sign.
 struct CarBrandTermsView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var brandID: String
     @State private var pending: PendingAction?
