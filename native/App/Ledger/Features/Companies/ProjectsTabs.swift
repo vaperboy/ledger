@@ -242,7 +242,7 @@ struct ProjectsBidsTab: View {
                 NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: {
                     outlined("Details", strong: false)
                 }.buttonStyle(PressableStyle())
-                Button { Haptics.choose(); withAnimation(.snappy(duration: 0.2)) { openKey = openKey == x.id ? nil : x.id; priceIndex = 3; higherQuality = false } } label: {
+                Button { Haptics.choose(); Motion.animate(Motion.quickAnimation) { openKey = openKey == x.id ? nil : x.id; priceIndex = 3; higherQuality = false } } label: {
                     outlined(openKey == x.id ? "Close" : "Place a bid ›", strong: true)
                 }.buttonStyle(PressableStyle())
             }

@@ -37,7 +37,7 @@ struct AppLaunchSplash<Content: View>: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens the app")
         .task {
-            if !reduceMotion { withAnimation(.easeOut(duration: 0.4)) { settled = true } }
+            if !reduceMotion { Motion.animate(Motion.quickAnimation) { settled = true } }
             try? await Task.sleep(nanoseconds: 500_000_000)
             dismiss()
         }
@@ -64,6 +64,6 @@ struct AppLaunchSplash<Content: View>: View {
 
     private func dismiss() {
         guard showing else { return }
-        withAnimation(.easeInOut(duration: reduceMotion ? 0.12 : 0.28)) { showing = false }
+        Motion.animate(reduceMotion ? Motion.tapAnimation : Motion.quickAnimation) { showing = false }
     }
 }

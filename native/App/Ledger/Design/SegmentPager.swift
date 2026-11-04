@@ -18,7 +18,7 @@ struct SegmentPager<T: Hashable, Content: View>: View {
     }
 
     var body: some View {
-        let anim: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+        let anim: Animation? = reduceMotion ? nil : Motion.quickAnimation
         TabView(selection: $selection) {
             ForEach(items, id: \.self) { (item: T) in
                 content(item)

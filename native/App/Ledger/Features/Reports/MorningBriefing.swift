@@ -94,7 +94,7 @@ struct DailyReportPopup: View {
     private func run(count n: Int) async {
         if reduceMotion { return }
         let total: Double = Self.barDuration
-        withAnimation(.easeInOut(duration: total)) { barFill = 1 }
+        Motion.animate(Motion.revealAnimation) { barFill = 1 }
         var elapsed: Double = 0
         for i in 0..<n {
             let at: Double = timeFor(progress: (Double(i) + 0.5) / Double(n)) * total
@@ -102,21 +102,21 @@ struct DailyReportPopup: View {
             try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
             if skipped { return }
             elapsed = max(elapsed, at)
-            withAnimation(.easeOut(duration: 0.3)) { revealed = i + 1 }
+            Motion.animate(Motion.quickAnimation) { revealed = i + 1 }
         }
         let rest: Double = max(0, total - elapsed)
         try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000))
         if skipped { return }
-        withAnimation(.easeOut(duration: 0.3)) { showContinue = true }
+        Motion.animate(Motion.quickAnimation) { showContinue = true }
     }
 
     private func skip(count n: Int) {
         if reduceMotion || skipped || showContinue { return }
         skipped = true
-        withAnimation(.easeOut(duration: 0.15)) { revealed = n; barFill = 1 }
+        Motion.animate(Motion.tapAnimation) { revealed = n; barFill = 1 }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
-            withAnimation(.easeOut(duration: 0.3)) { showContinue = true }
+            Motion.animate(Motion.quickAnimation) { showContinue = true }
         }
     }
 

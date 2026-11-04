@@ -19,7 +19,7 @@ struct NewMarkerShape: View {
             .scaleEffect(pulsed ? 1.0 : 1.18)
             .onAppear {
                 if reduceMotion { pulsed = true; return }
-                withAnimation(.easeOut(duration: 0.7)) { pulsed = true }
+                Motion.animate(Motion.revealAnimation) { pulsed = true }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(important ? "Important" : "New")
@@ -101,7 +101,7 @@ struct NewMarker: View {
                     guard pageActive else { return }
                     try? await Task.sleep(nanoseconds: 1_200_000_000)
                     if !Task.isCancelled {
-                        withAnimation(.easeOut(duration: 0.25)) { store.markItemSeen(app, id) }
+                        Motion.animate(Motion.quickAnimation) { store.markItemSeen(app, id) }
                         budget?.release(key)
                     }
                 }
@@ -130,7 +130,7 @@ struct NewGroupMarker: View {
                     guard pageActive else { return }
                     try? await Task.sleep(nanoseconds: 1_200_000_000)
                     if !Task.isCancelled {
-                        withAnimation(.easeOut(duration: 0.25)) { for id in live { store.markItemSeen(app, id) } }
+                        Motion.animate(Motion.quickAnimation) { for id in live { store.markItemSeen(app, id) } }
                         budget?.release(key)
                     }
                 }

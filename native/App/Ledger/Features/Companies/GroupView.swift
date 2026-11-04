@@ -90,11 +90,11 @@ struct GroupView: View {
     }
 
     private func open(_ g: GroupEntity, _ s: GroupSection) {
-        withAnimation(.snappy(duration: 0.25)) { section = s; pickedID = g.id }
+        Motion.animate(Motion.quickAnimation) { section = s; pickedID = g.id }
     }
 
     private func close() {
-        withAnimation(.snappy(duration: 0.25)) { pickedID = nil; section = .overview }
+        Motion.animate(Motion.quickAnimation) { pickedID = nil; section = .overview }
     }
 
     /// A request from another screen (a chain store's menu, the Team tab): show that company's entity page at the asked section.

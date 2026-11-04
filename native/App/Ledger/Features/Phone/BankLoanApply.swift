@@ -68,7 +68,7 @@ struct BankLoanApplyFlow: View {
     }
 
     private func back() {
-        if approved != nil || step == 1 { dismiss() } else { withAnimation(.snappy(duration: 0.2)) { step -= 1 }; refusal = nil }
+        if approved != nil || step == 1 { dismiss() } else { Motion.animate(Motion.quickAnimation) { step -= 1 }; refusal = nil }
     }
 
     @ViewBuilder private func stepContent(_ e: GameEngine, _ a: LoanAssessment, _ q: LoanApplicationQuote, _ cur: Currency) -> some View {

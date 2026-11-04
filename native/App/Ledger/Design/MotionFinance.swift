@@ -30,7 +30,7 @@ struct ProfitGlow: ViewModifier {
                 let mine: Int = token
                 phase = -0.6
                 active = true
-                withAnimation(.easeInOut(duration: 0.8)) { phase = 1.1 }
+                Motion.animate(Motion.revealAnimation) { phase = 1.1 }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 900_000_000)
                     if mine == token { active = false }
@@ -56,7 +56,7 @@ struct DrawInOnce: ViewModifier {
             .onAppear {
                 guard !started else { return }
                 started = true
-                if reduceMotion { progress = 1 } else { withAnimation(.easeOut(duration: duration)) { progress = 1 } }
+                if reduceMotion { progress = 1 } else { Motion.animate(Motion.revealAnimation) { progress = 1 } }
             }
     }
 }
@@ -66,9 +66,9 @@ struct DrawInOnce: ViewModifier {
 /// A debt or loan figure: rolls down and flashes red to neutral when it falls (`moneyFlash`), and the bar beside it should use `.animation(Motion.fill(...))`.
 extension Motion {
     /// A progress bar or ring filling to a new value (500 ms ease-out); nil under Reduce Motion.
-    static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.5) }
+    static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
     /// A figure counting to a new value (350 ms); nil under Reduce Motion.
-    static func count(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.35) }
+    static func count(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
 }
 
 // MARK: Gold pulse
@@ -90,7 +90,7 @@ struct GoldPulse: ViewModifier {
             .onChange(of: trigger) { old, new in
                 guard new, !old, !reduceMotion else { return }
                 pulse = false
-                withAnimation(.easeOut(duration: 0.7)) { pulse = true }
+                Motion.animate(Motion.revealAnimation) { pulse = true }
             }
     }
 }
@@ -110,7 +110,7 @@ struct StaggerReveal: ViewModifier {
             .onAppear {
                 guard !shown else { return }
                 if reduceMotion { shown = true; return }
-                withAnimation(.easeOut(duration: 0.28).delay(Double(min(index, 12)) * 0.04)) { shown = true }
+                Motion.animate(Motion.quickAnimation.delay(Double(min(index, 12)) * 0.04)) { shown = true }
             }
     }
 }
@@ -169,9 +169,9 @@ struct TransferChipView: View {
         .offset(y: reduceMotion ? 0 : (step == 0 ? 24 : (step == 1 ? 0 : -24)))
         .task(id: chip.id) {
             step = 0
-            withAnimation(.easeOut(duration: 0.35)) { step = 1 }
+            Motion.animate(Motion.quickAnimation) { step = 1 }
             try? await Task.sleep(nanoseconds: 900_000_000)
-            withAnimation(.easeIn(duration: 0.4)) { step = 2 }
+            Motion.animate(Motion.quickAnimation) { step = 2 }
             try? await Task.sleep(nanoseconds: 450_000_000)
             if store.transferChip?.id == chip.id { store.clearChip() }
         }
@@ -205,8 +205,8 @@ struct GoldReveal<Content: View>: View {
             .scaleEffect(shown || reduceMotion ? 1 : 0.97)
             .onAppear {
                 guard !reduceMotion else { return }
-                withAnimation(.easeOut(duration: 0.35)) { shown = true }
-                withAnimation(.easeInOut(duration: 0.9)) { edge = 1 }
+                Motion.animate(Motion.quickAnimation) { shown = true }
+                Motion.animate(Motion.revealAnimation) { edge = 1 }
             }
     }
 }
@@ -238,8 +238,8 @@ struct GoldRingMark: View {
         .frame(width: size, height: size)
         .onAppear {
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.8)) { draw = 1 }
-            withAnimation(.easeInOut(duration: 0.6).delay(0.5)) { sweep = 0.5 }
+            Motion.animate(Motion.revealAnimation) { draw = 1 }
+            Motion.animate(Motion.revealAnimation.delay(0.5)) { sweep = 0.5 }
         }
     }
 }

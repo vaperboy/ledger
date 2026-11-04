@@ -26,7 +26,7 @@ struct AmbitionPrompt: View {
                 .scaleEffect(shown || reduceMotion ? 1 : 0.94)
                 .opacity(shown ? 1 : 0)
         }
-        .onAppear { withAnimation(Motion.arrive(reduceMotion)) { shown = true } }
+        .onAppear { Motion.animate(Motion.arrive(reduceMotion)) { shown = true } }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }

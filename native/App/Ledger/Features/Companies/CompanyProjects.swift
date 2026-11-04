@@ -101,7 +101,7 @@ private struct JobList: View {
             }
             if j.started {
                 RateBar(label: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h", fraction: j.progress, tint: j.held ? Theme.caution : Theme.gain)
-                    .animation(Animation.easeInOut(duration: 0.35), value: j.progress)
+                    .animation(Motion.quickAnimation, value: j.progress)
                 if j.held { Text("Held up").font(.system(size: 11)).foregroundStyle(Theme.caution) }
             }
         }
@@ -166,7 +166,7 @@ private struct JobList: View {
     private func tenderBody(_ t: ProjectBoard.TenderRow) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.snappy(duration: 0.2)) { openTender = openTender == t.id ? nil : t.id }
+                Motion.animate(Motion.quickAnimation) { openTender = openTender == t.id ? nil : t.id }
                 Haptics.choose()
             } label: {
                 HStack(alignment: .firstTextBaseline) {
@@ -245,7 +245,7 @@ private struct DevelopmentList: View {
             MoreHeader(glyph: Glyph.projects, title: "Developments", blurb: "Land, zoning, building and selling units: each development is one project with its own risks.")
             Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: devItems(active)) }
             MoreBlock(title: "Developments", card: false, trailing: {
-                Button(showStart ? "Close" : "Start a project") { withAnimation(.snappy(duration: 0.2)) { showStart.toggle() }; Haptics.choose() }.buttonStyle(TinyButtonStyle())
+                Button(showStart ? "Close" : "Start a project") { Motion.animate(Motion.quickAnimation) { showStart.toggle() }; Haptics.choose() }.buttonStyle(TinyButtonStyle())
             }) {
                 if showStart { Card(padding: 14, radius: Theme.Radius.card) { startSheet } }
                 if active.isEmpty && !showStart {
@@ -363,7 +363,7 @@ private struct DevelopmentList: View {
                 }
             }
             RateBar(label: "Sold", fraction: p.units > 0 ? Double(p.sold) / Double(p.units) : 0, tint: Theme.gain)
-                .animation(Animation.easeInOut(duration: 0.35), value: p.sold)
+                .animation(Motion.quickAnimation, value: p.sold)
             if p.loanBalance > 0 { Text("Construction loan \(store.short(p.loanBalance, in: company)), repaid from 70% of each sale").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
             HStack {
                 Text("Price per unit \(store.short(p.unitPrice * p.priceMultiplier, in: company))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)

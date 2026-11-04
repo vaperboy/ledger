@@ -69,7 +69,7 @@ struct CompanyManagement: View {
         VStack(spacing: 6) {
             ForEach(rows) { (node: OrgNode) -> AnyView in AnyView(thinRow(node)) }
             if !nodes.hidden.isEmpty {
-                Button { Haptics.tap(); withAnimation(.snappy(duration: 0.2)) { showVacant.toggle() } } label: {
+                Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showVacant.toggle() } } label: {
                     Text(showVacant ? "Hide other posts" : "Other posts (\(nodes.hidden.count) open) \u{203A}")
                         .font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 30)
                 }.buttonStyle(PressableStyle())

@@ -19,7 +19,7 @@ struct TabPager<Content: View>: View {
     @State private var settling = false
 
     private let tabs: [AppTab] = AppTab.allCases
-    private let spring: Animation = .spring(response: 0.3, dampingFraction: 0.9)
+    private let spring: Animation = Motion.moveAnimation
 
     init(@ViewBuilder content: @escaping (AppTab) -> Content) { self.content = content }
 
@@ -40,7 +40,7 @@ struct TabPager<Content: View>: View {
         // The mask reaches under the status bar, so the page colour is never cut off at the top safe area.
         .mask(Rectangle().ignoresSafeArea())
         .background(Theme.page.ignoresSafeArea())
-        .animation(reduceMotion ? .easeOut(duration: 0.2) : spring, value: store.tab)
+        .animation(reduceMotion ? Motion.quickAnimation : spring, value: store.tab)
         .onChange(of: store.tab) { _, _ in
             settling = true
             Task { @MainActor in

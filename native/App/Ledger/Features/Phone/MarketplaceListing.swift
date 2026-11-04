@@ -31,7 +31,7 @@ struct ShakeOnChange: ViewModifier {
         } else {
             content
                 .modifier(ShakeEffect(count: CGFloat(count)))
-                .animation(.linear(duration: 0.4), value: count)
+                .animation(Motion.quickAnimation, value: count)
         }
     }
 }
@@ -204,7 +204,7 @@ struct MarketplaceDealView: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(P.line)
                 Capsule().fill(P.accent).frame(width: geo.size.width * ratio)
-                    .animation(.easeOut(duration: 0.3), value: ratio)
+                    .animation(Motion.quickAnimation, value: ratio)
             }
         }
         .frame(height: 4)

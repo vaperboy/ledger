@@ -5,29 +5,44 @@ import UIKit
 /// a reward appeared, a segment changed). Every site passes the environment's Reduce Motion flag through here, so the setting is
 /// respected everywhere from one place. Pure functions: no screen state, nothing to keep in step.
 enum Motion {
-    // Under Reduce Motion the root view drops the animation of every transaction (`RootView`, `.transaction`), so the plain
-    // `withAnimation` calls all over the app need no wrapper of their own.
-    /// The ordinary short ease for a state change; nil when Reduce Motion is on.
-    static func standard(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeInOut(duration: 0.22) }
-    /// A calm spring for something that arrives (the reward popup); nil when Reduce Motion is on.
-    static func arrive(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.86) }
-    // Brief 9.1 constants. Under Reduce Motion each returns nil (no animation).
+    // Brief 9.1: every duration and curve of the app lives here and nowhere else. Under Reduce Motion the root view drops the animation of
+    // every transaction (`RootView`, `.transaction`), so the plain constants need no wrapper of their own at the call site.
     /// `tap`: button press, 0.12 s ease-out.
-    static func tap(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.12) }
+    static let tapAnimation: Animation = .easeOut(duration: 0.12)
     /// `quick`: toggles, row expand, pill changes, 0.22 s ease-in-out.
-    static func quick(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeInOut(duration: 0.22) }
-    /// `move`: sheets and cards sliding, spring(response 0.32, damping 0.86).
-    static func move(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86) }
+    static let quickAnimation: Animation = .easeInOut(duration: 0.22)
+    /// `move`: sheets and cards sliding, section reorder, spring(response 0.32, damping 0.86).
+    static let moveAnimation: Animation = .spring(response: 0.32, dampingFraction: 0.86)
     /// `reveal`: counting numbers and bar growth in reports, 0.6 s ease-out.
-    static let revealSeconds: Double = 0.6
-    static func reveal(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.6) }
+    static let revealAnimation: Animation = .easeOut(duration: 0.6)
+    /// `pulse`: 1.2 s cycle (0.6 s each way), opacity 1.0 to 0.6, for the unpressed primary action and a new `Needs you` item.
+    static let pulseAnimation: Animation = .easeInOut(duration: 0.6).repeatForever(autoreverses: true)
     /// `celebrate`: goal complete, record line, 1.5 s in total.
     static let celebrateSeconds: Double = 1.5
-    /// `pulse`: 1.2 s cycle, opacity 1.0 to 0.6.
+    static let revealSeconds: Double = 0.6
+    /// `pulse`: 1.2 s cycle.
     static let pulseSeconds: Double = 1.2
-    /// Runs `body` with the standard animation, or at once when Reduce Motion is on.
+
+    /// Runs `body` with an animation (one of the constants above). The only door to `withAnimation` in the app.
+    static func animate<R>(_ animation: Animation?, _ body: () throws -> R) rethrows -> R {
+        try SwiftUI.withAnimation(animation, body)
+    }
+
+    /// The ordinary short ease for a state change; nil when Reduce Motion is on.
+    static func standard(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : quickAnimation }
+    /// A calm spring for something that arrives (the reward popup); nil when Reduce Motion is on.
+    static func arrive(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : moveAnimation }
+    /// `tap`; nil when Reduce Motion is on.
+    static func tap(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : tapAnimation }
+    /// `quick`; nil when Reduce Motion is on.
+    static func quick(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : quickAnimation }
+    /// `move`; nil when Reduce Motion is on.
+    static func move(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : moveAnimation }
+    /// `reveal`; nil when Reduce Motion is on.
+    static func reveal(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : revealAnimation }
+    /// Runs `body` with the quick animation, or at once when Reduce Motion is on.
     static func run(_ reduceMotion: Bool, _ body: () -> Void) {
-        if reduceMotion { body() } else { SwiftUI.withAnimation(.easeInOut(duration: 0.22), body) }
+        if reduceMotion { body() } else { SwiftUI.withAnimation(quickAnimation, body) }
     }
 }
 
@@ -40,7 +55,7 @@ struct PressableStyle: ButtonStyle {
         configuration.label
             .opacity(configuration.isPressed ? 0.6 : 1)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(Motion.tap(reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -140,7 +155,7 @@ struct PageArrive: ViewModifier {
             .opacity(shown || reduceMotion ? 1 : 0)
             .scaleEffect(shown || reduceMotion ? 1 : 0.97)
             .onAppear {
-                if reduceMotion { shown = true } else { withAnimation(Motion.arrive(false)) { shown = true } }
+                if reduceMotion { shown = true } else { SwiftUI.withAnimation(Motion.moveAnimation) { shown = true } }
             }
     }
 }
@@ -168,10 +183,10 @@ struct MoneyFlash: ViewModifier {
         let tint: Color = flash > 0 ? Theme.gain : Theme.loss
         content
             .contentTransition(reduceMotion ? .identity : .numericText(value: value))
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.45), value: value)
+            .animation(Motion.reveal(reduceMotion), value: value)
             .overlay(Rectangle().fill(tint).opacity(flash == 0 ? 0 : 1).blendMode(.sourceAtop))
             .compositingGroup()
-            .animation(.easeOut(duration: 0.6), value: flash)
+            .animation(Motion.revealAnimation, value: flash)
             .onChange(of: value) { old, new in
                 guard new != old else { return }
                 flash = new > old ? 1 : -1

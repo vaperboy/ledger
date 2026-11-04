@@ -101,11 +101,11 @@ struct BankApp: View {
     }
 
     private func back() {
-        if account != nil { withAnimation(.snappy(duration: 0.2)) { account = nil } } else { dismiss() }
+        if account != nil { Motion.animate(Motion.quickAnimation) { account = nil } } else { dismiss() }
     }
 
     private func logOut() {
-        withAnimation(.snappy(duration: 0.2)) { account = nil; session = nil; tab = .account }
+        Motion.animate(Motion.quickAnimation) { account = nil; session = nil; tab = .account }
     }
 
     private func take() {

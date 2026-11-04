@@ -793,7 +793,7 @@ struct PillTabBar: View {
                     }
                     .id(item.glyph + item.title)
                     .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.25), value: item.title)
+                    .animation(Motion.quickAnimation, value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
@@ -810,7 +810,7 @@ struct PillTabBar: View {
                         longPressed = nil
                     }
                 }, including: item.changeable ? .all : .subviews)
-                .animation(.easeOut(duration: 0.2), value: on)
+                .animation(Motion.quickAnimation, value: on)
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
