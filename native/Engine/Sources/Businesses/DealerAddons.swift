@@ -326,7 +326,11 @@ public enum DealerAddons {
     }
 
     static func benchmark(_ co: Company, state s: GameState, data: GameData) -> Double {
-        World(state: s, data: data).currency(co).scaledPrice(book["benchmarkPrice"].double)
+        // The benchmark sits where the file puts it against a typical car; car money in this game is the trade's own ticket (a used car about 180 000
+        // accounting units), so it scales with the ticket, not with the file's realistic prices (a 16 000 benchmark made every loan look unaffordable).
+        let typical = book["typicalCar"][co.type]["price"].double
+        let scale = (data.catalog[co.type]?.ticket ?? 0) > 0 && typical > 0 ? data.catalog[co.type]!.ticket / typical : 1
+        return World(state: s, data: data).currency(co).scaledPrice(book["benchmarkPrice"].double * scale)
     }
 
     // MARK: Offers
@@ -358,7 +362,8 @@ public enum DealerAddons {
     public static func typicalSale(company co: Company, state s: GameState, data: GameData) -> (price: Double, car: DealerCar) {
         let t = book["typicalCar"][co.type]
         let cur = World(state: s, data: data).currency(co)
-        let price = cur.scaledPrice(t["price"].isNull ? 14000 : t["price"].double)
+        let ticket = data.catalog[co.type]?.ticket ?? 0
+        let price = cur.scaledPrice(ticket > 0 ? ticket : (t["price"].isNull ? 14000 : t["price"].double))
         return (price, DealerCar(title: "Typical car", ageYears: t["age"].double, wear: t["wear"].double))
     }
 

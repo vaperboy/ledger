@@ -61,6 +61,7 @@ public extension GameEngine {
             line("vat", "VAT owed", max(0, co.vatBalance)),
             line("tax", "Tax owed", p["tax"] ?? 0),
             line("legal", "Court judgments to pay", p["legal"] ?? 0),
+            line("warr", "Warranty reserve", p["warr"] ?? 0, "set aside for claims on warranties sold"),
             line("liab", "Financial liabilities", fm["liab"].isNull ? 0 : fm["liab"].double),
         ]
         return CompanyBalanceSheet(assets: assets.compactMap { $0 }, debts: debts.compactMap { $0 },

@@ -149,7 +149,7 @@ extension UsedCarDealer {
     }
 
     /// The job is done: pay the garage (the money must be there), the cost becomes part of the car. False when the account cannot pay yet.
-    static func finishJob(_ s: inout GameState, _ i: Int, _ c: inout JSONValue) -> Bool {
+    static func finishJob(_ s: inout GameState, _ i: Int, _ c: inout JSONValue, data: GameData) -> Bool {
         let job = c["job"], price = job["price"].double
         guard s.companies[i].cash >= price else { return false }
         let id = s.companies[i].id, dealer = s.companies[i].name
@@ -160,6 +160,10 @@ extension UsedCarDealer {
         if sup != 0, let si = s.companyIndex(sup), s.companies[si].status.isLive {
             Payments.companyReceives(&s, companyID: sup, amount: price, category: "rev", label: "Repairs for \(dealer)")
             Payments.companyPays(&s, companyID: sup, amount: price * partsShare, category: "cogs", label: "Parts for repairs")
+            // The own garage's bill is a taxable supply like any other, in the same country only; the dealer reclaims the VAT unless it is exempt.
+            if s.companies[si].countryCode == s.companies[i].countryCode {
+                IntercompanySupply.transferVat(&s, supplier: s.companies[si], buyerIndex: i, net: price, data: data, World(state: s, data: data), cashNow: true)
+            }
         }
         c["rep"] = .number(c["rep"].double + price)
         c["fx"] = .bool(true)
