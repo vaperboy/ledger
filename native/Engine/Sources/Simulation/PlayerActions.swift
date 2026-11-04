@@ -258,6 +258,17 @@ public extension GameEngine {
         return r
     }
 
+    /// Pays the owner whatever the company's form allows: a salary (limited) or a drawing (sole trader). Either completes ladder M6.
+    @discardableResult
+    mutating func payYourself(companyID: Int, monthly: Double) -> Bool {
+        guard let co = state.company(companyID) else { return false }
+        if co.form == .limited { return !setOwnerSalary(companyID: companyID, monthly: monthly).isRefused }
+        return takeMoneyOut(companyID: companyID, amount: monthly / 4) == .ok
+    }
+
+    /// True once ladder milestone M8 has unlocked the classic start (the app mirrors it into `ledger.classicStartUnlocked`).
+    var classicStartUnlocked: Bool { PlayerGoals.ladderFlag(state, "classic") }
+
     mutating func payDividend(companyID: Int, amount: Double) -> Payments.DividendResult {
         var r = Payments.DividendResult.notEnoughCash
         update { s, _, ctx in r = Payments.payDividend(&s, companyID: companyID, amount: amount, context: ctx) }

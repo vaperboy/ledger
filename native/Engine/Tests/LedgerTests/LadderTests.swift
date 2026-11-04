@@ -48,7 +48,7 @@ final class LadderTests: XCTestCase {
         let channels = ["google", "meta", "seo"].filter { e.marketing.channels[$0] != nil }
         _ = e.setPriceLevel(companyID: id, level: price)                                       // M2: a price set
         for k in channels { if let ch = e.marketing.channels[k], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[1]) } }   // M5
-        _ = e.setOwnerSalary(companyID: id, monthly: cur.scaledPrice(2000))                // M6
+        e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))                // M6, any company form
         var answered = false
         var stoppedAds = false, stoppedPay = false, alone = false
         for day in 0..<(20 * 7) {

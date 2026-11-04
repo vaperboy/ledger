@@ -99,8 +99,7 @@ final class PlaytestTests: XCTestCase {
             answerFirst(&e)   // a real player answers what waits in the Inbox (M4)
             if bankrupt == nil, isBroke(e) { bankrupt = e.state.week }
             if !stoppedPay, day % 7 == 6 {
-                // M6: a limited company pays a salary; a sole trader (no salary allowed) takes a small drawing.
-                if e.setOwnerSalary(companyID: id, monthly: cur.scaledPrice(2000)).isRefused { _ = e.takeMoneyOut(companyID: id, amount: cur.scaledPrice(500)) }
+                e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))   // M6, any company form
             }
             if !stoppedAds, Gates.goalDone(e.state, 5) { stoppedAds = true; for k in channels { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: 0) } }
             if !stoppedPay, Gates.goalDone(e.state, 6) { stoppedPay = true; _ = e.setOwnerSalary(companyID: id, monthly: 0) }

@@ -155,7 +155,7 @@ public enum PlayerGoals {
         ("sell", "Choose how you sell", "Sales: who you are for, and what else you offer. Or set your prices.", "Word gets around"),
         ("ad", "Run an ad", "Sales, Marketing: even a small campaign brings people in.", "The ad agency refunds your first week"),
         ("inbox", "Answer a decision", "Inbox: problems and offers wait there for your answer.", "People learn they can count on you"),
-        ("pay", "Pay yourself", "Money: a salary, a dividend, or take money out. Leave enough for the bills.", "Your accountant's first month is free"),
+        ("pay", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Your accountant's first month is free"),
         ("profit", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Better terms from the bank"),
         ("mgr", "Hire a manager or an assistant", "Manage, Management: they run it day to day while you grow.", "The agency waives its fee"),
     ]
@@ -239,7 +239,7 @@ public enum PlayerGoals {
         ("M3", "Hire your first worker", "Check what they claim before you hire.", "Find workers", "hire", "You hired your first worker.", "The job centre pays a month of payroll tax", "staff"),
         ("M4", "Answer a decision", "Problems and offers wait in the Inbox for your answer.", "Open Inbox", "inbox", "You answered your first decision.", "Accountant: first month free", "pay"),
         ("M5", "Word gets around", "Even a small campaign brings people in.", "Open marketing", "marketing", "Your first campaign ran.", "The ad agency refunds your first week", "ad"),
-        ("M6", "Pay yourself", "Take a salary or a dividend. Leave enough for the bills.", "Open money", "money", "You paid yourself.", "A start-up grant from the town", "co"),
+        ("M6", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Open money", "money", "You paid yourself.", "A start-up grant from the town", "co"),
         ("M7", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Open company", "company", "Your first profitable month.", "Better terms from the bank", "profit"),
         ("M8", "Hire a manager", "They run it day to day while you grow.", "Open management", "management", "You hired a manager.", "The agency waives its fee", "mgr"),
         ("M9", "Open a second company", "Pick a trade and see the full start-up cost before you decide.", "New company", "newCompany", "You opened a second company.", "World ranking unlocks", ""),
