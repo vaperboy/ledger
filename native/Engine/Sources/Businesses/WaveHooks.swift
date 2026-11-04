@@ -7,6 +7,7 @@ import GameCore
 public enum WaveHooks {
     public static func weekly(_ s: inout GameState, _ i: Int, data: GameData) {
         Wave2.weekly(&s, i, data: data)
+        Wave4.weekly(&s, i, data: data)
         Wave5Services.weekly(&s, i, data: data)
         Wave6.weekly(&s, i, data: data)
         Wave8.weekly(&s, i, data: data)
