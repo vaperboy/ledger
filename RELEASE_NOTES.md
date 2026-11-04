@@ -18,3 +18,5 @@
 - Daily report: bigger profit that counts up; goal cards and unlock apps animate
 - Paywall appears once after your first ambition goal
 - Fixed: the app crashed on launch (paywall host was outside its environment)
+- Car repair earns a sensible return; expired decisions no longer repeat
+- Taking money out of a sole-trader business counts for the "pay yourself" goal
