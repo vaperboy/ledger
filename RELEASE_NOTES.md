@@ -1,11 +1,9 @@
 # What's new
-- Real products: items now have cost, stock, supplier and a live profit/loss price slider (item list like Team)
-- Retail, food and drink, rentals and appointment trades sell real items (bakery recipes, rental units, treatments...)
-- New-car dealership with brand contracts; dealer warranty, car loans and insurance commission
-- Used car dealer: cars come only from the Marketplace, repairs by your own garage, lot spaces, stuck cars
-- New trades: travel agency, insurance broker, finance broker
+- Balance: security, driving school, physio, dental, law now viable (staff cover and congestion fixes)
+- Real items for every trade, new-car dealership, used car dealer rework, travel/insurance/finance brokers
+- Item list and item page like the staff list, live profit/loss price slider
 
 # Missing / coming next
-- Used car list, car dealer screens and dealer add-on screens are being wired into the app
-- Remaining trades (professional services, projects, venues, transport, finance) still sell generic items
+- Popup system rework (one overlay host) in progress; suppliers jump-back fix comes with it
+- Own-delivery fee, typed prices per trade, chain/franchise steps, photos for vehicles/premises/equipment
 - Not yet tested on device: expect rough edges
