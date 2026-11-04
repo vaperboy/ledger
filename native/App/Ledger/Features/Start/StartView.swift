@@ -52,7 +52,7 @@ struct StartView: View {
         .ledgerBackground()
         .onAppear { summary = store.currentSaveSummary() }
         .confirmAction($pending)
-        .sheet(isPresented: $showSettings) { settingsSheet }
+        .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall) { SettingsView() }
     }
 
     /// Name, one primary button (Start, or Continue with New game under it) and the Settings gear.
@@ -91,14 +91,6 @@ struct StartView: View {
         } else {
             QuietButton(title: "Start", fullWidth: true) { settingUp = true }
         }
-    }
-
-    private var settingsSheet: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            AppHeader(title: "Settings", onBack: { showSettings = false }, backLabel: "Close").padding(.horizontal, 18).padding(.top, 20)
-            SettingsView()
-        }
-        .ledgerBackground()
     }
 
     // MARK: States

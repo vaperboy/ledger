@@ -36,6 +36,47 @@ private struct ClearCoverBackground: UIViewRepresentable {
 /// `.tall`: a fixed 80% of the screen, only for multi-step flows with a NavigationStack inside.
 enum CenterSheetSize { case fit, tall }
 
+/// One size/spacing set for every centred popup (CenterSheetFrame and GamePopup), so all cards share width, margin, header and room.
+enum PopupMetrics {
+    static let maxWidth: CGFloat = 560
+    static let margin: CGFloat = 22
+    static let header: CGFloat = 44
+    static let roomFraction: CGFloat = 0.8
+}
+
+/// The fixed 44pt header row of every popup: optional title left (serif 16), the x right (44pt target), thin divider under a title.
+struct PopupHeaderRow: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String
+    var showsClose: Bool
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text(title).font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(P.ink).lineLimit(2).minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.leading).padding(.leading, 16)
+                Spacer(minLength: 8)
+                if showsClose { closeButton }
+            }
+            .frame(height: PopupMetrics.header)
+            if !title.isEmpty { Rectangle().fill(P.line).frame(height: 1) }
+        }
+    }
+
+    private var closeButton: some View {
+        Button { onClose() } label: {
+            GlyphView(glyph: Glyph.close, size: 13, weight: 1.8, tint: P.ink)
+                .frame(width: 32, height: 32)
+                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle()).accessibilityLabel("Close").accessibilityIdentifier("popup-close")
+        .padding(.trailing, 6)
+    }
+}
+
 /// The centred popup card: dimmed backdrop, rounded themed card (max 560 wide, max 80% of the screen high) with a fixed 44pt header row the
 /// frame draws (optional title left, x right). Content never draws its own close button.
 /// Arrives with a fade and a 0.95 to 1 scale; no slide.
@@ -57,9 +98,9 @@ struct CenterSheetFrame<Content: View>: View {
                     .contentShape(Rectangle())
                     .onTapGesture { if !locked { onClose() } }
                     .accessibilityIdentifier("popup-backdrop")
-                card(room: geo.size.height * 0.8)
-                    .frame(maxWidth: 560)
-                    .padding(.horizontal, 22)
+                card(room: geo.size.height * PopupMetrics.roomFraction)
+                    .frame(maxWidth: PopupMetrics.maxWidth)
+                    .padding(.horizontal, PopupMetrics.margin)
                     .scaleEffect(shown || reduceMotion ? 1 : 0.95)
                     .opacity(shown ? 1 : 0)
             }
@@ -75,7 +116,7 @@ struct CenterSheetFrame<Content: View>: View {
     }
 
     private func card(room: CGFloat) -> some View {
-        let head: CGFloat = shownTitle.isEmpty ? 44 : 45
+        let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 1
         return VStack(spacing: 0) {
             headerRow
             inner(room: room - head)
@@ -88,33 +129,11 @@ struct CenterSheetFrame<Content: View>: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
     }
 
-    /// The fixed 44pt header the frame draws: optional title on the left, the x on the right. Content starts below it, so the x never
-    /// overlaps content.
+    /// The title shown in the header: the `title:` argument, else the one the content set with `.centerSheetTitle`.
     private var shownTitle: String { title.isEmpty ? contentTitle : title }
 
     private var headerRow: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text(shownTitle).font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(P.ink).lineLimit(1)
-                    .padding(.leading, 16)
-                Spacer(minLength: 8)
-                closeButton
-            }
-            .frame(height: 44)
-            if !shownTitle.isEmpty { Rectangle().fill(P.line).frame(height: 1) }
-        }
-    }
-
-    private var closeButton: some View {
-        Button { onClose() } label: {
-            GlyphView(glyph: Glyph.close, size: 13, weight: 1.8, tint: P.ink)
-                .frame(width: 32, height: 32)
-                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle()).accessibilityLabel("Close").accessibilityIdentifier("popup-close")
-        .padding(.trailing, 6)
+        PopupHeaderRow(title: shownTitle, showsClose: true, onClose: onClose)
     }
 
     @ViewBuilder private func inner(room: CGFloat) -> some View {

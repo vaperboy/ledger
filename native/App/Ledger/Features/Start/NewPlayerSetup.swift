@@ -42,7 +42,7 @@ struct NewPlayerSetup: View {
         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 12)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-        .sheet(item: $picked) { (t: StarterTrade) in tradeSheet(t) }
+        .centerSheet(item: $picked) { (t: StarterTrade) in tradeSheet(t) }
     }
 
     private var header: some View {
@@ -167,10 +167,9 @@ struct NewPlayerSetup: View {
         picked = t
     }
 
-    /// The bottom sheet: what the business costs to open, the money you start with, one button.
+    /// The popup: what the business costs to open, the money you start with, one button.
     private func tradeSheet(_ t: StarterTrade) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(t.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
             Text(t.line.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             if let cost = t.startUpCost, let cur = currency {
                 HStack {
@@ -185,10 +184,8 @@ struct NewPlayerSetup: View {
             }
             QuietButton(title: "Open \(t.name)", fullWidth: true) { open(t) }
         }
-        .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ledgerBackground()
-        .presentationDetents([.height(300)])
+        .centerSheetTitle(t.name)
         .task(id: t.id) {
             let code: String = countryCode
             let id: String = t.id

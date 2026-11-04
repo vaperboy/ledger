@@ -16,49 +16,39 @@ struct GamePopup<Content: View>: View {
     @State private var shown = false
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { if dismissOnBackdrop { onClose() } }
-                .accessibilityIdentifier("popup-backdrop")
-            card
-                .padding(.horizontal, 22)
-                .scaleEffect(shown || reduceMotion ? 1 : 0.95)
-                .opacity(shown ? 1 : 0)
+        GeometryReader { (geo: GeometryProxy) in
+            ZStack {
+                Color.black.opacity(0.55).ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { if dismissOnBackdrop { onClose() } }
+                    .accessibilityIdentifier("popup-backdrop")
+                card(room: geo.size.height * PopupMetrics.roomFraction)
+                    .frame(maxWidth: PopupMetrics.maxWidth)
+                    .padding(.horizontal, PopupMetrics.margin)
+                    .scaleEffect(shown || reduceMotion ? 1 : 0.95)
+                    .opacity(shown ? 1 : 0)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .onAppear { withAnimation(Motion.arrive(reduceMotion)) { shown = true } }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }
 
-    private var card: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            content()
-        }
-        .padding(18)
-        .frame(maxWidth: 420)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
-    }
-
-    private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(title)
-                .font(.serifTitle(20)).foregroundStyle(P.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-            if showsClose {
-                Button { onClose() } label: {
-                    GlyphView(glyph: Glyph.close, size: 14, weight: 1.8, tint: P.ink)
-                        .frame(width: 36, height: 36)
-                        .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
-                        .contentShape(Circle())
-                }
-                .buttonStyle(PressableStyle()).accessibilityLabel("Close").accessibilityIdentifier("popup-close")
+    /// Same card as `CenterSheetFrame`: 44pt header row (title, optional x), content hugging its height, at most 80% of the screen,
+    /// scrolling only when taller.
+    private func card(room: CGFloat) -> some View {
+        let bodyRoom: CGFloat = max(120, room - PopupMetrics.header - 1)
+        return VStack(spacing: 0) {
+            PopupHeaderRow(title: title, showsClose: showsClose, onClose: onClose)
+            FitScroll(maxHeight: bodyRoom) {
+                VStack(alignment: .leading, spacing: 12) { content() }.padding(16)
             }
         }
+        .foregroundStyle(P.ink)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
     }
 }
 

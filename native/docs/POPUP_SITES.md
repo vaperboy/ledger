@@ -4,6 +4,8 @@ Frame: `Design/CenterSheet.swift`. The frame draws a fixed 44pt header row (opti
 
 Size: `size: .fit` (default) is exactly as high as the content, at most 80% of the screen, scrolling only when taller (FitScroll, content padding 16 added by the frame). `size: .tall` is a fixed 80% and is used only for flows and full-bleed content. No heuristics: `PopupNavStack`, `centerSheetFills` and the greedy measurement are gone. A content must not contain its own ScrollView/NavigationStack when `.fit`.
 
+Shared metrics (`PopupMetrics`, `PopupHeaderRow` in CenterSheet.swift) are used by both `CenterSheetFrame` and `GamePopup`: max width 560, side margin 22, corner radius `Theme.Radius.hero`, 44pt header row (title serif 16, up to two lines, x 44pt target), room 80% of the screen. `GamePopup` (confirm, notice, daily report, decision, rename, banner question) used to be a different card (max 420, 20pt title, 36pt x, no height limit, so long content clipped on iPhone SE); it now hugs its content in a FitScroll under the same header. Confirm/notice cards have no x (only their buttons answer). Content of a `.fit` popup must not contain Spacer(maxHeight infinity), GeometryReader without a fixed height, ScrollView, NavigationStack or its own background.
+
 Root causes fixed: (1) the x was an overlay on top of the content, so it covered titles and buttons, and content added its own x; (2) a NavigationStack (PopupNavStack, PeopleSheet) inside the unbounded FitScroll collapses to zero height, so the card was either blank or forced to 80% with empty space; (3) `.ledgerBackground()` painted a second panel inside the card.
 
 | File | Shows | Size | Own close before | Fixed |
@@ -42,3 +44,10 @@ Root causes fixed: (1) the x was an overlay on top of the content, so it covered
 | Inbox/InboxView.swift | Message / document | fit | two x buttons | x removed, no nested bubble card |
 | Start/StartView.swift | Paste save text | fit | toolbar Cancel | stack removed |
 | Root/RootView.swift | Worker profile, custom tab picker | fit | none | title in header |
+| Start/NewPlayerSetup.swift | Starter trade (cost, start cash, open) | fit | native `.sheet` with `.presentationDetents([.height(300)])` | now `.centerSheet`, title via `.centerSheetTitle`, own padding/background removed |
+| Start/StartView.swift | Settings (page with own ScrollView) | tall | native full `.sheet` + AppHeader Close | now `.centerSheet(size: .tall)`, title "Settings"; header removed |
+| Phone/SettingsView.swift, Phone/MarketplaceListing.swift | Paste save, Message seller | fit | none | unchanged |
+| Companies/EntityRequirements.swift, Root/GamePopups.swift (UnlockPopup), Home/HomeView.swift | Paper, feature unlock, shortcuts | fit | none | unchanged |
+| GamePopup users: ConfirmPopup, Notice/Acquired/Done/Decision/Red alert, MorningBriefing, NotificationBanner, ChainView rename, RootView error | Questions, notices, daily report | fit (GamePopup) | own 420 card, 36pt x | shared metrics + FitScroll; DecisionPopup's own FitScroll(460) removed |
+
+Remaining native covers: `ConfirmActionModifier` and the ChainView rename use `.fullScreenCover` with a clear background to draw a GamePopup; that is the same centred card, not a native sheet. `.contextPopover` (InfoPopoverButton) stays a small anchored popover. No `.confirmationDialog` in the app.
