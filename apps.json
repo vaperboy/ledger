@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.43",
+          "buildVersion": "43",
+          "date": "2026-11-04T00:28:07Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v43/Ledger-unsigned.ipa",
+          "size": 27511113,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days"
+        },
+        {
           "version": "1.0.42",
           "buildVersion": "42",
           "date": "2026-11-04T00:06:39Z",
@@ -187,22 +196,13 @@
           "size": 23898727,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Fix: popups no longer show up empty and are compact; Perks opens as a popup right on Team; no more notification for payments received; Marketing is one compact list; slimmer sliders and switches everywhere; tab rows no longer touch\n- Popups size to their content; recognition banners open the right worker; a rival group entering a country where you trade shows in Market\n- Accessibility: steppers, confirm boxes and Team rows have spoken labels and hints, and small one-line labels shrink instead of cutting off\n- Market news (big contracts, companies for sale, competitor and supplier moves, recognition) arrives as banners and highlighted rows in Market; the Payment banner follows the largest real payment of the day; Sales has a market trend card; the bank flows no longer rise from the bottom; old unused screens are gone\n- Talking terms are two clean one-page steps: contract terms, then pay (pay basis, commission, benefits and expectations are back)\n- Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is"
-        },
-        {
-          "version": "1.0.23",
-          "buildVersion": "23",
-          "date": "2026-11-02T21:33:52Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v23/Ledger-unsigned.ipa",
-          "size": 23871205,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Popups size to their content; recognition banners open the right worker; a rival group entering a country where you trade shows in Market\n- Accessibility: steppers, confirm boxes and Team rows have spoken labels and hints, and small one-line labels shrink instead of cutting off\n- Market news (big contracts, companies for sale, competitor and supplier moves, recognition) arrives as banners and highlighted rows in Market; the Payment banner follows the largest real payment of the day; Sales has a market trend card; the bank flows no longer rise from the bottom; old unused screens are gone\n- Talking terms are two clean one-page steps: contract terms, then pay (pay basis, commission, benefits and expectations are back)\n- Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is gone from Home\n- Home is one locked screen that fits everything: companies get the space first (the full list is in Group), Recent only uses what is left; net worth and the four figures count up only after you press Continue on the r"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.42",
-      "versionDate": "2026-11-04T00:06:39Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v42/Ledger-unsigned.ipa",
-      "size": 27519517
+      "version": "1.0.43",
+      "versionDate": "2026-11-04T00:28:07Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v43/Ledger-unsigned.ipa",
+      "size": 27511113
     }
   ]
 }
