@@ -115,6 +115,9 @@ struct CelebrationPopup: View {
     /// Set once the reward has been claimed right here: what the player got. The card then shows a small celebration of its own.
     @State private var claimedText: String?
     @State private var burst = false
+    /// Goal complete (brief 9.3): the card turns green, the check draws itself, the reward fades in.
+    @State private var goalShown = false
+    @State private var checkDrawn: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -127,6 +130,10 @@ struct CelebrationPopup: View {
         .onAppear {
             Haptics.tap()
             Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
+            if item.kind == "goal" {
+                Motion.animate(Motion.quick(reduceMotion)) { goalShown = true }
+                Motion.animate(Motion.reveal(reduceMotion)) { checkDrawn = 1 }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
@@ -142,6 +149,7 @@ struct CelebrationPopup: View {
             }
             if !item.reward.isEmpty {
                 Text(item.reward).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gain).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .opacity(item.kind != "goal" || goalShown || reduceMotion ? 1 : 0)
             }
             claimArea
             if !canClaim {
@@ -152,17 +160,25 @@ struct CelebrationPopup: View {
         .padding(20)
         .frame(maxWidth: 380)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.gain.opacity(item.kind == "goal" && (goalShown || reduceMotion) ? 0.16 : 0)))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
     }
 
     // MARK: Claiming in place
 
     /// A finished goal or today's mission carries a reward that is claimed with one tap, here, not by going to Goals.
-    private var canClaim: Bool { claimedText == nil && (item.kind == "mission" || item.kind == "goal") }
+    private var canClaim: Bool { claimedText == nil && (item.kind == "mission" || (item.kind == "goal" && claimableStep != nil)) }
+
+    /// A first-step reward that is finished and not yet taken under this title. A ladder goal has none (the engine paid its reward when it
+    /// finished), so it is closed with "Nice" instead of a claim button that could only say "Already claimed.".
+    private var claimableStep: PlayerGoals.FirstStep? {
+        (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
+    }
 
     /// Claiming is the only way out: a goal or mission is claimed here, a trophy or milestone (already paid) is claimed with one tap.
     private var dismissTitle: String {
         if claimedText != nil { return store.celebrationQueue.count > 1 ? "Next" : "Done" }
+        if item.kind == "goal" { return "Nice" }
         return "Claim"
     }
 
@@ -173,7 +189,13 @@ struct CelebrationPopup: View {
 
     /// The earned trophy's art in a large gold ring; a drawn gold medal when nothing maps to the title.
     @ViewBuilder private var badge: some View {
-        if let entry = trophyEntry {
+        if item.kind == "goal" {
+            GoalCheckMark(progress: reduceMotion ? 1 : checkDrawn)
+                .stroke(Theme.gain, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                .frame(width: 34, height: 26).padding(14)
+                .overlay(Circle().strokeBorder(Theme.gain, lineWidth: 2))
+                .accessibilityHidden(true)
+        } else if let entry = trophyEntry {
             ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: 112, shape: .round, glyph: Glyph.achievements)
                 .padding(6)
                 .overlay(Circle().strokeBorder(Theme.gold, lineWidth: 3))
@@ -205,7 +227,7 @@ struct CelebrationPopup: View {
         if item.kind == "mission" {
             let cur: Currency? = store.engine?.homeCurrency
             if let r = store.act({ $0.claimDailyGoal() }) ?? nil { text = "Daily goal reward: " + (cur?.tidyShort(r) ?? "") + " is yours." }
-        } else if let step = (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed }) {
+        } else if let step = claimableStep {
             text = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil
         }
         if let text {
@@ -228,5 +250,22 @@ struct CelebrationPopup: View {
 
     private func dismiss() {
         Motion.run(reduceMotion) { store.dismissCelebration() }
+    }
+}
+
+/// A check mark that draws itself as `progress` goes from 0 to 1.
+struct GoalCheckMark: Shape {
+    var progress: CGFloat
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.midY + rect.height * 0.1))
+        p.addLine(to: CGPoint(x: rect.width * 0.38, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        return p.trimmedPath(from: 0, to: max(0.001, min(progress, 1)))
     }
 }
