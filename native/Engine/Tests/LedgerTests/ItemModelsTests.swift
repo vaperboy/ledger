@@ -18,15 +18,13 @@ final class ItemModelsTests: XCTestCase {
         return (e, id)
     }
 
-    func testRegistryIsEmptyAndMigrationDoesNothingByDefault() throws {
-        XCTAssertTrue(ItemModels.optedInTrades.isEmpty)
+    func testRegistryIsTheWaveRegistriesAndAnEmptySetMigratesNothing() throws {
+        XCTAssertEqual(ItemModels.optedInTrades, ItemWaves.all)
         var (e, id) = try engine()
         let before = e.state
-        e.update { s, d, _ in XCTAssertEqual(ItemModels.migrateOptedIn(&s, data: d), 0) }
+        e.update { s, d, _ in XCTAssertEqual(ItemModels.migrateOptedIn(&s, data: d, trades: []), 0) }
         XCTAssertTrue(e.state == before)
         XCTAssertTrue(e.state.company(id)!.value("itemsv2").isNull)
-        for _ in 0..<3 { e.week() }
-        XCTAssertTrue(e.state.company(id)!.value("itemsv2").isNull, "old companies never get a record unless a wave opts the trade in")
     }
 
     func testLiveProfitAndLossWordsAndNeverZeroForRealFigures() {

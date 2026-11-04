@@ -189,6 +189,7 @@ public enum CompanyWeek {
         ctx.acct = acctOrders.perAccount.filter { $0.units > 0 }.map { (id: $0.id, rev: $0.units * price * $0.pm) }
         // Family-specific adjustments (stock, returns, casino luck, subsidies)
         applyFamilyPost(&s, i, bd, &ctx, data: data)
+        ctx.cogs *= WaveHooks.cogsFactor(s, companyID: co.id, data: data)
         rev = ctx.rev; cogs = ctx.cogs
         co = s.companies[i]
         book(&s, i, bd, ctx, vat: vat, data: data)
