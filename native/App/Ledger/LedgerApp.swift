@@ -5,8 +5,13 @@ import UIKit
 struct LedgerApp: App {
     @StateObject private var store = GameStore()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var entitlements: Entitlements
+    @State private var ads: AdCoordinator
 
     init() {
+        let ent = Entitlements()
+        _entitlements = State(initialValue: ent)
+        _ads = State(initialValue: AdCoordinator(entitlements: ent))
         let ivory = UIColor(red: 0.937, green: 0.914, blue: 0.875, alpha: 1)
         let faint = UIColor(red: 0.424, green: 0.416, blue: 0.384, alpha: 1), gold = UIColor(red: 0.812, green: 0.694, blue: 0.522, alpha: 1)
         let tabs = UITabBarAppearance()
@@ -36,12 +41,16 @@ struct LedgerApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+                .environment(entitlements)
+                .environment(ads)
+                .modifier(PaywallHost())
+                .task { entitlements.start() }
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { store.scheduleReminders() }
-                    if phase == .active { Reminders.cancelAll() }
+                    if phase == .active { Reminders.cancelAll(); Task { await entitlements.refresh() } }
                 }
         }
     }

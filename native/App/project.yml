@@ -14,6 +14,15 @@ settings:
 packages:
   LedgerEngine:
     path: ../Engine
+  # Part 11.5 ads. Left out so the app builds without the SDK (Core/Ads falls back to PlaceholderAdProvider). To switch on real ads, uncomment
+  # these two packages and the two `package:` dependency lines of the Ledger target, add INFOPLIST_KEY GADApplicationIdentifier (a custom key:
+  # use an `info:` block or a plist) and SKAdNetworkItems, then fill AdConfig.release* in Core/Ads/AdProvider.swift. See Core/Ads/AdMobProvider.swift.
+  # GoogleMobileAds:
+  #   url: https://github.com/googleads/swift-package-manager-google-mobile-ads
+  #   exactVersion: 11.13.0
+  # GoogleUserMessagingPlatform:
+  #   url: https://github.com/googleads/swift-package-manager-google-user-messaging-platform
+  #   exactVersion: 2.7.0
 targets:
   Ledger:
     type: application
@@ -50,6 +59,7 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_NSUserTrackingUsageDescription: "Lets Ledger show ads that fit you. You can say no and still play."
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.games
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -86,6 +96,7 @@ schemes:
         Ledger: all
     run:
       config: Debug
+      storeKitConfiguration: Ledger.storekit     # Part 11: local purchase testing in the simulator
     test:
       config: Debug
       targets:

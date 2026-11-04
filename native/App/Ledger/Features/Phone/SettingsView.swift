@@ -7,6 +7,7 @@ import Simulation
 /// a choice, chevrons for what opens something; no hero and no figures. Every control keeps its engine call and its "Saved" message.
 struct SettingsView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
     @State private var haptics = Haptics.enabled
     @State private var reminders: Bool = Reminders.enabled
     @State private var showImporter = false
@@ -21,6 +22,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 feelGroup
                 savingGroup
+                proGroup
                 gameGroup
             }
             .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
@@ -110,6 +112,54 @@ struct SettingsView: View {
         pending = PendingAction(title: "Start a new game?", message: "It replaces the saved game. The copy before it is kept as a backup file, but the game will no longer open it.",
                                 button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story) }
     }
+
+    /// Brief 11.6: current plan, renewal date, manage, restore. Prices are never written here.
+    private var proGroup: some View {
+        group("Ledger Pro") {
+            plainRow(Glyph.lock, "Plan", value: planName)
+            if let end = ent.plusRenews {
+                rule
+                plainRow(Glyph.info, "Plus renews", value: end.formatted(date: .abbreviated, time: .omitted))
+            }
+            if !ent.isPlus {
+                rule
+                Button { ent.paywall = PaywallRequest(title: ent.ownsPro ? "Ledger Plus" : "Ledger Pro") } label: {
+                    plainRow(Glyph.lock, ent.ownsPro ? "Get Ledger Plus" : "Get Ledger Pro", chevron: true)
+                }.buttonStyle(PressableStyle())
+                .accessibilityIdentifier("settings-ledger-pro")
+            }
+            if ent.isPlus {
+                rule
+                Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.chevron, "Manage subscription", chevron: true) }
+                    .buttonStyle(PressableStyle())
+            }
+            rule
+            Button { Task { await ent.restore() } } label: { plainRow(Glyph.download, "Restore purchases", detail: ent.message ?? "", chevron: true) }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("settings-restore")
+            #if DEBUG
+            rule
+            Button { cycleDebugPlan() } label: { plainRow(Glyph.info, "Debug plan", value: ent.debugMode.rawValue) }
+                .buttonStyle(PressableStyle())
+            #endif
+        }
+    }
+
+    private var planName: String {
+        if ent.isPlus { return "Plus" }
+        if ent.isFounder { return "Founder" }
+        if ent.ownsPro { return "Pro" }
+        return ent.hasPass ? "Pro for a day" : "Free"
+    }
+
+    #if DEBUG
+    /// Brief 11.6: force free, Pro or Plus for testing (debug builds only).
+    private func cycleDebugPlan() {
+        let all = Entitlements.DebugMode.allCases
+        let next: Int = ((all.firstIndex(of: ent.debugMode) ?? 0) + 1) % all.count
+        ent.setDebug(all[next])
+    }
+    #endif
 
     private var gameGroup: some View {
         group("Game") {
