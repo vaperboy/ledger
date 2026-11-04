@@ -110,6 +110,13 @@ public enum CompanyWeek {
             weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
             return
         }
+        // The travel agency, insurance broker and finance broker earn commission on deals placed with suppliers (Brokers).
+        if Brokers.handles(bd) {
+            let ctx = Brokers.week(&s, i, bd, data)
+            book(&s, i, bd, ctx, vat: Vat.rate(s.companies[i], bd, World(state: s, data: data)), data: data)
+            weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
+            return
+        }
         // Project businesses (the week's figures come from what happened on the days, or from the developments), and energy, the
         // salmon farm, a holding company and a football club (SpecialFamilies) work out their own week.
         if bd.family == "project" || SpecialFamilies.handles(bd) {

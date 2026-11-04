@@ -23,6 +23,8 @@
   "vineyard": { "need": 1.4, "lean": 0.6 },
   "furniture": { "need": 1.4, "lean": 0.6 },
   "estate": { "need": 1.6, "lean": 0.7 },
+  "travel": { "need": 0.9, "lean": 0.5 },
+  "finbroker": { "need": 1.0, "lean": 0.4 },
   "photo": { "need": 1.1, "lean": 0.4 },
   "dental": { "need": 1.0, "lean": 0.3 },
   "fun": { "need": 0.9, "lean": 0.3 },

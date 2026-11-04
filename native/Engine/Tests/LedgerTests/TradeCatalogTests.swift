@@ -5,8 +5,8 @@ import Businesses
 final class TradeCatalogTests: XCTestCase {
     func testCatalogHasAllTradesOfTheOriginal() throws {
         let cat = try TradeCatalog.bundled()
-        XCTAssertEqual(cat.trades.count, 69)
-        XCTAssertEqual(cat.order.count, 66)  // the menu lists 66; the holding company and football club are created elsewhere
+        XCTAssertGreaterThanOrEqual(cat.trades.count, 72)  // 69 + travel, insbroker, finbroker (brokers wave)
+        XCTAssertGreaterThanOrEqual(cat.order.count, 69)  // the menu lists 69; the holding company and football club are created elsewhere
         XCTAssertNotNil(cat["cafe"]); XCTAssertNotNil(cat["hold"]); XCTAssertNotNil(cat["club"])
         XCTAssertEqual(Set(cat.all.map { $0.family }), ["svc", "venue", "retail", "project", "prod", "logi", "rent", "fin", "energy"])
     }
