@@ -98,6 +98,27 @@
     ],
     "handy": [
       "handy"
+    ],
+    "nightclub": [
+      "bartender"
+    ],
+    "gym": [
+      "trainer",
+      "recept"
+    ],
+    "skires": [
+      "skiinst",
+      "cashier"
+    ],
+    "indoorski": [
+      "skiinst",
+      "cashier"
+    ],
+    "fun": [
+      "cashier"
+    ],
+    "casino": [
+      "recept"
     ]
   }
 }

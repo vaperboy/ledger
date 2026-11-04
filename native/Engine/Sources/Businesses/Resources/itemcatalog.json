@@ -524,19 +524,11 @@
   ],
   "nightclub": [
    {
-    "n": "VIP table service",
-    "svc": true
-   },
-   {
     "n": "Themed night",
     "svc": true
    },
    {
     "n": "Live DJ residency",
-    "svc": true
-   },
-   {
-    "n": "Private party hire",
     "svc": true
    },
    {
@@ -548,27 +540,23 @@
     "svc": true
    },
    {
-    "n": "Bottle service",
+    "n": "Ticketed festival night",
     "svc": true
    },
    {
-    "n": "Ticketed festival night",
+    "n": "Birthday table package",
+    "svc": true
+   },
+   {
+    "n": "Shots promotion",
+    "svc": true
+   },
+   {
+    "n": "Corporate hire",
     "svc": true
    }
   ],
   "gym": [
-   {
-    "n": "Personal training",
-    "svc": true
-   },
-   {
-    "n": "Group classes",
-    "svc": true
-   },
-   {
-    "n": "Premium membership",
-    "svc": true
-   },
    {
     "n": "Nutrition coaching",
     "svc": true
@@ -586,7 +574,19 @@
     "svc": true
    },
    {
-    "n": "Supplements and kit",
+    "n": "Boxing class",
+    "svc": true
+   },
+   {
+    "n": "Locker and towel rental",
+    "svc": true
+   },
+   {
+    "n": "Body scan",
+    "svc": true
+   },
+   {
+    "n": "Kit and apparel",
     "svc": false,
     "dev": true
    }
@@ -623,23 +623,15 @@
   ],
   "casino": [
    {
-    "n": "High-roller room",
+    "n": "Baccarat table",
     "svc": true
    },
    {
-    "n": "Poker tournament",
+    "n": "Craps table",
     "svc": true
    },
    {
-    "n": "Dining package",
-    "svc": true
-   },
-   {
-    "n": "Slot lounge",
-    "svc": true
-   },
-   {
-    "n": "Loyalty club",
+    "n": "Sportsbook counter",
     "svc": true
    },
    {
@@ -653,17 +645,17 @@
    {
     "n": "Weekend stay package",
     "svc": true
+   },
+   {
+    "n": "Loyalty club",
+    "svc": true
+   },
+   {
+    "n": "Slot lounge",
+    "svc": true
    }
   ],
   "fun": [
-   {
-    "n": "Season pass",
-    "svc": true
-   },
-   {
-    "n": "Birthday party package",
-    "svc": true
-   },
    {
     "n": "School trip day",
     "svc": true
@@ -677,43 +669,27 @@
     "svc": true
    },
    {
-    "n": "Food and drink bundle",
-    "svc": true
-   },
-   {
     "n": "Photo package",
     "svc": true
    },
    {
     "n": "Group tickets",
     "svc": true
+   },
+   {
+    "n": "Escape room",
+    "svc": true
+   },
+   {
+    "n": "Corporate team day",
+    "svc": true
+   },
+   {
+    "n": "Arcade card top-up",
+    "svc": true
    }
   ],
   "skires": [
-   {
-    "n": "Ski school",
-    "svc": true
-   },
-   {
-    "n": "Season pass",
-    "svc": true
-   },
-   {
-    "n": "Equipment hire",
-    "svc": true
-   },
-   {
-    "n": "Night skiing",
-    "svc": true
-   },
-   {
-    "n": "Mountain restaurant",
-    "svc": true
-   },
-   {
-    "n": "Family package",
-    "svc": true
-   },
    {
     "n": "Heli-skiing day",
     "svc": true
@@ -721,25 +697,33 @@
    {
     "n": "Snowboard park pass",
     "svc": true
+   },
+   {
+    "n": "Family package",
+    "svc": true
+   },
+   {
+    "n": "Ski storage and lockers",
+    "svc": true
+   },
+   {
+    "n": "Beginner carpet pass",
+    "svc": true
+   },
+   {
+    "n": "Sledge and snowshoe hire",
+    "svc": true
+   },
+   {
+    "n": "Ski guide day",
+    "svc": true
+   },
+   {
+    "n": "Apres-ski bar",
+    "svc": true
    }
   ],
   "indoorski": [
-   {
-    "n": "Beginner lessons",
-    "svc": true
-   },
-   {
-    "n": "Annual membership",
-    "svc": true
-   },
-   {
-    "n": "Kids' parties",
-    "svc": true
-   },
-   {
-    "n": "Equipment hire",
-    "svc": true
-   },
    {
     "n": "Corporate day",
     "svc": true
@@ -749,12 +733,28 @@
     "svc": true
    },
    {
-    "n": "Apres-ski cafe",
+    "n": "Snowboard lessons",
+    "svc": true
+   },
+   {
+    "n": "School group",
+    "svc": true
+   },
+   {
+    "n": "Off-peak pass",
+    "svc": true
+   },
+   {
+    "n": "Ice bar event",
+    "svc": true
+   },
+   {
+    "n": "Pro shop",
     "svc": false,
     "dev": true
    },
    {
-    "n": "Off-peak pass",
+    "n": "Ski camp week",
     "svc": true
    }
   ],
@@ -2082,7 +2082,27 @@
   ],
   "club": [
    {
-    "n": "Annual membership",
+    "n": "Youth academy",
+    "svc": true
+   },
+   {
+    "n": "Matchday hospitality",
+    "svc": true
+   },
+   {
+    "n": "Stadium tour",
+    "svc": true
+   },
+   {
+    "n": "Fan club membership",
+    "svc": true
+   },
+   {
+    "n": "Pay-per-view stream",
+    "svc": true
+   },
+   {
+    "n": "Corporate boxes",
     "svc": true
    },
    {
@@ -2091,27 +2111,6 @@
    },
    {
     "n": "Coaching sessions",
-    "svc": true
-   },
-   {
-    "n": "Tournament hosting",
-    "svc": true
-   },
-   {
-    "n": "Merchandise",
-    "svc": false,
-    "dev": true
-   },
-   {
-    "n": "Youth academy",
-    "svc": true
-   },
-   {
-    "n": "Corporate boxes",
-    "svc": true
-   },
-   {
-    "n": "Matchday hospitality",
     "svc": true
    }
   ]
