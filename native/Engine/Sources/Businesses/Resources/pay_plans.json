@@ -59,6 +59,21 @@
     ],
     "comrent": [
       "propm"
+    ],
+    "barber": [
+      "barber"
+    ],
+    "dental": [
+      "dentist"
+    ],
+    "physio": [
+      "physio"
+    ],
+    "drivsk": [
+      "instr"
+    ],
+    "carclean": [
+      "carwash"
     ]
   }
 }

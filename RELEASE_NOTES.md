@@ -1,29 +1,11 @@
 # What's new
-- Items: your products and services are now a list like your staff (picture, name, status, price with live profit or loss) and each item has its own page with price, demand, supply, plans, history and actions
-- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month
-- Skip to opening: pass the waiting days of a new company in one go
-- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen
-- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab
-- Week, month and year reports: short reveal with one story line; profit counts up in the daily report
-- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet
-- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year
-- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings › Saves
-- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait
-- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days
-- Own staff can take board seats; busy restaurants and service venues pay a congestion cost above 85% use
-- Popups: one shared card size and header; short popups hug their content
-- Simpler screens: two-page hiring, one-page new company, three-step loan, company opens on five rows; fixed animation timings
-- Ledger Pro and Plus: paywall, restore purchases and plan in Settings (store products to be set up)
-- Company management screen is back to the previous layout
-- Hiring: every post uses the same two pages; the hire popup fits each step
-- Daily report: bigger profit that counts up; goal cards and unlock apps animate
-- Paywall appears once after your first ambition goal
-- Fixed: the app crashed on launch (paywall host was outside its environment)
-- Car repair earns a sensible return; expired decisions no longer repeat
-- Taking money out of a sole-trader business counts for the "pay yourself" goal
-- Audit notices show the right authority name
-- Save slots in Settings › Saves (Pro); trophies and rival records appear when the ladder opens them
-- Inbox is one list with icons, consequence lines and expiry pills; answering returns Home
-- Daily report turns amber on a loss and shows one priority line; optional "Your name" when starting
-- Goal cards link to the next goal
-- Fix: AltStore install error (tracking permission is off until real ads)
+- Real products: items now have cost, stock, supplier and a live profit/loss price slider (item list like Team)
+- Retail, food and drink, rentals and appointment trades sell real items (bakery recipes, rental units, treatments...)
+- New-car dealership with brand contracts; dealer warranty, car loans and insurance commission
+- Used car dealer: cars come only from the Marketplace, repairs by your own garage, lot spaces, stuck cars
+- New trades: travel agency, insurance broker, finance broker
+
+# Missing / coming next
+- Used car list, car dealer screens and dealer add-on screens are being wired into the app
+- Remaining trades (professional services, projects, venues, transport, finance) still sell generic items
+- Not yet tested on device: expect rough edges

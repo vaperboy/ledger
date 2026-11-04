@@ -16,5 +16,7 @@ struct WaveItemBlocks: View {
         if let c = Wave3Recipes.card(e.state, companyID: companyID, itemID: itemID, price: price, data: e.data) {
             Wave3RecipeBlock(card: c, cur: cur)
         }
+        Wave6ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)
+        Wave8UnitBlock(companyID: companyID, itemID: itemID)
     }
 }
