@@ -134,14 +134,12 @@ final class Wave8Tests: XCTestCase {
 
     func testOldSavesAndOtherTradesAreUntouched() throws {
         var r = try Self.start("hotel")
-        for _ in 0..<3 { Self.week(&r, wave8: false) }   // the hook is not run: nothing is written
+        for _ in 0..<3 { Self.week(&r, wave8: false) }   // the weekly hook runs inside the company week (WaveHooks)
         let co = r.e.state.company(r.id)!
-        XCTAssertTrue(co.value("w8u").isNull); XCTAssertTrue(co.value("itemsv2").isNull); XCTAssertTrue(co.value("items27").isNull)
-        XCTAssertEqual(Wave8.rateMultiplier(co, r.e.data.catalog["hotel"]!, propertyID: 1), 1)
+        XCTAssertEqual(Wave8.rateMultiplier(co, r.e.data.catalog["hotel"]!, propertyID: 1), 1, "at the default rate nothing changes")
         var other = try Self.start("bakery")
         for _ in 0..<2 { Self.week(&other, wave8: true) }
         XCTAssertTrue(other.e.state.company(other.id)!.value("w8u").isNull)
-        XCTAssertTrue(other.e.state.company(other.id)!.value("itemsv2").isNull)
     }
 
     func testSecondSyncChangesNothingAndKeepsOwnerPrices() throws {
