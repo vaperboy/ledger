@@ -18,6 +18,7 @@ struct CompanySales: View {
     @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
     @State private var showHire = false
+    @State private var showAddons = false
 
     /// A tapped item, for the popup.
     private struct SalesItemPick: Identifiable, Hashable { var id: String }
@@ -29,8 +30,8 @@ struct CompanySales: View {
         return VStack(spacing: Theme.Space.m) {
             CompanyBrandLine(engine: engine, companyID: company.id)
             trendCard
-            ItemsList(engine: engine, company: company, items: items, service: service,
-                      onOpen: { (id: String) in openItem = SalesItemPick(id: id) }, onAdd: { addingService = service })
+            productsArea(items, service)
+            addonsCard
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
                 ResearchRow(engine: engine, company: company)
@@ -48,8 +49,30 @@ struct CompanySales: View {
         }
         .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
+        .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)
+        }
+    }
+
+    /// The used car yard and the new car showroom have their own pages (real cars, one price each); every other trade lists its items.
+    @ViewBuilder private func productsArea(_ items: [SalesItem], _ service: Bool) -> some View {
+        if company.type == UsedCarDealer.tradeID {
+            UsedCarYardSection(engine: engine, company: company)
+        } else if company.type == CarDealer.tradeID {
+            CarDealerSection(engine: engine, company: company)
+        } else {
+            ItemsList(engine: engine, company: company, items: items, service: service,
+                      onOpen: { (id: String) in openItem = SalesItemPick(id: id) }, onAdd: { addingService = service })
+        }
+    }
+
+    /// Dealer warranty, car loans and insurance at the sale, for both car dealers.
+    @ViewBuilder private var addonsCard: some View {
+        if DealerAddons.supports(company) {
+            OverviewSettingsCard(heading: "Sale add-ons") {
+                SettingsTableRow(title: "Warranty, loans and insurance", note: "Set up, switch on, and see what each sale brings", value: "", glyph: Glyph.opsBox) { showAddons = true }
+            }
         }
     }
 

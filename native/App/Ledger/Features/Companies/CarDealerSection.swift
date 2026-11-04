@@ -22,8 +22,9 @@ struct CarStockCard: View {
         switch row.status {
         case .inStock:
             let p = row.profit
-            let word: String = p >= 0 ? "Earns " : "Loses "
-            return word + currency.tidyShort(abs(p)) + " at this price, " + String(format: "%.1f", abs(row.profitPercent)) + " percent"
+            if abs(p) / currency.rate < 0.005 { return "Break-even at this price" }
+            let word: String = p >= 0 ? "Profit " : "Loss "
+            return word + usedCarMoney(p, currency) + " at this price, " + String(format: "%.1f", abs(row.profitPercent)) + " percent"
         case .onOrder: return "Arrives in \(row.weeks) \(row.weeks == 1 ? "week" : "weeks"). Cost \(currency.tidyShort(row.cost))."
         case .reserved: return "A customer is waiting for it. Arrives in \(row.weeks) \(row.weeks == 1 ? "week" : "weeks")."
         }
@@ -36,7 +37,7 @@ struct CarStockCard: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            IconCircle(glyph: Glyph.group, size: 42, tint: row.status == .inStock ? Theme.gold : Theme.ivoryMuted)
+            UsedCarPhoto(family: row.body, title: row.title)
             VStack(alignment: .leading, spacing: 4) {
                 Text(row.title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 HStack(spacing: 5) {
@@ -57,6 +58,7 @@ struct CarStockCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .opacity(row.status == .inStock ? 1 : 0.6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -161,7 +163,7 @@ struct CarPriceSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     LedgerSlider(value: $price, in: (car.cost * 0.8)...(car.listPrice * 1.15), step: max(1, (car.listPrice / 400).rounded()),
                                  valueText: cur.tidyShort(price)) { editing in if !editing { commit() } }
-                    FlatRow(label: profit >= 0 ? "Profit if it sells" : "Loss if it sells", value: cur.tidyShort(abs(profit)) + "  (" + String(format: "%.1f", abs(pct)) + " percent)",
+                    FlatRow(label: profit >= 0 ? "Profit if it sells" : "Loss if it sells", value: usedCarMoney(profit, cur) + "  (" + String(format: "%.1f", abs(pct)) + " percent)",
                             sub: profit >= 0 ? "Dearer cars sell more slowly." : "Below what the car cost you. Cheaper cars sell sooner.",
                             tint: profit >= 0 ? Theme.gain : Theme.loss, rule: false)
                 }
