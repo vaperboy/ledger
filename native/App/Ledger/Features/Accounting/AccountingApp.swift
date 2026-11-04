@@ -162,7 +162,7 @@ struct AccountingApp: View {
     }
 
     private func back() {
-        if m.stack.isEmpty { dismiss() } else { withAnimation(.snappy(duration: 0.2)) { m.pop() } }
+        if m.stack.isEmpty { dismiss() } else { Motion.animate(Motion.quickAnimation) { m.pop() } }
     }
 
     private var previewBanner: some View {

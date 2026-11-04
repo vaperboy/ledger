@@ -6,13 +6,13 @@ import SwiftUI
 /// helpers also pass `nil` animations, so only a static colour highlight can remain.
 enum OrgMotion {
     /// Row insertion and removal: 250 ms.
-    static func row(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Animation.easeOut(duration: 0.25) }
+    static func row(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
     /// Hierarchy changes: the app's arrive spring (response 0.38, damping 0.86).
-    static func hierarchy(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Animation.spring(response: 0.38, dampingFraction: 0.86) }
+    static func hierarchy(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.moveAnimation }
     /// Progress bars and small value changes: 350 ms.
-    static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Animation.easeInOut(duration: 0.35) }
+    static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
     /// Chart redraw: 700 ms.
-    static func chart(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Animation.easeInOut(duration: 0.7) }
+    static func chart(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.revealAnimation }
     /// How long a new item stays marked as new.
     static let flashSeconds: Double = 1.6
 }
@@ -109,9 +109,9 @@ private struct OrgEdge: ViewModifier {
 
     private func start(_ t: Color) {
         color = t
-        withAnimation(reduceMotion ? nil : Animation.easeOut(duration: 0.25)) { shown = true }
+        Motion.animate(reduceMotion ? nil : Motion.quickAnimation) { shown = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            withAnimation(reduceMotion ? nil : Animation.easeOut(duration: 0.6)) { shown = false }
+            Motion.animate(reduceMotion ? nil : Motion.revealAnimation) { shown = false }
         }
     }
 }
@@ -148,9 +148,9 @@ private struct OrgConnector: ViewModifier {
         guard !reduceMotion else { return }
         progress = 0
         visible = true
-        withAnimation(.easeInOut(duration: 0.7)) { progress = 1 }
+        Motion.animate(Motion.revealAnimation) { progress = 1 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeOut(duration: 0.6)) { visible = false }
+            Motion.animate(Motion.revealAnimation) { visible = false }
         }
     }
 }
@@ -185,8 +185,8 @@ private struct OrgPulse<V: Equatable>: ViewModifier {
             .shadow(color: tint.opacity(on ? 0.7 : 0), radius: on ? 6 : 0)
             .onChange(of: value) { _, _ in
                 guard !reduceMotion else { return }
-                withAnimation(.easeOut(duration: 0.18)) { on = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { withAnimation(.easeInOut(duration: 0.4)) { on = false } }
+                Motion.animate(Motion.quickAnimation) { on = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { Motion.animate(Motion.quickAnimation) { on = false } }
             }
     }
 }
@@ -199,7 +199,7 @@ private struct OrgTextSwap<V: Equatable>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentTransition(interpolate ? ContentTransition.interpolate : ContentTransition.opacity)
-            .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.3), value: value)
+            .animation(reduceMotion ? nil : Motion.quickAnimation, value: value)
     }
 }
 
@@ -218,7 +218,7 @@ private struct OrgRedraw<V: Equatable>: ViewModifier {
             .onChange(of: value) { _, _ in
                 guard !reduceMotion else { return }
                 reveal = 0.02
-                withAnimation(.easeInOut(duration: 0.7)) { reveal = 1 }
+                Motion.animate(Motion.revealAnimation) { reveal = 1 }
             }
     }
 }
@@ -246,8 +246,8 @@ struct OrgProgressBar: View {
         .animation(OrgMotion.fill(reduceMotion), value: fraction)
         .onChange(of: milestones) { old, new in
             guard new > old, !reduceMotion else { return }
-            withAnimation(.easeOut(duration: 0.2)) { glow = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { withAnimation(.easeInOut(duration: 0.5)) { glow = false } }
+            Motion.animate(Motion.quickAnimation) { glow = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { Motion.animate(Motion.quickAnimation) { glow = false } }
         }
     }
 }
@@ -269,7 +269,7 @@ struct OrgLink: View {
     private func draw() {
         guard !reduceMotion else { return }
         progress = 0
-        withAnimation(.easeInOut(duration: 0.6)) { progress = 1 }
+        Motion.animate(Motion.revealAnimation) { progress = 1 }
     }
 }
 
@@ -282,9 +282,9 @@ struct OrgNote: Identifiable, Equatable {
     /// Adds a note to `list` and removes it after `seconds`.
     static func show(_ list: Binding<[OrgNote]>, text: String, tint: Color = Theme.ivoryMuted, seconds: Double = 3) {
         let note = OrgNote(text: text, tint: tint)
-        withAnimation(.easeOut(duration: 0.25)) { list.wrappedValue.append(note) }
+        Motion.animate(Motion.quickAnimation) { list.wrappedValue.append(note) }
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
-            withAnimation(.easeOut(duration: 0.3)) { list.wrappedValue.removeAll { $0.id == note.id } }
+            Motion.animate(Motion.quickAnimation) { list.wrappedValue.removeAll { $0.id == note.id } }
         }
     }
 }
@@ -345,8 +345,8 @@ struct OrgCompletionCard: View {
         .buttonStyle(PressableStyle())
         .accessibilityLabel("\(item.title): \(item.name). \(item.detail). Tap to dismiss.")
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.2)) { ring = 1 }
-            withAnimation(.easeOut(duration: 0.5).delay(0.5)) { textIn = true }
+            Motion.animate(Motion.revealAnimation) { ring = 1 }
+            Motion.animate(Motion.quickAnimation.delay(0.5)) { textIn = true }
         }
     }
 }

@@ -38,7 +38,7 @@ struct NetWorthChart: View {
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .frame(height: height)
-                .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: days)
+                .animation(reduceMotion ? nil : Motion.quickAnimation, value: days)
                 .drawsItself()
             } else {
                 Text("The chart fills in day by day.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: height)

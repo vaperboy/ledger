@@ -129,7 +129,7 @@ struct CompanyProperties: View {
                         HStack(spacing: 18) {
                             Button("Renovate") { detailID = nil; presentAfterSheet { askToRenovate(p, cur) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
                             if p.kind == "com" {
-                                Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { withAnimation(.snappy(duration: 0.2)) { openTenants = openTenants == p.id ? nil : p.id } }
+                                Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { Motion.animate(Motion.quickAnimation) { openTenants = openTenants == p.id ? nil : p.id } }
                                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
                             }
                             Button("Sell") { detailID = nil; presentAfterSheet { askToSell(p, cur) } }.font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.loss)

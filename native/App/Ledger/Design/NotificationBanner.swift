@@ -104,7 +104,7 @@ struct NotificationBannerLayer: View {
         store.holdsHomeFigures || !store.notices.isEmpty || store.decisionPopup != nil || !store.redAlerts.isEmpty || queue.confirm != nil
     }
 
-    private var slide: Animation { reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.85) }
+    private var slide: Animation { reduceMotion ? Motion.quickAnimation : Motion.moveAnimation }
 
     var body: some View {
         let key = PumpKey(blocked: blocked, hasPending: queue.hasPending, hasCurrent: queue.current != nil)
@@ -122,18 +122,18 @@ struct NotificationBannerLayer: View {
             if key.blocked || key.hasCurrent || !key.hasPending { return }
             try? await Task.sleep(nanoseconds: 450_000_000)
             if Task.isCancelled { return }
-            withAnimation(slide) { queue.advance() }
+            Motion.animate(slide) { queue.advance() }
         }
         .onAppear { syncAlerts() }
         .onChange(of: store.engine == nil) { _, gone in if gone { queue.reset() } else { syncAlerts() } }
         .onChange(of: store.engine != nil ? store.phoneAlerts : []) { _, _ in syncAlerts() }
     }
 
-    private func close(_ item: BannerItem) { withAnimation(slide) { queue.dismiss(item.id) } }
+    private func close(_ item: BannerItem) { Motion.animate(slide) { queue.dismiss(item.id) } }
 
     private func tapped(_ item: BannerItem) {
         Haptics.tap()
-        withAnimation(slide) { queue.dismiss(item.id) }
+        Motion.animate(slide) { queue.dismiss(item.id) }
         switch item.target {
         case .none: break
         case .message(let id): store.decisionPopup = id
@@ -237,13 +237,13 @@ private struct BannerCard: View {
                 .onChanged { (v: DragGesture.Value) in drag = v.translation.height < 0 ? v.translation.height : v.translation.height / 8 }
                 .onEnded { (v: DragGesture.Value) in
                     if v.translation.height < -28 || v.velocity.height < -350 {
-                        withAnimation(.easeIn(duration: 0.2)) { drag = -320 }
+                        Motion.animate(Motion.quickAnimation) { drag = -320 }
                         Task { @MainActor in
                             try? await Task.sleep(nanoseconds: 190_000_000)
                             onClose()
                         }
                     } else {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { drag = 0 }
+                        Motion.animate(Motion.moveAnimation) { drag = 0 }
                     }
                 }
         )

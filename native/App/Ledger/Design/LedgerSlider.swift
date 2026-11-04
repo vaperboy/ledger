@@ -116,7 +116,7 @@ struct LedgerSlider: View {
                     .onChanged { (g: DragGesture.Value) in PageSwipeGate.shared.touching = true; update(x: g.location.x, width: w) }
                     .onEnded { (_: DragGesture.Value) in PageSwipeGate.shared.touching = false; finish() }
             )
-            .animation(.easeOut(duration: 0.12), value: dragging)
+            .animation(Motion.tapAnimation, value: dragging)
         }
         .frame(height: hit)
     }
@@ -151,7 +151,7 @@ struct LedgerSwitch: View {
             .frame(width: 38, height: 23)
             .frame(minWidth: 44, minHeight: rowHeight)
             .contentShape(Rectangle())
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: isOn)
+            .animation(reduceMotion ? nil : Motion.tapAnimation, value: isOn)
         }
         .buttonStyle(PressableStyle())
         .opacity(isEnabled ? 1 : 0.45)

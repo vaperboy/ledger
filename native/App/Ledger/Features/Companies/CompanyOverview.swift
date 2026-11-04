@@ -34,7 +34,7 @@ struct CompanyOverview: View {
 
     private func go(_ target: CompanySection) {
         guard CompanyDetailView.availableSections(company, engine).contains(target) else { return }
-        withAnimation(.snappy(duration: 0.2)) { section = target }
+        Motion.animate(Motion.quickAnimation) { section = target }
         Haptics.choose()
     }
     private func goMoney(_ part: CompanyMoneyPart) { moneyPart = part; go(.finances) }

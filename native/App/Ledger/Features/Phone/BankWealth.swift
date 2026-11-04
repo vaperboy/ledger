@@ -65,7 +65,7 @@ struct BankWealthCard: View {
 
     private var toggle: some View {
         Button {
-            withAnimation(.snappy(duration: 0.2)) { open.toggle() }
+            Motion.animate(Motion.quickAnimation) { open.toggle() }
             Haptics.choose()
         } label: {
             HStack {

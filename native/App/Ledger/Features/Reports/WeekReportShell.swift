@@ -249,7 +249,7 @@ struct WeekReportShell<More: View>: View {
                 }
             }
             .allowsHitTesting(false)
-            .animation(.easeIn(duration: 0.9), value: burst)
+            .animation(Motion.revealAnimation, value: burst)
         }
     }
 
@@ -283,22 +283,22 @@ struct WeekReportShell<More: View>: View {
             return
         }
         try? await Task.sleep(nanoseconds: 30_000_000)
-        withAnimation(.easeOut(duration: 0.2)) { titleShown = true }
-        withAnimation(Motion.reveal(false)) { numberShown = true }
+        Motion.animate(Motion.quickAnimation) { titleShown = true }
+        Motion.animate(Motion.reveal(false)) { numberShown = true }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 600_000_000)   // the number has finished counting
             Haptics.countDone()
         }
         for i in 0..<3 {
-            withAnimation(Motion.reveal(false)?.delay(0.08 * Double(i))) { bars[i] = 1 }
+            Motion.animate(Motion.reveal(false)?.delay(0.08 * Double(i))) { bars[i] = 1 }
         }
-        withAnimation(Motion.reveal(false)?.delay(0.2)) { strip = true }
-        withAnimation(.easeOut(duration: 0.3).delay(0.7)) { storyShown = true }
-        withAnimation(Motion.move(false)?.delay(1.0)) { cardShown = true }
+        Motion.animate(Motion.reveal(false)?.delay(0.2)) { strip = true }
+        Motion.animate(Motion.quickAnimation.delay(0.7)) { storyShown = true }
+        Motion.animate(Motion.move(false)?.delay(1.0)) { cardShown = true }
         guard made?.record != nil else { return }
         try? await Task.sleep(nanoseconds: 1_100_000_000)
         Haptics.goalDone()
-        withAnimation(Motion.move(false)) { trophyShown = true }
+        Motion.animate(Motion.move(false)) { trophyShown = true }
         burst = 1
         try? await Task.sleep(nanoseconds: 60_000_000)
         burst = 2

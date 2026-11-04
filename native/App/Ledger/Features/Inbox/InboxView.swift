@@ -23,7 +23,7 @@ struct InboxView: View {
     @State private var scrollTarget: Int?
     @AppStorage("inboxPinned") private var pinnedText = ""
 
-    static let page = 60
+    static let page = 40
 
     /// A titled block of messages (an urgency band or a company).
     struct Block: Identifiable {
@@ -167,7 +167,7 @@ struct InboxView: View {
     private func scrollToTarget(_ proxy: ScrollViewProxy) {
         guard let id = scrollTarget else { return }
         scrollTarget = nil
-        DispatchQueue.main.async { withAnimation(Motion.move(reduceMotion)) { proxy.scrollTo(id, anchor: .top) } }
+        DispatchQueue.main.async { Motion.animate(Motion.move(reduceMotion)) { proxy.scrollTo(id, anchor: .top) } }
     }
 
     /// The confirmation belongs to the screen that asked: the list while the detail sheet is closed, the sheet while it is open.

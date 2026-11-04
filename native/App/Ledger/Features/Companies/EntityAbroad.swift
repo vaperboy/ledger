@@ -39,7 +39,7 @@ struct EntityAbroadSection: View {
                 } else {
                     table(e, options)
                     if options.count > limit {
-                        Button { Haptics.tap(); withAnimation(.snappy(duration: 0.2)) { all.toggle() } } label: {
+                        Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { all.toggle() } } label: {
                             Text(all ? "Show fewer" : "Show all \(options.count) countries \u{203A}")
                                 .font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
                         }.buttonStyle(PressableStyle())

@@ -111,7 +111,7 @@ struct UnlockPopup: View {
         .centerSheetLocked()
         .onAppear {
             Haptics.tap()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { shown = true }
+            Motion.animate(Motion.moveAnimation) { shown = true }
         }
     }
 

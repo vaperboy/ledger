@@ -35,6 +35,8 @@ struct ApplicantsView: View {
     @State private var roleSel: String
     @State private var sort: ApplicantSort = .best
     @State private var talk: ApplicantTalk?
+    /// No list shows more than 40 rows at once (brief 9.2); `Show more` adds 40.
+    @State private var limit = 40
     @State private var showHire = false
 
     init(companyID: Int?, role: String?) {
@@ -179,8 +181,11 @@ struct ApplicantsView: View {
     private func list(_ e: GameEngine, _ rows: [ApplicantRowItem]) -> some View {
         ScrollView {
             VStack(spacing: 10) {
-                ForEach(rows) { (r: ApplicantRowItem) in
+                ForEach(Array(rows.prefix(limit))) { (r: ApplicantRowItem) in
                     row(e, r)
+                }
+                if rows.count > limit {
+                    QuietButton(title: "Show more", fullWidth: true) { limit += 40 }
                 }
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, 4).padding(.bottom, 20)

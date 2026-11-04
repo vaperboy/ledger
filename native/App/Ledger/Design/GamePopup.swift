@@ -30,7 +30,7 @@ struct GamePopup<Content: View>: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .onAppear { withAnimation(Motion.arrive(reduceMotion)) { shown = true } }
+        .onAppear { Motion.animate(Motion.arrive(reduceMotion)) { shown = true } }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }

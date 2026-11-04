@@ -171,7 +171,7 @@ struct CompanyContracts: View {
         return Card(padding: 12, radius: Theme.Radius.row, stroke: edge) {
             VStack(alignment: .leading, spacing: 10) {
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { openContract = isOpen ? nil : c.id; ending = nil }
+                    Motion.animate(Motion.quickAnimation) { openContract = isOpen ? nil : c.id; ending = nil }
                     Haptics.choose()
                 } label: {
                     HStack(spacing: 12) {
@@ -249,7 +249,7 @@ struct CompanyContracts: View {
         return Card(padding: 12, radius: Theme.Radius.row, stroke: edge) {
             VStack(alignment: .leading, spacing: 10) {
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { openTender = isOpen ? nil : t.id }
+                    Motion.animate(Motion.quickAnimation) { openTender = isOpen ? nil : t.id }
                     Haptics.choose()
                 } label: {
                     HStack(spacing: 12) {

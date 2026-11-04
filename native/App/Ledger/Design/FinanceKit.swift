@@ -65,7 +65,7 @@ struct AcctPressStyle: ButtonStyle {
         configuration.label
             .background(configuration.isPressed ? P.cardDeep : Color.clear)
             .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+            .animation(Motion.tapAnimation, value: configuration.isPressed)
     }
 }
 
@@ -74,7 +74,7 @@ struct AcctButtonPressStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+            .animation(Motion.tapAnimation, value: configuration.isPressed)
     }
 }
 

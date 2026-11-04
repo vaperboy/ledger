@@ -365,7 +365,7 @@ struct AdvanceBar: View {
         .onAppear {
             // Brief 1.5: until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
             guard firstDay, !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: Motion.pulseSeconds / 2).repeatForever(autoreverses: true)) { pulseDim = true }
+            Motion.animate(Motion.pulseAnimation) { pulseDim = true }
         }
         .disabled(over || busy || (blockID == nil && store.reportSheet != nil))
         .accessibilityIdentifier("next-day")

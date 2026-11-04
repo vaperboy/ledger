@@ -126,7 +126,7 @@ struct CelebrationPopup: View {
         }
         .onAppear {
             Haptics.tap()
-            withAnimation(Motion.arrive(reduceMotion)) { shown = true }
+            Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
@@ -210,10 +210,10 @@ struct CelebrationPopup: View {
         }
         if let text {
             Haptics.success()
-            withAnimation(Motion.arrive(reduceMotion)) { claimedText = text.tidyText; burst = true }
+            Motion.animate(Motion.arrive(reduceMotion)) { claimedText = text.tidyText; burst = true }
         } else {
             Haptics.warning()
-            withAnimation(Motion.standard(reduceMotion)) { claimedText = "Already claimed." }
+            Motion.animate(Motion.standard(reduceMotion)) { claimedText = "Already claimed." }
         }
     }
 

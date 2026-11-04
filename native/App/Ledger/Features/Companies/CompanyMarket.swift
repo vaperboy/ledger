@@ -236,7 +236,7 @@ struct CompanyMarket: View {
                 }
             }
             .frame(height: 96)
-            .animation(Animation.easeInOut(duration: 0.7), value: history)
+            .animation(Motion.revealAnimation, value: history)
         } else {
             Text("The share line starts after the first month of trading.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
         }
@@ -280,7 +280,7 @@ struct CompanyMarket: View {
         }
         .chartXScale(range: .plotDimension(endPadding: 56))
         .frame(height: CGFloat(bars.count) * 30 + 8)
-        .animation(Animation.easeInOut(duration: 0.7), value: bars.map { $0.percent })
+        .animation(Motion.revealAnimation, value: bars.map { $0.percent })
     }
 
     // MARK: Rivals

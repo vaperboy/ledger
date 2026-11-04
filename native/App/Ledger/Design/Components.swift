@@ -108,7 +108,7 @@ struct GoldButtonStyle: ButtonStyle {
             .background(Capsule().fill(P.isLight ? P.accent : Theme.gold))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(Motion.tapAnimation, value: configuration.isPressed)
     }
 }
 

@@ -60,7 +60,7 @@ struct CompanyStaffRoster: View {
                     let pay: String = cur.tidyShort(members.reduce(0) { $0 + $1.monthlyWage }) + " a month"
                     Button {
                         Haptics.choose()
-                        withAnimation(.snappy(duration: 0.2)) { if open { expanded.remove(role) } else { expanded.insert(role) } }
+                        Motion.animate(Motion.quickAnimation) { if open { expanded.remove(role) } else { expanded.insert(role) } }
                     } label: {
                         CardRowLabel(title: roleLabel(role), subtitle: "\(members.count) \(members.count == 1 ? "person" : "people")", value: pay, open: open)
                     }.buttonStyle(PressableStyle())

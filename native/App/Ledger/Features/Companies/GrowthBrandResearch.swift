@@ -63,7 +63,7 @@ struct WorkerGrowthSection: View {
     }
 
     private func fill(_ v: Double) {
-        if reduceMotion { shown = v } else { withAnimation(.easeOut(duration: 0.6)) { shown = v } }
+        if reduceMotion { shown = v } else { Motion.animate(Motion.revealAnimation) { shown = v } }
     }
 
     private func missingLine(_ g: GrowthPath) -> String {

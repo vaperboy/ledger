@@ -91,7 +91,7 @@ struct LoanDetailSheet: View {
                 .accessibilityIdentifier("loan-payoff")
             QuietButton(title: "Pay back part", fullWidth: true) { partial = true }
                 .accessibilityIdentifier("loan-pay-part")
-            QuietButton(title: showSchedule ? "Hide schedule" : "View schedule", fullWidth: true) { withAnimation(.snappy(duration: 0.2)) { showSchedule.toggle() } }
+            QuietButton(title: showSchedule ? "Hide schedule" : "View schedule", fullWidth: true) { Motion.animate(Motion.quickAnimation) { showSchedule.toggle() } }
                 .accessibilityIdentifier("loan-schedule")
         }
     }
