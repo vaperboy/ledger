@@ -526,6 +526,37 @@
     "dev": true
    }
   ],
+  "travel": [
+   { "n": "Package holidays", "svc": true },
+   { "n": "Flight bookings", "svc": true },
+   { "n": "Hotel stays", "svc": true },
+   { "n": "City breaks", "svc": true },
+   { "n": "Cruises", "svc": true },
+   { "n": "Business travel desk", "svc": true },
+   { "n": "Group and school trips", "svc": true },
+   { "n": "Travel insurance", "svc": true },
+   { "n": "Visa and document service", "svc": true }
+  ],
+  "insbroker": [
+   { "n": "Motor insurance", "svc": true },
+   { "n": "Home and contents insurance", "svc": true },
+   { "n": "Life and critical illness cover", "svc": true },
+   { "n": "Private health insurance", "svc": true },
+   { "n": "Business and liability insurance", "svc": true },
+   { "n": "Landlord insurance", "svc": true },
+   { "n": "Pension and savings advice", "svc": true },
+   { "n": "Annual policy review", "svc": true }
+  ],
+  "finbroker": [
+   { "n": "Residential mortgage", "svc": true },
+   { "n": "Remortgage and product transfer", "svc": true },
+   { "n": "Buy-to-let mortgage", "svc": true },
+   { "n": "Personal loan", "svc": true },
+   { "n": "Business loan", "svc": true },
+   { "n": "Equity release", "svc": true },
+   { "n": "Protection cover referral", "svc": true },
+   { "n": "Mortgage review service", "svc": true }
+  ],
   "estate": [
    {
     "n": "Property valuation",

@@ -46,7 +46,10 @@
   "airline": 4.2,
   "indoorski": 5.0,
   "furniture": 5.0,
-  "courier": 3.8
+  "courier": 3.8,
+  "travel": 3.0,
+  "insbroker": 3.4,
+  "finbroker": 2.3
  },
  "priceRetuned": [
   "bakery",
