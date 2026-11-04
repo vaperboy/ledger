@@ -59,7 +59,7 @@ struct InboxView: View {
     /// One chronological list, newest first, no sub-folders (brief 2.3).
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
         let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
-        return sorted.isEmpty ? [] : [Block(id: "all", messages: sorted)]
+        return sorted.isEmpty ? [] : [Block(id: "all", title: "", messages: sorted)]
     }
 
     /// The blocks cut to the first `limit` messages, so a long inbox stays quick.
