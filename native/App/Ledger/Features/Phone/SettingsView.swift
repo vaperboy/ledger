@@ -10,6 +10,7 @@ struct SettingsView: View {
     var embedded = false
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
+    @Environment(AdCoordinator.self) private var ads
     @State private var haptics = Haptics.enabled
     @State private var reminders: Bool = Reminders.enabled
     @State private var showImporter = false
@@ -112,7 +113,7 @@ struct SettingsView: View {
         let code: String = store.engine?.state.homeCountryCode ?? (Locale.current.region?.identifier == "GB" ? "UK" : (Locale.current.region?.identifier ?? "NO"))
         let who: String = store.engine?.state.player.name ?? ""
         pending = PendingAction(title: "Start a new game?", message: "It replaces the saved game. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story) }
+                                button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
     }
 
     /// Brief 11.6: current plan, renewal date, manage, restore. Prices are never written here.

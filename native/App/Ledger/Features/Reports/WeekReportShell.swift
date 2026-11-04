@@ -9,6 +9,7 @@ import Simulation
 /// detail below a "More" divider. Real figures only; Reduce Motion shows everything at once. Continue works from the first frame.
 struct WeekReportShell<More: View>: View {
     @EnvironmentObject var store: GameStore
+    @Environment(AdCoordinator.self) private var ads
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var digest: ReportDigest
     @ViewBuilder var more: () -> More
@@ -66,13 +67,23 @@ struct WeekReportShell<More: View>: View {
                 Text("Full report").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 40).contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
-            Button { Haptics.tap(); store.dismissReportSheet() } label: {
+            Button { Haptics.tap(); continueTapped() } label: {
                 Text("Continue").frame(maxWidth: .infinity).frame(minHeight: 8)
             }
             .buttonStyle(FoilButtonStyle()).accessibilityIdentifier("report-continue")
         }
         .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 14)
         .background(Theme.page)
+    }
+
+    /// Closes the report; a week report then offers the interstitial the ad rules allow (placement 1). Never blocks the player.
+    private func continueTapped() {
+        let isWeek: Bool = digest.kind == .week
+        let week: Int = store.engine?.state.week ?? 0
+        let m4: Bool = store.engine.map { (e: GameEngine) -> Bool in PlayerGoals.ladder(e.state)?.first(where: { (g: PlayerGoals.LadderGoal) -> Bool in g.id == "M4" })?.done ?? true } ?? true
+        let blocking: Bool = store.blockingMessageID != nil
+        store.dismissReportSheet()
+        if isWeek { Task { await ads.weekReportContinued(reportWeek: week, m4Done: m4, blockingInboxOpen: blocking) } }
     }
 
     // MARK: Parts

@@ -9,6 +9,7 @@ import Businesses
 struct HomeSummary: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var onNewCompany: () -> Void
     var maxPriorities: Int = 3
@@ -18,6 +19,10 @@ struct HomeSummary: View {
         VStack(alignment: .leading, spacing: 8) {
             HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", streak: store.playStreakShown, onNewCompany: onNewCompany)
             if e.cashIsTight { cashTightBanner }
+            if ent.plusEndedNotice {
+                Text("Plus has ended. Your saves are safe.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    .accessibilityIdentifier("plus-ended-line")
+            }
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {
                     NetWorthCard(engine: e)

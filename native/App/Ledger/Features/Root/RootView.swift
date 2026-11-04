@@ -31,6 +31,7 @@ struct RootView: View {
         }
         .overlay { errorPopup }
         .overlay { NotificationBannerLayer(queue: store.banners) }
+        .modifier(PostM7Paywall())
     }
 
     /// An error is told in the same in-game popup as every question, not in an iOS alert.

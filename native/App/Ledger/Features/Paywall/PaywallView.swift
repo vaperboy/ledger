@@ -151,3 +151,35 @@ struct PaywallHost: ViewModifier {
         }
     }
 }
+
+/// Brief 11.4: once, when the first profitable month (M7) is done, the paywall rises with a line above it. Waits for the popups on screen
+/// (report, celebration, unlocks) to finish, never shows to a paying player, and never twice (the mark is kept on the device).
+struct PostM7Paywall: ViewModifier {
+    @EnvironmentObject var store: GameStore
+    @Environment(Entitlements.self) private var ent
+    @State private var armed = false
+    private static let shownKey = "ledger.paywallAfterM7Shown"
+
+    private var m7Done: Bool {
+        guard let e = store.engine else { return false }
+        return PlayerGoals.ladder(e.state)?.first(where: { (g: PlayerGoals.LadderGoal) -> Bool in g.id == "M7" })?.done ?? false
+    }
+
+    private var shownBefore: Bool { UserDefaults.standard.bool(forKey: Self.shownKey) }
+
+    /// The moment to show it: armed by M7 being reached, nothing else on screen.
+    private var ready: Bool { armed && !store.holdsHomeFigures && !store.popupOpen && ent.paywall == nil }
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: m7Done) { old, now in if now && !old && !shownBefore && !ent.isPro { armed = true } }
+            .onChange(of: ready) { _, now in if now { show() } }
+    }
+
+    private func show() {
+        armed = false
+        guard !shownBefore, !ent.isPro else { return }
+        UserDefaults.standard.set(true, forKey: Self.shownKey)
+        ent.paywall = PaywallRequest(title: "Ledger Pro", lead: "Your first profitable month. Pro opens the rest of the game and removes ads.")
+    }
+}

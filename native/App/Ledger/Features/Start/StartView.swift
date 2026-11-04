@@ -15,6 +15,7 @@ import Finance
 /// Starting or importing over an existing save asks first, because it replaces that save.
 struct StartView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(AdCoordinator.self) private var ads
     @State private var summary: SaveSummary?
     @State private var pending: PendingAction?
     @State private var settingUp = false
@@ -38,6 +39,7 @@ struct StartView: View {
     private func begin(country: String, trade: String, company: String) {
         replacingSave("Start a new game?", button: "Start new game") {
             store.newGame(name: "", countryCode: country, story: .fresh, tradeID: trade, companyName: company)
+            ads.resetForNewSave()
         }
     }
 
