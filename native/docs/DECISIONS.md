@@ -177,3 +177,10 @@ Layout bug: some screens move loosely side to side and up and down when content 
 
 ## 4 Nov 2026, dealerships and real products (owner brief)
 Verbatim brief: `native/docs/briefs/DEALERSHIP_AND_PRODUCTS_BRIEF.md` (binding). Not finished until EVERY company has real things it sells (audit and rollout per trade, no generic "your products"). Waves: (1) audit of all trades (docs), (2) used car dealer rework, (3) new-car dealership with brand contract, warranty, loans, insurance commission, (4) product/service model with employee-style tabs rolled out trade by trade.
+
+## 4 Nov 2026, products audit answers (audit: `native/docs/audit/products_by_trade.md`)
+- Old saves move to real per-item stock and cost wave by wave, each with a balance check.
+- New trades: travel agency, insurance broker, finance broker (commission middle men).
+- A service with no physical item is a service type with a price (hourly or job) and capacity.
+- Items are listed like the staff list in Company > Team (rows with key figures); an item page is a scroll of blocks like a staff member's page (Overview, Price, Sales/Demand, Plans, History, Documents, Actions).
+- Wave order: W0 shared engine/UI foundation, W1 (usedcar, cardealer, estate, realdev, staffing, event + new broker trades), then W2, W3, W8, W6, W5, W7, W4, W9, W10, W11.
