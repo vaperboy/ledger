@@ -184,3 +184,5 @@ Verbatim brief: `native/docs/briefs/DEALERSHIP_AND_PRODUCTS_BRIEF.md` (binding).
 - A service with no physical item is a service type with a price (hourly or job) and capacity.
 - Items are listed like the staff list in Company > Team (rows with key figures); an item page is a scroll of blocks like a staff member's page (Overview, Price, Sales/Demand, Plans, History, Documents, Actions).
 - Wave order: W0 shared engine/UI foundation, W1 (usedcar, cardealer, estate, realdev, staffing, event + new broker trades), then W2, W3, W8, W6, W5, W7, W4, W9, W10, W11.
+
+- (4 Nov) Item list reference: `native/design/mockups/lists/employees_list_reference.jpg` (Company > Team Employees list): section caption with count and total on the right, one rounded card per row, round thumbnail on the left, name with grey subtitle, key figure right-aligned, chevron. The items list uses exactly this layout (thumbnail = item picture or glyph, subtitle = model/status, right = price or profit).
