@@ -562,11 +562,16 @@
   ],
   "pets": [
    {
-    "n": "Dog walking",
+    "n": "Puppy training class",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Vet visit transport",
     "svc": true
    },
    {
-    "n": "Pet sitting",
+    "n": "Dog walking",
     "svc": true
    },
    {
@@ -574,7 +579,7 @@
     "svc": true
    },
    {
-    "n": "Puppy training class",
+    "n": "Daycare",
     "svc": true
    },
    {
@@ -582,21 +587,24 @@
     "svc": true
    },
    {
-    "n": "Vet visit transport",
+    "n": "Pet sitting",
     "svc": true
    },
    {
-    "n": "Pet food subscription",
-    "svc": false,
-    "dev": true
+    "n": "Pet food",
+    "svc": false
    },
    {
     "n": "Pet accessories",
-    "svc": false,
-    "dev": true
+    "svc": false
    }
   ],
   "carrepair": [
+   {
+    "n": "Servicing plan",
+    "svc": true,
+    "dev": true
+   },
    {
     "n": "Annual service",
     "svc": true
@@ -618,7 +626,7 @@
     "svc": true
    },
    {
-    "n": "Servicing plan",
+    "n": "Mechanical repair",
     "svc": true
    },
    {
@@ -626,9 +634,8 @@
     "svc": true
    },
    {
-    "n": "Tyres and parts",
-    "svc": false,
-    "dev": true
+    "n": "Tyres and parts over the counter",
+    "svc": false
    }
   ],
   "foodtruck": [
@@ -987,28 +994,16 @@
   ],
   "kiosk": [
    {
-    "n": "Newspapers and magazines",
+    "n": "Tobacco",
     "svc": false
    },
    {
-    "n": "Snacks and drinks",
+    "n": "Beer, wine and spirits",
     "svc": false
-   },
-   {
-    "n": "Phone top-ups",
-    "svc": true
    },
    {
     "n": "Lottery tickets",
-    "svc": false
-   },
-   {
-    "n": "Hot drinks counter",
-    "svc": false
-   },
-   {
-    "n": "Souvenirs",
-    "svc": false
+    "svc": true
    },
    {
     "n": "Parcel pickup point",
@@ -1016,62 +1011,79 @@
    },
    {
     "n": "Umbrellas and seasonal goods",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Souvenirs",
     "svc": false
+   },
+   {
+    "n": "Newspapers and magazines",
+    "svc": false
+   },
+   {
+    "n": "Soft drinks and water",
+    "svc": false
+   },
+   {
+    "n": "Snacks and sweets",
+    "svc": false
+   },
+   {
+    "n": "Coffee and hot snacks",
+    "svc": false
+   },
+   {
+    "n": "Phone top-ups",
+    "svc": true
    }
   ],
   "boutique": [
    {
-    "n": "Signature collection",
-    "svc": false,
-    "b": true
-   },
-   {
     "n": "Personal styling",
-    "svc": true
-   },
-   {
-    "n": "Alterations",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Accessories range",
-    "svc": false
-   },
-   {
-    "n": "Seasonal capsule",
-    "svc": false
-   },
-   {
-    "n": "Gift cards",
-    "svc": false
-   },
-   {
-    "n": "Loyalty club",
     "svc": true
    },
    {
     "n": "Made-to-measure",
     "svc": true,
     "dev": true
+   },
+   {
+    "n": "Everyday clothing",
+    "svc": false
+   },
+   {
+    "n": "Signature pieces",
+    "svc": false
+   },
+   {
+    "n": "Coats and knitwear",
+    "svc": false
+   },
+   {
+    "n": "Summer dresses and linen",
+    "svc": false
+   },
+   {
+    "n": "Accessories",
+    "svc": false
+   },
+   {
+    "n": "Gift cards",
+    "svc": true
+   },
+   {
+    "n": "Alterations",
+    "svc": true,
+    "dev": true
    }
   ],
   "webshop": [
    {
-    "n": "Own-brand range",
-    "svc": false
-   },
-   {
-    "n": "Subscription box",
-    "svc": false
-   },
-   {
-    "n": "Express delivery",
-    "svc": true
-   },
-   {
-    "n": "Gift sets",
-    "svc": false
+    "n": "Premium returns",
+    "svc": true,
+    "dev": true
    },
    {
     "n": "Marketplace listing",
@@ -1079,25 +1091,79 @@
     "dev": true
    },
    {
-    "n": "Premium returns",
-    "svc": true
-   },
-   {
-    "n": "Bundle deals",
+    "n": "Own-brand range",
     "svc": false
    },
    {
-    "n": "Loyalty programme",
+    "n": "Branded goods (stocked)",
+    "svc": false
+   },
+   {
+    "n": "Dropshipped goods",
+    "svc": false
+   },
+   {
+    "n": "Subscription box",
+    "svc": false
+   },
+   {
+    "n": "Gift sets and bundles",
+    "svc": false
+   },
+   {
+    "n": "Express delivery",
     "svc": true
    }
   ],
   "grocery": [
    {
-    "n": "Fresh bakery counter",
+    "n": "Wine and spirits",
     "svc": false
    },
    {
+    "n": "Tobacco",
+    "svc": false
+   },
+   {
+    "n": "Parcel pickup point",
+    "svc": true
+   },
+   {
+    "n": "Over-the-counter health",
+    "svc": false
+   },
+   {
+    "n": "Home delivery",
+    "svc": true,
+    "dev": true
+   },
+   {
     "n": "Organic range",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Fresh fruit and vegetables",
+    "svc": false
+   },
+   {
+    "n": "Dairy and eggs",
+    "svc": false
+   },
+   {
+    "n": "Meat and fish counter",
+    "svc": false
+   },
+   {
+    "n": "Bakery counter",
+    "svc": false
+   },
+   {
+    "n": "Delicatessen counter",
+    "svc": false
+   },
+   {
+    "n": "Pantry, drinks and dry goods",
     "svc": false
    },
    {
@@ -1107,58 +1173,59 @@
    {
     "n": "Ready meals",
     "svc": false
-   },
-   {
-    "n": "Delicatessen counter",
-    "svc": false
-   },
-   {
-    "n": "Click and collect",
-    "svc": true
-   },
-   {
-    "n": "Home delivery",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Wine and spirits",
-    "svc": false
    }
   ],
   "hardware": [
    {
-    "n": "Paint mixing",
+    "n": "Tool hire",
     "svc": true
    },
    {
-    "n": "Tool hire",
-    "svc": true
+    "n": "Own-brand tools",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Smart home range",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Kitchen fitting advice",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Hand and power tools",
+    "svc": false
+   },
+   {
+    "n": "Paint and decorating",
+    "svc": false
+   },
+   {
+    "n": "Timber and sheet materials",
+    "svc": false
+   },
+   {
+    "n": "Building supplies",
+    "svc": false
+   },
+   {
+    "n": "Fixings and ironmongery",
+    "svc": false
+   },
+   {
+    "n": "Electrical and plumbing fittings",
+    "svc": false
    },
    {
     "n": "Garden range",
     "svc": false
    },
    {
-    "n": "Timber cutting",
+    "n": "Timber cutting and paint mixing",
     "svc": true
-   },
-   {
-    "n": "Own-brand tools",
-    "svc": false
-   },
-   {
-    "n": "Trade counter",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Kitchen fitting advice",
-    "svc": true
-   },
-   {
-    "n": "Smart home range",
-    "svc": false
    }
   ],
   "usedcar": [

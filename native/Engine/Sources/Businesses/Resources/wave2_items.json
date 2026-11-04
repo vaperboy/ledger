@@ -1,0 +1,104 @@
+{
+ "about": "Wave 2 real item catalogue (Wave2.swift). Per trade the things it really sells. n name (also the add-item popup title), svc service, md model (stk stocked, svc service, sub subscription, rent rentable unit), q relative share of customers, r relative price, mc buy cost as a share of the price in real life (scaled once per company so the revenue-weighted cost equals the trade's cost of sales), fix extra cost share of the price (a commission pass-through, fulfilment, consumables) that is never scaled, ft where fix goes (cost = bought-in, prep = extra), lead supplier lead time in days, shelf shelf life in days (0 none), ret share of units returned, seas season curve (tables.json SEAS) and sg how strongly the season moves what customers think it is worth, src supply kind (supply_kinds.json) when one of your own companies can supply it, needs 'knob:option' that must be switched on, hrs labour hours of the job, base 1 = on sale from the start, dev 1 = developed first when added later, note one line for the item page.",
+ "trades": {
+  "kiosk": [
+   {"id": "papers", "n": "Newspapers and magazines", "md": "stk", "q": 3, "r": 0.8, "mc": 0.80, "lead": 1, "shelf": 1, "base": 1, "note": "Daily delivery on sale or return: a thin margin and gone the next day."},
+   {"id": "drinks", "n": "Soft drinks and water", "md": "stk", "q": 5, "r": 0.9, "mc": 0.62, "lead": 2, "shelf": 270, "base": 1, "note": "Chilled, bought by the case from the wholesaler."},
+   {"id": "snacks", "n": "Snacks and sweets", "md": "stk", "q": 5, "r": 0.7, "mc": 0.66, "lead": 2, "shelf": 240, "base": 1, "note": "Impulse buys at the till: the best margin on the shelf."},
+   {"id": "hot", "n": "Coffee and hot snacks", "md": "stk", "q": 3, "r": 1.0, "mc": 0.30, "lead": 1, "shelf": 1, "base": 1, "note": "Made at the counter from cheap ingredients."},
+   {"id": "topup", "n": "Phone top-ups", "svc": 1, "md": "svc", "q": 2, "r": 2.2, "fix": 0.96, "ft": "cost", "base": 1, "note": "A commission line: you keep about 4% of what the customer tops up."},
+   {"id": "tobacco", "n": "Tobacco", "md": "stk", "q": 3, "r": 3.2, "mc": 0.90, "lead": 2, "shelf": 360, "needs": "cat:tob", "note": "Needs a tobacco licence. Heavy duty, so the shop keeps about 9%."},
+   {"id": "alcohol", "n": "Beer, wine and spirits", "md": "stk", "q": 2, "r": 2.5, "mc": 0.78, "lead": 3, "shelf": 720, "needs": "cat:alc", "note": "Needs an alcohol licence."},
+   {"id": "lottery", "n": "Lottery tickets", "svc": 1, "md": "svc", "q": 2, "r": 1.5, "fix": 0.94, "ft": "cost", "needs": "cat:lotto", "note": "A commission line: about 6% of ticket sales."},
+   {"id": "parcel", "n": "Parcel pickup point", "svc": 1, "md": "svc", "q": 2, "r": 0.9, "fix": 0.30, "ft": "prep", "needs": "cat:parcel", "note": "A handling fee per parcel; the cost is shelf space and time."},
+   {"id": "seasonal", "n": "Umbrellas and seasonal goods", "md": "stk", "q": 0.5, "r": 2.5, "mc": 0.60, "lead": 7, "shelf": 720, "seas": "winter", "sg": 0.5, "dev": 1, "note": "Sells when the weather turns."},
+   {"id": "souvenirs", "n": "Souvenirs", "md": "stk", "q": 0.5, "r": 2.0, "mc": 0.50, "lead": 10, "shelf": 720, "seas": "summer", "sg": 0.4, "note": "High margin, slow to turn over."}
+  ],
+  "boutique": [
+   {"id": "everyday", "n": "Everyday clothing", "md": "stk", "q": 4, "r": 0.7, "mc": 0.48, "lead": 14, "shelf": 0, "ret": 0.08, "seas": "xmas", "sg": 0.5, "base": 1, "note": "Basics bought by the season; unsold pieces are marked down."},
+   {"id": "signature", "n": "Signature pieces", "md": "stk", "q": 2, "r": 1.4, "mc": 0.50, "lead": 21, "shelf": 0, "ret": 0.10, "seas": "xmas", "sg": 0.7, "base": 1, "note": "Fewer, dearer pieces ordered in small runs from the label."},
+   {"id": "outerwear", "n": "Coats and knitwear", "md": "stk", "q": 1.5, "r": 2.2, "mc": 0.52, "lead": 21, "shelf": 0, "ret": 0.07, "seas": "winter", "sg": 0.9, "base": 1, "note": "A winter line: dear in season, marked down in spring."},
+   {"id": "summer", "n": "Summer dresses and linen", "md": "stk", "q": 2, "r": 1.1, "mc": 0.50, "lead": 21, "shelf": 0, "ret": 0.09, "seas": "summer", "sg": 0.9, "base": 1, "note": "A summer line: the autumn markdown decides the profit."},
+   {"id": "accessories", "n": "Accessories", "md": "stk", "q": 3, "r": 0.4, "mc": 0.42, "lead": 10, "shelf": 0, "ret": 0.03, "base": 1, "note": "Scarves, belts, jewellery: small, high margin, little returns."},
+   {"id": "giftcards", "n": "Gift cards", "svc": 1, "md": "svc", "q": 0.7, "r": 0.8, "fix": 0.02, "ft": "cost", "seas": "xmas", "sg": 0.3, "base": 1, "note": "Cash now, goods later: costs only the card."},
+   {"id": "alter", "n": "Alterations", "svc": 1, "md": "svc", "q": 1, "r": 0.5, "mc": 0.10, "base": 1, "dev": 1, "hrs": 1, "note": "A seamstress hour and thread."},
+   {"id": "styling", "n": "Personal styling", "svc": 1, "md": "svc", "q": 0.6, "r": 1.2, "fix": 0.12, "ft": "prep", "hrs": 2, "note": "A booked hour with the stylist, sold with the clothes."},
+   {"id": "mtm", "n": "Made-to-measure", "svc": 1, "md": "svc", "q": 0.3, "r": 4.0, "mc": 0.45, "dev": 1, "lead": 28, "hrs": 6, "note": "Fabric and a tailor's days; paid up front."}
+  ],
+  "grocery": [
+   {"id": "produce", "n": "Fresh fruit and vegetables", "md": "stk", "q": 5, "r": 0.8, "mc": 0.70, "lead": 1, "shelf": 5, "src": "produce", "base": 1, "note": "Delivered daily. What is not sold in five days is thrown away."},
+   {"id": "dairy", "n": "Dairy and eggs", "md": "stk", "q": 4, "r": 0.7, "mc": 0.78, "lead": 2, "shelf": 9, "base": 1, "note": "Short dates, thin margin, high footfall."},
+   {"id": "meat", "n": "Meat and fish counter", "md": "stk", "q": 2, "r": 2.2, "mc": 0.72, "lead": 1, "shelf": 3, "src": "fish", "base": 1, "note": "Cut at the counter; three days at best."},
+   {"id": "bakery", "n": "Bakery counter", "md": "stk", "q": 3, "r": 0.6, "mc": 0.45, "lead": 1, "shelf": 1, "src": "bread", "base": 1, "note": "Fresh each morning, from your own bakery if you have one."},
+   {"id": "deli", "n": "Delicatessen counter", "md": "stk", "q": 1.5, "r": 1.6, "mc": 0.62, "lead": 2, "shelf": 6, "base": 1, "note": "Cheese, cold cuts and salads."},
+   {"id": "pantry", "n": "Pantry, drinks and dry goods", "md": "stk", "q": 6, "r": 1.0, "mc": 0.80, "lead": 3, "shelf": 400, "base": 1, "note": "Long life, thin margin, the bulk of the basket."},
+   {"id": "ownlabel", "n": "Own-label basics", "md": "stk", "q": 3, "r": 0.7, "mc": 0.58, "lead": 7, "shelf": 300, "base": 1, "note": "Made for you by a manufacturer: a better margin than the brands."},
+   {"id": "ready", "n": "Ready meals", "md": "stk", "q": 2, "r": 1.3, "mc": 0.66, "lead": 1, "shelf": 4, "base": 1, "note": "Chilled, four days of life."},
+   {"id": "wine", "n": "Wine and spirits", "md": "stk", "q": 1.5, "r": 2.0, "mc": 0.82, "lead": 3, "shelf": 720, "needs": "xtra:alc", "note": "Needs an alcohol licence."},
+   {"id": "tobacco", "n": "Tobacco", "md": "stk", "q": 2, "r": 3.0, "mc": 0.90, "lead": 2, "shelf": 360, "needs": "xtra:tob", "note": "Needs a tobacco licence."},
+   {"id": "parcel", "n": "Parcel pickup point", "svc": 1, "md": "svc", "q": 1, "r": 0.9, "fix": 0.30, "ft": "prep", "needs": "xtra:parcel", "note": "A fee per parcel."},
+   {"id": "health", "n": "Over-the-counter health", "md": "stk", "q": 1, "r": 1.2, "mc": 0.68, "lead": 3, "shelf": 540, "needs": "xtra:pharm", "note": "Painkillers, vitamins, plasters."},
+   {"id": "delivery", "n": "Home delivery", "svc": 1, "md": "svc", "q": 1, "r": 0.4, "fix": 0.85, "ft": "prep", "dev": 1, "note": "A van and a driver per drop."},
+   {"id": "organic", "n": "Organic range", "md": "stk", "q": 1, "r": 1.6, "mc": 0.64, "lead": 3, "shelf": 7, "dev": 1, "note": "Dearer, shorter shelf life."}
+  ],
+  "hardware": [
+   {"id": "tools", "n": "Hand and power tools", "md": "stk", "q": 2, "r": 1.6, "mc": 0.68, "lead": 5, "shelf": 0, "base": 1, "note": "Brands at a fixed margin; trade customers get a discount."},
+   {"id": "paint", "n": "Paint and decorating", "md": "stk", "q": 3, "r": 1.0, "mc": 0.58, "lead": 3, "shelf": 720, "base": 1, "note": "Tinted in store: the mixing makes the margin."},
+   {"id": "timber", "n": "Timber and sheet materials", "md": "stk", "q": 2.5, "r": 1.8, "mc": 0.78, "lead": 4, "shelf": 0, "src": "build", "base": 1, "note": "Bulky: needs the timber shed and a forklift."},
+   {"id": "building", "n": "Building supplies", "md": "stk", "q": 2, "r": 2.4, "mc": 0.84, "lead": 3, "shelf": 0, "src": "build", "base": 1, "note": "Cement, bricks, insulation: volume for trade accounts at a thin margin."},
+   {"id": "fixings", "n": "Fixings and ironmongery", "md": "stk", "q": 5, "r": 0.35, "mc": 0.50, "lead": 5, "shelf": 0, "base": 1, "note": "Screws and hinges by the bag: small items, big margin."},
+   {"id": "fittings", "n": "Electrical and plumbing fittings", "md": "stk", "q": 3, "r": 0.8, "mc": 0.64, "lead": 3, "shelf": 0, "base": 1, "note": "What every handyman buys on the way to the job."},
+   {"id": "garden", "n": "Garden range", "md": "stk", "q": 2, "r": 1.1, "mc": 0.62, "lead": 7, "shelf": 0, "seas": "summer", "sg": 0.7, "base": 1, "note": "Spring and summer: out of season it is marked down."},
+   {"id": "cutting", "n": "Timber cutting and paint mixing", "svc": 1, "md": "svc", "q": 2, "r": 0.3, "fix": 0.12, "ft": "prep", "base": 1, "hrs": 0.25, "note": "A saw blade and a few minutes."},
+   {"id": "hire", "n": "Tool hire", "svc": 1, "md": "rent", "q": 0.8, "r": 1.2, "fix": 0.18, "ft": "prep", "needs": "also:hire", "note": "A fleet of tools rented by the day; each one earns only while it is out."},
+   {"id": "ownbrand", "n": "Own-brand tools", "md": "stk", "q": 1, "r": 0.9, "mc": 0.48, "lead": 35, "shelf": 0, "dev": 1, "note": "Made for you in the Far East: long lead, high margin."},
+   {"id": "smart", "n": "Smart home range", "md": "stk", "q": 0.8, "r": 1.8, "mc": 0.72, "lead": 10, "shelf": 0, "dev": 1, "note": "New and quickly outdated."},
+   {"id": "kitchen", "n": "Kitchen fitting advice", "svc": 1, "md": "svc", "q": 0.4, "r": 2.0, "fix": 0.25, "ft": "prep", "dev": 1, "hrs": 2, "note": "A design visit that sells the cupboards."}
+  ],
+  "webshop": [
+   {"id": "ownbrand", "n": "Own-brand range", "md": "stk", "q": 3, "r": 1.0, "mc": 0.30, "fix": 0.09, "ft": "prep", "lead": 28, "shelf": 0, "ret": 0.08, "seas": "xmas", "sg": 0.3, "base": 1, "note": "Made for you in batches: high margin, a month's lead time, stock you own."},
+   {"id": "resold", "n": "Branded goods (stocked)", "md": "stk", "q": 3, "r": 1.1, "mc": 0.58, "fix": 0.08, "ft": "prep", "lead": 7, "shelf": 0, "ret": 0.15, "seas": "xmas", "sg": 0.3, "base": 1, "note": "Bought from the distributor and held in your warehouse."},
+   {"id": "dropship", "n": "Dropshipped goods", "md": "svc", "q": 3, "r": 0.9, "mc": 0.72, "fix": 0.03, "ft": "prep", "lead": 0, "ret": 0.12, "base": 1, "note": "The supplier ships to your customer: no stock and no capital, but the thinnest margin."},
+   {"id": "box", "n": "Subscription box", "md": "sub", "q": 1.5, "r": 1.0, "mc": 0.50, "fix": 0.12, "ft": "prep", "lead": 14, "ret": 0.02, "base": 1, "note": "A box a month. Subscribers pay in advance and some cancel every month."},
+   {"id": "gifts", "n": "Gift sets and bundles", "md": "stk", "q": 1, "r": 1.4, "mc": 0.46, "fix": 0.09, "ft": "prep", "lead": 14, "shelf": 0, "ret": 0.06, "seas": "xmas", "sg": 0.9, "base": 1, "note": "Bundles of the range: bought for presents, mostly in the last weeks of the year."},
+   {"id": "express", "n": "Express delivery", "svc": 1, "md": "svc", "q": 1, "r": 0.15, "fix": 0.85, "ft": "prep", "base": 1, "note": "The carrier charges you nearly what the customer pays."},
+   {"id": "premiumreturns", "n": "Premium returns", "svc": 1, "md": "svc", "q": 0.5, "r": 0.1, "fix": 0.70, "ft": "prep", "dev": 1, "note": "Free pick-up of returns: a cost the customer values."},
+   {"id": "market", "n": "Marketplace listing", "svc": 1, "md": "svc", "q": 1, "r": 0.8, "fix": 0.15, "ft": "prep", "dev": 1, "note": "Sell on the big platform: the platform keeps its fee."}
+  ],
+  "pets": [
+   {"id": "walk", "n": "Dog walking", "svc": 1, "md": "svc", "q": 4, "r": 0.5, "mc": 0.05, "hrs": 1, "base": 1, "note": "An hour of a walker's time."},
+   {"id": "groom", "n": "Grooming", "svc": 1, "md": "svc", "q": 3, "r": 1.4, "mc": 0.12, "hrs": 1.5, "base": 1, "note": "A grooming table for an hour and a half; shampoo and blades."},
+   {"id": "daycare", "n": "Daycare", "svc": 1, "md": "svc", "q": 3, "r": 0.9, "mc": 0.06, "hrs": 8, "base": 1, "note": "A place in the play zone for the day."},
+   {"id": "boarding", "n": "Boarding", "svc": 1, "md": "rent", "q": 1.5, "r": 2.0, "mc": 0.10, "base": 1, "note": "A kennel by the night: each kennel earns only on the nights it is booked."},
+   {"id": "sitting", "n": "Pet sitting", "svc": 1, "md": "svc", "q": 1, "r": 1.2, "mc": 0.04, "hrs": 3, "base": 1, "note": "A sitter at the owner's home."},
+   {"id": "training", "n": "Puppy training class", "svc": 1, "md": "svc", "q": 0.6, "r": 1.0, "mc": 0.05, "hrs": 1, "dev": 1, "note": "A class of six, once a week."},
+   {"id": "taxi", "n": "Vet visit transport", "svc": 1, "md": "svc", "q": 0.5, "r": 0.8, "fix": 0.30, "ft": "prep", "needs": "also:taxi", "note": "The pet taxi: fuel and the driver's time."},
+   {"id": "food", "n": "Pet food", "md": "stk", "q": 2, "r": 0.8, "mc": 0.70, "lead": 4, "shelf": 360, "base": 1, "note": "Bags and tins from the wholesaler: low margin, steady repeat buyers."},
+   {"id": "accessories", "n": "Pet accessories", "md": "stk", "q": 1, "r": 0.7, "mc": 0.52, "lead": 10, "shelf": 0, "ret": 0.04, "base": 1, "note": "Leads, beds, toys: a better margin than food."}
+  ],
+  "carrepair": [
+   {"id": "service", "n": "Annual service", "svc": 1, "md": "svc", "q": 4, "r": 0.7, "mc": 0.35, "hrs": 3, "base": 1, "note": "Oil, filters and a check: three bay hours."},
+   {"id": "brakes", "n": "Brake and tyre package", "svc": 1, "md": "svc", "q": 3, "r": 1.1, "mc": 0.55, "hrs": 3, "base": 1, "note": "Pads, discs and tyres: mostly parts."},
+   {"id": "mot", "n": "MOT preparation", "svc": 1, "md": "svc", "q": 3, "r": 0.4, "mc": 0.05, "hrs": 1, "base": 1, "note": "An inspection lane hour and a few bulbs."},
+   {"id": "ac", "n": "Air conditioning service", "svc": 1, "md": "svc", "q": 1.5, "r": 0.6, "mc": 0.30, "hrs": 2, "base": 1, "note": "Gas and a filter."},
+   {"id": "diag", "n": "Diagnostics", "svc": 1, "md": "svc", "q": 2, "r": 0.35, "mc": 0.02, "hrs": 1, "base": 1, "note": "The computer and an hour of the mechanic: all labour."},
+   {"id": "repair", "n": "Mechanical repair", "svc": 1, "md": "svc", "q": 2, "r": 2.4, "mc": 0.45, "hrs": 10, "lead": 5, "base": 1, "note": "Gearbox, clutch, engine: days in the bay, parts ordered in."},
+   {"id": "body", "n": "Bodywork repair", "svc": 1, "md": "svc", "q": 1.5, "r": 2.8, "mc": 0.38, "hrs": 14, "lead": 7, "base": 1, "note": "Panels and paint: the longest jobs."},
+   {"id": "tyres", "n": "Tyres and parts over the counter", "md": "stk", "q": 2, "r": 0.9, "mc": 0.72, "lead": 2, "shelf": 0, "base": 1, "note": "Stocked tyres, batteries and wipers sold to walk-ins at a retail margin."},
+   {"id": "plan", "n": "Servicing plan", "svc": 1, "md": "sub", "q": 0.8, "r": 0.8, "mc": 0.35, "hrs": 3, "dev": 1, "note": "A service paid monthly; the customer comes back."}
+  ]
+ },
+ "repairs": {
+  "about": "Job orders for other companies (carRepairQuote, orderRepair). hrs bay hours at the standard job, parts parts at cost as a share of the garage's ticket, days the shortest time, markup on parts. Labour is priced per hour as a share of the garage's ticket.",
+  "labourPerHour": 0.095,
+  "partsMarkup": 0.45,
+  "kinds": {
+   "prep": {"n": "Valet and safety check", "hrs": 2, "parts": 0.03, "days": 1},
+   "service": {"n": "Full service", "hrs": 3, "parts": 0.10, "days": 2},
+   "tyres": {"n": "Tyres and brakes", "hrs": 3, "parts": 0.34, "days": 2},
+   "mechanical": {"n": "Mechanical repair", "hrs": 10, "parts": 0.50, "days": 5},
+   "bodywork": {"n": "Bodywork and paint", "hrs": 14, "parts": 0.38, "days": 7},
+   "major": {"n": "Major rebuild", "hrs": 30, "parts": 1.10, "days": 14}
+  }
+ }
+}
