@@ -184,7 +184,7 @@ public enum DealerAddons {
         let d = co.value("dap"), on = d["on"], c = d["cfg"]
         var r = DealerAddonSettings()
         r.warrantyOn = on["wty"].bool; r.loanOn = on["loan"].bool; r.insuranceOn = on["ins"].bool
-        r.includedMonths = c["inc"].isNull ? Int(n(.warranty, "defaultIncludedMonths")) : c["inc"].int
+        r.includedMonths = c["inc"].isNull ? (co.type == "cardealer" ? 12 : Int(n(.warranty, "defaultIncludedMonths"))) : c["inc"].int
         r.extraMonths = c["xm"].isNull ? Int(n(.warranty, "defaultExtraMonths")) : c["xm"].int
         r.extraRate = c["xr"].isNull ? n(.warranty, "defaultExtraRate") : c["xr"].double
         r.loanCommission = c["lc"].isNull ? n(.loan, "defaultCommission") : c["lc"].double
@@ -328,8 +328,10 @@ public enum DealerAddons {
     static func benchmark(_ co: Company, state s: GameState, data: GameData) -> Double {
         // The benchmark sits where the file puts it against a typical car; car money in this game is the trade's own ticket (a used car about 180 000
         // accounting units), so it scales with the ticket, not with the file's realistic prices (a 16 000 benchmark made every loan look unaffordable).
-        let typical = book["typicalCar"][co.type]["price"].double
-        let scale = (data.catalog[co.type]?.ticket ?? 0) > 0 && typical > 0 ? data.catalog[co.type]!.ticket / typical : 1
+        // One ratio for every trade: the benchmark is 1.8 times the trade's ticket, so a car sold at the ticket price is approved about 90 percent
+        // of the time and a dearer one less.
+        let ticket = data.catalog[co.type]?.ticket ?? 0
+        let scale = ticket > 0 ? ticket / 10000 : 1
         return World(state: s, data: data).currency(co).scaledPrice(book["benchmarkPrice"].double * scale)
     }
 
