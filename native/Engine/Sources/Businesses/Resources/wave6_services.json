@@ -1,0 +1,819 @@
+{
+ "about": "Wave 6 real services per trade (SVC appointment and crew model). `share` = relative customers, `rel` = relative price (both normalised on install so share x rel adds up to 1 and the company's going ticket is unchanged), `min` = chair, bay, car or crew time of one job in minutes, `cons` = consumables as a share of the price, `dir` = other direct cost as a share of the price (lab fee, car running, implant part). Costs are scaled on install so the weighted cost of the whole menu equals the trade's cost-of-sales share in trades.json (the books never move). `m`: svc, sub (recurring: `visits` jobs per `period` weeks, `churn` per period) or stk (retail stock bought at `cons` of the price, `lead` days). `pack` = jobs sold together. `extra` entries are the add-item catalogue of the trade. Units are the trade's own unit (lesson, treatment, car, cleaning hour); a pack or block is priced per unit. `fteHours` = hours one full-time person works a week. `skillLabel` and `resLabel` on an item override the trade's when the job needs another person or room.",
+ "trades": {
+  "barber": {
+   "skill": "barber",
+   "skillLabel": "stylist",
+   "res": "chair",
+   "resEq": "chair",
+   "resLabel": "chair",
+   "noShow": 0.08,
+   "rebook": 0.5,
+   "remindEq": "pos",
+   "remindCut": 0.35,
+   "travelMin": 0,
+   "items": [
+    {
+     "n": "Cut and finish",
+     "m": "svc",
+     "share": 5,
+     "rel": 1.0,
+     "min": 30,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Beard trim",
+     "m": "svc",
+     "share": 2,
+     "rel": 0.5,
+     "min": 15,
+     "cons": 0.02,
+     "dir": 0
+    },
+    {
+     "n": "Hot towel shave",
+     "m": "svc",
+     "share": 1.2,
+     "rel": 0.9,
+     "min": 30,
+     "cons": 0.05,
+     "dir": 0
+    },
+    {
+     "n": "Kids' cut",
+     "m": "svc",
+     "share": 1.5,
+     "rel": 0.7,
+     "min": 20,
+     "cons": 0.03,
+     "dir": 0
+    },
+    {
+     "n": "Colour and toner",
+     "m": "svc",
+     "share": 1.0,
+     "rel": 3.2,
+     "min": 120,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Cut, colour and style",
+     "m": "svc",
+     "share": 0.6,
+     "rel": 4.2,
+     "min": 150,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Grooming membership",
+     "m": "sub",
+     "share": 0.6,
+     "rel": 0.85,
+     "min": 30,
+     "cons": 0.04,
+     "dir": 0,
+     "visits": 2,
+     "period": 4,
+     "churn": 0.04
+    },
+    {
+     "n": "Styling products",
+     "m": "stk",
+     "share": 1.5,
+     "rel": 0.7,
+     "min": 0,
+     "cons": 0.55,
+     "dir": 0,
+     "lead": 5
+    }
+   ],
+   "extra": [
+    {
+     "n": "Wedding party styling",
+     "m": "svc",
+     "share": 0.1,
+     "rel": 6.0,
+     "min": 180,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Scalp treatment",
+     "m": "svc",
+     "share": 0.4,
+     "rel": 1.2,
+     "min": 30,
+     "cons": 0.15,
+     "dir": 0
+    },
+    {
+     "n": "Gift vouchers",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 1.0,
+     "min": 30,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Beard and cut package",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 1.4,
+     "min": 45,
+     "cons": 0.05,
+     "dir": 0
+    }
+   ]
+  },
+  "drivsk": {
+   "skill": "instr",
+   "skillLabel": "instructor",
+   "res": "car",
+   "resEq": "car",
+   "resLabel": "training car",
+   "noShow": 0.07,
+   "rebook": 0.6,
+   "remindEq": "book",
+   "remindCut": 0.35,
+   "travelMin": 10,
+   "items": [
+    {
+     "n": "Driving lesson (45 min)",
+     "m": "svc",
+     "share": 8,
+     "rel": 1.0,
+     "min": 45,
+     "cons": 0,
+     "dir": 0.12
+    },
+    {
+     "n": "Automatic lesson",
+     "m": "svc",
+     "share": 2,
+     "rel": 1.1,
+     "min": 45,
+     "cons": 0,
+     "dir": 0.12
+    },
+    {
+     "n": "Block of 10 lessons",
+     "m": "svc",
+     "share": 4,
+     "rel": 0.9,
+     "min": 45,
+     "cons": 0,
+     "dir": 0.12,
+     "pack": 10
+    },
+    {
+     "n": "Theory course",
+     "m": "svc",
+     "share": 1.5,
+     "rel": 0.4,
+     "min": 120,
+     "cons": 0.03,
+     "dir": 0.02,
+     "res": "room",
+     "seats": 8,
+     "skillLabel": "instructor",
+     "resLabel": "classroom"
+    },
+    {
+     "n": "Mock test",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 1.2,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.12
+    },
+    {
+     "n": "Test day package",
+     "m": "svc",
+     "share": 1.0,
+     "rel": 2.4,
+     "min": 120,
+     "cons": 0,
+     "dir": 0.14
+    },
+    {
+     "n": "Intensive course",
+     "m": "svc",
+     "share": 1.0,
+     "rel": 1.1,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.13,
+     "pack": 20
+    },
+    {
+     "n": "Pass Plus",
+     "m": "svc",
+     "share": 0.4,
+     "rel": 1.15,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.12,
+     "pack": 6
+    }
+   ],
+   "extra": [
+    {
+     "n": "Motorway lesson",
+     "m": "svc",
+     "share": 0.4,
+     "rel": 1.3,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.12
+    },
+    {
+     "n": "Refresher lesson",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 1.1,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.12
+    },
+    {
+     "n": "Driver safety workbook",
+     "m": "stk",
+     "share": 0.5,
+     "rel": 0.15,
+     "min": 0,
+     "cons": 0.45,
+     "dir": 0,
+     "lead": 7
+    },
+    {
+     "n": "Simulator hour",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 0.8,
+     "min": 60,
+     "cons": 0,
+     "dir": 0.03,
+     "res": "sim",
+     "resLabel": "simulator"
+    }
+   ]
+  },
+  "physio": {
+   "skill": "physio",
+   "skillLabel": "therapist",
+   "res": "bench",
+   "resEq": "bench",
+   "resLabel": "treatment room",
+   "noShow": 0.1,
+   "rebook": 0.5,
+   "remindEq": "ehr",
+   "remindCut": 0.35,
+   "travelMin": 0,
+   "items": [
+    {
+     "n": "Initial assessment",
+     "m": "svc",
+     "share": 1.2,
+     "rel": 1.4,
+     "min": 60,
+     "cons": 0.01,
+     "dir": 0
+    },
+    {
+     "n": "Treatment session",
+     "m": "svc",
+     "share": 6,
+     "rel": 0.9,
+     "min": 30,
+     "cons": 0.02,
+     "dir": 0
+    },
+    {
+     "n": "Course of 6 treatments",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 5.0,
+     "min": 180,
+     "cons": 0.02,
+     "dir": 0,
+     "pack": 6
+    },
+    {
+     "n": "Sports massage",
+     "m": "svc",
+     "share": 1.5,
+     "rel": 0.95,
+     "min": 45,
+     "cons": 0.02,
+     "dir": 0
+    },
+    {
+     "n": "Home visit",
+     "m": "svc",
+     "share": 0.6,
+     "rel": 1.8,
+     "min": 60,
+     "cons": 0.02,
+     "dir": 0.02,
+     "travel": 25
+    },
+    {
+     "n": "Rehab programme",
+     "m": "sub",
+     "share": 0.8,
+     "rel": 0.7,
+     "min": 45,
+     "cons": 0.015,
+     "dir": 0,
+     "visits": 4,
+     "period": 4,
+     "churn": 0.08
+    },
+    {
+     "n": "Workplace ergonomics",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 3.0,
+     "min": 120,
+     "cons": 0.01,
+     "dir": 0.01
+    },
+    {
+     "n": "Support braces and aids",
+     "m": "stk",
+     "share": 1.0,
+     "rel": 0.5,
+     "min": 0,
+     "cons": 0.55,
+     "dir": 0,
+     "lead": 4
+    }
+   ],
+   "extra": [
+    {
+     "n": "Pregnancy physio",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 1.1,
+     "min": 45,
+     "cons": 0.02,
+     "dir": 0
+    },
+    {
+     "n": "Shockwave therapy",
+     "m": "svc",
+     "share": 0.4,
+     "rel": 1.3,
+     "min": 30,
+     "cons": 0.03,
+     "dir": 0.02
+    },
+    {
+     "n": "Pilates class",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 0.4,
+     "min": 60,
+     "cons": 0.01,
+     "dir": 0,
+     "seats": 6,
+     "resLabel": "studio space"
+    },
+    {
+     "n": "Kinesiology tape",
+     "m": "stk",
+     "share": 0.3,
+     "rel": 0.2,
+     "min": 0,
+     "cons": 0.5,
+     "dir": 0,
+     "lead": 4
+    }
+   ]
+  },
+  "dental": {
+   "skill": "dentist",
+   "skillLabel": "dentist",
+   "res": "unit",
+   "resEq": "unit",
+   "resLabel": "dental chair",
+   "noShow": 0.1,
+   "rebook": 0.55,
+   "remindEq": "ehr",
+   "remindCut": 0.35,
+   "travelMin": 0,
+   "items": [
+    {
+     "n": "Check-up and scale",
+     "m": "svc",
+     "share": 5,
+     "rel": 0.5,
+     "min": 30,
+     "cons": 0.03,
+     "dir": 0
+    },
+    {
+     "n": "Hygienist visit",
+     "m": "svc",
+     "share": 3,
+     "rel": 0.45,
+     "min": 40,
+     "cons": 0.03,
+     "dir": 0,
+     "skill": "dentnurse",
+     "skillLabel": "hygienist"
+    },
+    {
+     "n": "Filling",
+     "m": "svc",
+     "share": 3,
+     "rel": 0.8,
+     "min": 45,
+     "cons": 0.06,
+     "dir": 0
+    },
+    {
+     "n": "Emergency appointment",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 0.9,
+     "min": 30,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Crown",
+     "m": "svc",
+     "share": 0.7,
+     "rel": 4.0,
+     "min": 90,
+     "cons": 0.03,
+     "dir": 0.1
+    },
+    {
+     "n": "Teeth whitening",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 1.5,
+     "min": 60,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Implant",
+     "m": "svc",
+     "share": 0.2,
+     "rel": 12.0,
+     "min": 120,
+     "cons": 0.03,
+     "dir": 0.12
+    },
+    {
+     "n": "Orthodontic course",
+     "m": "svc",
+     "share": 0.15,
+     "rel": 8.0,
+     "min": 600,
+     "cons": 0.03,
+     "dir": 0.08,
+     "pack": 12
+    },
+    {
+     "n": "Recall plan",
+     "m": "sub",
+     "share": 1.0,
+     "rel": 0.35,
+     "min": 30,
+     "cons": 0.03,
+     "dir": 0,
+     "visits": 2,
+     "period": 52,
+     "churn": 0.05
+    },
+    {
+     "n": "Dental products",
+     "m": "stk",
+     "share": 0.8,
+     "rel": 0.3,
+     "min": 0,
+     "cons": 0.5,
+     "dir": 0,
+     "lead": 4
+    }
+   ],
+   "extra": [
+    {
+     "n": "Children's check-up",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 0.35,
+     "min": 20,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Root canal",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 2.5,
+     "min": 90,
+     "cons": 0.1,
+     "dir": 0.03
+    },
+    {
+     "n": "Clear aligners",
+     "m": "svc",
+     "share": 0.1,
+     "rel": 9.0,
+     "min": 240,
+     "cons": 0.03,
+     "dir": 0.2
+    },
+    {
+     "n": "Night guard",
+     "m": "svc",
+     "share": 0.2,
+     "rel": 1.2,
+     "min": 30,
+     "cons": 0.05,
+     "dir": 0.12
+    }
+   ]
+  },
+  "carclean": {
+   "skill": "carwash",
+   "skillLabel": "detailer",
+   "res": "van",
+   "resEq": "van",
+   "resLabel": "service van and kit",
+   "noShow": 0.05,
+   "rebook": 0.5,
+   "remindEq": "",
+   "remindCut": 0,
+   "travelMin": 20,
+   "items": [
+    {
+     "n": "Exterior wash",
+     "m": "svc",
+     "share": 6,
+     "rel": 0.3,
+     "min": 25,
+     "cons": 0.08,
+     "dir": 0
+    },
+    {
+     "n": "Full valet",
+     "m": "svc",
+     "share": 3,
+     "rel": 1.0,
+     "min": 120,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Interior deep clean",
+     "m": "svc",
+     "share": 1.5,
+     "rel": 1.2,
+     "min": 150,
+     "cons": 0.12,
+     "dir": 0
+    },
+    {
+     "n": "Machine polish",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 2.2,
+     "min": 240,
+     "cons": 0.12,
+     "dir": 0
+    },
+    {
+     "n": "Ceramic coating",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 8.0,
+     "min": 480,
+     "cons": 0.25,
+     "dir": 0
+    },
+    {
+     "n": "Headlight restoration",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 0.6,
+     "min": 45,
+     "cons": 0.08,
+     "dir": 0
+    },
+    {
+     "n": "Fleet contract (per vehicle)",
+     "m": "sub",
+     "share": 0.8,
+     "rel": 0.55,
+     "min": 60,
+     "cons": 0.1,
+     "dir": 0,
+     "visits": 4,
+     "period": 4,
+     "churn": 0.03
+    },
+    {
+     "n": "Car care products",
+     "m": "stk",
+     "share": 0.6,
+     "rel": 0.25,
+     "min": 0,
+     "cons": 0.5,
+     "dir": 0,
+     "lead": 4
+    }
+   ],
+   "extra": [
+    {
+     "n": "Engine bay detail",
+     "m": "svc",
+     "share": 0.3,
+     "rel": 0.8,
+     "min": 60,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Monthly wash plan",
+     "m": "sub",
+     "share": 0.5,
+     "rel": 0.3,
+     "min": 25,
+     "cons": 0.08,
+     "dir": 0,
+     "visits": 2,
+     "period": 4,
+     "churn": 0.05
+    },
+    {
+     "n": "Pre-sale valet",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 1.1,
+     "min": 120,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Paint protection film",
+     "m": "svc",
+     "share": 0.05,
+     "rel": 14.0,
+     "min": 600,
+     "cons": 0.3,
+     "dir": 0
+    }
+   ]
+  },
+  "cleaning": {
+   "skill": "cleaner",
+   "skillLabel": "cleaner",
+   "res": "van",
+   "resEq": "vac",
+   "resLabel": "crew kit",
+   "noShow": 0.03,
+   "rebook": 0.7,
+   "remindEq": "",
+   "remindCut": 0,
+   "travelMin": 20,
+   "crew": 2,
+   "items": [
+    {
+     "n": "Home clean (per hour)",
+     "m": "svc",
+     "share": 6,
+     "rel": 1.0,
+     "min": 60,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Office contract (per month)",
+     "m": "sub",
+     "share": 4,
+     "rel": 0.9,
+     "min": 60,
+     "cons": 0.04,
+     "dir": 0,
+     "visits": 20,
+     "period": 4,
+     "churn": 0.02,
+     "contract": true
+    },
+    {
+     "n": "Deep clean",
+     "m": "svc",
+     "share": 0.8,
+     "rel": 1.5,
+     "min": 60,
+     "cons": 0.12,
+     "dir": 0
+    },
+    {
+     "n": "End-of-tenancy clean",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 1.4,
+     "min": 60,
+     "cons": 0.1,
+     "dir": 0
+    },
+    {
+     "n": "Carpet and upholstery",
+     "m": "svc",
+     "share": 0.4,
+     "rel": 1.3,
+     "min": 60,
+     "cons": 0.15,
+     "dir": 0
+    },
+    {
+     "n": "Window cleaning round",
+     "m": "svc",
+     "share": 0.5,
+     "rel": 0.9,
+     "min": 60,
+     "cons": 0.04,
+     "dir": 0
+    },
+    {
+     "n": "Post-building clean",
+     "m": "svc",
+     "share": 0.2,
+     "rel": 1.6,
+     "min": 60,
+     "cons": 0.08,
+     "dir": 0
+    },
+    {
+     "n": "Eco cleaning products",
+     "m": "stk",
+     "share": 0.3,
+     "rel": 0.3,
+     "min": 0,
+     "cons": 0.5,
+     "dir": 0,
+     "lead": 4
+    }
+   ],
+   "extra": [
+    {
+     "n": "Regular home cleaning plan",
+     "m": "sub",
+     "share": 1.0,
+     "rel": 0.95,
+     "min": 60,
+     "cons": 0.04,
+     "dir": 0,
+     "visits": 8,
+     "period": 4,
+     "churn": 0.03,
+     "contract": true
+    },
+    {
+     "n": "Kitchen deep clean",
+     "m": "svc",
+     "share": 0.2,
+     "rel": 1.6,
+     "min": 60,
+     "cons": 0.12,
+     "dir": 0
+    },
+    {
+     "n": "Washroom restock service",
+     "m": "sub",
+     "share": 0.3,
+     "rel": 0.8,
+     "min": 60,
+     "cons": 0.3,
+     "dir": 0,
+     "visits": 4,
+     "period": 4,
+     "churn": 0.03,
+     "contract": true
+    },
+    {
+     "n": "Pressure washing",
+     "m": "svc",
+     "share": 0.2,
+     "rel": 1.2,
+     "min": 60,
+     "cons": 0.05,
+     "dir": 0.04
+    }
+   ]
+  }
+ },
+ "fteHours": 36
+}

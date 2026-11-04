@@ -110,23 +110,7 @@
   ],
   "carclean": [
    {
-    "n": "Interior deep clean",
-    "svc": true
-   },
-   {
-    "n": "Ceramic coating",
-    "svc": true
-   },
-   {
-    "n": "Fleet contract",
-    "svc": true
-   },
-   {
-    "n": "Mobile valet",
-    "svc": true
-   },
-   {
-    "n": "Headlight restoration",
+    "n": "Engine bay detail",
     "svc": true
    },
    {
@@ -134,12 +118,11 @@
     "svc": true
    },
    {
-    "n": "Car care products",
-    "svc": false,
-    "dev": true
+    "n": "Pre-sale valet",
+    "svc": true
    },
    {
-    "n": "Engine bay detail",
+    "n": "Paint protection film",
     "svc": true
    }
   ],
@@ -215,37 +198,20 @@
   ],
   "cleaning": [
    {
-    "n": "Deep clean",
-    "svc": true
-   },
-   {
     "n": "Regular home cleaning plan",
     "svc": true
    },
    {
-    "n": "Office cleaning contract",
+    "n": "Kitchen deep clean",
     "svc": true
    },
    {
-    "n": "End-of-tenancy clean",
+    "n": "Washroom restock service",
     "svc": true
    },
    {
-    "n": "Carpet and upholstery",
+    "n": "Pressure washing",
     "svc": true
-   },
-   {
-    "n": "Window cleaning round",
-    "svc": true
-   },
-   {
-    "n": "Post-building clean",
-    "svc": true
-   },
-   {
-    "n": "Eco cleaning products",
-    "svc": false,
-    "dev": true
    }
   ],
   "webdev": [
@@ -422,106 +388,56 @@
   ],
   "barber": [
    {
-    "n": "Classic cut and shave",
+    "n": "Wedding party styling",
     "svc": true
    },
    {
-    "n": "Beard grooming",
+    "n": "Scalp treatment",
     "svc": true
-   },
-   {
-    "n": "Kids' cuts",
-    "svc": true
-   },
-   {
-    "n": "Grooming membership",
-    "svc": true
-   },
-   {
-    "n": "Hot towel shave",
-    "svc": true
-   },
-   {
-    "n": "Colour and treatments",
-    "svc": true
-   },
-   {
-    "n": "Styling products",
-    "svc": false,
-    "dev": true
    },
    {
     "n": "Gift vouchers",
-    "svc": false,
-    "dev": true
+    "svc": true
+   },
+   {
+    "n": "Beard and cut package",
+    "svc": true
    }
   ],
   "drivsk": [
    {
-    "n": "Intensive course",
+    "n": "Motorway lesson",
     "svc": true
    },
    {
-    "n": "Theory test coaching",
+    "n": "Refresher lesson",
     "svc": true
    },
    {
-    "n": "Motorway lessons",
-    "svc": true
-   },
-   {
-    "n": "Refresher lessons",
-    "svc": true
-   },
-   {
-    "n": "Automatic lessons",
-    "svc": true
-   },
-   {
-    "n": "Pass Plus",
-    "svc": true
-   },
-   {
-    "n": "Instructor-led mock tests",
-    "svc": true
-   },
-   {
-    "n": "Driver safety workbooks",
+    "n": "Driver safety workbook",
     "svc": false,
     "dev": true
+   },
+   {
+    "n": "Simulator hour",
+    "svc": true
    }
   ],
   "physio": [
-   {
-    "n": "Sports injury clinic",
-    "svc": true
-   },
-   {
-    "n": "Back and neck programme",
-    "svc": true
-   },
-   {
-    "n": "Rehab membership",
-    "svc": true
-   },
-   {
-    "n": "Home visits",
-    "svc": true
-   },
    {
     "n": "Pregnancy physio",
     "svc": true
    },
    {
-    "n": "Workplace ergonomics",
+    "n": "Shockwave therapy",
     "svc": true
    },
    {
-    "n": "Massage therapy",
+    "n": "Pilates class",
     "svc": true
    },
    {
-    "n": "Support braces and aids",
+    "n": "Kinesiology tape",
     "svc": false,
     "dev": true
    }
@@ -2197,37 +2113,20 @@
   ],
   "dental": [
    {
-    "n": "Check-up plan",
+    "n": "Children's check-up",
     "svc": true
    },
    {
-    "n": "Teeth whitening",
+    "n": "Root canal",
     "svc": true
    },
    {
-    "n": "Orthodontics",
+    "n": "Clear aligners",
     "svc": true
    },
    {
-    "n": "Implants",
+    "n": "Night guard",
     "svc": true
-   },
-   {
-    "n": "Children's dentistry",
-    "svc": true
-   },
-   {
-    "n": "Emergency appointments",
-    "svc": true
-   },
-   {
-    "n": "Hygienist visits",
-    "svc": true
-   },
-   {
-    "n": "Dental products",
-    "svc": false,
-    "dev": true
    }
   ],
   "gamestudio": [
