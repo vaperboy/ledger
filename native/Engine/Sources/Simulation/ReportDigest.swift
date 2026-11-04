@@ -81,7 +81,16 @@ public extension GameEngine {
         var sales = 0
         var revenue = 0.0
         var best: (name: String, units: Int)?
+        var earlierBest = 0.0   // the best takings of an earlier day this week, all companies together
         let live = state.companies.filter { $0.status.isLive }
+        for d in 0..<max(state.day, 0) {
+            let key = String(d)
+            let total: Double = live.reduce(0.0) { acc, co in
+                let log = co.value("dl")
+                return (!log["w"].isNull && log["w"].int == state.week) ? acc + log["days"][key]["r"].double : acc
+            }
+            earlierBest = max(earlierBest, total)
+        }
         for co in live {
             let log = co.value("dl")
             guard !log["w"].isNull, log["w"].int == state.week else { continue }
@@ -99,6 +108,8 @@ public extension GameEngine {
         var digest = DailyDigest(dateLabel: GameCalendar.dateString(week: state.week, dayOffset: state.day), sales: sales, revenue: revenue,
                                  bestCompany: live.count > 1 ? best?.name : nil, bestSales: best?.units ?? 0,
                                  wentWell: Array(good.prefix(2)), staffMessages: Array((asks + bad).prefix(3)), decisionsOpen: openDecisions.count)
+        digest.newInboxTitle = asks.first
+        digest.bestDayOfWeek = state.day > 1 && revenue > 0 && revenue > earlierBest
         digest.handled = fresh.filter { !$0.handledBy.isEmpty }.map { "\($0.handledBy): \($0.title)" }
         return digest
     }
@@ -125,5 +136,9 @@ public struct DailyDigest: Equatable, Sendable {
     public var profit: Double? = nil
     /// Decisions a hired rank took for the owner today ("Mia, manager: Replace the oven?").
     public var handled: [String] = []
+    /// Title of the first of today's messages that needs a decision (a new Inbox item), nil when none arrived (brief 3.0 line 1).
+    public var newInboxTitle: String? = nil
+    /// Today's takings beat every earlier day of this week (at least one earlier day played; brief 3.0 line 2).
+    public var bestDayOfWeek: Bool = false
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }

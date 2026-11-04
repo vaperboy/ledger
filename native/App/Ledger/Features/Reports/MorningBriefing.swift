@@ -162,7 +162,8 @@ struct DailyReportPopup: View {
     private var headline: some View {
         VStack(alignment: .leading, spacing: 10) {
             headlineFigures
-            DayCloseView(profit: digest.profit, daysDone: store.engine?.state.day ?? 0, instant: instant, format: signedText)
+            DayCloseView(profit: digest.profit, daysDone: store.engine?.state.day ?? 0, instant: instant, format: signedText,
+                         newInboxTitle: digest.newInboxTitle, bestDay: digest.bestDayOfWeek, briefing: lines.first?.text)
         }
     }
 

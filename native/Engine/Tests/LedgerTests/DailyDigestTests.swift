@@ -21,6 +21,15 @@ final class DailyDigestTests: XCTestCase {
         XCTAssertFalse(d.isEmpty)
     }
 
+    func testNewInboxTitleIsTheFirstOpenMessage() throws {
+        let e = try newEngine()
+        let ask = Message(raw: ["title": .string("Approve the budget"), "tone": .string("n"), "status": .string("open")])
+        let bad = Message(raw: ["title": .string("A fine arrived"), "tone": .string("bad"), "status": .string("done")])
+        XCTAssertEqual(e.dailyDigest(fresh: [bad, ask]).newInboxTitle, "Approve the budget")
+        XCTAssertNil(e.dailyDigest(fresh: [bad]).newInboxTitle)
+        XCTAssertFalse(e.dailyDigest(fresh: []).bestDayOfWeek)
+    }
+
     func testNoCompaniesAndNoMessagesIsAnEmptyDay() throws {
         let e = try newEngine()
         let d = e.dailyDigest(fresh: [])

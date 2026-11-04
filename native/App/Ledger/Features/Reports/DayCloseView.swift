@@ -9,6 +9,10 @@ struct DayCloseView: View {
     var daysDone: Int
     var instant: Bool
     var format: (Double) -> String
+    /// Brief 3.0 line 3, in priority: a new Inbox item, the week's best day, the briefing's first sentence, else "A quiet day."
+    var newInboxTitle: String? = nil
+    var bestDay: Bool = false
+    var briefing: String? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var filled: Int = 0
 
@@ -22,12 +26,27 @@ struct DayCloseView: View {
                         .font(.system(size: 34, weight: .bold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
+            Text(priorityLine).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
             bar(shown: reduceMotion ? target : filled)
         }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.caution.opacity(lostMoney ? 0.14 : 0)))
         .onAppear {
             filled = max(0, target - 1)
             Motion.animate(Motion.quick(reduceMotion)) { filled = target }
         }
+    }
+
+    /// Amber tint when the day lost money.
+    private var lostMoney: Bool { (profit ?? 0) < -0.5 }
+
+    /// One line, at most 70 characters.
+    private var priorityLine: String {
+        var line: String = "A quiet day."
+        if let t = newInboxTitle, !t.isEmpty { line = "New in Inbox: " + t }
+        else if bestDay { line = "Best day this week" }
+        else if let b = briefing, !b.isEmpty { line = b }
+        return line.count > 70 ? String(line.prefix(69)) + "\u{2026}" : line
     }
 
     private func bar(shown: Int) -> some View {
