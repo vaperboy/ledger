@@ -242,7 +242,7 @@ struct TradeDetailView: View {
                 store.openCompany(out.companyID)
             case .failure(.banned(let why))?: Haptics.failure(); store.show(why, tone: "bad")
             case .failure(.notYetAvailable)?: store.show("Coming in a later update.", tone: "warn")
-            case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You can't afford the registration costs yet.", tone: "warn")
+            case .failure(.notEnoughCash)?: Haptics.warning(); store.show("Not enough cash for the registration costs.", tone: "warn")
             default: Haptics.warning(); store.show("Not possible here.", tone: "warn")
             }
         }

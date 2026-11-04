@@ -402,7 +402,7 @@ struct AtlasApp: View {
             (label: "Insured company", value: co.name),
             (label: "Receipt filed with", value: e.state.company(receiptID)?.name ?? co.name)
         ]
-        return ShopSuccess(title: "Insurance Activated!", message: "\(policy) is now active for \(co.name).", facts: facts,
+        return ShopSuccess(title: "Insurance active", message: "\(policy) is now active for \(co.name).", facts: facts,
                            primary: "Go to My Insurance", secondary: "Back to Phone",
                            onPrimary: { step = .home }, onSecondary: { dismiss() })
     }

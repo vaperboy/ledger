@@ -190,7 +190,7 @@ struct CompanyEnergy: View {
         pending = PendingAction(title: "Drill an exploration well?", message: message, button: "Drill for \(cur.tidyShort(drill))",
                                 amount: drill, currency: cur, risk: "Most wells find nothing.") {
             switch store.act({ $0.exploreForOil(companyID: company.id) }) {
-            case .hit?: Haptics.success(); store.show("Discovery! Check your inbox.", tone: "good")
+            case .hit?: Haptics.success(); store.show("Discovery. Check your inbox.", tone: "good")
             case .dry?: Haptics.warning(); store.show("A dry well.", tone: "bad")
             default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
             }

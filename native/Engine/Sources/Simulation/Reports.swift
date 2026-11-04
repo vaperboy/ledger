@@ -156,7 +156,7 @@ public enum Reports {
         var seen = Set<String>()
         func add(_ text: String, _ tone: String, _ co: Int) {
             // Routine paperwork and openings are not news.
-            let routine = text.contains(" approved for ") || text.hasPrefix("Welcome") || text.hasSuffix("is open for business!")
+            let routine = text.contains(" approved for ") || text.hasPrefix("Welcome") || text.hasSuffix("is open for business.")
             guard !text.isEmpty, !routine, tone == "good" || tone == "bad", seen.insert(text).inserted else { return }
             a.events.append(ReportEvent(text: text, tone: tone, companyID: co, week: s.week))
         }

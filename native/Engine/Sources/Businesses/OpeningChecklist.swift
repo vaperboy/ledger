@@ -83,7 +83,7 @@ public enum OpeningChecklist {
         }
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
-        s.note("\(s.companies[i].name) is open for business!", tone: "good", companyID: co.id)
+        s.note("\(s.companies[i].name) is open for business.", tone: "good", companyID: co.id)
         return .ok
     }
 

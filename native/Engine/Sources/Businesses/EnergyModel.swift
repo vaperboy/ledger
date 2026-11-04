@@ -178,7 +178,7 @@ public enum EnergyModel {
                 f["bv"] = .number(f["bv"].double + c)
                 if f["wl"].double <= 0 {
                     f["st"] = "prod"; f["age"] = 0
-                    s.note("Field \"\(f["name"].string)\" starts production!", tone: "good", companyID: id)
+                    s.note("Field \"\(f["name"].string)\" starts production.", tone: "good", companyID: id)
                 }
             } else if f["st"].string == "prod" {
                 f["age"] = .number(f["age"].double + 1)
@@ -257,7 +257,7 @@ public enum EnergyModel {
                                    "capex": .number(capex), "bv": 0, "plat": 104]))
             fm["fields"] = .array(fields)
             s.companies[i].set("fm", fm)
-            s.note("DISCOVERY! A well finds about \(Int(jsRound(vol / 1000))) million barrels. Development will take about 3 years.", tone: "good", companyID: id)
+            s.note("Discovery. A well finds about \(Int(jsRound(vol / 1000))) million barrels. Development will take about 3 years.", tone: "good", companyID: id)
             s.news("A new oil discovery is announced.", tone: "good")
             let sell = jsRound(res * 1000 * 25 * pow(s.economy.oil, 0.5) / 1e5) * 1e5
             let cur = currency(s, co, data)

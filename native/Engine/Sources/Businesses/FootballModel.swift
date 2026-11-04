@@ -278,7 +278,7 @@ public enum FootballModel {
                 fm["sp"] = sp
             } else if div == 2 && rank <= 3 {
                 fm["div"] = 1
-                msg += " They are promoted!"
+                msg += " They are promoted."
             }
             let newVal = round100k(club["val"].double * clamp(1 + Double(exp - rank) / Double(N) * 0.12, 0.88, 1.15) * 1.02)
             setClub(&s, country.code, id: cid) { $0["val"] = .number(newVal) }

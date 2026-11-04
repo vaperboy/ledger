@@ -31,8 +31,8 @@ public enum PlayerGoals {
     static func dailyFits(_ id: String, _ s: GameState) -> Bool {
         switch id {
         // "start" and "hire" are setup steps: they are no longer offered as a new daily goal (a goal already picked in an older save still works).
-        case "start", "hire": return false
-        case "weeks", "grow": return !live(s).isEmpty
+        case "start", "hire", "weeks": return false
+        case "grow": return !live(s).isEmpty
         case "cmp": return openComplaints(s) > 0
         default: return false
         }
@@ -69,12 +69,12 @@ public enum PlayerGoals {
             let fit = dailyIDs.filter { dailyFits($0.id, s) }
             let h = today.split(separator: "-").reduce(7) { ($0 * 31 + (Int($1) ?? 0)) & 0x7fffffff }
             d["d"] = .string(today); d["got"] = 0
-            d["k"] = .string(fit.isEmpty ? "weeks" : fit[h % fit.count].id)
+            d["k"] = .string(fit.isEmpty ? "grow" : fit[h % fit.count].id)
             d["b"] = .object(["week": .number(Double(s.week)), "staff": .number(Double(staffCount(s))), "cmp": .number(Double(openComplaints(s))), "nw": .number(nw)])
             s.rest["dy59"] = d
         }
         let id = d["k"].string
-        guard let g = dailyIDs.first(where: { $0.id == id }) ?? dailyIDs.first(where: { $0.id == "weeks" }) else { return nil }
+        guard let g = dailyIDs.first(where: { $0.id == id }) ?? dailyIDs.first(where: { $0.id == "grow" }) else { return nil }
         let streak = d["last"].string == yesterday || d["last"].string == today ? d["streak"].int : 0
         let reward = cur.roundedStep(max(cur.scaledPrice(2500), nw * 0.0005) * Double(min(7, streak + 1)), about: 500)
         return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, cur), done: dailyDone(g.id, d["b"], s, nw: nw),

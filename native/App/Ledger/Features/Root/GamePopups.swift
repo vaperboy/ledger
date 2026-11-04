@@ -41,7 +41,7 @@ struct NoticePopup: View {
 
     private var heading: String {
         if !notice.title.isEmpty { return notice.title }
-        return notice.tone == "bad" ? "Problem" : "Please note"
+        return notice.tone == "bad" ? "Problem" : "Notice"
     }
 
     var body: some View {
@@ -60,7 +60,7 @@ struct NoticePopup: View {
                         if let price = notice.rows.first { Text(price.tidyMoney).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold) }
                     }
                 }
-                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
+                PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }
@@ -89,7 +89,7 @@ struct NoticePopup: View {
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
                 }
-                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
+                PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }
@@ -100,7 +100,7 @@ struct NoticePopup: View {
                 if !notice.text.isEmpty {
                     Text(notice.text.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 }
-                PopupOptionButton(title: "OK", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
+                PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
     }

@@ -22,7 +22,7 @@ enum SpecialEvents {
         case "g_award":
             s.companies[i].reputation = clamp(co.reputation + 3, 0, 100)
             s.companies[i].awareness = clamp(co.awareness + 6, 0, 100)
-            s.note("\(co.name) wins a local business award!", tone: "good", companyID: co.id)
+            s.note("\(co.name) wins a local business award.", tone: "good", companyID: co.id)
             s.addMessage(from: co.name, title: "Award won", body: "Your reputation rises.", companyID: co.id, tone: "good")
         case "g_audit":
             // Hidden takings or flattering accounts are looked for first. Original events have no such cases, so this only fires after misconduct.

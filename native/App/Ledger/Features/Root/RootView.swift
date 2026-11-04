@@ -41,7 +41,7 @@ struct RootView: View {
                     Text(text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                     HStack {
                         Spacer(minLength: 0)
-                        Button("OK") { store.errorText = nil }
+                        Button("Close") { store.errorText = nil }
                             .buttonStyle(QuietButtonStyle()).accessibilityIdentifier("error-ok")
                     }
                 }

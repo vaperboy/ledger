@@ -392,7 +392,7 @@ struct NewCompanyReviewView: View {
         case .failure(.notYetAvailable)?:
             Haptics.warning(); refusal = "This kind of business is coming in a later update."
         case .failure(.notEnoughCash)?:
-            Haptics.warning(); refusal = "You can't afford the registration costs yet."
+            Haptics.warning(); refusal = "Not enough cash for the registration costs."
         case .failure(.notAllowedHere)?:
             Haptics.warning(); refusal = "This company can't be started here."
         case nil:

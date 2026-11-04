@@ -610,7 +610,7 @@ public enum Startups {
                 f["st"] = "exit"; f["val"] = 0
                 Payments.playerReceives(&s, proceeds, label: "Exit: \(name)")
                 s.tax.gains += proceeds - f["in"].double
-                s.note("EXIT! \(name) was acquired. Your stake pays \(Int(proceeds)) (\(String(format: "%.1f", proceeds / max(1, f["in"].double)))x).", tone: "good")
+                s.note("Exit: \(name) was acquired. Your stake pays \(Int(proceeds)) (\(String(format: "%.1f", proceeds / max(1, f["in"].double)))x).", tone: "good")
                 s.news("\(name) is acquired in a deal valued at \(Int(exitV)).", tone: "good")
                 list[k] = f; continue
             }

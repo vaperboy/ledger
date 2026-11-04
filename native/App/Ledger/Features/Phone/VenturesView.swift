@@ -736,7 +736,7 @@ private struct SoftwarePart: View {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Raise money for \(co.name)").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                            Text(wait > 0 ? "You can pitch again in \(wait.weeksText)." : "Investors: \(engine.investorInterest(companyID: co.id).word). Asks for about \(cur.tidyShort(ask)) for new shares.")
+                            Text(wait > 0 ? "Pitch again in \(wait.weeksText)." : "Investors: \(engine.investorInterest(companyID: co.id).word). Asks for about \(cur.tidyShort(ask)) for new shares.")
                                 .font(.system(size: 11)).foregroundStyle(wait > 0 ? Theme.caution : Theme.ivoryFaint)
                         }
                         Spacer(minLength: 8)
