@@ -110,6 +110,13 @@ public enum CompanyWeek {
             weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
             return
         }
+        // The new-car dealership orders its cars from a supplier or a brand and sells from the showroom (CarDealer).
+        if bd.id == CarDealer.tradeID {
+            let ctx = CarDealer.week(&s, i, bd, data)
+            book(&s, i, bd, ctx, vat: Vat.rate(s.companies[i], bd, World(state: s, data: data)), data: data)
+            weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
+            return
+        }
         // Project businesses (the week's figures come from what happened on the days, or from the developments), and energy, the
         // salmon farm, a holding company and a football club (SpecialFamilies) work out their own week.
         if bd.family == "project" || SpecialFamilies.handles(bd) {
