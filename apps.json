@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.42",
+          "buildVersion": "42",
+          "date": "2026-11-04T00:06:39Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v42/Ledger-unsigned.ipa",
+          "size": 27519517,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait"
+        },
+        {
           "version": "1.0.41",
           "buildVersion": "41",
           "date": "2026-11-03T23:55:17Z",
@@ -187,22 +196,13 @@
           "size": 23871205,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Popups size to their content; recognition banners open the right worker; a rival group entering a country where you trade shows in Market\n- Accessibility: steppers, confirm boxes and Team rows have spoken labels and hints, and small one-line labels shrink instead of cutting off\n- Market news (big contracts, companies for sale, competitor and supplier moves, recognition) arrives as banners and highlighted rows in Market; the Payment banner follows the largest real payment of the day; Sales has a market trend card; the bank flows no longer rise from the bottom; old unused screens are gone\n- Talking terms are two clean one-page steps: contract terms, then pay (pay basis, commission, benefits and expectations are back)\n- Notifications look like iOS banners: they slide down from the top, swipe up to dismiss, urgent ones such as payroll stay until you act, and tapping opens the decision or asks if you want to be taken there; the Recent list is gone from Home\n- Home is one locked screen that fits everything: companies get the space first (the full list is in Group), Recent only uses what is left; net worth and the four figures count up only after you press Continue on the r"
-        },
-        {
-          "version": "1.0.22",
-          "buildVersion": "22",
-          "date": "2026-11-02T18:34:00Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v22/Ledger-unsigned.ipa",
-          "size": 23887294,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Animations: team hires, promotions, manager and board seats, group connections and acquisitions, new stores, project progress, market charts, loan debt, goals, luxury purchases, a Home events timeline and a cleaner milestone celebration\n- Animations: figures count up, profit glows green, big payments slide in, loans visibly shrink, charts draw themselves, goals fill and unlock in gold, luxury purchases get a gold card, milestones use a clean gold ring, Home lists recent important events\n- Team: the worker list is at the top with a Hire workers button (the owner and manager always show, with free workplaces counted); tap a worker for a popup with salary, contract, promises, mood and hours; hiring is one Hire page (role, job ad or agency) and one terms page; Who decides what opens real options; Management, Hire someone, Promises and Network tabs are gone; AirStay shows office places\n- Hiring: offices fit a limited number of people, workers remind you of promises before they are due, job ads cost money and applicants arrive over time, agencies cost more and take a share of pay for two years, extra roles such as a security guard have real effects\n- Bank: the balance card"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.41",
-      "versionDate": "2026-11-03T23:55:17Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v41/Ledger-unsigned.ipa",
-      "size": 27514911
+      "version": "1.0.42",
+      "versionDate": "2026-11-04T00:06:39Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v42/Ledger-unsigned.ipa",
+      "size": 27519517
     }
   ]
 }
