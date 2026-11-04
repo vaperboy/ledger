@@ -22,8 +22,8 @@ final class CarDealerTests: XCTestCase {
     func testBrandDataIsComplete() {
         XCTAssertGreaterThan(CarBrands.all.count, 8)
         for b in CarBrands.all {
-            XCTAssertTrue((0.05...0.10).contains(b.margin + b.bonus * 0 ) || b.margin < 0.1, b.id)
-            XCTAssertLessThanOrEqual(b.margin + b.bonus, 0.105, "\(b.id) total margin incl. bonus")
+            XCTAssertTrue((0.10...0.14).contains(b.margin), b.id)   // calibrated to the trade's own 14 percent gross (see docs/waves/cardealer.md)
+            XCTAssertLessThanOrEqual(b.margin + b.bonus, 0.155, "\(b.id) total margin incl. bonus")
             XCTAssertGreaterThan(b.margin, CarBrands.distributorMargin, "a brand pays more than the generic distributor: \(b.id)")
             XCTAssertFalse(b.models.isEmpty)
             XCTAssertFalse(b.markets.isEmpty)
