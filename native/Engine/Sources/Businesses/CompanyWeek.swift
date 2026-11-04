@@ -172,6 +172,7 @@ public enum CompanyWeek {
             cogs += rev * (1 - loc) * 0.6
         }
         if let perish = bd.trait("perish") { cogs += rev * perish * (1 + max(0, 0.85 - util) * 2.2) * (co.managerID != nil ? 1.2 - 0.5 * managerQ : 1) }
+        cogs += congestionCost(co, bd, util: ctx0Util)
         if let shrink = bd.trait("shrink") {
             cogs += rev * shrink * (co.value("flags")["secure"].bool ? 0.5 : 1) * RoleEffects.shrinkFactor(co) * (1 + co.value("flags")["shrinkUp"].double)
         }
@@ -186,6 +187,18 @@ public enum CompanyWeek {
         book(&s, i, bd, ctx, vat: vat, data: data)
         Suppliers.recordGoods(&s, companyIndex: i, cogs: ctx.cogs, data: data)
         weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
+    }
+
+    /// Congestion (floor-staff families): above `congestionStart` utilisation staff work overtime, cover for each other and waste more, so a full shop
+    /// costs more per sale. Extra weekly pay is `congestionRate` of the weekly payroll at full utilisation, growing linearly from the threshold.
+    static let congestionStart = 0.85
+    static let congestionRate = 0.18
+    /// Families where staff on the floor are the limit; trades with heavy capital (stock, plant, fleets) keep their own cost structure.
+    static let congestionFamilyShare: [String: Double] = ["venue": 1, "svc": 1]
+    static func congestionCost(_ co: Company, _ bd: Trade, util: Double) -> Double {
+        guard let share = congestionFamilyShare[bd.family], util > congestionStart else { return 0 }
+        let payroll = (co.staff.reduce(0) { $0 + $1.monthlyWage * $1.partTimeShare } + co.managerMonthlyWage) * 12 / 52
+        return share * payroll * congestionRate * min(1, max(0, util - congestionStart) / (1 - congestionStart))
     }
 
     /// The share of sales that goes on goods and direct costs this week: the trade's cost of sales plus its choices, the manager,

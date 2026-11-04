@@ -94,3 +94,6 @@ Now, baseline owner (comparable): bakery 48% (high), barber 19%, car rental 14%,
 
 Finished: 84 of 84 report runs (14 trades x 3 seeds x 2 owners x 5 years); BalanceGuardTests (5 tests, one failing: airline); MoneyLiteralLintTests (pass).
 Not run: BalanceProbeTests env probes (LEDGER_BALANCE all 50 trades), Stage10ReconciliationTests, DeterminismSavesDatesTests (no tweak was made, so not required).
+
+## Restaurant congestion (4 Nov)
+Added congestion cost (venue and svc trades, utilisation above 0.85, 0.18 of weekly payroll at full utilisation, plus up to 5 quality points). Probe seeds 11/12/13, 5 years, mean ROI per year: restaurant competent 59% before, 40% after (0.12 of sales gave 37% and broke grocery; 0.3 of payroll gave 31%). Restaurant baseline 5% to 3%; grocery unchanged (32% competent, -4% baseline); barber 20% to 16% baseline, carclean 22% to 27% baseline (random-draw noise).

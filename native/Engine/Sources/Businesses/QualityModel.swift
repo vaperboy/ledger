@@ -21,7 +21,7 @@ public enum QualityModel {
         var q = 28 + 0.3 * sk + eqQ + Knobs.effect(co, bd, "q", w, sum: true)
         if co.managerID != nil { q += 9 * ManagerModel.quality(co, bd, people: w.state.people) }
         if co.ownerHours > 46 && co.managerID == nil { q -= (co.ownerHours - 46) * 0.7 }
-        q -= max(0, util - 0.97) * 40
+        q -= max(0, util - 0.97) * 40 + max(0, util - CompanyWeek.congestionStart) * 5 * (CompanyWeek.congestionFamilyShare[bd.family] ?? 0)   // a rushed kitchen or floor
         q += [-3.0, 0, 2][min(2, max(0, co.maintenance))]
         q += goods.q
         q += ManagerTargets.qualityCare(co, week: w.week)   // a rating target: more care for quality
