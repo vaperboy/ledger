@@ -22,3 +22,6 @@
 - Taking money out of a sole-trader business counts for the "pay yourself" goal
 - Audit notices show the right authority name
 - Save slots in Settings › Saves (Pro); trophies and rival records appear when the ladder opens them
+- Inbox is one list with icons, consequence lines and expiry pills; answering returns Home
+- Daily report turns amber on a loss and shows one priority line; optional "Your name" when starting
+- Goal cards link to the next goal
