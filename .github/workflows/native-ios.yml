@@ -139,6 +139,66 @@ jobs:
           for f in $(find ~/Library/Logs/DiagnosticReports -name "Ledger*.ips" 2>/dev/null | head -2); do echo "== $f"; head -c 6000 "$f"; done || true
           test ! -f notrunning
 
+  # Manual only: screenshots of every popup site on a small and a large phone, as an artifact (shots/<device>/). Independent of
+  # app-build and release.
+  popup-shots:
+    if: github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: popup-shots-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: xcodegen generate
+      - name: Run PopupShotsTests on each device
+        working-directory: native/App
+        run: |
+          xcrun simctl list devices available | grep -E "iPhone" || true
+          mkdir -p "$GITHUB_WORKSPACE/shots"
+          for WANT in "iPhone SE (3rd generation)" "iPhone 16 Pro Max"; do
+            DEV="$WANT"
+            if ! xcrun simctl list devices available | grep -qF "    $WANT ("; then
+              # nearest available: SE-like (smallest) or Pro Max-like (largest)
+              case "$WANT" in
+                *SE*) DEV=$(xcrun simctl list devices available | grep -oE "iPhone SE[^(]*\([0-9a-z ]*\)" | head -n 1 | sed -E 's/ +$//') ;;
+                *) DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+ Pro Max" | sort -V | tail -n 1) ;;
+              esac
+              [ -n "$DEV" ] || DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9A-Za-z ]+" | head -n 1 | sed -E 's/ +$//')
+              echo "$WANT not available, using $DEV"
+            fi
+            SAFE=$(echo "$DEV" | tr -c 'A-Za-z0-9' '_')
+            echo "== $DEV"
+            xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
+              -only-testing:LedgerUITests/PopupShotsTests \
+              -destination "platform=iOS Simulator,name=$DEV" \
+              -resultBundlePath "$RUNNER_TEMP/$SAFE.xcresult" \
+              CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/$SAFE.log" 2>&1 || { echo "tests failed on $DEV"; grep -E "error:" "$RUNNER_TEMP/$SAFE.log" | sort -u | head -20; }
+            mkdir -p "$GITHUB_WORKSPACE/shots/$SAFE"
+            # Xcode 16: `xcresulttool export attachments` writes the files and a manifest.json; fall back to the old JSON export.
+            if ! xcrun xcresulttool export attachments --path "$RUNNER_TEMP/$SAFE.xcresult" --output-path "$GITHUB_WORKSPACE/shots/$SAFE"; then
+              echo "export attachments failed; trying legacy get"
+              xcrun xcresulttool get --legacy --path "$RUNNER_TEMP/$SAFE.xcresult" --format json > "$GITHUB_WORKSPACE/shots/$SAFE/result.json" || true
+            fi
+          done
+          find "$GITHUB_WORKSPACE/shots" -type f | head -n 5
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: popup-shots
+          path: shots/
+          if-no-files-found: warn
+
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/native-swiftui'
     runs-on: macos-15
