@@ -71,8 +71,12 @@ enum TrackingPermission {
     private static let key = "ledger.attAsked"
     static var asked: Bool { UserDefaults.standard.bool(forKey: key) }
 
+    /// Off until real ads are on: the Info.plist key NSUserTrackingUsageDescription is not set (AltStore refuses an app whose source does not declare it),
+    /// and asking without that key crashes the app. Turn on together with the key in project.yml.
+    static let enabled = false
+
     static func requestOnce() async {
-        guard !asked else { return }
+        guard enabled, !asked else { return }
         UserDefaults.standard.set(true, forKey: key)
         guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
         _ = await ATTrackingManager.requestTrackingAuthorization()

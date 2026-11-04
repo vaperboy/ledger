@@ -25,3 +25,4 @@
 - Inbox is one list with icons, consequence lines and expiry pills; answering returns Home
 - Daily report turns amber on a loss and shows one priority line; optional "Your name" when starting
 - Goal cards link to the next goal
+- Fix: AltStore install error (tracking permission is off until real ads)

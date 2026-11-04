@@ -59,7 +59,7 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        INFOPLIST_KEY_NSUserTrackingUsageDescription: "Lets Ledger show ads that fit you. You can say no and still play."
+        # INFOPLIST_KEY_NSUserTrackingUsageDescription: "Lets Ledger show ads that fit you. You can say no and still play."   # off until real ads (AltStore must declare it in the source)
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.games
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
