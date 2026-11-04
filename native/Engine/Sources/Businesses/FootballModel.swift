@@ -630,7 +630,7 @@ public enum FootballModel {
         rev += merch
         let M = Double(lg.matchWeeks)
         var md = 0.0
-        let tix = fm["tix"].double
+        let tix = fm["tix"].double + Wave9.clubTixShift(co)
         if let r = res, r.home {
             let fill = clamp(0.5 + strengthNow / 250 + (co.reputation - 50) / 250 - tix * 0.07, 0.3, 1)
             md = R * 0.20 / (M / 2) * (fill / 0.75) * (1 + tix * 0.15)
