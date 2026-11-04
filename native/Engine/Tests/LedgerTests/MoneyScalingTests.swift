@@ -163,6 +163,9 @@ final class MoneyLiteralLintTests: XCTestCase {
         "Monetisation.swift": ["3600": "seconds in an hour: real-time durations of passes and cooldowns, not money"],
         "SessionHooks.swift": ["3600": "seconds in an hour: reminder delays in real time, not money", "86400": "seconds in a day: reminder delay in real time, not money"],
         "LifeStories.swift": ["1000": "rounding step of the starting cash (up to the next thousand), not an amount"],
+        "UsedCarWeek.swift": ["15000": "kilometres a year used to turn odometer km into a car age: not money"],
+        "DealerAddons.swift": ["10000": "ratio: the file's benchmark per 10 000 of the trade's ticket, scaled with the ticket (accounting units) and scaledPrice"],
+        "Wave11Bases.swift": ["1000": "unit conversion: thousand barrels / thousand policies to units, not money"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
     /// Files with technical number tables only (calendar arithmetic, hashing, encoding)
