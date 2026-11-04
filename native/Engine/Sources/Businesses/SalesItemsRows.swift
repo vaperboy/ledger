@@ -81,7 +81,9 @@ public extension SalesItems {
         if cap > 0, atMarket * gNew > cap { scale = cap / (atMarket * gNew) }
         let unitsNew = atMarket * it.unitShare * dmNew * scale
         let unitsNow = atMarket * it.unitShare * dmNow
-        let cost = market * bd.costOfSales
+        // A used car dealer's cost of a sale is what its cars cost (price, repairs), not a share of the trade's ticket: with the generic ratio a price
+        // change always looked like a loss, and the profit at the market price like zero.
+        let cost = market * (co.type == UsedCarDealer.tradeID ? (UsedCarDealer.costRatio(co) ?? bd.costOfSales) : bd.costOfSales)
         let revNew = unitsNew * market * mult, revNow = unitsNow * market * it.effectiveMultiplier
         return ItemForecast(units: unitsNew, revenue: revNew, profitChange: (revNew - unitsNew * cost) - (revNow - unitsNow * cost), demandChange: dmNew - 1)
     }
