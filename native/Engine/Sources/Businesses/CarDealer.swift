@@ -203,18 +203,23 @@ public enum CarDealer {
             let fair = c["fair"].isNull ? c["list"].double : c["fair"].double
             return ask(c) / max(1, fair * (0.92 + brandStrength(c["b"].string) / 100 * 0.16))
         }
-        func sell(_ k: Int) {
-            let c = list.remove(at: k)
+        /// The add-ons (warranty, loan, insurance) are decided per sale; a bank that declines can lose the sale (the car stays in the showroom).
+        @discardableResult
+        func sell(_ k: Int) -> Bool {
+            let c = list[k]
             let price = ask(c)
+            s.companies[i] = co
+            let r = DealerAddons.apply(&s, companyID: id, sale: DealerSale(key: "cd:\(c["id"].int)", price: price, car: .new(title: c["name"].string)), data: data)
+            co = s.companies[i]
+            guard r.saleCompleted else { return false }
+            list.remove(at: k)
             rev += price; cogs += c["cost"].double; units += 1
-            let saleID = s.makeID()
-            _ = saleID
-            // HOOK (DealerAddons.swift owner): call `cardealerSaleAddons(saleID: saleID)` here for warranty, car loan and insurance commissions on this sale.
             CarBrandContract.recordSale(&co, brand: c["b"].string, list: c["list"].double)
+            return true
         }
         // A car that arrived already reserved goes to its customer first, if the price still suits them.
         for k in list.indices.reversed() where list[k]["rsv"].bool && Int(units) < room {
-            if rnd.next() < accept(ratio(list[k])) { sell(k) } else { list[k] = JSONValue.object(list[k].object.filter { $0.key != "rsv" }) }
+            if rnd.next() < accept(ratio(list[k])) { if !sell(k) { list[k] = JSONValue.object(list[k].object.filter { $0.key != "rsv" }) } } else { list[k] = JSONValue.object(list[k].object.filter { $0.key != "rsv" }) }
         }
         var orders = dd["orders"].array
         for _ in 0..<shoppers where Int(units) < room {
@@ -229,7 +234,7 @@ public enum CarDealer {
                 if r < bestRatio { bestRatio = r; best = n }
             }
             guard best >= 0, rnd.next() < accept(bestRatio) * (best < list.count ? 1 : 0.8) else { continue }
-            if best < list.count { sell(best) } else { orders[open[best - list.count]]["res"] = .bool(true) }
+            if best < list.count { _ = sell(best) } else { orders[open[best - list.count]]["res"] = .bool(true) }
         }
         // Market value of the cars standing in the showroom slips once they are a quarter old.
         for k in list.indices where s.week - list[k]["wk"].int > 13 { list[k]["fair"] = .number(list[k]["fair"].double * (1 - depreciation)) }
@@ -244,6 +249,7 @@ public enum CarDealer {
         co.books = books
         co.addPayable("other", hold)
         s.companies[i] = co
+        DealerAddons.weekly(&s, companyIndex: i, data: data)
         let util = cap > 0 ? units / cap : 0
         var ctx = CompanyWeek.WeekContext(units: units, rev: rev, cogs: cogs, D: D, cap: cap, util: util, price: units > 0 ? rev / units : 0, paidDuringWeek: 0)
         ctx.cogsIsAccounting = true

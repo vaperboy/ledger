@@ -26,11 +26,21 @@ extension UsedCarDealer {
         var told: [(title: String, body: String)] = []
         let cur = w.currency(co)
 
-        func sell(_ k: Int, at price: Double, forced: String) {
-            let c = list.remove(at: k)
+        /// A customer sale first runs the add-ons (loan, warranty, insurance); a bank that declines can lose the sale (the car stays). Forced sales skip them.
+        @discardableResult
+        func sell(_ k: Int, at price: Double, forced: String) -> Bool {
+            let c = list[k]
+            if forced.isEmpty {
+                s.companies[i] = co
+                let r = DealerAddons.apply(&s, companyID: id, sale: DealerSale(key: "uc:\(c["id"].int)", price: price, car: DealerCar(title: c["name"].string, ageYears: c["km"].double / 15000, wear: c["wear"].double)), data: data)
+                co = s.companies[i]
+                if !r.saleCompleted { return false }
+            }
+            list.remove(at: k)
             let cost = c["cost"].double + c["rep"].double
             rev += price; cogs += cost; units += 1; gross += max(0, price - cost)
             logSale(&co, car: c, price: price, week: week, forced: forced)
+            return true
         }
         func oldest() -> Int? {
             list.indices.filter { list[$0]["job"].isNull && list[$0]["res"].isNull }.max { week - list[$0]["wk"].int < week - list[$1]["wk"].int }
@@ -65,7 +75,7 @@ extension UsedCarDealer {
         for k in list.indices where !list[k]["job"].isNull && week >= list[k]["job"]["due"].int {
             s.companies[i] = co
             var c = list[k]
-            let ok = finishJob(&s, i, &c)
+            let ok = finishJob(&s, i, &c, data: data)
             co = s.companies[i]
             if ok {
                 list[k] = c
@@ -73,7 +83,7 @@ extension UsedCarDealer {
             }
         }
         for carID in reservedDone {
-            if let k = list.firstIndex(where: { $0["id"].int == carID }) { sell(k, at: list[k]["res"].double, forced: "") }
+            if let k = list.firstIndex(where: { $0["id"].int == carID }), !sell(k, at: list[k]["res"].double, forced: "") { list[k].removeKey("res") }
         }
 
         // Forced sales, from real causes: the lot holds more cars than the premises have spaces for, or the account is overdrawn.
@@ -108,7 +118,7 @@ extension UsedCarDealer {
             }
             guard best >= 0, rnd.next() < accept(bestRatio) * freshness(weeks: week - list[best]["wk"].int) else { continue }
             let price = ask(list[best], markup: m)
-            if list[best]["job"].isNull { sell(best, at: price, forced: "") } else { list[best]["res"] = .number(price) }
+            if list[best]["job"].isNull { _ = sell(best, at: price, forced: "") } else { list[best]["res"] = .number(price) }
         }
 
         // Every car loses value, a stuck one faster, and costs its holding (storage, insurance, cleaning).
@@ -128,6 +138,7 @@ extension UsedCarDealer {
         co.addPayable("other", hold)
         co.set("ucg", .number(gross))
         s.companies[i] = co
+        DealerAddons.weekly(&s, companyIndex: i, data: data)
         for t in told { s.addMessage(from: co.name, title: t.title, body: t.body, companyID: id, tone: "bad") }
         maybeOffer(&s, i, rnd: &rnd, data: data)
         let util = cap > 0 ? units / cap : 0
