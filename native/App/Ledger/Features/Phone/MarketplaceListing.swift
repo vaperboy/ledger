@@ -92,6 +92,7 @@ struct MarketplaceListingPage: View {
                         ShopFact(label: "Posted", value: agoText)
                     }
                 }
+                lotCard
                 action(notSelling)
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
@@ -111,8 +112,38 @@ struct MarketplaceListingPage: View {
         }
     }
 
+    /// A used car dealer can only buy a car or van when a lot space is free: the lot is shown on the listing.
+    private var yardLot: UsedCarLot? {
+        guard let e = store.engine, let co = e.state.company(companyID), co.type == UsedCarDealer.tradeID else { return nil }
+        let cat: MarketplaceApp.Filter = MarketplaceApp.category(listing.family)
+        guard cat == .cars || cat == .vans else { return nil }
+        return e.usedCarLot(companyID: companyID)
+    }
+
+    @ViewBuilder private var lotCard: some View {
+        if let lot = yardLot {
+            Card(padding: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ShopFact(label: "Your lot", value: "\(lot.used) of \(lot.spaces) spaces used")
+                    ShopFact(label: "Free spaces", value: "\(lot.free)", tint: lot.free == 0 ? P.caution : nil)
+                    if lot.free == 0 {
+                        Text(lot.spaces == 0 ? "These premises have no space for cars. You cannot buy this one." : "The lot is full. Sell a car before you buy this one.")
+                            .font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .accessibilityIdentifier("mk-lot")
+        }
+    }
+
     @ViewBuilder private func action(_ notSelling: Bool) -> some View {
-        if notSelling {
+        if let lot = yardLot, lot.free == 0 {
+            Text("No free lot space")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(P.caution)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+                .accessibilityIdentifier("mk-lot-full")
+        } else if notSelling {
             Text("Not selling to you")
                 .font(.system(size: 16, weight: .semibold)).foregroundStyle(P.caution)
                 .frame(maxWidth: .infinity, minHeight: 48)

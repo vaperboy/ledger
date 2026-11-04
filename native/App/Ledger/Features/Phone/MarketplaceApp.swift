@@ -52,10 +52,23 @@ struct MarketplaceApp: View {
                     sortMenu
                 }
                 filterChips
+                lotLine(e, co)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
             .frame(maxWidth: .infinity)
             .background(P.ground)
+        }
+    }
+
+    /// A used car dealer buys cars only with a free lot space: the spaces are shown above the listings.
+    @ViewBuilder private func lotLine(_ e: GameEngine, _ co: Company) -> some View {
+        if co.type == UsedCarDealer.tradeID, let lot = e.usedCarLot(companyID: co.id) {
+            HStack(spacing: 6) {
+                Text("Lot").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+                Text("\(lot.used) of \(lot.spaces) spaces used, \(lot.free) free").font(.system(size: 13, weight: .semibold)).foregroundStyle(lot.free == 0 ? P.caution : P.ink)
+                Spacer(minLength: 0)
+            }
+            .accessibilityIdentifier("mk-lot-line")
         }
     }
 

@@ -272,3 +272,24 @@ struct DealerAddonsView: View {
     private func percent(_ v: Double) -> String { String(format: "%.1f%%", v * 100) }
     private func signed(_ v: Double, _ cur: Currency) -> String { v >= 0 ? "+" + cur.tidyShort(v) : "-" + cur.tidyShort(-v) }
 }
+
+/// The add-ons as a page of their own (pushed from the Sales tab of a car dealer), reading the company again from the engine.
+struct DealerAddonsPage: View {
+    @EnvironmentObject var store: GameStore
+    var companyID: Int
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID), DealerAddons.supports(co) {
+            ScrollView {
+                DealerAddonsView(engine: e, company: co)
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .appScreen(title: "Warranty, loans, insurance", subtitle: co.name, tab: .company)
+        } else {
+            Text("This company has no sale add-ons.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+}

@@ -1,0 +1,266 @@
+import SwiftUI
+import GameCore
+import Countries
+import Businesses
+import Simulation
+
+/// Which vehicle photo a used car gets, by its class: the photos in the asset catalogue (`AppPhotos`). A class without a photo shows the vehicle icon.
+enum UsedCarPhotos {
+    static func name(family: String, title: String) -> String {
+        let direct: String = TechPhotos.vehicle(model: family)
+        if !direct.isEmpty { return direct }
+        let f: String = (family + " " + title).lowercased()
+        func has(_ words: [String]) -> Bool { words.contains { (w: String) -> Bool in f.contains(w) } }
+        if has(["pickup"]) { return "techpro-pickup" }
+        if has(["van", "truck", "bus", "trailer", "tractor", "ambulance"]) { return "techpro-van" }
+        if has(["lux", "premium", "limousine", "coupe", "sport"]) { return "techpro-premium" }
+        return "techpro-car"
+    }
+}
+
+/// The round vehicle photo of a used car (same slot as the portrait of a person in the Team list), the vehicle icon while the photo is missing.
+struct UsedCarPhoto: View {
+    var family: String
+    var title: String
+    var size: CGFloat = 42
+    var square = false
+
+    var body: some View {
+        let name: String = UsedCarPhotos.name(family: family, title: title)
+        return slot(name).frame(width: size, height: size).accessibilityHidden(true)
+    }
+
+    @ViewBuilder private func slot(_ name: String) -> some View {
+        #if canImport(UIKit)
+        if let ui = UIImage(named: name) {
+            if square {
+                let box = RoundedRectangle(cornerRadius: max(6, size * 0.22), style: .continuous)
+                Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size).clipped().clipShape(box).overlay(box.strokeBorder(Theme.borderStrong, lineWidth: 1))
+            } else {
+                Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size).clipped().clipShape(Circle()).overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            }
+        } else {
+            IconCircle(glyph: Glyph.vehicle, size: size, tint: Theme.gold)
+        }
+        #else
+        IconCircle(glyph: Glyph.vehicle, size: size, tint: Theme.gold)
+        #endif
+    }
+}
+
+/// An amount for the yard: short for a big figure, to the cent for a small one, so a real figure never reads as zero.
+func usedCarMoney(_ v: Double, _ cur: Currency) -> String {
+    let a: Double = abs(v)
+    return a / cur.rate >= 100 ? cur.tidyShort(a) : itemAmount(a, cur)
+}
+
+/// "Profit 1.2k" in green or "Loss 800" in red from a quote; "Break-even" in grey only when it really is nothing.
+func usedCarProfitReading(_ q: UsedCarQuote, _ cur: Currency) -> (text: String, tint: Color) {
+    if abs(q.profit) / cur.rate < 0.005 { return ("Break-even", Theme.ivoryMuted) }
+    return (q.verdict + " " + usedCarMoney(q.profit, cur), q.isProfit ? Theme.gain : Theme.loss)
+}
+
+/// The grey status of a car: In repair, Quoted, Ready (a car that arrived this week has not been looked at yet).
+func usedCarStatusText(_ c: UsedCarStockItem) -> String {
+    switch c.status {
+    case "repair": return c.repairWeeksLeft > 0 ? "In repair, back in \(c.repairWeeksLeft) \(c.repairWeeksLeft == 1 ? "week" : "weeks")" : "In repair"
+    case "quoted": return "Quoted"
+    case "new": return "Just arrived"
+    default: return "Ready"
+    }
+}
+
+/// One car of the yard in the Team list row layout (`PersonCard`): photo, name, grey status (and a reserved chip), price and profit or loss at the right.
+/// A car at the garage is greyed out; customers can still reserve it.
+struct UsedCarRowView: View {
+    var car: UsedCarStockItem
+    var cur: Currency
+    var quote: UsedCarQuote?
+
+    var body: some View {
+        let reading: (text: String, tint: Color) = readingText()
+        let atGarage: Bool = car.status == "repair"
+        return HStack(alignment: .center, spacing: 12) {
+            UsedCarPhoto(family: car.family, title: car.title)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(car.title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(usedCarStatusText(car)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                    if car.reserved { TeamBadge(text: "Reserved", tint: Theme.gold) }
+                    if car.stuck { TeamBadge(text: "Stuck", tint: Theme.loss) }
+                }
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(cur.tidyShort(car.askingPrice)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(reading.text).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(reading.tint)
+            }
+            GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .opacity(atGarage ? 0.5 : 1)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private func readingText() -> (text: String, tint: Color) {
+        guard let q = quote else { return ("", Theme.ivoryMuted) }
+        if !q.repairsKnown { return ("Not inspected", Theme.ivoryFaint) }
+        return usedCarProfitReading(q, cur)
+    }
+}
+
+/// A tapped car, for the page.
+struct UsedCarPick: Identifiable, Hashable { var id: Int }
+
+/// The yard of a used car dealer, in place of the generic "Your products" list: the cars in the Team list layout (caption CARS, count and stock value
+/// at the right), the lot, the buyers with their track record, the repair setting and the last sales. A car opens its page (`UsedCarPageView`).
+struct UsedCarYardSection: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    @State private var openCar: UsedCarPick?
+    @State private var showHire = false
+
+    var body: some View {
+        let cur: Currency = engine.currency(for: company)
+        let cars: [UsedCarStockItem] = engine.usedCarStock(companyID: company.id)
+        return VStack(alignment: .leading, spacing: 18) {
+            carsGroup(cars, cur)
+            lotBlock(cur)
+            buyersBlock()
+            repairBlock()
+            salesBlock(cur)
+        }
+        .navigationDestination(item: $openCar) { (p: UsedCarPick) in UsedCarPageView(companyID: company.id, carID: p.id) }
+        .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "buyer") }
+    }
+
+    // MARK: Cars
+
+    private func carsGroup(_ cars: [UsedCarStockItem], _ cur: Currency) -> some View {
+        let value: Double = cars.reduce(0) { (a: Double, c: UsedCarStockItem) -> Double in a + c.purchasePrice + c.repairs }
+        let noun: String = cars.count == 1 ? "car" : "cars"
+        let count: String = "\(cars.count) \(noun), \(cur.tidyShort(value)) in stock"
+        return TeamGroup(title: "Cars", trailing: {
+            Text(count).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        }) {
+            if cars.isEmpty {
+                Text("The yard is empty. Cars only come from the Marketplace app on your Phone, bought by you or by a buyer.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(cars) { (c: UsedCarStockItem) -> AnyView in AnyView(carRow(c, cur)) }
+        }
+    }
+
+    private func carRow(_ c: UsedCarStockItem, _ cur: Currency) -> some View {
+        let q: UsedCarQuote? = engine.usedCarQuote(companyID: company.id, carID: c.id, price: c.askingPrice)
+        let id: Int = c.id
+        return Button { Haptics.tap(); openCar = UsedCarPick(id: id) } label: { UsedCarRowView(car: c, cur: cur, quote: q) }
+            .buttonStyle(PressableStyle())
+    }
+
+    // MARK: Lot
+
+    private func lotBlock(_ cur: Currency) -> some View {
+        let lot: UsedCarLot? = engine.usedCarLot(companyID: company.id)
+        let spaces: Int = lot?.spaces ?? 0
+        let used: Int = lot?.used ?? 0
+        let free: Int = lot?.free ?? 0
+        let full: Color? = free == 0 ? Theme.loss : nil
+        let sub: String = spaces == 0 ? "These premises have no space for cars. Buying a car needs a free space." : (free == 0 ? "The lot is full. Sell a car before you buy another." : "Premises decide how many cars you can hold.")
+        return MoreBlock("Lot") {
+            VStack(alignment: .leading, spacing: 0) {
+                FlatRow(label: "Spaces used", value: "\(used) of \(spaces)", sub: sub, tint: full, rule: false)
+                FlatRow(label: "Free spaces", value: "\(free)", tint: free == 0 ? Theme.loss : Theme.gain)
+            }
+        }
+    }
+
+    // MARK: Buyers
+
+    private func buyersBlock() -> some View {
+        let recs: [UsedCarBuyerRecord] = engine.usedCarBuyers(companyID: company.id)
+        return MoreBlock("Buyers") {
+            VStack(alignment: .leading, spacing: 0) {
+                if recs.isEmpty {
+                    Text("Nobody buys cars for you. You buy by hand on the Marketplace. A hired buyer or a manager buys for you when the lot has room.")
+                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
+                }
+                ForEach(Array(recs.enumerated()), id: \.offset) { (i: Int, r: UsedCarBuyerRecord) in
+                    FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: "Skill \(Int(r.rating.rounded()))", sub: track(r), rule: i > 0)
+                }
+                Text("Skill comes from the deals he got against fair value. A better record means better cars at lower prices.")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
+                if company.status == .open {
+                    Button { Haptics.tap(); showHire = true } label: { Text("Hire a buyer").frame(maxWidth: .infinity) }
+                        .buttonStyle(GreyOutlineButtonStyle()).padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func roleWord(_ role: String) -> String {
+        switch role {
+        case "buyer": return "buyer"
+        case "manager": return "manager"
+        default: return "you"
+        }
+    }
+
+    private func track(_ r: UsedCarBuyerRecord) -> String {
+        if r.deals == 0 { return "No deals yet" }
+        let pct: String = String(format: "%.1f", abs(r.averageDiscount * 100))
+        let how: String = r.averageDiscount >= 0 ? "under" : "over"
+        return "\(r.deals) \(r.deals == 1 ? "deal" : "deals"), \(pct) percent \(how) fair value on average"
+    }
+
+    // MARK: Repairs
+
+    private func repairBlock() -> some View {
+        let on: Bool = engine.usedCarAutoRepair(companyID: company.id)
+        let binding: Binding<Bool> = Binding<Bool>(get: { on }, set: { (v: Bool) in
+            let r: SettingResult? = store.act { (e: inout GameEngine) -> SettingResult in e.setUsedCarAutoRepair(companyID: company.id, on: v) }
+            store.settle(r, v ? "Repairs go to the garage at once." : "You decide car by car.")
+        })
+        return MoreBlock("Repairs") {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Send every repair to the garage at once", isOn: binding).tint(Theme.gold).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                Text("Off: each quoted car waits for you to send it to repair or sell it as it is. Your own mechanic company is used first, at the group price.")
+                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: Sales
+
+    @ViewBuilder private func salesBlock(_ cur: Currency) -> some View {
+        let sold: [UsedCarSale] = Array(engine.usedCarSales(companyID: company.id).suffix(6).reversed())
+        if !sold.isEmpty {
+            MoreBlock("Last sold") {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(sold.enumerated()), id: \.offset) { (i: Int, s: UsedCarSale) in
+                        FlatRow(label: s.title, value: saleReading(s, cur).text, sub: saleNote(s), tint: saleReading(s, cur).tint, rule: i > 0)
+                    }
+                }
+            }
+        }
+    }
+
+    private func saleReading(_ s: UsedCarSale, _ cur: Currency) -> (text: String, tint: Color) {
+        if abs(s.profit) / cur.rate < 0.005 { return ("Break-even", Theme.ivoryMuted) }
+        let word: String = s.profit >= 0 ? "Profit " : "Loss "
+        return (word + usedCarMoney(s.profit, cur), s.profit >= 0 ? Theme.gain : Theme.loss)
+    }
+
+    private func saleNote(_ s: UsedCarSale) -> String {
+        switch s.forced {
+        case "": return "Sold"
+        case "wholesaler": return "Sold to a wholesaler"
+        default: return "Forced sale"
+        }
+    }
+}
