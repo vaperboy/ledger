@@ -10,3 +10,4 @@
 - Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait
 - Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days
 - Own staff can take board seats; busy restaurants and service venues pay a congestion cost above 85% use
+- Popups: one shared card size and header; short popups hug their content
