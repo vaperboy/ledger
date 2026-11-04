@@ -6,6 +6,8 @@ import Simulation
 /// Settings app: a plain list like the system Settings. Grouped rows with a round icon in front, switches for on and off, popups for
 /// a choice, chevrons for what opens something; no hero and no figures. Every control keeps its engine call and its "Saved" message.
 struct SettingsView: View {
+    /// Inside the Start screen's popup: the popup is the panel, so no background of its own.
+    var embedded = false
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @State private var haptics = Haptics.enabled
@@ -29,7 +31,7 @@ struct SettingsView: View {
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .ledgerBackground()
+        .modifier(SettingsBackdrop(embedded: embedded))
         .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
         .onChange(of: askStep) { _, v in ConfirmThreshold.step = v; store.saved("asking before spending: " + askLabel(v).lowercased()) }
         .onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) }
@@ -251,5 +253,14 @@ struct SettingsView: View {
         .padding(.vertical, 9).frame(minHeight: 52)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The page background, except inside a popup that already paints the panel.
+private struct SettingsBackdrop: ViewModifier {
+    var embedded: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if embedded { content } else { content.ledgerBackground() }
     }
 }

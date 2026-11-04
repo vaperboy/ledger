@@ -52,7 +52,7 @@ struct StartView: View {
         .ledgerBackground()
         .onAppear { summary = store.currentSaveSummary() }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall) { SettingsView() }
+        .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall) { SettingsView(embedded: true) }
     }
 
     /// Name, one primary button (Start, or Continue with New game under it) and the Settings gear.
