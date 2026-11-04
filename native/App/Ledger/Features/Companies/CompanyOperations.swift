@@ -80,14 +80,7 @@ struct CompanyOperations: View {
         }
         premisesRow
         if CompanySourcing.isAvailable(engine: engine, company: company) {
-            switch Gates.visibility(.suppliers, engine.state, data: engine.data) {
-            case .open:
-                SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
-            case .locked(let text):
-                SettingsTableRow(title: "Suppliers", note: text, value: "", glyph: Glyph.suppliers, readOnly: true) {}
-            case .hidden:
-                EmptyView()
-            }
+            SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
         }
     }
 
@@ -113,7 +106,7 @@ struct CompanyOperations: View {
         if let first = paper.first {
             note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
         }
-        if uninsured && Gates.isOpen(.insurance, engine.state, data: engine.data) { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
+        if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
         if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
     }
 

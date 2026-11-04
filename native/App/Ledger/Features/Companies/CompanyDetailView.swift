@@ -36,20 +36,10 @@ extension CompanySection {
     var shortTitle: String { rawValue }
 }
 
-/// The five rows of the company screen: Sales, People, Money, Operations, Settings (brief 6.2). `overview` is no longer a row of its own: it is
-/// the first row under Operations, with everything else the screen used to show. The ids are the old ones, so tests and links keep working.
+/// The five sections of the company screen, in the fixed bar.
 enum CompanyTab: String, CaseIterable, Hashable {
-    case sales = "Sales", team = "People", stats = "Money", manage = "Operations", settings = "Settings", overview = "Overview"
-    var id: String {
-        switch self {
-        case .sales: return "sales"
-        case .team: return "team"
-        case .stats: return "stats"
-        case .manage: return "manage"
-        case .settings: return "settings"
-        case .overview: return "overview"
-        }
-    }
+    case overview = "Overview", team = "Team", manage = "Manage", sales = "Sales", stats = "Stats"
+    var id: String { rawValue.lowercased() }
 }
 
 /// The parts of Stats: the finance summary and its pages, how the company performs, and its customers.
@@ -58,15 +48,15 @@ enum StatsPart: String, CaseIterable, Hashable { case finances = "Finances", cus
 /// The parts of Sales: the sales table, and Projects for the companies that take projects (project businesses) only.
 enum SalesPart: String, CaseIterable, Hashable { case sales = "Sales", projects = "Projects" }
 
-/// One company: a first screen of five rows (Sales, People, Money, Operations, Settings), each pushing the page that used to be a section of
-/// the old bar. Operations also holds the Overview and the pages of its own (premises, suppliers, cover, projects, plant, club ...), each
-/// gated by the ladder. One Back leaves a page; pages inside a section (premises, suppliers, marketing ...) are pushed with their own Back.
+/// One company: Overview first (cash, what needs you, who runs it) under a fixed bar of five sections: Overview | Team | Manage | Sales |
+/// Stats. Switching section is in place (the bar never scrolls and there is no "More"); one Back leaves the company. Pages inside a
+/// section (premises, suppliers, marketing, customers ...) are pushed screens with their own Back.
 struct CompanyDetailView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     /// The part of a section to open on (the title of a `CompanyMoneyPart` or `OpsPart`), when a link asked for one.
     var part: String? = nil
-    @State private var openTab: CompanyTab?
+    @State private var segment: CompanyTab
     @State private var statsPart: StatsPart = .finances
     @State private var salesPart: SalesPart = .sales
     @State private var moneyPart: CompanyMoneyPart = .summary
@@ -76,7 +66,7 @@ struct CompanyDetailView: View {
     init(companyID: Int, initial: CompanyTab? = nil, part: String? = nil) {
         self.companyID = companyID
         self.part = part
-        _openTab = State(initialValue: (initial ?? .overview) == .overview ? nil : initial)
+        _segment = State(initialValue: initial ?? .overview)
     }
 
     var body: some View {
@@ -87,69 +77,34 @@ struct CompanyDetailView: View {
         } else if let e = store.engine, let co = e.state.company(companyID) {
             let form: String = co.form == .limited ? "Ltd" : "Sole trader"
             let tabs: [CompanyTab] = Self.tabs(co, e)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
+            let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
                     if let context = contextLine(co, e) {
                         Text(context).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
                     }
-                    OverviewSettingsCard(heading: "Company") {
-                        ForEach(tabs, id: \.self) { (t: CompanyTab) -> AnyView in
-                            AnyView(SettingsTableRow(title: t.rawValue, note: Self.rowNote(t), value: "", glyph: Self.rowGlyph(t)) { openTab = t }
-                                .accessibilityIdentifier("company-tab-\(t.id)"))
-                        }
-                    }
+                    SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
-                .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, 2).padding(.bottom, 8)
+                SegmentPager(items: tabs, selection: pagerSelection) { (t: CompanyTab) in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            content(t, co, e)
+                        }
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
+                        .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDismissesKeyboard(.interactively)
+                }
             }
-            .scrollIndicators(.hidden)
-            .scrollBounceBehavior(.basedOnSize)
             .appScreen(title: co.name, subtitle: "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)".tidyText) {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
             }
-            .navigationDestination(item: $openTab) { (t: CompanyTab) in tabPage(t) }
             .onAppear { applyPart(tabs) }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
-        }
-    }
-
-    /// One row's page: the old section content in a scrolling screen with its own Back.
-    @ViewBuilder private func tabPage(_ t: CompanyTab) -> some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    content(t, co, e)
-                }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
-                .frame(maxWidth: 1100).frame(maxWidth: .infinity)
-            }
-            .scrollIndicators(.hidden)
-            .scrollBounceBehavior(.basedOnSize)
-            .scrollDismissesKeyboard(.interactively)
-            .appScreen(title: t.rawValue, subtitle: co.name)
-        }
-    }
-
-    static func rowNote(_ t: CompanyTab) -> String {
-        switch t {
-        case .sales: return "Prices, marketing and customers"
-        case .team: return "Staff, applicants and managers"
-        case .stats: return "Cash, results and ownership"
-        case .manage: return "Overview, premises, suppliers and cover"
-        case .settings: return "Name, legal form and closing"
-        case .overview: return "Cash and what needs you"
-        }
-    }
-
-    static func rowGlyph(_ t: CompanyTab) -> String {
-        switch t {
-        case .sales: return Glyph.market
-        case .team: return Glyph.team
-        case .stats: return Glyph.bank
-        case .manage: return Glyph.suppliers
-        case .settings: return Glyph.settings
-        case .overview: return Glyph.reports
         }
     }
 
@@ -160,14 +115,7 @@ struct CompanyDetailView: View {
             CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
-        case .settings:
-            CompanySettings(engine: e, company: co)
         case .manage:
-            // A button that switches the pushed page, not a link to `tabPage`: a link would make `tabPage` and `content` call each other (an opaque-type cycle).
-            Button { Haptics.tap(); openTab = .overview } label: {
-                CardRow(glyph: Glyph.reports, title: "Overview", subtitle: Self.rowNote(.overview))
-            }
-            .buttonStyle(PressableStyle())
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
                 CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club])
@@ -224,7 +172,7 @@ struct CompanyDetailView: View {
             set: { new in
                 if let t = Self.tab(for: new, co, e) {
                     if t == .stats { statsPart = new == .customers ? .customers : .finances }
-                    if t != .overview { openTab = t }
+                    Motion.animate(Motion.quickAnimation) { segment = t }
                 } else {
                     store.openCompany(companyID, section: new)
                 }
@@ -250,12 +198,11 @@ struct CompanyDetailView: View {
     /// under Manage, a company still being set up has neither Manage nor Sales yet.
     static func tabs(_ co: Company, _ e: GameEngine) -> [CompanyTab] {
         let a = availableSections(co, e)
-        var out: [CompanyTab] = []
-        if a.contains(.operations) { out.append(.sales) }
+        var out: [CompanyTab] = [.overview]
         if a.contains(.staff) || a.contains(.holding) { out.append(.team) }
-        out.append(.stats)
         if a.contains(.operations) || a.contains(.club) { out.append(.manage) }
-        out.append(.settings)
+        if a.contains(.operations) { out.append(.sales) }
+        out.append(.stats)
         return out
     }
 
