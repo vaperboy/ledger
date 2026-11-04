@@ -11,7 +11,9 @@ import Simulation
 struct AtlasApp: View {
     private let P = OutsidePalette.atlas
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
 
     private enum Step: Equatable { case home, checkout, activated }
 

@@ -152,7 +152,9 @@ struct CompanyHolding: View {
 /// Register a new holding company and choose which companies it holds.
 struct NewHoldingView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var name = ""
     @State private var picked: Set<Int> = []
 

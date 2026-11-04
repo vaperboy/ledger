@@ -42,8 +42,8 @@ struct ChainView: View {
                 SmallOutlineButton(title: "Rename") { newName = sum.name; renaming = true }
             }
             .confirmAction($pending)
-            .fullScreenCover(isPresented: $renaming) {
-                renamePopup(sum, cur).pageArrive().presentationBackground(.clear)
+            .centerSheet(isPresented: $renaming, title: "Rename the chain") {
+                renamePopup(sum, cur)
             }
         } else {
             Text("This chain no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
@@ -52,21 +52,17 @@ struct ChainView: View {
 
     /// The rename question in the in-game popup: the new name, what it costs, then Cancel or Rename.
     private func renamePopup(_ sum: Chains.Summary, _ cur: Currency) -> some View {
-        GamePopup(title: "Rename the chain", onClose: { renaming = false }) {
-            VStack(alignment: .leading, spacing: 12) {
+        PopupBody {
+            VStack(alignment: .leading, spacing: PopupSpace.block) {
                 Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.subtitle)
                 TextField("New name", text: $newName)
                     .font(.system(size: 15)).foregroundStyle(Theme.ivory)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
                     .accessibilityIdentifier("chain-rename-field")
-                HStack(spacing: 10) {
-                    Spacer(minLength: 0)
-                    Button("Cancel") { renaming = false }.buttonStyle(GreyOutlineButtonStyle())
-                    Button("Rename") { renaming = false; rename(sum, cur) }.buttonStyle(QuietButtonStyle())
-                }
+                PopupFooter(action: "Rename", onCancel: { renaming = false }, onAction: { renaming = false; rename(sum, cur) })
             }
         }
     }

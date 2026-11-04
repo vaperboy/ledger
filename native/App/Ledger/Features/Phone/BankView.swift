@@ -21,7 +21,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .sheet(isPresented: $applying) { BankLoanApplyFlow(account: account).presentationDragIndicator(.visible) }
+            .sheet(isPresented: $applying) { BankLoanApplyFlow(account: account).popupHost().presentationDragIndicator(.visible) }
         }
     }
 
@@ -119,7 +119,9 @@ struct BankPersonalLoans: View {
 struct RepayPersonalLoanSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var loanID: Int
     @State private var amount = 0.0
 

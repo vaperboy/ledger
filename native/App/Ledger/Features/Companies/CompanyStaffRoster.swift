@@ -160,7 +160,9 @@ struct CompanyStaffRoster: View {
 /// One person: how they feel and why, their record, and everything the owner can do about them. Uses the engine's `staffProfile`.
 struct StaffProfileView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var staffID: Int
     @State private var pending: PendingAction?

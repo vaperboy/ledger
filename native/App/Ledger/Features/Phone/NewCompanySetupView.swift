@@ -285,7 +285,9 @@ struct NewCompanyDetailedSetupView: View {
 /// New company, step 3 of 3: a compact confirmation before any money moves. The engine does the registering; a refusal is shown as it is.
 struct NewCompanyReviewView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var draft: NewCompanyDraft
     @State private var working = false
     @State private var refusal: String?

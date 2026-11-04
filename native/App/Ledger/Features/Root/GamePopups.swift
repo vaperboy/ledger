@@ -5,22 +5,42 @@ import Events
 import Simulation
 
 /// Everything the game tells the player in words is a popup on the main screen, never a banner: the notice queue (a refusal, a warning,
-/// the outcome of an answer), a top-priority decision, the short daily report and the week, month and year reports. They sit in
-/// `RootView`'s overlay, one at a time, the most urgent on top.
+/// the outcome of an answer), a top-priority decision, the short daily report, the week, month and year reports and the rewards.
+/// This view only REGISTERS them with the app's popup host (see `PopupHost`, `PopupPriority`, native/docs/POPUPS.md): the host draws
+/// them, one at a time, in the order confirm, decision, alert, notice, report and daily, reward, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore
 
     var body: some View {
-        ZStack {
-            if let r = store.reportSheet { ReportDigestSheet(digest: r).id(r.reportID).transition(.opacity) }
-            else if let d = store.dailySheet { DailyReportPopup(digest: d).transition(.opacity) }
-            if let id = store.decisionPopup { DecisionPopup(messageID: id).id(id).transition(.opacity) }
-            if let n = store.toast { NoticePopup(notice: n).id(n.id).transition(.opacity) }
-            if let a = store.redAlerts.first { RedAlertPopup(message: a).id(a.id).transition(.opacity) }
-        }
-        .centerSheet(item: unlockBinding) { (p: UnlockPrompt) in
-            UnlockPopup(prompt: p).environmentObject(store)
-        }
+        Color.clear
+            .allowsHitTesting(false)
+            .hostedPopup(key: "error", priority: .confirm, active: store.errorText != nil, onClose: { store.errorText = nil }) {
+                ErrorPopup(text: store.errorText ?? "") { store.errorText = nil }
+            }
+            .hostedPopup(key: "decision-\(store.decisionPopup ?? 0)", priority: .decision, active: store.decisionPopup != nil, onClose: { store.decisionPopup = nil }) {
+                DecisionPopup(messageID: store.decisionPopup ?? 0).environmentObject(store)
+            }
+            .hostedPopup(key: "alert-\(store.redAlerts.first?.id ?? 0)", priority: .alert, active: !store.redAlerts.isEmpty, onClose: { }) {
+                if let a = store.redAlerts.first { RedAlertPopup(message: a).environmentObject(store) }
+            }
+            .hostedPopup(key: "notice-\(store.toast?.id.uuidString ?? "")", priority: .notice, active: store.toast != nil, onClose: { store.dismissNotice() }) {
+                if let n = store.toast { NoticePopup(notice: n).environmentObject(store) }
+            }
+            .hostedPopup(key: "report-\(store.reportSheet?.reportID ?? 0)", priority: .report, active: store.reportSheet != nil, onClose: { }) {
+                if let r = store.reportSheet { ReportDigestSheet(digest: r).environmentObject(store) }
+            }
+            .hostedPopup(key: "daily", priority: .report, active: store.dailySheet != nil && store.reportSheet == nil, onClose: { }) {
+                if let d = store.dailySheet { DailyReportPopup(digest: d).environmentObject(store) }
+            }
+            .hostedPopup(key: "ambition", priority: .report, active: store.ambitionPrompt, onClose: { }) {
+                AmbitionPrompt().environmentObject(store)
+            }
+            .hostedPopup(key: "celebration-\(store.celebrationQueue.first?.id ?? 0)", priority: .celebration, active: !store.celebrationQueue.isEmpty, onClose: { }) {
+                if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
+            }
+            .centerSheet(item: unlockBinding) { (p: UnlockPrompt) in
+                UnlockPopup(prompt: p).environmentObject(store)
+            }
     }
 
     /// The announcement of a newly opened feature: shown only when nothing else is waiting; closing it counts as Skip.
@@ -31,6 +51,21 @@ struct PopupLayer: View {
                 if v == nil, let p = store.unlockReady { store.dismissUnlock(p) }
             }
         )
+    }
+}
+
+/// An error told in the same in-game popup as every question, not in an iOS alert.
+struct ErrorPopup: View {
+    var text: String
+    var onClose: () -> Void
+
+    var body: some View {
+        GamePopup(title: "Something went wrong", showsClose: false, onClose: onClose) {
+            PopupBody {
+                Text(text).popupText(.body)
+                PopupOptionButton(title: "Close", highlighted: true, identifier: "error-ok", action: onClose)
+            }
+        }
     }
 }
 
@@ -48,16 +83,16 @@ struct NoticePopup: View {
         if notice.style == "answered" { answered } else if notice.style == "luxury" { luxury } else { plain }
     }
 
-    /// A high-value purchase: a gold-edged card whose edge draws round while it fades in.
+    /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
     private var luxury: some View {
         GamePopup(title: "Acquired", showsClose: false, onClose: { store.dismissNotice() }) {
-            VStack(spacing: 12) {
+            PopupBody {
                 GoldReveal {
                     VStack(spacing: 6) {
                         GoldRingMark(glyph: Glyph.achievements, size: 52)
-                        Text(notice.title).font(.serifTitle(21)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                        Text(notice.subtitle).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                        if let price = notice.rows.first { Text(price.tidyMoney).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold) }
+                        Text(notice.title).popupText(.figure, variant: .reward).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        Text(notice.subtitle).popupText(.subtitle)
+                        if let price = notice.rows.first { Text(price.tidyMoney).popupText(.rowValue) }
                     }
                 }
                 PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
@@ -68,21 +103,21 @@ struct NoticePopup: View {
     /// The result of an answered decision: a check, what was chosen, which company, and every change it made.
     private var answered: some View {
         GamePopup(title: "Done", showsClose: false, onClose: { store.dismissNotice() }) {
-            VStack(alignment: .leading, spacing: 12) {
+            PopupBody {
                 HStack(spacing: 10) {
                     GlyphView(glyph: Glyph.check, size: 22, weight: 1.8, tint: Theme.gain)
                         .frame(width: 40, height: 40).background(Circle().fill(Theme.gain.opacity(0.14)))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(notice.title).font(.serifTitle(19)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                        if !notice.subtitle.isEmpty { Text(notice.subtitle.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+                    VStack(alignment: .leading, spacing: PopupSpace.tight) {
+                        Text(notice.title).popupText(.title).fixedSize(horizontal: false, vertical: true)
+                        if !notice.subtitle.isEmpty { Text(notice.subtitle.tidyMoney).popupText(.subtitle) }
                     }
                 }
                 if !notice.rows.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(notice.rows, id: \.self) { (line: String) in
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline, spacing: PopupSpace.row) {
                                 Circle().fill(Theme.gold).frame(width: 5, height: 5).offset(y: -2)
-                                Text(line.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                                Text(line.tidyMoney).popupText(.body)
                             }
                         }
                     }
@@ -96,10 +131,8 @@ struct NoticePopup: View {
 
     private var plain: some View {
         GamePopup(title: heading, showsClose: false, onClose: { store.dismissNotice() }) {
-            VStack(alignment: .leading, spacing: 12) {
-                if !notice.text.isEmpty {
-                    Text(notice.text.tidyMoney).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                }
+            PopupBody {
+                if !notice.text.isEmpty { Text(notice.text.tidyMoney).popupText(.body) }
                 PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
         }
@@ -131,9 +164,9 @@ struct DecisionPopup: View {
     }
 
     private func content(_ e: GameEngine, _ m: Message) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        PopupBody {
             let intro: String = e.displayText(m.body, companyID: m.companyID)
-            if !intro.isEmpty { Text(intro.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+            if !intro.isEmpty { Text(intro.tidyMoney).popupText(.subtitle) }
             ForEach(Array(m.options.enumerated()), id: \.offset) { pair in
                 optionRow(e, m, pair.offset, pair.element)
             }
@@ -144,11 +177,11 @@ struct DecisionPopup: View {
         let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
         let detail: String = e.displayText(opt["d"].string, companyID: m.companyID)
         let lines: [String] = MessageCard.preview(e, m, opt)
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: PopupSpace.tight) {
             PopupOptionButton(title: label) { choose(e, m, index) }
-            if !detail.isEmpty { Text(detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+            if !detail.isEmpty { Text(detail.tidyMoney).popupText(.caption) }
             ForEach(lines, id: \.self) { line in
-                Text(line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
+                Text(line.tidyMoney).popupText(.effect)
             }
         }
     }
@@ -186,7 +219,8 @@ struct DecisionPopup: View {
     }
 }
 
-/// A company about to be force-sold: a see-through red alert over everything. Tapping outside does nothing; the player has to read it and press Continue.
+/// A company about to be force-sold: a see-through red alert over everything (declared variant: alert, white text). Tapping outside
+/// does nothing; the player has to read it and press Continue.
 struct RedAlertPopup: View {
     @EnvironmentObject var store: GameStore
     var message: Message
@@ -195,15 +229,15 @@ struct RedAlertPopup: View {
         ZStack {
             Color(red: 0.8, green: 0.06, blue: 0.08).opacity(0.34).ignoresSafeArea()
                 .contentShape(Rectangle()).onTapGesture { }
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: PopupSpace.block) {
                 HStack(spacing: 10) {
                     GlyphView(glyph: Glyph.warning, size: 24, weight: 1.8, tint: Color.white)
-                    Text("About to be sold").font(.system(size: 12, weight: .bold)).tracking(1.4).foregroundStyle(Color.white.opacity(0.9))
+                    Text("About to be sold").popupText(.rowLabel, variant: .alert)
                 }
                 Text(store.engine?.displayText(message.title, companyID: message.companyID) ?? message.title)
-                    .font(.serifTitle(22)).foregroundStyle(Color.white).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.figure, variant: .alert).fixedSize(horizontal: false, vertical: true)
                 Text((store.engine?.displayText(message.body, companyID: message.companyID) ?? message.body).tidyMoney)
-                    .font(.system(size: 14.5)).foregroundStyle(Color.white.opacity(0.92)).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.body, variant: .alert)
                 HStack(spacing: 10) {
                     if message.companyID != 0 {
                         Button("Open the company") {
@@ -215,10 +249,10 @@ struct RedAlertPopup: View {
                         .buttonStyle(QuietButtonStyle(tint: Color.white)).accessibilityIdentifier("alert-continue")
                 }
             }
-            .padding(18).frame(maxWidth: 420)
+            .padding(PopupSpace.card).frame(maxWidth: 420)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Color(red: 0.42, green: 0.04, blue: 0.06).opacity(0.78)))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Color(red: 1, green: 0.4, blue: 0.4).opacity(0.7), lineWidth: 1.5))
-            .padding(.horizontal, 22)
+            .padding(.horizontal, PopupMetrics.margin)
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)

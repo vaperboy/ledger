@@ -400,7 +400,9 @@ struct FranchisorCard: View {
 /// The talk with one applicant: an offer, their answer, until they sign, give up, or you do.
 struct FranchiseTalkView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var applicantID: Int
     @State private var terms = Franchising.TalkTerms()

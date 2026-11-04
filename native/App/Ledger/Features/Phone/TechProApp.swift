@@ -66,7 +66,9 @@ enum PriceSort: String, CaseIterable, Hashable {
 struct TechProApp: View {
     private let P = OutsidePalette.techPro
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
 
     private enum Step: Equatable { case store, category, suppliers, product, basket, checkout, payment, placed, orders, owned }
 

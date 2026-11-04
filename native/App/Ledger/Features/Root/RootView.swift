@@ -8,6 +8,7 @@ struct RootView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @StateObject private var popups = PopupHost()
 
     var body: some View {
         Group {
@@ -18,7 +19,6 @@ struct RootView: View {
         .background(Theme.page.ignoresSafeArea())
         .scrollDisabled(store.popupOpen)
         .allowsHitTesting(!store.popupOpen)
-        .overlay { PopupLayer() }
         .overlay { MotionOverlay() }
         // Every scroll view and list in the app only bounces when its content is taller (or wider) than the screen: a page that fits stays still.
         .scrollBounceBehavior(.basedOnSize, axes: [.vertical, .horizontal])
@@ -29,25 +29,12 @@ struct RootView: View {
         .centerSheet(isPresented: $store.customPickerOpen) {
             CustomTabPicker().environmentObject(store)
         }
-        .overlay { errorPopup }
         .overlay { NotificationBannerLayer(queue: store.banners) }
         .modifier(PostM7Paywall())
-    }
-
-    /// An error is told in the same in-game popup as every question, not in an iOS alert.
-    @ViewBuilder private var errorPopup: some View {
-        if let text = store.errorText {
-            GamePopup(title: "Something went wrong", showsClose: false, onClose: { store.errorText = nil }) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(text).font(.system(size: 14)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        Spacer(minLength: 0)
-                        Button("Close") { store.errorText = nil }
-                            .buttonStyle(QuietButtonStyle()).accessibilityIdentifier("error-ok")
-                    }
-                }
-            }
-        }
+        // The one popup host: every popup of the app is drawn here, above everything (tab bar included), in queue order.
+        .overlay { PopupLayer() }
+        .overlay { PopupHostLayer(host: popups, parent: PopupHost.empty) }
+        .environment(\.popupHost, popups)
     }
 }
 

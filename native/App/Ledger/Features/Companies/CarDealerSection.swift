@@ -101,9 +101,9 @@ struct CarDealerSection: View {
                     .buttonStyle(GoldButtonStyle())
             }
         }
-        .sheet(item: $carSheet) { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store) }
-        .sheet(isPresented: $ordering) { CarOrderSheet(companyID: company.id).environmentObject(store) }
-        .sheet(isPresented: $brandScreen) { CarBrandScreen(companyID: company.id).environmentObject(store) }
+        .sheet(item: $carSheet) { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store).popupHost() }
+        .sheet(isPresented: $ordering) { CarOrderSheet(companyID: company.id).environmentObject(store).popupHost() }
+        .sheet(isPresented: $brandScreen) { CarBrandScreen(companyID: company.id).environmentObject(store).popupHost() }
     }
 
     private func supplierBlock(_ cur: Currency) -> some View {
@@ -126,7 +126,9 @@ struct CarDealerSection: View {
 /// One car: its cost, the list price and the price slider with what the sale would earn or lose right now.
 struct CarPriceSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var carID: Int
     @State private var price = 0.0
@@ -181,7 +183,9 @@ struct CarPriceSheet: View {
 /// Order cars from the current supplier: the distributor's whole range, or only the contract brand's.
 struct CarOrderSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
 
     var body: some View {

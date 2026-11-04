@@ -27,8 +27,8 @@ struct DealerAddonsView: View {
             }
             recordsBlock(cur)
         }
-        .fullScreenCover(item: $applying) { (a: DealerAddon) in
-            applyPopup(a, cur).pageArrive().presentationBackground(.clear)
+        .centerSheet(item: $applying, title: "Apply") { (a: DealerAddon) in
+            applyPopup(a, cur)
         }
     }
 
@@ -152,20 +152,15 @@ struct DealerAddonsView: View {
         let s: DealerSetupStatus? = engine.dealerAddonSetup(companyID: company.id, addon: a)
         let cost: Double = s?.totalCost ?? 0
         let weeks: Int = s?.reviewWeeks ?? 0
-        return GamePopup(title: a.title, onClose: { applying = nil }) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Paying \(cur.tidyShort(cost)) now starts the review of the contracts and registrations. It takes \(weeks) weeks. If it fails the fees are lost and you can apply again.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 10) {
-                    Spacer(minLength: 0)
-                    Button("Cancel") { applying = nil }.buttonStyle(GreyOutlineButtonStyle())
-                    Button("Pay and apply") {
-                        applying = nil
-                        let r: SettingResult? = store.act { $0.startDealerAddonSetup(companyID: company.id, addon: a) }
-                        store.settle(r, "Application sent. The review has started.")
-                    }.buttonStyle(QuietButtonStyle())
-                }
-            }
+        return PopupBody {
+            Text(a.title).popupText(.title)
+            Text("Paying \(cur.tidyShort(cost)) now starts the review of the contracts and registrations. It takes \(weeks) weeks. If it fails the fees are lost and you can apply again.")
+                .popupText(.body)
+            PopupFooter(action: "Pay and apply", tone: .expensive, onCancel: { applying = nil }, onAction: {
+                applying = nil
+                let r: SettingResult? = store.act { $0.startDealerAddonSetup(companyID: company.id, addon: a) }
+                store.settle(r, "Application sent. The review has started.")
+            })
         }
     }
 

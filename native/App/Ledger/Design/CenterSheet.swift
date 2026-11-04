@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// A content view can call `.centerSheetLocked()` so a tap outside the popup does not close it (only its own buttons do).
 private struct CenterSheetLockKey: PreferenceKey {
@@ -11,25 +10,6 @@ private struct CenterSheetLockKey: PreferenceKey {
 private struct CenterSheetTitleKey: PreferenceKey {
     static var defaultValue: String = ""
     static func reduce(value: inout String, nextValue: () -> String) { if value.isEmpty { value = nextValue() } }
-}
-
-/// Makes the presented controller's views transparent, so the dimmed backdrop of the popup shows the screen below.
-private struct ClearCoverBackground: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIView { ClearProbe() }
-    func updateUIView(_ uiView: UIView, context: Context) {}
-
-    private final class ClearProbe: UIView {
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            DispatchQueue.main.async { [weak self] in
-                var v: UIView? = self
-                while let x = v, !(x is UIWindow) {
-                    x.backgroundColor = .clear
-                    v = x.superview
-                }
-            }
-        }
-    }
 }
 
 /// How high a centred popup is. `.fit` (default): exactly as high as its content, at most 80% of the screen, scrolling only when taller.
@@ -54,7 +34,7 @@ struct PopupHeaderRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Text(title).font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(P.ink).lineLimit(2).minimumScaleFactor(0.85)
+                Text(title).popupText(.title).lineLimit(2).minimumScaleFactor(0.85)
                     .multilineTextAlignment(.leading).padding(.leading, 16)
                 Spacer(minLength: 8)
                 if showsClose { closeButton }
@@ -107,7 +87,6 @@ struct CenterSheetFrame<Content: View>: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .toggleStyle(LedgerToggleStyle())
-        .background(ClearCoverBackground())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
         .onAppear { withAnimation(Motion.arrive(reduceMotion)) { shown = true } }
@@ -146,29 +125,17 @@ struct CenterSheetFrame<Content: View>: View {
     }
 }
 
-/// Runs a change with the system animation switched off (the popup fades in and out itself).
-private func centerInstant(_ change: () -> Void) {
-    var t = Transaction()
-    t.disablesAnimations = true
-    withTransaction(t, change)
-}
-
 private struct CenterSheetBool<Card: View>: ViewModifier {
     @Binding var isPresented: Bool
     var title: String
     var size: CenterSheetSize
     var onDismiss: (() -> Void)?
     @ViewBuilder var card: () -> Card
-    @State private var cover = false
 
     func body(content: Content) -> some View {
-        content
-            .onAppear { if isPresented && !cover { centerInstant { cover = true } } }
-            .onChange(of: isPresented) { _, now in centerInstant { cover = now } }
-            .fullScreenCover(isPresented: $cover, onDismiss: onDismiss) {
-                CenterSheetFrame(onClose: { centerInstant { cover = false; isPresented = false } }, title: title, size: size) { card() }
-                    .presentationBackground(.clear)
-            }
+        let flag: Binding<Bool> = $isPresented
+        return content.modifier(HostedPopupModifier(key: "sheet", priority: .panel, active: isPresented, draw: .card(title: title, size: size),
+                                                    onClose: { flag.wrappedValue = false }, onDismiss: onDismiss, card: card))
     }
 }
 
@@ -178,21 +145,23 @@ private struct CenterSheetItem<Item: Identifiable, Card: View>: ViewModifier {
     var size: CenterSheetSize
     var onDismiss: (() -> Void)?
     @ViewBuilder var card: (Item) -> Card
-    @State private var shownItem: Item?
 
     func body(content: Content) -> some View {
-        content
-            .onAppear { if let i = item, shownItem == nil { centerInstant { shownItem = i } } }
-            .onChange(of: item?.id) { _, _ in centerInstant { shownItem = item } }
-            .fullScreenCover(item: $shownItem, onDismiss: onDismiss) { (i: Item) in
-                CenterSheetFrame(onClose: { centerInstant { shownItem = nil; item = nil } }, title: title, size: size) { card(i) }
-                    .presentationBackground(.clear)
-            }
+        let current: Item? = item
+        let slot: Binding<Item?> = $item
+        let build: (Item) -> Card = card
+        return content.modifier(HostedPopupModifier(key: current.map { (i: Item) -> String in "item-\(i.id)" } ?? "item", priority: .panel, active: current != nil,
+                                                    draw: .card(title: title, size: size),
+                                                    onClose: { slot.wrappedValue = nil }, onDismiss: onDismiss,
+                                                    card: { () -> AnyView in
+                                                        if let i = current { return AnyView(build(i)) }
+                                                        return AnyView(EmptyView())
+                                                    }))
     }
 }
 
 extension View {
-    /// Same use as `.sheet(isPresented:)`, but the content opens as a centred popup card (like the daily report), not from the bottom.
+    /// Same use as `.sheet(isPresented:)`, but the content is a centred popup card drawn by the app's popup host (no cover, no navigation change).
     func centerSheet<Content: View>(isPresented: Binding<Bool>, title: String = "", size: CenterSheetSize = .fit, onDismiss: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) -> some View {
         modifier(CenterSheetBool(isPresented: isPresented, title: title, size: size, onDismiss: onDismiss, card: content))
     }

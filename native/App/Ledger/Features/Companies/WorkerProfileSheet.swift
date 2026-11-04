@@ -14,7 +14,9 @@ struct WorkerRef: Identifiable, Hashable {
 /// them (keep now / ask to wait) and the actions: pay rise or contract talk, a duty, letting go. The full record is one tap away.
 struct WorkerProfileSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     var employeeID: Int
     @State private var pending: PendingAction?

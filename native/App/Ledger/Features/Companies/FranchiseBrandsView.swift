@@ -137,7 +137,9 @@ struct FranchiseBrandRow: View {
 /// The meeting with a brand: standard terms, and what you ask for on top. They accept, counter, push back or walk away.
 struct BrandMeetingView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var brandID: String
     @State private var ask = FranchiseBrands.Ask()
     @State private var result: FranchiseBrands.Negotiation?
@@ -300,7 +302,9 @@ struct BrandMeetingView: View {
 /// Start the company under a brand whose terms you agreed.
 struct StartFranchisedView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var brandID: String
     @State private var cityID = ""
     @State private var limited = true

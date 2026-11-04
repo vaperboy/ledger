@@ -92,7 +92,9 @@ final class AcctModel: ObservableObject {
 
 struct AccountingApp: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @Environment(\.tabBarClearance) private var clearance
     @StateObject private var m = AcctModel()
 

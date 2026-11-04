@@ -25,7 +25,9 @@ extension View {
 
 /// The round back button (40 pt, grey outline) for an outside app's own masthead.
 struct OutsideBack: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var body: some View {
         RoundBackButton { dismiss() }
     }

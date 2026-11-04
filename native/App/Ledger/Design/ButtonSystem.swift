@@ -71,7 +71,16 @@ struct PopupFooter: View {
     var body: some View {
         HStack(spacing: 10) {
             PopupOptionButton(title: cancel, identifier: "confirm-cancel", action: onCancel)
-            PopupOptionButton(title: action, identifier: "confirm-go", action: onAction)
+            switch tone {
+            case .expensive:
+                Button(action: { Haptics.tap(); onAction() }) { Text(action) }
+                    .buttonStyle(FoilButtonStyle()).accessibilityIdentifier("confirm-go")
+            case .destructive:
+                Button(action: { Haptics.tap(); onAction() }) { Text(action) }
+                    .buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier("confirm-go")
+            case .normal:
+                PopupOptionButton(title: action, identifier: "confirm-go", action: onAction)
+            }
         }
         .padding(.top, 4)
     }
@@ -85,7 +94,7 @@ struct InlineMessage: View {
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
             GlyphView(glyph: Glyph.warning, size: 13, weight: 1.6, tint: isError ? P.loss : P.caution).padding(.top, 1)
-            Text(text).font(.system(size: 12.5)).foregroundStyle(isError ? P.loss : P.caution).fixedSize(horizontal: false, vertical: true)
+            Text(text).popupText(.risk, variant: isError ? .destructive : .standard)
         }
     }
 }

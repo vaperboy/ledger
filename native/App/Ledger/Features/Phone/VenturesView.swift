@@ -360,7 +360,9 @@ private struct FoundedCard: View {
 /// Found a startup: sector, product, how customers pay, who builds it, how much seed money; the plan (runway, time to a product) before deciding.
 private struct FoundStartupSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var sectorID = StartupProducts.sectors.first?.id ?? ""
     @State private var productID = ""
     @State private var modelID = ""
@@ -781,7 +783,9 @@ private struct SoftwarePart: View {
 /// `startupLaunchPreview`; nothing is decided until "Launch". Hiring and firing are in the company's own team screens.
 private struct StartupLaunchSheet: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var engine: GameEngine
     var f: Startups.Founded
     @State private var priceStep = 0
