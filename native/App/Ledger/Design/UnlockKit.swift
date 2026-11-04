@@ -87,7 +87,7 @@ struct UnlockPopup: View {
     var body: some View {
         VStack(spacing: 14) {
             ring
-            Text("\(prompt.title) unlocked!")
+            Text("\(prompt.title) unlocked")
                 .font(.serifTitle(25)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 .opacity(shown || reduceMotion ? 1 : 0)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.9)

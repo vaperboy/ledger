@@ -282,7 +282,7 @@ public enum Franchising {
             let ask = t.royalty > 0.04 ? "a royalty one point lower" : t.feeFactor > 0 ? "half the entry fee" : "more help with the setup"
             return TalkAnswer(ok: false, text: "It would take me \(String(format: "%.1f", years)) years to earn back what I put in. I need it closer to \(lim). With \(ask) I am in.", hint: nil)
         }
-        return TalkAnswer(ok: true, text: a.personality == "eager" ? "Yes! When can we start?" : a.personality == "careful" ? "That works for me. I would like it in writing, and then we can begin." : "Fine. That is a deal.", hint: nil)
+        return TalkAnswer(ok: true, text: a.personality == "eager" ? "Yes. When can we start?" : a.personality == "careful" ? "That works for me. I would like it in writing, and then we can begin." : "Fine. That is a deal.", hint: nil)
     }
 
     public struct OfferResult: Equatable, Sendable {

@@ -826,7 +826,7 @@ struct TechProApp: View {
                 if let d { autofillCard(d) }
                 fields(d)
                 Toggle(isOn: $remember) {
-                    Text("Remember me for this store").font(.system(size: 15)).foregroundStyle(P.ink)
+                    Text("Save my details for this store").font(.system(size: 15)).foregroundStyle(P.ink)
                 }
                 .tint(P.accent)
                 .accessibilityIdentifier("tp-remember")
