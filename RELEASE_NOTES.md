@@ -1,4 +1,5 @@
 # What's new
+- Items: your products and services are now a list like your staff (picture, name, status, price with live profit or loss) and each item has its own page with price, demand, supply, plans, history and actions
 - New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month
 - Skip to opening: pass the waiting days of a new company in one go
 - More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen

@@ -15,11 +15,12 @@ struct CompanySales: View {
     @Binding var part: OpsPart
     @State private var showMarketing = false
     @State private var picked: SalesItemPick?
+    @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
     @State private var showHire = false
 
     /// A tapped item, for the popup.
-    private struct SalesItemPick: Identifiable { var id: String }
+    private struct SalesItemPick: Identifiable, Hashable { var id: String }
     private struct NewItemPick: Identifiable { var id: Bool }
 
     var body: some View {
@@ -28,7 +29,8 @@ struct CompanySales: View {
         return VStack(spacing: Theme.Space.m) {
             CompanyBrandLine(engine: engine, companyID: company.id)
             trendCard
-            itemsCard(items, service: service)
+            ItemsList(engine: engine, company: company, items: items, service: service,
+                      onOpen: { (id: String) in openItem = SalesItemPick(id: id) }, onAdd: { addingService = service })
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
                 ResearchRow(engine: engine, company: company)
@@ -38,8 +40,13 @@ struct CompanySales: View {
         .centerSheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
-                         onHireAdvisor: { addingService = nil; presentAfterSheet { showHire = true } })
+                         onHireAdvisor: { addingService = nil; presentAfterSheet { showHire = true } },
+                         onAdded: { (name: String) in
+                             let id: String? = store.engine?.salesItems(companyID: company.id).first(where: { (i: SalesItem) -> Bool in i.name == name })?.id
+                             if let id { presentAfterSheet { openItem = SalesItemPick(id: id) } }
+                         })
         }
+        .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part, companyID: company.id)

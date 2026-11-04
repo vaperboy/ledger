@@ -38,6 +38,7 @@ public enum PriceMoves {
             let pref = co.value("pref16").isNull ? base : co.num("pref16")
             s.companies[i].set("pref16", jsRound((pref + (base - pref) * 0.18) * 10000) / 10000)
             SalesItems.weeklyTick(&s, i)
+            ItemModels.weeklyTick(&s, i, data: data)
             // "Hold my prices": the price the market would have reached keeps running away from the held one (`ig`), so customers see it as cheaper.
             if co.flag("inflHold") { s.companies[i].set("ig", co.num("ig", 1) * pow(1 + s.economy.inflation, 1.0 / 52)) }
             var hist = co.value("ph16").array

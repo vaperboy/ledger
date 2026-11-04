@@ -12,6 +12,8 @@ struct NewItemSheet: View {
     let isService: Bool
     var onClose: () -> Void
     var onHireAdvisor: () -> Void
+    /// Called with the name of an item that went on sale at once (not for a development), so the caller can open its page.
+    var onAdded: ((String) -> Void)? = nil
     @State private var pending: PendingAction?
     @State private var own = ""
 
@@ -103,7 +105,7 @@ struct NewItemSheet: View {
                                 run: {
             let r = store.act { $0.addNewItem(companyID: id, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-            else { Haptics.success(); store.show(dev ? "Started developing \(name)." : "Added \(name).", tone: "good"); onClose() }
+            else { Haptics.success(); store.show(dev ? "Started developing \(name)." : "Added \(name).", tone: "good"); onClose(); if !dev { onAdded?(name) } }
         })
     }
 
@@ -113,6 +115,6 @@ struct NewItemSheet: View {
         let name: String = own.trimmingCharacters(in: .whitespaces)
         let r = store.act { $0.addSalesItem(companyID: id, name: name, isService: svc) }
         if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-        else { Haptics.success(); store.show("Added \(name).", tone: "good"); onClose() }
+        else { Haptics.success(); store.show("Added \(name).", tone: "good"); onClose(); onAdded?(name) }
     }
 }
