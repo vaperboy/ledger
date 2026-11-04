@@ -33,9 +33,9 @@ struct NewCompanyDraft: Equatable {
     }
 }
 
-/// New company, step 2 of 3: the details of the company. Name, city, legal form, premises, then the exact cost today and the estimated
+/// New company, the detailed set-up behind "Choose each item yourself": the details of the company. Name, city, legal form, premises, then the exact cost today and the estimated
 /// monthly cost after opening. Nothing is paid here; "Register" goes to the review.
-struct NewCompanySetupView: View {
+struct NewCompanyDetailedSetupView: View {
     private enum Way: String, Hashable { case rent = "Rent", buy = "Buy", home = "Home" }
     private enum FormChoice: String, Hashable { case sole = "Sole trader", limited = "Limited company" }
     @EnvironmentObject var store: GameStore
@@ -370,33 +370,7 @@ struct NewCompanyReviewView: View {
 
     private func register(_ e: GameEngine, _ t: Trade, _ plan: NewCompanyPlan) {
         working = true
-        refusal = nil
-        let d = draft
-        let size: Double? = d.size(e)
-        let fund: Double = plan.intoCompany
-        let nm: String? = d.name.isEmpty ? nil : d.name
-        let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices) }
+        refusal = registerNewCompany(store, engine: e, draft: draft)
         working = false
-        switch r {
-        case .success(let out)?:
-            Haptics.success()
-            var text = "Registered. Set it up, then open for business."
-            var tone = "good"
-            if out.premises == .notEnoughCash { text = "Registered, but the company could not pay for the place you picked. Choose premises in AirStay."; tone = "warn" }
-            else if !out.skipped.isEmpty { text = "Registered. Left for you to decide: " + out.skipped.map { $0.title }.prefix(3).joined(separator: ", ") + (out.skipped.count > 3 ? " and more." : "."); tone = "warn" }
-            else if !out.setupNotes.isEmpty { text = "Registered. Some set-up is left (usually cash): see the checklist in the company."; tone = "warn" }
-            store.show(text, tone: tone)
-            store.openCompany(out.companyID, section: .setup)
-        case .failure(.banned(let why))?:
-            Haptics.failure(); refusal = why
-        case .failure(.notYetAvailable)?:
-            Haptics.warning(); refusal = "This kind of business is coming in a later update."
-        case .failure(.notEnoughCash)?:
-            Haptics.warning(); refusal = "Not enough cash for the registration costs."
-        case .failure(.notAllowedHere)?:
-            Haptics.warning(); refusal = "This company can't be started here."
-        case nil:
-            refusal = "Nothing happened: the game is not ready. Try again."
-        }
     }
 }

@@ -40,7 +40,7 @@ struct NewCompanyView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar(picked) }
-            .appScreen(title: "New company", subtitle: "Step 1 of 3 · choose the trade", tab: .company)
+            .appScreen(title: "New company", subtitle: "Choose the trade", tab: .company)
             .navigationDestination(isPresented: $goNext) {
                 if let id = selectedID { NewCompanySetupView(tradeID: id, cityID: city) }
             }
