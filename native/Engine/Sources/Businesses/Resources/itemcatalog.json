@@ -3,39 +3,20 @@
  "trades": {
   "startup": [
    {
-    "n": "Pro edition",
-    "svc": false,
-    "b": true,
-    "dev": true
-   },
-   {
-    "n": "Onboarding service",
-    "svc": true
-   },
-   {
-    "n": "Premium support plan",
-    "svc": true
-   },
-   {
-    "n": "API access",
-    "svc": true
-   },
-   {
     "n": "Team licence",
-    "svc": false
-   },
-   {
-    "n": "Training workshops",
-    "svc": true
-   },
-   {
-    "n": "Custom integration",
     "svc": true
    },
    {
     "n": "Mobile companion app",
-    "svc": false,
-    "dev": true
+    "svc": true
+   },
+   {
+    "n": "Training workshop",
+    "svc": true
+   },
+   {
+    "n": "Data export add-on",
+    "svc": true
    }
   ],
   "cons": [
@@ -216,37 +197,20 @@
   ],
   "webdev": [
    {
-    "n": "Company website",
+    "n": "Landing page",
     "svc": true
    },
    {
-    "n": "Online shop build",
+    "n": "Security audit",
     "svc": true
    },
    {
-    "n": "Maintenance plan",
+    "n": "Domain and email set-up",
     "svc": true
    },
    {
-    "n": "SEO package",
+    "n": "Training for your team",
     "svc": true
-   },
-   {
-    "n": "Web app development",
-    "svc": true
-   },
-   {
-    "n": "Hosting and care",
-    "svc": true
-   },
-   {
-    "n": "Design system",
-    "svc": true
-   },
-   {
-    "n": "Website templates",
-    "svc": false,
-    "dev": true
    }
   ],
   "mktg": [
@@ -1519,108 +1483,55 @@
   ],
   "furniture": [
    {
-    "n": "Made-to-measure tables",
+    "n": "Bespoke shelving",
+    "svc": true
+   },
+   {
+    "n": "Outdoor bench",
     "svc": false
    },
    {
-    "n": "Office range",
+    "n": "Table tops for retail partners",
     "svc": false
    },
    {
-    "n": "Outdoor collection",
-    "svc": false
-   },
-   {
-    "n": "Restoration service",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Kitchen units",
-    "svc": false
-   },
-   {
-    "n": "Flat-pack range",
-    "svc": false
-   },
-   {
-    "n": "Contract furnishing",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Children's furniture",
-    "svc": false
+    "n": "Repair and reupholstery",
+    "svc": true
    }
   ],
   "salmon": [
-   {
-    "n": "Smoked salmon",
-    "svc": false
-   },
-   {
-    "n": "Fresh fillets",
-    "svc": false
-   },
-   {
-    "n": "Roe and caviar",
-    "svc": false
-   },
-   {
-    "n": "Ready meals",
-    "svc": false
-   },
-   {
-    "n": "Restaurant supply box",
-    "svc": false
-   },
    {
     "n": "Gift hampers",
     "svc": false
    },
    {
-    "n": "Pet food trimmings",
+    "n": "Hot-smoked portions",
     "svc": false
    },
    {
-    "n": "Farm visits",
-    "svc": true,
-    "dev": true
+    "n": "Salmon burgers",
+    "svc": false
+   },
+   {
+    "n": "Live smolt sale",
+    "svc": false
    }
   ],
   "factory": [
    {
-    "n": "Custom parts",
+    "n": "Surface treatment",
+    "svc": true
+   },
+   {
+    "n": "Branded product run",
     "svc": false
    },
    {
-    "n": "Standard components",
-    "svc": false
+    "n": "Tooling build",
+    "svc": true
    },
    {
-    "n": "Prototype runs",
-    "svc": false
-   },
-   {
-    "n": "Assembly service",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Maintenance spares",
-    "svc": false
-   },
-   {
-    "n": "Packaging line",
-    "svc": false
-   },
-   {
-    "n": "Quality inspection service",
-    "svc": true,
-    "dev": true
-   },
-   {
-    "n": "Branded products",
+    "n": "Welded frames",
     "svc": false
    }
   ],
@@ -2131,30 +2042,6 @@
   ],
   "gamestudio": [
    {
-    "n": "Mobile game",
-    "svc": true
-   },
-   {
-    "n": "Console release",
-    "svc": true
-   },
-   {
-    "n": "Downloadable content",
-    "svc": true
-   },
-   {
-    "n": "In-game cosmetics",
-    "svc": true
-   },
-   {
-    "n": "Subscription club",
-    "svc": true
-   },
-   {
-    "n": "Publishing deal",
-    "svc": true
-   },
-   {
     "n": "Game engine licence",
     "svc": true
    },
@@ -2162,6 +2049,15 @@
     "n": "Merchandise",
     "svc": false,
     "dev": true
+   },
+   {
+    "n": "Soundtrack and art book",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Early access season",
+    "svc": true
    }
   ],
   "security": [
