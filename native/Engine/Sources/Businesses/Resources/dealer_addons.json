@@ -1,0 +1,53 @@
+{
+  "trades": ["usedcar", "cardealer"],
+  "typicalCar": {
+    "usedcar": {"price": 14000, "age": 6, "wear": 0.45},
+    "cardealer": {"price": 34000, "age": 0, "wear": 0.02}
+  },
+  "benchmarkPrice": 18000,
+  "wty": {
+    "title": "Dealer warranty",
+    "text": "Repairs after the sale are paid by the dealer. Every warranty sold sets aside a reserve for the claims it is expected to bring; claims are paid from it and what is left is released when the warranty ends.",
+    "minReputation": 0, "minWeeksOpen": 0,
+    "claimsBase": 0.08, "claimsPerYear": 0.04, "claimsPerWear": 0.30,
+    "claimShare": 0.07, "claimLow": 0.4, "claimHigh": 2.2,
+    "perceivedFloor": 0.025, "fairLoad": 1.6,
+    "takeBase": -0.6, "takeWorry": 2.5, "takeSlope": 2.5, "worryYears": 10,
+    "defaultIncludedMonths": 0, "defaultExtraMonths": 12, "defaultExtraRate": 0.07,
+    "boostPerIncludedYear": 0.04,
+    "requirements": [
+      {"id": "wty_admin", "title": "Warranty administrator contract", "detail": "A third party handles claims paperwork and parts pricing.", "cost": 4000, "weeks": 1, "licence": false},
+      {"id": "wty_terms", "title": "Consumer warranty terms reviewed by a lawyer", "detail": "Terms must meet consumer law: what is covered, what is not, how to claim.", "cost": 2500, "weeks": 1, "licence": false}
+    ]
+  },
+  "loan": {
+    "title": "Car loans through the bank",
+    "text": "A bank partner finances your customers. The customer's loan is the bank's, not yours: the bank pays you the car price and a commission on every financed sale. A declined application can lose the sale.",
+    "minReputation": 40, "minWeeksOpen": 8,
+    "commissionMin": 0.01, "commissionMax": 0.03, "defaultCommission": 0.02,
+    "baseApr": 0.065, "termYears": 5, "deposit": 0.15,
+    "needBase": 0.15, "needSlope": 0.6,
+    "preferBase": 0.9, "preferSlope": 80, "preferRefMarkup": 0.004,
+    "approveBase": 2.8, "approvePerBench": 0.7, "approvePerYear": 0.09,
+    "walkAway": 0.6, "boostFromNeed": 0.05,
+    "requirements": [
+      {"id": "credit_reg", "title": "Credit intermediary registration", "detail": "Regulator permission to introduce customers to lenders. Reviewed by the regulator.", "cost": 6000, "weeks": 6, "licence": true},
+      {"id": "bank_partner", "title": "Bank partner agreement", "detail": "Sets the commission schedule and who carries the credit risk (the bank).", "cost": 3500, "weeks": 3, "licence": false},
+      {"id": "credit_training", "title": "Compliance training for sales staff", "detail": "Affordability questions and disclosure of the rate.", "cost": 1500, "weeks": 2, "licence": false}
+    ]
+  },
+  "ins": {
+    "title": "Insurance at the sale",
+    "text": "Customers can take the first year of motor insurance with the car, cheaper than buying it separately. The insurer pays you a one-time commission on that first-year premium; the customer pays the insurer and holds a real policy.",
+    "minReputation": 35, "minWeeksOpen": 4,
+    "commissionMin": 0.10, "commissionMax": 0.20, "defaultCommission": 0.15,
+    "distributionBudget": 0.30,
+    "premiumRate": 0.05, "premiumAgeLoad": 0.03,
+    "takeBase": -0.6, "takeSlope": 16, "boostPerSaving": 0.1,
+    "policyYearWeeks": 52,
+    "requirements": [
+      {"id": "ins_reg", "title": "Insurance intermediary registration", "detail": "Registration as a tied agent of the insurer, reviewed by the regulator.", "cost": 5000, "weeks": 4, "licence": true},
+      {"id": "ins_contract", "title": "Insurer agency agreement", "detail": "Fixes the commission range and the policy wording you may sell.", "cost": 2500, "weeks": 3, "licence": false}
+    ]
+  }
+}
