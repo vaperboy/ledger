@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.58",
+          "buildVersion": "58",
+          "date": "2026-11-04T22:24:29Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v58/Ledger-unsigned.ipa",
+          "size": 28790588,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Popups: one overlay host for every popup, one text and layout rule set; tall popups step back inside before closing\n- Sheets turned into popups (car order, price, brand contract); no page pops back when a popup opens\n- Balance fixes for security, driving school, physio, dental, law; real items in every trade\n\n# Missing / coming next\n- Own-delivery fee, typed prices per trade, chain/franchise steps, more photos\n- Not yet tested on device: expect rough edges"
+        },
+        {
           "version": "1.0.57",
           "buildVersion": "57",
           "date": "2026-11-04T21:34:28Z",
@@ -187,22 +196,13 @@
           "size": 27492353,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet"
-        },
-        {
-          "version": "1.0.38",
-          "buildVersion": "38",
-          "date": "2026-11-03T22:54:53Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v38/Ledger-unsigned.ipa",
-          "size": 27470351,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.57",
-      "versionDate": "2026-11-04T21:34:28Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v57/Ledger-unsigned.ipa",
-      "size": 28783869
+      "version": "1.0.58",
+      "versionDate": "2026-11-04T22:24:29Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v58/Ledger-unsigned.ipa",
+      "size": 28790588
     }
   ]
 }
