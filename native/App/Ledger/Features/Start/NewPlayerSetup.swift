@@ -10,12 +10,14 @@ struct NewPlayerSetup: View {
     enum Step { case country, trade, name }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String) -> Void
 
     @State private var step: Step = .country
     @State private var countryCode = ""
     @State private var tradeID = ""
     @State private var companyName = ""
+    /// The owner's own name (stored as the player name); empty keeps the engine's default.
+    @State private var playerName = ""
     @State private var suggested = ""
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
@@ -214,6 +216,13 @@ struct NewPlayerSetup: View {
                 .font(.system(size: 20))
                 .padding(.vertical, 10)
                 .overlay(alignment: .bottom) { Hairline() }
+            TextField("Your name (optional)", text: $playerName)
+                .textInputAutocapitalization(.words)
+                .submitLabel(.go)
+                .onSubmit { start() }
+                .font(.system(size: 20))
+                .padding(.vertical, 10)
+                .overlay(alignment: .bottom) { Hairline() }
             QuietButton(title: "Start", fullWidth: true) { start() }
             Spacer(minLength: 0)
         }
@@ -222,6 +231,6 @@ struct NewPlayerSetup: View {
 
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n)
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
