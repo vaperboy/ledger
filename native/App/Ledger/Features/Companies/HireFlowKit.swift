@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 // The ONE hiring flow of the game (Stage 3, spec 5.3C): every hire (workers, managers, assistants, team heads, executives, office staff, the analyst)
-// goes through page 1 (`HireTermsPage`, the contract terms) and page 2 (`HireSalaryPage`, the salary negotiation). This file holds what both pages
+// goes through `HireOnePage`: page 1 (the going rate, one button) and page 2 (pay and terms). This file holds what both pages
 // share: the request, the draft of the terms, the model that keeps the draft when the player goes back from page 2 to page 1, and a few formatters.
 // No game rule lives here: the engine (`hireDraftOptions`, `hireTermsProblem`, `hireSalaryTalk`, `hearTheirAsk`, `hireOffer`) decides and prices.
 
@@ -238,15 +238,12 @@ extension EnvironmentValues {
     }
 }
 
-/// The frame of the hiring flow: its own navigation stack, so page 2 is pushed on page 1 and Back returns to it.
+/// The hiring flow in its popup: no navigation stack. `HireOnePage` switches between its two steps itself and the popup's `FitScroll`
+/// hugs the height of each step (up to 80 percent of the screen).
 struct HireFlowSheet: View {
     var request: HireRequest
-    private var isWorker: Bool { if case .worker = request.post { return true }; return false }
-    /// Workers get the one-page terms and salary talk; the other posts keep the two pages.
     var body: some View {
-        NavigationStack {
-            if isWorker { HireOnePage(request: request) } else { HireTermsPage(request: request) }
-        }
+        HireOnePage(request: request, embedded: true)
     }
 }
 
@@ -275,7 +272,7 @@ struct CandidateHireList<Row: View>: View {
             }
         }
         .environment(\.openHire, { r in open = r })
-        .centerSheet(item: $open, size: .tall) { r in HireFlowSheet(request: r).environmentObject(store) }
+        .centerSheet(item: $open) { r in HireFlowSheet(request: r).environmentObject(store) }
     }
 }
 

@@ -8,14 +8,29 @@ import Simulation
 /// "Hire <name>": two pages for a worker. Page 1: what they ask, the going rate, the start date and one button, `Offer the going rate`, with a
 /// text link `Change the offer`. Page 2 (only via the link): the pay figure, counter options and hours, with every other term (contract type,
 /// seasons, pay basis, commission, benefits, promises) collapsed under `More terms`. Every figure is the engine's: `termsSummary` for what is shown, `hireOffer` for the answer. Posts other than
-/// workers (manager, assistant, team posts) still use the two-page flow (`HireTermsPage`, `HireSalaryPage`).
+/// workers (manager, assistant, team posts) take the same two pages, priced by `hireSalaryTalk` (their ask shows once they have named it).
+/// `embedded`: shown inside the hiring popup (no screen frame, no scroll view of its own: the popup's `FitScroll` hugs each page).
 struct HireOnePage: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var request: HireRequest
+    var embedded = false
     @StateObject private var model = HireFlowModel()
     @State private var pending: PendingAction?
     @State private var stage = 1
+
+    /// The figures both pages show, whatever the post.
+    private struct HirePay {
+        var ask: Double?
+        var market: Double
+        var yours: Double
+        var startWeek: Int
+        var counters: [HireCounter]
+    }
+    private struct HireCounter: Identifiable { var id: String; var wage: Double }
+
+    private var isWorker: Bool { if case .worker = request.post { return true }; return false }
 
     private var hourFactor: Double { StaffModel.fullWeekHours * 52 / 12 }
     private var first: String { HireWords.first(store.engine?.state.people[request.personID]?.name ?? "They") }
@@ -32,9 +47,50 @@ struct HireOnePage: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .appScreen(title: "Hire \(HireWords.first(store.engine?.state.people[request.personID]?.name ?? "worker"))", subtitle: request.roleTitle + (stage == 1 ? "" : " \u{00B7} offer"), tab: store.tab)
+        .modifier(HireFrame(embedded: embedded, title: "Hire \(HireWords.first(store.engine?.state.people[request.personID]?.name ?? "worker"))",
+                            subtitle: request.roleTitle + (stage == 1 ? "" : " \u{00B7} offer")))
         .confirmAction($pending)
         .onChange(of: model.finished) { _, done in if done { dismiss() } }
+    }
+
+    /// Moves between the two pages with the app's move animation.
+    private func go(_ to: Int) {
+        Haptics.tap()
+        withAnimation(Motion.move(reduceMotion)) { stage = to }
+    }
+
+    /// The page content in the app's scroll view, or bare inside the popup (whose `FitScroll` scrolls it).
+    @ViewBuilder private func scrolled<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        if embedded {
+            content()
+        } else {
+            ScrollView {
+                content()
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+
+    private func paySummary(_ e: GameEngine, _ terms: Hiring.Terms, _ offer: Double?) -> HirePay? {
+        let cid: Int = request.companyID ?? 0
+        if isWorker {
+            guard let s = e.termsSummary(companyID: cid, candidateID: request.personID, terms: terms, offer: offer) else { return nil }
+            let picks: [HireCounter] = s.counterOptions.map { (o: TermsCounterOption) -> HireCounter in HireCounter(id: o.id, wage: o.monthlyWage) }
+            return HirePay(ask: s.salaryAsk, market: s.marketPay, yours: s.yourOffer, startWeek: s.startWeek, counters: picks)
+        }
+        guard let t = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: offer) else { return nil }
+        var picks: [HireCounter] = []
+        if let ask = t.theirAsk {
+            picks.append(HireCounter(id: "ask", wage: ask))
+            picks.append(HireCounter(id: "market", wage: t.marketPay))
+            picks.append(HireCounter(id: "middle", wage: ((ask + t.marketPay) / 2).rounded()))
+        } else {
+            picks.append(HireCounter(id: "market", wage: t.marketPay))
+        }
+        return HirePay(ask: t.theirAsk, market: t.marketPay, yours: t.yourOffer, startWeek: e.state.week, counters: picks)
     }
 
     // MARK: Helpers
@@ -45,12 +101,12 @@ struct HireOnePage: View {
     }
 
     private func sells(_ e: GameEngine) -> Bool {
-        guard let id = request.companyID, let co = e.state.company(id), let role = e.state.people[request.personID]?.role else { return false }
+        guard isWorker, let id = request.companyID, let co = e.state.company(id), let role = e.state.people[request.personID]?.role else { return false }
         return PayPlans.eligible(role: role, trade: co.type, salesRoles: e.salesRoles)
     }
 
     private func termsOf(_ e: GameEngine, _ opts: HireDraftOptions) -> Hiring.Terms {
-        model.draft.terms(worker: true, sells: sells(e), busy: opts.busyMonths)
+        model.draft.terms(worker: isWorker, sells: sells(e), busy: opts.busyMonths)
     }
 
     private func has(_ opts: HireDraftOptions, _ field: String) -> Bool { opts.fields.contains(field) }
@@ -60,22 +116,17 @@ struct HireOnePage: View {
     private func page(_ e: GameEngine, _ person: Person, _ opts: HireDraftOptions) -> some View {
         let cur: Currency = currency(e)
         let terms: Hiring.Terms = termsOf(e, opts)
-        let cid: Int = request.companyID ?? 0
         let problem: String? = e.hireTermsProblem(post: request.post, companyID: request.companyID, personID: request.personID, terms: terms)
         let offerArg: Double? = model.offerSet ? model.offer : nil
-        let summary: TermsSummary? = e.termsSummary(companyID: cid, candidateID: request.personID, terms: terms, offer: offerArg)
-        return ScrollView {
+        let summary: HirePay? = paySummary(e, terms, offerArg)
+        return scrolled {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 header(e, person)
                 if let s = summary {
-                    if stage == 1 { quickStage(e, s, cur, terms, problem) } else { payStage(e, opts, s, cur, terms, problem) }
+                    if stage == 1 { quickStage(e, s, cur, terms, problem).transition(.opacity) } else { payStage(e, opts, s, cur, terms, problem).transition(.opacity) }
                 }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
-            .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-        .scrollDismissesKeyboard(.interactively)
     }
 
     /// One header for both pages: who they are and what they claim.
@@ -111,15 +162,15 @@ struct HireOnePage: View {
 
     // MARK: Page 1: the going rate
 
-    private func quickStage(_ e: GameEngine, _ s: TermsSummary, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
-        let rate: Double = s.marketPay
+    private func quickStage(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
+        let rate: Double = s.market
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: rate)
         let annual: Double = talk?.annualEmployerCost ?? 0
         let startText: String = GameCalendar.dateString(week: s.startWeek)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             cardBox {
                 VStack(alignment: .leading, spacing: 8) {
-                    FlatRow(label: "Asks", value: cur.tidyShort(s.salaryAsk) + " a month", rule: false)
+                    FlatRow(label: "Asks", value: s.ask.map { (a: Double) -> String in cur.tidyShort(a) + " a month" } ?? "Names it when you offer", rule: false)
                     FlatRow(label: "Going rate", value: cur.tidyShort(rate) + " a month", rule: false)
                     FlatRow(label: "Starts", value: startText, rule: false)
                 }
@@ -128,7 +179,7 @@ struct HireOnePage: View {
             QuietButton(title: "Offer the going rate", fullWidth: true) { confirm(rate, annual, cur, terms) }
                 .opacity(problem == nil ? 1 : 0.5).disabled(problem != nil)
                 .accessibilityIdentifier("hire-quick-offer")
-            Button { Haptics.tap(); stage = 2 } label: {
+            Button { go(2) } label: {
                 Text("Change the offer").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
             }
             .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-next")
@@ -189,17 +240,18 @@ struct HireOnePage: View {
 
     // MARK: Page 2: terms and pay
 
-    private func shownOffer(_ s: TermsSummary) -> Double {
+    private func shownOffer(_ s: HirePay) -> Double {
         if model.offerSet { return model.offer }
-        return s.yourOffer > 0 ? s.yourOffer : s.marketPay
+        return s.yours > 0 ? s.yours : s.market
     }
 
-    private func payStage(_ e: GameEngine, _ opts: HireDraftOptions, _ s: TermsSummary, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
+    private func payStage(_ e: GameEngine, _ opts: HireDraftOptions, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
         let shown: Double = shownOffer(s)
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: shown)
         let comOnly: Bool = model.draft.isCommissionOnly(sells: sells(e))
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             figuresCard(s, cur, shown)
+            if s.ask == nil { hearAskRow(e, cur, terms) }
             counterChips(s, shown)
             offerSlider(s, cur, shown)
             costLine(talk, cur, comOnly)
@@ -211,7 +263,7 @@ struct HireOnePage: View {
         }
     }
 
-    private func figuresCard(_ s: TermsSummary, _ cur: Currency, _ shown: Double) -> some View {
+    private func figuresCard(_ s: HirePay, _ cur: Currency, _ shown: Double) -> some View {
         cardBox {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
@@ -220,9 +272,9 @@ struct HireOnePage: View {
                     Spacer(minLength: 0)
                 }
                 HStack {
-                    Text("They ask " + cur.tidyShort(s.salaryAsk)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.caution)
+                    Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.caution)
                     Spacer(minLength: 6)
-                    Text("Market " + cur.tidyShort(s.marketPay)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                    Text("Market " + cur.tidyShort(s.market)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
                 }
             }
         }
@@ -237,17 +289,33 @@ struct HireOnePage: View {
         }
     }
 
-    private func counterChips(_ s: TermsSummary, _ shown: Double) -> some View {
-        let picks: [TermsCounterOption] = s.counterOptions.filter { (o: TermsCounterOption) -> Bool in o.id == "ask" || o.id == "market" || o.id == "middle" }
-        let anyOn: Bool = picks.contains { (o: TermsCounterOption) -> Bool in abs(o.monthlyWage - shown) < 0.5 }
+    private func counterChips(_ s: HirePay, _ shown: Double) -> some View {
+        let picks: [HireCounter] = s.counters.filter { (o: HireCounter) -> Bool in o.id == "ask" || o.id == "market" || o.id == "middle" }
+        let anyOn: Bool = picks.contains { (o: HireCounter) -> Bool in abs(o.wage - shown) < 0.5 }
         return HStack(spacing: 6) {
-            ForEach(picks) { (o: TermsCounterOption) -> AnyView in
-                let on: Bool = abs(o.monthlyWage - shown) < 0.5
+            ForEach(picks) { (o: HireCounter) -> AnyView in
+                let on: Bool = abs(o.wage - shown) < 0.5
                 let id: String = o.id == "ask" ? "hire-offer-ask" : o.id == "market" ? "hire-offer-market" : "hire-offer-" + o.id
-                return AnyView(chipButton(chipTitle(o.id), on, id) { model.offer = o.monthlyWage; model.offerSet = true })
+                return AnyView(chipButton(chipTitle(o.id), on, id) { model.offer = o.wage; model.offerSet = true })
             }
             chipButton("Yours", !anyOn, "hire-offer-yours") { model.offer = shown; model.offerSet = true }
         }
+    }
+
+    /// Posts other than workers: their ask stays unsaid until you ask for it (the engine's `hearTheirAsk`).
+    private func hearAskRow(_ e: GameEngine, _ cur: Currency, _ terms: Hiring.Terms) -> some View {
+        let post = request.post, cid = request.companyID, chain = request.chainID, pid = request.personID
+        let factor: Double = hourFactor
+        return Button {
+            let amount: Double? = store.act { $0.hearTheirAsk(post: post, companyID: cid, chainID: chain, personID: pid, terms: terms) } ?? nil
+            if let amount {
+                Haptics.tap()
+                model.lines.append(HireLine(mine: false, text: "I would want about \(HireWords.hourly(amount / factor, cur)) an hour for this."))
+            }
+        } label: {
+            Text("Hear their ask").font(.system(size: 13)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, minHeight: 34).contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-hear-ask")
     }
 
     private func chipButton(_ title: String, _ on: Bool, _ id: String, _ action: @escaping () -> Void) -> some View {
@@ -262,10 +330,11 @@ struct HireOnePage: View {
         .accessibilityIdentifier(id)
     }
 
-    private func offerSlider(_ s: TermsSummary, _ cur: Currency, _ shown: Double) -> some View {
+    private func offerSlider(_ s: HirePay, _ cur: Currency, _ shown: Double) -> some View {
         let step: Double = cur.stepSize(about: 500)
-        let low: Double = max(step, min(s.salaryAsk, s.marketPay) * 0.5)
-        let top: Double = max(s.salaryAsk, s.marketPay) * 1.6
+        let askNow: Double = s.ask ?? s.market
+        let low: Double = max(step, min(askNow, s.market) * 0.5)
+        let top: Double = max(askNow, s.market) * 1.6
         let high: Double = max(top, low + step * 4)
         let clamped: Double = min(max(shown, low), high)
         let binding = Binding<Double>(get: { clamped }, set: { (v: Double) -> Void in
@@ -425,7 +494,7 @@ struct HireOnePage: View {
                 .opacity(blocked ? 0.5 : 1).disabled(blocked)
                 .accessibilityIdentifier("hire-make-offer")
             HStack {
-                Button { Haptics.tap(); stage = 1 } label: {
+                Button { go(1) } label: {
                     Text("Back").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-back")
@@ -467,13 +536,28 @@ struct HireOnePage: View {
     // MARK: Ended
 
     private var ended: some View {
-        ScrollView {
+        scrolled {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 VStack(spacing: 8) { ForEach(model.lines) { (l: HireLine) -> SpeechBubble in SpeechBubble(text: l.text, mine: l.mine) } }
                 Text(model.closing).font(.system(size: 14, weight: .medium)).foregroundStyle(model.hired ? Theme.gain : Theme.ivoryMuted)
                 QuietButton(title: "Done", fullWidth: true) { model.finished = true }.accessibilityIdentifier("hire-done")
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+        }
+    }
+}
+
+/// The frame of `HireOnePage`: the app screen when pushed, or just the popup's title when embedded in the hiring popup.
+private struct HireFrame: ViewModifier {
+    @EnvironmentObject var store: GameStore
+    var embedded: Bool
+    var title: String
+    var subtitle: String
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if embedded {
+            content.centerSheetTitle(title)
+        } else {
+            content.appScreen(title: title, subtitle: subtitle, tab: store.tab)
         }
     }
 }

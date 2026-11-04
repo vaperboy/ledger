@@ -36,9 +36,7 @@ Counts (files): A: 3, A/B: 4, B: 63, B+C: 2, D: 11, kit: 1
 - `Features/Companies/GivingView.swift` | B | long page, vertical ScrollView (bounce only when needed)
 - `Features/Companies/GroupBoards.swift` | B | long page, vertical ScrollView (bounce only when needed)
 - `Features/Companies/GroupView.swift` | A/B | Overview tab FixedScreen (overflow scrolls); other tabs ScrollScreen
-- `Features/Companies/HireOnePage.swift` | B | long page, vertical ScrollView (bounce only when needed)
-- `Features/Companies/HireSalaryPage.swift` | B | long page, vertical ScrollView (bounce only when needed)
-- `Features/Companies/HireTermsPage.swift` | B | long page, vertical ScrollView (bounce only when needed)
+- `Features/Companies/HireOnePage.swift` | B | two-step page (popup: bare content inside the popup FitScroll; pushed: vertical ScrollView)
 - `Features/Companies/HireWorkersView.swift` | B | long page, vertical ScrollView (bounce only when needed)
 - `Features/Companies/ProjectTimelineViews.swift` | B | long page, vertical ScrollView (bounce only when needed)
 - `Features/Companies/ProjectsView.swift` | A/B | Running tab FixedScreen (overflow scrolls); Timeline, Bids, Finished ScrollScreen
