@@ -148,6 +148,7 @@ struct ItemPageView: View {
                     priceBlock(pg, co, cur, price)
                     demandBlock(pg, f, cur)
                     supplyBlock(pg, cur)
+                    WaveItemBlocks(e: e, companyID: companyID, itemID: itemID, price: price, cur: cur)
                     plansBlock(pg)
                     historyBlock(pg, cur)
                     documentsBlock(pg, cur)
