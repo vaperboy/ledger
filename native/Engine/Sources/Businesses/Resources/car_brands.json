@@ -1,0 +1,754 @@
+{
+ "about": "New-car brands for the dealership brand contract (CarDealer.swift). Invented brands. factor = price of the model against the trade's average new-car ticket (1.0). margin = dealer margin on list price built into the invoice price; bonus = extra share of list price on the year's sales paid after a review when the volume target is met (realistic new-car dealer total: about 5 to 10 percent). target = cars a year for a dealership of size 1; minSpaces = showroom and lot spaces required; minSales = salespeople required; minSat = lowest customer satisfaction (reputation 0 to 100). markets = countries where the brand sells.",
+ "generic": {
+  "margin": 0.04,
+  "leadWeeks": [
+   1,
+   2
+  ],
+  "name": "Regional car distributor"
+ },
+ "brand": {
+  "leadWeeks": [
+   2,
+   4
+  ]
+ },
+ "brands": [
+  {
+   "id": "volkart",
+   "name": "Volkart",
+   "origin": "DE",
+   "segment": "volume",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 78,
+   "margin": 0.065,
+   "bonus": 0.012,
+   "termYears": 4,
+   "target": 52,
+   "minSpaces": 14,
+   "minSales": 2,
+   "minSat": 52,
+   "blurb": "Germany's everyday car maker. Wide range, strict dealer standards.",
+   "models": [
+    {
+     "id": "pico",
+     "name": "Pico",
+     "body": "small",
+     "factor": 0.55,
+     "fuel": "petrol"
+    },
+    {
+     "id": "lyra",
+     "name": "Lyra",
+     "body": "hatch",
+     "factor": 0.78,
+     "fuel": "petrol"
+    },
+    {
+     "id": "orsa",
+     "name": "Orsa Estate",
+     "body": "family",
+     "factor": 0.95,
+     "fuel": "diesel"
+    },
+    {
+     "id": "tarn",
+     "name": "Tarn SUV",
+     "body": "suv",
+     "factor": 1.15,
+     "fuel": "petrol"
+    },
+    {
+     "id": "voltra",
+     "name": "Voltra E",
+     "body": "family",
+     "factor": 1.2,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "kasumi",
+   "name": "Kasumi Motors",
+   "origin": "JP",
+   "segment": "volume",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 80,
+   "margin": 0.06,
+   "bonus": 0.01,
+   "termYears": 4,
+   "target": 56,
+   "minSpaces": 12,
+   "minSales": 2,
+   "minSat": 58,
+   "blurb": "Reliable, efficient and hybrid-heavy. Very loyal owners.",
+   "models": [
+    {
+     "id": "hana",
+     "name": "Hana",
+     "body": "small",
+     "factor": 0.5,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "sora",
+     "name": "Sora",
+     "body": "hatch",
+     "factor": 0.72,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "kaede",
+     "name": "Kaede",
+     "body": "family",
+     "factor": 0.92,
+     "fuel": "petrol"
+    },
+    {
+     "id": "yama",
+     "name": "Yama SUV",
+     "body": "suv",
+     "factor": 1.1,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "denki",
+     "name": "Denki",
+     "body": "family",
+     "factor": 1.1,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "hanwool",
+   "name": "Hanwool",
+   "origin": "KR",
+   "segment": "value",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 68,
+   "margin": 0.075,
+   "bonus": 0.015,
+   "termYears": 3,
+   "target": 40,
+   "minSpaces": 10,
+   "minSales": 2,
+   "minSat": 48,
+   "blurb": "Good value, long warranty, hungry for new dealers.",
+   "models": [
+    {
+     "id": "sol",
+     "name": "Sol",
+     "body": "small",
+     "factor": 0.48,
+     "fuel": "petrol"
+    },
+    {
+     "id": "dae",
+     "name": "Dae",
+     "body": "hatch",
+     "factor": 0.68,
+     "fuel": "petrol"
+    },
+    {
+     "id": "gaon",
+     "name": "Gaon SUV",
+     "body": "suv",
+     "factor": 0.95,
+     "fuel": "petrol"
+    },
+    {
+     "id": "bit",
+     "name": "Bit",
+     "body": "family",
+     "factor": 1.0,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "citrelle",
+   "name": "Citrelle",
+   "origin": "FR",
+   "segment": "volume",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "AU",
+    "AE",
+    "BR"
+   ],
+   "strength": 64,
+   "margin": 0.08,
+   "bonus": 0.012,
+   "termYears": 3,
+   "target": 36,
+   "minSpaces": 10,
+   "minSales": 2,
+   "minSat": 46,
+   "blurb": "Comfortable small and family cars with good city sense.",
+   "models": [
+    {
+     "id": "petite",
+     "name": "Petite",
+     "body": "small",
+     "factor": 0.5,
+     "fuel": "petrol"
+    },
+    {
+     "id": "avenue",
+     "name": "Avenue",
+     "body": "hatch",
+     "factor": 0.72,
+     "fuel": "petrol"
+    },
+    {
+     "id": "boulevard",
+     "name": "Boulevard",
+     "body": "family",
+     "factor": 0.9,
+     "fuel": "diesel"
+    },
+    {
+     "id": "rive",
+     "name": "Rive SUV",
+     "body": "suv",
+     "factor": 1.0,
+     "fuel": "hybrid"
+    }
+   ]
+  },
+  {
+   "id": "nordvik",
+   "name": "Nordvik",
+   "origin": "SE",
+   "segment": "premium",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 76,
+   "margin": 0.075,
+   "bonus": 0.015,
+   "termYears": 5,
+   "target": 30,
+   "minSpaces": 16,
+   "minSales": 3,
+   "minSat": 60,
+   "blurb": "Safety-first premium cars with a strong electric line.",
+   "models": [
+    {
+     "id": "fjord",
+     "name": "Fjord Estate",
+     "body": "family",
+     "factor": 1.45,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "skog",
+     "name": "Skog SUV",
+     "body": "suv",
+     "factor": 1.7,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "is",
+     "name": "Is",
+     "body": "sedan",
+     "factor": 1.55,
+     "fuel": "petrol"
+    },
+    {
+     "id": "nord_e",
+     "name": "Nord E",
+     "body": "suv",
+     "factor": 1.9,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "weissmann",
+   "name": "Weissmann",
+   "origin": "DE",
+   "segment": "premium",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 86,
+   "margin": 0.065,
+   "bonus": 0.015,
+   "termYears": 5,
+   "target": 28,
+   "minSpaces": 18,
+   "minSales": 3,
+   "minSat": 65,
+   "blurb": "The status brand: demanding showroom rules, loyal buyers.",
+   "models": [
+    {
+     "id": "w3",
+     "name": "W3",
+     "body": "sedan",
+     "factor": 1.6,
+     "fuel": "petrol"
+    },
+    {
+     "id": "w5",
+     "name": "W5",
+     "body": "sedan",
+     "factor": 2.1,
+     "fuel": "petrol"
+    },
+    {
+     "id": "wx",
+     "name": "WX SUV",
+     "body": "suv",
+     "factor": 2.3,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "we",
+     "name": "WE",
+     "body": "sedan",
+     "factor": 2.5,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "aurelio",
+   "name": "Aurelio",
+   "origin": "IT",
+   "segment": "luxury",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "AU",
+    "JP",
+    "AE"
+   ],
+   "strength": 84,
+   "margin": 0.06,
+   "bonus": 0.02,
+   "termYears": 5,
+   "target": 14,
+   "minSpaces": 16,
+   "minSales": 3,
+   "minSat": 68,
+   "blurb": "Sports and grand-tourer cars sold in small numbers.",
+   "models": [
+    {
+     "id": "vela",
+     "name": "Vela",
+     "body": "coupe",
+     "factor": 3.0,
+     "fuel": "petrol"
+    },
+    {
+     "id": "corsa",
+     "name": "Corsa",
+     "body": "coupe",
+     "factor": 4.2,
+     "fuel": "petrol"
+    },
+    {
+     "id": "tempesta",
+     "name": "Tempesta",
+     "body": "sedan",
+     "factor": 5.2,
+     "fuel": "petrol"
+    }
+   ]
+  },
+  {
+   "id": "hartwell",
+   "name": "Hartwell",
+   "origin": "UK",
+   "segment": "luxury",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 88,
+   "margin": 0.055,
+   "bonus": 0.02,
+   "termYears": 5,
+   "target": 12,
+   "minSpaces": 20,
+   "minSales": 3,
+   "minSat": 72,
+   "blurb": "Hand-built luxury. A handful of sales a year, huge tickets.",
+   "models": [
+    {
+     "id": "dorset",
+     "name": "Dorset",
+     "body": "sedan",
+     "factor": 5.0,
+     "fuel": "petrol"
+    },
+    {
+     "id": "kingsley",
+     "name": "Kingsley SUV",
+     "body": "suv",
+     "factor": 6.2,
+     "fuel": "petrol"
+    },
+    {
+     "id": "windsor",
+     "name": "Windsor",
+     "body": "sedan",
+     "factor": 8.0,
+     "fuel": "petrol"
+    }
+   ]
+  },
+  {
+   "id": "lonestar",
+   "name": "Lonestar Motor",
+   "origin": "US",
+   "segment": "volume",
+   "markets": [
+    "US",
+    "CA",
+    "BR",
+    "MX",
+    "AU",
+    "AE",
+    "KR",
+    "JP",
+    "UK",
+    "NO",
+    "SE",
+    "DE",
+    "SG"
+   ],
+   "strength": 70,
+   "margin": 0.07,
+   "bonus": 0.012,
+   "termYears": 4,
+   "target": 44,
+   "minSpaces": 16,
+   "minSales": 2,
+   "minSat": 50,
+   "blurb": "Pickups and big SUVs, plus a growing electric line.",
+   "models": [
+    {
+     "id": "ranger",
+     "name": "Ranger Pickup",
+     "body": "truck",
+     "factor": 1.2,
+     "fuel": "petrol"
+    },
+    {
+     "id": "frontier",
+     "name": "Frontier SUV",
+     "body": "suv",
+     "factor": 1.4,
+     "fuel": "petrol"
+    },
+    {
+     "id": "sierra",
+     "name": "Sierra Truck",
+     "body": "truck",
+     "factor": 1.6,
+     "fuel": "diesel"
+    },
+    {
+     "id": "volt",
+     "name": "Volt-X",
+     "body": "truck",
+     "factor": 1.8,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "zhanlu",
+   "name": "Zhanlu",
+   "origin": "CN",
+   "segment": "value",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "BR",
+    "MX",
+    "AU",
+    "JP",
+    "KR",
+    "SG",
+    "AE"
+   ],
+   "strength": 60,
+   "margin": 0.085,
+   "bonus": 0.015,
+   "termYears": 3,
+   "target": 34,
+   "minSpaces": 10,
+   "minSales": 2,
+   "minSat": 44,
+   "blurb": "Fast-growing electric maker with aggressive pricing and generous dealer terms.",
+   "models": [
+    {
+     "id": "lu",
+     "name": "Lu",
+     "body": "small",
+     "factor": 0.55,
+     "fuel": "electric"
+    },
+    {
+     "id": "hai",
+     "name": "Hai",
+     "body": "hatch",
+     "factor": 0.8,
+     "fuel": "electric"
+    },
+    {
+     "id": "long",
+     "name": "Long SUV",
+     "body": "suv",
+     "factor": 1.1,
+     "fuel": "hybrid"
+    },
+    {
+     "id": "feng",
+     "name": "Feng",
+     "body": "sedan",
+     "factor": 1.3,
+     "fuel": "electric"
+    }
+   ]
+  },
+  {
+   "id": "solera",
+   "name": "Solera",
+   "origin": "ES",
+   "segment": "value",
+   "markets": [
+    "NO",
+    "SE",
+    "PL",
+    "LT",
+    "DE",
+    "UK",
+    "FR",
+    "ES",
+    "NL",
+    "CH",
+    "IT",
+    "DK",
+    "FI",
+    "IE",
+    "MX",
+    "BR",
+    "AE"
+   ],
+   "strength": 58,
+   "margin": 0.08,
+   "bonus": 0.01,
+   "termYears": 3,
+   "target": 30,
+   "minSpaces": 9,
+   "minSales": 2,
+   "minSat": 44,
+   "blurb": "Sunny, affordable cars with simple servicing.",
+   "models": [
+    {
+     "id": "brisa",
+     "name": "Brisa",
+     "body": "small",
+     "factor": 0.5,
+     "fuel": "petrol"
+    },
+    {
+     "id": "costa",
+     "name": "Costa",
+     "body": "hatch",
+     "factor": 0.7,
+     "fuel": "petrol"
+    },
+    {
+     "id": "sierra_s",
+     "name": "Monta\u00f1a SUV",
+     "body": "suv",
+     "factor": 0.92,
+     "fuel": "petrol"
+    }
+   ]
+  }
+ ]
+}

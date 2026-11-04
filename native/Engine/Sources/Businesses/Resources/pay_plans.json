@@ -11,6 +11,7 @@
     "staffing": ["hr"],
     "bank": ["banker"],
     "airline": ["recept"],
+    "cardealer": ["buyer"],
     "carrental": ["rentag"]
   }
 }

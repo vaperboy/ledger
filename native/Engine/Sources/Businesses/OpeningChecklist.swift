@@ -29,7 +29,8 @@ public enum OpeningChecklist {
     }
     /// What the opening stock costs the company at the owner's chosen share.
     public static func openingStockCost(_ co: Company, _ bd: Trade, _ w: World) -> Double {
-        jsRound(initialStockCost(co, bd, w) * openingStockShare(co))
+        if bd.id == CarDealer.tradeID { return 0 }   // a car dealership starts with an empty showroom: every car is ordered from a supplier
+        return jsRound(initialStockCost(co, bd, w) * openingStockShare(co))
     }
 
     public static func items(_ co: Company, _ bd: Trade, _ w: World) -> [Item] {
