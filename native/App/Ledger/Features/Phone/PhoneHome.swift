@@ -52,9 +52,12 @@ struct PhoneHome: View {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(PhoneApp.launcher) { app in
-                        AppIcon(app: app, badge: badges[app] ?? 0) {
-                            Haptics.tap()
-                            path.append(.app(app))
+                        let state: GateVisibility = store.engine.map { (e: GameEngine) -> GateVisibility in app.visibility(e) } ?? .open
+                        if state != .hidden {
+                            AppIcon(app: app, badge: badges[app] ?? 0, lock: state.lockText) {
+                                Haptics.tap()
+                                path.append(.app(app))
+                            }
                         }
                     }
                 }
@@ -110,19 +113,22 @@ struct PhoneBackdrop: View {
 struct AppIcon: View {
     var app: PhoneApp
     var badge: Int
+    /// The lock text of a gate that is near (`Unlocks ...`): the tile is dimmed and does not open.
+    var lock: String? = nil
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                AppIconTile(glyph: app.glyph, tint: app.tint)
-                Text(app.title).font(.system(size: 11.5)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
+                AppIconTile(glyph: app.glyph, tint: app.tint).opacity(lock == nil ? 1 : 0.35)
+                Text(lock ?? app.title).font(.system(size: 11.5)).foregroundStyle(lock == nil ? Theme.ivory : Theme.ivoryFaint).lineLimit(lock == nil ? 1 : 2).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
             .overlay(alignment: .topTrailing) { RedBubble(count: badge).offset(x: -2, y: -5) }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+        .disabled(lock != nil)
         .accessibilityLabel(app.title)
         .accessibilityValue(badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")

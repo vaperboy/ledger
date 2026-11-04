@@ -1,4 +1,6 @@
 import SwiftUI
+import Businesses
+import Simulation
 
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
@@ -149,5 +151,40 @@ enum PhonePage: String, Hashable, Identifiable {
         case .biggest: return "The biggest companies, ranked"
         case .records: return "Rival, Top 50, monthly results, crises"
         }
+    }
+}
+
+extension GateVisibility {
+    /// The `Unlocks ...` line of a locked-and-near gate; nil otherwise.
+    var lockText: String? {
+        if case .locked(let text) = self { return text }
+        return nil
+    }
+}
+
+extension PhoneApp {
+    /// The gate that holds the app back (brief 5.1 and 6.3). Inbox, Reports and Settings are always open. The apps the table names have their
+    /// own gate; the rest (Stats, News, World, Achievements, Market and the like) wait for the bank gate, the end of the first-session ladder.
+    var gate: Gate? {
+        switch self {
+        case .inbox, .reports, .settings: return nil
+        case .bank: return .bank
+        case .accounting: return .accounting
+        case .weather: return .weather
+        case .marketplace: return .marketplace
+        case .reviews: return .reviews
+        case .airStay: return .airstay
+        case .techPro: return .techpro
+        case .atlas: return .insurance
+        case .luxury, .richList: return .luxury
+        case .ventures: return .venturesFeed
+        case .stats, .goals, .news, .world, .market, .achievements: return .bank
+        }
+    }
+
+    /// Open, dimmed with its lock text, or not on the Phone yet. A game started without the ladder has everything open.
+    func visibility(_ e: GameEngine) -> GateVisibility {
+        guard let gate else { return .open }
+        return Gates.visibility(gate, e.state, data: e.data)
     }
 }

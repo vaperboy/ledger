@@ -21,7 +21,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .navigationDestination(isPresented: $applying) { BankLoanApplyFlow(account: account) }
+            .sheet(isPresented: $applying) { BankLoanApplyFlow(account: account).presentationDragIndicator(.visible) }
         }
     }
 

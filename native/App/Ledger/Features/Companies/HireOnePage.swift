@@ -5,9 +5,9 @@ import Employees
 import Businesses
 import Simulation
 
-/// "Hire <name>": the terms and the salary talk on ONE page for a worker. At the top what they ask, the market pay, hours, contract, promises asked
-/// and the start date (the engine's `termsSummary`); the few terms a player changes (contract, working percentage, promises) sit under it, then the
-/// counter options and your own figure. Every figure is the engine's: `termsSummary` for what is shown, `hireOffer` for the answer. Posts other than
+/// "Hire <name>": two pages for a worker. Page 1: what they ask, the going rate, the start date and one button, `Offer the going rate`, with a
+/// text link `Change the offer`. Page 2 (only via the link): the pay figure, counter options and hours, with every other term (contract type,
+/// seasons, pay basis, commission, benefits, promises) collapsed under `More terms`. Every figure is the engine's: `termsSummary` for what is shown, `hireOffer` for the answer. Posts other than
 /// workers (manager, assistant, team posts) still use the two-page flow (`HireTermsPage`, `HireSalaryPage`).
 struct HireOnePage: View {
     @EnvironmentObject var store: GameStore
@@ -32,7 +32,7 @@ struct HireOnePage: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .appScreen(title: "Hire \(HireWords.first(store.engine?.state.people[request.personID]?.name ?? "worker"))", subtitle: request.roleTitle + (stage == 1 ? " \u{00B7} terms" : " \u{00B7} pay"), tab: store.tab)
+        .appScreen(title: "Hire \(HireWords.first(store.engine?.state.people[request.personID]?.name ?? "worker"))", subtitle: request.roleTitle + (stage == 1 ? "" : " \u{00B7} offer"), tab: store.tab)
         .confirmAction($pending)
         .onChange(of: model.finished) { _, done in if done { dismiss() } }
     }
@@ -68,7 +68,7 @@ struct HireOnePage: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 header(e, person)
                 if let s = summary {
-                    if stage == 1 { termsStage(e, opts, s, cur, problem) } else { payStage(e, opts, s, cur, terms, problem) }
+                    if stage == 1 { quickStage(e, s, cur, terms, problem) } else { payStage(e, opts, s, cur, terms, problem) }
                 }
             }
             .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
@@ -78,9 +78,8 @@ struct HireOnePage: View {
         .scrollDismissesKeyboard(.interactively)
     }
 
-    /// One header for both stages: who, and step 1 of 2 or 2 of 2 as two dots.
+    /// One header for both pages: who they are and what they claim.
     private func header(_ e: GameEngine, _ person: Person) -> some View {
-        let step: String = stage == 1 ? "Step 1 of 2" : "Step 2 of 2"
         return HStack(spacing: 10) {
             ThumbnailView(kind: .person, key: person.role, size: 36, initials: person.name, face: person.faceKey)
             VStack(alignment: .leading, spacing: 1) {
@@ -88,13 +87,6 @@ struct HireOnePage: View {
                 Text(CandidateClaims.line(e, person)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
             }
             Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(spacing: 4) {
-                    Capsule().fill(Theme.gold).frame(width: 18, height: 4)
-                    Capsule().fill(stage == 2 ? Theme.gold : Theme.border).frame(width: 18, height: 4)
-                }
-                Text(step).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-            }
         }
     }
 
@@ -117,27 +109,29 @@ struct HireOnePage: View {
         Text(problem ?? "").font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: Stage 1: contract terms
+    // MARK: Page 1: the going rate
 
-    private func termsStage(_ e: GameEngine, _ opts: HireDraftOptions, _ s: TermsSummary, _ cur: Currency, _ problem: String?) -> some View {
-        let ask: String = cur.tidyShort(s.salaryAsk) + " a month"
-        let market: String = cur.tidyShort(s.marketPay)
-        let asks: String = s.promisesAsked.isEmpty ? "No promises asked" : "Asks: " + s.promisesAsked.joined(separator: "; ")
+    private func quickStage(_ e: GameEngine, _ s: TermsSummary, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
+        let rate: Double = s.marketPay
+        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: rate)
+        let annual: Double = talk?.annualEmployerCost ?? 0
         let startText: String = GameCalendar.dateString(week: s.startWeek)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             cardBox {
-                VStack(alignment: .leading, spacing: 10) {
-                    if has(opts, "contractType") { contractBlock(opts) }
-                    if has(opts, "percent") { hoursBlock(opts) }
-                    if model.draft.kind == .temporary { weeksStepper(opts) }
+                VStack(alignment: .leading, spacing: 8) {
+                    FlatRow(label: "Asks", value: cur.tidyShort(s.salaryAsk) + " a month", rule: false)
+                    FlatRow(label: "Going rate", value: cur.tidyShort(rate) + " a month", rule: false)
                     FlatRow(label: "Starts", value: startText, rule: false)
-                    Text(asks).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Text("They ask \(ask) \u{00B7} market \(market)").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.caution)
             if problem != nil { problemText(problem) }
-            termsMore(opts)
-            nextButton(problem)
+            QuietButton(title: "Offer the going rate", fullWidth: true) { confirm(rate, annual, cur, terms) }
+                .opacity(problem == nil ? 1 : 0.5).disabled(problem != nil)
+                .accessibilityIdentifier("hire-quick-offer")
+            Button { Haptics.tap(); stage = 2 } label: {
+                Text("Change the offer").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
+            }
+            .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-next")
         }
     }
 
@@ -159,20 +153,6 @@ struct HireOnePage: View {
     private func weeksStepper(_ opts: HireDraftOptions) -> some View {
         Stepper("Ends after \(HireWords.weeksText(model.draft.weeks))", value: $model.draft.weeks, in: opts.temporaryWeekRange, step: 1)
             .font(.system(size: 13)).foregroundStyle(Theme.ivory)
-    }
-
-    private func termsMore(_ opts: HireDraftOptions) -> some View {
-        let count: Int = model.draft.promises.count
-        let plural: String = count == 1 ? "" : "s"
-        let label: String = count == 0 ? "More: promises, seasons" : "More: \(count) promise" + plural + " made"
-        return DisclosureGroup(label) {
-            VStack(alignment: .leading, spacing: 10) {
-                if model.draft.kind == .seasonal { seasonBlock(opts) }
-                promisesBlock(opts)
-            }
-            .padding(.top, 6)
-        }
-        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
     }
 
     private func seasonBlock(_ opts: HireDraftOptions) -> some View {
@@ -207,20 +187,7 @@ struct HireOnePage: View {
         }
     }
 
-    private func nextButton(_ problem: String?) -> some View {
-        let ok: Bool = problem == nil
-        return Button { Haptics.tap(); stage = 2 } label: {
-            Text("Next: pay").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                .frame(maxWidth: .infinity, minHeight: 28).padding(.vertical, 8)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(ok ? Theme.gold : Theme.border, lineWidth: 1))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .disabled(!ok)
-        .accessibilityIdentifier("hire-next")
-    }
-
-    // MARK: Stage 2: pay
+    // MARK: Page 2: terms and pay
 
     private func shownOffer(_ s: TermsSummary) -> Double {
         if model.offerSet { return model.offer }
@@ -235,11 +202,11 @@ struct HireOnePage: View {
             figuresCard(s, cur, shown)
             counterChips(s, shown)
             offerSlider(s, cur, shown)
-            if has(opts, "contractType") { basisCard(e, opts) }
             costLine(talk, cur, comOnly)
+            if has(opts, "percent") { cardBox { hoursBlock(opts) } }
             if problem != nil { problemText(problem) }
             if let last = model.lines.last { SpeechBubble(text: last.text, mine: last.mine) }
-            payMore(e, opts)
+            moreTerms(e, opts)
             actions(talk, cur, terms, shown, blocked: problem != nil)
         }
     }
@@ -361,18 +328,22 @@ struct HireOnePage: View {
         }
     }
 
-    // MARK: More (benefits, commission rate, expectations)
+    // MARK: More terms (contract type, seasons, pay basis, commission, benefits, promises, expectations)
 
-    private func payMore(_ e: GameEngine, _ opts: HireDraftOptions) -> some View {
+    private func moreTerms(_ e: GameEngine, _ opts: HireDraftOptions) -> some View {
         let bonus: Int = model.draft.bonusPlan == nil ? 0 : 1
-        let picked: Int = model.draft.expectations.count + model.draft.expenses.count + bonus
-        let label: String = picked == 0 ? "More: benefits, expectations" : "More: \(picked) chosen"
+        let picked: Int = model.draft.expectations.count + model.draft.expenses.count + model.draft.promises.count + bonus
+        let label: String = picked == 0 ? "More terms" : "More terms (\(picked) chosen)"
         let seller: Bool = sells(e) && model.draft.plan != .salary
         return DisclosureGroup(label) {
             VStack(alignment: .leading, spacing: 10) {
+                if has(opts, "contractType") { contractBlock(opts); basisCard(e, opts) }
+                if model.draft.kind == .temporary { weeksStepper(opts) }
+                if model.draft.kind == .seasonal { seasonBlock(opts) }
                 if seller { rateBlock() }
                 if has(opts, "benefits") { benefitsBlock(opts) }
                 if has(opts, "expectations") { expectationsBlock(opts) }
+                promisesBlock(opts)
             }
             .padding(.top, 6)
         }
@@ -455,7 +426,7 @@ struct HireOnePage: View {
                 .accessibilityIdentifier("hire-make-offer")
             HStack {
                 Button { Haptics.tap(); stage = 1 } label: {
-                    Text("Back to terms").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
+                    Text("Back").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-back")
                 Button { Haptics.tap(); dismiss() } label: {
