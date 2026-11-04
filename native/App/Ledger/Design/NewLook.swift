@@ -218,6 +218,7 @@ struct RedBubble: View {
     enum Size { case regular, small }
     var count: Int
     var size: Size = .regular
+    @State private var bounced = false
 
     var body: some View {
         if count > 0 {
@@ -232,6 +233,15 @@ struct RedBubble: View {
                 .background(Capsule().fill(Theme.alert))
                 .overlay(Capsule().strokeBorder(Theme.page, lineWidth: big ? 2 : 0))
                 .accessibilityLabel("\(count) waiting")
+                .scaleEffect(bounced ? 1.1 : 1)
+                .onChange(of: count) { old, new in
+                    guard new > old else { return }
+                    Motion.animate(Motion.quickAnimation) { bounced = true }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 220_000_000)
+                        Motion.animate(Motion.quickAnimation) { bounced = false }
+                    }
+                }
         }
     }
 }

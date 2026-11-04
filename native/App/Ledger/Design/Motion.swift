@@ -171,7 +171,7 @@ extension View {
 
 // MARK: Counting numbers
 
-/// A money figure that rolls to its new value and flashes `Theme.gain` (rose) or `Theme.loss` (fell) for about 1.2 s, then settles
+/// A money figure that rolls to its new value and flashes `Theme.gain` (rose) or `Theme.loss` (fell) for 0.3 s, then settles
 /// back to its own colour. The first appearance never flashes. Reduce Motion: no roll, only the colour flash.
 struct MoneyFlash: ViewModifier {
     var value: Double
@@ -193,7 +193,7 @@ struct MoneyFlash: ViewModifier {
                 token += 1
                 let mine: Int = token
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    try? await Task.sleep(nanoseconds: 300_000_000)
                     if mine == token { flash = 0 }
                 }
             }

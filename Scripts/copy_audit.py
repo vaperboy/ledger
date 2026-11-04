@@ -5,7 +5,8 @@
   - no button titled `OK`, `Yes` or `Confirm` on its own (3)
   - no `Are you sure?` dialog text (6.4)
   - no `Nothing is lost` sentence (6.4)
-  - no unit-less long text at the point of action: a Button/Toggle/Stepper label over 90 characters (1) is a warning only.
+  - no hard-coded currency figure in a string (4): money goes through the country formatter
+  - a Button/Toggle label over 90 characters (1) is a warning only.
 Exits 1 on any hard failure. Warnings never fail.
 
   python3 Scripts/copy_audit.py            # whole app and engine
@@ -24,6 +25,8 @@ EXCL = re.compile(r'\w!(\s|$)')
 BAD_START = re.compile(r'^\s*(Note that|Please|Remember|You can)\b')
 BAD_BUTTON = re.compile(r'\b(Button|QuietButton|PrimaryButton|OutlineButton)\(\s*"(OK|Yes|Confirm)"')
 BAD_TITLE = re.compile(r'\b(title|label|confirmTitle|confirmLabel|actionTitle)\s*:\s*"(OK|Yes|Confirm)"')
+MONEY_LITERAL = re.compile(r'[£€¥]\s?\d|\$\d{2}|\d\s?(kr|zł)\b')
+MONEY_DECIMALS = re.compile(r'[£€¥]\s?\d[\d,]*\.\d')
 LONG_BUTTON = re.compile(r'\b(Button|Toggle)\(\s*"((?:[^"\\\n]|\\.)*)"')
 
 
@@ -62,6 +65,10 @@ def main():
                         hard.setdefault("Nothing is lost", []).append((rel, no, text))
                 if BAD_BUTTON.search(code) or BAD_TITLE.search(code):
                     hard.setdefault("button OK / Yes / Confirm", []).append((rel, no, s[:90]))
+                for m in LITERAL.finditer(code):
+                    text = INTERP.sub("", m.group(1))
+                    if "\\(" not in m.group(1) and (MONEY_DECIMALS.search(text) or MONEY_LITERAL.search(text)):
+                        hard.setdefault("hard-coded money figure (use the country's formatter, 6.1 rule 4)", []).append((rel, no, text))
                 for m in LONG_BUTTON.finditer(code):
                     text = INTERP.sub("", m.group(2))
                     if len(text) > 90:

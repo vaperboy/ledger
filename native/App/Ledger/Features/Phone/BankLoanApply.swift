@@ -116,7 +116,7 @@ struct BankLoanApplyFlow: View {
         })
         switch result {
         case .approved(_, _, let disbursed)?:
-            Haptics.success()
+            Haptics.option()
             approved = result
             refusal = nil
             store.show("\(cur.tidyShort(disbursed)) is in the account.", tone: "good")

@@ -146,7 +146,6 @@ final class BankLoanTourTests: FinanceTourCase {
         shot("79-bank-loans")
         guard tapID("bank-apply-loan") else { return }
         shot("79-loan-1-apply")
-        guard tapID("bank-loan-start") else { return }
         shot("79-loan-2-offer")
         if app.otherElements["bank-loan-refused"].exists || app.staticTexts["The bank would not lend now"].exists {
             note("the bank refused this borrower: the refusal is shown, no amount is offered")
@@ -159,8 +158,8 @@ final class BankLoanTourTests: FinanceTourCase {
         shot("79-loan-3-choose-half")
         guard tapID("bank-loan-continue") else { return }
         shot("79-loan-4-agreement")
-        tapContaining("I have read and agree")
-        if tapLabel("Continue to confirmation") {
+        tapID("bank-loan-agree")
+        if app.buttons["bank-loan-confirm"].waitForExistence(timeout: 3) {
             shot("79-loan-5-confirmation")
             XCTAssertTrue(app.buttons["bank-loan-confirm"].exists, "the last step has the confirm button (not pressed here)")
         }

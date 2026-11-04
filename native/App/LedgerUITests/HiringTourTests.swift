@@ -18,23 +18,20 @@ final class HiringTourTests: CompanyBatchTourCase {
 
     func testHiringTwoPages() {
         guard openFirstCandidateTerms() else { return }
-        XCTAssertTrue(app.buttons["hire-next"].waitForExistence(timeout: 5), "page 1 has the Next: pay button")
-        shot("101-hire-page-1-terms")
-        app.swipeUp(); sleep(1)
-        shot("101-hire-page-1-lower")
-        app.swipeDown(); app.swipeDown(); sleep(1)
-        tapLabel("80 percent")
-        shot("101-hire-page-1-80-percent")
+        XCTAssertTrue(app.buttons["hire-quick-offer"].waitForExistence(timeout: 5), "page 1 has Offer the going rate")
+        shot("101-hire-page-1-going-rate")
         guard tapID("hire-next") else { return }
-        shot("102-hire-page-2-pay")
-        XCTAssertTrue(app.buttons["hire-make-offer"].waitForExistence(timeout: 5), "the pay step has Make the offer")
+        shot("102-hire-page-2-offer")
+        XCTAssertTrue(app.buttons["hire-make-offer"].waitForExistence(timeout: 5), "page 2 has Make the offer")
+        tapLabel("80 percent")
         if tapID("hire-offer-market") { shot("102-hire-page-2-market") }
         app.swipeUp(); sleep(1)
         shot("102-hire-page-2-cost")
         if tapID("hire-back") {
-            XCTAssertTrue(app.buttons["hire-next"].waitForExistence(timeout: 5), "Back to terms returns to the terms step")
+            XCTAssertTrue(app.buttons["hire-quick-offer"].waitForExistence(timeout: 5), "Back returns to page 1")
             shot("103-hire-back-on-page-1")
-            if tapID("hire-next") { tapID("hire-walk-away") }
+            tapID("hire-next")
+            tapID("hire-walk-away")
         } else {
             tapID("hire-walk-away")
         }

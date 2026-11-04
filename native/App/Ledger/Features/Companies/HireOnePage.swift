@@ -456,7 +456,7 @@ struct HireOnePage: View {
         switch result {
         case .hired:
             model.hired = true; model.closing = "\(name) has joined as \(request.roleTitle.lowercased())."
-            Haptics.success(); store.show(model.closing, tone: "good"); request.onHired()
+            Haptics.option(); store.show(model.closing, tone: "good"); request.onHired()
         case .countered(let amount, _): model.offer = amount; model.offerSet = true; Haptics.tap()
         case .refused, .termsRefused, .blocked: Haptics.warning(); if case .blocked = result { store.show(said.text, tone: "warn") }
         case .walkedAway, .taken:
