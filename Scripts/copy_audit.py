@@ -5,7 +5,7 @@
   - no button titled `OK`, `Yes` or `Confirm` on its own (3)
   - no `Are you sure?` dialog text (6.4)
   - no `Nothing is lost` sentence (6.4)
-  - no hard-coded currency figure in a string (4): money goes through the country formatter
+  - no hard-coded or hand-built (interpolated) currency figure in a string (4): money goes through the country formatter
   - a Button/Toggle label over 90 characters (1) is a warning only.
 Exits 1 on any hard failure. Warnings never fail.
 
@@ -27,6 +27,8 @@ BAD_BUTTON = re.compile(r'\b(Button|QuietButton|PrimaryButton|OutlineButton)\(\s
 BAD_TITLE = re.compile(r'\b(title|label|confirmTitle|confirmLabel|actionTitle)\s*:\s*"(OK|Yes|Confirm)"')
 MONEY_LITERAL = re.compile(r'[£€¥]\s?\d|\$\d{2}|\d\s?(kr|zł)\b')
 MONEY_DECIMALS = re.compile(r'[£€¥]\s?\d[\d,]*\.\d')
+# money assembled by hand around an interpolation or format spec: `$\(x)`, `\(x) kr`, `€%.0f`
+MONEY_INTERP = re.compile(r'[£€¥$]\s?(\\\(|%[\d.]*[dfi@])|(\\\(|%[\d.]*[dfi@])\s?(kr|zł)\b|\\\([^)]*\)\s?(USD|EUR|GBP|SEK|NOK|DKK|PLN)\b')
 LONG_BUTTON = re.compile(r'\b(Button|Toggle)\(\s*"((?:[^"\\\n]|\\.)*)"')
 
 
@@ -69,6 +71,9 @@ def main():
                     text = INTERP.sub("", m.group(1))
                     if "\\(" not in m.group(1) and (MONEY_DECIMALS.search(text) or MONEY_LITERAL.search(text)):
                         hard.setdefault("hard-coded money figure (use the country's formatter, 6.1 rule 4)", []).append((rel, no, text))
+                for m in LITERAL.finditer(code):
+                    if MONEY_INTERP.search(m.group(1)):
+                        hard.setdefault("money built by hand in a string (use store.money / store.short, 6.1 rule 4)", []).append((rel, no, m.group(1)))
                 for m in LONG_BUTTON.finditer(code):
                     text = INTERP.sub("", m.group(2))
                     if len(text) > 90:
