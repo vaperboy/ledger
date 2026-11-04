@@ -68,7 +68,7 @@ final class Wave7Tests: XCTestCase {
 
     func testInstallGivesTheRealMenuAndKeepsTheBooksNeutral() throws {
         for t in trades {
-            var (e, id) = try start(t)
+            var (e, id) = try start(t, weeks: 0)   // the weekly hook installs the items by itself: install on a fresh company
             let before = e.salesItems(companyID: id)
             var made = 0
             e.update { s, d, _ in made = Wave7.install(&s, companyID: id, data: d) }
@@ -199,7 +199,7 @@ final class Wave7Tests: XCTestCase {
     }
 
     func testTouchedListIsKeptAndOnlyGetsRecords() throws {
-        var (e, id) = try start("handy")
+        var (e, id) = try start("handy", weeks: 0)
         let first = try XCTUnwrap(e.salesItems(companyID: id).first)
         e.update { s, d, _ in SalesItems.setPrice(&s, companyID: id, itemID: first.id, price: first.price * 1.1, data: d) }
         let names = e.salesItems(companyID: id).map { $0.name }

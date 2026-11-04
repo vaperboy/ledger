@@ -423,7 +423,7 @@ public enum CompanySetup {
             r.premisesFitOut = (data.catalog.tables.fitOut[kind] ?? 0) * m2
             monthlyRent = rent * m2 / 12
         }
-        r.stock = OpeningChecklist.initialStockCost(co, bd, w)
+        r.stock = bd.id == CarDealer.tradeID ? CarDealer.stockBudget(co, bd, tmp, data) : OpeningChecklist.initialStockCost(co, bd, w)
         for (i, st) in bd.standardStaff.enumerated() {
             let n = (i == 0 && bd.ownerFTE >= 1) ? max(0, st.count - 1) : st.count
             let base = data.catalog.tables.roles[st.role]?.baseMonthlyWage ?? 40000

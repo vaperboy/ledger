@@ -85,6 +85,16 @@ final class BalanceProbeTests: XCTestCase {
                         print("PT   parts: \(r.parts.map { "\($0.key) have=\(String(format: "%.2f", $0.have)) cap=\(Int($0.capacity.isFinite ? $0.capacity : -1))" })")
                     }
                 }
+                // A car dealership sells only what was ordered. With a buyer or a manager the dealership orders itself; an owner whose manager left
+                // orders by hand as a player does (the same rule as the buyer: stock for the demand, two cars a week at most).
+                if trade == "cardealer", day % 7 == 0, !e.carDealerHasBuyer(companyID: id), let co = e.state.company(id), co.status == .open {
+                    let offers = e.carDealerOffers(companyID: id)
+                    var have = e.carDealerSpaces(companyID: id).used
+                    for k in 0..<2 where have < 4 && !offers.isEmpty {
+                        let pick = offers[(day / 7 + k * 3) % offers.count]
+                        if e.carDealerOrder(companyID: id, brandID: pick.brandID, modelID: pick.modelID) == .applied { have += 1 }
+                    }
+                }
                 // Money the owner adds to keep a company alive counts as invested
                 if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
                     let top = -co.cash + 100_000

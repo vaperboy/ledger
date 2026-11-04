@@ -1,7 +1,7 @@
 {
- "about": "New-car brands for the dealership brand contract (CarDealer.swift). Invented brands. factor = price of the model against the trade's average new-car ticket (1.0). margin = dealer margin on list price built into the invoice price; bonus = extra share of list price on the year's sales paid after a review when the volume target is met (realistic new-car dealer total: about 5 to 10 percent). target = cars a year for a dealership of size 1; minSpaces = showroom and lot spaces required; minSales = salespeople required; minSat = lowest customer satisfaction (reputation 0 to 100). markets = countries where the brand sells.",
+ "about": "New-car brands for the dealership brand contract (CarDealer.swift). Invented brands. factor = price of the model against the trade's average new-car ticket (1.0). margin = dealer margin on list price built into the invoice price; bonus = extra share of list price on the year's sales paid after a review when the volume target is met (front-end gross of a new-car dealer incl. factory support and holdback: about 10 to 14 percent, the trade is calibrated to a 14 percent gross; F&I and service come on top). target = cars a year for a dealership of size 1; minSpaces = showroom and lot spaces required; minSales = salespeople required; minSat = lowest customer satisfaction (reputation 0 to 100). markets = countries where the brand sells.",
  "generic": {
-  "margin": 0.04,
+  "margin": 0.10,
   "leadWeeks": [
    1,
    2
@@ -46,7 +46,7 @@
     "AE"
    ],
    "strength": 78,
-   "margin": 0.065,
+   "margin": 0.115,
    "bonus": 0.012,
    "termYears": 4,
    "target": 52,
@@ -123,7 +123,7 @@
     "AE"
    ],
    "strength": 80,
-   "margin": 0.06,
+   "margin": 0.11,
    "bonus": 0.01,
    "termYears": 4,
    "target": 56,
@@ -200,7 +200,7 @@
     "AE"
    ],
    "strength": 68,
-   "margin": 0.075,
+   "margin": 0.125,
    "bonus": 0.015,
    "termYears": 3,
    "target": 40,
@@ -264,7 +264,7 @@
     "BR"
    ],
    "strength": 64,
-   "margin": 0.08,
+   "margin": 0.13,
    "bonus": 0.012,
    "termYears": 3,
    "target": 36,
@@ -334,7 +334,7 @@
     "AE"
    ],
    "strength": 76,
-   "margin": 0.075,
+   "margin": 0.125,
    "bonus": 0.015,
    "termYears": 5,
    "target": 30,
@@ -404,7 +404,7 @@
     "AE"
    ],
    "strength": 86,
-   "margin": 0.065,
+   "margin": 0.115,
    "bonus": 0.015,
    "termYears": 5,
    "target": 28,
@@ -470,7 +470,7 @@
     "AE"
    ],
    "strength": 84,
-   "margin": 0.06,
+   "margin": 0.11,
    "bonus": 0.02,
    "termYears": 5,
    "target": 14,
@@ -533,7 +533,7 @@
     "AE"
    ],
    "strength": 88,
-   "margin": 0.055,
+   "margin": 0.105,
    "bonus": 0.02,
    "termYears": 5,
    "target": 12,
@@ -586,7 +586,7 @@
     "SG"
    ],
    "strength": 70,
-   "margin": 0.07,
+   "margin": 0.12,
    "bonus": 0.012,
    "termYears": 4,
    "target": 44,
@@ -654,7 +654,7 @@
     "AE"
    ],
    "strength": 60,
-   "margin": 0.085,
+   "margin": 0.135,
    "bonus": 0.015,
    "termYears": 3,
    "target": 34,
@@ -718,7 +718,7 @@
     "AE"
    ],
    "strength": 58,
-   "margin": 0.08,
+   "margin": 0.13,
    "bonus": 0.01,
    "termYears": 3,
    "target": 30,

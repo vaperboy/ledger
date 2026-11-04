@@ -72,6 +72,20 @@ public enum CarDealer {
         Pricing.ticket(co, bd, World(state: s, data: data), withItems: false)
     }
 
+    /// Cars a dealership keeps in the showroom and on order for its demand (about six weeks of shoppers, at least three, never more than three
+    /// quarters of its spaces). The buyer orders up to this, and the start-up plan counts it as the stock the owner has to pay for.
+    static func wantedCars(_ co: Company, _ bd: Trade, demand D: Double) -> Int {
+        max(3, min(Int(Double(spaces(co, bd)) * 0.75), Int((D * 6).rounded(.up))))
+    }
+
+    /// The money the dealership needs for its cars before it sells: the wanted cars at the distributor's price. A new dealership opens with an
+    /// empty showroom (every car is ordered and paid on delivery), so this is working capital the plan must show, not stock bought at opening.
+    public static func stockBudget(_ co: Company, _ bd: Trade, _ s: GameState, _ data: GameData) -> Double {
+        let w = World(state: s, data: data)
+        let cars = wantedCars(co, bd, demand: DemandModel.compute(co, bd, w).customers)
+        return jsRound(Double(cars) * listTicket(co, bd, s, data) * (1 - CarBrands.distributorMargin))
+    }
+
     public static func carsInShowroom(_ co: Company) -> Int { co.value("cd")["cars"].array.count }
     public static func carsOnOrder(_ co: Company) -> Int { co.value("cd")["orders"].array.count }
     public static func spacesFree(_ co: Company, _ bd: Trade) -> Int { max(0, spaces(co, bd) - carsInShowroom(co) - carsOnOrder(co)) }
@@ -283,7 +297,7 @@ public enum CarDealer {
     /// A buyer or manager orders when the showroom and orders are thin: up to two cars a week, a mix of the models on offer.
     static func autoOrder(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData, demand D: Double, random rnd: inout HashedRandom) {
         let co = s.companies[i]
-        let want = max(3, min(Int(Double(spaces(co, bd)) * 0.75), Int((D * 6).rounded(.up))))
+        let want = wantedCars(co, bd, demand: D)
         let have = carsInShowroom(co) + carsOnOrder(co)
         guard have < want else { return }
         let menu = offers(co, s, data)

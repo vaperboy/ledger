@@ -71,7 +71,7 @@ final class Wave4Tests: XCTestCase {
 
     func testInstallGivesTheRealMenuAndKeepsTheBooksNeutral() throws {
         for t in trades {
-            var (e, id) = try start(t)
+            var (e, id) = try start(t, weeks: 0)   // the weekly hook installs the items by itself: install on a fresh company
             let before = e.salesItems(companyID: id)
             var made = 0
             e.update { s, d, _ in made = Wave4.install(&s, companyID: id, data: d) }

@@ -51,7 +51,10 @@ public enum DailyTrade {
 
     /// Does this company trade day by day? Original: `dailyOk`.
     public static func tradesDaily(_ co: Company, _ bd: Trade) -> Bool {
-        co.status == .open && tradingFamilies.contains(bd.family) && bd.id != "salmon" && !bd.hasTrait("sub") && !divisibleUnits.contains(bd.unit)
+        // The two car dealerships sell the cars standing in their own yard or showroom (UsedCarDealer, CarDealer) and book that week themselves:
+        // the generic day-by-day trade would take a second, stockless stream of sales into cash that no books or stock ever show.
+        co.status == .open && tradingFamilies.contains(bd.family) && bd.id != "salmon" && bd.id != CarDealer.tradeID && bd.id != UsedCarDealer.tradeID
+            && !bd.hasTrait("sub") && !divisibleUnits.contains(bd.unit)
     }
 
     static func weekday(week: Int, day: Int) -> Int { GameCalendar.date(week: week, dayOffset: day).weekday }
