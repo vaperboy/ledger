@@ -74,6 +74,15 @@
     ],
     "carclean": [
       "carwash"
+    ],
+    "cons": [
+      "consult"
+    ],
+    "law": [
+      "lawyer"
+    ],
+    "photo": [
+      "photog"
     ]
   }
 }
