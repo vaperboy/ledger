@@ -102,7 +102,7 @@ final class DealerWiringTests: XCTestCase {
                 if r.financeDeclined { declined += 1 }
             }
         }
-        XCTAssertGreaterThan(approved, declined, "approval is about 0.8: \(approved) approved, \(declined) declined")
+        XCTAssertGreaterThan(Double(approved) / Double(max(1, approved + declined)), 0.6, "approval at the typical price is about 0.8: \(approved) approved, \(declined) declined")
     }
 
     func testCardealerToolsAreCleaningAndCrmOnly() throws {
