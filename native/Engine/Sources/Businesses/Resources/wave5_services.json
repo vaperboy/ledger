@@ -1,0 +1,1350 @@
+{
+ "note": "Wave 5 (SVC professional hour model). Per trade: hpu = billable hours in one engine unit (units are sold in blocks of this many hours), L = labour cost share of the average block price at planned utilisation u0, fix = share of that labour that is paid staff whose pay does not fall when the week is quiet (owner-run trades pay themselves from profit). Per service: u = what one job is called, h = billable hours per job, f = price per billable hour against the trade's average hour, q = share of billable hours, roles = who does the hours (labour cost factor from the role's pay), c = consumables share of price, wo = share of the price never collected (unbilled time, scope creep, bad debt), lead = days to the next free slot, cl = client type, m = model, churn = monthly retainer churn, start = on the list when a company opens, svc = service (false = goods), goods = made or stocked goods (mat = materials share of price, hrs = hours per unit, batch, restock = weeks of sales to hold).",
+ "trades": {
+  "cons": {
+   "hpu": 1,
+   "L": 0.5,
+   "u0": 0.7,
+   "fix": 0.5,
+   "items": [
+    {
+     "id": "hour",
+     "n": "Advisory hour",
+     "u": "hour",
+     "h": 1,
+     "f": 1.0,
+     "q": 0.34,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.04,
+     "lead": 3,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Billed by the hour; unbilled time and slow payers are the write-off."
+    },
+    {
+     "id": "workshop",
+     "n": "Strategy workshop day",
+     "u": "day",
+     "h": 7,
+     "f": 0.9,
+     "q": 0.14,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.05,
+     "wo": 0.03,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A day rate for a client team; venue and materials are the consumables."
+    },
+    {
+     "id": "audit",
+     "n": "Process audit",
+     "u": "job",
+     "h": 14,
+     "f": 1.0,
+     "q": 0.12,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.05,
+     "lead": 14,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Fixed fee for about two days of fieldwork; scope creep is written off."
+    },
+    {
+     "id": "report",
+     "n": "Strategy report",
+     "u": "job",
+     "h": 24,
+     "f": 1.05,
+     "q": 0.1,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.05,
+     "lead": 28,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A written deliverable with a fixed fee."
+    },
+    {
+     "id": "retainer",
+     "n": "Retainer plan",
+     "u": "month",
+     "h": 8,
+     "f": 0.88,
+     "q": 0.3,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "A monthly fee for a block of hours; lower rate, steady cash.",
+     "churn": 0.02
+    },
+    {
+     "id": "call",
+     "n": "Discovery call",
+     "u": "call",
+     "h": 0.5,
+     "f": 0.9,
+     "q": 0.05,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.12,
+     "lead": 2,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A short first call; often unpaid or discounted."
+    },
+    {
+     "id": "interim",
+     "n": "Interim management day",
+     "u": "day",
+     "h": 8,
+     "f": 0.85,
+     "q": 0.1,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.02,
+     "lead": 14,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "You run a part of the client for a stretch, billed by the day."
+    },
+    {
+     "id": "study",
+     "n": "Market entry study",
+     "u": "job",
+     "h": 40,
+     "f": 1.1,
+     "q": 0.06,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.05,
+     "lead": 28,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Desk research and interviews, fixed fee."
+    },
+    {
+     "id": "costrev",
+     "n": "Cost reduction review",
+     "u": "job",
+     "h": 20,
+     "f": 1.0,
+     "q": 0.06,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.05,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A review of spending against savings found."
+    },
+    {
+     "id": "training",
+     "n": "Training programme",
+     "u": "day",
+     "h": 7,
+     "f": 0.95,
+     "q": 0.06,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.06,
+     "wo": 0.03,
+     "lead": 28,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A taught day for a group; materials and room."
+    },
+    {
+     "id": "templates",
+     "n": "Merchandise and templates",
+     "u": "download",
+     "h": 0.1,
+     "f": 0.3,
+     "q": 0.04,
+     "roles": [
+      [
+       "consult",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.0,
+     "lead": 0,
+     "cl": "b2c",
+     "m": "svc",
+     "start": false,
+     "svc": false,
+     "d": "Toolkits and templates sold as downloads; no stock.",
+     "goods": {
+      "mat": 0.02,
+      "hrs": 0,
+      "batch": 0,
+      "restock": 0
+     }
+    }
+   ]
+  },
+  "tutor": {
+   "hpu": 1,
+   "L": 0.5,
+   "u0": 0.75,
+   "fix": 0.4,
+   "items": [
+    {
+     "id": "one",
+     "n": "Lesson 1:1",
+     "u": "lesson",
+     "h": 1,
+     "f": 1.0,
+     "q": 0.45,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.03,
+     "lead": 2,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "One pupil, one tutor: the price of an hour."
+    },
+    {
+     "id": "group",
+     "n": "Group class",
+     "u": "class",
+     "h": 1,
+     "f": 1.9,
+     "q": 0.2,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.04,
+     "lead": 7,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Up to five pupils share an hour; seats fill or they do not."
+    },
+    {
+     "id": "exam",
+     "n": "Exam preparation course",
+     "u": "course",
+     "h": 12,
+     "f": 0.95,
+     "q": 0.1,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.03,
+     "lead": 21,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A term of lessons and mock papers before the exam."
+    },
+    {
+     "id": "homework",
+     "n": "Homework help subscription",
+     "u": "month",
+     "h": 4,
+     "f": 0.8,
+     "q": 0.15,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.05,
+     "lead": 3,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "A monthly plan of short sessions; parents cancel after exams.",
+     "churn": 0.05
+    },
+    {
+     "id": "club",
+     "n": "Language conversation club",
+     "u": "class",
+     "h": 1,
+     "f": 1.5,
+     "q": 0.1,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.05,
+     "lead": 7,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Adults practise a language in a small group."
+    },
+    {
+     "id": "summer",
+     "n": "Summer intensive",
+     "u": "week",
+     "h": 15,
+     "f": 0.9,
+     "q": 0.05,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.05,
+     "wo": 0.02,
+     "lead": 60,
+     "cl": "b2c",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A week of daily teaching in the holidays."
+    },
+    {
+     "id": "masterclass",
+     "n": "Online masterclass",
+     "u": "session",
+     "h": 2,
+     "f": 2.0,
+     "q": 0.04,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.03,
+     "wo": 0.03,
+     "lead": 30,
+     "cl": "b2c",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A live class sold to many at once."
+    },
+    {
+     "id": "workbooks",
+     "n": "Study guides and workbooks",
+     "u": "book",
+     "h": 0.05,
+     "f": 0.22,
+     "q": 0.06,
+     "roles": [
+      [
+       "tutor",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.0,
+     "lead": 7,
+     "cl": "b2c",
+     "m": "stk",
+     "start": false,
+     "svc": false,
+     "d": "Printed workbooks bought from a printer in batches.",
+     "goods": {
+      "mat": 0.45,
+      "hrs": 0.0,
+      "batch": 25,
+      "restock": 2
+     }
+    }
+   ]
+  },
+  "photo": {
+   "hpu": 6,
+   "L": 0.5,
+   "u0": 0.55,
+   "fix": 0.5,
+   "items": [
+    {
+     "id": "portrait",
+     "n": "Portrait session",
+     "u": "session",
+     "h": 3,
+     "f": 1.0,
+     "q": 0.3,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.03,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "About an hour and a half of shooting and as long again editing."
+    },
+    {
+     "id": "wedding",
+     "n": "Wedding day",
+     "u": "day",
+     "h": 24,
+     "f": 0.95,
+     "q": 0.2,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.05,
+     "wo": 0.02,
+     "lead": 120,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A long day on site and about twelve hours of editing and an album."
+    },
+    {
+     "id": "product",
+     "n": "Product shoot with editing",
+     "u": "shoot",
+     "h": 8,
+     "f": 0.95,
+     "q": 0.2,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.03,
+     "wo": 0.04,
+     "lead": 10,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Studio shoot of a range, plus retouching hours."
+    },
+    {
+     "id": "headshots",
+     "n": "Corporate headshots",
+     "u": "session",
+     "h": 4,
+     "f": 1.1,
+     "q": 0.12,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.04,
+     "lead": 10,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Staff portraits on the client site."
+    },
+    {
+     "id": "prints",
+     "n": "Prints and albums",
+     "u": "order",
+     "h": 0.5,
+     "f": 0.45,
+     "q": 0.12,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.0,
+     "lead": 5,
+     "cl": "b2c",
+     "m": "made",
+     "start": true,
+     "svc": false,
+     "d": "Albums and framed prints made after the shoot from paper, ink and album blanks.",
+     "goods": {
+      "mat": 0.3,
+      "hrs": 0.5,
+      "batch": 10,
+      "restock": 2
+     }
+    },
+    {
+     "id": "event",
+     "n": "Event coverage",
+     "u": "event",
+     "h": 8,
+     "f": 0.9,
+     "q": 0.1,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.03,
+     "wo": 0.04,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A conference or party over an afternoon."
+    },
+    {
+     "id": "drone",
+     "n": "Drone shoot",
+     "u": "shoot",
+     "h": 4,
+     "f": 1.1,
+     "q": 0.05,
+     "roles": [
+      [
+       "photog",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.03,
+     "lead": 10,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Aerial footage for property and events; needs the drone."
+    },
+    {
+     "id": "studio",
+     "n": "Studio hire",
+     "u": "half day",
+     "h": 4,
+     "f": 0.7,
+     "q": 0.04,
+     "roles": [
+      [
+       "recept",
+       1
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Other photographers rent your studio and lights."
+    }
+   ]
+  },
+  "law": {
+   "hpu": 1,
+   "L": 0.5,
+   "u0": 0.7,
+   "fix": 0.9,
+   "items": [
+    {
+     "id": "contract",
+     "n": "Contract review",
+     "u": "job",
+     "h": 3,
+     "f": 0.95,
+     "q": 0.3,
+     "roles": [
+      [
+       "paralegal",
+       0.6
+      ],
+      [
+       "lawyer",
+       0.4
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.05,
+     "lead": 3,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Fixed fee to read and mark up a contract; a paralegal does the first pass."
+    },
+    {
+     "id": "formation",
+     "n": "Company formation",
+     "u": "job",
+     "h": 4,
+     "f": 0.85,
+     "q": 0.12,
+     "roles": [
+      [
+       "paralegal",
+       0.7
+      ],
+      [
+       "lawyer",
+       0.3
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.02,
+     "lead": 5,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Articles, registration and shareholder papers for a new company."
+    },
+    {
+     "id": "dispute",
+     "n": "Dispute resolution",
+     "u": "matter",
+     "h": 30,
+     "f": 1.25,
+     "q": 0.2,
+     "roles": [
+      [
+       "lawyer",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.1,
+     "lead": 14,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Hourly or capped; the hours budget overruns and part is never billed."
+    },
+    {
+     "id": "retainer",
+     "n": "Employment advice plan",
+     "u": "month",
+     "h": 3,
+     "f": 0.85,
+     "q": 0.18,
+     "roles": [
+      [
+       "lawyer",
+       0.6
+      ],
+      [
+       "paralegal",
+       0.4
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.03,
+     "lead": 5,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "A monthly retainer for a block of advice hours.",
+     "churn": 0.03
+    },
+    {
+     "id": "convey",
+     "n": "Property conveyancing",
+     "u": "matter",
+     "h": 10,
+     "f": 0.75,
+     "q": 0.12,
+     "roles": [
+      [
+       "paralegal",
+       0.6
+      ],
+      [
+       "lawyer",
+       0.4
+      ]
+     ],
+     "c": 0.06,
+     "wo": 0.04,
+     "lead": 14,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A fixed fee for a purchase or sale; searches and registry fees are consumables."
+    },
+    {
+     "id": "probate",
+     "n": "Will and probate",
+     "u": "matter",
+     "h": 5,
+     "f": 0.85,
+     "q": 0.08,
+     "roles": [
+      [
+       "lawyer",
+       0.6
+      ],
+      [
+       "paralegal",
+       0.4
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.03,
+     "lead": 10,
+     "cl": "b2c",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Wills and estate administration for households."
+    },
+    {
+     "id": "trademark",
+     "n": "Trademark registration",
+     "u": "job",
+     "h": 3,
+     "f": 1.0,
+     "q": 0.05,
+     "roles": [
+      [
+       "lawyer",
+       0.5
+      ],
+      [
+       "paralegal",
+       0.5
+      ]
+     ],
+     "c": 0.15,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Filing and prosecution; the register's fees are the consumables."
+    },
+    {
+     "id": "templates",
+     "n": "Legal templates pack",
+     "u": "download",
+     "h": 0.1,
+     "f": 0.3,
+     "q": 0.04,
+     "roles": [
+      [
+       "lawyer",
+       1
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.0,
+     "lead": 0,
+     "cl": "b2c",
+     "m": "svc",
+     "start": false,
+     "svc": false,
+     "d": "Standard contracts sold as downloads; no stock.",
+     "goods": {
+      "mat": 0.02,
+      "hrs": 0,
+      "batch": 0,
+      "restock": 0
+     }
+    }
+   ]
+  },
+  "acctfirm": {
+   "hpu": 1,
+   "L": 0.55,
+   "u0": 0.78,
+   "fix": 0.9,
+   "items": [
+    {
+     "id": "bookkeeping",
+     "n": "Bookkeeping plan",
+     "u": "month",
+     "h": 5,
+     "f": 0.85,
+     "q": 0.28,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "Per client per month: receipts, bank reconciliation and a report.",
+     "churn": 0.015
+    },
+    {
+     "id": "accounts",
+     "n": "Annual accounts and tax",
+     "u": "job",
+     "h": 12,
+     "f": 1.05,
+     "q": 0.2,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.03,
+     "lead": 30,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Year-end accounts and the company tax return; due on a fixed date."
+    },
+    {
+     "id": "payroll",
+     "n": "Payroll service",
+     "u": "payslip",
+     "h": 0.4,
+     "f": 0.9,
+     "q": 0.15,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.05,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Per payslip each month: calculation, payslips and filings."
+    },
+    {
+     "id": "vat",
+     "n": "VAT returns",
+     "u": "quarter",
+     "h": 1.5,
+     "f": 0.95,
+     "q": 0.15,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "One return per client per period."
+    },
+    {
+     "id": "private",
+     "n": "Tax returns for private clients",
+     "u": "return",
+     "h": 2,
+     "f": 0.9,
+     "q": 0.1,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.03,
+     "lead": 14,
+     "cl": "b2c",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A busy spring every year."
+    },
+    {
+     "id": "advisory",
+     "n": "Business advisory",
+     "u": "hour",
+     "h": 1,
+     "f": 1.4,
+     "q": 0.06,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.06,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Advice by the hour at a higher rate."
+    },
+    {
+     "id": "audit",
+     "n": "Audit support",
+     "u": "day",
+     "h": 8,
+     "f": 1.0,
+     "q": 0.04,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.04,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Prepare the files an auditor asks for."
+    },
+    {
+     "id": "startup",
+     "n": "Start-up package",
+     "u": "job",
+     "h": 6,
+     "f": 1.0,
+     "q": 0.04,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.02,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Set-up of books, registration and a first year of advice."
+    },
+    {
+     "id": "taxplan",
+     "n": "Tax planning session",
+     "u": "session",
+     "h": 1.5,
+     "f": 1.3,
+     "q": 0.04,
+     "roles": [
+      [
+       "acct",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.04,
+     "lead": 10,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Planning before the year ends."
+    }
+   ]
+  },
+  "mktg": {
+   "hpu": 1,
+   "L": 0.55,
+   "u0": 0.72,
+   "fix": 0.8,
+   "items": [
+    {
+     "id": "setup",
+     "n": "Campaign setup",
+     "u": "job",
+     "h": 16,
+     "f": 1.0,
+     "q": 0.16,
+     "roles": [
+      [
+       "marketer",
+       0.6
+      ],
+      [
+       "designer",
+       0.4
+      ]
+     ],
+     "c": 0.04,
+     "wo": 0.04,
+     "lead": 10,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "Strategy, creative and tracking for a new campaign."
+    },
+    {
+     "id": "retainer",
+     "n": "Monthly retainer",
+     "u": "month",
+     "h": 14,
+     "f": 0.9,
+     "q": 0.3,
+     "roles": [
+      [
+       "marketer",
+       0.8
+      ],
+      [
+       "designer",
+       0.2
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "A monthly fee for a set of hours; clients leave when results slip.",
+     "churn": 0.04
+    },
+    {
+     "id": "content",
+     "n": "Content pack",
+     "u": "pack",
+     "h": 5,
+     "f": 1.0,
+     "q": 0.2,
+     "roles": [
+      [
+       "designer",
+       0.5
+      ],
+      [
+       "marketer",
+       0.5
+      ]
+     ],
+     "c": 0.06,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A batch of posts, images and copy for a month."
+    },
+    {
+     "id": "social",
+     "n": "Social media management",
+     "u": "month",
+     "h": 10,
+     "f": 0.85,
+     "q": 0.18,
+     "roles": [
+      [
+       "marketer",
+       0.7
+      ],
+      [
+       "designer",
+       0.3
+      ]
+     ],
+     "c": 0.01,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "retainer",
+     "m": "sub",
+     "start": true,
+     "svc": true,
+     "d": "Daily posting and replies for a client.",
+     "churn": 0.05
+    },
+    {
+     "id": "strategy",
+     "n": "Strategy hour",
+     "u": "hour",
+     "h": 1,
+     "f": 1.2,
+     "q": 0.1,
+     "roles": [
+      [
+       "marketer",
+       1
+      ]
+     ],
+     "c": 0.0,
+     "wo": 0.05,
+     "lead": 3,
+     "cl": "b2b",
+     "m": "svc",
+     "start": true,
+     "svc": true,
+     "d": "A planning hour with a client."
+    },
+    {
+     "id": "brand",
+     "n": "Brand identity package",
+     "u": "job",
+     "h": 30,
+     "f": 1.1,
+     "q": 0.04,
+     "roles": [
+      [
+       "designer",
+       0.7
+      ],
+      [
+       "marketer",
+       0.3
+      ]
+     ],
+     "c": 0.03,
+     "wo": 0.06,
+     "lead": 28,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Name, logo and guidelines for a fixed fee."
+    },
+    {
+     "id": "video",
+     "n": "Video production",
+     "u": "job",
+     "h": 20,
+     "f": 1.15,
+     "q": 0.04,
+     "roles": [
+      [
+       "designer",
+       0.8
+      ],
+      [
+       "marketer",
+       0.2
+      ]
+     ],
+     "c": 0.12,
+     "wo": 0.04,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Scripted short film; crew and hire are the consumables."
+    },
+    {
+     "id": "media",
+     "n": "Media buying",
+     "u": "month",
+     "h": 6,
+     "f": 3.2,
+     "q": 0.04,
+     "roles": [
+      [
+       "marketer",
+       1
+      ]
+     ],
+     "c": 0.72,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "retainer",
+     "m": "sub",
+     "start": false,
+     "svc": true,
+     "d": "You buy the client's ad space and keep a commission; the media is passed through at cost.",
+     "churn": 0.04
+    },
+    {
+     "id": "email",
+     "n": "Email campaigns",
+     "u": "campaign",
+     "h": 4,
+     "f": 1.0,
+     "q": 0.05,
+     "roles": [
+      [
+       "marketer",
+       0.7
+      ],
+      [
+       "designer",
+       0.3
+      ]
+     ],
+     "c": 0.02,
+     "wo": 0.03,
+     "lead": 7,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Design, copy and sending of a newsletter run."
+    },
+    {
+     "id": "research",
+     "n": "Market research report",
+     "u": "job",
+     "h": 25,
+     "f": 1.05,
+     "q": 0.04,
+     "roles": [
+      [
+       "marketer",
+       1
+      ]
+     ],
+     "c": 0.05,
+     "wo": 0.05,
+     "lead": 21,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "Surveys and desk research written up."
+    },
+    {
+     "id": "event",
+     "n": "Event marketing",
+     "u": "job",
+     "h": 30,
+     "f": 1.0,
+     "q": 0.03,
+     "roles": [
+      [
+       "marketer",
+       0.6
+      ],
+      [
+       "sales",
+       0.4
+      ]
+     ],
+     "c": 0.2,
+     "wo": 0.05,
+     "lead": 45,
+     "cl": "b2b",
+     "m": "svc",
+     "start": false,
+     "svc": true,
+     "d": "A launch or stand for a client; venue and printing are the consumables."
+    }
+   ]
+  }
+ }
+}

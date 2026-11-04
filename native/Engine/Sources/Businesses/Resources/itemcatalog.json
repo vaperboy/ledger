@@ -39,74 +39,27 @@
    }
   ],
   "cons": [
-   {
-    "n": "Strategy workshop",
-    "svc": true
-   },
-   {
-    "n": "Process audit",
-    "svc": true
-   },
-   {
-    "n": "Interim management",
-    "svc": true
-   },
-   {
-    "n": "Market entry study",
-    "svc": true
-   },
-   {
-    "n": "Cost reduction review",
-    "svc": true
-   },
-   {
-    "n": "Retainer plan",
-    "svc": true
-   },
-   {
-    "n": "Training programme",
-    "svc": true
-   },
-   {
-    "n": "Merchandise and templates",
-    "svc": false,
-    "dev": true
-   }
+   { "n": "Advisory hour", "svc": true },
+   { "n": "Strategy workshop day", "svc": true },
+   { "n": "Process audit", "svc": true },
+   { "n": "Strategy report", "svc": true },
+   { "n": "Retainer plan", "svc": true },
+   { "n": "Discovery call", "svc": true },
+   { "n": "Interim management day", "svc": true },
+   { "n": "Market entry study", "svc": true },
+   { "n": "Cost reduction review", "svc": true },
+   { "n": "Training programme", "svc": true },
+   { "n": "Merchandise and templates", "svc": false, "dev": true }
   ],
   "tutor": [
-   {
-    "n": "1-to-1 lessons",
-    "svc": true
-   },
-   {
-    "n": "Exam preparation course",
-    "svc": true
-   },
-   {
-    "n": "Group class",
-    "svc": true
-   },
-   {
-    "n": "Homework help subscription",
-    "svc": true
-   },
-   {
-    "n": "Language conversation club",
-    "svc": true
-   },
-   {
-    "n": "Summer intensive",
-    "svc": true
-   },
-   {
-    "n": "Study guides and workbooks",
-    "svc": false,
-    "dev": true
-   },
-   {
-    "n": "Online masterclass",
-    "svc": true
-   }
+   { "n": "Lesson 1:1", "svc": true },
+   { "n": "Group class", "svc": true },
+   { "n": "Exam preparation course", "svc": true },
+   { "n": "Homework help subscription", "svc": true },
+   { "n": "Language conversation club", "svc": true },
+   { "n": "Summer intensive", "svc": true },
+   { "n": "Online masterclass", "svc": true },
+   { "n": "Study guides and workbooks", "svc": false, "dev": true }
   ],
   "carclean": [
    {
@@ -144,39 +97,14 @@
    }
   ],
   "photo": [
-   {
-    "n": "Wedding package",
-    "svc": true
-   },
-   {
-    "n": "Family portrait session",
-    "svc": true
-   },
-   {
-    "n": "Corporate headshots",
-    "svc": true
-   },
-   {
-    "n": "Product photography",
-    "svc": true
-   },
-   {
-    "n": "Event coverage",
-    "svc": true
-   },
-   {
-    "n": "Photo album and prints",
-    "svc": false,
-    "dev": true
-   },
-   {
-    "n": "Drone shoot",
-    "svc": true
-   },
-   {
-    "n": "Studio hire",
-    "svc": true
-   }
+   { "n": "Portrait session", "svc": true },
+   { "n": "Wedding day", "svc": true },
+   { "n": "Product shoot with editing", "svc": true },
+   { "n": "Corporate headshots", "svc": true },
+   { "n": "Prints and albums", "svc": false, "dev": true },
+   { "n": "Event coverage", "svc": true },
+   { "n": "Drone shoot", "svc": true },
+   { "n": "Studio hire", "svc": true }
   ],
   "handy": [
    {
@@ -284,107 +212,38 @@
    }
   ],
   "mktg": [
-   {
-    "n": "Social media management",
-    "svc": true
-   },
-   {
-    "n": "Brand identity package",
-    "svc": true
-   },
-   {
-    "n": "Search advertising",
-    "svc": true
-   },
-   {
-    "n": "Email campaigns",
-    "svc": true
-   },
-   {
-    "n": "Content retainer",
-    "svc": true
-   },
-   {
-    "n": "Video production",
-    "svc": true
-   },
-   {
-    "n": "Market research report",
-    "svc": true
-   },
-   {
-    "n": "Event marketing",
-    "svc": true
-   }
+   { "n": "Campaign setup", "svc": true },
+   { "n": "Monthly retainer", "svc": true },
+   { "n": "Content pack", "svc": true },
+   { "n": "Social media management", "svc": true },
+   { "n": "Strategy hour", "svc": true },
+   { "n": "Brand identity package", "svc": true },
+   { "n": "Video production", "svc": true },
+   { "n": "Media buying", "svc": true },
+   { "n": "Email campaigns", "svc": true },
+   { "n": "Market research report", "svc": true },
+   { "n": "Event marketing", "svc": true }
   ],
   "law": [
-   {
-    "n": "Contract review",
-    "svc": true
-   },
-   {
-    "n": "Company formation",
-    "svc": true
-   },
-   {
-    "n": "Employment advice plan",
-    "svc": true
-   },
-   {
-    "n": "Property conveyancing",
-    "svc": true
-   },
-   {
-    "n": "Dispute resolution",
-    "svc": true
-   },
-   {
-    "n": "Will and probate",
-    "svc": true
-   },
-   {
-    "n": "Trademark registration",
-    "svc": true
-   },
-   {
-    "n": "Legal templates pack",
-    "svc": false,
-    "dev": true
-   }
+   { "n": "Contract review", "svc": true },
+   { "n": "Company formation", "svc": true },
+   { "n": "Dispute resolution", "svc": true },
+   { "n": "Employment advice plan", "svc": true },
+   { "n": "Property conveyancing", "svc": true },
+   { "n": "Will and probate", "svc": true },
+   { "n": "Trademark registration", "svc": true },
+   { "n": "Legal templates pack", "svc": false, "dev": true }
   ],
   "acctfirm": [
-   {
-    "n": "Bookkeeping plan",
-    "svc": true
-   },
-   {
-    "n": "Payroll service",
-    "svc": true
-   },
-   {
-    "n": "Annual accounts and tax",
-    "svc": true
-   },
-   {
-    "n": "VAT returns",
-    "svc": true
-   },
-   {
-    "n": "Business advisory",
-    "svc": true
-   },
-   {
-    "n": "Audit support",
-    "svc": true
-   },
-   {
-    "n": "Start-up package",
-    "svc": true
-   },
-   {
-    "n": "Tax planning session",
-    "svc": true
-   }
+   { "n": "Bookkeeping plan", "svc": true },
+   { "n": "Annual accounts and tax", "svc": true },
+   { "n": "Payroll service", "svc": true },
+   { "n": "VAT returns", "svc": true },
+   { "n": "Tax returns for private clients", "svc": true },
+   { "n": "Business advisory", "svc": true },
+   { "n": "Audit support", "svc": true },
+   { "n": "Start-up package", "svc": true },
+   { "n": "Tax planning session", "svc": true }
   ],
   "staffing": [
    {
