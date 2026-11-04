@@ -266,9 +266,10 @@ public enum EventEngine {
 
     /// Unanswered decisions take the cheapest answer when time runs out. Original: `expireMsgs`.
     public static func expire(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
-        for k in s.inbox.indices {
+        // Answering can add messages at the front of the inbox, so each expired message is found again by id after its effects ran.
+        for due in s.inbox.filter({ $0.status == "open" && $0.expiresWeek.map { s.week >= $0 } == true }).map({ $0.id }) {
+            guard var k = s.inbox.firstIndex(where: { $0.id == due }) else { continue }
             let m = s.inbox[k]
-            guard m.status == "open", let exp = m.expiresWeek, s.week >= exp else { continue }
             let i = s.companyIndex(m.companyID)
             if m.kind == "decision" {
                 guard let ci = i else { s.inbox[k].set("status", "done"); continue }
@@ -280,14 +281,17 @@ public enum EventEngine {
                 let ctx = context(for: s.companies[ci], data: data, country: fc.country(of: s.companies[ci], s))
                 let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
                 apply(&s, companyIndex: ci, m.options[bestIndex]["fx"], ctx: ctx, event: e, data: data, context: fc)
+                if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", bestIndex); s.inbox[k].set("auto", 1)
                 s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options[bestIndex]["l"].string).", tone: "bad", companyID: m.companyID)
             } else if m.actionID == StrategicDecisions.action {
                 let pick = StrategicDecisions.expired(&s, message: m, data: data, context: fc)
+                if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("auto", 1)
                 s.note("No answer in time on \"\(m.title)\". Default taken: \(m.options.indices.contains(pick) ? m.options[pick]["l"].string : "").", tone: "bad", companyID: m.companyID)
             } else if m.actionID == Shareholders.action {
                 Shareholders.expired(&s, message: m, data: data, context: fc)   // no answer = you refused
+                if let k2 = s.inbox.firstIndex(where: { $0.id == due }) { k = k2 }
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
             } else if !m.actionID.isEmpty {
                 s.inbox[k].set("status", "done"); s.inbox[k].set("pick", -1); s.inbox[k].set("auto", 1)
