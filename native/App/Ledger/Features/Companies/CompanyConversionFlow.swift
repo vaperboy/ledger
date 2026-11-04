@@ -18,7 +18,7 @@ struct ConversionSheet: View {
 
     var body: some View {
         Group {
-            ScrollView {
+            Group {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let e = store.engine, let co = e.state.company(companyID) {
                         if let done {
@@ -32,10 +32,8 @@ struct ConversionSheet: View {
                         Text("This company no longer exists.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
                     }
                 }
-                .padding(16)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
-            .noSidewaysDrag()
         }
         .confirmAction($pending)
     }

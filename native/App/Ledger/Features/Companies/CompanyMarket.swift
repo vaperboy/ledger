@@ -345,7 +345,7 @@ struct RivalSheet: View {
                 Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted)
             }
         }
-        .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price }), title: "Acquisition", size: .tall) { p in
+        .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price }), title: "Acquisition") { p in
                 AcquisitionSheet(companyID: companyID, rivalID: rivalID, price: p.price) { kind in
                     switch kind {
                     case .own: pendingPrice = nil; buy(p.price)

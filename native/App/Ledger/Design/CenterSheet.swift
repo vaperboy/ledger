@@ -33,8 +33,8 @@ private struct ClearCoverBackground: UIViewRepresentable {
 }
 
 /// How high a centred popup is. `.fit` (default): exactly as high as its content, at most 80% of the screen, scrolling only when taller.
-/// `.tall`: a fixed 80% of the screen, only for multi-step flows with a NavigationStack inside.
-enum CenterSheetSize { case fit, tall }
+/// `.fitBleed`: like `.fit` without the 16pt content padding (full-bleed photos). `.tall`: a fixed 80% of the screen, only for multi-step flows with a NavigationStack inside.
+enum CenterSheetSize { case fit, fitBleed, tall }
 
 /// One size/spacing set for every centred popup (CenterSheetFrame and GamePopup), so all cards share width, margin, header and room.
 enum PopupMetrics {
@@ -141,7 +141,7 @@ struct CenterSheetFrame<Content: View>: View {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            FitScroll(maxHeight: room) { content().padding(16) }
+            FitScroll(maxHeight: room) { content().padding(size == .fitBleed ? 0 : 16) }
         }
     }
 }

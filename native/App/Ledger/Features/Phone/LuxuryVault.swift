@@ -110,7 +110,7 @@ struct LuxuryInspectSheet: View {
 
     var body: some View {
         if let e = store.engine, let p = e.luxuryPieces.first(where: { $0.id == pieceID }) {
-            ScrollView {
+            Group {
                 VStack(alignment: .leading, spacing: 14) {
                     LuxuryItemHead(item: p.item)
                     Text(useLine(e, p)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 18)
@@ -118,7 +118,6 @@ struct LuxuryInspectSheet: View {
                 }
                 .padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden)
             .background(P.ground.ignoresSafeArea())
             .environment(\.outsidePalette, P)
             .preferredColorScheme(.dark)

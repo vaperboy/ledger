@@ -183,7 +183,7 @@ private struct FoundedStartups: View {
                 }
             }
         }
-        .centerSheet(isPresented: $founding, title: "Found a startup", size: .tall) { FoundStartupSheet() }
+        .centerSheet(isPresented: $founding, title: "Found a startup") { FoundStartupSheet() }
     }
 }
 
@@ -338,7 +338,7 @@ private struct FoundedCard: View {
             }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $launching, title: f.product?.phase == "live" ? "Change the price" : "Launch", size: .tall) { StartupLaunchSheet(engine: engine, f: f) }
+        .centerSheet(isPresented: $launching, title: f.product?.phase == "live" ? "Change the price" : "Launch") { StartupLaunchSheet(engine: engine, f: f) }
     }
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {
@@ -366,7 +366,7 @@ private struct FoundStartupSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
+            Group {
                 if let e = store.engine, let sec = StartupProducts.sector(sectorID) {
                     let cur = e.homeCurrency
                     let product = sec.products.first { $0.id == productID } ?? sec.products[0]
@@ -411,12 +411,9 @@ private struct FoundStartupSheet: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 18).padding(.bottom, 30)
                 }
             }
-            .scrollIndicators(.hidden).noSidewaysDrag()
         }
-        .ledgerBackground()
         .confirmAction($pending)
         .onChange(of: sectorID) { _, _ in productID = ""; modelID = "" }
     }
@@ -798,7 +795,7 @@ private struct StartupLaunchSheet: View {
         let weekly: Double = budgets[min(max(0, campaign), budgets.count - 1)]
         let funnel: StartupModel.Funnel? = engine.startupLaunchPreview(startupID: f.id, price: price)
         VStack(spacing: 0) {
-            ScrollView {
+            Group {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     CardSection("Price per customer") {
                         SegmentedPill(items: Array(steps.indices), title: { "\(Int((steps[$0] * 100).rounded()))%" }, selection: $priceStep)
@@ -821,11 +818,8 @@ private struct StartupLaunchSheet: View {
                     Text("Customers beyond what the team can look after leave faster. A support person serves far more customers than a builder; hire one in the company's Team screen.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     QuietButton(title: launched ? "Set this price" : "Launch at \(cur.tidyDisplay(price))", fullWidth: true) { decide(price, weekly) }
                 }
-                .padding(.horizontal, 18).padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden).noSidewaysDrag()
         }
-        .ledgerBackground()
         .onAppear { priceStep = 2 }
     }
 

@@ -44,7 +44,7 @@ struct AcquisitionSheet: View {
 
     var body: some View {
         Group {
-            ScrollView {
+            Group {
                 if let e = store.engine, let co = e.state.company(companyID), let r = Rivals.rivals(e.state, for: co).first(where: { $0.id == rivalID }), let plan = e.acquisitionPlan(companyID: companyID, rivalID: rivalID, price: price) {
                     let cur = e.currency(for: co)
                     let ch = plan.choices.first { $0.kind == selected } ?? plan.choices[0]
@@ -76,12 +76,10 @@ struct AcquisitionSheet: View {
                         }.buttonStyle(TinyButtonStyle()).disabled(!ch.affordable); Spacer() }
                         if !ch.affordable { Text("You do not have enough cash for this choice. Pick another, or come back with more.").font(.caption).foregroundStyle(Theme.caution) }
                     }
-                    .padding(16)
                 } else {
-                    Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted).padding(16)
+                    Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted)
                 }
             }
-            .noSidewaysDrag()
             .confirmAction($pending)
         }
     }

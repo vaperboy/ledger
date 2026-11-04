@@ -21,7 +21,7 @@ struct LuxuryItemSheet: View {
         Group {
             if let e = store.engine, let it = Luxury.item(itemID) {
                 VStack(spacing: 0) {
-                    ContainedScroll {
+                    Group {
                         VStack(alignment: .leading, spacing: 16) {
                             LuxuryItemHead(item: it)
                             LuxuryItemSpecs(item: it)
