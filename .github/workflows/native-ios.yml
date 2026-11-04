@@ -3,6 +3,10 @@ name: Native iOS (SwiftUI) build and test
 # Separate from the web/Capacitor workflows. Runs only when the native project changes.
 on:
   workflow_dispatch:
+    inputs:
+      which:
+        description: 'Manual job: popup (screenshots) or launch (simulator launch check)'
+        default: 'popup'
   push:
     branches: [ native-swiftui ]
     paths: [ 'native/**', '!native/docs/**', '!native/design/**' ]
@@ -14,6 +18,7 @@ permissions:
 
 jobs:
   engine-tests:
+    if: github.event_name != 'workflow_dispatch'
     # A newer push replaces an unfinished older run of this job, so the Mac queue never builds old commits.
     concurrency:
       group: native-engine-tests-${{ github.ref }}
@@ -70,6 +75,7 @@ jobs:
 
   # Runs in parallel with engine-tests (both must pass): a compile error in the app shows up without waiting for the long engine tests.
   app-build:
+    if: github.event_name != 'workflow_dispatch'
     concurrency:
       group: native-app-build-${{ github.ref }}
       cancel-in-progress: true
@@ -105,7 +111,7 @@ jobs:
   # and a new entry in apps.json (AltStore source). Engine tests run beside it and are evidence, not a gate.
   # Version = latest version in apps.json + 1, so it always rises. Notes come from RELEASE_NOTES.md.
   launch-smoke:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.which == 'launch'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -142,7 +148,7 @@ jobs:
   # Manual only: screenshots of every popup site on a small and a large phone, as an artifact (shots/<device>/). Independent of
   # app-build and release.
   popup-shots:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.which == 'popup'
     concurrency:
       group: popup-shots-${{ github.ref }}
       cancel-in-progress: true
