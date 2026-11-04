@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.57",
+          "buildVersion": "57",
+          "date": "2026-11-04T21:34:28Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v57/Ledger-unsigned.ipa",
+          "size": 28783869,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Balance: security, driving school, physio, dental, law now viable (staff cover and congestion fixes)\n- Real items for every trade, new-car dealership, used car dealer rework, travel/insurance/finance brokers\n- Item list and item page like the staff list, live profit/loss price slider\n\n# Missing / coming next\n- Popup system rework (one overlay host) in progress; suppliers jump-back fix comes with it\n- Own-delivery fee, typed prices per trade, chain/franchise steps, photos for vehicles/premises/equipment\n- Not yet tested on device: expect rough edges"
+        },
+        {
           "version": "1.0.56",
           "buildVersion": "56",
           "date": "2026-11-04T21:00:10Z",
@@ -187,22 +196,13 @@
           "size": 27470351,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report"
-        },
-        {
-          "version": "1.0.37",
-          "buildVersion": "37",
-          "date": "2026-11-03T17:09:37Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v37/Ledger-unsigned.ipa",
-          "size": 27381739,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.56",
-      "versionDate": "2026-11-04T21:00:10Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v56/Ledger-unsigned.ipa",
-      "size": 28743803
+      "version": "1.0.57",
+      "versionDate": "2026-11-04T21:34:28Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v57/Ledger-unsigned.ipa",
+      "size": 28783869
     }
   ]
 }
