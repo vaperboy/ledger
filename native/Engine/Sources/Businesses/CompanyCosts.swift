@@ -19,8 +19,10 @@ public enum CompanyCosts {
         var staff = co.staff
         let sellerIdx = staff.indices.filter { PayPlans.sells(staff[$0], salesRoles: salesRoles) }
         if sellerIdx.isEmpty { return 0 }
-        let rev = co.lastWeekRevenue
-        let skills = sellerIdx.map { StaffModel.skill(staff[$0], person: w.state.people[staff[$0].id], salesRoles: salesRoles) + 10 }
+        // The used car dealer pays on the profit of each car sold (a share of the gross profit, never on a loss), and the buyer on what he saved against fair value.
+        let usedCar = bd.id == UsedCarDealer.tradeID
+        let rev = usedCar ? co.num("ucg") * UsedCarDealer.profitShareMultiple : co.lastWeekRevenue
+        let skills = sellerIdx.map { usedCar && staff[$0].role == "buyer" ? 0 : StaffModel.skill(staff[$0], person: w.state.people[staff[$0].id], salesRoles: salesRoles) + 10 }
         let total = skills.reduce(0, +)
         let daily = DailyTrade.tradesDaily(co, bd)
         var c = 0.0
@@ -28,7 +30,8 @@ public enum CompanyCosts {
             var s = staff[i]
             guard let mode = s.commissionMode, mode != "fix" else { continue }
             let rate = s.commissionRate
-            let own = daily ? ((s.value("lw")["w"].int == w.week) ? s.value("lw")["r"].double : 0) * rate
+            let own = usedCar && s.role == "buyer" ? co.num("ucbb") * UsedCarDealer.profitShareMultiple * rate
+                : daily ? ((s.value("lw")["w"].int == w.week) ? s.value("lw")["r"].double : 0) * rate
                             : rev * skills[n] / max(1, total) * rate
             let ema = s.raw["commEma"].map { $0.isNull ? own : $0.double } ?? own
             s.set("commEma", ema * 0.9 + own * 0.1)

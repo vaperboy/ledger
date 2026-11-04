@@ -281,7 +281,7 @@ public enum Marketplace {
 
     public enum BuyResult: Equatable, Sendable { case ok, refused(String) }
 
-    public static func buy(_ s: inout GameState, listingID: String, companyID: Int, price: Double, data: GameData) -> BuyResult {
+    public static func buy(_ s: inout GameState, listingID: String, companyID: Int, price: Double, data: GameData, by: String = "me") -> BuyResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .refused("That company no longer exists.") }
         guard let e = entry(s, listingID: listingID, companyID: companyID, data: data) else { return .refused("That listing is gone.") }
         let neg = read(s, negKey(companyID, listingID))
@@ -292,7 +292,9 @@ public enum Marketplace {
         let mech = co.value("staff").array.contains { $0["role"].string == "mech" }
         var ok = false
         if co.type == UsedCarDealer.tradeID && h.vehicle && h.equipmentID.isEmpty {
-            ok = UsedCarDealer.addStock(&s, companyIndex: i, listing: e.l, hidden: h, price: price)
+            let lot = UsedCarDealer.lot(co)
+            if lot.free <= 0 { return .refused(lot.spaces == 0 ? "These premises have no lot spaces for cars. Move to a yard or a bigger site first." : "The lot is full: all \(lot.spaces) spaces are taken. Sell or send a car off before you buy another.") }
+            ok = UsedCarDealer.addStock(&s, companyIndex: i, listing: e.l, hidden: h, price: price, by: by)
         } else if let bd = data.catalog[co.type], let spec = bd.allEquipment.first(where: { $0.id == (h.vehicle ? (bd.allEquipment.first { $0.vehicleModels?.contains(h.modelID) == true }?.id ?? "") : h.equipmentID) }) {
             var slot = 0
             for u in listingID.utf16 { slot = (slot &* 31 &+ Int(u)) & 0xFFFFFF }
