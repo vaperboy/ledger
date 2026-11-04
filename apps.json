@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.55",
+          "buildVersion": "55",
+          "date": "2026-11-04T19:55:01Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v55/Ledger-unsigned.ipa",
+          "size": 28689774,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Real products: items now have cost, stock, supplier and a live profit/loss price slider (item list like Team)\n- Retail, food and drink, rentals and appointment trades sell real items (bakery recipes, rental units, treatments...)\n- New-car dealership with brand contracts; dealer warranty, car loans and insurance commission\n- Used car dealer: cars come only from the Marketplace, repairs by your own garage, lot spaces, stuck cars\n- New trades: travel agency, insurance broker, finance broker\n\n# Missing / coming next\n- Used car list, car dealer screens and dealer add-on screens are being wired into the app\n- Remaining trades (professional services, projects, venues, transport, finance) still sell generic items\n- Not yet tested on device: expect rough edges"
+        },
+        {
           "version": "1.0.54",
           "buildVersion": "54",
           "date": "2026-11-04T12:55:15Z",
@@ -187,22 +196,13 @@
           "size": 27344070,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Raw internal numbers on screen (quality, mood, standing, solvency, condition, scores) are now words; hidden scores are gone\n- New and important things are marked inside each app (a dot or a NEW tag in the app's own colours), and tabs get a dot when they hold something new\n- New app Marketplace for used items (cars, vans, equipment): message the seller, discuss the price (it can drop, the seller can give up) or buy; used items left TechPro; new trade Used car dealer that buys cars on the marketplace; card numbers show 16 digits with the first 12 starred\n- Applicants have their own page (filter by company and role); the inbox link now says \"Open applicants\"\n- The morning briefing has a thin loading bar; popup buttons are all the same style, with \"Decide later\" and \"Postpone\" greyed\n- Features open when they make sense: the Group Board tab appears once someone could sit on it, chain registration waits for a year of trading, expanding abroad for a profitable year, research for an 8 week old company and dividends for retained profit (locked ones stay visible with the reason); a centred popup announces each new feature with a Take me there button; the chain and franchise r"
-        },
-        {
-          "version": "1.0.35",
-          "buildVersion": "35",
-          "date": "2026-11-03T14:43:57Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v35/Ledger-unsigned.ipa",
-          "size": 27344767,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- New and important things are marked inside each app (a dot or a NEW tag in the app's own colours), and tabs get a dot when they hold something new\n- New app Marketplace for used items (cars, vans, equipment): message the seller, discuss the price (it can drop, the seller can give up) or buy; used items left TechPro; new trade Used car dealer that buys cars on the marketplace; card numbers show 16 digits with the first 12 starred\n- Applicants have their own page (filter by company and role); the inbox link now says \"Open applicants\"\n- The morning briefing has a thin loading bar; popup buttons are all the same style, with \"Decide later\" and \"Postpone\" greyed\n- Features open when they make sense: the Group Board tab appears once someone could sit on it, chain registration waits for a year of trading, expanding abroad for a profitable year, research for an 8 week old company and dividends for retained profit (locked ones stay visible with the reason); a centred popup announces each new feature with a Take me there button; the chain and franchise requirements each show Done, Waiting or Missing with the button that fixes it right there\n- Popups: one slim header with the cl"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.54",
-      "versionDate": "2026-11-04T12:55:15Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v54/Ledger-unsigned.ipa",
-      "size": 27596874
+      "version": "1.0.55",
+      "versionDate": "2026-11-04T19:55:01Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v55/Ledger-unsigned.ipa",
+      "size": 28689774
     }
   ]
 }
