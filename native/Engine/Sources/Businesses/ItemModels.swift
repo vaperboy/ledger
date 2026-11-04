@@ -11,7 +11,7 @@ import Finance
 /// `SalesItems` itself, demand and every old save are untouched; an item without a record is read through `fallbackCost` (the trade's cost-of-sales share).
 public enum ItemModels {
     /// Trades whose old titles-only items are migrated to records. Empty in W0: a wave adds its trades here (tests pass their own set).
-    public static let optedInTrades: Set<String> = []
+    public static var optedInTrades: Set<String> { ItemWaves.all }
     static let key = "itemsv2"
     public static let historyWeeks = 52
     /// Weekly rate at which interested customers buy one unit at the fair price (a unique unit sits a few weeks on average).
