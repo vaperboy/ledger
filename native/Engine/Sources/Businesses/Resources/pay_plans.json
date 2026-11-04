@@ -47,6 +47,18 @@
     ],
     "usedcar": [
       "buyer"
+    ],
+    "hotel": [
+      "recept"
+    ],
+    "pcbang": [
+      "cashier"
+    ],
+    "resrent": [
+      "propm"
+    ],
+    "comrent": [
+      "propm"
     ]
   }
 }

@@ -854,15 +854,15 @@
   ],
   "hotel": [
    {
+    "n": "Breakfast add-on",
+    "svc": true
+   },
+   {
     "n": "Conference package",
     "svc": true
    },
    {
     "n": "Spa weekend",
-    "svc": true
-   },
-   {
-    "n": "Breakfast add-on",
     "svc": true
    },
    {
@@ -874,15 +874,11 @@
     "svc": true
    },
    {
-    "n": "Long-stay rate",
-    "svc": true
-   },
-   {
     "n": "Romantic dinner package",
     "svc": true
    },
    {
-    "n": "Room upgrade",
+    "n": "Late checkout",
     "svc": true
    }
   ],
@@ -1260,14 +1256,38 @@
    }
   ],
   "usedcar": [
-   { "n": "Certified pre-owned cars", "svc": false },
-   { "n": "Finance packages", "svc": true },
-   { "n": "Extended warranty", "svc": true },
-   { "n": "Trade-in service", "svc": true },
-   { "n": "Car valeting and prep", "svc": true },
-   { "n": "Service plans", "svc": true },
-   { "n": "Accessories and tyres", "svc": false },
-   { "n": "Vans and light commercials", "svc": false }
+   {
+    "n": "Certified pre-owned cars",
+    "svc": false
+   },
+   {
+    "n": "Finance packages",
+    "svc": true
+   },
+   {
+    "n": "Extended warranty",
+    "svc": true
+   },
+   {
+    "n": "Trade-in service",
+    "svc": true
+   },
+   {
+    "n": "Car valeting and prep",
+    "svc": true
+   },
+   {
+    "n": "Service plans",
+    "svc": true
+   },
+   {
+    "n": "Accessories and tyres",
+    "svc": false
+   },
+   {
+    "n": "Vans and light commercials",
+    "svc": false
+   }
   ],
   "cardealer": [
    {
@@ -1929,27 +1949,11 @@
   ],
   "resrent": [
    {
-    "n": "Furnished lets",
-    "svc": true
-   },
-   {
-    "n": "Student lets",
-    "svc": true
-   },
-   {
-    "n": "Short-stay lets",
-    "svc": true
-   },
-   {
     "n": "Property management plan",
     "svc": true
    },
    {
-    "n": "Garden flats",
-    "svc": true
-   },
-   {
-    "n": "Pet-friendly lets",
+    "n": "Rent guarantee cover",
     "svc": true
    },
    {
@@ -1957,63 +1961,51 @@
     "svc": true
    },
    {
-    "n": "Rent guarantee",
+    "n": "Furnishing pack",
+    "svc": true
+   },
+   {
+    "n": "Inventory and check-in service",
+    "svc": true
+   },
+   {
+    "n": "Garden and communal upkeep plan",
     "svc": true
    }
   ],
   "comrent": [
    {
-    "n": "Serviced offices",
-    "svc": true
-   },
-   {
-    "n": "Flexible desks",
-    "svc": true
-   },
-   {
-    "n": "Meeting rooms",
-    "svc": true
-   },
-   {
-    "n": "Retail units",
-    "svc": true
-   },
-   {
-    "n": "Pop-up spaces",
-    "svc": true
-   },
-   {
-    "n": "Storage units",
-    "svc": true
-   },
-   {
     "n": "Reception and mail service",
+    "svc": true
+   },
+   {
+    "n": "Meeting room booking",
     "svc": true
    },
    {
     "n": "Event space",
     "svc": true
+   },
+   {
+    "n": "Fit-out package",
+    "svc": true
+   },
+   {
+    "n": "Serviced-office package",
+    "svc": true
+   },
+   {
+    "n": "Cleaning and security contract",
+    "svc": true
    }
   ],
   "parking": [
-   {
-    "n": "Monthly permits",
-    "svc": true
-   },
-   {
-    "n": "Airport long-stay",
-    "svc": true
-   },
-   {
-    "n": "EV charging bays",
-    "svc": true
-   },
    {
     "n": "Valet parking",
     "svc": true
    },
    {
-    "n": "Event parking",
+    "n": "EV charging session",
     "svc": true
    },
    {
@@ -2021,11 +2013,15 @@
     "svc": true
    },
    {
-    "n": "Motorbike bays",
+    "n": "Event parking",
     "svc": true
    },
    {
-    "n": "Reserved bays",
+    "n": "Monthly permit",
+    "svc": true
+   },
+   {
+    "n": "Reserved bay",
     "svc": true
    }
   ],
@@ -2342,11 +2338,7 @@
   ],
   "pcbang": [
    {
-    "n": "Hourly gaming",
-    "svc": true
-   },
-   {
-    "n": "Night pass",
+    "n": "Snacks and drinks",
     "svc": true
    },
    {
@@ -2354,7 +2346,11 @@
     "svc": true
    },
    {
-    "n": "Private room",
+    "n": "Night pass",
+    "svc": true
+   },
+   {
+    "n": "Private room hire",
     "svc": true
    },
    {
@@ -2362,29 +2358,25 @@
     "svc": true
    },
    {
-    "n": "Food and drink menu",
-    "svc": true
-   },
-   {
     "n": "Membership plan",
     "svc": true
    },
    {
-    "n": "Birthday packages",
+    "n": "Birthday package",
     "svc": true
    }
   ],
   "carrental": [
    {
+    "n": "Insurance excess waiver",
+    "svc": true
+   },
+   {
+    "n": "Child seat and sat-nav",
+    "svc": true
+   },
+   {
     "n": "Chauffeur service",
-    "svc": true
-   },
-   {
-    "n": "Long-term lease",
-    "svc": true
-   },
-   {
-    "n": "Van hire",
     "svc": true
    },
    {
@@ -2392,19 +2384,11 @@
     "svc": true
    },
    {
-    "n": "Luxury cars",
+    "n": "One-way rental fee",
     "svc": true
    },
    {
-    "n": "Weekend deals",
-    "svc": true
-   },
-   {
-    "n": "One-way rentals",
-    "svc": true
-   },
-   {
-    "n": "Child seat and extras",
+    "n": "Long-term lease plan",
     "svc": true
    }
   ],
