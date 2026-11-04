@@ -12,3 +12,4 @@
 - Own staff can take board seats; busy restaurants and service venues pay a congestion cost above 85% use
 - Popups: one shared card size and header; short popups hug their content
 - Simpler screens: two-page hiring, one-page new company, three-step loan, company opens on five rows; fixed animation timings
+- Ledger Pro and Plus: paywall, restore purchases and plan in Settings (store products to be set up)
