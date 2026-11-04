@@ -352,13 +352,17 @@ final class GameStore: ObservableObject {
         }
     }
 
+    /// Group books profit at the end of the last day played (week, day, value); used as the start of the next day's "Profit today".
+    private var profitMark: (week: Int, day: Int, value: Double)?
+
     private func advanceOneDay() {
         guard var e = engine else { return }
         seedUpdateMarks()
         let nwBefore: Double? = e.dayHistory.netWorth.last
         let cashBefore: Double? = e.dayHistory.cash.last
         let debtBefore: Double = e.state.loans.reduce(0) { $0 + $1.balance }
-        let profitBefore: Double = e.groupBooksProfit
+        // Profit today starts where the last day ended, so what the owner did in between (opening a new store in a chain, setting up) counts.
+        let profitBefore: Double = { if let m = profitMark, m.week == e.state.week, m.day == e.state.day { return m.value }; return e.groupBooksProfit }()
         let tightBefore: Bool = e.cashIsTight
         let out = e.nextDay()
         let today: Int = GameStore.calendarDay()
@@ -379,6 +383,7 @@ final class GameStore: ObservableObject {
         reportSheet = digest
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
         daily.profit = e.groupBooksProfit - profitBefore
+        profitMark = (week: e.state.week, day: e.state.day, value: e.groupBooksProfit)
         if let nwBefore, let nwAfter = e.dayHistory.netWorth.last, let cashBefore, let cashAfter = e.dayHistory.cash.last {
             daily.netWorthChange = nwAfter - nwBefore
             daily.cashChange = cashAfter - cashBefore
