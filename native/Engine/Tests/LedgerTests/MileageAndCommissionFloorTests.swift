@@ -45,14 +45,19 @@ final class MileageAndCommissionFloorTests: XCTestCase {
         XCTAssertFalse(without.state.company(id)!.staff.first { $0.id == pid }!.flag("ownCar"))
         let w0 = World(state: e.state, data: e.data), co0 = e.state.company(id)!
         let weekly = PersonalEquipment.mileagePerMonth(w0.currency(co0), country: w0.country(co0), e.data.catalog["estate"]!, tables: e.data.catalog.tables) * 12 / 52
-        func oth(_ g: GameEngine) -> Double { g.state.company(id)!.books.year["oth"] ?? 0 }
+        // The agent's own car also changes the capacity, so sales (and what scales with them) differ between the two companies: count the mileage lines themselves.
+        func mileage(_ g: GameEngine, since: Int) -> (n: Int, sum: Double) {
+            let t = g.state.company(id)!.transactions.filter { $0["l"].string == "Mileage for own cars" && $0["w"].int > since }
+            return (t.count, t.reduce(0) { $0 + abs($1["a"].double) })
+        }
+        let start = withCar.state.week
         var measured = 0
-        for _ in 0..<4 {
-            let w0 = oth(withCar), n0 = oth(without)
+        for k in 1...4 {
             for _ in 0..<7 { withCar.nextDay(); without.nextDay() }
-            let w1 = oth(withCar), n1 = oth(without)
-            if w1 < w0 || n1 < n0 { continue }   // the year's books rolled over in this week: nothing to compare
-            XCTAssertEqual((w1 - w0) - (n1 - n0), weekly, accuracy: 1.0, "each week books one week of mileage, not two")
+            let m = mileage(withCar, since: start)
+            XCTAssertEqual(m.n, k, "each week books one mileage line, not two")
+            XCTAssertEqual(m.sum, weekly * Double(k), accuracy: 1.0 * Double(k), "each week books one week of mileage, not two")
+            XCTAssertEqual(mileage(without, since: start).n, 0)
             measured += 1
         }
         XCTAssertGreaterThanOrEqual(measured, 3)

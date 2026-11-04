@@ -46,7 +46,9 @@ final class NewItemOptionsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ids.count, 60)
         for id in ids {
             let rows = NewItemOptions.catalog[id] ?? []
-            XCTAssertGreaterThanOrEqual(rows.count, 6, "\(id) needs at least 6 options")
+            // the item waves replaced the add-item list of their trades with the real products they sell (4 or more); the others keep the wide generic list
+            let minimum = ItemWaves.all.contains(id) ? 4 : 6
+            XCTAssertGreaterThanOrEqual(rows.count, minimum, "\(id) needs at least \(minimum) options")
             XCTAssertEqual(Set(rows.map { $0.name.lowercased() }).count, rows.count, "\(id) has duplicate names")
             XCTAssertLessThanOrEqual(rows.filter { $0.brand }.count, 1, "\(id): at most one branded item")
             XCTAssertTrue(rows.allSatisfy { !$0.name.isEmpty })

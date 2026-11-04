@@ -188,7 +188,7 @@ final class Wave2Tests: XCTestCase {
     func testOldCompaniesAndOtherTradesGetNoRecords() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "bakery", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("no") }
+        guard case .success(let id) = e.startCompany(tradeID: "estate", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("no") }
         for _ in 0..<3 { e.wave2Week(id) }
         XCTAssertTrue(e.state.company(id)!.value("itemsv2").isNull)
         XCTAssertTrue(e.state.company(id)!.value("w2").isNull)
