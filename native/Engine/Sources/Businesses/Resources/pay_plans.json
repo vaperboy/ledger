@@ -83,6 +83,21 @@
     ],
     "photo": [
       "photog"
+    ],
+    "construction": [
+      "pm"
+    ],
+    "engcons": [
+      "pm"
+    ],
+    "electrician": [
+      "elec"
+    ],
+    "plumber": [
+      "plumb"
+    ],
+    "handy": [
+      "handy"
     ]
   }
 }

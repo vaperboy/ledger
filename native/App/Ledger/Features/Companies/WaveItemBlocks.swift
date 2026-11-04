@@ -19,6 +19,7 @@ struct WaveItemBlocks: View {
         Wave4ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)
         Wave5ServiceBlock(companyID: companyID, itemID: itemID)
         Wave6ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)
+        Wave7ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)
         Wave8UnitBlock(companyID: companyID, itemID: itemID)
     }
 }

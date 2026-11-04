@@ -10,6 +10,7 @@ public enum WaveHooks {
         Wave4.weekly(&s, i, data: data)
         Wave5Services.weekly(&s, i, data: data)
         Wave6.weekly(&s, i, data: data)
+        Wave7.weekly(&s, i, data: data)
         Wave8.weekly(&s, i, data: data)
         let co = s.companies[i]
         if co.status == .open, ItemWaves.w3.contains(co.type) { _ = Wave3Recipes.apply(&s, companyID: co.id, data: data, trades: ItemWaves.w3) }
