@@ -30,7 +30,7 @@ struct CompanyHolding: View {
         let o = engine.holdingOverview(companyID: company.id)
         let free = engine.companiesForHolding
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.group, title: "Holding", blurb: "What the holding is worth, the companies under it, the index fund and moving money.")
+            MoreHeader(glyph: Glyph.group, title: "Holding", blurb: "")
             // The holding's own management (its managing director): the holding has no staff list, so its roster lives here.
             CompanyTeamRoster(engine: engine, company: company)
             if let o {

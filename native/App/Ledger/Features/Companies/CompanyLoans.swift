@@ -32,7 +32,7 @@ struct CompanyLoans: View {
                 Text(loans.isEmpty ? "no loans" : cur.tidyShort(loans.reduce(0) { $0 + $1.balance }) + " · " + cur.tidyShort(loans.reduce(0) { $0 + $1.monthlyPayment }) + " a month")
                     .font(.system(size: 11.5).monospacedDigit()).foregroundStyle(P.inkFaint)
             }) {
-                if loans.isEmpty { Text("This company has no loans. Use Apply for a loan above to borrow.").font(.bodyText).foregroundStyle(P.inkSoft) }
+                if loans.isEmpty { Text("No loans. Apply for one above.").font(.bodyText).foregroundStyle(P.inkSoft) }
                 VStack(spacing: 0) {
                     ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                         if n > 0 { Hairline() }

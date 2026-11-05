@@ -46,7 +46,6 @@ struct CompanySettings: View {
                     FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
                     Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
                         .accessibilityIdentifier("company-convert-review")
-                    Text("The review shows costs, who pays, what changes and your loan guarantees. Nothing happens until you confirm.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             } else {
                 Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")

@@ -14,23 +14,37 @@ struct ChainView: View {
     @State private var pending: PendingAction?
     @State private var renaming = false
     @State private var newName = ""
+    @State private var part: ChainPart = .stores
+
+    /// The chain page in three sections: how it is doing, who runs it and by which rules, and how it grows.
+    enum ChainPart: String, CaseIterable, Hashable { case stores = "Stores", people = "Team and rules", growth = "Growth" }
+
+    @ViewBuilder private func partBody(_ p: ChainPart, _ e: GameEngine, _ sum: Chains.Summary, _ cur: Currency) -> some View {
+        switch p {
+        case .stores:
+            ChainFigures(summary: sum, currency: cur)
+            ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
+            ChainStoreComparison(engine: e, summary: sum, currency: cur)
+        case .people:
+            ChainStaffShortages(engine: e, chainID: sum.id)
+            ExecutivePosts(engine: e, chainID: sum.id)
+            ChainRulesSection(engine: e, chainID: sum.id)
+            boardLink(e, sum)
+        case .growth:
+            if let fid = sum.franchisingCompanyID, let fco = e.state.company(fid) { FranchisorCard(engine: e, company: fco) }
+            ChainSupplyOverview(engine: e, summary: sum, currency: cur)
+            ChainNewStore(engine: e, summary: sum, currency: cur)
+            ChainJoin(engine: e, summary: sum)
+        }
+    }
 
     var body: some View {
         if let e = store.engine, let sum = e.chainSummary(id: chainID), let first = sum.stores.first.flatMap({ e.state.company($0.id) }) {
             let cur = e.currency(for: first)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    ChainFigures(summary: sum, currency: cur)
-                    ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
-                    ChainStoreComparison(engine: e, summary: sum, currency: cur)
-                    ChainStaffShortages(engine: e, chainID: sum.id)
-                    ExecutivePosts(engine: e, chainID: sum.id)
-                    ChainRulesSection(engine: e, chainID: sum.id)
-                    boardLink(e, sum)
-                    if let fid = sum.franchisingCompanyID, let fco = e.state.company(fid) { FranchisorCard(engine: e, company: fco) }
-                    ChainSupplyOverview(engine: e, summary: sum, currency: cur)
-                    ChainNewStore(engine: e, summary: sum, currency: cur)
-                    ChainJoin(engine: e, summary: sum)
+                    SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
+                    partBody(part, e, sum, cur)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
@@ -119,7 +133,7 @@ struct ChainFigures: View {
 
     var body: some View {
         let r = summary.reach
-        let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets the name reaches further: more of the town can know you, demand is a little higher and goods are cheaper." : "A worldwide name."
+        let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets: wider name, more demand, cheaper goods." : "A worldwide name."
         Card(padding: 14, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FigureStrip(items: items)
@@ -486,8 +500,6 @@ struct ChainNewStore: View {
         let cost = engine.chainCost(chainID: summary.id, cityID: cityID, size: newSize)
         MoreBlock("New store") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Same name, same rules and the paperwork you already have. A new store needs premises, equipment and people; it is set up to the chain's standard and runs on the chain's rules from day one.")
-                    .font(.caption).foregroundStyle(Theme.ivoryMuted)
                 Picker("City", selection: Binding(get: { cityID }, set: { newCity = $0 })) {
                     ForEach(cities) { c in
                         let n = summary.stores.filter { $0.cityName == c.name }.count

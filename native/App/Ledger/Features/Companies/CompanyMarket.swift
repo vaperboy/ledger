@@ -21,6 +21,7 @@ struct CompanyMarket: View {
     /// Each rival's share when the page opened, so the ranked list can show who is moving.
     @State private var baseline: [Int: Double] = [:]
     @State private var rival: Int?
+    @State private var section: MarketPart = .overview
     /// A rival whose share moved or who came up for sale gets a brief coloured edge (green gain, red loss, gold opportunity).
     @State private var rivalFlash: [Int: Color] = [:]
 
@@ -52,10 +53,9 @@ struct CompanyMarket: View {
             if let p = part {
                 partBody(p)
             } else {
-                position
-                MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id))
-                Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
-                rivals
+                // The company's Market section uses the same five segments as the Market app: one screen each.
+                SegmentedPill(items: MarketPart.allCases, title: { $0.rawValue }, selection: $section)
+                partBody(section)
             }
         }
         .onAppear { if baseline.isEmpty { baseline = shareNow } }

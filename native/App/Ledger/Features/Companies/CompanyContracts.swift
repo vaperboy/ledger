@@ -91,7 +91,7 @@ struct CompanyContracts: View {
             Card(padding: 14, radius: Theme.Radius.row) {
                 HStack(alignment: .top, spacing: 12) {
                     IconCircle(glyph: Glyph.calendar)
-                    Text("No volume contracts yet. Offers from business customers arrive in the Inbox; volume tenders, when there are any, are listed under Tenders.")
+                    Text("No volume contracts yet. Offers from business customers arrive in the Inbox.")
                         .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                 }
             }

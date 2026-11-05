@@ -18,10 +18,19 @@ struct CompanySuppliersScreen: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
 
+    @ViewBuilder private func suppliersBody(_ e: GameEngine, _ co: Company) -> some View {
+        if CompanySourcing.isAvailable(engine: e, company: co) {
+            CompanySourcing(engine: e, company: co)
+        } else {
+            Text("No suppliers yet. They show here once the business is open.")
+                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             ScrollView {
-                CompanySourcing(engine: e, company: co)
+                suppliersBody(e, co)
                     .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }

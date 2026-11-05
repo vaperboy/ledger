@@ -31,7 +31,7 @@ struct CompanySaleSection: View {
                             Button("Quiet private sale") { list(broker: false) }.buttonStyle(QuietButtonStyle())
                             Button("Use a broker (4% fee)") { list(broker: true) }.buttonStyle(QuietButtonStyle())
                         }
-                        Text("Listing is not a sale: nothing is sold until you accept an offer, and you can take it off the market at any time.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Text("Listing is not a sale: nothing sells until you accept an offer.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
             }

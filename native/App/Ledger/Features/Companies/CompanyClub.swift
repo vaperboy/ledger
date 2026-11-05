@@ -21,7 +21,7 @@ struct CompanyClub: View {
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.achievements, title: "Club", blurb: "The season and table, the budget, football staff, transfers and sponsors of your club.")
+            MoreHeader(glyph: Glyph.achievements, title: "Club", blurb: "")
             if let c = engine.clubSummary(companyID: company.id) {
                 season(c, cur)
                 clubTable(c)
@@ -47,7 +47,7 @@ struct CompanyClub: View {
             SettingsTableRow(title: Part.people.rawValue, note: "Coach and football staff", value: "Squad " + FootballModel.wordForStrength(c.squadStrength)) { part = .people }
             SettingsTableRow(title: Part.transfers.rawValue, note: "Bought " + cur.tidyShort(c.tradedIn) + ", sold " + cur.tidyShort(c.tradedOut), value: windowText, valueTint: window.name == nil ? Theme.ivoryMuted : Theme.gain) { part = .transfers }
             SettingsTableRow(title: Part.sponsors.rawValue, note: "\(c.sponsors.count) of \(FootballModel.slots.count) deals signed", value: sponsorIncome > 0 ? cur.tidyShort(sponsorIncome) + " a week" : "No income") { part = .sponsors }
-            SettingsTableRow(title: Part.table.rawValue, note: "The league table", value: pos) { part = .table }
+            SettingsTableRow(title: Part.table.rawValue, note: "", value: pos) { part = .table }
         }
     }
 

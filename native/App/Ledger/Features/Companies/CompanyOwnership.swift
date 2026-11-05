@@ -16,6 +16,7 @@ struct CompanyOwnershipSection: View {
     var company: Company
     @State private var page: Part?
     @State private var pending: PendingAction?
+    @State private var policyOpen = false
 
     private enum Part: String, CaseIterable, Identifiable { case owners = "Owners", raise = "Raise money", sell = "Sell shares"; var id: String { rawValue } }
 
@@ -48,6 +49,7 @@ struct CompanyOwnershipSection: View {
             SettingsPage(title: p.rawValue, subtitle: company.name) { pageContent(p, cur) }
         }
         .confirmAction($pending)
+        .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: company.id).environmentObject(store) }
     }
 
     /// Raising money and selling shares are bigger decisions: rows that open pages of their own.
@@ -174,20 +176,11 @@ struct CompanyOwnershipSection: View {
         }
     }
 
+    /// One home for the policy: the same sheet as the group's Money page (`DividendPolicySheet`).
     private var dividendPolicy: some View {
-        let id = company.id
-        let chosen: String = engine.dividendPolicy(companyID: id)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(spacing: 8) {
-                GlyphView(glyph: Glyph.cost, size: 15, weight: 1.6)
-                Text("Dividend policy").capsLabel()
-            }.padding(.horizontal, 2)
-            ForEach(Shareholders.policies, id: \.self) { p in
-                let name: String = Shareholders.policyNames[p] ?? p
-                ChoiceCard(title: name, selected: chosen == p) {
-                    store.settle(store.act { $0.setDividendPolicy(companyID: id, policy: p) }, "Dividend policy: \(name).", same: "That is already the dividend policy.")
-                }
-            }
+        let chosen: String = engine.dividendPolicy(companyID: company.id)
+        return SharpTable {
+            SettingsTableRow(title: "Dividend policy", value: Shareholders.policyNames[chosen] ?? chosen, opens: .sheet) { policyOpen = true }
         }
     }
 
